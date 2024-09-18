@@ -5,7 +5,14 @@
 import sys
 from os import path
 import json
-from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
+import botocore
+from aws_bucket import (
+    AWSBucket, 
+    AWSCustomBucket, 
+    AWSLogsBucket, 
+    THROTTLING_EXCEPTION_ERROR_CODE, 
+    THROTTLING_EXCEPTION_ERROR_MESSAGE
+)
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
@@ -114,8 +121,10 @@ class AWSWAFBucket(AWSCustomBucket):
         else:
             return self.prefix
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, acl_name=None, iterating=False, custom_delimiter='', **kwargs):
-        filter_args = super().build_s3_filter_args(aws_account_id, aws_region, iterating, custom_delimiter, **kwargs)
+    def build_s3_filter_args(self, aws_account_id, aws_region, acl_name=None, iterating=False, custom_delimiter='',
+                             **kwargs):
+        filter_args = super().build_s3_filter_args(aws_account_id, aws_region, iterating, custom_delimiter,
+                                                    **kwargs)
 
         if not self.reparse:
             query_last_key = self.db_cursor.execute(
@@ -154,11 +163,15 @@ class AWSWAFBucket(AWSCustomBucket):
                         if isinstance(self.waf_acls, str):
                             self.waf_acls = [acl.strip() for acl in self.waf_acls.split(',')]
                             for acl_name in self.waf_acls:
-                                aws_tools.debug("+++ Working on {} - {} - ACL: {}".format(aws_account_id, aws_region, 
-                                acl_name), 1) 
+                                aws_tools.debug("+++ Working on {} - {} - ACL: {}".format(aws_account_id, aws_region,
+                                                                                          acl_name), 1) 
                                 self.get_full_prefix(aws_account_id, aws_region, acl_name)
                                 self.iter_files_in_bucket(aws_account_id, aws_region, acl_name)
-                                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region, acl_name=acl_name)
+                                self.db_maintenance(
+                                    aws_account_id=aws_account_id,
+                                    aws_region=aws_region,
+                                    acl_name=acl_name
+                                )                                
                     else: 
                         self.get_full_prefix(aws_account_id, aws_region)
         else:
