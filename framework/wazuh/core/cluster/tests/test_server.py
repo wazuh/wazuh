@@ -548,11 +548,24 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
     loop.create_server = AsyncMock(side_effect = create_server)
     loop.set_exception_handler = MagicMock()
     ssl_mock = SSLMock()
+    certfile = "/test/path/cert.pem"
+    keyfile = "/test/path/key.pem"
+    keyfile_password = "test_password"
 
     cluster_items = {"intervals": {"master": {"check_worker_lastkeepalive": 987}}}
-    abstract_server = AbstractServer(performance_test=1, concurrency_test=2,
-                                        configuration={"bind_addr": "localhost", "port": 10000},
-                                        cluster_items=cluster_items, logger=logger)
+    abstract_server = AbstractServer(
+        performance_test=1,
+        concurrency_test=2,
+        configuration={
+           "bind_addr": "localhost",
+           "port": 10000,
+           "certfile": certfile,
+           "keyfile": keyfile,
+           "keyfile_password": keyfile_password,
+        },
+        cluster_items=cluster_items,
+        logger=logger    
+    )
     with patch("wazuh.core.cluster.server.context_tag", ContextVar("tag", default="")) as mock_contextvar, \
         patch.object(abstract_server, "handler_class"), \
         patch("ssl.create_default_context", return_value=ssl_mock) as create_default_context_mock, \
@@ -565,7 +578,7 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
         loop.set_exception_handler.assert_called_once_with(c_common.asyncio_exception_handler)
         loop.create_server.assert_awaited_once()
         create_default_context_mock.assert_called_once_with(purpose=ssl.Purpose.CLIENT_AUTH)
-        load_cert_chain_mock.assert_called_once_with(certfile="testing_path", keyfile="testing_path")
+        load_cert_chain_mock.assert_called_once_with(certfile=certfile, keyfile=keyfile, password=keyfile_password)
 
 
 @pytest.mark.asyncio
@@ -597,13 +610,22 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
         patch("ssl.create_default_context", return_value=ssl_mock), \
         patch.object(ssl_mock, "load_cert_chain"):
         with pytest.raises(KeyboardInterrupt):
-            abstract_server = AbstractServer(performance_test=1, concurrency_test=2,
-                                             configuration={"bind_addr": 3, "port": 10000},
-                                             cluster_items={"intervals":
-                                                                {"master":
-                                                                     {"check_worker_lastkeepalive": 987}
-                                                                 }
-                                                            },
-                                             logger=logger)
+            abstract_server = AbstractServer(
+                performance_test=1,
+                concurrency_test=2,
+                configuration={
+                    "bind_addr": 3,
+                    "port": 10000,
+                    "certfile": "/test/path/cert.pem",
+                    "keyfile": "/test/path/key.pem",
+                    "keyfile_password": "",
+                },
+                cluster_items={"intervals":
+                                   {"master":
+                                        {"check_worker_lastkeepalive": 987}
+                                    }
+                               },
+                logger=logger
+            )
             await abstract_server.start()
             mock_logger.assert_called_once_with("Could not start master: ")

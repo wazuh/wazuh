@@ -15,6 +15,7 @@ with patch('wazuh.core.common.getgrnam'):
             with patch('wazuh.core.common.wazuh_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
+                from wazuh.core import common
                 from wazuh.core.cluster import utils
                 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhPermissionError, \
                     WazuhResourceNotFound, WazuhHAPHelperError
@@ -28,7 +29,11 @@ default_cluster_config = {
     'port': 1516,
     'bind_addr': '0.0.0.0',
     'nodes': ['NODE_IP'],
-    'hidden': 'no'
+    'hidden': 'no',
+    'cafile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.ca'),
+    'certfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
+    'keyfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'),
+    'keyfile_password': '',
 }
 
 

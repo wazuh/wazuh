@@ -83,6 +83,33 @@ def validate_haproxy_helper_config(config: dict):
         )
 
 
+def validate_file_path(config: dict, key: str):
+    """Validate a file path is within WAZUH_PATH and that the file exists.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration to validate.
+    key : str
+        Key of the configuration where the file path is stored.
+
+    Raises
+    ------
+    WazuhError(3004)
+        If the file path is invalid.
+    """
+    filepath = config[key]
+
+    if not filepath.startswith(common.WAZUH_PATH):
+        raise WazuhError(3004, f'The {key} path ({filepath}) is not inside {common.WAZUH_PATH}.')
+
+    if '..' in filepath:
+        raise WazuhError(3004, f'The {key} path ({filepath}) contains "..".')
+
+    if not os.path.exists(filepath):
+        raise WazuhError(3004, f'The {key} "{filepath}" does not exist.')
+
+
 def check_cluster_config(config):
     """Verify that cluster configuration is correct.
 
@@ -93,6 +120,7 @@ def check_cluster_config(config):
         - 1024 < port < 65535.
         - Only 1 node is specified.
         - Reserved IPs are not used.
+        - Certfile and keyfile paths exist.
 
     Parameters
     ----------
@@ -115,6 +143,14 @@ def check_cluster_config(config):
 
     if not MIN_PORT < config['port'] < MAX_PORT:
         raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
+    
+    validate_file_path(config, 'certfile')
+
+    if config['node_type'] == 'master':
+        if config['certfile'] == config['keyfile']:
+            raise WazuhError(3004, 'The certfile and keyfile paths must be different.')
+
+        validate_file_path(config, 'keyfile')
 
     if len(config['nodes']) > 1:
         logger.warning(

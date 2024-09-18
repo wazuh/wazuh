@@ -40,7 +40,10 @@ default_cluster_configuration = {
         'port': 1516,
         'bind_addr': '0.0.0.0',
         'nodes': ['NODE_IP'],
-        'hidden': 'no'
+        'hidden': 'no',
+        'certfile': '/test/path/cert.pem',
+        'keyfile': '/test/path/key.pem',
+        'keyfile_password': 'test_password',
     }
 }
 
@@ -64,16 +67,76 @@ custom_incomplete_configuration = {
 }
 
 
+@patch('os.path.exists', return_value=True)
+@patch.object(wazuh.core.cluster.cluster.logger, "warning")
+def test_check_cluster_config(mock_logger, exists_mock):
+    """Check if the check_cluster_config function is working properly."""
+    configuration = {'node_type': 'master', 'port': 3000, 'nodes': ['A', 'B'], 'key': 'ABCD',
+                     'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+                     'keyfile': os.path.join(common.WAZUH_PATH, 'test_key')}
+    cluster.check_cluster_config(configuration)
+    assert mock_logger.call_args_list == [
+        call('Found more than one node in configuration. Only master node should be specified. Using A as master.'),
+    ]
+
+
 @pytest.mark.parametrize('read_config, message', [
-    ({'cluster': {'node_type': 'random'}}, "Invalid node type"),
-    ({'cluster': {'port': 'string', 'node_type': 'master'}}, "Port has to"),
-    ({'cluster': {'port': 90}}, "Port must be"),
-    ({'cluster': {'port': 70000}}, "Port must be"),
-    ({'cluster': {'port': 1516, 'nodes': ['NODE_IP'], 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['localhost'], 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['0.0.0.0'], 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['127.0.1.1'], 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['127.0.1.1', '127.0.1.2'], 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'node_type': 'random', 'key': 'a' * 32, 'certfile': 'test', 'keyfile': 'test'}}, "Invalid node type"),
+    ({'cluster': {'port': 'string', 'node_type': 'master', 'certfile': 'test', 'keyfile': 'test'}}, "Port has to"),
+    ({'cluster': {'port': 90, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
+    ({'cluster': {'port': 70000, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
+    ({
+        'cluster': {
+            'port': 1516,
+            'nodes': ['NODE_IP'],
+            'node_type': 'master',
+            'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+            'keyfile': os.path.join(common.WAZUH_PATH, 'test_key')
+        }
+    }, "Invalid elements"),
+    ({
+        'cluster': {
+            'nodes': ['localhost'],
+            'node_type': 'master',
+            'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+            'keyfile': os.path.join(common.WAZUH_PATH, 'test_key')
+        }
+    }, "Invalid elements"),
+    ({
+        'cluster': {
+            'nodes': ['0.0.0.0'],
+            'node_type': 'master',
+            'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+            'keyfile': os.path.join(common.WAZUH_PATH, 'test_key')
+        }
+    }, "Invalid elements"),
+    ({
+        'cluster': {
+            'nodes': ['127.0.1.1'],
+            'node_type': 'master',
+            'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+            'keyfile': os.path.join(common.WAZUH_PATH, 'test_key')
+        }
+    }, "Invalid elements"),
+    ({
+        'cluster': {
+            'nodes': ['127.0.1.1', '127.0.1.2'],
+            'node_type': 'master',
+            'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+            'keyfile': os.path.join(common.WAZUH_PATH, 'test_key')
+        }
+    }, "Invalid elements"),
+    ({
+        'cluster': {
+            'node_type': 'master',
+            'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+            'keyfile': os.path.join(common.WAZUH_PATH, 'test')
+        }
+    }, "The certfile and keyfile paths must be different."),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, 'fail')}}, 'does not exist.'),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, '/test')}},
+     f'is not inside {common.WAZUH_PATH}.'),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, '../test')}}, 'contains ".."'),
 ])
 def test_check_cluster_config_ko(read_config, message):
     """Check wrong configurations to check the proper exceptions are raised."""
@@ -84,7 +147,12 @@ def test_check_cluster_config_ko(read_config, message):
                 if key in configuration:
                     configuration[key] = m.return_value["cluster"][key]
 
-            cluster.check_cluster_config(configuration)
+            return_exists = True
+            if 'certfile' in read_config['cluster'] and 'fail' in read_config['cluster']['certfile']:
+                return_exists = False
+
+            with patch('os.path.exists', return_value=return_exists):
+                cluster.check_cluster_config(configuration)
 
 
 def test_get_node():

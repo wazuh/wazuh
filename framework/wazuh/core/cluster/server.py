@@ -532,14 +532,22 @@ class AbstractServer:
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 
         ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain(certfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'))
+        ssl_context.load_cert_chain(
+            certfile=self.configuration['certfile'],
+            keyfile=self.configuration['keyfile'],
+            password=self.configuration['keyfile_password']
+        )
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
 
         try:
             server = await self.loop.create_server(
-                protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
-                                                            cluster_items=self.cluster_items),
-                host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
+                protocol_factory=lambda: self.handler_class(
+                    server=self, loop=self.loop, logger=self.logger, cluster_items=self.cluster_items
+                ),
+                host=self.configuration['bind_addr'],
+                port=self.configuration['port'],
+                ssl=ssl_context
+            )
         except OSError as e:
             self.logger.error(f"Could not start master: {e}")
             raise KeyboardInterrupt
