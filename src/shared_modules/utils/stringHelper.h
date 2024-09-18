@@ -72,10 +72,13 @@ namespace Utils
         auto pos {data.find(toSearch)};
         const auto ret {std::string::npos != pos};
 
-        while (std::string::npos != pos)
+        if (toSearch.compare(toReplace) != 0)
         {
-            data.replace(pos, toSearch.size(), toReplace);
-            pos = data.find(toSearch, pos);
+            while (std::string::npos != pos)
+            {
+                data.replace(pos, toSearch.size(), toReplace);
+                pos = data.find(toSearch, pos);
+            }
         }
 
         return ret;
