@@ -41,7 +41,7 @@ class MuxDemuxQueue:
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
 
-    def send_to_mux(self, uid: int, msg: dict) -> int:
+    def send_to_mux(self, uid: int, msg: dict):
         """Put a message into the mux queue with an associated unique identifier.
 
         Parameters
@@ -50,15 +50,9 @@ class MuxDemuxQueue:
             Unique identifier of the message.
         msg : dict
             Message content to be put into the mux queue.
-
-        Returns
-        -------
-        int
-            Unique identifier of the message.
         """
         msg = Message(uid=uid, msg=msg)
         self.mux_queue.put(msg)
-        return uid
 
     def receive_from_mux(self, block: bool = True) -> Message:
         """Retrieve a message from the mux queue. If the queue
