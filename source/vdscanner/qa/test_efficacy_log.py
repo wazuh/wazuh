@@ -189,6 +189,7 @@ def run_process_and_monitor_log(request, run_on_end):
                     tail_log(log_file, expected_lines, found_lines, timeout, LOGGER)
                     retry += 1
                 else:
+                    # TODO: This shouldn't be an error log in false negative tests
                     LOGGER.error(f"Timeout waiting for log line: {expected_line}")
                     retry = 0
                     break
