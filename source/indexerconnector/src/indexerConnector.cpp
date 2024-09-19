@@ -93,14 +93,26 @@ static void builderBulkDelete(std::string& bulkData, std::string_view id, std::s
 
 static void builderBulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
 {
-    bulkData.append(R"({"index":{"_index":")");
-    bulkData.append(index);
-    bulkData.append(R"(","_id":")");
-    bulkData.append(id);
-    bulkData.append(R"("}})");
-    bulkData.append("\n");
-    bulkData.append(data);
-    bulkData.append("\n");
+    if (!id.empty())
+    {
+        bulkData.append(R"({"index":{"_index":")");
+        bulkData.append(index);
+        bulkData.append(R"(","_id":")");
+        bulkData.append(id);
+        bulkData.append(R"("}})");
+        bulkData.append("\n");
+        bulkData.append(data);
+        bulkData.append("\n");
+    }
+    else
+    {
+        bulkData.append(R"({"index":{"_index":")");
+        bulkData.append(index);
+        bulkData.append(R"("}})");
+        bulkData.append("\n");
+        bulkData.append(data);
+        bulkData.append("\n");
+    }
 }
 
 IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t& timeout, const uint8_t workingThreads)
@@ -146,14 +158,15 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
                 auto data = dataQueue.front();
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data);
-                const auto& id = parsedData.at("id").get_ref<const std::string&>();
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
+                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
                     builderBulkDelete(bulkData, id, m_indexName);
                 }
                 else
                 {
+                    const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
                     const auto dataString = parsedData.at("data").dump();
                     builderBulkIndex(bulkData, id, m_indexName, dataString);
                 }
