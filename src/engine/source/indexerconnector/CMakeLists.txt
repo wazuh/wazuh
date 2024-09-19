@@ -8,7 +8,6 @@ add_library(indexerconnector::iindexerconnector ALIAS indexerconnector_iindexerc
 
 # Include directories
 include_directories(include)
-include_directories(${CMAKE_SOURCE_DIR}/../shared_modules/utils/)
 include_directories(${CMAKE_SOURCE_DIR}/source/base/include/base/utils/)
 
 file(GLOB INDEXER_CONNECTOR_SRC

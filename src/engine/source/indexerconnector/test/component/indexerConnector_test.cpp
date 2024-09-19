@@ -13,7 +13,7 @@
 #include "base/utils/stringUtils.hpp"
 #include "fakeIndexer.hpp"
 #include "indexerConnector/indexerConnector.hpp"
-#include "stringHelper.h"
+#include "stringUtils.hpp"
 #include "timeUtils.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
@@ -501,7 +501,7 @@ TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
     nlohmann::json expectedMetadata;
     std::string indexerName = std::string(INDEXER_NAME) + "_$(date)";
     const std::string indexerNameDatePlaceHolder = indexerName;
-    Utils::replaceAll(indexerName, "$(date)", base::utils::time::getCurrentDate("."));
+    base::utils::string::replaceAll(indexerName, "$(date)", base::utils::time::getCurrentDate("."));
     auto INDEX_NAME_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + "_[0-9]{4}.([0-9]|1[0-2]){2}.(([0-9]|1[0-2]){2})"};
     EXPECT_TRUE(std::regex_match(indexerName, std::regex(INDEX_NAME_FORMAT_REGEX_STR)));
 

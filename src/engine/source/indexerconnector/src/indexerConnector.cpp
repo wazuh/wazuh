@@ -14,7 +14,7 @@
 #include "base/logging.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
-#include "stringHelper.h"
+#include "stringUtils.hpp"
 #include "timeUtils.hpp"
 #include <fstream>
 
@@ -109,7 +109,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
 {
     // Get index name.
     m_indexName = config.at("name").get_ref<const std::string&>();
-    Utils::replaceAll(m_indexName, "$(date)", base::utils::time::getCurrentDate("."));
+    base::utils::string::replaceAll(m_indexName, "$(date)", base::utils::time::getCurrentDate("."));
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {

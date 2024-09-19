@@ -1,4 +1,3 @@
-#include "../../../../shared_modules/utils/stringHelper.h"
 #include "base/utils/stringUtils.hpp"
 #include <chrono>
 #include <ctime>
@@ -38,7 +37,7 @@ std::string getCurrentTimestamp()
 std::string getCurrentDate(const std::string& separator = "/")
 {
     auto date = base::utils::string::split(getCurrentTimestamp(), ' ').at(0);
-    Utils::replaceAll(date, "/", separator);
+    base::utils::string::replaceAll(date, "/", separator);
 
     return date;
 }
