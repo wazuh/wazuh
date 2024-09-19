@@ -107,6 +107,7 @@ void send_agent_stopped_message();
  * */
 int try_enroll_to_server(const char *server_rip, uint32_t network_interface);
 
+#if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
 /**
  * Function that makes the request to the API for the request of uninstallation permissions.
  * @return true if validation is granted, false if denied
@@ -134,6 +135,7 @@ char* authenticate_and_get_token(const char *userpass, const char *host, bool ss
  * @return true if validation is granted, false if denied
  * */
 bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify);
+#endif
 
 /* Notify server */
 void run_notify(void);
