@@ -122,8 +122,8 @@ jobs:
         with:
           name: APIDOC/OPENAPI errors
           path: |
-            apidoc_errors.txt
-            openapi_errors.txt
+            src/engine/apidoc_errors.txt
+            src/engine/openapi_errors.txt
           retention-days: 1
 
       - uses: actions/upload-artifact@v4
