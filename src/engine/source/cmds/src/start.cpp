@@ -616,6 +616,50 @@ void runStart(ConfHandler confManager)
                                   });
 
             LOG_DEBUG("API Server configured.");
+
+            /**
+             * @api {post} /events/stateless Receive Events for Security Policy Processing
+             * @apiName ReceiveEvents
+             * @apiGroup Events
+             * @apiVersion 0.1.0-alpha
+             *
+             * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
+             * accepts a JSON payload representing the event details.
+             *
+             * @apiBody {Object} wazuh Details about the Wazuh event processing.
+             * @apiBody {Number} wazuh.queue Queue number where the event will be processed (range: 1-127).
+             * @apiBody {String} wazuh.location Location description in the format "(agent ID) (agent-name)
+             * any->/path/to/source".
+             * @apiBody {Object} event Details of the event itself.
+             * @apiBody {String} event.original The original message collected from the agent.
+             *
+             * @apiSuccessExample Success-Response:
+             *     HTTP/1.1 204 No Content
+             *    {}
+             *
+             * @apiError BadRequest The request body is not a valid JSON.
+             *
+             * @apiErrorExample {json} Error-Response:
+             *     HTTP/1.1 400 Bad Request
+             *     {
+             *       "error": ["Service Unavailable"],
+             *       "code": 400
+             *     }
+             */
+            g_apiServer->addRoute(apiserver::Method::POST,
+                                  "/events/stateless",
+                                  [orchestrator](const auto& req, auto& res)
+                                  {
+                                      try
+                                      {
+                                          orchestrator->postEvent(std::make_shared<json::Json>(req.body.c_str()));
+                                          res.status = httplib::StatusCode::NoContent_204;
+                                      }
+                                      catch (const std::runtime_error& e)
+                                      {
+                                          res.status = httplib::StatusCode::BadRequest_400;
+                                      }
+                                  });
         }
 
         // Server
@@ -661,7 +705,7 @@ void runStart(ConfHandler confManager)
     // Start server
     try
     {
-        g_apiServer->start();
+        g_apiServer->start(getExecutablePath() + "/sockets/engine.sock");
         server->start();
     }
     catch (const std::exception& e)
