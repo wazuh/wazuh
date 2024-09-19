@@ -10,6 +10,8 @@ assignees: ''
 To help us address this issue, please provide detailed information about the affected application and operating system. This data should be retrieved via the Wazuh API.
 For instructions on using the Wazuh API, refer to: https://documentation.wazuh.com/current/user-manual/api/index.html
 
+Note: If reporting multiple CVEs, the title of the issue can indicate this by using a general description (e.g., "Multiple CVEs" or "Several CVEs") rather than listing each CVE individually.
+
 -->
 
 ### Description
