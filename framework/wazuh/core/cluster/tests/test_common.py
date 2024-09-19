@@ -839,12 +839,6 @@ def test_handler_process_dapi_error_ko():
         handler.server = ManagerMock()
         handler.process_dapi_error(data=b"data 2")
 
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3025 .*"):
-        with patch("asyncio.create_task", side_effect=exception.WazuhClusterError(1001)):
-            handler.server = ManagerMock()
-            handler.server.local_server.clients = {"data": ClientsMock()}
-            handler.process_dapi_error(data=b"data 2")
-
 
 def test_handler_process_error_from_peer():
     """Test if errors in requests are properly handled."""
