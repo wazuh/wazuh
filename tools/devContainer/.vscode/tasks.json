@@ -1,0 +1,27 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Remove clean env",
+			"type": "shell",
+			"command": "rm",
+			"args": [
+				"-rf",
+				"${env:TMP_CLEAN_ENV}"
+			]
+		},
+		{
+			"label": "Create clean env",
+			"type": "shell",
+			"command": "${env:ENGINE_SRC}/test/setupEnvironment.py",
+			"args": [
+				"-e",
+				"${env:TMP_CLEAN_ENV}"
+			],
+			"dependsOn": "Remove clean env",
+			"problemMatcher": []
+		}
+	]
+}
