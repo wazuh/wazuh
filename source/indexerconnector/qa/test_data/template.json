@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "wazuh-states-vulnerabilities-*"
+    "wazuh-states-vulnerabilities"
   ],
   "priority": 1,
   "template": {
