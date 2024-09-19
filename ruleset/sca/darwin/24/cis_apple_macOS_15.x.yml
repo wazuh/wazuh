@@ -1,0 +1,55 @@
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Mac0S 15 Sequoia Benchmark v1.0.0 - 19/09/2024 (Draft)
+
+policy:
+  id: "cis_macOS_15.Sequoia.yml"
+  file: "cis_macOS_15.Sequoia.yml"
+  name: "CIS_Apple_macOS_15.0_Sequoia_Benchmark_v1.0.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for MacOS 15 Sequoia systems."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check MacOS 15 Sequoia platform."
+  description: "Requirements for running the policy against MacOS 15 Sequoia."
+  condition: any
+  rules:
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*15\p'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*15\p'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*15\p'
+
+checks:
+  ##########################################################################
+  # 1 Install Updates, Patches and Additional Security Software
+  ##########################################################################
+
+  # 1.1 Ensure All Apple-provided Software Is Current. (Automated)- Not Implemented
+
+  # 1.2 Ensure Auto Update Is Enabled. (Automated)
+  - id: 34000
+    title: "Ensure Auto Update Is Enabled."
+    description: 'Auto Update verifies that your system has the newest security patches and software updates. If "Automatically check for updates" is not selected, background updates for new malware definition files from Apple for XProtect and Gatekeeper will not occur.'
+    rationale: "It is important that a system has the newest updates applied so as to prevent unauthorized persons from exploiting identified vulnerabilities."
+    impact: "Without automatic update, updates may not be made in a timely manner and the system will be exposed to additional risk."
+    remediation: "Graphical Method: Perform the following steps to enable the system to automatically check for updates: Open System Settings Select General Select Software Update Select the i Set Check for updates to enabled Select Done Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true Profile Method: Create or edit a configuration profile with the following information: The PayloadType string is com.apple.SoftwareUpdate The key to include is AutomaticCheckEnabled The key must be set to <true/>."
+    compliance:
+      - cis: ["1.2"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_v3.2.1: ["6.2"]
+      - soc_2: ["CC7.1"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:\.+'
+
+
