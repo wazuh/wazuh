@@ -35,7 +35,7 @@ std::string getCurrentTimestamp()
     return getTimestamp(std::time(nullptr));
 }
 
-std::string getCurrentDate(const std::string separator = "/")
+std::string getCurrentDate(const std::string& separator = "/")
 {
     auto date = base::utils::string::split(getCurrentTimestamp(), ' ').at(0);
     Utils::replaceAll(date, "/", separator);

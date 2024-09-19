@@ -23,6 +23,7 @@
 #include <iostream>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <regex>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -496,12 +497,15 @@ TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
  */
 TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
 {
-    // We createt an index with the current date as part of the name.
+    // We create an index with the current date as part of the name.
     nlohmann::json expectedMetadata;
-    std::string indexerNameDatePlaceHolder = std::string(INDEXER_NAME) + "_$(date)";
-    Utils::replaceAll(indexerNameDatePlaceHolder, "$(date)", base::utils::time::getCurrentDate("."));
+    std::string indexerName = std::string(INDEXER_NAME) + "_$(date)";
+    const std::string indexerNameDatePlaceHolder = indexerName;
+    Utils::replaceAll(indexerName, "$(date)", base::utils::time::getCurrentDate("."));
+    auto INDEX_NAME_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + "_[0-9]{4}.([0-9]|1[0-2]){2}.(([0-9]|1[0-2]){2})"};
+    EXPECT_TRUE(std::regex_match(indexerName, std::regex(INDEX_NAME_FORMAT_REGEX_STR)));
 
-    expectedMetadata["index"]["_index"] = indexerNameDatePlaceHolder;
+    expectedMetadata["index"]["_index"] = indexerName;
     expectedMetadata["index"]["_id"] = INDEX_ID_A;
 
     // Callback that checks the expected data to be published.
@@ -523,6 +527,8 @@ TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
     nlohmann::json indexerConfig;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
     indexerConfig["name"] = indexerNameDatePlaceHolder;
+    const std::string INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + "_\\$\\(date\\)"};
+    EXPECT_TRUE(std::regex_match(indexerNameDatePlaceHolder, std::regex(INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR)));
     auto indexerConnector {IndexerConnector(indexerConfig, INDEXER_TIMEOUT)};
 
     // Publish content and wait until the publication finishes.
