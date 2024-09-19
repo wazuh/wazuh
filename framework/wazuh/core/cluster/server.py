@@ -531,7 +531,7 @@ class AbstractServer:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 
-        ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+        ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=self.configuration['cafile'])
         ssl_context.load_cert_chain(
             certfile=self.configuration['certfile'],
             keyfile=self.configuration['keyfile'],

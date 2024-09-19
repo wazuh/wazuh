@@ -548,6 +548,7 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
     loop.create_server = AsyncMock(side_effect = create_server)
     loop.set_exception_handler = MagicMock()
     ssl_mock = SSLMock()
+    cafile = "/test/path/CAcert.pem"
     certfile = "/test/path/cert.pem"
     keyfile = "/test/path/key.pem"
     keyfile_password = "test_password"
@@ -559,6 +560,7 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
         configuration={
            "bind_addr": "localhost",
            "port": 10000,
+           "cafile": cafile,
            "certfile": certfile,
            "keyfile": keyfile,
            "keyfile_password": keyfile_password,
@@ -577,7 +579,7 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
         assert mock_contextvar.get() == "start_test"
         loop.set_exception_handler.assert_called_once_with(c_common.asyncio_exception_handler)
         loop.create_server.assert_awaited_once()
-        create_default_context_mock.assert_called_once_with(purpose=ssl.Purpose.CLIENT_AUTH)
+        create_default_context_mock.assert_called_once_with(purpose=ssl.Purpose.CLIENT_AUTH, cafile=cafile)
         load_cert_chain_mock.assert_called_once_with(certfile=certfile, keyfile=keyfile, password=keyfile_password)
 
 
@@ -616,6 +618,7 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
                 configuration={
                     "bind_addr": 3,
                     "port": 10000,
+                    "cafile": "/test/path/CAcert.pem",
                     "certfile": "/test/path/cert.pem",
                     "keyfile": "/test/path/key.pem",
                     "keyfile_password": "",

@@ -120,7 +120,7 @@ def check_cluster_config(config):
         - 1024 < port < 65535.
         - Only 1 node is specified.
         - Reserved IPs are not used.
-        - Certfile and keyfile paths exist.
+        - CAfile, certfile and keyfile paths exist.
 
     Parameters
     ----------
@@ -144,13 +144,12 @@ def check_cluster_config(config):
     if not MIN_PORT < config['port'] < MAX_PORT:
         raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
     
-    validate_file_path(config, 'certfile')
+    cert_keys = ['cafile', 'certfile', 'keyfile']
+    if len(cert_keys) > len(set(config[key] for key in cert_keys)):
+        raise WazuhError(3004, 'Paths to certificates and keys must be different.')
 
-    if config['node_type'] == 'master':
-        if config['certfile'] == config['keyfile']:
-            raise WazuhError(3004, 'The certfile and keyfile paths must be different.')
-
-        validate_file_path(config, 'keyfile')
+    for key in cert_keys:
+        validate_file_path(config, key)
 
     if len(config['nodes']) > 1:
         logger.warning(
