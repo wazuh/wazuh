@@ -18,7 +18,6 @@ target_link_libraries(${PROJECT_NAME}
     optimized gtest
     optimized gmock
     urlrequest
-    router
     wazuhext
     lzma
     rocksdb

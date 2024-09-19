@@ -12,12 +12,12 @@
 #ifndef _FACTORY_CONTENT_UPDATER_HPP
 #define _FACTORY_CONTENT_UPDATER_HPP
 
-#include "../sharedDefs.hpp"
 #include "factoryCleaner.hpp"
 #include "factoryDecompressor.hpp"
 #include "factoryDownloader.hpp"
 #include "factoryVersionUpdater.hpp"
 #include "pubSubPublisher.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>

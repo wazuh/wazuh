@@ -13,7 +13,6 @@
 #define _ACTION_TEST_HPP
 
 #include "fakes/fakeServer.hpp"
-#include "routerProvider.hpp"
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
@@ -35,8 +34,7 @@ protected:
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
-    std::shared_ptr<RouterProvider> m_spRouterProvider; ///< Router provider used on tests.
-    const unsigned int INITIAL_OFFSET {1};              ///< Initial offset to be inserted on the database.
+    const unsigned int INITIAL_OFFSET {1}; ///< Initial offset to be inserted on the database.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -63,11 +61,6 @@ protected:
         m_parameters["configData"]["outputFolder"] = m_outputFolder;
         m_parameters["configData"]["databasePath"] = m_outputFolder;
 
-        // Init router provider.
-        const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-        m_spRouterProvider = std::make_shared<RouterProvider>(topicName);
-        m_spRouterProvider->start();
-
         // An initial offset different from zero is inserted in order to avoid the snapshot download.
         m_parameters.at("configData")["offset"] = INITIAL_OFFSET;
     }
@@ -85,9 +78,6 @@ protected:
             // Delete the output folder.
             std::filesystem::remove_all(m_outputFolder);
         }
-
-        // Stop router provider.
-        m_spRouterProvider->stop();
     }
 
     /**

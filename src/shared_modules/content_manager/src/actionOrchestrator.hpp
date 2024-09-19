@@ -17,7 +17,6 @@
 #include "components/updaterContext.hpp"
 #include "componentsHelper.hpp"
 #include "factoryOffsetUpdater.hpp"
-#include "iRouterProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
 #include <utility>
@@ -108,21 +107,20 @@ public:
     /**
      * @brief Creates a new instance of ActionOrchestrator.
      *
-     * @param channel Channel where the orchestration will publish the data.
      * @param parameters Parameters used to create the orchestration.
      * @param stopActionCondition Condition wrapper used to interrupt the orchestration stages.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
-    explicit ActionOrchestrator(const std::shared_ptr<IRouterProvider> channel,
-                                const nlohmann::json& parameters,
-                                std::shared_ptr<ConditionSync> stopActionCondition)
+    explicit ActionOrchestrator(const nlohmann::json& parameters,
+                                std::shared_ptr<ConditionSync> stopActionCondition,
+                                const FileProcessingCallback fileProcessingCallback)
     {
         try
         {
             // Create a context
-            m_spBaseContext = std::make_shared<UpdaterBaseContext>(stopActionCondition);
+            m_spBaseContext = std::make_shared<UpdaterBaseContext>(stopActionCondition, fileProcessingCallback);
             m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
-            m_spBaseContext->spChannel = channel;
 
             logDebug1(
                 WM_CONTENTUPDATER, "Creating '%s' Content Updater orchestration", m_spBaseContext->topicName.c_str());
@@ -155,25 +153,35 @@ public:
 
         try
         {
-            switch (updateData.type)
+            if (UpdateType::OFFSET == updateData.type)
             {
-                case UpdateType::OFFSET: runOffsetUpdate(std::move(spUpdaterContext), updateData.offset); break;
-
-                case UpdateType::FILE_HASH: runFileHashUpdate(std::move(spUpdaterContext), updateData.fileHash); break;
-
-                case UpdateType::CONTENT: runContentUpdate(std::move(spUpdaterContext), updateData.offset == 0); break;
-
-                // LCOV_EXCL_START
-                default:
-                    logDebug1(WM_CONTENTUPDATER, "Invalid update type, the orchestration will be skipped");
-                    break;
-                    // LCOV_EXCL_STOP
+                runOffsetUpdate(spUpdaterContext, updateData.offset);
             }
+            else if (UpdateType::FILE_HASH == updateData.type)
+            {
+                runFileHashUpdate(spUpdaterContext, updateData.fileHash);
+            }
+            else if (UpdateType::CONTENT == updateData.type)
+            {
+                runContentUpdate(spUpdaterContext, updateData.offset == 0);
+            }
+            else
+            {
+                // LCOV_EXCL_START
+                logDebug1(WM_CONTENTUPDATER, "Invalid update type, the orchestration will be skipped");
+                // LCOV_EXCL_STOP
+            }
+        }
+        catch (const OffsetProcessingException& e)
+        {
+            logWarn(WM_CONTENTUPDATER, "Offset processing failed. Triggered a snapshot download.");
+            cleanContext(spUpdaterContext);
+            runContentUpdate(spUpdaterContext, true);
         }
         catch (const std::exception& e)
         {
             cleanContext();
-            throw std::invalid_argument {"Orchestration run failed: " + std::string {e.what()}};
+            throw std::runtime_error {"Orchestration run failed: " + std::string {e.what()}};
         }
     }
 
@@ -189,11 +197,20 @@ private:
     std::shared_ptr<UpdaterBaseContext> m_spBaseContext;
 
     /**
-     * @brief Clean ContentUpdater persistent data. Useful for cleaning the context when an exception is thrown.
+     * @brief Clean ContentUpdater persistent data and the updater context if provided.
      *
+     * @note Useful for cleaning the contexts when an exception is thrown.
+     *
+     * @param updaterContext Updater context to be re-initialized (optional).
      */
-    void cleanContext() const
+    void cleanContext(std::shared_ptr<UpdaterContext> spUpdaterContext = nullptr) const
     {
+        if (spUpdaterContext)
+        {
+            spUpdaterContext->initialize();
+            spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
+        }
+
         m_spBaseContext->downloadedFileHash.clear();
     }
 
@@ -255,19 +272,30 @@ private:
                     .second.ToString());
         }
 
-        // If an offset download is requested and the current offset is '0', a snapshot will be downloaded with
-        // the full content to avoid downloading many offsets at once.
         const auto& contentSource {
             spUpdaterContext->spUpdaterBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
-        if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
 
+        logDebug2(WM_CONTENTUPDATER,
+                  "Current offset: %d . contentSource %s",
+                  spUpdaterContext->currentOffset,
+                  contentSource.c_str());
+        // Check if the full content download should be triggered
+        // 1. If the current offset is '0' and the content source is 'cti-offset'.
+        // 2. If the offset should be reset.
+        if ((0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource) || resetOffset)
         {
+            logDebug2(WM_CONTENTUPDATER, "Triggering full content download");
             // Copy original data.
             auto originalData = spUpdaterContext->data;
 
             try
             {
                 runFullContentDownload(spUpdaterContext);
+            }
+            catch (const SnapshotProcessingException& e)
+            {
+                logWarn(WM_CONTENTUPDATER, "Couldn't run full content download: %s.", e.what());
+                throw;
             }
             catch (const std::exception& e)
             {
@@ -278,8 +306,15 @@ private:
             spUpdaterContext->data = std::move(originalData);
         }
 
-        // Run the updater chain
-        m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+        try
+        {
+            // Run the updater chain
+            m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+        }
+        catch (const std::exception& e)
+        {
+            throw OffsetProcessingException {e.what()};
+        }
     }
 
     /**

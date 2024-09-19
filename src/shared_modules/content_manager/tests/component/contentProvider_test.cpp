@@ -23,7 +23,12 @@ TEST_F(ContentProviderTest, TestInstantiation)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
-    EXPECT_NO_THROW(std::make_shared<ContentProvider>(topicName, m_parameters));
+    EXPECT_NO_THROW(std::make_shared<ContentProvider>(
+        topicName,
+        m_parameters,
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
+            return {0, "", false};
+        }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -40,7 +45,13 @@ TEST_F(ContentProviderTest, TestInstantiationWithoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(std::make_shared<ContentProvider>(topicName, parameters), std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ContentProvider>(
+                     topicName,
+                     parameters,
+                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
+                         return {0, "", false};
+                     }),
+                 std::invalid_argument);
 }
 
 /*
@@ -52,7 +63,12 @@ TEST_F(ContentProviderTest, TestInstantiationAndStartActionScheduler)
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
 
-    auto contentProvider {std::make_shared<ContentProvider>(topicName, m_parameters)};
+    auto contentProvider {std::make_shared<ContentProvider>(
+        topicName,
+        m_parameters,
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
+            return {0, "", false};
+        })};
 
     EXPECT_NO_THROW(contentProvider->startActionScheduler(interval));
 
@@ -68,7 +84,12 @@ TEST_F(ContentProviderTest, TestInstantiationAndChangeSchedulerInterval)
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
 
-    auto contentProvider {std::make_shared<ContentProvider>(topicName, m_parameters)};
+    auto contentProvider {std::make_shared<ContentProvider>(
+        topicName,
+        m_parameters,
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
+            return {0, "", false};
+        })};
 
     EXPECT_NO_THROW(contentProvider->startActionScheduler(interval));
 

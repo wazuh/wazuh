@@ -28,10 +28,12 @@ void ContentModule::stop()
     ContentModuleFacade::instance().stop();
 }
 
-ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters)
+ContentRegister::ContentRegister(std::string name,
+                                 const nlohmann::json& parameters,
+                                 const FileProcessingCallback fileProcessingCallback)
     : m_name {std::move(name)}
 {
-    ContentModuleFacade::instance().addProvider(m_name, parameters);
+    ContentModuleFacade::instance().addProvider(m_name, parameters, fileProcessingCallback);
 
     if (parameters.contains("interval"))
     {
@@ -47,6 +49,11 @@ ContentRegister::ContentRegister(std::string name, const nlohmann::json& paramet
     }
 }
 
+ContentRegister::~ContentRegister()
+{
+    ContentModuleFacade::instance().removeProvider(m_name);
+}
+
 void ContentRegister::changeSchedulerInterval(const size_t newInterval)
 {
     ContentModuleFacade::instance().changeSchedulerInterval(m_name, newInterval);
@@ -57,7 +64,6 @@ void ContentRegister::changeSchedulerInterval(const size_t newInterval)
 extern "C"
 {
 #endif
-
     void content_manager_start(full_log_fnc_t callbackLog)
     {
         ContentModuleFacade::instance().start(

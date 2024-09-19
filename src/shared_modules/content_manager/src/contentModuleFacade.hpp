@@ -48,12 +48,22 @@ public:
     void stop();
 
     /**
+     * @brief Removes a provider.
+     *
+     * @param name Provider name.
+     */
+    void removeProvider(const std::string& name);
+
+    /**
      * @brief Adds a new provider.
      *
      * @param name Provider name.
      * @param parameters Provider parameters.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
-    void addProvider(const std::string& name, const nlohmann::json& parameters);
+    void addProvider(const std::string& name,
+                     const nlohmann::json& parameters,
+                     const FileProcessingCallback fileProcessingCallback);
 
     /**
      * @brief Starts action scheduler.

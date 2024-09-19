@@ -13,8 +13,8 @@
 #define _UPDATER_CONTEXT_HPP
 
 #include "conditionSync.hpp"
-#include "iRouterProvider.hpp"
 #include "json.hpp"
+#include "sharedDefs.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
@@ -50,10 +50,11 @@ struct UpdaterBaseContext
     std::string httpUserAgent;
 
     /**
-     * @brief Channel where the data will be published.
+     * @brief Callback in charge to process downloaded files.
      *
+     * @return FileProcessingResult
      */
-    std::shared_ptr<IRouterProvider> spChannel;
+    FileProcessingCallback fileProcessingCallback;
 
     /**
      * @brief Pointer to the RocksDB instance.
@@ -95,9 +96,13 @@ struct UpdaterBaseContext
      * @brief Struct constructor.
      *
      * @param spStopCondition Pointer to a stop condition wrapper.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
+     *
      */
-    explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition)
+    explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition,
+                                FileProcessingCallback fileProcessingCallback)
         : spStopCondition(std::move(spStopCondition))
+        , fileProcessingCallback(fileProcessingCallback)
     {
     }
 };
@@ -142,6 +147,21 @@ struct UpdaterContext
      *
      */
     int currentOffset {0};
+
+    /**
+     * @brief Construct a new Updater Context object
+     *
+     */
+    UpdaterContext() = default;
+
+    /**
+     * @brief Re initialize the context with the default values.
+     *
+     */
+    void initialize()
+    {
+        *this = UpdaterContext();
+    }
 };
 
 #endif // _UPDATER_CONTEXT_HPP

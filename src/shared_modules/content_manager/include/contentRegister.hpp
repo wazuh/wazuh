@@ -12,6 +12,7 @@
 #ifndef _CONTENT_REGISTER_HPP
 #define _CONTENT_REGISTER_HPP
 
+#include "sharedDefs.hpp"
 #include <external/nlohmann/json.hpp>
 #include <memory>
 #include <shared_mutex>
@@ -40,9 +41,17 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters Object parameters, including interval and ondemand.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
-    explicit ContentRegister(std::string topicName, const nlohmann::json& parameters);
-    ~ContentRegister() = default;
+    explicit ContentRegister(std::string topicName,
+                             const nlohmann::json& parameters,
+                             FileProcessingCallback fileProcessingCallback);
+
+    /**
+     * @brief Destroy the Content Register object and cleanup
+     *
+     */
+    ~ContentRegister();
 
     /**
      * @brief Changes schedular interval to a new value.

@@ -12,9 +12,9 @@
 #ifndef _GZIP_DECOMPRESSOR_HPP
 #define _GZIP_DECOMPRESSOR_HPP
 
-#include "../sharedDefs.hpp"
 #include "componentsHelper.hpp"
 #include "json.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/stringHelper.h"

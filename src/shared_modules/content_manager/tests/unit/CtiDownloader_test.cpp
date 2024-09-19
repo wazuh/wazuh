@@ -78,7 +78,11 @@ public:
 void CtiDownloaderTest::SetUp()
 {
     // Create base context.
-    auto spBaseContext {std::make_shared<UpdaterBaseContext>(m_spStopActionCondition)};
+    auto spBaseContext {std::make_shared<UpdaterBaseContext>(
+        m_spStopActionCondition,
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
+            return {0, "", false};
+        })};
     spBaseContext->configData["url"] = FAKE_CTI_URL;
 
     // Create updater context.

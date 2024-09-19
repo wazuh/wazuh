@@ -12,7 +12,7 @@
 #ifndef _FACTORY_VERSION_UPDATER_HPP
 #define _FACTORY_VERSION_UPDATER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "skipStep.hpp"
 #include "updateCtiApiOffset.hpp"
 #include "updaterContext.hpp"
@@ -44,7 +44,7 @@ public:
         {
             return std::make_shared<UpdateCtiApiOffset>();
         }
-        if (versionUpdaterType.compare("false") == 0)
+        else if (versionUpdaterType.compare("false") == 0)
         {
             return std::make_shared<SkipStep>();
         }

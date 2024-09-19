@@ -112,6 +112,13 @@ void logFunction(const int logLevel,
     }
 }
 
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+        GLOBAL_LOG_FUNCTION;
+};
+
 /**
  * @brief Performs a PUT query to the on-demand manager, requesting an offset update.
  *
@@ -140,7 +147,14 @@ int main()
     {
         const std::string topic_name = CONFIG_PARAMETERS.at("topicName").get<std::string>();
         // Client -> Vulnerability detector
-        ContentRegister registerer {topic_name, CONFIG_PARAMETERS};
+        ContentRegister registerer {
+            topic_name,
+            CONFIG_PARAMETERS,
+            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+            {
+                return {0, "", false};
+            }};
+
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
         // Run offset update if specified.

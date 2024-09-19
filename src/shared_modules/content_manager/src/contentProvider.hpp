@@ -13,8 +13,6 @@
 #define _CONTENT_PROVIDER_HPP
 
 #include "action.hpp"
-#include "routerProvider.hpp"
-#include "routerSubscriber.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 #include <memory>
@@ -29,7 +27,6 @@ class ContentProvider final
 {
 private:
     std::shared_ptr<Action> m_action;
-    std::shared_ptr<RouterProvider> m_routerProvider;
 
 public:
     /**
@@ -37,18 +34,18 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters Action orchestrator parameters.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
-    explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters)
-        : m_routerProvider(std::make_shared<RouterProvider>(topicName))
+    explicit ContentProvider(const std::string& topicName,
+                             const nlohmann::json& parameters,
+                             FileProcessingCallback fileProcessingCallback)
     {
-        m_routerProvider->start();
-        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters);
+        m_action = std::make_shared<Action>(topicName, parameters, fileProcessingCallback);
     }
 
     ~ContentProvider()
     {
         m_action.reset();
-        m_routerProvider.reset();
     }
 
     /**

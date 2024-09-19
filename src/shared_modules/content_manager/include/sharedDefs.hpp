@@ -12,7 +12,17 @@
 #ifndef _SHARED_DEFS_H
 #define _SHARED_DEFS_H
 
+#include "conditionSync.hpp"
+#include <atomic>
+#include <functional>
+#include <string>
+
 #define WM_CONTENTUPDATER "wazuh-modulesd:content-updater"
 
 #include "loggerHelper.h"
+
+using FileProcessingResult = std::tuple<int, std::string, bool>;
+using FileProcessingCallback =
+    std::function<FileProcessingResult(const std::string& message, std::shared_ptr<ConditionSync> shouldStop)>;
+
 #endif // _SHARED_DEFS_H

@@ -10,10 +10,10 @@
  */
 
 #include "onDemandManager.hpp"
-#include "../sharedDefs.hpp"
 #include "actionOrchestrator.hpp"
 #include "contentManager.hpp"
 #include "external/nlohmann/json.hpp"
+#include "sharedDefs.hpp"
 #include <filesystem>
 #include <utility>
 
@@ -57,79 +57,6 @@ void OnDemandManager::startServer()
                                  else
                                  {
                                      res.status = 404;
-                                 }
-                             }
-                             catch (const std::exception& e)
-                             {
-                                 res.status = 400;
-                                 res.body = e.what();
-                             }
-                         });
-
-            // Capture offset PUT requests. These requests are used to update the offset from the database.
-            m_server.Put("/offset",
-                         [&](const httplib::Request& req, httplib::Response& res)
-                         {
-                             std::shared_lock<std::shared_mutex> lock {m_mutex};
-
-                             try
-                             {
-                                 const auto requestData = nlohmann::json::parse(req.body);
-                                 const auto offset {requestData.at("offset").get<int>()};
-                                 const auto& topicName {requestData.at("topicName").get_ref<const std::string&>()};
-
-                                 if (0 > offset)
-                                 {
-                                     throw std::invalid_argument(
-                                         "Invalid offset value: Should be greater or equal than zero");
-                                 }
-
-                                 if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
-                                 {
-                                     it->second(ActionOrchestrator::UpdateData::createOffsetUpdateData(offset));
-                                     res.status = 200;
-                                     res.body = "Offset update processed successfully";
-                                 }
-                                 else
-                                 {
-                                     res.status = 404;
-                                     res.body = "Topic '" + topicName + "' not found";
-                                 }
-                             }
-                             catch (const std::exception& e)
-                             {
-                                 res.status = 400;
-                                 res.body = e.what();
-                             }
-                         });
-
-            // Capture hash PUT requests. These requests are used to update the file hash from the database.
-            m_server.Put("/hash",
-                         [&](const httplib::Request& req, httplib::Response& res)
-                         {
-                             std::shared_lock<std::shared_mutex> lock {m_mutex};
-
-                             try
-                             {
-                                 const auto requestData = nlohmann::json::parse(req.body);
-                                 const auto& fileHash {requestData.at("hash").get_ref<const std::string&>()};
-                                 const auto& topicName {requestData.at("topicName").get_ref<const std::string&>()};
-
-                                 if (fileHash.empty())
-                                 {
-                                     throw std::invalid_argument {"Invalid hash value: The hash is empty"};
-                                 }
-
-                                 if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
-                                 {
-                                     it->second(ActionOrchestrator::UpdateData::createHashUpdateData(fileHash));
-                                     res.status = 200;
-                                     res.body = "File hash update processed successfully";
-                                 }
-                                 else
-                                 {
-                                     res.status = 404;
-                                     res.body = "Topic '" + topicName + "' not found";
                                  }
                              }
                              catch (const std::exception& e)

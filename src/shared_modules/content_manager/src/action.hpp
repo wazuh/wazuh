@@ -14,7 +14,6 @@
 
 #include "actionOrchestrator.hpp"
 #include "conditionSync.hpp"
-#include "iRouterProvider.hpp"
 #include "onDemandManager.hpp"
 #include "updaterContext.hpp"
 #include <atomic>
@@ -34,18 +33,20 @@ public:
     /**
      * @brief Class constructor.
      *
-     * @param channel Router provider.
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
-    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters)
-        : m_channel {channel}
-        , m_actionInProgress {false}
+    explicit Action(std::string topicName,
+                    nlohmann::json parameters,
+                    const FileProcessingCallback fileProcessingCallback)
+        : m_actionInProgress {false}
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition)}
+        , m_orchestration {
+              std::make_unique<ActionOrchestrator>(parameters, m_stopActionCondition, fileProcessingCallback)}
     {
         m_parameters = std::move(parameters);
     }
@@ -168,7 +169,7 @@ public:
     }
 
     /**
-     * @brief Runs ondemand action. Wrapper of runActionExclusively().
+     * @brief Runs ondemand action.
      *
      * @param updateData Update orchestration data.
      */
@@ -193,7 +194,6 @@ public:
     }
 
 private:
-    std::shared_ptr<IRouterProvider> m_channel;
     std::thread m_schedulerThread;
     std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;

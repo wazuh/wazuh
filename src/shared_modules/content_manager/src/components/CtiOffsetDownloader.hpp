@@ -12,9 +12,9 @@
 #ifndef _CTI_OFFSET_DOWNLOADER_HPP
 #define _CTI_OFFSET_DOWNLOADER_HPP
 
-#include "../sharedDefs.hpp"
 #include "CtiDownloader.hpp"
 #include "IURLRequest.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include <algorithm>
 #include <sstream>
@@ -70,7 +70,7 @@ private:
             }
 
             // Amount of offsets to download on each query.
-            constexpr auto OFFSETS_DELTA {1000};
+            constexpr int OFFSETS_DELTA {1000};
 
             // Calculate the offset to download
             const auto toOffset {std::min(consumerLastOffset, context.currentOffset + OFFSETS_DELTA)};

@@ -12,7 +12,6 @@
 #ifndef _FACTORY_DOWNLOADER_HPP
 #define _FACTORY_DOWNLOADER_HPP
 
-#include "../sharedDefs.hpp"
 #include "APIDownloader.hpp"
 #include "CtiOffsetDownloader.hpp"
 #include "CtiSnapshotDownloader.hpp"
@@ -20,6 +19,7 @@
 #include "fileDownloader.hpp"
 #include "json.hpp"
 #include "offlineDownloader.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>

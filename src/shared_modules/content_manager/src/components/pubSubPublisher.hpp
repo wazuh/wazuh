@@ -12,7 +12,8 @@
 #ifndef _PUB_SUB_PUBLISHER_HPP
 #define _PUB_SUB_PUBLISHER_HPP
 
-#include "../sharedDefs.hpp"
+#include "pubSubPublisherExceptions.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
@@ -31,22 +32,42 @@ private:
      *
      * @param context updater context.
      */
-    void publish(const UpdaterContext& context) const
+    void publish(UpdaterContext& context) const
     {
         // If there is data to publish, send it
         if (context.data.contains("paths") && !context.data.at("paths").empty())
         {
             // serialize the JSON object
-            const auto stringifyJson = context.data.dump();
+            const auto message = context.data.dump();
 
-            logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", stringifyJson.c_str());
+            logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", message.c_str());
 
-            context.spUpdaterBaseContext->spChannel->send({stringifyJson.begin(), stringifyJson.end()});
+            const auto [offset, hash, status] = context.spUpdaterBaseContext->fileProcessingCallback(
+                message, context.spUpdaterBaseContext->spStopCondition);
+
+            // Check if the operation was successful
+            if (!status)
+            {
+                logDebug2(WM_CONTENTUPDATER, "Failed to publish data");
+
+                // If we were processing offsets and it failed, we need to trigger a snapshot to recover
+                if (context.data.at("type") == "offsets")
+                {
+                    throw OffsetProcessingException {"Failed to process offsets"};
+                }
+
+                // If we were processing a snapshot and it failed, we need to stop the process
+                throw SnapshotProcessingException {"Failed to process the snapshot"};
+            }
+
+            // Update the offset
+            context.currentOffset = offset;
             logDebug2(WM_CONTENTUPDATER, "Data published");
-            return;
         }
-
-        logDebug2(WM_CONTENTUPDATER, "No data to publish");
+        else
+        {
+            logDebug2(WM_CONTENTUPDATER, "No data to publish");
+        }
     }
 
 public:
