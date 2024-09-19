@@ -154,13 +154,33 @@ Documentation is generated with docxygen, currently html and latex outputs are g
 <a name="buildmanual"></a>
 ## Building manually
 This project use [CMake](https://cmake.org) and [VCPKG](https://vcpkg.io)
+#### Step 1: Install Dependencies
 ```bash
-cd ..
+apt install curl zip unzip tar -y
+apt install build-essential clang-format -y
+apt install pkg-config -y
+apt install lzip -y
+```
+#### Step 2: Install CMake 3.30
+```bash
+cd $HOME
+wget https://github.com/Kitware/CMake/releases/download/v3.24.4/cmake-3.24.4-linux-x86_64.sh
+chmod +x cmake-3.24.4-linux-x86_64.sh
+./cmake-3.24.4-linux-x86_64.sh
+export PATH=$HOME/cmake-3.24.4-linux-x86_64/bin:$PATH
+```
+#### Step 3: Install vcpkg
+```bash
 git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg && ./bootstrap-vcpkg.sh
+cd vcpkg
+./bootstrap-vcpkg.sh
 export VCPKG_ROOT=$(pwd)
 export PATH=$VCPKG_ROOT:$PATH
-cd ../wazuh/src
+```
+#### Step 4: Install Wazuh Engine
+```bash
+git clone --recurse-submodules https://github.com/wazuh/wazuh.git  
+cd wazuh/src/engine
 cmake --preset=release
 cmake --build build -j$(nproc)
 ```
