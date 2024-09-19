@@ -20,12 +20,29 @@ assignees: ''
 
 <!-- Uncomment for QA issue
 **QA**
-- [ ] Request a new machine to:
-  - [ ] Test the deployment one-liner for the new OS.
-  - [ ] Do basic E2E test functionality for all stateful modules according to the OS's tier.
-- [ ] Add the new OS to the E2E UX testing template.
-- [ ] Add/update/check new tests according to the OS's tier.
-- [ ] Add proper documentation.
+
+## Considerations
+
+- Testing environment: Deploy the new OS taking into account the following notes:
+  - If the Wazuh central components are supported: 1 VM
+  - If the Wazuh agent is supported: 1 VM for each architecture supported.
+  - If the Wazuh central components or the Wazuh agent is not supported, deploy a Debian 12 VM for the non-supported component.
+- All testing tasks must be completed for each OS architecture supported.
+- The following tasks should be completed in order.
+
+## Tasks
+
+- [ ] Test the Wazuh dashboard one-liner deployment.
+  - [ ] Deploy a Wazuh agent using the Wazuh dashboard one-liner feature provided in the Wazuh user interface with the following cases.
+    - [ ] Only IP address.
+    - [ ] Only FQDN.
+    - [ ] IP address, agent name, and group.
+- [ ] Add/Update/Check CI
+  - [ ] Test the JobFlow testing tool for that specific system.
+  - [ ] Add the OS and each architecture to the JobFlow testing tool.
+  - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
+- [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
+- [ ] Add the OS as supported in the compatibility system spreadsheet.
 -->
 
 <!-- Uncomment for CPPSERVER issue
