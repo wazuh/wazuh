@@ -90,13 +90,21 @@ class AbstractClientManager:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(common.asyncio_exception_handler)
         on_con_lost = self.loop.create_future()
-        ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=self.configuration['cafile'])
-        ssl_context.load_cert_chain(
-            certfile=self.configuration['certfile'],
-            keyfile=self.configuration['keyfile'],
-            password=self.configuration['keyfile_password']
-        )
-        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
+
+        try:
+            ssl_context = ssl.create_default_context(
+                purpose=ssl.Purpose.SERVER_AUTH, 
+                cafile=self.configuration['cafile']
+            )
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
+            ssl_context.load_cert_chain(
+                certfile=self.configuration['certfile'],
+                keyfile=self.configuration['keyfile'],
+                password=self.configuration['keyfile_password']
+            )
+        except ssl.SSLError as exc:
+            self.logger.error(f'Failed loading SSL context: {exc}. Using default one.')
+            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
 
         while True:
             try:
