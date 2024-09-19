@@ -1,0 +1,5 @@
+[
+    "No match due to default status for Package: safari, Version: 17.5 while scanning for Vulnerability: CVE-2007-2175",
+    "The platform is not in the list for Package: safari, Version: 17.5, CVE: CVE-2007-3186, OS CPE: cpe:/o:apple:macos:::::, OS code name: ",
+    "No match due to default status for Package: safari, Version: 17.5 while scanning for Vulnerability: CVE-2009-0070"
+]
