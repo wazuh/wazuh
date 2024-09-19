@@ -8,7 +8,6 @@ import subprocess
 import inspect
 import json
 from pathlib import Path
-from datetime import datetime
 
 LOGGER = logging.getLogger(__name__)
 TEMPLATE_PATH='engine/source/indexerconnector/qa/test_data/template.json'
@@ -17,11 +16,9 @@ def init_template_and_index():
     with open(TEMPLATE_PATH, 'r') as template_file:
         template_json = json.load(template_file)
         headers = {"Content-Type": "application/json"}
-        template_name = template_json["index_patterns"][0].replace("-*", "")
-        url = f'http://localhost:9200/_index_template/{template_name}'
+        url = f'http://localhost:9200/_index_template/{template_json["index_patterns"][0]}'
         if requests.put(url, data = json.dumps(template_json), headers = headers).status_code == 200:
-            index_name = template_json["index_patterns"][0].replace("*", datetime.today().strftime('%Y.%m.%d'))
-            url = f'http://localhost:9200/{index_name}'
+            url = f'http://localhost:9200/{template_json["index_patterns"][0]}'
             return requests.put(url, data = json.dumps(template_json["template"]), headers = headers)
 
 
@@ -157,7 +154,7 @@ def test_add_bulk_indexer_connector(opensearch):
     # Query to check if the index is created and template is applied
     counter = 0
     while counter < 10:
-        url = 'http://localhost:9200/wazuh-states-vulnerabilities-*/_search'
+        url = 'http://localhost:9200/wazuh-states-vulnerabilities/_search'
         query = {
             "query": {
                 "match_all": {}
@@ -188,7 +185,7 @@ def test_add_bulk_indexer_connector(opensearch):
     # Query to check if the element is deleted
     counter = 0
     while counter < 10:
-        url = 'http://localhost:9200/wazuh-states-vulnerabilities-*/_search'
+        url = 'http://localhost:9200/wazuh-states-vulnerabilities/_search'
         query = {
             "query": {
                 "match_all": {}
