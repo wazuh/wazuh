@@ -1,5 +1,5 @@
 [
-    "Translation for package 'Mozilla Firefox 32.0 (x86 en-US)' on platform 'windows' found in Level 2 cache.",
+    "Translation for package 'Mozilla Firefox 31.0 (x86 en-US)' on platform 'windows' found in Level 2 cache.",
     "Initiating a vulnerability scan for package 'firefox' (win) (mozilla) with CVE Numbering Authorities (CNA) 'nvd' on Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2011-3079'. Current version: '31.0' (less than '' or equal to '37.0.2'). - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2014-1553'. Current version: '31.0' (less than '' or equal to '31.1.0'). - Agent '' (ID: '001', Version: '').",
