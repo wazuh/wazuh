@@ -1,5 +1,5 @@
 {
-  "name": "wazuh-states-vulnerabilities",
+  "name": "wazuh-states-vulnerabilities-$(date)",
   "enabled": "yes",
   "hosts": ["http://localhost:9200"]
 }
