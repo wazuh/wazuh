@@ -17,9 +17,6 @@
 #include <string>
 #include <thread>
 
-std::shared_ptr<httprequest::mock::MockHTTPRequest> spHTTPRequest =
-    std::make_shared<httprequest::mock::MockHTTPRequest>();
-
 namespace ServerSelectorTests
 {
 // Generalized lambda for simulating HTTP responses based on server health status

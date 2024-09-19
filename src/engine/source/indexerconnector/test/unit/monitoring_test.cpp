@@ -13,9 +13,6 @@
 #include "trampolineHTTPRequest.hpp"
 #include <httpRequest/mockHttpRequest.hpp>
 
-std::shared_ptr<httprequest::mock::MockHTTPRequest> spHTTPRequest =
-    std::make_shared<httprequest::mock::MockHTTPRequest>();
-
 namespace MonitoringTests
 {
 // Generalized lambda for simulating HTTP responses based on server health status
