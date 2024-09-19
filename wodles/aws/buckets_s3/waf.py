@@ -49,8 +49,7 @@ class AWSWAFBucket(AWSCustomBucket):
             self.type = WAF_KINESIS
     
     def check_waf_type(self):
-        """
-        Checks if it contains the 'AWSLogs' prefix to determine the type of WAF.
+        """Checks if it contains the 'AWSLogs' prefix to determine the type of WAF.
 
         Returns:
             bool: True if WAF type is native, False if is Kinesis.
@@ -77,6 +76,7 @@ class AWSWAFBucket(AWSCustomBucket):
 
         content = []
         decoder = json.JSONDecoder()
+        file_structure_error_shown = False
         with self.decompress_file(self.bucket, log_key=log_key) as f:
             for line in f.readlines():
                 try:
@@ -90,7 +90,9 @@ class AWSWAFBucket(AWSCustomBucket):
                                     headers[name] = element["value"]
                             event['httpRequest']['headers'] = headers
                         except (KeyError, TypeError):
-                            print(f"ERROR: the {log_key} file doesn't have the expected structure.")
+                            if not file_structure_error_shown:
+                                print(f"ERROR: the {log_key} file doesn't have the expected structure.")
+                                file_structure_error_shown = True
                             if not self.skip_on_error:
                                 sys.exit(9)
                         content.append(event)
@@ -123,10 +125,13 @@ class AWSWAFBucket(AWSCustomBucket):
 
     def build_s3_filter_args(self, aws_account_id, aws_region, acl_name=None, iterating=False, custom_delimiter='',
                              **kwargs):
-        filter_args = super().build_s3_filter_args(aws_account_id, aws_region, iterating, custom_delimiter,
-                                                    **kwargs)
-
-        if not self.reparse:
+        filter_marker = ''
+        if self.reparse:
+            if self.only_logs_after:
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+            else:
+                filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+        else:
             query_last_key = self.db_cursor.execute(
                 self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
                     'bucket_path': self.bucket_path,
@@ -138,12 +143,31 @@ class AWSWAFBucket(AWSCustomBucket):
             try:
                 filter_marker = query_last_key.fetchone()[1]
             except (TypeError, IndexError):
+                # if DB is empty for a region
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
                     else self.marker_custom_date(aws_region, aws_account_id, self.default_date)
-            filter_args['StartAfter'] = filter_marker
+
+        filter_args = {
+            'Bucket': self.bucket,
+            'MaxKeys': 1000,
+            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
+        }
 
         if acl_name:
             filter_args['Prefix'] += f'{acl_name}/'
+
+        # if nextContinuationToken is not used for processing logs in a bucket
+        if not iterating:
+            filter_args['StartAfter'] = filter_marker
+            if self.only_logs_after:
+                only_logs_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+                filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
+
+            if custom_delimiter:
+                prefix_len = len(filter_args['Prefix'])
+                filter_args['StartAfter'] = filter_args['StartAfter'][:prefix_len] + \
+                                            filter_args['StartAfter'][prefix_len:].replace('/', custom_delimiter)
+            aws_tools.debug(f"+++ Marker: {filter_args['StartAfter']}", 2)
 
         return filter_args
 
