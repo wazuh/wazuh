@@ -91,6 +91,8 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
     print('\nDone')
 
 def run(args):
+    if 'environment' not in args:
+        sys.exit("It is mandatory to indicate the '-e' environment path")
     env_path = Path(args['environment']).resolve()
     resource_handler = rs.ResourceHandler()
     conf_path = (env_path / "engine/general.conf").resolve()

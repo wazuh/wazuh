@@ -139,6 +139,8 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
 
 
 def run(args):
+    if 'environment' not in args:
+        sys.exit("It is mandatory to indicate the '-e' environment path")
     env_path = Path(args['environment']).resolve()
 
     conf_path = (env_path / "engine/general.conf").resolve()

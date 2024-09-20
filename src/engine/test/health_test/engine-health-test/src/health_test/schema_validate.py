@@ -1,7 +1,10 @@
 import sys
 import json
-import shared.resource_handler as rs
 from pathlib import Path
+import shared.resource_handler as rs
+from health_test.error_managment import ErrorReporter
+
+reporter = ErrorReporter()
 
 def load_custom_fields(custom_fields_path):
     """
@@ -11,7 +14,7 @@ def load_custom_fields(custom_fields_path):
         custom_fields = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
         return custom_fields.get('custom_fields', [])
     except Exception as e:
-        sys.exit(f"Error loading custom fields from '{custom_fields_path}'")
+        sys.exit(f"Error loading custom fields from '{custom_fields_path}': {e}")
 
 def transform_dict_to_list(d):
     def extract_keys(d, prefix=""):
@@ -26,7 +29,7 @@ def transform_dict_to_list(d):
     
     return extract_keys(d)
 
-def verify_schema_types(schema, expected_json_files, custom_fields):
+def verify_schema_types(schema, expected_json_files, custom_fields, integration_name):
     """
     Compare the fields in the '_expected.json' files with the schema and custom fields.
     """
@@ -44,8 +47,8 @@ def verify_schema_types(schema, expected_json_files, custom_fields):
             with open(json_file, 'r') as f:
                 expected_data = json.load(f)
                 for expected in expected_data:
-
                     extracted_fields = transform_dict_to_list(expected)
+                    
                     def is_custom_field(field, custom_fields_set):
                         if '.' in field:
                             prefix = field.split('.')[0]
@@ -60,7 +63,11 @@ def verify_schema_types(schema, expected_json_files, custom_fields):
                     ]
                     
                     if invalid_fields:
-                        sys.exit(f"Error: Invalid fields found in '{json_file}': {invalid_fields}")
+                        reporter.add_error(
+                            integration_name, 
+                            json_file, 
+                            f"{invalid_fields}"
+                        )
         except Exception as e:
             sys.exit(f"Error reading the file '{json_file}': {e}")
 
@@ -71,8 +78,7 @@ def verify(schema, integration: Path):
     if integration.name != 'wazuh-core':
         custom_fields_path = integration / 'test' / 'custom_fields.yml'
         if not custom_fields_path.exists():
-            print(f'Error: {custom_fields_path} file does not exist in the integration.')
-            sys.exit(1)
+            sys.exit(f"Error: {custom_fields_path} file does not exist in the integration.")
 
         custom_fields = load_custom_fields(custom_fields_path)    
         test_folder = integration / 'test'
@@ -83,7 +89,8 @@ def verify(schema, integration: Path):
         if not expected_json_files:
             sys.exit(f"No '_expected.json' files found in '{test_folder}' or its subfolders.")
 
-        verify_schema_types(schema, expected_json_files, custom_fields)
+        # Only errors from this function are recorded, not exiting immediately
+        verify_schema_types(schema, expected_json_files, custom_fields, integration.name)
 
 def validator(schema, ruleset_path: Path, integration: str):
     integration_path = ruleset_path / 'integrations'
@@ -97,19 +104,20 @@ def validator(schema, ruleset_path: Path, integration: str):
             if integration.is_dir():
                 verify(schema, integration)
 
-def run(args):
-    env_path = Path(args['environment']).resolve()
-    integration = args['integration']
-    schema = env_path / "engine/store/schema/engine-schema/0"
+    reporter.exit_with_errors("There are fields present in the expected event that are not in the schema and were not defined as custom", integration_path)
 
-    ruleset_path = (env_path / "ruleset").resolve()
+def run(args):
+    ruleset_path = Path(args['ruleset']).resolve()
+    integration = args['integration']
+
     if not ruleset_path.is_dir():
-        print(f"Engine ruleset not found: {ruleset_path}")
-        sys.exit(1)
+        sys.exit(f"Engine ruleset not found: {ruleset_path}")
+
+    schema = ruleset_path / "schemas/engine-schema.json"
 
     try:
         print("Running schema tests.")
         validator(schema, ruleset_path, integration)
         print("Success execution")
     except Exception as e:
-        print(f"Error running test: {e}")
+        sys.exit(f"Error running test: {e}")
