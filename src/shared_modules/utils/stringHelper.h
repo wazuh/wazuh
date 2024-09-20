@@ -67,23 +67,22 @@ namespace Utils
         data = strOut;
     }
 
-    static bool replaceAll(std::string& data, const std::string& toSearch, const std::string& toReplace)
+    static bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace)
     {
-        bool found = false;
-        auto pos = data.find(toSearch);
-
-        while (pos != std::string::npos)
+        if (toSearch.empty() || toSearch == toReplace)
         {
-            data.replace(pos, toSearch.size(), toReplace);
-            found = true;
-            pos = data.find(toSearch, pos + toReplace.size());
+            return false; // Nothing to search for if toSearch is empty
         }
 
-        if (found && toSearch != toReplace)
+        bool found = false;
+        size_t pos = data.find(toSearch);
+
+        if (pos != std::string::npos)
         {
-            while (replaceAll(data, toSearch, toReplace))
-            {
-            }
+            found = true;
+            data.replace(pos, toSearch.length(), toReplace);
+            // Recursively call replaceAll from the new position (pos + toReplace.length())
+            replaceAll(data, toSearch, toReplace);
         }
 
         return found;
