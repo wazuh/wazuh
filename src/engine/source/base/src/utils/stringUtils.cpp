@@ -204,16 +204,23 @@ bool isNumber(const std::string& str)
 
 bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace)
 {
-    auto pos {data.find(toSearch)};
-    const auto ret {std::string::npos != pos};
-
-    while (std::string::npos != pos)
+    if (toSearch.empty() || toSearch == toReplace)
     {
-        data.replace(pos, toSearch.size(), toReplace);
-        pos = data.find(toSearch, pos + toReplace.size());
+        return false; // Nothing to search for if toSearch is empty
     }
 
-    return ret;
+    bool found = false;
+    size_t pos = data.find(toSearch);
+
+    if (pos != std::string::npos)
+    {
+        found = true;
+        data.replace(pos, toSearch.length(), toReplace);
+        // Recursively call replaceAll from the new position (pos + toReplace.length())
+        replaceAll(data, toSearch, toReplace);
+    }
+
+    return found;
 }
 
 bool haveUpperCaseCharacters(const std::string& str)
