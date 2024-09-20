@@ -1135,6 +1135,9 @@
               }
             }
           },
+          "file": {
+            "type": "keyword"
+          },
           "protocol": {
             "type": "keyword"
           },
@@ -2710,6 +2713,37 @@
           "parameters": {
             "properties": {
               "extra_args": {
+                "type": "keyword"
+              }
+            }
+          },
+          "YARA": {
+            "properties": {
+              "reference": {
+                "type": "keyword"
+              },
+              "api_customer": {
+                "type": "keyword"
+              },
+              "log_type": {
+                "type": "keyword"
+              },
+              "scanned_file": {
+                "type": "keyword"
+              },
+              "rule_author": {
+                "type": "keyword"
+              },
+              "rule_name": {
+                "type": "keyword"
+              },
+              "rule_description": {
+                "type": "keyword"
+              },
+              "published_date": {
+                "type": "date"
+              },
+              "tags": {
                 "type": "keyword"
               }
             }
