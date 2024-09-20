@@ -92,7 +92,7 @@ jobs:
 
       - name: Run tests
         env:
-          REPORT_OUTPUT: md_report.md
+          REPORT_OUTPUT: md_report_${{ matrix.wazuh_version }}.md
         run: |
           echo "REPORT_FILE=${REPORT_OUTPUT}" >> "$GITHUB_ENV"
           cd src
