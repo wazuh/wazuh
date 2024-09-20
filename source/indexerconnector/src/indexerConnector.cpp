@@ -12,10 +12,10 @@
 #include "indexerConnector/indexerConnector.hpp"
 #include "HTTPRequest.hpp"
 #include "base/logging.hpp"
+#include "base/utils/stringUtils.hpp"
+#include "base/utils/timeUtils.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
-#include "stringUtils.hpp"
-#include "timeUtils.hpp"
 #include <fstream>
 
 constexpr auto INDEXER_COLUMN {"indexer"};
