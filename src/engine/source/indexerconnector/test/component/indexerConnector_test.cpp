@@ -11,16 +11,14 @@
 
 #include "base/logging.hpp"
 #include "base/utils/stringUtils.hpp"
+#include "base/utils/timeUtils.hpp"
 #include "fakeIndexer.hpp"
 #include "indexerConnector/indexerConnector.hpp"
-#include "stringUtils.hpp"
-#include "timeUtils.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <regex>
@@ -527,7 +525,7 @@ TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
     nlohmann::json indexerConfig;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
     indexerConfig["name"] = indexerNameDatePlaceHolder;
-    const std::string INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + "_\\$\\(date\\)"};
+    const std::string INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + R"(_\$\(date\))"};
     EXPECT_TRUE(std::regex_match(indexerNameDatePlaceHolder, std::regex(INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR)));
     auto indexerConnector {IndexerConnector(indexerConfig, INDEXER_TIMEOUT)};
 
