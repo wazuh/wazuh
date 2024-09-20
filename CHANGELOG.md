@@ -3,6 +3,44 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.9.1]
 
+### Manager
+
+#### Fixed
+
+- Fixed vulnerability detector issue where RPM upgrade wouldn't download new content. ([#24909](https://github.com/wazuh/wazuh/pull/24909))
+- Fixed uncaught exception at Keystore test tool. ([#25667](https://github.com/wazuh/wazuh/pull/25667))
+- Replaced `eval` calls with `ast.literal_eval`. ([#25705](https://github.com/wazuh/wazuh/pull/25705))
+
+#### Changed
+
+- Improved provisioning method for wazuh-keystore to enhance security. ([#24110](https://github.com/wazuh/wazuh/issues/24110))
+
+### Agent
+
+#### Added
+
+- Added support for macOS 15 "Sequoia" in Wazuh Agent. ([#25652](https://github.com/wazuh/wazuh/issues/25652))
+
+#### Fixed
+
+- Fixed agent crash on Windows version 4.8.0. ([#24910](https://github.com/wazuh/wazuh/pull/24910))
+- Fixed data race conditions at FIM's `run_check`. ([#25209](https://github.com/wazuh/wazuh/pull/25209))
+- Fixed Windows agent crashes related to `syscollector.dll`. ([#24376](https://github.com/wazuh/wazuh/issues/24376))
+- Fixed errors related to 'libatomic.a' library on AIX 7.X. ([#25445](https://github.com/wazuh/wazuh/pull/25445))
+- Fixed errors in Windows Agent: `EvtFormatMessage` returned errors 15027 and 15033. ([#24932](https://github.com/wazuh/wazuh/pull/24932))
+- Fixed FIM issue where it couldn't fetch group entries longer than 1024 bytes. ([#25459](https://github.com/wazuh/wazuh/pull/25459))
+- Fixed Wazuh Agent crash at `syscollector`. ([#25469](https://github.com/wazuh/wazuh/pull/25469))
+- Fixed a bug in the processed dates in the AWS module related to the AWS Config type. ([#23528](https://github.com/wazuh/wazuh/pull/23528))
+- Fixed an error in Custom Logs Buckets when parsing a CSV file that exceeds a certain size. ([#24694](https://github.com/wazuh/wazuh/pull/24694))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed requests logging to obtain the hash_auth_context from JWT tokens. ([#25764](https://github.com/wazuh/wazuh/pull/25764)) 
+- Enabled API to listen IPV4 and IPV6 stacks. ([#25216](https://github.com/wazuh/wazuh/pull/25216))
+
+
 ## [v4.9.0]
 
 ### Manager
