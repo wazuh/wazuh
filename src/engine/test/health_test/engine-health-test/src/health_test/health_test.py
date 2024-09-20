@@ -232,7 +232,7 @@ def health_test(env_path: Path, integration_name: Optional[str] = None, skip: Op
         print(f"Engine binary not found: {bin_path}")
         sys.exit(1)
 
-    integrations_path = (env_path / "ruleset/engine/integrations").resolve()
+    integrations_path = (env_path / "ruleset/integrations").resolve()
     if not integrations_path.exists():
         print(f"Integrations directory not found: {integrations_path}")
         sys.exit(1)
