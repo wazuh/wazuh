@@ -279,22 +279,35 @@ def test_get_cluster_items():
             utils.get_cluster_items()
 
     items = utils.get_cluster_items()
-    assert items == {'files': {'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': False, 'restart': False, 'remove_subdirs_if_empty': True,
-                                               'extra_valid': False, 'description': 'group files'},
-                               'excluded_files': ['ar.conf'],
-                               'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
-                     'intervals': {'worker': {'sync_integrity': 9, 'keep_alive': 60, 'connection_retry': 10, 
-                                              'max_failed_keepalive_attempts': 2},
-                                   'master': {'timeout_extra_valid': 40, 'recalculate_integrity': 8,
-                                              'check_worker_lastkeepalive': 60,
-                                              'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,
-                                              'max_locked_integrity_time': 1000},
-                                   'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
-                                                     'timeout_receiving_file': 120, 'min_zip_size': 31457280,
-                                                     'max_zip_size': 1073741824, 'compress_level': 1,
-                                                     'zip_limit_tolerance': 0.2}},
-                     'distributed_api': {'enabled': True}}
+    assert items == {
+        'files': {
+            'etc/': {
+                'permissions': 416, 'source': 'master', 'files': ['private_key.pem', 'public_key.pem'],
+                'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False, 'extra_valid': False,
+                'description': 'JWT signing key pair'
+            },
+            'etc/shared/': {
+                'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': False, 'restart': False,
+                'remove_subdirs_if_empty': True, 'extra_valid': False, 'description': 'group files'
+            },
+            'excluded_files': ['ar.conf'],
+            'excluded_extensions': ['~', '.tmp', '.lock', '.swp']
+        },
+        'intervals': {
+            'worker': {
+                'sync_integrity': 9,'keep_alive': 60, 'connection_retry': 10, 'max_failed_keepalive_attempts': 2
+            },
+            'master': {
+                'timeout_extra_valid': 40, 'recalculate_integrity': 8, 'check_worker_lastkeepalive': 60,
+                'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2, 'max_locked_integrity_time': 1000
+            },
+            'communication': {
+                'timeout_cluster_request': 20, 'timeout_dapi_request': 200, 'timeout_receiving_file': 120,
+                'min_zip_size': 31457280,'max_zip_size': 1073741824, 'compress_level': 1, 'zip_limit_tolerance': 0.2
+            }
+        },
+        'distributed_api': {'enabled': True}
+    }
 
 
 def test_ClusterFilter():
