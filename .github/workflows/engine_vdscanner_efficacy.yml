@@ -42,8 +42,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          # Identifiers of the generated content. The generated files will be named vd_1.0.0_vd_<wazuh_version>.tar.xz
-          wazuh_version: ["4.8.0", "4.10.0"]
+          # Identifiers of the generated content. The generated files will be named vd_1.0.0_vd_<content_version>.tar.xz
+          # From 4.10.0 onwards we use 4.10.0 content
+          content_version: ["4.10.0"]
 
     steps:
       - name: Install dependencies (lzip)
@@ -81,7 +82,7 @@ jobs:
       - name: Download feed
         run: |
           cd src
-          vd_filename="vd_1.0.0_vd_${{ matrix.wazuh_version }}.tar.xz"
+          vd_filename="vd_1.0.0_vd_${{ matrix.content_version }}.tar.xz"
 
           curl -LO https://packages.wazuh.com/deps/vulnerability_model_database/${vd_filename}
           tar -xf ${vd_filename}
@@ -92,7 +93,7 @@ jobs:
 
       - name: Run tests
         env:
-          REPORT_OUTPUT: md_report_${{ matrix.wazuh_version }}.md
+          REPORT_OUTPUT: report.md
         run: |
           echo "REPORT_FILE=${REPORT_OUTPUT}" >> "$GITHUB_ENV"
           cd src
@@ -111,7 +112,7 @@ jobs:
       - name: Upload HTML report
         if: always()
         env:
-          REPORT_FILENAME: report_${{ matrix.wazuh_version }}.html
+          REPORT_FILENAME: report.html
         uses: actions/upload-artifact@v4
         with:
           name: ${REPORT_FILENAME}
