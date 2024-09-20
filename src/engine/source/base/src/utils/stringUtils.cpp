@@ -210,9 +210,8 @@ bool replaceAll(std::string& data, const std::string_view toSearch, const std::s
     }
 
     bool found = false;
-    size_t pos = data.find(toSearch);
 
-    if (pos != std::string::npos)
+    if (size_t pos = data.find(toSearch); pos != std::string::npos)
     {
         found = true;
         data.replace(pos, toSearch.length(), toReplace);

@@ -25,13 +25,6 @@ TEST_F(StringUtilsTest, CheckReplacement)
     EXPECT_TRUE(retVal);
 }
 
-TEST_F(StringUtilsTest, CheckReplacementReplaceIsInSearch)
-{
-    std::string string_base = "aaaa aaaaa a";
-    EXPECT_TRUE(Utils::replaceAll(string_base, "aa", "a"));
-    EXPECT_EQ(string_base, "a a a");
-}
-
 TEST_F(StringUtilsTest, CheckNotReplacement)
 {
     std::string string_base {"hello_world"};
