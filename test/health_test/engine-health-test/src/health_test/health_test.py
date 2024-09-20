@@ -307,6 +307,8 @@ def health_test(env_path: Path, integration_name: Optional[str] = None, skip: Op
 
 
 def run(args):
+    if 'environment' not in args:
+        sys.exit("It is mandatory to indicate the '-e' environment path")
     env_path = Path(args['environment'])
     integration_path = args['integration']
     skip = args['skip']

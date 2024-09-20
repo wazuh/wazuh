@@ -139,6 +139,8 @@ def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: P
 
 
 def run(args):
+    if 'environment' not in args:
+        sys.exit("It is mandatory to indicate the '-e' environment path")
     env_path = Path(args['environment']).resolve()
     bin_path = Path(args['binary']).resolve()
     ruleset_path = Path(args['ruleset']).resolve()
