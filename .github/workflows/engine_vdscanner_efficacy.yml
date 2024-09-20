@@ -110,7 +110,9 @@ jobs:
       # Upload HTML report
       - name: Upload HTML report
         if: always()
+        env:
+          REPORT_FILENAME: report_${{ matrix.wazuh_version }}.html
         uses: actions/upload-artifact@v4
         with:
-          name: report.html
-          path: ${{ github.workspace }}/src/report.html
+          name: ${REPORT_FILENAME}
+          path: ${{ github.workspace }}/src/${REPORT_FILENAME}
