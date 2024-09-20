@@ -120,7 +120,7 @@ TEST_F(MonitoringTest, TestInvalidServer)
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
-    EXPECT_STREQ(logMessage.c_str(), "Couldn't connect to server. Status code: -1");
+    EXPECT_STREQ(logMessage.c_str(), "Could not connect to server. Status code: -1");
 
     // It's false because the server isn't valid
     EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
