@@ -39,6 +39,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
+    strategy:
+      fail-fast: false
+      matrix:
+          # Identifiers of the generated content. The generated files will be named vd_1.0.0_vd_<wazuh_version>.tar.xz
+          wazuh_version: ["4.8.0", "4.10.0"]
+
     steps:
       - name: Install dependencies (lzip)
         run: sudo apt-get install lzip
@@ -74,10 +80,11 @@ jobs:
 
       - name: Download feed
         run: |
-          # Download feed
           cd src
-          curl -LO https://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.8.0.tar.xz
-          tar -xf vd_1.0.0_vd_4.8.0.tar.xz
+          vd_filename="vd_1.0.0_vd_${{ matrix.wazuh_version }}.tar.xz"
+
+          curl -LO https://packages.wazuh.com/deps/vulnerability_model_database/${vd_filename}
+          tar -xf ${vd_filename}
 
       - name: Install dependencies
         run: |
