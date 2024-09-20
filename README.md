@@ -149,7 +149,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |[liblzma](https://github.com/tukaani-project/xz)|5.4.2|Lasse Collin, Jia Tan et al.|GNU Public License version 3|
 |[Linux Audit userspace](https://github.com/linux-audit/audit-userspace)|2.8.4|Rik Faith|LGPL (copyleft)|
 |[msgpack](https://github.com/msgpack/msgpack-c)|3.1.1|Sadayuki Furuhashi|Boost Software License version 1.0|
-|[nlohmann](https://github.com/nlohmann/json)|3.7.3|Niels Lohmann|MIT License|
+|[nlohmann](https://github.com/nlohmann/json)|3.11.2|Niels Lohmann|MIT License|
 |[OpenSSL](https://github.com/openssl/openssl)|3.0.12|OpenSSL Software Foundation|Apache 2.0 License|
 |[pacman](https://gitlab.archlinux.org/pacman/pacman)|5.2.2|Judd Vinet|GNU Public License version 2 (copyleft)|
 |[popt](https://github.com/rpm-software-management/popt)|1.16|Jeff Johnson & Erik Troan|MIT License|
