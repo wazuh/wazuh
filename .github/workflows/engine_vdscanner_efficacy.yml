@@ -39,6 +39,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
+    strategy:
+      fail-fast: false
+      matrix:
+          # Identifiers of the generated content. The generated files will be named vd_1.0.0_vd_<content_version>.tar.xz
+          # From 4.10.0 onwards we use 4.10.0 content
+          content_version: ["4.10.0"]
+
     steps:
       - name: Install dependencies (lzip)
         run: sudo apt-get install lzip
@@ -74,10 +81,11 @@ jobs:
 
       - name: Download feed
         run: |
-          # Download feed
           cd src
-          curl -LO https://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.8.0.tar.xz
-          tar -xf vd_1.0.0_vd_4.8.0.tar.xz
+          vd_filename="vd_1.0.0_vd_${{ matrix.content_version }}.tar.xz"
+
+          curl -LO https://packages.wazuh.com/deps/vulnerability_model_database/${vd_filename}
+          tar -xf ${vd_filename}
 
       - name: Install dependencies
         run: |
@@ -85,7 +93,7 @@ jobs:
 
       - name: Run tests
         env:
-          REPORT_OUTPUT: md_report.md
+          REPORT_OUTPUT: report.md
         run: |
           echo "REPORT_FILE=${REPORT_OUTPUT}" >> "$GITHUB_ENV"
           cd src
@@ -103,7 +111,9 @@ jobs:
       # Upload HTML report
       - name: Upload HTML report
         if: always()
+        env:
+          REPORT_FILENAME: report.html
         uses: actions/upload-artifact@v4
         with:
-          name: report.html
-          path: ${{ github.workspace }}/src/report.html
+          name: ${REPORT_FILENAME}
+          path: ${{ github.workspace }}/src/${REPORT_FILENAME}
