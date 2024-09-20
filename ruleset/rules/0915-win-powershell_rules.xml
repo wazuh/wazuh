@@ -6,7 +6,7 @@
   Powershell Rules 91801 - 92000
 -->
 
-<group name="windows, powershell,">
+<group name="windows,powershell,">
 
   <!-- Powershell Operational grouping -->
   <rule id="91801" level="0">
