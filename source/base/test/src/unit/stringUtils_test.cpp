@@ -313,3 +313,23 @@ TEST(StringUtilsTest, PartialMatches)
     EXPECT_TRUE(base::utils::string::replaceAll(string_base, "aba", "x"));
     EXPECT_EQ(string_base, "xcada");
 }
+
+TEST(StringUtilsTest, ExitConditionRecursion)
+{
+    std::string string_base = "a";
+    EXPECT_FALSE(base::utils::string::replaceAll(string_base, "a", "aa"));
+}
+
+TEST(StringUtilsTest, ContinuousReplacements)
+{
+    std::string string_base = "abababababab";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "ab", "cd"));
+    EXPECT_EQ(string_base, "cdcdcdcdcdcd");
+}
+
+TEST(StringUtilsTest, ReplaceWithEmptyString)
+{
+    std::string string_base = "remove this remove this";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "remove", ""));
+    EXPECT_EQ(string_base, " this  this");
+}

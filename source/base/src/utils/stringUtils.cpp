@@ -204,7 +204,7 @@ bool isNumber(const std::string& str)
 
 bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace)
 {
-    if (toSearch.empty() || toSearch == toReplace)
+    if (toSearch.empty() || toSearch == toReplace || toReplace.find(toSearch) != std::string_view::npos)
     {
         return false; // Nothing to search for if toSearch is empty
     }
