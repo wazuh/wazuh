@@ -588,4 +588,3 @@ TEST_F(StringUtilsTest, haveUpperCaseCharacters)
     EXPECT_FALSE(Utils::haveUpperCaseCharacters("test"));
     EXPECT_FALSE(Utils::haveUpperCaseCharacters(""));
 }
-
