@@ -17,92 +17,82 @@
 #include <string>
 #include <thread>
 
-namespace ServerSelectorTests
+namespace
 {
 // Generalized lambda for simulating HTTP responses based on server health status
-auto mockHTTPRequestLambda =
-    [](const std::string& greenResponse, const std::string& redResponse, const std::string& yellowResponse)
+auto mockHTTPRequestLambda = [](RequestParameters requestParameters,
+                                PostRequestParameters postRequestParameters,
+                                ConfigurationParameters /*configurationParameters*/) -> void
 {
-    return [greenResponse, redResponse, yellowResponse](RequestParameters requestParameters,
-                                                        PostRequestParameters postRequestParameters,
-                                                        ConfigurationParameters /*configurationParameters*/)
-    {
-        const auto& url = requestParameters.url.url();
+    const auto& url = requestParameters.url.url();
 
-        if (url == GREEN_SERVER + "/_cat/health")
-        {
-            postRequestParameters.onSuccess(greenResponse);
-        }
-        else if (url == RED_SERVER + "/_cat/health")
-        {
-            postRequestParameters.onError(redResponse, 200);
-        }
-        else if (url == YELLOW_SERVER + "/_cat/health")
-        {
-            postRequestParameters.onSuccess(yellowResponse);
-        }
-        else
-        {
-            postRequestParameters.onError("Unknown server", 404);
-        }
-    };
+    if (url == GREEN_SERVER + "/_cat/health")
+    {
+        const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                      {"timestamp", "23:51:04"},
+                                                      {"cluster", "wazuh-cluster"},
+                                                      {"status", "green"},
+                                                      {"node.total", "1"},
+                                                      {"node.data", "1"},
+                                                      {"discovered_cluster_manager", "true"},
+                                                      {"shards", "166"},
+                                                      {"pri", "166"},
+                                                      {"relo", "0"},
+                                                      {"init", "0"},
+                                                      {"unassign", "0"},
+                                                      {"pending_tasks", "0"},
+                                                      {"max_task_wait_time", "-"},
+                                                      {"active_shards_percent", "100.0%"}}})
+                                  .dump();
+        postRequestParameters.onSuccess(response);
+    }
+    else if (url == YELLOW_SERVER + "/_cat/health")
+    {
+        const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                      {"timestamp", "23:51:04"},
+                                                      {"cluster", "wazuh-cluster"},
+                                                      {"status", "yellow"},
+                                                      {"node.total", "1"},
+                                                      {"node.data", "1"},
+                                                      {"discovered_cluster_manager", "true"},
+                                                      {"shards", "166"},
+                                                      {"pri", "166"},
+                                                      {"relo", "0"},
+                                                      {"init", "0"},
+                                                      {"unassign", "0"},
+                                                      {"pending_tasks", "0"},
+                                                      {"max_task_wait_time", "-"},
+                                                      {"active_shards_percent", "100.0%"}}})
+                                  .dump();
+        postRequestParameters.onSuccess(response);
+    }
+    else if (url == RED_SERVER + "/_cat/health")
+    {
+        const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                      {"timestamp", "23:51:04"},
+                                                      {"cluster", "wazuh-cluster"},
+                                                      {"status", "red"},
+                                                      {"node.total", "1"},
+                                                      {"node.data", "1"},
+                                                      {"discovered_cluster_manager", "true"},
+                                                      {"shards", "166"},
+                                                      {"pri", "166"},
+                                                      {"relo", "0"},
+                                                      {"init", "0"},
+                                                      {"unassign", "0"},
+                                                      {"pending_tasks", "0"},
+                                                      {"max_task_wait_time", "-"},
+                                                      {"active_shards_percent", "100.0%"}}})
+                                  .dump();
+        postRequestParameters.onSuccess(response);
+    }
+    else
+    {
+        postRequestParameters.onError("Unknown server", 404);
+    }
 };
 
-// Responses for each server health state
-const auto greenResponse = nlohmann::json::array({{{"epoch", "1726271464"},
-                                                   {"timestamp", "23:51:04"},
-                                                   {"cluster", "wazuh-cluster"},
-                                                   {"status", "green"},
-                                                   {"node.total", "1"},
-                                                   {"node.data", "1"},
-                                                   {"discovered_cluster_manager", "true"},
-                                                   {"shards", "166"},
-                                                   {"pri", "166"},
-                                                   {"relo", "0"},
-                                                   {"init", "0"},
-                                                   {"unassign", "0"},
-                                                   {"pending_tasks", "0"},
-                                                   {"max_task_wait_time", "-"},
-                                                   {"active_shards_percent", "100.0%"}}})
-                               .dump();
-
-const auto redResponse = nlohmann::json::array({{{"epoch", "1726271464"},
-                                                 {"timestamp", "23:51:04"},
-                                                 {"cluster", "wazuh-cluster"},
-                                                 {"status", "red"},
-                                                 {"node.total", "1"},
-                                                 {"node.data", "1"},
-                                                 {"discovered_cluster_manager", "true"},
-                                                 {"shards", "166"},
-                                                 {"pri", "166"},
-                                                 {"relo", "0"},
-                                                 {"init", "0"},
-                                                 {"unassign", "0"},
-                                                 {"pending_tasks", "0"},
-                                                 {"max_task_wait_time", "-"},
-                                                 {"active_shards_percent", "100.0%"}}})
-                             .dump();
-
-const auto yellowResponse = nlohmann::json::array({{{"epoch", "1726271464"},
-                                                    {"timestamp", "23:51:04"},
-                                                    {"cluster", "wazuh-cluster"},
-                                                    {"status", "yellow"},
-                                                    {"node.total", "1"},
-                                                    {"node.data", "1"},
-                                                    {"discovered_cluster_manager", "true"},
-                                                    {"shards", "166"},
-                                                    {"pri", "166"},
-                                                    {"relo", "0"},
-                                                    {"init", "0"},
-                                                    {"unassign", "0"},
-                                                    {"pending_tasks", "0"},
-                                                    {"max_task_wait_time", "-"},
-                                                    {"active_shards_percent", "100.0%"}}})
-                                .dump();
-
-} // namespace ServerSelectorTests
-
-using namespace ServerSelectorTests;
+} // namespace
 
 /**
  * @brief Test instantiation with valid servers.
@@ -139,7 +129,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
 {
     // Set up the expectations for the MockHTTPRequest
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse)));
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda));
 
     std::string nextServer;
 
@@ -148,13 +138,12 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
         m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
     EXPECT_NO_THROW(m_selector);
 
-    // It doesn't throw an exception because all servers are available before health check
+    // It doesn't throw an exception because there are available servers before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, GREEN_SERVER);
 
-    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, RED_SERVER);
+    EXPECT_EQ(nextServer, YELLOW_SERVER);
 }
 
 /**
@@ -165,7 +154,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 {
     // Set up the expectations for the MockHTTPRequest
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse)));
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda));
 
     std::string nextServer;
 
@@ -175,7 +164,6 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
     EXPECT_NO_THROW(m_selector);
 
     // We expect to iterate over the green and yellow server
-
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, GREEN_SERVER);
 
@@ -206,22 +194,19 @@ TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
 
     // Set up the expectations for the MockHTTPRequest
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse)));
-
-    std::string nextServer;
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda));
 
     // Instantiate the Server Selector object
     auto m_selector = std::make_shared<TServerSelector<TMonitoring<TrampolineHTTPRequest>>>(
         m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
     EXPECT_NO_THROW(m_selector);
 
-    // It doesn't throw an exception because all servers are available before health check
-    EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, RED_SERVER);
+    // Throw an exception because there are no available servers
+    EXPECT_THROW(m_selector->getNext(), std::runtime_error);
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
-    // It throws an exception because there are no available servers
-    EXPECT_THROW(nextServer = m_selector->getNext(), std::runtime_error);
+    // Throw an exception because there are no available servers
+    EXPECT_THROW(m_selector->getNext(), std::runtime_error);
 }

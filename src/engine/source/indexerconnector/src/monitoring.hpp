@@ -25,7 +25,7 @@
 #include <vector>
 
 // 60 seconds interval for monitoring
-constexpr auto INTERVAL = 60u;
+constexpr auto HEALTH_CHECK_INTERVAL_MS = 60000u;
 
 // 5 seconds timeout for health check requests
 constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
@@ -51,7 +51,7 @@ class TMonitoring final
     std::mutex m_mutex;
     std::condition_variable m_condition;
     std::atomic<bool> m_stop {false};
-    uint32_t m_interval {INTERVAL};
+    uint32_t m_interval {HEALTH_CHECK_INTERVAL_MS};
 
     /**
      * @brief Checks the health of a server.
@@ -113,7 +113,7 @@ class TMonitoring final
         };
 
         // Get the health of the server.
-        HTTPRequest::instance().get(
+        THTTPRequest::instance().get(
             RequestParameters {.url = HttpURL(serverAddress + "/_cat/health"), .secureCommunication = authentication},
             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
             ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
@@ -159,11 +159,10 @@ public:
      * @param authentication Object that provides secure communication.
      */
     explicit TMonitoring(const std::vector<std::string>& serverAddresses,
-                         const uint32_t interval = INTERVAL,
+                         const uint32_t interval = HEALTH_CHECK_INTERVAL_MS,
                          const SecureCommunication& authentication = {})
         : m_interval(interval)
     {
-
         // First, initialize the status of the servers.
         initialize(serverAddresses, authentication);
 
@@ -175,7 +174,8 @@ public:
                 {
                     // Wait for the interval.
                     std::unique_lock lock(m_mutex);
-                    m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
+                    m_condition.wait_for(
+                        lock, std::chrono::milliseconds(m_interval), [this]() { return m_stop.load(); });
 
                     // If the thread is not stopped, check the health of the servers.
                     if (!m_stop)
@@ -203,5 +203,7 @@ public:
         return m_servers.at(serverAddress);
     }
 };
+
+using Monitoring = TMonitoring<>;
 
 #endif // _MONITORING_HPP
