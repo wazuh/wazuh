@@ -18,7 +18,7 @@
 extern std::shared_ptr<httprequest::mock::MockHTTPRequest> spHTTPRequest;
 
 /**
- * @brief Trampoline class for GlobalData class.
+ * @brief Trampoline class for HTTPRequest class.
  */
 class TrampolineHTTPRequest final : public Singleton<TrampolineHTTPRequest>
 {
