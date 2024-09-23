@@ -170,27 +170,15 @@ def get_node():
     Returns
     -------
     data : dict
-        Dict containing current node_name, node_type and cluster_name.
+        Dict containing current node_name and node_type.
     """
     data = {}
     config_cluster = read_config()
 
     data["node"] = config_cluster["node_name"]
-    data["cluster"] = config_cluster["name"]
     data["type"] = config_cluster["node_type"]
 
     return data
-
-
-def check_cluster_status():
-    """Get whether cluster is enabled in current active configuration.
-
-    Returns
-    -------
-    bool
-        Whether cluster is enabled.
-    """
-    return not read_config()['disabled']
 
 
 #

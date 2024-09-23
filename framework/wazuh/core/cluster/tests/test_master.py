@@ -219,7 +219,6 @@ def test_master_handler_init():
             'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
                             'extra_valid': 0}}
         assert master_handler.version == ""
-        assert master_handler.cluster_name == ""
         assert master_handler.node_type == ""
         assert master_handler.task_loggers == {}
         assert master_handler.tag == "Worker"
@@ -485,9 +484,8 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
             self.configuration = {}
 
     master_handler.server = Server()
-    master_handler.server.configuration["name"] = "cluster_name"
 
-    assert master_handler.hello(b"name cluster_name node_type version") == (b"ok", "payload")
+    assert master_handler.hello(b"name node_type version") == (b"ok", "payload")
 
     super_hello_mock.assert_called_once_with(b"name")
     mkdir_with_mode_mock.assert_called_once_with("/some/path")
@@ -502,7 +500,6 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
     assert isinstance(master_handler.task_loggers["Integrity sync"], logging.Logger)
 
     assert master_handler.version == "version"
-    assert master_handler.cluster_name == "cluster_name"
     assert master_handler.node_type == "node_type"
     assert master_handler.integrity == "SyncFilesMock"
 
@@ -523,17 +520,11 @@ def test_master_handler_hello_ko(super_hello_mock):
     master_handler.server = Server()
     master_handler.server.configuration["name"] = "other name"
 
-    #  Test the first exception
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3030 .*"):
-        master_handler.hello(b"name cluster_name node_type version")
-
-    #  Test the second exception
-    master_handler.server.configuration["name"] = "cluster_name"
     with pytest.raises(exception.WazuhClusterError, match=r".* 3031 .*"):
-        master_handler.hello(b"name cluster_name node_type version")
+        master_handler.hello(b"name node_type version")
 
     super_hello_mock.assert_called_with(b"name")
-    assert super_hello_mock.call_count == 2
+    assert super_hello_mock.call_count == 1
 
 
 def test_master_handler_get_manager():
@@ -1393,9 +1384,8 @@ def test_master_get_node(get_running_loop_mock):
 
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
-                                                "node_type": "master", "name": "master"},
+                                                "node_type": "master"},
                                  cluster_items=cluster_items)
 
     assert master_class.get_node() == {'type': master_class.configuration['node_type'],
-                                       'cluster': master_class.configuration['name'],
                                        'node': master_class.configuration['node_name']}
