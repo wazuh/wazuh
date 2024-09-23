@@ -11,7 +11,7 @@
 #include <indexerConnector/mockiconnector.hpp>
 
 #include "exporter/indexerMetricsExporter.hpp"
-#include "metrics/ot.hpp"
+#include "ot.hpp"
 
 using namespace base::test;
 using namespace metrics;
@@ -66,13 +66,13 @@ using Expc = Expected<SuccessExpected, FailureExpected>;
 auto SUCCESS = Expc::success();
 auto FAILURE = Expc::failure();
 
-using ExportT = std::tuple<std::function<void(std::shared_ptr<ot::MeterProvider>)>, Expc>;
+using ExportT = std::tuple<std::function<void(std::shared_ptr<otsdk::MeterProvider>)>, Expc>;
 
 class IndexerMetricsExportTest : public ::testing::TestWithParam<ExportT>
 {
 protected:
     std::shared_ptr<indexerconnector::mocks::MockIConnector> m_indexerConnector;
-    std::shared_ptr<ot::MeterProvider> m_provider;
+    std::shared_ptr<otsdk::MeterProvider> m_provider;
 
 public:
     void SetUp() override
@@ -88,11 +88,11 @@ public:
         auto readerOptions = opentelemetry::sdk::metrics::PeriodicExportingMetricReaderOptions();
         readerOptions.export_interval_millis = std::chrono::milliseconds(500);
         readerOptions.export_timeout_millis = std::chrono::milliseconds(300);
-        auto reader = std::make_shared<ot::PeriodicExportingMetricReader>(
-            std::unique_ptr<ot::PushMetricExporter>(std::move(exporter)), readerOptions);
+        auto reader = std::make_shared<otsdk::PeriodicExportingMetricReader>(
+            std::unique_ptr<otsdk::PushMetricExporter>(std::move(exporter)), readerOptions);
 
         // Provider
-        m_provider = std::make_shared<ot::MeterProvider>();
+        m_provider = std::make_shared<otsdk::MeterProvider>();
         m_provider->AddMetricReader(reader);
     }
 
@@ -197,7 +197,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto meter = provider->GetMeter("test");
                 auto counter = meter->CreateUInt64Counter("counter");
-                auto context = ot::context::RuntimeContext::GetCurrent();
+                auto context = otapi::RuntimeContext::GetCurrent();
                 counter->Add(1, context);
             },
             FAILURE(
@@ -214,7 +214,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto meter = provider->GetMeter("test");
                 auto counter = meter->CreateUInt64Counter("counterInt");
-                auto context = ot::context::RuntimeContext::GetCurrent();
+                auto context = otapi::RuntimeContext::GetCurrent();
                 counter->Add(1, context);
             },
             SUCCESS(
@@ -243,7 +243,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto meter = provider->GetMeter("test");
                 auto counter = meter->CreateDoubleCounter("counterDouble");
-                auto context = ot::context::RuntimeContext::GetCurrent();
+                auto context = otapi::RuntimeContext::GetCurrent();
                 counter->Add(1.5, context);
             },
             SUCCESS(
@@ -273,7 +273,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto meter = provider->GetMeter("test");
                 auto histogram = meter->CreateUInt64Histogram("histogram");
-                auto context = ot::context::RuntimeContext::GetCurrent();
+                auto context = otapi::RuntimeContext::GetCurrent();
                 histogram->Record(1, context);
             },
             SUCCESS(
@@ -312,7 +312,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto meter = provider->GetMeter("test");
                 auto histogram = meter->CreateDoubleHistogram("histogram");
-                auto context = ot::context::RuntimeContext::GetCurrent();
+                auto context = otapi::RuntimeContext::GetCurrent();
                 histogram->Record(1.5, context);
             },
             SUCCESS(
@@ -352,7 +352,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto meter = provider->GetMeter("test");
                 auto upDownCounter = meter->CreateInt64UpDownCounter("upDownCounter");
-                auto context = ot::context::RuntimeContext::GetCurrent();
+                auto context = otapi::RuntimeContext::GetCurrent();
                 upDownCounter->Add(1, context);
             },
             SUCCESS(
@@ -380,7 +380,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto meter = provider->GetMeter("test");
                 auto upDownCounter = meter->CreateDoubleUpDownCounter("upDownCounter");
-                auto context = ot::context::RuntimeContext::GetCurrent();
+                auto context = otapi::RuntimeContext::GetCurrent();
                 upDownCounter->Add(1.5, context);
             },
             SUCCESS(
