@@ -45,8 +45,7 @@ def test_read_config_wrapper_exception(mock_read_config):
 def test_node_wrapper(mock_read_config):
     """Verify that the node_wrapper returns the default node information."""
     result = cluster.get_node_wrapper()
-    assert result.affected_items == [{'cluster': default_config["name"],
-                                      'node': default_config["node_name"],
+    assert result.affected_items == [{'node': default_config["node_name"],
                                       'type': default_config["node_type"]}]
 
 
@@ -60,7 +59,7 @@ def test_node_wrapper_exception(mock_get_node):
 def test_get_status_json():
     """Verify that get_status_json returns the default status information."""
     result = cluster.get_status_json()
-    expected = WazuhResult({'data': {"enabled": "no" if default_config['disabled'] else "yes", "running": "no"}})
+    expected = WazuhResult({'data': {"running": "no"}})
     assert result == expected
 
 

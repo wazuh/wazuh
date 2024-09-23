@@ -33,9 +33,7 @@ agent_groups = b"default,windows-servers"
 # Valid configurations
 default_cluster_configuration = {
     'cluster': {
-        'disabled': 'yes',
         'node_type': 'master',
-        'name': 'wazuh',
         'node_name': 'node01',
         'port': 1516,
         'bind_addr': '0.0.0.0',
@@ -49,9 +47,7 @@ default_cluster_configuration = {
 
 custom_cluster_configuration = {
     'cluster': {
-        'disabled': 'no',
         'node_type': 'master',
-        'name': 'wazuh',
         'node_name': 'node01',
         'port': 1516,
         'bind_addr': '0.0.0.0',
@@ -196,20 +192,13 @@ def test_check_cluster_config_ko(read_config, message):
 
 def test_get_node():
     """Check the correct output of the get_node function."""
-    test_dict = {"node_name": "master", "name": "master",
-                 "node_type": "master"}
+    test_dict = {"node_name": "master", "node_type": "master"}
 
     with patch('wazuh.core.cluster.cluster.read_config', return_value=test_dict):
         get_node = cluster.get_node()
         assert isinstance(get_node, dict)
         assert get_node["node"] == test_dict["node_name"]
-        assert get_node["cluster"] == test_dict["name"]
         assert get_node["type"] == test_dict["node_type"]
-
-
-def test_check_cluster_status():
-    """Check the correct output of the check_cluster_status function."""
-    assert isinstance(cluster.check_cluster_status(), bool)
 
 
 @patch('os.path.getmtime', return_value=45)

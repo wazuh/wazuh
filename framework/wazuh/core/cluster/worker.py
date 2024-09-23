@@ -520,11 +520,10 @@ class Worker(client.AbstractClientManager):
         """
         self.task_pool = kwargs.pop('task_pool')
         super().__init__(**kwargs, tag="Worker")
-        self.cluster_name = self.configuration['name']
         self.version = metadata.__version__
         self.node_type = self.configuration['node_type']
         self.handler_class = WorkerHandler
-        self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
+        self.extra_args = {'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
         self.integrity_control = {}
 
@@ -548,5 +547,4 @@ class Worker(client.AbstractClientManager):
         dict
             Basic node information.
         """
-        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
-                'node': self.configuration['node_name']}
+        return {'type': self.configuration['node_type'], 'node': self.configuration['node_name']}

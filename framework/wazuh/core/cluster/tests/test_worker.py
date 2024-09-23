@@ -815,13 +815,10 @@ async def test_worker_init(api_request_queue, event_loop):
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 
-    assert nested_worker.cluster_name == "wazuh"
     assert nested_worker.node_type == "master"
     assert nested_worker.handler_class == worker.WorkerHandler
-    assert "cluster_name" in nested_worker.extra_args
     assert "version" in nested_worker.extra_args
     assert "node_type" in nested_worker.extra_args
-    assert nested_worker.extra_args["cluster_name"] == nested_worker.cluster_name
     assert nested_worker.extra_args["version"] == nested_worker.version
     assert nested_worker.extra_args["node_type"] == nested_worker.node_type
     assert nested_worker.dapi == api_request_queue.return_value
@@ -868,6 +865,5 @@ async def test_worker_get_node(api_request_queue, event_loop):
                                   task_pool=task_pool)
 
     assert nested_worker.get_node() == {'type': nested_worker.configuration['node_type'],
-                                        'cluster': nested_worker.configuration['name'],
                                         'node': nested_worker.configuration['node_name']}
     api_request_queue.assert_called_once_with(server=nested_worker)
