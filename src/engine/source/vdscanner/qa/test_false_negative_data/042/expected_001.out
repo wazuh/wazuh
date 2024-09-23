@@ -1,0 +1,5 @@
+[
+    "Translation for package 'Tera Term 4.63' on platform 'windows' found in Level 2 cache.",
+    "Match found, the package 'tera_term', is vulnerable to 'CVE-2017-2193'. Current version: '4.63' (less than '' or equal to '4.94'). - Agent '' (ID: '041', Version: '').",
+    "Match found, the package 'tera_term', is vulnerable to 'CVE-2023-48795'. Current version: '4.63' (less than '' or equal to '5.1'). - Agent '' (ID: '041', Version: '')."
+]
