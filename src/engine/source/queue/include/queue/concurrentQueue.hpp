@@ -10,13 +10,12 @@
 #include <mutex>
 #include <string>
 #include <type_traits>
+#include <optional>
 
 #include <concurrentqueue/blockingconcurrentqueue.h>
 #include <queue/iqueue.hpp>
 
 #include <base/logging.hpp>
-#include <metrics/iMetricsManager.hpp>
-#include <metrics/iMetricsScope.hpp>
 
 namespace base::queue
 {
@@ -119,17 +118,17 @@ class ConcurrentQueue : public iQueue<T>
 private:
     static_assert(std::is_base_of_v<moodycamel::ConcurrentQueueDefaultTraits, D>,
                   "The template parameter D must be a subclass of ConcurrentQueueDefaultTraits");
-    struct Metrics
-    {
-        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;  ///< Metrics scope for the queue
-        std::shared_ptr<metricsManager::iCounter<int64_t>> m_used;      ///< Counter for the used queue
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_queued;   ///< Counter for the queued events
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_flooded;  ///< Counter for the flooded events
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumed; ///< Counter for the consumed events
+    // struct Metrics
+    // {
+    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;  ///< Metrics scope for the queue
+    //     std::shared_ptr<metricsManager::iCounter<int64_t>> m_used;      ///< Counter for the used queue
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_queued;   ///< Counter for the queued events
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_flooded;  ///< Counter for the flooded events
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumed; ///< Counter for the consumed events
 
-        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta;       ///< Metrics scope for the queue
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumendPerSecond; ///< Counter for the used queue
-    };
+    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta;       ///< Metrics scope for the queue
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumendPerSecond; ///< Counter for the used queue
+    // };
 
     moodycamel::BlockingConcurrentQueue<T, D> m_queue {}; ///< The queue itself.
     std::size_t m_minCapacity;                            ///< The minimum capacity of the queue.
@@ -139,7 +138,7 @@ private:
     bool m_discard; ///< If true, the queue will discard the events when it is full instead of flooding the file or
                     ///< blocking.
 
-    Metrics m_metrics; ///< Metrics for the queue
+    // Metrics m_metrics; ///< Metrics for the queue
 
     template<typename U = T>
     std::enable_if_t<has_str_method_v<U>, void> pushWithStr(U&& element)
@@ -150,12 +149,12 @@ private:
             {
                 if (m_queue.try_enqueue(std::move(element)))
                 {
-                    m_metrics.m_queued->addValue(1UL);
-                    m_metrics.m_used->addValue(1UL);
+                    // m_metrics.m_queued->addValue(1UL);
+                    // m_metrics.m_used->addValue(1UL);
                     return;
                 }
             }
-            m_metrics.m_flooded->addValue(1UL);
+            // m_metrics.m_flooded->addValue(1UL);
             return;
         }
 
@@ -167,8 +166,8 @@ private:
                 // of 5 because we are saturating the queue and we don't want to.
                 std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
-            m_metrics.m_queued->addValue(1UL);
-            m_metrics.m_used->addValue(1);
+            // m_metrics.m_queued->addValue(1UL);
+            // m_metrics.m_used->addValue(1);
         }
         else
         {
@@ -176,8 +175,8 @@ private:
             {
                 if (m_queue.try_enqueue(std::move(element))) // TODO Wait whats? Move more than once?
                 {
-                    m_metrics.m_queued->addValue(1UL);
-                    m_metrics.m_used->addValue(1UL);
+                    // m_metrics.m_queued->addValue(1UL);
+                    // m_metrics.m_used->addValue(1UL);
                     return;
                 }
                 std::this_thread::sleep_for(m_waitTime);
@@ -187,7 +186,7 @@ private:
                 m_floodingFile->write(element->str());
             }
 
-            m_metrics.m_flooded->addValue(1UL);
+            // m_metrics.m_flooded->addValue(1UL);
         }
     }
 
@@ -216,8 +215,8 @@ public:
      * push method will block until there is space in the queue.
      */
     explicit ConcurrentQueue(const int capacity,
-                             std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-                             std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
+                            //  std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
+                            //  std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                              const std::string& pathFloodedFile = {},
                              const int maxAttempts = -1,
                              const int waitTime = -1,
@@ -264,14 +263,14 @@ public:
             LOG_INFO("No flooding file provided, the queue will not be flooded.");
         }
 
-        m_metrics.m_metricsScope = std::move(metricsScope);
-        m_metrics.m_queued = m_metrics.m_metricsScope->getCounterUInteger("QueuedEvents");
-        m_metrics.m_used = m_metrics.m_metricsScope->getUpDownCounterInteger("UsedQueue");
-        m_metrics.m_consumed = m_metrics.m_metricsScope->getCounterUInteger("ConsumedEvents");
-        m_metrics.m_flooded = m_metrics.m_metricsScope->getCounterUInteger("FloodedEvents");
+        // m_metrics.m_metricsScope = std::move(metricsScope);
+        // m_metrics.m_queued = m_metrics.m_metricsScope->getCounterUInteger("QueuedEvents");
+        // m_metrics.m_used = m_metrics.m_metricsScope->getUpDownCounterInteger("UsedQueue");
+        // m_metrics.m_consumed = m_metrics.m_metricsScope->getCounterUInteger("ConsumedEvents");
+        // m_metrics.m_flooded = m_metrics.m_metricsScope->getCounterUInteger("FloodedEvents");
 
-        m_metrics.m_metricsScopeDelta = std::move(metricsScopeDelta);
-        m_metrics.m_consumendPerSecond = m_metrics.m_metricsScopeDelta->getCounterUInteger("ConsumedEventsPerSecond");
+        // m_metrics.m_metricsScopeDelta = std::move(metricsScopeDelta);
+        // m_metrics.m_consumendPerSecond = m_metrics.m_metricsScopeDelta->getCounterUInteger("ConsumedEventsPerSecond");
     }
 
     void push(T&& element) override
@@ -307,8 +306,8 @@ public:
         auto result = m_queue.try_enqueue(element);
         if (result)
         {
-            m_metrics.m_queued->addValue(1UL);
-            m_metrics.m_used->addValue(1);
+            // m_metrics.m_queued->addValue(1UL);
+            // m_metrics.m_used->addValue(1);
         }
         return result;
     }
@@ -330,9 +329,9 @@ public:
         auto result = m_queue.wait_dequeue_timed(element, timeout);
         if (result)
         {
-            m_metrics.m_consumed->addValue(1UL);
-            m_metrics.m_used->addValue(-1);
-            m_metrics.m_consumendPerSecond->addValue(1UL);
+            // m_metrics.m_consumed->addValue(1UL);
+            // m_metrics.m_used->addValue(-1);
+            // m_metrics.m_consumendPerSecond->addValue(1UL);
         }
 
         return result;
@@ -343,9 +342,9 @@ public:
         auto result = m_queue.try_dequeue(element);
         if (result)
         {
-            m_metrics.m_consumed->addValue(1UL);
-            m_metrics.m_used->addValue(-1);
-            m_metrics.m_consumendPerSecond->addValue(1UL);
+            // m_metrics.m_consumed->addValue(1UL);
+            // m_metrics.m_used->addValue(-1);
+            // m_metrics.m_consumendPerSecond->addValue(1UL);
         }
         return result;
     }

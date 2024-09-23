@@ -61,30 +61,3 @@ target_link_libraries(metrics_utest
 gtest_discover_tests(metrics_utest)
 
 endif(ENGINE_BUILD_TEST)
-
-set(ENGINE_METRICS_SOURCE_DIR ${ENGINE_SOURCE_DIR}/metrics/src)
-set(ENGINE_METRICS_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/metrics/include)
-
-add_compile_definitions ( ONLY_C_LOCALE=1 )
-
-####################################################################################################
-# Sources - Includes
-####################################################################################################
-add_library(metrics STATIC
-${ENGINE_METRICS_SOURCE_DIR}/metricsManager.cpp
-${ENGINE_METRICS_SOURCE_DIR}/dataHub.cpp
-${ENGINE_METRICS_SOURCE_DIR}/dataHubExporter.cpp
-${ENGINE_METRICS_SOURCE_DIR}/metricsScope.cpp
-)
-
-target_link_libraries(metrics PRIVATE
-  base
-  opentelemetry-cpp::api
-  opentelemetry-cpp::metrics
-  opentelemetry-cpp::sdk
-  opentelemetry-cpp::logs
-)
-
-target_include_directories(metrics PUBLIC
-${ENGINE_METRICS_INCLUDE_DIR}
-)
