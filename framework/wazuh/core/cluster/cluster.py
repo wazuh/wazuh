@@ -119,7 +119,6 @@ def check_cluster_config(config):
         - Port is an int type.
         - 1024 < port < 65535.
         - Only 1 node is specified.
-        - Reserved IPs are not used.
         - CAfile, certfile and keyfile paths exist.
 
     Parameters
@@ -133,7 +132,6 @@ def check_cluster_config(config):
         If any of above conditions is not met.
     """
     iv = InputValidator()
-    reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
     if config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
@@ -155,11 +153,6 @@ def check_cluster_config(config):
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
                 format(config['nodes'][0]))
-
-    invalid_elements = list(reservated_ips & set(config['nodes']))
-
-    if len(invalid_elements) != 0:
-        raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
 
     validate_haproxy_helper_config(config.get(HAPROXY_HELPER, {}))
 

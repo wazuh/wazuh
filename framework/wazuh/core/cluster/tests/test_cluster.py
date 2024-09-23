@@ -36,8 +36,8 @@ default_cluster_configuration = {
         'node_type': 'master',
         'node_name': 'node01',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['NODE_IP'],
+        'bind_addr': 'localhost',
+        'nodes': ['127.0.0.1'],
         'hidden': 'no',
         'certfile': '/test/path/cert.pem',
         'keyfile': '/test/path/key.pem',
@@ -50,7 +50,7 @@ custom_cluster_configuration = {
         'node_type': 'master',
         'node_name': 'node01',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
+        'bind_addr': 'localhost',
         'nodes': ['172.10.0.100'],
         'hidden': False
     }
@@ -109,44 +109,9 @@ def test_check_cluster_config(mock_logger, exists_mock):
     }, "Port must be"),
     ({
         'cluster': {
-            'port': 1516,
-            'nodes': ['NODE_IP'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['localhost'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['0.0.0.0'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['127.0.1.1'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['127.0.1.1', '127.0.1.2'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
             'node_type': 'master',
             'nodes': ['192.168.0.1'],
+            'port': 30000,
             'certfile': os.path.join(common.WAZUH_PATH, 'test.cert'),
             'keyfile': os.path.join(common.WAZUH_PATH, 'test.cert')
         }

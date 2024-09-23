@@ -451,6 +451,10 @@ class WazuhException(Exception):
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
+        3007: {'message': 'Could not start the server',
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
+                              f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
+                              ' to get more information about how to configure a cluster'},
         3009: {'message': 'Error executing distributed API request',
                'remediation': ''},
         3015: 'Cannot access directory',

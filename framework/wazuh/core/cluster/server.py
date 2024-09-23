@@ -8,7 +8,6 @@ import functools
 import inspect
 import itertools
 import logging
-import os
 import ssl
 import traceback
 from time import perf_counter
@@ -556,8 +555,7 @@ class AbstractServer:
                 ssl=ssl_context
             )
         except OSError as e:
-            self.logger.error(f"Could not start master: {e}")
-            raise KeyboardInterrupt
+            raise exception.WazuhClusterError(3007, extra_message=e)
 
         self.logger.info(f'Serving on {server.sockets[0].getsockname()}')
         self.tasks.append(server.serve_forever)
