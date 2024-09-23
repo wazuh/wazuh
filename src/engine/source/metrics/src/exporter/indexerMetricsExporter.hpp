@@ -4,12 +4,10 @@
 #include <memory>
 #include <stdexcept>
 
-#include <opentelemetry/sdk/metrics/push_metric_exporter.h>
-
 #include <base/json.hpp>
 #include <indexerConnector/iindexerconnector.hpp>
 
-#include <metrics/ot.hpp>
+#include "ot.hpp"
 
 namespace metrics
 {
@@ -17,7 +15,7 @@ namespace metrics
 /**
  * IndexerMetricsExporter push metrics data to the Indexer.
  */
-class IndexerMetricsExporter final : public ot::PushMetricExporter
+class IndexerMetricsExporter final : public otsdk::PushMetricExporter
 {
 private:
     std::shared_ptr<IIndexerConnector> m_indexerConnector;
@@ -44,14 +42,15 @@ public:
      * concurrently for the same exporter instance.
      * @param data metrics data
      */
-    ot::ExportResult Export(const ot::ResourceMetrics& data) noexcept override;
+    otsdk::ExportResult Export(const otsdk::ResourceMetrics& data) noexcept override;
 
     /**
      * Get the AggregationTemporality for given Instrument Type for this exporter.
      *
      * @return AggregationTemporality
      */
-    ot::AggregationTemporality GetAggregationTemporality(ot::InstrumentType instrument_type) const noexcept override;
+    otsdk::AggregationTemporality
+    GetAggregationTemporality(otsdk::InstrumentType instrument_type) const noexcept override;
 
     /**
      * Force flush the exporter.

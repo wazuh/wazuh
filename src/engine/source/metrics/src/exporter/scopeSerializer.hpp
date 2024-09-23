@@ -1,11 +1,9 @@
 #ifndef _METRICS_SCOPESERIALIZER_HPP
 #define _METRICS_SCOPESERIALIZER_HPP
 
-#include <opentelemetry/sdk/instrumentationscope/instrumentation_scope.h>
-
 #include <base/json.hpp>
 
-#include <metrics/ot.hpp>
+#include "ot.hpp"
 
 namespace metrics::details
 {
@@ -15,7 +13,7 @@ namespace metrics::details
  * @param scope
  * @return json::Json
  */
-inline json::Json scopeToJson(const ot::InstrumentationScope& scope)
+inline json::Json scopeToJson(const otsdk::InstrumentationScope& scope)
 {
     json::Json jsonScope;
     jsonScope.setString(scope.GetName(), "/name");
