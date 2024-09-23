@@ -8,7 +8,6 @@
 #include <cmds/geo.hpp>
 #include <cmds/graph.hpp>
 #include <cmds/kvdb.hpp>
-#include <cmds/metrics.hpp>
 #include <cmds/policy.hpp>
 #include <cmds/router.hpp>
 #include <cmds/start.hpp>
@@ -46,7 +45,6 @@ int main(int argc, char* argv[])
     cmd::catalog::configure(app);
     cmd::config::configure(app);
     cmd::router::configure(app);
-    cmd::metrics::configure(app);
     cmd::policy::configure(app);
     cmd::geo::configure(app);
 

@@ -10,8 +10,6 @@ namespace engineserver::endpoint
 
 UnixStream::UnixStream(const std::string& address,
                        std::shared_ptr<ProtocolHandlerFactory> factory,
-                       std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-                       std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                        const std::size_t taskQueueSize,
                        std::size_t timeout)
     : Endpoint(address, taskQueueSize)
@@ -50,15 +48,15 @@ UnixStream::UnixStream(const std::string& address,
         throw std::runtime_error("Address must start with '/'");
     }
 
-    m_metric.m_metricsScope = std::move(metricsScope);
-    m_metric.m_totalRequest = m_metric.m_metricsScope->getCounterUInteger("TotalRequest");
-    m_metric.m_responseTime = m_metric.m_metricsScope->getHistogramUInteger("ResponseTime");
-    m_metric.m_queueSize = m_metric.m_metricsScope->getHistogramUInteger("QueueSize");
-    m_metric.m_connectedClients = m_metric.m_metricsScope->getUpDownCounterInteger("ConnectedClients");
-    m_metric.m_serverBusy = m_metric.m_metricsScope->getCounterUInteger("ServerBusy");
+    // m_metric.m_metricsScope = std::move(metricsScope);
+    // m_metric.m_totalRequest = m_metric.m_metricsScope->getCounterUInteger("TotalRequest");
+    // m_metric.m_responseTime = m_metric.m_metricsScope->getHistogramUInteger("ResponseTime");
+    // m_metric.m_queueSize = m_metric.m_metricsScope->getHistogramUInteger("QueueSize");
+    // m_metric.m_connectedClients = m_metric.m_metricsScope->getUpDownCounterInteger("ConnectedClients");
+    // m_metric.m_serverBusy = m_metric.m_metricsScope->getCounterUInteger("ServerBusy");
 
-    m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
-    m_metric.m_requestPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("RequestPerSecond");
+    // m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
+    // m_metric.m_requestPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("RequestPerSecond");
 }
 
 UnixStream::~UnixStream()
@@ -106,7 +104,7 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
             auto client = createClient();
             handle.accept(*client);
             client->read();
-            m_metric.m_connectedClients->addValue(1L);
+            // m_metric.m_connectedClients->addValue(1L);
         });
 
     // Listen for incoming connections
@@ -207,8 +205,8 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             }
 
             // Send each message to the queue worker
-            m_metric.m_totalRequest->addValue(result->size());
-            m_metric.m_requestPerSecond->addValue(result->size());
+            // m_metric.m_totalRequest->addValue(result->size());
+            // m_metric.m_requestPerSecond->addValue(result->size());
 
             processMessages(weakClient, sharedAsyncs, protocolHandler, std::move(result.value()));
         });
@@ -231,7 +229,6 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
             auto callbackFn = [wClient,
                                address = m_address,
                                protocolHandler,
-                               metric = m_metric,
                                functionName = logging::getLambdaName(__FUNCTION__, "handleClientResponse")](
                                   const std::string& response) -> void
             {
@@ -256,7 +253,7 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
                 auto [buffer, size] = protocolHandler->streamToSend(response);
                 client->write(std::move(buffer), size);
                 auto elapsedTime = responseTimer->elapsed<std::chrono::milliseconds>();
-                metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
+                // metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
             };
 
             protocolHandler->onMessage(request, callbackFn);
@@ -278,8 +275,8 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
             client->write(std::move(buffer), size);
 
             auto elapsedTime = responseTimer.elapsed<std::chrono::milliseconds>();
-            m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
-            m_metric.m_serverBusy->addValue(1L);
+            // m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
+            // m_metric.m_serverBusy->addValue(1L);
             continue;
         }
 
@@ -305,7 +302,6 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
     async->on<uvw::AsyncEvent>(
         [wClient,
          address = m_address,
-         metric = m_metric,
          responseTimer,
          protocolHandler,
          response,
@@ -333,7 +329,7 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
             auto [buffer, size] = protocolHandler->streamToSend(response);
             client->write(std::move(buffer), size);
             auto elapsedTime = responseTimer->elapsed<std::chrono::milliseconds>();
-            metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
+            // metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
 
             // Find and remove the corresponding AsyncHandle from the array
             auto it = std::find_if(asyncs->begin(),
@@ -391,7 +387,6 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
     // On error
     work->on<uvw::ErrorEvent>(
         [address = m_address,
-         metric = m_metric,
          &currentTaskQueueSize = m_currentTaskQueueSize,
          functionName = logging::getLambdaName(__FUNCTION__, "workerErrorEvent")](const uvw::ErrorEvent& error,
                                                                                   uvw::WorkReq& worker)
@@ -399,23 +394,22 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
             LOG_ERROR_L(
                 functionName.c_str(), "[Endpoint: {}] endpoint: Error processing message: {}", address, error.what());
             --currentTaskQueueSize;
-            metric.m_queueSize->recordValue(currentTaskQueueSize.load());
+            // metric.m_queueSize->recordValue(currentTaskQueueSize.load());
         });
 
     // On finish
     work->on<uvw::WorkEvent>(
         [address = m_address,
-         metric = m_metric,
          &currentTaskQueueSize = m_currentTaskQueueSize,
          functionName = logging::getLambdaName(__FUNCTION__, "WorkerEvent")](const uvw::WorkEvent&, uvw::WorkReq& work)
         {
             --currentTaskQueueSize;
-            metric.m_queueSize->recordValue(currentTaskQueueSize.load());
+            // metric.m_queueSize->recordValue(currentTaskQueueSize.load());
             LOG_DEBUG_L(functionName.c_str(), "[Endpoint: {}] endpoint: Finish", address);
         });
 
     work->queue();
-    m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+    // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 }
 
 std::shared_ptr<uvw::TimerHandle>
@@ -477,11 +471,9 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client,
                                       std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs)
 {
 
-    auto gracefullEnd = [timer,
-                         asyncs,
-                         metric = m_metric,
-                         address = m_address,
-                         functionName = logging::getLambdaName(__FUNCTION__, "gracefullEnd")](uvw::PipeHandle& client)
+    auto gracefullEnd =
+        [timer, asyncs, address = m_address, functionName = logging::getLambdaName(__FUNCTION__, "gracefullEnd")](
+            uvw::PipeHandle& client)
     {
         if (!timer->closing())
         {
@@ -503,7 +495,7 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client,
         if (!client.closing())
         {
             client.close();
-            metric.m_connectedClients->addValue(-1L);
+            // metric.m_connectedClients->addValue(-1L);
         }
     };
 

@@ -6,7 +6,6 @@ add_library(cmds STATIC
     src/catalog.cpp
     src/config.cpp
     src/router.cpp
-    src/metrics.cpp
     src/policy.cpp
     src/geo.cpp
 )
@@ -27,7 +26,6 @@ target_link_libraries(cmds
     conf::cliconf
     conf::iconf
     eMessages
-    metrics
     geo
     schemf
     wdb

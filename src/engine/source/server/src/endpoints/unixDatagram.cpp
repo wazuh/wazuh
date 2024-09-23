@@ -18,8 +18,6 @@ namespace engineserver::endpoint
 {
 UnixDatagram::UnixDatagram(const std::string& address,
                            const std::function<void(const std::string&)>& callback,
-                           std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-                           std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                            const std::size_t taskQueueSize)
     : Endpoint(address, taskQueueSize)
     , m_callback(callback)
@@ -47,15 +45,15 @@ UnixDatagram::UnixDatagram(const std::string& address,
         throw std::runtime_error("Callback must be set");
     }
 
-    m_metric.m_metricsScope = std::move(metricsScope);
-    m_metric.m_byteRecv = m_metric.m_metricsScope->getCounterUInteger("BytesReceived");
-    m_metric.m_busyQueue = m_metric.m_metricsScope->getCounterUInteger("ServerBusy");
-    m_metric.m_queueSize = m_metric.m_metricsScope->getHistogramUInteger("UsedQueueHistory");
-    m_metric.m_eventSize = m_metric.m_metricsScope->getHistogramUInteger("EventSizeHistory");
+    // m_metric.m_metricsScope = std::move(metricsScope);
+    // m_metric.m_byteRecv = m_metric.m_metricsScope->getCounterUInteger("BytesReceived");
+    // m_metric.m_busyQueue = m_metric.m_metricsScope->getCounterUInteger("ServerBusy");
+    // m_metric.m_queueSize = m_metric.m_metricsScope->getHistogramUInteger("UsedQueueHistory");
+    // m_metric.m_eventSize = m_metric.m_metricsScope->getHistogramUInteger("EventSizeHistory");
 
-    m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
-    m_metric.m_byteRecvPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("BytesReceivedPerSeconds");
-    m_metric.m_eventPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("EventsReceivedPerSeconds");
+    // m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
+    // m_metric.m_byteRecvPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("BytesReceivedPerSeconds");
+    // m_metric.m_eventPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("EventsReceivedPerSeconds");
 }
 
 UnixDatagram::~UnixDatagram()
@@ -88,10 +86,10 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             auto data = std::string {event.data.get(), event.length};
 
             // Update metrics
-            m_metric.m_byteRecv->addValue(event.length);
-            m_metric.m_byteRecvPerSecond->addValue(event.length);
-            m_metric.m_eventPerSecond->addValue(1UL);
-            m_metric.m_eventSize->recordValue(event.length);
+            // m_metric.m_byteRecv->addValue(event.length);
+            // m_metric.m_byteRecvPerSecond->addValue(event.length);
+            // m_metric.m_eventPerSecond->addValue(1UL);
+            // m_metric.m_eventSize->recordValue(event.length);
 
             // Call the callback if is synchronous
             if (0 == m_taskQueueSize)
@@ -116,9 +114,9 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                 LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Queue is full, pause listening.", m_address);
                 pause();
                 // Update metric
-                m_metric.m_busyQueue->addValue(1UL);
+                // m_metric.m_busyQueue->addValue(1UL);
             }
-            m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+            // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 
             // Create a job to the worker thread
             std::shared_ptr<std::string> dataPtr {std::make_shared<std::string>(std::move(data))};
@@ -146,7 +144,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     {
                         LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Resume listening.", m_address);
                     }
-                    m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+                    // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
                 });
 
             workerJob->on<uvw::ErrorEvent>(
@@ -163,7 +161,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     {
                         LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Resume listening.", m_address);
                     }
-                    m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+                    // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
                 });
             workerJob->queue();
         });

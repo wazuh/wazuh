@@ -6,10 +6,8 @@
 #include <api/kvdb/handlers.hpp>
 #include <kvdb/mockKvdbHandler.hpp>
 #include <kvdb/mockKvdbManager.hpp>
-#include <metrics/metricsManager.hpp>
 
 using namespace api::kvdb::handlers;
-using namespace metricsManager;
 using namespace kvdb::mocks;
 
 namespace
@@ -46,14 +44,12 @@ const std::string rOrigin {"Dummy org module"};
 class KVDBApiTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<IMetricsManager> spMetrics;
     std::shared_ptr<MockKVDBManager> kvdbManager;
 
     void SetUp() override
     {
         logging::testInit();
 
-        spMetrics = std::make_shared<MetricsManager>();
         kvdbManager = std::make_shared<MockKVDBManager>();
     };
 
