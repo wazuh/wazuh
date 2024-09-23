@@ -16,7 +16,6 @@
 #include <api/geo/handlers.hpp>
 #include <api/graph/handlers.hpp>
 #include <api/kvdb/handlers.hpp>
-#include <api/metrics/handlers.hpp>
 #include <api/policy/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
@@ -34,7 +33,6 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
-#include <metrics/metricsManager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
@@ -201,7 +199,6 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    std::shared_ptr<metricsManager::MetricsManager> metrics;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
@@ -220,8 +217,6 @@ void runStart(ConfHandler confManager)
 
     try
     {
-        metrics = std::make_shared<metricsManager::MetricsManager>();
-
         // Store
         {
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
@@ -238,7 +233,7 @@ void runStart(ConfHandler confManager)
         // KVDB
         {
             kvdbManager::KVDBManagerOptions kvdbOptions {kvdbPath, "kvdb"};
-            kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
+            kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
             exitHandler.add(
@@ -359,18 +354,14 @@ void runStart(ConfHandler confManager)
             std::shared_ptr<QEventType> eventQueue {};
             std::shared_ptr<QTestType> testQueue {};
             {
-                auto scope = metrics->getMetricsScope("EventQueue");
-                auto scopeDelta = metrics->getMetricsScope("EventQueueDelta");
                 // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
                 eventQueue = std::make_shared<QEventType>(
-                    queueSize, scope, scopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep, queueDropFlood);
+                    queueSize, queueFloodFile, queueFloodAttempts, queueFloodSleep, queueDropFlood);
 
                 LOG_DEBUG("Event queue created.");
             }
             {
-                auto scope = metrics->getMetricsScope("TestQueue");
-                auto scopeDelta = metrics->getMetricsScope("TestQueueDelta");
-                testQueue = std::make_shared<QTestType>(queueSize, scope, scopeDelta);
+                testQueue = std::make_shared<QTestType>(queueSize);
                 LOG_DEBUG("Test queue created.");
             }
 
@@ -404,10 +395,6 @@ void runStart(ConfHandler confManager)
             // Configuration manager
             api::config::handlers::registerHandlers(api, confManager);
             LOG_DEBUG("Configuration manager API registered.");
-
-            // Register Metrics
-            api::metrics::handlers::registerHandlers(metrics, api);
-            LOG_DEBUG("Metrics API registered.");
 
             // KVDB
             api::kvdb::handlers::registerHandlers(kvdbManager, "api", api);
@@ -669,27 +656,19 @@ void runStart(ConfHandler confManager)
             g_engineServer = server;
 
             // API Endpoint
-            auto apiMetricScope = metrics->getMetricsScope("endpointAPI");
-            auto apiMetricScopeDelta = metrics->getMetricsScope("endpointAPIRate", true);
             auto apiHandler = std::bind(&api::Api::processRequest, api, std::placeholders::_1, std::placeholders::_2);
             auto apiClientFactory = std::make_shared<ph::WStreamFactory>(apiHandler); // API endpoint
             apiClientFactory->setErrorResponse(base::utils::wazuhProtocol::WazuhResponse::unknownError().toString());
             apiClientFactory->setBusyResponse(base::utils::wazuhProtocol::WazuhResponse::busyServer().toString());
 
-            auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(serverApiSock,
-                                                                         apiClientFactory,
-                                                                         apiMetricScope,
-                                                                         apiMetricScopeDelta,
-                                                                         serverApiQueueSize,
-                                                                         serverApiTimeout);
+            auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(
+                serverApiSock, apiClientFactory, serverApiQueueSize, serverApiTimeout);
             server->addEndpoint("API", apiEndpointCfg);
 
             // Event Endpoint
-            auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
-            auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
             auto eventHandler = std::bind(&router::Orchestrator::pushEvent, orchestrator, std::placeholders::_1);
-            auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
-                serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
+            auto eventEndpointCfg =
+                std::make_shared<endpoint::UnixDatagram>(serverEventSock, eventHandler, serverEventQueueSize);
             server->addEndpoint("EVENT", eventEndpointCfg);
             LOG_DEBUG("Server configured.");
         }

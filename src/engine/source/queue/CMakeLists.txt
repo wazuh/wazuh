@@ -26,9 +26,6 @@ target_link_libraries(queue
   base # Only for the loggin
   queue::iqueue
   unofficial-concurrentqueue::concurrentqueue
-
-  # metrics::imetrics
-  metrics
 )
 
 # Tests
@@ -53,8 +50,7 @@ if(ENGINE_BUILD_TEST)
     GTest::gtest_main
     base
     queue
-    #metrics::mocks)
-    metrics)
+  )
   gtest_discover_tests(queue_ctest)
 
 endif(ENGINE_BUILD_TEST)

@@ -5,7 +5,6 @@
 #include <thread>
 #include <unistd.h>
 
-#include "fakeMetric.hpp"
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <kvdb/ikvdbmanager.hpp>
@@ -16,8 +15,6 @@ namespace
 
 const std::string KVDB_PATH {"/tmp/kvdb_test/"};
 const std::string KVDB_DB_FILENAME {"TEST_DB"};
-
-auto metricsManager = std::make_shared<FakeMetricManager>();
 
 std::filesystem::path uniquePath(const std::string& path)
 {
@@ -62,7 +59,7 @@ protected:
 
         kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
 
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, metricsManager);
+        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions);
 
         m_kvdbManager->initialize();
     }
@@ -97,7 +94,7 @@ protected:
 
         kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, KVDB_DB_FILENAME};
 
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, metricsManager);
+        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions);
 
         m_kvdbManager->initialize();
     };

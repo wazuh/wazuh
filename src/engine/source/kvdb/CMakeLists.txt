@@ -27,7 +27,6 @@ target_include_directories(kvdb
 
 target_link_libraries(kvdb
     PRIVATE
-    metrics
     RocksDB::rocksdb
     base
     PUBLIC
@@ -61,11 +60,7 @@ add_executable(kvdb_ctest
     ${COMPONENT_SRC_DIR}/kvdbManager_test.cpp
 )
 
-target_include_directories(kvdb_ctest
-    PRIVATE
-    ${TEST_SRC_DIR}) #TODO Remove after implemente metrics mock (Only here for fake metrics)
-
-target_link_libraries(kvdb_ctest GTest::gtest_main metrics kvdb)
+target_link_libraries(kvdb_ctest GTest::gtest_main kvdb)
 gtest_discover_tests(kvdb_ctest)
 
 endif(ENGINE_BUILD_TEST)
