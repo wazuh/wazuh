@@ -3,6 +3,33 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.0]
 
+## Manager
+
+### Fixed
+- Added support for multiple Certificate Authorities files in the indexer connector ([#24620](https://github.com/wazuh/wazuh/pull/24620))
+- Removed hardcoded cipher text size from the RSA decryption method ([#24529](https://github.com/wazuh/wazuh/pull/24529))
+- Avoid infinite loop while updating the vulnerability detector content [#25094](https://github.com/wazuh/wazuh/pull/25094)
+
+### Changed
+- Added self-recovery mechanism for rocksDB databases ([#24333](https://github.com/wazuh/wazuh/pull/24333))
+- Improve logging for indexer connector monitoring class ([#25189](https://github.com/wazuh/wazuh/pull/25189))
+- Added generation of debug symbols ([#23760](https://github.com/wazuh/wazuh/pull/23760))
+
+## Agent
+
+### Changed
+- Added generation of debug symbols ([#23760](https://github.com/wazuh/wazuh/pull/23760))
+
+## RESTful API
+
+### Added
+- Created new endpoint for agent uninstall process. ([#24621](https://github.com/wazuh/wazuh/pull/24621))
+
+#### Changed
+- Updated the embedded Python version up to 3.10.15 ([#25374](https://github.com/wazuh/wazuh/issues/25374))
+- Upgraded `certifi` and removed unused packages. ([#25324](https://github.com/wazuh/wazuh/pull/25324))
+- Changed how the AWS module handles non-existent regions. ([#23998](https://github.com/wazuh/wazuh/pull/23998))
+
 ## [v4.9.1]
 
 ### Manager
