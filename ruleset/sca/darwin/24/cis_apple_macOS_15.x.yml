@@ -52,4 +52,169 @@ checks:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:^1$'
       - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:\.+'
 
+  # 1.3 Ensure Download New Updates When Available Is Enabled. (Automated)
+  - id: 34001
+    title: "Ensure Download New Updates When Available Is Enabled."
+    description: 'In the GUI, both "Install macOS updates" and "Install app updates from the App Store" are dependent on whether "Download new updates when available" is selected.'
+    rationale: "It is important that a system has the newest updates downloaded so that they can be applied."
+    impact: 'If "Download new updates when available" is not selected, updates may not be made in a timely manner and the system will be exposed to additional risk.'
+    remediation: "Perform the following to enable the system to automatically check for updates: Graphical Method: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Download new updates when available to enabled 6. Select Done Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticDownload 3. The key must be set to <true/>."
+    compliance:
+      - cis: ["1.3"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_v3.2.1: ["6.2"]
+      - soc_2: ["CC7.1"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:\.+'
 
+  # 1.4 Ensure Install of macOS Updates Is Enabled. (Automated)
+  - id: 34002
+    title: "Ensure Install of macOS Updates Is Enabled."
+    description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off simply to allow the administrator to contact users in order to verify installation. A dependable, repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
+    rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
+    impact: "Unpatched software may be exploited."
+    remediation: "Graphical Method: Perform the following steps to enable macOS updates to run automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install macOS updates to enabled 6. Select Done Terminal Method: Run the following command to to enable automatic checking and installing of macOS updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool TRUE Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallMacOSUpdates 3. The key must be set to <true/>."
+    compliance:
+      - cis: ["1.4"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_v3.2.1: ["6.2"]
+      - soc_2: ["CC7.1"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:\.+'
+
+  # 1.5 Ensure Install Application Updates from the App Store Is Enabled. (Automated)
+  - id: 34003
+    title: "Ensure Install Application Updates from the App Store Is Enabled."
+    description: "Ensure that application updates are installed after they are available from Apple. These updates do not require reboots or administrator privileges for end users."
+    rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
+    impact: "Unpatched software may be exploited."
+    remediation: "Graphical Method: Perform the following steps to enable App Store updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install application updates from the App Store to enabled 6. Select Done Terminal Method: Run the following command to turn on App Store auto updating: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool TRUE Note: This remediation requires a log out and log in to show in the GUI. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallAppUpdates 3. The key must be set to <true/>."
+    compliance:
+      - cis: ["1.5"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_v3.2.1: ["6.2"]
+      - soc_2: ["CC7.1"]
+    condition: all
+    rules:
+      - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> r:^1$"
+
+  # 1.6 Ensure Install Security Responses and System Files Is Enabled. (Automated)
+  - id: 34004
+    title: "Ensure Install Security Responses and System Files Is Enabled."
+    description: "Ensure that system and security updates are installed after they are available from Apple. This setting enables definition updates for XProtect and Gatekeeper. With this setting in place, new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights. Apple has introduced a security feature that allows for smaller downloads and the installation of security updates when a reboot is not required. This feature is only available when the last regular update has already been applied. This feature emphasizes that a Mac must be up-to-date on patches so that Apple's security tools can be used to quickly patch when a rapid response is necessary."
+    rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
+    impact: "Unpatched software may be exploited."
+    remediation: "Graphical Method: Perform the following steps to enable system data files and security updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install Security Responses and System files to enabled 6. Select Done Terminal Method: Run the following commands to enable automatic checking of system data files and security updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is ConfigDataInstall 3. The key must be set to <true/> 4. The key to also include is CriticalUpdateInstall 5. The key must be set to <true/>."
+    references:
+      - "https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-in-monterey/"
+      - "https://support.apple.com/en-us/HT202491"
+      - "https://support.apple.com/guide/security/protecting-against-malware-sec469d47bd8/web"
+      - "https://support.apple.com/guide/deployment/rapid-security-responses-dep93ff7ea78/1/web/1.0"
+    compliance:
+      - cis: ["1.6"]
+      - cis_csc_v8: ["7.3", "7.4", "7.7"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["CA.L2-3.12.2", "RA.L2-3.11.3", "SI.L1-3.14.1"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_v3.2.1: ["6.2"]
+      - pci_dss_v4.0: ["11.3.1", "11.3.2", "11.3.2.1"]
+      - soc_2: ["CC7.1"]
+    condition: all
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" -> r:^1$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''CriticalUpdateInstall'')" -> r:^1$'
+
+  # 1.7 Ensure Software Update Deferment Is Less Than or Equal to 30 Days. (Automated)
+  - id: 34005
+    title: "Ensure Software Update Deferment Is Less Than or Equal to 30 Days."
+    description: "Apple provides the capability to manage software updates on Apple devices through mobile device management. Part of those capabilities permit organizations to defer software updates and allow for testing. Many organizations have specialized software and configurations that may be negatively impacted by Apple updates. If software updates are deferred, they should not be deferred for more than 30 days. This control only verifies that deferred software updates are not deferred for more than 30 days."
+    rationale: "Apple software updates almost always include security updates. Attackers evaluate updates to create exploit code in order to attack unpatched systems. The longer a system remains unpatched, the greater an exploit possibility exists in which there are publicly reported vulnerabilities."
+    impact: "Some organizations may need more than 30 days to evaluate the impact of software updates."
+    remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is enforcedSoftwareUpdateDelay 3. The key must be set to <integer><1-30></integer>."
+    references:
+      - "https://support.apple.com/guide/deployment/manage-software-updates-depc4c80847a/web"
+    compliance:
+      - cis: ["1.7"]
+      - cis_csc_v8: ["7.3", "7.4"]
+      - cis_csc_v7: ["3.4", "3.5"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_v3.2.1: ["6.2"]
+      - soc_2: ["CC7.1"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> n:^(\d+)$ compare <= 30'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> r:\.+'
+
+  # 1.8 Ensure the System is Managed by a Mobile Device Management (MDM) Software. (Manual) - Not Implemented
+
+  # 2.1.1.1 Audit iCloud Keychain. (Manual) - Not Implemented
+  # 2.1.1.2 Audit iCloud Drive. (Manual) - Not Implemented
+  # 2.1.1.3 Ensure iCloud Drive Document and Desktop Sync Is Disabled. (Automated) - Not Implemented
+  # 2.1.1.4 Audit Security Keys Used With AppleIDs. (Manual) - Not Implemented
+  # 2.1.1.5 Audit Freeform Sync to iCloud. (Manual) - Not Implemented
+  # 2.1.1.6 Audit Find My Mac. (Manual) - Not Implemented
+  # 2.1.2 Audit App Store Password Settings. (Manual) - Not Implemented
+
+  # 2.2.1 Ensure Firewall Is Enabled. (Automated)
+  - id: 34006
+    title: "Ensure Firewall Is Enabled."
+    description: "A firewall is a piece of software that blocks unwanted incoming connections to a system. The socketfilter Firewall is what is used when the Firewall is turned on in the Security & Privacy Preference Pane. Logging is required to appropriately monitor what access is allowed and denied. The logs can be viewed in the macOS Unified Logs. In previous versions of macOS (prior to macOS 15 Sequoia) there was an additional step to turn on firewall logging after enabling the firewall. As of macOS 15 logging is turned on automatically without user interaction. The logging recommendation has been removed in the macOS 15 benchmark and will not be included going forward. If your organization is looking for more detailed information about network security, you will need a third-party solution."
+    rationale: "A firewall minimizes the threat of unauthorized users gaining access to your system while connected to a network or the Internet."
+    impact: "The firewall may block legitimate traffic. Applications that are unsigned will require special handling."
+    remediation: "Graphical Method: Perform the following steps to turn the firewall on: 1. Open System Settings 2. Select Network 3. Select Firewall 4. Set Firewall to enabled Terminal Method: Run the following command to enable the firewall: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.alf globalstate -int <value> For the <value>, use either 1, specific services, or 2, essential services only. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.security.firewall 2. The key to include is EnableFirewall 3. The key must be set to <true/>."
+    references:
+      - "https://support.apple.com/en-us/guide/security/seca0e83763f/web"
+      - "http://support.apple.com/en-us/HT201642"
+    compliance:
+      - cis: ["2.2.1"]
+      - cis_csc_v8: ["4.1", "4.5", "13.1"]
+      - cis_csc_v7: ["5.1", "9.4", "9.5"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L1-3.1.20", "AU.L2-3.3.5", "AU.L2-3.3.6", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6", "SI.L2-3.14.3", "SI.L2-3.14.7"]
+      - hipaa: ["164.312(b)"]
+      - iso_27001-2013: ["A.13.1.1", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["AU-6(1)", "AU-7", "CM-7(1)", "CM-9", "IR-4(1)", "SA-10", "SC-7(5)", "SI-4(2)", "SI-4(5)"]
+      - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.5.3", "10.6.1", "11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "10.7", "10.7.1", "10.7.2", "10.7.3", "11.5", "2.1.1", "2.2.1"]
+      - soc_2: ["CC6.6", "CC7.1", "CC7.2", "CC8.1"]
+    condition: any
+    rules:
+      - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
+      - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableFirewall -> r:^1$|^2$|^true$"
+
+  # 2.2.2 Ensure Firewall Stealth Mode Is Enabled. (Automated)
+  - id: 34007
+    title: "Ensure Firewall Stealth Mode Is Enabled."
+    description: "While in Stealth mode, the computer will not respond to unsolicited probes, dropping that traffic."
+    rationale: "Stealth mode on the firewall minimizes the threat of system discovery tools while connected to a network or the Internet."
+    impact: "Traditional network discovery tools like ping will not succeed. Other network tools that measure activity and approved applications will work as expected. This control aligns with the primary macOS use case of a laptop that is often connected to untrusted networks where host segregation may be non-existent. In that use case, hiding from the other inmates is likely more than desirable. In use cases where use is only on trusted LANs with static IP addresses, stealth mode may not be desirable."
+    remediation: "Graphical Method: Perform the following steps to enable firewall stealth mode: 1. Open System Settings 2. Select Network 3. Select Firewall 4. Select Options... 5. Set Enabled stealth mode to enabled Terminal Method: Run the following command to enable stealth mode: $ /usr/bin/sudo /usr/libexec/ApplicationFirewall/socketfilterfw -- setstealthmode on Stealth mode enabled Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.security.firewall 2. The key to include is EnableStealthMode 3. The key must be set to <true/> Note: This key must be set in the same configuration profile with EnableFirewall set to <true/>. If it is set in its own configuration profile, it will fail."
+    references:
+      - "http://support.apple.com/en-us/HT201642"
+    compliance:
+      - cis: ["2.2.2"]
+      - cis_csc_v8: ["4.1", "4.5", "4.8"]
+      - cis_csc_v7: ["5.1", "9.4"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L1-3.1.20", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.1", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10", "SC-7(5)"]
+      - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.4", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: any
+    rules:
+      - "c:defaults read /Library/Preferences/com.apple.alf stealthenabled -> r:^1$|^2$"
+      - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableStealthMode -> r:^1$|^2$|^true$"
