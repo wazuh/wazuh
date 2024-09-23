@@ -204,6 +204,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
 }
 
+#if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
 bool check_uninstall_permission(const char *token, const char *host, bool ssl_verify) {
     char url[OS_SIZE_8192];
     snprintf(url, sizeof(url), "https://%s/agents/uninstall", host);
@@ -279,3 +280,4 @@ bool package_uninstall_validation(const char *uninstall_auth_token, const char *
     }
     return validate_result;
 }
+#endif
