@@ -1,11 +1,9 @@
 #ifndef _METRICS_METRICSERIALIZER_HPP
 #define _METRICS_METRICSERIALIZER_HPP
 
-#include <opentelemetry/sdk/metrics/data/metric_data.h>
-
 #include <base/json.hpp>
 
-#include <metrics/ot.hpp>
+#include "ot.hpp"
 
 namespace metrics::details
 {
@@ -15,7 +13,7 @@ namespace metrics::details
  * @param metricData
  * @return json::Json
  */
-inline json::Json metricDataToJson(const ot::MetricData& metricData)
+inline json::Json metricDataToJson(const otsdk::MetricData& metricData)
 {
     json::Json jsonMetric;
     jsonMetric.setString(metricData.instrument_descriptor.name_, "/name");

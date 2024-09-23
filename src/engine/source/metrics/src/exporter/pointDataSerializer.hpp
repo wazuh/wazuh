@@ -1,11 +1,9 @@
 #ifndef _METRICS_POINTDATASERIALIZER_HPP
 #define _METRICS_POINTDATASERIALIZER_HPP
 
-#include <opentelemetry/sdk/metrics/data/point_data.h>
-
 #include <base/json.hpp>
 
-#include <metrics/ot.hpp>
+#include "ot.hpp"
 
 namespace metrics::details
 {
@@ -15,7 +13,7 @@ namespace metrics::details
  * @param pointData
  * @return json::Json
  */
-inline json::Json pointDataToJson(const ot::SumPointData pointData)
+inline json::Json pointDataToJson(const otsdk::SumPointData pointData)
 {
     json::Json jsonPoint;
     if (pointData.is_monotonic_)
@@ -43,7 +41,7 @@ inline json::Json pointDataToJson(const ot::SumPointData pointData)
  * @param pointData
  * @return json::Json
  */
-inline json::Json pointDataToJson(const ot::LastValuePointData pointData)
+inline json::Json pointDataToJson(const otsdk::LastValuePointData pointData)
 {
     json::Json jsonPoint;
     if (std::holds_alternative<int64_t>(pointData.value_))
@@ -71,7 +69,7 @@ inline json::Json pointDataToJson(const ot::LastValuePointData pointData)
  * @param pointData
  * @return json::Json
  */
-inline json::Json pointDataToJson(const ot::HistogramPointData pointData)
+inline json::Json pointDataToJson(const otsdk::HistogramPointData pointData)
 {
     json::Json jsonPoint;
     jsonPoint.setInt64(pointData.count_, "/count");
@@ -133,7 +131,7 @@ inline json::Json pointDataToJson(const ot::HistogramPointData pointData)
  * @param pointData
  * @return json::Json
  */
-inline json::Json pointDataToJson(const ot::DropPointData pointData)
+inline json::Json pointDataToJson(const otsdk::DropPointData pointData)
 {
     return json::Json {};
 }
@@ -144,14 +142,14 @@ inline json::Json pointDataToJson(const ot::DropPointData pointData)
  * @param pointData
  * @return json::Json
  */
-inline json::Json pointDataToJson(const ot::PointType& pointData)
+inline json::Json pointDataToJson(const otsdk::PointType& pointData)
 {
     switch (pointData.index())
     {
-        case 0: return pointDataToJson(std::get<ot::SumPointData>(pointData));
-        case 1: return pointDataToJson(std::get<ot::HistogramPointData>(pointData));
-        case 2: return pointDataToJson(std::get<ot::LastValuePointData>(pointData));
-        case 3: return pointDataToJson(std::get<ot::DropPointData>(pointData));
+        case 0: return pointDataToJson(std::get<otsdk::SumPointData>(pointData));
+        case 1: return pointDataToJson(std::get<otsdk::HistogramPointData>(pointData));
+        case 2: return pointDataToJson(std::get<otsdk::LastValuePointData>(pointData));
+        case 3: return pointDataToJson(std::get<otsdk::DropPointData>(pointData));
         default: throw std::runtime_error("Unsupported point data type");
     }
 }
