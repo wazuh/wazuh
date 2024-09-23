@@ -42,7 +42,6 @@ All notable changes to this project will be documented in this file.
 - Fixed requests logging to obtain the hash_auth_context from JWT tokens. ([#25764](https://github.com/wazuh/wazuh/pull/25764)) 
 - Enabled API to listen IPV4 and IPV6 stacks. ([#25216](https://github.com/wazuh/wazuh/pull/25216))
 
-
 ## [v4.9.0]
 
 ### Manager
