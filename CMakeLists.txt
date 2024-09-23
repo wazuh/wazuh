@@ -184,6 +184,7 @@ find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::api")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::sdk")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::logs")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics")
+find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::resources")
 
 find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
 find_and_create_imported_target("flatbuffers" "flatbuffers::flatbuffers")
