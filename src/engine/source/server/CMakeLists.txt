@@ -13,7 +13,7 @@ add_library(server STATIC
     ${ENGINE_SERVER_SOURCE_DIR}/protocolHandlers/wStream.cpp
 )
 
-target_link_libraries(server base libuv::uv_a api queue metrics)
+target_link_libraries(server base libuv::uv_a api queue)
 
 target_include_directories(server
     PUBLIC

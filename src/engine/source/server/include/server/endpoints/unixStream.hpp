@@ -4,8 +4,6 @@
 #include <atomic>
 #include <functional>
 
-#include <metrics/iMetricsManager.hpp>
-
 #include <server/endpoint.hpp>
 #include <server/protocolHandler.hpp>
 
@@ -33,19 +31,19 @@ private:
     std::size_t m_timeout;                             ///< Timeout for the connection in milliseconds
     std::shared_ptr<ProtocolHandlerFactory> m_factory; ///< Factory to create protocol handlers for each client
 
-    struct Metric
-    {
-        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;         ///< Metrics scope for the endpoint
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_totalRequest;    ///< Counter for the total requests
-        std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_responseTime;  ///< Histogram for the response time
-        std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_queueSize;     ///< Histogram for the queue size
-        std::shared_ptr<metricsManager::iCounter<int64_t>> m_connectedClients; ///< Counter for the current clients
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_serverBusy;      ///< Counter for the server busy
+    // struct Metric
+    // {
+    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;         ///< Metrics scope for the endpoint
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_totalRequest;    ///< Counter for the total requests
+    //     std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_responseTime;  ///< Histogram for the response time
+    //     std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_queueSize;     ///< Histogram for the queue size
+    //     std::shared_ptr<metricsManager::iCounter<int64_t>> m_connectedClients; ///< Counter for the current clients
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_serverBusy;      ///< Counter for the server busy
 
-        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta;     ///< Metrics scope for the endpoint rate
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_requestPerSecond; ///< Counter for the requests per second
-    };
-    Metric m_metric; ///< Metrics for the endpoint
+    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta;     ///< Metrics scope for the endpoint rate
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_requestPerSecond; ///< Counter for the requests per second
+    // };
+    // Metric m_metric; ///< Metrics for the endpoint
     /**
      * @brief Create a client
      *
@@ -115,15 +113,11 @@ public:
      *
      * @param address Path to the socket
      * @param factory Factory to create protocol handlers for each client
-     * @param metricsScope Metrics scope for the endpoint
-     * @param metricsScopeDelta Metrics scope for the endpoint rate
      * @param taskQueueSize Size of the queue of tasks to be processed by the thread pool
      * @param timeout Timeout for the connection in milliseconds
      */
     UnixStream(const std::string& address,
                std::shared_ptr<ProtocolHandlerFactory> factory,
-               std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-               std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                const std::size_t taskQueueSize = 0,
                std::size_t timeout = 5000);
     ~UnixStream();

@@ -50,6 +50,16 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
+#include <cmds/apiExcept.hpp>
+#include <cmds/catalog.hpp>
+#include <cmds/config.hpp>
+#include <cmds/geo.hpp>
+#include <cmds/graph.hpp>
+#include <cmds/kvdb.hpp>
+#include <cmds/policy.hpp>
+#include <cmds/router.hpp>
+#include <cmds/start.hpp>
+#include <cmds/tester.hpp>
 
 namespace
 {
@@ -92,7 +102,20 @@ int main(int argc, char* argv[])
         LOG_INFO("Logging initialized.");
     }
 
-    // Load the configuration
+    // Version
+    // TODO: Use cmake to set the version
+    app->set_version_flag("-v, --version", "Wazuh Engine v0.0.1");
+
+    // Configure each subcommand
+    cmd::server::configure(app);
+    cmd::tester::configure(app);
+    cmd::graph::configure(app);
+    cmd::kvdb::configure(app);
+    cmd::catalog::configure(app);
+    cmd::config::configure(app);
+    cmd::router::configure(app);
+    cmd::policy::configure(app);
+    cmd::geo::configure(app);
 
     auto confManager = conf::Conf(std::make_shared<conf::ApiLoader>());
     try
