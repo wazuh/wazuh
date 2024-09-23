@@ -246,4 +246,14 @@ struct fmt::formatter<DotPath> : formatter<std::string>
     }
 };
 
+// Make DotPath hashable
+namespace std
+{
+template<>
+struct hash<DotPath>
+{
+    std::size_t operator()(const DotPath& path) const { return std::hash<std::string> {}(path.str()); }
+};
+} // namespace std
+
 #endif // _DOT_PATH_HPP
