@@ -449,7 +449,9 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     putData["hash"] = std::move(fileHash);
     putData["topicName"] = topicName;
     UNIXSocketRequest::instance().put(
-        HttpUnixSocketURL(ONDEMAND_SOCK, std::move(putUrl)), std::move(putData), [](auto) {});
+        RequestParameters {.url = HttpUnixSocketURL(ONDEMAND_SOCK, putUrl), .data = putData},
+        PostRequestParameters {},
+        ConfigurationParameters {});
 
     // Trigger two more downloads that will be skipped.
     ASSERT_NO_THROW(action.runActionOnDemand(updateData));

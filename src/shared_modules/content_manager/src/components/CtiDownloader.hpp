@@ -212,19 +212,16 @@ protected:
         unsigned int sleepTime {0};
         unsigned int retryAttempt;
         auto lastErrorType {CtiErrorType::NO_ERROR};
-        auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
+        auto const& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
 
         while (!stopCondition->waitFor(std::chrono::seconds(sleepTime)))
         {
             try
             {
-                m_urlRequest.get(HttpURL(URL + queryParameters),
-                                 onSuccess,
-                                 onError,
-                                 outputFilepath,
-                                 DEFAULT_HEADERS,
-                                 {},
-                                 m_spUpdaterContext->spUpdaterBaseContext->httpUserAgent);
+                m_urlRequest.get(
+                    RequestParameters {.url = HttpURL(URL + queryParameters)},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError, .outputFile = outputFilepath},
+                    ConfigurationParameters {.userAgent = m_spUpdaterContext->spUpdaterBaseContext->httpUserAgent});
                 return;
             }
             catch (const cti_server_error& e)

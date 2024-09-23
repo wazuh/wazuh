@@ -377,6 +377,7 @@ const char *OSX_ReleaseName(int version) {
     /* 21 */ "Monterey",
     /* 22 */ "Ventura",
     /* 23 */ "Sonoma",
+    /* 24 */ "Sequoia",
     };
 
     version -= 10;

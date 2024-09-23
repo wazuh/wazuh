@@ -1,4 +1,4 @@
-name: Integration tests for FIM on Windows - Tier 0 and 1
+name: Integration tests for FIM on Windows - Tier 2
 
 on:
   workflow_dispatch:
@@ -90,5 +90,6 @@ jobs:
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
+          NET START wazuh
           cd C:\wazuh\tests\integration
           python -m pytest --tier 2 test_fim\

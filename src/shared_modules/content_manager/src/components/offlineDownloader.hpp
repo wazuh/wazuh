@@ -96,7 +96,9 @@ private:
                   "Downloading file from '%s' into '%s'",
                   inputFileURL.string().c_str(),
                   outputFilepath.string().c_str());
-        m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError, {}, {}, userAgent);
+        m_urlRequest.download(RequestParameters {.url = HttpURL(inputFileURL)},
+                              PostRequestParameters {.onError = onError, .outputFile = outputFilepath},
+                              ConfigurationParameters {.userAgent = userAgent});
         return returnCode;
     }
 

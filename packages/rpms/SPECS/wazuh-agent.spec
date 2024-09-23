@@ -766,7 +766,7 @@ rm -fr %{buildroot}
 %changelog
 * Tue Oct 01 2024 support <info@wazuh.com> - 4.10.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-10-0.html
-* Tue Jul 23 2024 support <info@wazuh.com> - 4.9.1
+* Thu Sep 26 2024 support <info@wazuh.com> - 4.9.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-1.html
 * Thu Sep 05 2024 support <info@wazuh.com> - 4.9.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-0.html

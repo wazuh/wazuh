@@ -20,6 +20,7 @@
 #endif
 
 static constexpr auto DEFAULT_INTERVAL = 60u;
+static constexpr auto IC_NAME {"indexer-connector"};
 
 class ServerSelector;
 class SecureCommunication;
