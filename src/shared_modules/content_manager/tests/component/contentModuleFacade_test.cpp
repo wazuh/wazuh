@@ -11,6 +11,8 @@
 
 #include "contentModuleFacade_test.hpp"
 #include "contentModuleFacade.hpp"
+#include "defer.hpp"
+#include "loggerHelper.h"
 #include "stringHelper.h"
 #include <filesystem>
 #include <memory>
@@ -189,9 +191,17 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndChangeSchedulerIntervalWithoutPr
 
     EXPECT_EQ(&contentModuleFacade, &ContentModuleFacade::instance());
 
-    EXPECT_NO_THROW(contentModuleFacade.start({}));
+    auto logCalled {false};
+    const auto logFunction {[&logCalled](const int level, ...)
+                            {
+                                logCalled = true;
+                                ASSERT_EQ(level, LOGLEVEL_DEBUG);
+                            }};
+    Log::assignLogFunction(logFunction);
+    DEFER([]() { Log::deassignLogFunction(); });
 
     EXPECT_NO_THROW(contentModuleFacade.changeSchedulerInterval(topicName, interval + 1));
+    EXPECT_TRUE(logCalled);
 
     std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
 
@@ -260,9 +270,17 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndStartOnDemandWithoutProvider)
 
     EXPECT_EQ(&contentModuleFacade, &ContentModuleFacade::instance());
 
-    EXPECT_NO_THROW(contentModuleFacade.start({}));
+    auto logCalled {false};
+    const auto logFunction {[&logCalled](const int level, ...)
+                            {
+                                logCalled = true;
+                                ASSERT_EQ(level, LOGLEVEL_DEBUG);
+                            }};
+    Log::assignLogFunction(logFunction);
+    DEFER([]() { Log::deassignLogFunction(); });
 
     EXPECT_NO_THROW(contentModuleFacade.startOndemand(topicName));
+    EXPECT_TRUE(logCalled);
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -333,9 +351,17 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndStartSchedulingWithoutProvider)
 
     EXPECT_EQ(&contentModuleFacade, &ContentModuleFacade::instance());
 
-    EXPECT_NO_THROW(contentModuleFacade.start({}));
+    auto logCalled {false};
+    const auto logFunction {[&logCalled](const int level, ...)
+                            {
+                                logCalled = true;
+                                ASSERT_EQ(level, LOGLEVEL_DEBUG);
+                            }};
+    Log::assignLogFunction(logFunction);
+    DEFER([]() { Log::deassignLogFunction(); });
 
     EXPECT_NO_THROW(contentModuleFacade.startScheduling(topicName, interval));
+    EXPECT_TRUE(logCalled);
 
     std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
 

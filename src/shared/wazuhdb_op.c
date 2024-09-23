@@ -18,7 +18,7 @@
  * @return Socket descriptor or -1 if error.
  */
 int wdbc_connect() {
-    return wdbc_connect_with_attempts(3);
+    return wdbc_connect_with_attempts(5);
 }
 
 /**

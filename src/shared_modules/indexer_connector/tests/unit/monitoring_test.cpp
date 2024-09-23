@@ -16,14 +16,7 @@
 #include <thread>
 
 // Healt check interval for the servers
-constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {5u};
-
-namespace Log
-{
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
-        GLOBAL_LOG_FUNCTION;
-}; // namespace Log
+constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {1u};
 
 /**
  * @brief Test instantiation and check the availability of valid servers.
@@ -33,45 +26,50 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
 {
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
-
-    std::vector<std::string> serverLogs;
-    Log::assignLogFunction(
-        [&](const int,
-            const std::string& tag,
-            const std::string& file,
-            const int line,
-            const std::string&,
-            const std::string& str,
-            va_list args)
-        {
-            char formattedStr[MAXLEN] = {0};
-            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
-            serverLogs.emplace_back(formattedStr);
-        });
+    const auto hostYellowServer {m_servers.at(2)};
+    const auto hostGreenServerWithDelay {m_servers.at(3)};
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
-    // All servers are available the first time.
+    // All servers have their corresponding status the first time
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
+    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
+    EXPECT_TRUE(m_monitoring->isAvailable(hostYellowServer));
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
-
-    // Only two log messages are expected.
-    EXPECT_EQ(serverLogs.size(), 2);
-    EXPECT_TRUE(std::find(serverLogs.begin(),
-                          serverLogs.end(),
-                          "Cluster health status 'green' for server 'http://localhost:9209'") != serverLogs.end());
-    EXPECT_TRUE(std::find(serverLogs.begin(),
-                          serverLogs.end(),
-                          "Cluster health status 'red' for server 'http://localhost:9210'") != serverLogs.end());
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
     // It's true because the green server is available
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
 
     // It's false because the red server isn't available
     EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
+
+    // It's false because the yellow server isn't available
+    EXPECT_TRUE(m_monitoring->isAvailable(hostYellowServer));
+
+    // It's true because the green server is available
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
+}
+
+/**
+ * @brief Test a slow server.
+ *
+ */
+TEST_F(MonitoringTest, TestSlowServer)
+{
+    const auto hostGreenServerWithDelay {m_servers.at(3)};
+
+    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+
+    // It's true because the green server is available
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
+
+    // Wait for the first health check to finish + the delay of the server
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2 + 20));
+
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
 }
 
 /**
@@ -87,63 +85,23 @@ TEST_F(MonitoringTest, TestInstantiationWithoutServers)
 }
 
 /**
- * @brief Test instantiation and check the availability of an invalid server.
- *
- */
-TEST_F(MonitoringTest, TestInvalidServer)
-{
-    const auto invalidServer {"http://localhost:9400"};
-
-    m_servers.clear();
-    m_servers.emplace_back(invalidServer);
-
-    std::string logMessage;
-    Log::assignLogFunction(
-        [&](const int,
-            const std::string& tag,
-            const std::string& file,
-            const int line,
-            const std::string&,
-            const std::string& str,
-            va_list args)
-        {
-            char formattedStr[MAXLEN] = {0};
-            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
-            logMessage = formattedStr;
-        });
-
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
-
-    // All servers are available the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
-
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
-
-    EXPECT_STREQ(logMessage.c_str(), "Could not connect to server. Status code: -1");
-
-    // It's false because the server isn't valid
-    EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
-}
-
-/**
  * @brief Test instantiation and check the availability of an unregistered server.
  *
  */
 TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 {
-    const auto unregisteredServer {"http://localhost:9400"};
+    const auto unregisteredServer {"http://localhost:1000"};
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
-    // All servers are available the first time
+    // All servers have their corresponding status the first time
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
+    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
     // It's true because the green server is available
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
@@ -156,43 +114,26 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 }
 
 /**
- * @brief Test instantiation and check the bad response of a server.
+ * @brief Test instantiation and check an HTTP error.
  *
  */
 TEST_F(MonitoringTest, TestHTTPError)
 {
-    const auto invalidServer {"http://localhost:9211"};
+    const auto errorServer {"http://localhost:9400"};
 
     m_servers.clear();
-    m_servers.emplace_back(invalidServer);
-
-    std::string logMessage;
-    Log::assignLogFunction(
-        [&](const int,
-            const std::string& tag,
-            const std::string& file,
-            const int line,
-            const std::string&,
-            const std::string& str,
-            va_list args)
-        {
-            char formattedStr[MAXLEN] = {0};
-            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
-            logMessage = formattedStr;
-        });
+    m_servers.emplace_back(errorServer);
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
-    // All servers are available the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
+    // All servers have their corresponding status the first time
+    EXPECT_FALSE(m_monitoring->isAvailable(errorServer));
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
-
-    EXPECT_STREQ(logMessage.c_str(), "HTTP response code said error. Status code: 503");
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
     // It's false because the server isn't valid
-    EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
+    EXPECT_FALSE(m_monitoring->isAvailable(errorServer));
 }
 
 /**
@@ -201,36 +142,19 @@ TEST_F(MonitoringTest, TestHTTPError)
  */
 TEST_F(MonitoringTest, TestBadResponseFromServer)
 {
-    const auto invalidServer {"http://localhost:9212"};
+    const auto badResponseServer {"http://localhost:9500"};
 
     m_servers.clear();
-    m_servers.emplace_back(invalidServer);
-
-    std::string logMessage;
-    Log::assignLogFunction(
-        [&](const int,
-            const std::string& tag,
-            const std::string& file,
-            const int line,
-            const std::string&,
-            const std::string& str,
-            va_list args)
-        {
-            char formattedStr[MAXLEN] = {0};
-            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
-            logMessage = formattedStr;
-        });
+    m_servers.emplace_back(badResponseServer);
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
-    // All servers are available the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
+    // All servers have their corresponding status the first time
+    EXPECT_FALSE(m_monitoring->isAvailable(badResponseServer));
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
-
-    EXPECT_STREQ(logMessage.c_str(), "Invalid response from /_cat/health?v: Wrong response message from server");
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
     // It's false because the server isn't valid
-    EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
+    EXPECT_FALSE(m_monitoring->isAvailable(badResponseServer));
 }

@@ -443,13 +443,7 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     ASSERT_NO_THROW(action.runActionOnDemand(updateData));
 
     // Update hash.
-    std::string putUrl {"http://localhost/hash"};
     auto fileHash {Utils::asciiToHex(Utils::hashFile(INPUT_FILES_DIR / SAMPLE_TXT_FILENAME))};
-    nlohmann::json putData;
-    putData["hash"] = std::move(fileHash);
-    putData["topicName"] = topicName;
-    UNIXSocketRequest::instance().put(
-        HttpUnixSocketURL(ONDEMAND_SOCK, std::move(putUrl)), std::move(putData), [](auto) {});
 
     // Trigger two more downloads that will be skipped.
     ASSERT_NO_THROW(action.runActionOnDemand(updateData));

@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.9.1]
 
+### Manager
+
+#### Fixed
+
+- Fixed vulnerability detector issue where RPM upgrade wouldn't download new content. ([#24909](https://github.com/wazuh/wazuh/pull/24909))
+- Fixed uncaught exception at Keystore test tool. ([#25667](https://github.com/wazuh/wazuh/pull/25667))
+- Replaced `eval` calls with `ast.literal_eval`. ([#25705](https://github.com/wazuh/wazuh/pull/25705))
+
+#### Changed
+
+- Improved provisioning method for wazuh-keystore to enhance security. ([#24110](https://github.com/wazuh/wazuh/issues/24110))
+
+### Agent
+
+#### Added
+
+- Added support for macOS 15 "Sequoia" in Wazuh Agent. ([#25652](https://github.com/wazuh/wazuh/issues/25652))
+
+#### Fixed
+
+- Fixed agent crash on Windows version 4.8.0. ([#24910](https://github.com/wazuh/wazuh/pull/24910))
+- Fixed data race conditions at FIM's `run_check`. ([#25209](https://github.com/wazuh/wazuh/pull/25209))
+- Fixed Windows agent crashes related to `syscollector.dll`. ([#24376](https://github.com/wazuh/wazuh/issues/24376))
+- Fixed errors related to 'libatomic.a' library on AIX 7.X. ([#25445](https://github.com/wazuh/wazuh/pull/25445))
+- Fixed errors in Windows Agent: `EvtFormatMessage` returned errors 15027 and 15033. ([#24932](https://github.com/wazuh/wazuh/pull/24932))
+- Fixed FIM issue where it couldn't fetch group entries longer than 1024 bytes. ([#25459](https://github.com/wazuh/wazuh/pull/25459))
+- Fixed Wazuh Agent crash at `syscollector`. ([#25469](https://github.com/wazuh/wazuh/pull/25469))
+- Fixed a bug in the processed dates in the AWS module related to the AWS Config type. ([#23528](https://github.com/wazuh/wazuh/pull/23528))
+- Fixed an error in Custom Logs Buckets when parsing a CSV file that exceeds a certain size. ([#24694](https://github.com/wazuh/wazuh/pull/24694))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed requests logging to obtain the hash_auth_context from JWT tokens. ([#25764](https://github.com/wazuh/wazuh/pull/25764)) 
+- Enabled API to listen IPV4 and IPV6 stacks. ([#25216](https://github.com/wazuh/wazuh/pull/25216))
+
 ## [v4.9.0]
 
 ### Manager
@@ -15,7 +52,6 @@ All notable changes to this project will be documented in this file.
 - Added missing functionality for vulnerability scanner translations. ([#23518](https://github.com/wazuh/wazuh/issues/23518))
 - Improved performance for vulnerability scanner translations. ([#23722](https://github.com/wazuh/wazuh/pull/23722))
 - Enhanced vulnerability scanner logging to be more expressive. ([#24536](https://github.com/wazuh/wazuh/pull/24536))
-- The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
 - Added the HAProxy helper to manage load balancer configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
 - Added a validation to avoid killing processes from external services. ([#23222](https://github.com/wazuh/wazuh/pull/23222))
 - Enabled ceritificates validation in the requests to the HAProxy helper using the default CA bundle. ([#23996](https://github.com/wazuh/wazuh/pull/23996))
@@ -52,7 +88,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Windows agent to delete wazuh-agent.state file when stopped. ([#20425](https://github.com/wazuh/wazuh/pull/20425))
 - Fixed Windows Agent 4.8.0 permission errors on Windows 11 after upgrade. ([#20727](https://github.com/wazuh/wazuh/pull/20727))
 - Fixed alerts are created when syscheck diff DB is full. ([#16487](https://github.com/wazuh/wazuh/pull/16487))
-- Fixed Wazuh deb uninstallation to remove non-config files. ([#2195](https://github.com/wazuh/wazuh/pull/2195))
+- Fixed Wazuh deb uninstallation to remove non-config files. ([#2195](https://github.com/wazuh/wazuh-packages/issues/2195))
 - Fixed improper Windows agent ACL on non-default installation directory. ([#23273](https://github.com/wazuh/wazuh/pull/23273))
 - Fixed socket configuration of an agent is displayed. ([#17664](https://github.com/wazuh/wazuh/pull/17664))
 - Fixed wazuh-modulesd printing child process not found error. ([#18494](https://github.com/wazuh/wazuh/pull/18494))

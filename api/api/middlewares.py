@@ -38,6 +38,9 @@ UNKNOWN_USER_STRING = "unknown_user"
 RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
 LOGIN_ENDPOINT = '/security/user/authenticate'
 
+# Authentication context hash key
+HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
+
 # API secure headers
 server = Server().set("Wazuh")
 csp = ContentSecurityPolicy().set('none')
@@ -70,6 +73,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     # first time the json function is awaited. This check avoids raising an
     # exception when the request json content is invalid.
     body = await request.json() if hasattr(request, '_json') else {}
+    hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
 
     if 'password' in query:
         query['password'] = '****'
@@ -91,11 +95,11 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                             audience='Wazuh API REST',
                             options={'verify_exp': False})
                 user = s['sub']
+                if HASH_AUTH_CONTEXT_KEY in s:
+                    hash_auth_context = s[HASH_AUTH_CONTEXT_KEY]
         except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
             user = UNKNOWN_USER_STRING
 
-    # Get or create authorization context hash
-    hash_auth_context = context.get('token_info', {}).get('hash_auth_context', '')
     # Create hash if run_as login
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
