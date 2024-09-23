@@ -14,7 +14,6 @@ def test_send_event(id_mock, queue_mock):
     expected_uid = 1234
 
     id_mock.return_value = expected_uid
-    queue_mock.send_to_mux.return_value = expected_uid
 
     result_uid = batcher.send_event(event)
     queue_mock.send_to_mux.assert_called_once_with(result_uid, event)

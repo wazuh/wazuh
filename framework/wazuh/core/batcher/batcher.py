@@ -26,13 +26,13 @@ class Batcher:
 
     Parameters
     ----------
-    queue : MuxDemuxQueue
+    mux_demux_queue : MuxDemuxQueue
         MuxDemuxQueue instance for message multiplexing and demultiplexing.
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
-    def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig):
-        self.q: MuxDemuxQueue = queue
+    def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
+        self.q: MuxDemuxQueue = mux_demux_queue
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
         self._timer: TimerManager = TimerManager(max_time_seconds=config.max_time_seconds)
         self._shutdown_event: Optional[asyncio.Event] = None
@@ -179,19 +179,19 @@ class BatcherProcess(Process):
 
     Parameters
     ----------
-    queue : MuxDemuxQueue
+    mux_demux_queue : MuxDemuxQueue
         MuxDemuxQueue instance for message multiplexing and demultiplexing.
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
-    def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig):
+    def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
         super().__init__()
-        self.queue = queue
+        self.queue = mux_demux_queue
         self.config = config
 
     def run(self):
         """
         Initialize and run a Batcher instance in the process. This method is called when the process is started.
         """
-        batcher = Batcher(queue=self.queue, config=self.config)
+        batcher = Batcher(mux_demux_queue=self.queue, config=self.config)
         asyncio.run(batcher.run())

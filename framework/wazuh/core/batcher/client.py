@@ -37,7 +37,6 @@ class BatcherClient:
         self.queue.send_to_mux(assigned_uid, event)
         return assigned_uid
 
-
     async def get_response(self, uid: int) -> Optional[dict]:
         """Asynchronously wait for a response to become available and retrieve it.
 

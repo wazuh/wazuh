@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from unittest.mock import patch
 from framework.wazuh.core.batcher.timer import TimerManager
 
