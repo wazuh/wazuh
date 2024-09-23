@@ -24,7 +24,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.results import WazuhResult
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
-                  'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'], 'hidden': 'no'}
+                  'key': '', 'port': 1516, 'bind_addr': 'localhost', 'nodes': ['127.0.0.1'], 'hidden': 'no'}
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)

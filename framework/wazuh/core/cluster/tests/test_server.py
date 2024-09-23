@@ -611,7 +611,7 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
         patch.object(logger, "error") as mock_logger, \
         patch("ssl.create_default_context", return_value=ssl_mock), \
         patch.object(ssl_mock, "load_cert_chain"):
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3007 .*'):
             abstract_server = AbstractServer(
                 performance_test=1,
                 concurrency_test=2,
@@ -631,4 +631,3 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
                 logger=logger
             )
             await abstract_server.start()
-            mock_logger.assert_called_once_with("Could not start master: ")

@@ -9121,7 +9121,7 @@ paths:
                     - node_name: master-node
                       node_type: master
                       port: 1516
-                      bind_addr: 0.0.0.0
+                      bind_addr: localhost
                       nodes:
                         - wazuh-master
                       hidden: "no"
@@ -9941,7 +9941,7 @@ paths:
                         node_name: "master-node"
                         node_type: "master"
                         port: "1516"
-                        bind_addr: "0.0.0.0"
+                        bind_addr: "localhost"
                         nodes:
                           - "wazuh-master"
                         hidden: "no"
@@ -12466,7 +12466,7 @@ paths:
                       node_name: master-node
                       node_type: master
                       port: 1516
-                      bind_addr: "0.0.0.0"
+                      bind_addr: "localhost"
                       nodes:
                         - wazuh-master
                       hidden: no
