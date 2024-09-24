@@ -21,6 +21,14 @@
 #include <thread>
 
 constexpr auto UNLIMITED_QUEUE_SIZE = 0;
+constexpr uint8_t SINGLE_THREAD = 1;
+constexpr uint8_t MULTI_THREAD = 3;
+
+enum class ThreadEventDispatcherType
+{
+    SINGLE_THREADED_ORDERED,
+    MULTI_THREADED_UNORDERED
+};
 
 template<typename T,
          typename U,
@@ -30,22 +38,19 @@ template<typename T,
 class TThreadEventDispatcher
 {
 public:
-    explicit TThreadEventDispatcher(Functor functor,
-                                    const std::string& dbPath,
-                                    const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-                                    const uint8_t numberOfThreads = 1)
+    explicit TThreadEventDispatcher(
+        Functor functor,
+        const std::string& dbPath,
+        const uint64_t bulkSize = 1,
+        const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+        const ThreadEventDispatcherType numberOfThreads = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_numberOfThreads {numberOfThreads}
+        , m_numberOfThreads {numberOfThreads == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
+                                                                                                    : SINGLE_THREAD}
     {
-        if (m_numberOfThreads <= 0)
-        {
-            throw std::invalid_argument("Number of threads must be greater than 0.");
-        }
-
         m_threads.reserve(m_numberOfThreads);
 
         for (unsigned int i = 0; i < m_numberOfThreads; ++i)
@@ -55,19 +60,17 @@ public:
         }
     }
 
-    explicit TThreadEventDispatcher(const std::string& dbPath,
-                                    const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-                                    const uint8_t numberOfThreads = 1)
+    explicit TThreadEventDispatcher(
+        const std::string& dbPath,
+        const uint64_t bulkSize = 1,
+        const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+        const ThreadEventDispatcherType numberOfThreads = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_numberOfThreads {numberOfThreads}
+        , m_numberOfThreads {numberOfThreads == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
+                                                                                                    : SINGLE_THREAD}
     {
-        if (m_numberOfThreads <= 0)
-        {
-            throw std::invalid_argument("Number of threads must be greater than 0.");
-        }
     }
 
     TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
@@ -179,12 +182,12 @@ private:
         while (m_running)
         {
             // If only one thread is used, process the queue in a single-threaded, ordered manner
-            if (m_numberOfThreads == 1)
+            if (m_numberOfThreads == SINGLE_THREAD)
             {
                 singleAndOrdered();
             }
             // If multiple threads are used, process the queue in a multi-threaded, unordered manner
-            else if (m_numberOfThreads > 1)
+            else if (m_numberOfThreads > SINGLE_THREAD)
             {
                 multiAndUnordered();
             }

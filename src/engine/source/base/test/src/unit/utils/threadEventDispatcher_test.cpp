@@ -9,8 +9,23 @@
  * Foundation.
  */
 
-#include "threadEventDispatcher_test.hpp"
-#include "threadEventDispatcher.hpp"
+#include "base/utils/rocksDBQueue.hpp"
+#include "base/utils/threadEventDispatcher.hpp"
+#include "base/utils/threadSafeMultiQueue.hpp"
+// #include "base/utils/threadSafeQueue.hpp"
+#include <future>
+#include <gtest/gtest.h>
+#include <memory>
+#include <thread>
+
+class ThreadEventDispatcherTest : public ::testing::Test
+{
+protected:
+    ThreadEventDispatcherTest() = default;
+    ~ThreadEventDispatcherTest() override = default;
+    void SetUp() override;
+    void TearDown() override;
+};
 
 auto constexpr TEST_DB = "test.db";
 
@@ -95,7 +110,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThread)
             TEST_DB,
             BULK_SIZE,
             UNLIMITED_QUEUE_SIZE,
-            NUM_THREADS);
+            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
 
         for (int i = 0; i < MESSAGES_TO_SEND; ++i)
         {
@@ -152,7 +167,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
             TEST_DB,
             10,
             UNLIMITED_QUEUE_SIZE,
-            NUM_THREADS);
+            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
@@ -183,9 +198,9 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeMultiQu
                            rocksdb::PinnableSlice,
                            std::function<void(rocksdb::PinnableSlice&)>,
                            RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>,
-                           Utils::TSafeMultiQueue<rocksdb::Slice,
-                                                  rocksdb::PinnableSlice,
-                                                  RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>
+                           base::utils::queue::TSafeMultiQueue<rocksdb::Slice,
+                                                               rocksdb::PinnableSlice,
+                                                               RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>
         dispatcher(
             [&](rocksdb::PinnableSlice& element)
             {
@@ -215,7 +230,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeMultiQu
             TEST_DB,
             10,
             UNLIMITED_QUEUE_SIZE,
-            NUM_THREADS);
+            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
