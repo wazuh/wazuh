@@ -8,15 +8,16 @@
 namespace metrics::mocks
 {
 
-template<typename T>
-class MockBaseMetric : public BaseMetric<T>
+class MockMetric : public IMetric
 {
 public:
-    MOCK_METHOD(void, create, (), (override));
-    MOCK_METHOD(void, enable, (), (override));
-    MOCK_METHOD(void, disable, (), (override));
-    MOCK_METHOD(bool, isEnabled, (), (const, override));
-    MOCK_METHOD(void, update, (T value), (override));
+    MOCK_METHOD(void, mockUpdate, ());
+
+    template<typename T>
+    void update(T value)
+    {
+        mockUpdate();
+    }
 };
 
 } // namespace metrics::mocks
