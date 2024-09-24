@@ -5,6 +5,8 @@
 #include <fmt/format.h>
 
 #include "exporter/indexerMetricsExporter.hpp"
+#include "managerImpl.hpp"
+#include "metric/allMetrics.hpp"
 #include "metric/metric.hpp"
 #include "ot.hpp"
 #include "otLogger.hpp"
@@ -27,7 +29,7 @@ otsdk::internal_log::LogLevel convertLogLevel(logging::Level level)
     }
 }
 
-std::shared_ptr<ManagedMetric>
+std::shared_ptr<Manager::ImplMetric>
 createMetric(MetricType metricType, std::string&& name, std::string&& desc, std::string&& unit)
 {
     switch (metricType)
@@ -45,7 +47,12 @@ createMetric(MetricType metricType, std::string&& name, std::string&& desc, std:
 namespace metrics
 {
 
-void Manager::validateConfig(const std::shared_ptr<ManagerConfig>& config)
+bool Manager::unsafeEnabled() const
+{
+    return m_otPipeline != nullptr;
+}
+
+void Manager::validateConfig(const std::shared_ptr<ImplConfig>& config)
 {
     if (!config->indexerConnectorFactory)
     {
@@ -76,7 +83,7 @@ void Manager::validateConfig(const std::shared_ptr<ManagerConfig>& config)
 
 void Manager::unsafeConfigure(const std::shared_ptr<Config>& config)
 {
-    if (m_enabled)
+    if (unsafeEnabled())
     {
         throw std::runtime_error(
             "Cannot configure manager while it is enabled, use reload with new configuration instead");
@@ -87,23 +94,23 @@ void Manager::unsafeConfigure(const std::shared_ptr<Config>& config)
         throw std::runtime_error("Configuration cannot be null");
     }
 
-    auto managerConfig = std::dynamic_pointer_cast<ManagerConfig>(config);
+    auto managerConfig = std::dynamic_pointer_cast<ImplConfig>(config);
     if (!managerConfig)
     {
-        throw std::runtime_error("Configuration must be of type ManagerConfig");
+        throw std::runtime_error("Configuration must be of type ImplConfig");
     }
 
     validateConfig(managerConfig);
 
-    m_config = *managerConfig;
+    m_config = std::make_unique<ImplConfig>(*managerConfig);
 
     LOG_INFO("Metrics manager configured successfully");
 }
 
-void Manager::createOtPipeline()
+void Manager::unsafeCreateOtPipeline()
 {
     std::call_once(LOGGER_FLAG,
-                   [level = m_config.logLevel]()
+                   [level = m_config->logLevel]()
                    {
                        otsdk::internal_log::GlobalLogHandler::SetLogLevel(convertLogLevel(level));
                        otsdk::internal_log::GlobalLogHandler::SetLogHandler(
@@ -111,12 +118,12 @@ void Manager::createOtPipeline()
                    });
 
     // Exporter
-    auto exporter = std::make_unique<IndexerMetricsExporter>(m_config.indexerConnectorFactory());
+    auto exporter = std::make_unique<IndexerMetricsExporter>(m_config->indexerConnectorFactory());
 
     // Reader
     auto readerOptions = otsdk::PeriodicExportingMetricReaderOptions();
-    readerOptions.export_interval_millis = std::chrono::milliseconds(m_config.exportInterval);
-    readerOptions.export_timeout_millis = std::chrono::milliseconds(m_config.exportTimeout);
+    readerOptions.export_interval_millis = std::chrono::milliseconds(m_config->exportInterval);
+    readerOptions.export_timeout_millis = std::chrono::milliseconds(m_config->exportTimeout);
     auto reader = std::make_shared<otsdk::PeriodicExportingMetricReader>(
         std::unique_ptr<otsdk::PushMetricExporter>(std::move(exporter)), readerOptions);
 
@@ -124,81 +131,73 @@ void Manager::createOtPipeline()
     auto provider = std::make_shared<otsdk::MeterProvider>();
     provider->AddMetricReader(reader);
 
-    // Set the global provider
-    otapi::Provider::SetMeterProvider(otapi::shared_ptr<otsdk::MeterProvider>(std::move(provider)));
+    // Save the pipeline
+    m_otPipeline = std::make_unique<ImplOtPipeline>();
+    m_otPipeline->provider = provider;
+
+    // Create all metrics
+    for (const auto& [name, metric] : m_metrics)
+    {
+        metric->create(*m_otPipeline);
+    }
 }
 
-void Manager::destroyOtPipeline()
+void Manager::unsafeDestroyOtPipeline()
 {
-    auto nullProvider = otapi::shared_ptr<otsdk::MeterProvider>(nullptr);
-    otapi::Provider::SetMeterProvider(std::move(nullProvider));
+    // Destroy all metrics first
+    for (const auto& [name, metric] : m_metrics)
+    {
+        metric->destroy();
+    }
+
+    // Implicitly destroy the reader and provider
+    m_otPipeline.reset();
 }
 
 void Manager::unsafeEnable()
 {
-    if (m_enabled)
+    if (unsafeEnabled())
     {
         throw std::runtime_error("Metrics manager is already enabled");
     }
 
     try
     {
-        createOtPipeline();
+        unsafeCreateOtPipeline();
     }
     catch (const std::exception& e)
     {
         LOG_ERROR("Failed to create metrics internal pipeline: {}", e.what());
         throw;
     }
-    m_enabled = true;
 
     LOG_INFO("Metrics pipeline enabled successfully");
-
-    // Enable all metrics
-    for (const auto& [name, metric] : m_metrics)
-    {
-        try
-        {
-            metric->enable();
-            LOG_INFO("Metric '{}' enabled successfully", name);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_ERROR("Failed to enable metric '{}': {}", name, e.what());
-        }
-    }
 }
 
 void Manager::unsafeDisable()
 {
-    if (!m_enabled)
+    if (unsafeEnabled())
     {
-        return;
+        unsafeDestroyOtPipeline();
+        LOG_INFO("Metrics pipeline disabled successfully");
     }
+}
 
-    destroyOtPipeline();
-
-    // Logic to disable the manager
-    m_enabled = false;
-
-    LOG_INFO("Metrics pipeline disabled successfully");
-
-    // Disable all metrics
-    for (const auto& [name, metric] : m_metrics)
-    {
-        metric->disable();
-    }
+void Manager::configure(const std::shared_ptr<Config>& config)
+{
+    std::unique_lock lock(m_mutex);
+    unsafeConfigure(config);
 }
 
 std::shared_ptr<IMetric>
 Manager::addMetric(MetricType metricType, const DotPath& name, const std::string& desc, const std::string& unit)
 {
-    std::unique_lock lock(m_mutex);
     if (name.parts().size() != 2)
     {
         throw std::runtime_error("Invalid metric name, must follow the pattern 'module.metric'");
     }
 
+    std::unique_lock lock(m_mutex);
     if (m_metrics.find(name.str()) != m_metrics.end())
     {
         throw std::runtime_error(fmt::format("Metric '{}' already exists", name));
@@ -208,10 +207,9 @@ Manager::addMetric(MetricType metricType, const DotPath& name, const std::string
 
     m_metrics.emplace(name, metric);
 
-    if (m_enabled)
+    if (unsafeEnabled())
     {
-        metric->create();
-        metric->enable();
+        metric->create(*m_otPipeline);
     }
 
     return metric;
@@ -219,6 +217,11 @@ Manager::addMetric(MetricType metricType, const DotPath& name, const std::string
 
 std::shared_ptr<IMetric> Manager::getMetric(const DotPath& name) const
 {
+    if (name.parts().size() != 2)
+    {
+        throw std::runtime_error("Invalid metric name, must follow the pattern 'module.metric'");
+    }
+
     std::shared_lock lock(m_mutex);
     auto it = m_metrics.find(name);
     if (it == m_metrics.end())
@@ -229,16 +232,28 @@ std::shared_ptr<IMetric> Manager::getMetric(const DotPath& name) const
     return it->second;
 }
 
-void Manager::configure(const std::shared_ptr<Config>& config)
-{
-    std::unique_lock lock(m_mutex);
-    unsafeConfigure(config);
-}
-
 void Manager::enable()
 {
     std::unique_lock lock(m_mutex);
     unsafeEnable();
+}
+
+bool Manager::isEnabled() const
+{
+    std::shared_lock lock(m_mutex);
+    return unsafeEnabled();
+}
+
+bool Manager::isEnabled(const DotPath& name) const
+{
+    std::shared_lock lock(m_mutex);
+    if (!unsafeEnabled())
+    {
+        return false;
+    }
+
+    auto it = m_metrics.find(name.str());
+    return it != m_metrics.end() && it->second->isEnabled();
 }
 
 void Manager::disable()
@@ -250,13 +265,13 @@ void Manager::disable()
 void Manager::reload(const std::shared_ptr<Config>& newConfig)
 {
     std::unique_lock lock(m_mutex);
-    if (!m_enabled)
+    if (!unsafeEnabled())
     {
         unsafeConfigure(newConfig);
     }
     else
     {
-        auto backupConfig = std::make_shared<ManagerConfig>(m_config);
+        auto backupConfig = std::make_shared<ImplConfig>(*m_config);
 
         try
         {
@@ -290,35 +305,50 @@ void Manager::reload(const std::shared_ptr<Config>& newConfig)
 
 void Manager::enableModule(const DotPath& name)
 {
-    std::unique_lock lock(m_mutex);
     if (name.parts().size() != 1)
     {
         throw std::runtime_error("Invalid module name, must follow the pattern 'module'");
     }
 
+    std::unique_lock lock(m_mutex);
+    auto updated = 0;
     for (const auto& [metricName, metric] : m_metrics)
     {
         if (metricName.parts()[0] == name.parts()[0])
         {
             metric->enable();
+            updated++;
         }
+    }
+
+    if (updated == 0)
+    {
+        throw std::runtime_error(fmt::format("Module '{}' not found", name));
     }
 }
 
 void Manager::disableModule(const DotPath& name)
 {
-    std::unique_lock lock(m_mutex);
     if (name.parts().size() != 1)
     {
         throw std::runtime_error("Invalid module name, must follow the pattern 'module'");
     }
 
+    std::unique_lock lock(m_mutex);
+    auto updated = 0;
     for (const auto& [metricName, metric] : m_metrics)
     {
         if (metricName.parts()[0] == name.parts()[0])
         {
             metric->disable();
+            updated++;
         }
     }
+
+    if (updated == 0)
+    {
+        throw std::runtime_error(fmt::format("Module '{}' not found", name));
+    }
 }
+
 } // namespace metrics
