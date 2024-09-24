@@ -3,6 +3,7 @@
 
 #include <metrics/imetric.hpp>
 
+#include "metric/metric.hpp"
 #include "ot.hpp"
 
 namespace metrics
@@ -28,20 +29,16 @@ public:
 
     ~UIntHistogram() override = default;
 
-    void create() override
+    void otCreate(const Manager::ImplOtPipeline& otPipeline) override
     {
-        m_histogram = otapi::Provider::GetMeterProvider()
-                          ->GetMeter(DEFAULT_METER_NAME)
-                          ->CreateUInt64Histogram(m_name, m_description, m_unit);
+
+        m_histogram =
+            otPipeline.provider->GetMeter(DEFAULT_METER_NAME)->CreateUInt64Histogram(m_name, m_description, m_unit);
     }
 
-    void update(uint64_t value) override
-    {
-        if (m_enabled)
-        {
-            m_histogram->Record(value, otapi::RuntimeContext::GetCurrent());
-        }
-    }
+    void otDestroy() override { m_histogram.reset(); }
+
+    void otUpdate(uint64_t value) override { m_histogram->Record(value, otapi::RuntimeContext::GetCurrent()); }
 };
 
 } // namespace metrics

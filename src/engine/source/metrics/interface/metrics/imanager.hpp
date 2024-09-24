@@ -121,9 +121,9 @@ public:
  * @return IManager&
  * @throw std::runtime_error if the Manager is not instantiated.
  */
-inline IManager& getManager()
+inline IMetricsManager& getManager()
 {
-    return SingletonLocator::instance<IManager>();
+    return static_cast<IMetricsManager&>(SingletonLocator::instance<IManager>());
 }
 } // namespace metrics
 
