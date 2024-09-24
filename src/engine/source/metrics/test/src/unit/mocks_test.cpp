@@ -5,9 +5,9 @@
 
 using namespace metrics::mocks;
 
-TEST(MetricsTest, mocks)
+TEST(MockMetricsTest, mocks)
 {
     MockMetricsManager mockMetricsManager;
     MockManager mockManager;
-    MockBaseMetric<uint64_t> mockBaseMetric;
+    MockMetric mockMetric;
 }

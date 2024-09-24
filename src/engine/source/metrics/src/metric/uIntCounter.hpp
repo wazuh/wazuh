@@ -3,6 +3,7 @@
 
 #include <metrics/imetric.hpp>
 
+#include "metric/metric.hpp"
 #include "ot.hpp"
 
 namespace metrics
@@ -28,20 +29,15 @@ public:
 
     ~UIntCounter() override = default;
 
-    void create() override
+    void otCreate(const Manager::ImplOtPipeline& otPipeline) override
     {
-        m_counter = otapi::Provider::GetMeterProvider()
-                        ->GetMeter(DEFAULT_METER_NAME)
-                        ->CreateUInt64Counter(m_name, m_description, m_unit);
+        m_counter =
+            otPipeline.provider->GetMeter(DEFAULT_METER_NAME)->CreateUInt64Counter(m_name, m_description, m_unit);
     }
 
-    void update(uint64_t value) override
-    {
-        if (m_enabled)
-        {
-            m_counter->Add(value, otapi::RuntimeContext::GetCurrent());
-        }
-    }
+    void otDestroy() override { m_counter.reset(); }
+
+    void otUpdate(uint64_t value) override { m_counter->Add(value, otapi::RuntimeContext::GetCurrent()); }
 };
 
 } // namespace metrics

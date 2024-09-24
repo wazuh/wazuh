@@ -30,9 +30,7 @@ class BaseMetric;
  */
 class IMetric : public std::enable_shared_from_this<IMetric>
 {
-public:
-    virtual ~IMetric() = default;
-
+protected:
     /**
      * @brief Cast the metric to a specific type.
      *
@@ -52,6 +50,9 @@ public:
         return ptr;
     }
 
+public:
+    virtual ~IMetric() = default;
+
     /**
      * @brief Update the metric with a new value. Exact behavior depends on the derived metric type.
      *
@@ -63,84 +64,6 @@ public:
     {
         as<BaseMetric<T>>()->update(value);
     }
-};
-
-class ManagedMetric : public IMetric
-{
-protected:
-    bool m_enabled;
-    std::string m_name;
-    std::string m_description;
-    std::string m_unit;
-
-    ManagedMetric() = default;
-
-    ManagedMetric(std::string&& name, std::string&& description, std::string&& unit)
-        : m_enabled(false)
-        , m_name(std::move(name))
-        , m_description(std::move(description))
-        , m_unit(std::move(unit))
-    {
-    }
-
-    ManagedMetric(const ManagedMetric&) = delete;
-    ManagedMetric& operator=(const ManagedMetric&) = delete;
-    ManagedMetric(ManagedMetric&&) = delete;
-    ManagedMetric& operator=(ManagedMetric&&) = delete;
-
-public:
-    ~ManagedMetric() override = default;
-
-    virtual void create() = 0;
-
-    virtual void enable()
-    {
-        if (!m_enabled)
-        {
-            m_enabled = true;
-        }
-    }
-
-    virtual void disable()
-    {
-        if (m_enabled)
-        {
-            m_enabled = false;
-        }
-    }
-
-    virtual bool isEnabled() const { return m_enabled; }
-};
-
-/**
- * @brief Base metric interface.
- *
- * @tparam T Type of the value to update the metric with.
- */
-template<typename T>
-class BaseMetric : public ManagedMetric
-{
-protected:
-    BaseMetric() = default;
-
-    BaseMetric(std::string&& name, std::string&& description, std::string&& unit)
-        : ManagedMetric(std::move(name), std::move(description), std::move(unit))
-    {
-    }
-
-    BaseMetric(const BaseMetric&) = delete;
-    BaseMetric& operator=(const BaseMetric&) = delete;
-    BaseMetric(BaseMetric&&) = delete;
-    BaseMetric& operator=(BaseMetric&&) = delete;
-
-public:
-    static_assert(std::is_arithmetic_v<T>, "BaseMetric type must be arithmetic");
-    static_assert(std::is_same_v<T, uint64_t> || std::is_same_v<T, double>,
-                  "BaseMetric type must be uint64_t or double");
-
-    ~BaseMetric() override = default;
-
-    virtual void update(T value) = 0;
 };
 
 enum class MetricType

@@ -21,47 +21,32 @@ namespace metrics
 class Manager : public IManager
 {
 public:
-    struct ManagerConfig : public Config
-    {
-        ManagerConfig()
-            : indexerConnectorFactory(nullptr)
-            , exportInterval(1000)
-            , exportTimeout(333)
-            , logLevel(logging::Level::Err)
-        {
-        }
-        ~ManagerConfig() override = default;
-
-        std::function<std::shared_ptr<IIndexerConnector>()> indexerConnectorFactory;
-        std::chrono::milliseconds exportInterval;
-        std::chrono::milliseconds exportTimeout;
-        logging::Level logLevel;
-    };
+    struct ImplConfig;
+    struct ImplOtPipeline;
+    class ImplMetric;
 
 private:
-    bool m_enabled;
-    ManagerConfig m_config;
-    std::unordered_map<DotPath, std::shared_ptr<ManagedMetric>> m_metrics;
+    std::unique_ptr<ImplConfig> m_config;
+    std::unique_ptr<ImplOtPipeline> m_otPipeline;
+    std::unordered_map<DotPath, std::shared_ptr<ImplMetric>> m_metrics;
     mutable std::shared_mutex m_mutex;
 
-    void validateConfig(const std::shared_ptr<ManagerConfig>& config);
+    bool unsafeEnabled() const;
+
+    void validateConfig(const std::shared_ptr<ImplConfig>& config);
 
     void unsafeConfigure(const std::shared_ptr<Config>& config);
 
-    void createOtPipeline();
+    void unsafeCreateOtPipeline();
 
-    void destroyOtPipeline();
+    void unsafeDestroyOtPipeline();
 
     void unsafeEnable();
 
     void unsafeDisable();
 
 public:
-    Manager()
-        : m_enabled(false)
-        , m_config()
-    {
-    }
+    Manager() = default;
 
     Manager(const Manager&) = delete;
     Manager(Manager&&) = delete;
@@ -79,18 +64,9 @@ public:
 
     void enable() override;
 
-    bool isEnabled() const override { return m_enabled; }
+    bool isEnabled() const override;
 
-    bool isEnabled(const DotPath& name) const override
-    {
-        if (!m_enabled)
-        {
-            return false;
-        }
-
-        auto it = m_metrics.find(name.str());
-        return it != m_metrics.end() && it->second->isEnabled();
-    }
+    bool isEnabled(const DotPath& name) const override;
 
     void disable() override;
 
