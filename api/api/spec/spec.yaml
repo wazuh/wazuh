@@ -15213,7 +15213,7 @@ paths:
                       position: 0
                       details:
                         prematch:
-                          patten: ^{\\s*\"
+                          pattern: ^{\\s*\"
                         plugin_decoder: JSON_Decoder
                   total_affected_items: 182
                   total_failed_items: 0
