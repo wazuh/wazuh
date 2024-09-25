@@ -227,10 +227,11 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
             throw std::runtime_error(error);
         };
 
-        HTTPRequest::instance().post(
-            RequestParameters {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"), .data = postData.dump()},
-            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-            ConfigurationParameters {});
+        HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
+                                                        .data = postData.dump(),
+                                                        .secureCommunication = secureCommunication},
+                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                     ConfigurationParameters {});
     }
 
     // If the response have more than ELEMENTS_PER_QUERY elements, we need to scroll.
