@@ -112,19 +112,19 @@ def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: P
         bin_path = cpy_bin(env_path, bin_path)
         print("Engine binary copied.")
 
-        # print("Starting the engine...")
-        # engine_handler = EngineHandler(
-        #     bin_path.as_posix(), config_path.as_posix())
-        # engine_handler.start()
-        # print("Engine started.")
+        print("Starting the engine...")
+        engine_handler = EngineHandler(
+            bin_path.as_posix(), config_path.as_posix())
+        engine_handler.start()
+        print("Engine started.")
 
-        # # Load mmdbs
-        # load_mmdb(engine_handler, asn_path, "asn")
-        # load_mmdb(engine_handler, city_path, "city")
+        # Load mmdbs
+        load_mmdb(engine_handler, asn_path, "asn")
+        load_mmdb(engine_handler, city_path, "city")
 
-        # print("Stopping the engine...")
-        # engine_handler.stop()
-        # print("Engine stopped.")
+        print("Stopping the engine...")
+        engine_handler.stop()
+        print("Engine stopped.")
 
     except Exception as e:
         print(f"An error occurred: {e}")
