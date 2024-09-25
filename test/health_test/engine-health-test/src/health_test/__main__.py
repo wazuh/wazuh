@@ -5,9 +5,11 @@ from argparse import ArgumentParser, Namespace
 from health_test.metadata_validate import run as metadata_validate_run
 from health_test.schema_validate import run as schema_validate_run
 from health_test.mapping_validate import run as mapping_validate_run
+from health_test.event_processing import run as event_processing_run
 from health_test.initial_state import run as init_run
 from health_test.load_ruleset import run as load_ruleset_run
 from health_test.integration_validate import run as integration_validate_run
+from health_test.dynamic_mapping_validate import run as test_dynamic_mapping_validate
 from health_test.health_test import run as test_run
 
 
@@ -45,6 +47,13 @@ def parse_args() -> Namespace:
     mapping_validate_parser.add_argument('--integration', help='Specify integration name', required=False)
     mapping_validate_parser.set_defaults(func=mapping_validate_run)
 
+    # event processing subcommand
+    event_processing_validate_parser = subparsers.add_parser(
+        'event_processing_validate', help='Validates that each asset in the ruleset has processed at least one event')
+    event_processing_validate_parser.add_argument('-r', '--ruleset',
+                            help='Specify the path to the ruleset directory', required=True)
+    event_processing_validate_parser.set_defaults(func=event_processing_run)
+
     # init subcommand
     init_parser = subparsers.add_parser(
         'init', help='Initialize the test environment')
@@ -69,6 +78,15 @@ def parse_args() -> Namespace:
     load_ruleset_parser = subparsers.add_parser(
         'load_ruleset', help='Create the filters, load the integrations and add the assets to the policy')
     load_ruleset_parser.set_defaults(func=load_ruleset_run)
+
+    # dynamic mapping validate subcommand
+    dynamic_mapping_validate_parser = subparsers.add_parser(
+        'dynamic_mapping_validate', help='Verifies in the trace that the assets that resulted successful are added to wazuh.')
+    dynamic_mapping_validate_parser.add_argument(
+        '-i', '--integration', help='Specify the name of the integration to test, if not specified all integrations will be tested', default=None)
+    dynamic_mapping_validate_parser.add_argument(
+        '--skip', help='Skip the tests with the specified name', default=None)
+    dynamic_mapping_validate_parser.set_defaults(func=test_dynamic_mapping_validate)
 
     # test subcommand
     test_parser = subparsers.add_parser(

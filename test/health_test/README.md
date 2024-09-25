@@ -117,6 +117,23 @@ To evaluate the mapping in all integrations
 engine-health-test mapping_validate -r ruleset_dir
 ```
 
+### Event processing
+This tool validates that each asset in the ruleset has processed at least one event
+
+```bash
+usage: engine-health-test event_processing_validate [-h] -r RULESET
+
+options:
+  -h, --help            show this help message and exit
+  -r RULESET, --ruleset RULESET
+                        Specify the path to the ruleset directory
+```
+
+#### Use
+```bash
+engine-health-test event_processing_validate -r ruleset_dir
+```
+
 ## Running Dynamic Tests
 
 These tests need the engine to communicate with the API. Therefore each dynamic test starts its instance of the engine, performs the tests and then stops the engine.
@@ -193,6 +210,25 @@ options:
 To validate a particular integration
 ```bash
 engine-health-test -e health_test/environment load_ruleset
+```
+
+### Run
+This tool ingests events and verifies in the trace that the assets that resulted successful are added to wazuh.decoders or wazuh.rules
+```bash
+usage: engine-health-test dynamic_mapping_validate [-h] [-i INTEGRATION] [--skip SKIP]
+
+options:
+  -h, --help            show this help message and exit
+  -i INTEGRATION, --integration INTEGRATION
+                        Specify the name of the integration to test, if not specified all integrations will be
+                        tested
+  --skip SKIP           Skip the tests with the specified name
+```
+#### Usage
+```bash
+engine-health-test -e health_test/environment dynamic_mapping_validate
+# To run a specific test
+engine-health-test -e health_test/environment dynamic_mapping_validate -i windows
 ```
 
 
