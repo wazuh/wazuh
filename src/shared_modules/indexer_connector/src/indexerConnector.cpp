@@ -161,7 +161,7 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
 
         HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
                                                         .data = postData.dump(),
-                                                        secureCommunication = secureCommunication},
+                                                        .secureCommunication = secureCommunication},
                                      PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                      ConfigurationParameters {});
     }
