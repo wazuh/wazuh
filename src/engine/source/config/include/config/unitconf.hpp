@@ -108,7 +108,6 @@ private:
     T defaultValue;    ///< The default value of the configuration.
     UnitConfType type; ///< The type of the configuration.
 
-public:
     UConf(std::string_view env, const T& defaultValue)
         : env(env)
         , defaultValue(defaultValue)
@@ -117,6 +116,11 @@ public:
         {
             throw std::invalid_argument("The environment variable name cannot be empty.");
         }
+        setType();
+    }
+
+    void setType()
+    {
         if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>)
         {
             type = UnitConfType::INTEGER;
@@ -139,9 +143,13 @@ public:
         }
     }
 
+public:
+
     static std::shared_ptr<UConf<T>> make(std::string_view env, const T& defaultValue)
     {
-        return std::make_shared<UConf<T>>(env, defaultValue);
+        // Create an instance of UConf directly, bypassing make_shared since constructor is private
+        std::shared_ptr<UConf<T>> instance(new UConf<T>(env, defaultValue));
+        return instance;
     }
 
     const T& getDefaultValue() const { return defaultValue; }
