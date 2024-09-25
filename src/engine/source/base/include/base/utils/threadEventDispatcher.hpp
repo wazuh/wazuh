@@ -14,7 +14,6 @@
 
 #include "rocksDBQueue.hpp"
 #include "rocksDBQueueCF.hpp"
-#include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.hpp"
 #include <atomic>
 #include <iostream>
@@ -30,6 +29,13 @@ enum class ThreadEventDispatcherType
     MULTI_THREADED_UNORDERED
 };
 
+/**
+ * @brief Class in charge to dispatch events in a queue to be processed by a functor.
+ *
+ * The Functor function implemented by a caller method will be in charge to process the events
+ * and decide if any event throwing an exception should be reinserted to be processed later or discarded.
+ *
+ */
 template<typename T,
          typename U,
          typename Functor,
@@ -91,9 +97,6 @@ public:
 
     void push(const T& value)
     {
-        // static assert to avoid compilation
-        static_assert(!isTSafeMultiQueue, "This method is not supported for this queue type");
-
         if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
         {
             m_queue->push(value);
@@ -102,22 +105,13 @@ public:
 
     void push(std::string_view prefix, const T& value)
     {
-        // static assert to avoid compilation
-        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-
         if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
         {
             m_queue->push(prefix, value);
         }
     }
 
-    void clear(std::string_view prefix = "")
-    {
-        // static assert to avoid compilation
-        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-
-        m_queue->clear(prefix);
-    }
+    void clear(std::string_view prefix = "") { m_queue->clear(prefix); }
 
     void cancel()
     {
@@ -128,38 +122,16 @@ public:
 
     bool cancelled() const { return !m_running; }
 
-    size_t size() const
-    {
-        // static assert to avoid compilation
-        static_assert(!isTSafeMultiQueue, "This method is not supported for this queue type");
+    size_t size() const { return m_queue->size(); }
 
-        return m_queue->size();
-    }
-
-    size_t size(std::string_view prefix) const
-    {
-        // static assert to avoid compilation
-        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-
-        return m_queue->size(prefix);
-    }
+    size_t size(std::string_view prefix) const { return m_queue->size(prefix); }
 
     void postpone(std::string_view prefix, const std::chrono::seconds& time) noexcept
     {
-        // static assert to avoid compilation
-        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-
         m_queue->postpone(prefix, time);
     }
 
 private:
-    /**
-     * @brief Check if the queue type is a `TSafeMultiQueue`.
-     *
-     */
-    static constexpr bool isTSafeMultiQueue =
-        std::is_same_v<base::utils::queue::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>;
-
     /**
      * @brief Check if the queue type is a `TSafeQueue`.
      *
@@ -215,19 +187,10 @@ private:
                     m_queue->popBulk(size);
                 }
             }
-            else if constexpr (isTSafeMultiQueue)
-            {
-                std::pair<U, std::string> data = m_queue->front();
-                if (!data.second.empty())
-                {
-                    m_functor(data.first);
-                    m_queue->pop(data.second);
-                }
-            }
             else
             {
                 // static assert to avoid compilation for unsupported queue types
-                static_assert(isTSafeQueue || isTSafeMultiQueue, "This method is not supported for this queue type");
+                static_assert(isTSafeQueue, "This method is not supported for this queue type");
             }
         }
         catch (const std::exception& ex)
@@ -259,23 +222,15 @@ private:
                     m_functor(data);
                 }
             }
-            else if constexpr (isTSafeMultiQueue)
-            {
-                dataPair = m_queue->getAndPop();
-                if (!dataPair.second.empty())
-                {
-                    m_functor(dataPair.first);
-                }
-            }
             else
             {
                 // static assert to avoid compilation for unsupported queue types
-                static_assert(isTSafeQueue || isTSafeMultiQueue, "This method is not supported for this queue type");
+                static_assert(isTSafeQueue, "This method is not supported for this queue type");
             }
         }
         catch (const std::exception& ex)
         {
-            // Reinsert elements in the queue in case of exception on the functor.
+            // Reinsert elements in the queue in case the functor throws an exception.
             if constexpr (isTSafeQueue)
             {
                 while (!data.empty())
@@ -283,15 +238,6 @@ private:
                     m_queue->push(data.front());
                     data.pop();
                 }
-                std::cerr << "Dispatch handler error. Elements reinserted: " << ex.what() << "\n";
-            }
-            else if constexpr (isTSafeMultiQueue)
-            {
-                if (!dataPair.second.empty())
-                {
-                    m_queue->push(dataPair.second, dataPair.first);
-                }
-                std::cerr << "Dispatch handler error. Element reinserted: " << ex.what() << "\n";
             }
         }
     }
