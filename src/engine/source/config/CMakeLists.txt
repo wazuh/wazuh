@@ -1,11 +1,11 @@
-add_library(configuration STATIC
+add_library(conf STATIC
     src/config.cpp
 )
-target_include_directories(configuration
+target_include_directories(conf
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
-target_link_libraries(configuration base)
+target_link_libraries(conf base)
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -13,10 +13,10 @@ if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 
-add_executable(configuration_utest
+add_executable(conf_utest
     ${UNIT_SRC_DIR}/config_test.cpp
 )
-target_link_libraries(configuration_utest GTest::gtest_main configuration)
-gtest_discover_tests(configuration_utest)
+target_link_libraries(conf_utest GTest::gtest_main conf)
+gtest_discover_tests(conf_utest)
 
 endif(ENGINE_BUILD_TEST)
