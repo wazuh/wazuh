@@ -27,7 +27,6 @@ target_link_libraries(base
     PUBLIC
     fmt::fmt-header-only
     spdlog::spdlog
-    RocksDB::rocksdb
 )
 
 # Tests
@@ -72,6 +71,7 @@ target_link_libraries(base_utest
     PRIVATE
     base
     GTest::gtest_main
+    RocksDB::rocksdb
 )
 gtest_discover_tests(base_utest)
 
