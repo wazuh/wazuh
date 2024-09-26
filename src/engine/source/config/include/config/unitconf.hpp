@@ -4,7 +4,6 @@
 #include <functional>
 #include <optional>
 #include <string>
-#include <cxxabi.h>
 
 #include <fmt/format.h>
 
@@ -52,6 +51,13 @@ private:
         return ptr;
     }
 
+    /**
+     * @brief Cast the unit config to a specific type.
+     *
+     * @tparam T The type to cast to. Must be derived from BaseUnitConf.
+     * @throw std::runtime_error If the cast is not possible.
+     * @return std::shared_ptr<const BaseUnitConf> The casted config.
+     */
     template<typename T>
     std::shared_ptr<const T> as() const
     {
@@ -139,7 +145,7 @@ private:
         }
         else
         {
-            static_assert(false, "Invalid type");
+            throw std::invalid_argument(fmt::format("Invalid type '{}' for the configuration.", typeid(T).name()));
         }
     }
 
@@ -221,7 +227,7 @@ public:
         }
         else
         {
-            static_assert(false, "Invalid type");
+            throw std::invalid_argument(fmt::format("Invalid type '{}' for the configuration.", typeid(T).name()));
         }
     }
 
