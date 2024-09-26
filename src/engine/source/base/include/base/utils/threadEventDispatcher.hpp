@@ -32,7 +32,9 @@ enum class ThreadEventDispatcherType
 /**
  * @brief Class in charge to dispatch events in a queue to be processed by a functor.
  *
- * The Functor function implemented by a caller method will be in charge to process the events
+ * @note The Functor function implemented by a caller method will be in charge of processing the events. In case of an
+ * exception, all events that remain will be re-inserted into the queue, therefore, the Functor is responsible for
+ * handling the exceptions and dropping the events if necessary.
  * and decide if any event throwing an exception should be reinserted to be processed later or discarded.
  *
  */
@@ -49,13 +51,13 @@ public:
         const std::string& dbPath,
         const uint64_t bulkSize = 1,
         const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-        const ThreadEventDispatcherType numberOfThreads = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
+        const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_numberOfThreads {numberOfThreads == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
-                                                                                                    : SINGLE_THREAD}
+        , m_numberOfThreads {dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
+                                                                                                   : SINGLE_THREAD}
     {
         m_threads.reserve(m_numberOfThreads);
 
@@ -70,12 +72,12 @@ public:
         const std::string& dbPath,
         const uint64_t bulkSize = 1,
         const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-        const ThreadEventDispatcherType numberOfThreads = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
+        const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_numberOfThreads {numberOfThreads == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
-                                                                                                    : SINGLE_THREAD}
+        , m_numberOfThreads {dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
+                                                                                                   : SINGLE_THREAD}
     {
     }
 
