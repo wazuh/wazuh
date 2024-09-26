@@ -218,3 +218,246 @@ checks:
     rules:
       - "c:defaults read /Library/Preferences/com.apple.alf stealthenabled -> r:^1$|^2$"
       - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableStealthMode -> r:^1$|^2$|^true$"
+
+  # 2.3.1.1 Ensure AirDrop Is Disabled When Not Actively Transferring Files. (Automated) - Not Implemented
+  # 2.3.1.2 Ensure AirPlay Receiver Is Disabled. (Automated) - Not Implemented
+
+  # 2.3.2.1 Ensure Set Time and Date Automatically Is Enabled. (Automated)
+  - id: 34008
+    title: "Ensure Set Time and Date Automatically Is Enabled."
+    description: "Correct date and time settings are required for authentication protocols, file creation, modification dates, and log entries. Note: If your organization has internal time servers, enter them here. Enterprise mobile devices may need to use a mix of internal and external time servers. If multiple servers are required, use the Date & Time System Preference with each server separated by a space. Additional Note: The default Apple time server is time.apple.com. Variations include time.euro.apple.com. While it is certainly more efficient to use internal time servers, there is no reason to block access to global Apple time servers or to add a time.apple.com alias to internal DNS records. There are no reports that Apple gathers any information from NTP synchronization, as the computers already phone home to Apple for Apple services including iCloud use and software updates. Best practice is to allow DNS resolution to an authoritative time service for time.apple.com, preferably to connect to Apple servers, but local servers are acceptable as well."
+    rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
+    impact: "The timed service will periodically synchronize with named time servers and will make the computer time more accurate."
+    remediation: "Graphical Method: Perform the following to enable the date and time to be set automatically: 1. Open System Settings 2. Select General 3. Select Date & Time 4. Set Set time and date automatically to enabled Note: By default, the operating system will use time.apple.com as the time server. You can change to any time server that meets your organization's requirements. Terminal Method: Run the following commands to enable the date and time setting automatically: $ /usr/bin/sudo /usr/sbin/systemsetup -setnetworktimeserver <your.time.server> setNetworkTimeServer: <your.time.server> $ /usr/bin/sudo /usr/sbin/systemsetup -setusingnetworktime on setUsingNetworkTime: On example: $ /usr/bin/sudo /usr/sbin/systemsetup -setnetworktimeserver time.apple.com setNetworkTimeServer: time.apple.com $ /usr/bin/sudo /usr/sbin/systemsetup -setusingnetworktime on setUsingNetworkTime: On Run the following commands if you have not set, or need to set, a new time zone: $ /usr/bin/sudo /usr/sbin/systemsetup -listtimezones $ /usr/bin/sudo /usr/sbin/systemsetup -settimezone <selected time zone> example: $ /usr/bin/sudo /usr/sbin/systemsetup -listtimezones Time Zones: Africa/Abidjan Africa/Accra Africa/Addis_Ababa ... $ /usr/bin/sudo /usr/sbin/systemsetup -settimezone America/New_York Set TimeZone: America/New_York."
+    compliance:
+      - cis: ["2.3.2.1"]
+      - cis_csc_v8: ["8.4"]
+      - cis_csc_v7: ["6.1"]
+      - cmmc_v2.0: ["AU.L2-3.3.7"]
+      - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-7"]
+      - pci_dss_v3.2.1: ["10.4"]
+      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
+      - soc_2: ["CC4.1", "CC5.2"]
+    condition: all
+    rules:
+      - 'c:/usr/sbin/systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
+
+  # 2.3.2.2 Ensure the Time Service Is Enabled. (Automated)
+  - id: 34009
+    title: "Ensure the Time Service Is Enabled."
+    description: "In macOS 10.14, Apple replace ntp with timed for time services, and is used to ensure correct time is kept. Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries."
+    rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
+    impact: "Accurate time is required for many computer functions."
+    remediation: "Run the following commands to enable the timed service: $ /usr/bin/sudo /bin/launchctl load -w /System/Library/LaunchDaemons/com.apple.timed.plist."
+    compliance:
+      - cis: ["2.3.2.2"]
+      - cis_csc_v8: ["8.4"]
+      - cis_csc_v7: ["6.1"]
+      - cmmc_v2.0: ["AU.L2-3.3.7"]
+      - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-7"]
+      - pci_dss_v3.2.1: ["10.4"]
+      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
+      - soc_2: ["CC4.1", "CC5.2"]
+    condition: all
+    rules:
+      - "c:systemsetup -getnetworktimeserver -> r:Network Time Server:"
+
+  # 2.3.3.1 Ensure DVD or CD Sharing Is Disabled. (Automated)
+  - id: 34010
+    title: "Ensure DVD or CD Sharing Is Disabled."
+    description: "DVD or CD Sharing allows users to remotely access the system's optical drive. While Apple does not ship Macs with built-in optical drives any longer, external optical drives are still recognized when they are connected. In testing, the sharing of an external optical drive persists when a drive is reconnected."
+    rationale: "Disabling DVD or CD Sharing minimizes the risk of an attacker using the optical drive as a vector for attack and exposure of sensitive data."
+    impact: "Many Apple devices are now sold without optical drives, however drive sharing may be needed for legacy optical media. The media should be explicitly re-shared as needed rather than using a persistent share. Optical drives should not be used for long-term storage. To store necessary data from an optical drive it should be copied to another form of external storage. Optionally, an image can be made of the optical drive so that it is stored in its original form on another form of external storage."
+    remediation: "Graphical Method: Perform the following steps to disable DVD or CD Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set DVD or CD sharing to disabled Terminal Method: Run the following command to disable DVD or CD Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.ODSAgent Note: If using the Terminal method, the GUI will still show the service checked until after a reboot."
+    compliance:
+      - cis: ["2.3.3.1"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.ODSAgent" -> r:^0$'
+
+  # 2.3.3.2 Ensure Screen Sharing Is Disabled. (Automated)
+  - id: 34011
+    title: "Ensure Screen Sharing Is Disabled."
+    description: "Screen Sharing allows a computer to connect to another computer on a network and display the computer's screen. While sharing the computer's screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer. While mature administration and management does not use graphical connections for standard maintenance, most help desks have capabilities to assist users in performing their work when they have technical issues and need support. Help desks use graphical remote tools to understand what the user sees and assist them so they can get back to work. For MacOS, some of these remote capabilities can use Apple's OS tools. Control is therefore not meant to prohibit the use of a just-in-time graphical view from authorized personnel with authentication controls. Sharing should not be enabled except in narrow windows when help desk support is required. Screen Sharing on macOS can allow the use of the insecure VNC protocol. VNC is a clear text protocol that should not be used on macOS."
+    rationale: "Disabling Screen Sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
+    impact: "Help desks may require the periodic use of a graphical connection mechanism to assist users. Any support that relies on native MacOS components will not work unless a scripted solution to enable and disable sharing as neccessary."
+    remediation: "Graphical Method: Perform the following steps to disable Screen Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Screen Sharing to disabled Terminal Method: Run the following command to turn off Screen Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.screensharing."
+    references:
+      - "https://support.apple.com/guide/mac-help/turn-screen-sharing-on-or-off-mh11848/mac"
+    compliance:
+      - cis: ["2.3.3.2"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^0$'
+
+  # 2.3.3.3 Ensure File Sharing Is Disabled. (Automated)
+  - id: 34012
+    title: "Ensure File Sharing Is Disabled."
+    description: "File sharing from a user workstation creates additional risks, such as: - Open ports are created that can be probed and attacked - Passwords are attached to user accounts for access that may be exposed and endanger other parts of the organizational environment, including directory accounts Increased complexity makes security more difficult and may expose additional attack vectors - Apple's File Sharing uses the Server Message Block (SMB) protocol to share to other computers that can mount SMB shares. This includes other macOS computers. Apple warns that SMB sharing stored passwords is less secure, and anyone with system access can gain access to the password for that account. When sharing with SMB, each user accessing the Mac must have SMB enabled. Storing passwords, especially copies of valid directory passwords, decreases security for the directory account and should not be used."
+    rationale: "By disabling File Sharing, the remote attack surface and risk of unauthorized access to files stored on the system is reduced."
+    impact: "File Sharing can be used to share documents with other users, but hardened servers should be used rather than user endpoints. Turning on File Sharing increases the visibility and attack surface of a system unnecessarily."
+    remediation: "Graphical Method: Perform the following steps to disable File Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set File Sharing to disabled Terminal Method: Run the following command to disable File Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.smbd."
+    compliance:
+      - cis: ["2.3.3.3"]
+      - cis_csc_v8: ["4.1", "4.8", "5.4"]
+      - cis_csc_v7: ["4.3", "5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.3", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3", "A.9.2.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.smbd" -> r:^0$'
+
+  # 2.3.3.4 Ensure Printer Sharing Is Disabled. (Automated)
+  - id: 34013
+    title: "Ensure Printer Sharing Is Disabled."
+    description: "By enabling Printer Sharing, the computer is set up as a print server to accept print jobs from other computers. Dedicated print servers or direct IP printing should be used instead."
+    rationale: "Disabling Printer Sharing mitigates the risk of attackers attempting to exploit the print server to gain access to the system."
+    remediation: "Graphical Method: Perform the following steps to disable Printer Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Printer Sharing to disabled Terminal Method: Run the following command to disable Printer Sharing: $ /usr/bin/sudo /usr/sbin/cupsctl --no-share-printers."
+    compliance:
+      - cis: ["2.3.3.4"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sh -c "cupsctl | grep _share_printers | cut -d ''='' -f2" -> r:^0$'
+
+  # 2.3.3.5 Ensure Remote Login Is Disabled. (Automated)
+  - id: 34014
+    title: "Ensure Remote Login Is Disabled."
+    description: "Remote Login allows an interactive terminal connection to a computer."
+    rationale: "Disabling Remote Login mitigates the risk of an unauthorized person gaining access to the system via Secure Shell (SSH). While SSH is an industry standard to connect to posix servers, the scope of the benchmark is for Apple macOS clients, not servers. macOS does have an IP-based firewall available (pf, ipfw has been deprecated) that is not enabled or configured. There are more details and links in the Network sub-section. macOS no longer has TCP Wrappers support built in and does not have strong Brute-Force password guessing mitigations, or frequent patching of openssh by Apple. Since most macOS computers are mobile workstations, managing IP-based firewall rules on mobile devices can be very resource intensive. All of these factors can be parts of running a hardened SSH server."
+    impact: "The SSH server built into macOS should not be enabled on a standard user computer, particularly one that changes locations and IP addresses. A standard user that runs local applications, including email, web browser, and productivity tools, should not use the same device as a server. There are Enterprise management toolsets that do utilize SSH. If they are in use, the computer should be locked down to only respond to known, trusted IP addresses and appropriate administrator service accounts. For macOS computers that are being used for specialized functions, there are several options to harden the SSH server to protect against unauthorized access, including brute force attacks. There are some basic criteria that need to be considered: - Do not open an SSH server to the internet without controls in place to mitigate SSH brute force attacks. This is particularly important for systems bound to Directory environments. It is great to have controls in place to protect the system, but if they trigger after the user is already locked out of their account, they are not optimal. If authorization happens after authentication, directory accounts for users that don't even use the system can be locked out. - Do not use SSH key pairs when there is no insight to the security on the client system that will authenticate into the server with a private key. If an attacker gets access to the remote system and can find the key, they may not need a password or a key logger to access the SSH server. - Detailed instructions on hardening an SSH server, if needed, are available in the CIS Linux Benchmarks, but it is beyond the scope of this benchmark."
+    remediation: "Perform the following to disable Remote Login: Graphical Method: Perform the following steps to disable Remote Login: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Remote Login to disabled Terminal Method: Run the following command to disable Remote Login: $ /usr/bin/sudo /usr/sbin/systemsetup -setremotelogin off Do you really want to turn remote login off? If you do, you will lose this connection and can only turn it back on locally at the server (yes/no)? Entering yes will disable remote login."
+    compliance:
+      - cis: ["2.3.3.5"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
+
+  # 2.3.3.6 Ensure Remote Management Is Disabled. (Automated)
+  - id: 34015
+    title: "Ensure Remote Management Is Disabled."
+    description: "Remote Management is the client portion of Apple Remote Desktop (ARD). Remote Management can be used by remote administrators to view the current screen, install software, report on, and generally manage client Macs. The screen sharing options in Remote Management are identical to those in the Screen Sharing section. In fact, only one of the two can be configured. If Remote Management is used, refer to the Screen Sharing section above on issues regard screen sharing. Remote Management should only be enabled when a Directory is in place to manage the accounts with access. Computers will be available on port 5900 on a macOS System and could accept connections from untrusted hosts depending on the configuration, which is a major concern for mobile systems. As with other sharing options, an open port even for authorized management functions can be attacked, and both unauthorized access and Denial-of-Service vulnerabilities could be exploited. If remote management is required, the pf firewall should restrict access only to known, trusted management consoles. Remote management should not be used across the Internet without the use of a VPN tunnel."
+    rationale: "Remote Management should only be enabled on trusted networks with strong user controls present in a Directory system. Mobile devices without strict controls are vulnerable to exploit and monitoring."
+    impact: "Many organizations utilize ARD for client management."
+    remediation: "Graphical Method: Perform the following steps to disable Remote Management: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Remote Management to disabled Terminal Method: Run the following command to disable Remote Management: $ /usr/bin/sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources /kickstart -deactivate -stop Starting... Removed preference to start ARD after reboot. Done."
+    compliance:
+      - cis: ["2.3.3.6"]
+      - cis_csc_v8: ["4.1", "4.8", "5.4"]
+      - cis_csc_v7: ["4.3", "9.2", "14.3"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.3", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.1", "A.13.1.3", "A.9.2.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "not p:/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"
+
+  # 2.3.3.7 Ensure Remote Apple Events Is Disabled. (Automated)
+  - id: 34016
+    title: "Ensure Remote Apple Events Is Disabled."
+    description: "Apple Events is a technology that allows one program to communicate with other programs. Remote Apple Events allows a program on one computer to communicate with a program on a different computer."
+    rationale: "Disabling Remote Apple Events mitigates the risk of an unauthorized program gaining access to the system."
+    impact: "With remote Apple events turned on, an AppleScript program running on another Mac can interact with the local computer."
+    remediation: "Graphical Method: Perform the following steps to disable Remote Apple Events: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Remote Apple Events to disabled Terminal Method: Run the following commands to set Remote Apple Events to Off: $ /usr/bin/sudo /usr/sbin/systemsetup -setremoteappleevents off setremoteappleevents: Off."
+    compliance:
+      - cis: ["2.3.3.7"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
+
+  # 2.3.3.8 Ensure Internet Sharing Is Disabled. (Automated)
+  - id: 34017
+    title: "Ensure Internet Sharing Is Disabled."
+    description: "Internet Sharing uses the open source natd process to share an internet connection with other computers and devices on a local network. This allows the Mac to function as a router and share the connection to other, possibly unauthorized, devices."
+    rationale: "Disabling Internet Sharing reduces the remote attack surface of the system."
+    impact: "Internet Sharing allows the computer to function as a router and other computers to use it for access. This can expose both the computer itself and the networks it is accessing to unacceptable access from unapproved devices."
+    remediation: "Graphical Method: Perform the following steps to disable Internet Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Internet Sharing to disabled Terminal Method: Run the following command to turn off Internet Sharing: $ usr/bin/sudo /usr/bin/defaults write /Library/Preferences/SystemConfiguration/com.apple.nat NAT -dict Enabled -int 0 Note: Using the Terminal Method will not be reflected in the GUI, but will disable the underlying service. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is forceInternetSharingOff 3. The key must be set to <true/>."
+    compliance:
+      - cis: ["2.3.3.8"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: any
+    rules:
+      - 'not c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''forceInternetSharingOff'')" -> r:^true$'
+
+  # 2.3.3.9 Ensure Content Caching Is Disabled. (Automated)
+  - id: 34018
+    title: "Ensure Content Caching Is Disabled."
+    description: "Starting with 10.13 (macOS High Sierra), Apple introduced a service to make it easier to deploy data from Apple, including software updates, where there are bandwidth constraints to the Internet and fewer constraints or greater bandwidth exist on the local subnet. This capability can be very valuable for organizations that have throttled and possibly metered Internet connections. In heterogeneous enterprise networks with multiple subnets, the effectiveness of this capability would be determined by how many Macs were on each subnet at the time new, large updates were made available upstream. This capability requires the use of mac OS clients as P2P nodes for updated Apple content. Unless there is a business requirement to manage operational Internet connectivity and bandwidth, user endpoints should not store content and act as a cluster to provision data. Content types supported by Content Caching in macOS."
+    rationale: "The main use case for Mac computers is as mobile user endpoints. P2P sharing services should not be enabled on laptops that are using untrusted networks. Content Caching can allow a computer to be a server for local nodes on an untrusted network. While there are certainly logical controls that could be used to mitigate risk, they add to the management complexity. Since the value of the service is in specific use cases, organizations with the use case described above can accept risk as necessary."
+    impact: "This setting will adversely affect bandwidth usage between local subnets and the Internet."
+    remediation: "Graphical Method: Perform the following steps to disable Content Caching: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Content Caching to disabled Terminal Method: Run the following command to disable Content Caching: $ /usr/bin/sudo /usr/bin/AssetCacheManagerUtil deactivate The output will include Content caching deactivated Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowContentCaching 3. The key must be set to <false/>."
+    references:
+      - "https://support.apple.com/guide/mac-help/about-content-caching-mchl9388ba1b/"
+      - "https://support.apple.com/guide/mac-help/set-up-content-caching-on-mac-mchl3b6c3720/"
+    compliance:
+      - cis: ["2.3.3.9"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.AssetCache'').objectForKey(''Activated'')" -> r:^0$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''allowContentCaching'')" -> r:^0$|^true$'
+
+  # 2.3.3.10 Ensure Media Sharing Is Disabled. (Automated) - Not Implemented
+  # 2.3.3.11 Ensure Bluetooth Sharing Is Disabled. (Automated) - Not Implemented
+  # 2.3.3.12 Ensure Computer Name Does Not Contain PII or Protected Organizational Information. (Manual) - Not Implemented
