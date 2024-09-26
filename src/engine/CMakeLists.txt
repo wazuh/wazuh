@@ -210,10 +210,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/yml)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
-add_subdirectory(${ENGINE_SOURCE_DIR}/cmds)
+# add_subdirectory(${ENGINE_SOURCE_DIR}/cmds)
 add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
-add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
+# add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/config)
 add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
 add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
@@ -222,7 +222,32 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 
 #TODO isolate rxcpp
-target_link_libraries(main base cmds api CLI11::CLI11)
+target_link_libraries(main
+    base
+    conf
+    yml
+    defs
+    builder
+    #bk::taskf
+    bk::rx
+    server
+    router::router
+    store
+    api
+    libuv::uv_a
+    kvdb
+    eMessages
+    metrics
+    geo
+    schemf
+    wdb
+    sockiface
+    rbac
+    geo::igeo
+    vdscanner
+    apiserver
+    indexerconnector
+)
 
 # Build benchmark
 if(ENGINE_BUILD_BENCHMARK)
