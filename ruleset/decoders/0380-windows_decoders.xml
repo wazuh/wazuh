@@ -72,8 +72,8 @@
   <use_own_name>true</use_own_name>
   <prematch offset="after_parent">^W3SVC\d+ \S+ \S+ \S+ </prematch>
   <regex offset="after_prematch">^(\S+ \S+) \d+ \S+ (\S+) </regex>
-  <regex>\S+ \S+ \S+ \S+ \S+ (\d+) </regex>
-  <order>url, srcip, id</order>
+  <regex>\S+ \S+ \S+ \S+ (\S+) (\d+) </regex>
+  <order>url, srcip, hostname, id</order>
 </decoder>
 
 <!--
