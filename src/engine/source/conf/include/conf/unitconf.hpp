@@ -10,7 +10,7 @@
 #include <base/json.hpp>
 #include <base/utils/stringUtils.hpp>
 
-namespace config::internal
+namespace conf::internal
 {
 
 template<typename T>
@@ -150,7 +150,6 @@ private:
     }
 
 public:
-
     static std::shared_ptr<UConf<T>> make(std::string_view env, const T& defaultValue)
     {
         // Create an instance of UConf directly, bypassing make_shared since constructor is private
@@ -234,6 +233,6 @@ public:
     UnitConfType getType() const override { return type; }
 };
 
-} // namespace config
+} // namespace conf::internal
 
 #endif // _CONFIG_UNITCONF_HPP
