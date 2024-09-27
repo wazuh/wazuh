@@ -23,7 +23,7 @@
 #include <base/parseEvent.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
-#include <config/config.hpp>
+#include <conf/conf.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     }
 
     // Load the configuration
-    auto confManager = config::Config();
+    auto confManager = conf::Conf();
     try
     {
         confManager.load();
@@ -149,8 +149,12 @@ int main(int argc, char* argv[])
         // Set new log level if it is different from the default
         {
             const auto level = logging::strToLevel(confManager.get<std::string>("/logging/level"));
-            logging::setLevel(level);
-            LOG_DEBUG("Logging configuration: level='{}'", logging::levelToStr(level));
+            const auto currentLevel = logging::getLevel();
+            if (level != currentLevel)
+            {
+                logging::setLevel(level);
+                LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(level));
+            }
         }
 
         // Store
