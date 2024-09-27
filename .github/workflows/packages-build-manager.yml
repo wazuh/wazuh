@@ -16,12 +16,13 @@ on:
         required: false
       architecture:
         description: |
-          Architecture of the package [amd64, x86_64, arm64]
+          Architecture of the package [amd64, x86_64, arm64, aarch64]
         type: choice
         options:
           - amd64
           - x86_64
           - arm64
+          - aarch64
         required: true
       system:
         description: 'Package format [deb, rpm]'
@@ -91,7 +92,7 @@ on:
 
 jobs:
   Build-manager-packages:
-    runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
@@ -109,6 +110,8 @@ jobs:
         run: |
             if [ ${{ inputs.architecture }} = 'x86_64' ]; then
               arch="amd64"
+            elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
+              arch="arm64"
             else
               arch=${{ inputs.architecture }}
             fi
