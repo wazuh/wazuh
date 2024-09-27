@@ -1,0 +1,17 @@
+[
+    "Translation for package 'Mozilla Thunderbird (x64 es-ES)' on platform 'windows' found in Level 2 cache.",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2008-3835",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3980",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-1308",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2008-4060",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3982",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-1309",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3981",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3983",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-4630",
+    "Translation for package 'Mozilla Firefox (x64 es-ES)' on platform 'windows' found in Level 2 cache.",
+    "No match due to default status for Package: firefox, Version: 125.0.3 while scanning for Vulnerability: CVE-2008-4059",
+    "No match due to default status for Package: firefox, Version: 125.0.3 while scanning for Vulnerability: CVE-2008-2399",
+    "No match due to default status for Package: firefox, Version: 125.0.3 while scanning for Vulnerability: CVE-2009-2469",
+    "No match due to default status for Package: firefox, Version: 125.0.3 while scanning for Vulnerability: CVE-2009-4102"
+]
