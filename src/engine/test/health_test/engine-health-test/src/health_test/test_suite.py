@@ -17,10 +17,9 @@ class UnitOutput:
             self.success = True
             self.output = result
 
-
 class UnitResultInterface(ABC):
     @abstractmethod
-    def __init__(self, index: int, expected: dict, actual: UnitOutput):
+    def __init__(self, index: int, expected: dict, actual: UnitOutput, target: str, help:str):
         pass
 
     @abstractmethod
@@ -35,7 +34,6 @@ class EngineTestOutput:
 
     def add_result(self, result: UnitOutput):
         self.results.append(result)
-
 
 class TestResult:
     def __init__(self, name: str, command: Optional[str] = None):
@@ -54,8 +52,7 @@ class TestResult:
         self.success = False
         self.test_error = error
 
-
-class IntegrationResult:
+class Result:
     def __init__(self, name: str):
         self.name = name
         self.results: List[TestResult] = []
@@ -92,7 +89,6 @@ class IntegrationResult:
 
         return out
 
-
 def execute(name: str, command: str) -> Tuple[Optional[str], EngineTestOutput]:
     result = EngineTestOutput(name, command)
     try:
@@ -114,8 +110,7 @@ def execute(name: str, command: str) -> Tuple[Optional[str], EngineTestOutput]:
 
     return None, result
 
-
-def validate(name: str, expected_file: Path, output: EngineTestOutput, unit_result: type) -> Tuple[Optional[str], TestResult]:
+def validate(name: str, expected_file: Path, output: EngineTestOutput, unit_result: type, target: str, help: str) -> Tuple[Optional[str], TestResult]:
     result = TestResult(name)
 
     with open(expected_file, 'r') as file:
@@ -128,12 +123,11 @@ def validate(name: str, expected_file: Path, output: EngineTestOutput, unit_resu
         return f"Expected {len(expected_json)} results, but got {len(output.results)}", result
 
     for i, (expected, actual) in enumerate(zip(expected_json, output.results)):
-        result.add_result(unit_result(i, expected, actual))
+        result.add_result(unit_result(i, expected, actual, target, help))
 
     return None, result
 
-
-def test(input_file: Path, expected_file: Path, unit_result: type, command: str) -> TestResult:
+def test(input_file: Path, expected_file: Path, unit_result: type, command: str, target: str, help: str) -> TestResult:
     name = input_file.stem.replace("_input", "")
     error, output = execute(name, command)
     result = TestResult(name, command)
@@ -142,7 +136,7 @@ def test(input_file: Path, expected_file: Path, unit_result: type, command: str)
         print("F", end="", flush=True)
         result.make_failure(error)
         return result
-    error, compare_result = validate(name, expected_file, output, unit_result)
+    error, compare_result = validate(name, expected_file, output, unit_result, target, help)
     compare_result.command = command
     if error:
         print("F", end="", flush=True)
@@ -155,22 +149,21 @@ def test(input_file: Path, expected_file: Path, unit_result: type, command: str)
         print("F", end="", flush=True)
     return compare_result
 
+def run_test(test_parent_path: Path, engine_api_socket: str, unit_result: type, debug_mode: str, target: str, help: str) -> Result:
+    test_parent_name = test_parent_path.name
+    result = Result(test_parent_name)
 
-def test_integration(integration_path: Path, engine_api_socket: str, unit_result: type, debug_mode: bool) -> IntegrationResult:
-    integration_name = integration_path.name
-    result = IntegrationResult(integration_name)
-
-    test_dir = (integration_path / "test").resolve()
+    test_dir = (test_parent_path / "test").resolve()
     if not test_dir.exists():
         result.make_failure(f"Test directory not found: {test_dir}")
         return result
 
-    engine_test_conf = integration_path / "test" / "engine-test.conf"
+    engine_test_conf = test_parent_path / "test" / "engine-test.conf"
     if not engine_test_conf.exists():
         result.make_failure(f"engine-test.conf not found: {engine_test_conf}")
         return result
 
-    test_integration_name = integration_name
+    test_name = test_parent_name
 
     for input_file in test_dir.rglob("*_input.*"):
         expected_file = input_file.with_name(
@@ -181,19 +174,17 @@ def test_integration(integration_path: Path, engine_api_socket: str, unit_result
             return result
 
         if input_file.parent != test_dir:
-            test_integration_name = f"{integration_name}-{input_file.parent.name}"
-        if debug_mode:
-            engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_integration_name} --api-socket {engine_api_socket} -n system wazuh -d -j"
-        else:
-            engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_integration_name} --api-socket {engine_api_socket} -j"
+            test_name = f"{test_parent_name}-{input_file.parent.name}"
+
+        ns = "wazuh system" if target == 'rule' else "wazuh"
+        engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_name} --api-socket {engine_api_socket} -n {ns} {debug_mode} -j"
         command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
-        test_result = test(input_file, expected_file, unit_result ,command)
+        test_result = test(input_file, expected_file, unit_result, command, target, help)
         result.add_result(test_result)
 
     return result
 
-
-def health_test(env_path: Path, unit_result: type, debug_mode: bool, integration_name: Optional[str] = None, skip: Optional[List[str]] = None):
+def decoder_health_test(env_path: Path, unit_result: type, debug_mode: str, integration_name: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment...")
     conf_path = (env_path / "engine/general.conf").resolve()
     if not conf_path.is_file():
@@ -211,13 +202,10 @@ def health_test(env_path: Path, unit_result: type, debug_mode: bool, integration
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix())
 
-    results: List[IntegrationResult] = []
+    results: List[Result] = []
     integrations: List[Path] = []
 
     try:
-        engine_handler.start()
-        print("Engine started.")
-
         if integration_name is not None:
             print(f"Specified integration: {integration_name}")
             integration_path = integrations_path / integration_name
@@ -225,7 +213,6 @@ def health_test(env_path: Path, unit_result: type, debug_mode: bool, integration
                 sys.exit(f"Integration {integration_name} not found.")
 
             integrations.append(integration_path)
-
         else:
             for integration_path in integrations_path.iterdir():
                 if not integration_path.is_dir():
@@ -236,49 +223,127 @@ def health_test(env_path: Path, unit_result: type, debug_mode: bool, integration
                     continue
                 integrations.append(integration_path)
 
+        engine_handler.start()
+        print("Engine started.")
+
         print("\n\nRunning tests...")
         for integration_path in integrations:
-            print(f'[{integration_path.name}]', end=' ', flush=True)
-            result = test_integration(
-                integration_path, engine_handler.api_socket_path, unit_result, debug_mode)
-            if result.test_error:
-                print(f' -> {result.test_error}')
-            elif not result.success:
-                print(f' -> Failure')
-            else:
-                print(f' -> Success')
-
+            result = run_test(
+                integration_path, engine_handler.api_socket_path, unit_result, debug_mode, 'decoder', env_path)
             results.append(result)
-    except Exception as e:
-        print(f"Error running test: {e}")
+
     finally:
-        print("Stopping engine...")
         engine_handler.stop()
         print("Engine stopped.")
 
-    if len(results) == 0:
-        print("No tests run")
-        return 1
-
-    print("\n\nSummary:")
-    failed = False
+    print("\n\n")
     for result in results:
-        if not result.success:
-            failed = True
         print(result)
 
-    if failed:
+    success = True
+    for result in results:
+        if not result.success:
+            success = False
+
+    if success:
+        print("All tests passed.")
+        sys.exit(0)
+    else:
         sys.exit(1)
 
-    return 0
 
+def rule_health_test(env_path: Path, unit_result: type, debug_mode: str, ruleset_name: Optional[str] = None, skip: Optional[List[str]] = None):
+    print("Validating environment for rules...")
+    conf_path = (env_path / "engine/general.conf").resolve()
+    if not conf_path.is_file():
+        sys.exit(f"Configuration file not found: {conf_path}")
 
-def run(args, unit_result: type, debug_mode: bool):
-    if 'environment' not in args:
-        sys.exit("It is mandatory to indicate the '-e' environment path")
+    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    if not bin_path.is_file():
+        sys.exit(f"Engine binary not found: {bin_path}")
+
+    rules_path = (env_path / "ruleset/rules").resolve()
+    if not rules_path.exists():
+        sys.exit(f"Rules directory not found: {rules_path}")
+    print("Environment validated.")
+
+    print("Starting engine...")
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix())
+
+    results: List[Result] = []
+    rules: List[Path] = []
+
+    try:
+        if ruleset_name is not None:
+            print(f"Specific ruleset: {ruleset_name}")
+            ruleset_path = rules_path / ruleset_name
+            if not ruleset_path.exists():
+                sys.exit(f"Ruleset {ruleset_name} not found.")
+            rules.append(ruleset_path)
+        else:
+            for ruleset_path in rules_path.iterdir():
+                if not ruleset_path.is_dir():
+                    continue
+                print(f'Discovered ruleset: {ruleset_path.name}')
+                if skip and ruleset_path.name in skip:
+                    print(f'Skipping ruleset: {ruleset_path.name}')
+                    continue
+                rules.append(ruleset_path)
+
+        engine_handler.start()
+        print("Engine started.")
+
+        print("\n\nRunning tests...")
+        for ruleset_path in rules:
+            result = run_test(
+                ruleset_path, engine_handler.api_socket_path, unit_result, debug_mode, 'rule', env_path)
+            results.append(result)
+
+    finally:
+        engine_handler.stop()
+        print("Engine stopped.")
+
+    print("\n\n")
+    for result in results:
+        print(result)
+
+    success = True
+    for result in results:
+        if not result.success:
+            success = False
+
+    if success:
+        print("All tests passed.")
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
+def run(args, unit_result: type, debug_mode: str):
     if not issubclass(unit_result, UnitResultInterface):
         sys.exit("Only types that implement the UnitResultInterface interface are supported")
     env_path = Path(args['environment'])
-    integration_path = args['integration']
+    integration_name = args.get('integration')
+    rule_folder = args.get('rule_folder')
+    target = args.get('target')
     skip = args['skip']
-    return health_test(env_path, unit_result, debug_mode, integration_path, skip)
+  
+    provided_args = sum([bool(integration_name), bool(rule_folder), bool(target)])
+    if provided_args > 1:
+        sys.exit("It is only possible to specify one of the following arguments: 'target', 'integration' or 'rule_folder'")
+
+    if rule_folder:
+        return rule_health_test(env_path, unit_result, debug_mode, rule_folder, skip)
+    
+    elif integration_name:
+        return decoder_health_test(env_path, unit_result, debug_mode, integration_name, skip)
+    
+    elif target:
+        if target == 'decoder':
+            return decoder_health_test(env_path, unit_result, debug_mode, integration_name, skip)
+        elif target == 'rule':
+            return rule_health_test(env_path, unit_result, debug_mode, rule_folder, skip)
+        else:
+            sys.exit(f"The {target} target is not currently supported")
+    
+    else:
+        sys.exit("At least one of the following arguments must be specified: 'target', 'integration' or 'rule_folder'")
