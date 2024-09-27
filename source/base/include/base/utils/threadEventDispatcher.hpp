@@ -230,16 +230,13 @@ private:
                 static_assert(isTSafeQueue, "This method is not supported for this queue type");
             }
         }
-        catch (const std::exception& ex)
+        catch (const std::exception& /*ex*/)
         {
-            // Reinsert elements in the queue in case the functor throws an exception.
-            if constexpr (isTSafeQueue)
+            // Re-insert remaining elements in the queue in case the functor throws an exception.
+            while (!data.empty())
             {
-                while (!data.empty())
-                {
-                    m_queue->push(data.front());
-                    data.pop();
-                }
+                m_queue->push(data.front());
+                data.pop();
             }
         }
     }
