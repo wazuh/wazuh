@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <config/config.hpp>
+#include <conf/conf.hpp>
 
 TEST(ConfigTest, ConfigTest)
 {
-    auto config =  config::Config();
+    auto config =  conf::Conf();
 
     EXPECT_NO_THROW(config.load());
 
