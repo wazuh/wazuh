@@ -80,6 +80,19 @@ std::shared_ptr<spdlog::logger> getDefaultLogger()
     return logger;
 }
 
+Level getLevel()
+{
+    auto spdLevel = getDefaultLogger()->level();
+    for (const auto& [level, spdlogLevel] : SEVERITY_LEVEL)
+    {
+        if (spdlogLevel == spdLevel)
+        {
+            return level;
+        }
+    }
+    throw std::runtime_error("getLevel: Invalid log level.");
+}
+
 void setLevel(Level level)
 {
     getDefaultLogger()->set_level(SEVERITY_LEVEL.at(level));
