@@ -10,22 +10,21 @@
 
 #include <base/json.hpp>
 
-#include <config/unitconf.hpp>
+#include <conf/unitconf.hpp>
 
-namespace config
+namespace conf
 {
-
 
 /**
  * @brief Engine configuration.
  */
-class Config final
+class Conf
 {
 private:
+    json::Json m_apiConfig; ///< The configuration from the framework API.
+    std::unordered_map<std::string, std::shared_ptr<internal::BaseUnitConf>> m_units; ///< The configuration units.
 
-    json::Json m_apiConfig;
-    std::unordered_map<std::string, std::shared_ptr<internal::BaseUnitConf>> m_units;
-
+protected:
     /**
      * @brief Load the configuration from the framework API.
      *
@@ -41,14 +40,28 @@ private:
      */
     void validate(const json::Json& config) const;
 
-public:
+    /**
+     * @brief Add a new configuration unit.
+     *
+     * @tparam T The type of the configuration.
+     * @param key The key of the configuration.
+     * @param env The environment variable name.
+     * @param defaultValue The default value of the configuration.
+     * @throw std::invalid_argument If the key is empty.
+     */
+    template<typename T>
+    void addUnit(std::string_view key, std::string_view env, const T& defaultValue)
+    {
+        m_units[key.data()] = internal::UConf<T>::make(env, defaultValue);
+    }
 
+public:
     /**
      * @brief Create a new Engine Config
      *
      * This object is used to load and validate the configuration.
      */
-    explicit Config();
+    explicit Conf();
 
     /**
      * @brief Load the configuration from API and environment variables.
@@ -57,7 +70,6 @@ public:
      * @throw std::runtime_error If cannot retrieve the configuration from the framework API.
      */
     void load();
-
 
     /**
      * @brief Get the value of the key.
@@ -77,7 +89,8 @@ public:
     {
         if (m_units.find(key.data()) == m_units.end())
         {
-            throw std::runtime_error(fmt::format("The key '{}' is not found in the configuration options.", key.data()));
+            throw std::runtime_error(
+                fmt::format("The key '{}' is not found in the configuration options.", key.data()));
         }
         const auto unit = m_units.at(key.data());
 
@@ -119,10 +132,8 @@ public:
             throw std::runtime_error("The type is not supported.");
         }
     }
-
 };
 
 } // namespace config
-
 
 #endif // _CONFIG_CONFIG_HPP

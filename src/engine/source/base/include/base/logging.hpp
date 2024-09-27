@@ -190,6 +190,13 @@ std::shared_ptr<spdlog::logger> getDefaultLogger();
 void setLevel(Level level);
 
 /**
+ * @brief Retrieves the log level.
+ * @return The log level.
+ * @throw std::runtime_error If the log level is invalid.
+ */
+Level getLevel();
+
+/**
  * @brief Starts logging with the given configuration.
  * @param cfg Logging configuration parameters.
  */
