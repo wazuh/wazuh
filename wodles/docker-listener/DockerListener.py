@@ -116,12 +116,16 @@ class DockerListener:
 
     def format_msg(self, msg):
         """
-        Formats a Docker event
+        Formats a Docker event and appends docker image ID if available
 
         :param msg: message to be formatted.
         :return: formatted message.
         """
-        return {'integration': 'docker', 'docker': json.loads(msg)}
+        msg = json.loads(msg)
+        if 'from' in msg:
+            image = self.client.images.get(msg['from'])
+            msg['imageID'] = image.id
+        return {'integration': 'docker', 'docker': msg}
 
     def send_msg(self, msg):
         """
