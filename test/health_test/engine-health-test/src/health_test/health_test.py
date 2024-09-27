@@ -2,7 +2,7 @@
 from health_test.test_suite import UnitResultInterface, UnitOutput, run as suite_run
 
 class UnitResult(UnitResultInterface):
-    def __init__(self, index: int, expected: dict, actual: UnitOutput):
+    def __init__(self, index: int, expected: dict, actual: UnitOutput, target: str, help: str):
         self.index = index
         self.expected = expected
         if not actual.success:
@@ -32,4 +32,4 @@ class UnitResult(UnitResultInterface):
                                   "actual": actual[key]}
 
 def run(args):
-    return suite_run(args, UnitResult, debug_mode=False)
+    return suite_run(args, UnitResult, debug_mode="")

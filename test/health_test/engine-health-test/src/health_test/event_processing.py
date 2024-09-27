@@ -2,11 +2,8 @@ import sys
 import json
 import yaml
 from pathlib import Path
-import shared.resource_handler as rs
-from health_test.error_managment import ErrorReporter
 
 INTEGRATION_WITHOUT_TESTS = 'wazuh-core'
-reporter = ErrorReporter()
 
 def find_and_collect_assets(directory):
     """Recursively search for .yml files, read the 'name' key, and add it to a list."""
@@ -14,9 +11,11 @@ def find_and_collect_assets(directory):
     for yml_file in Path(directory).rglob('*.yml'):
         if INTEGRATION_WITHOUT_TESTS in yml_file.parts:
             continue
-        
+
         try:
             with yml_file.open('r') as file:
+                if yml_file.name == 'custom_fields.yml':
+                    continue
                 yml_content = yaml.safe_load(file)
                 name = yml_content.get('name').split('/')[1]
                 if name:
@@ -70,10 +69,34 @@ def verify(all_assets: dict, ruleset_path: Path):
             
             verify_event_processing(all_assets, expected_json_files)
     
+    rules_path = ruleset_path / 'rules'
+    if not rules_path.exists() or not rules_path.is_dir():
+        sys.exit(f"Error: '{rules_path}' directory does not exist or not found.")
+
+    for rule_folder in rules_path.iterdir():
+        if not integration.is_dir():
+            continue
+
+        if rule_folder.name != INTEGRATION_WITHOUT_TESTS:
+            test_folder = rule_folder / 'test'
+            if not test_folder.exists() or not test_folder.is_dir():
+                sys.exit(f"No 'test' folder found in '{integration}'.")
+
+            expected_json_files = find_expected_json_files(test_folder)
+            if not expected_json_files:
+                sys.exit(f"No '_expected.json' files found in '{test_folder}' or its subfolders.")
+            
+            verify_event_processing(all_assets, expected_json_files)
+
+    missing_assets = []
     if all_assets['decoders']:
-            sys.exit(f"Test failed. These assets were not found in 'wazuh.decoders': {all_assets['decoders']}")
+        missing_assets.append(f"These assets were not found in 'wazuh.decoders': {', '.join(all_assets['decoders'])}")
     if all_assets['rules']:
-        sys.exit(f"Test failed. These assets were not found in 'wazuh.rules': {all_assets['rules']}")
+        missing_assets.append(f"These assets were not found in 'wazuh.rules': {', '.join(all_assets['rules'])}")
+
+    if missing_assets:
+        print("Test failed.\n" + "\n".join(missing_assets))
+        sys.exit(1)
 
 def validator(ruleset_path: Path):
     decoders_path = ruleset_path / 'decoders'
