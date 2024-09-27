@@ -30,7 +30,7 @@ Config::Config()
     // Register aviation configuration units
 
     // Logging module
-    m_units["/logging/level"] = UConf<std::string>::make("WAZUH_LOGGING_LEVEL", "info");
+    m_units["/logging/level"] = UConf<std::string>::make("WAZUH_LOG_LEVEL", "info");
 
 
     // Store module
