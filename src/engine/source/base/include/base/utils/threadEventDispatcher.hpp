@@ -58,13 +58,12 @@ public:
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
         , m_dispatcherType {dispatcherType}
     {
-        m_threads.reserve(
-            (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD));
+        const auto threadsAmount =
+            m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD;
 
-        for (unsigned int i = 0;
-             i
-             < (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD);
-             ++i)
+        m_threads.reserve(threadsAmount);
+
+        for (unsigned int i = 0; i < threadsAmount; ++i)
         {
             m_threads.push_back(
                 std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
@@ -89,14 +88,13 @@ public:
 
     void startWorker(Functor functor)
     {
-        m_functor = std::move(functor);
-        m_threads.reserve(
-            (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD));
+        const auto threadsAmount =
+            m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD;
 
-        for (unsigned int i = 0;
-             i
-             < (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD);
-             ++i)
+        m_functor = std::move(functor);
+        m_threads.reserve(threadsAmount);
+
+        for (unsigned int i = 0; i < threadsAmount; ++i)
         {
             m_threads.push_back(
                 std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
