@@ -13,15 +13,15 @@
 #define _THREAD_EVENT_DISPATCHER_HPP
 
 #include "rocksDBQueue.hpp"
-#include "rocksDBQueueCF.hpp"
 #include "threadSafeQueue.hpp"
 #include <atomic>
 #include <iostream>
 #include <thread>
 
 constexpr auto UNLIMITED_QUEUE_SIZE = 0;
-constexpr uint8_t SINGLE_THREAD = 1;
-constexpr uint8_t MULTI_THREAD = 3;
+static const unsigned int SINGLE_THREAD = 1;
+static const unsigned int MULTI_THREAD = std::thread::hardware_concurrency() > 1 ? std::thread::hardware_concurrency()
+                                                                                 : 1;
 
 enum class ThreadEventDispatcherType
 {
@@ -56,12 +56,15 @@ public:
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_numberOfThreads {dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
-                                                                                                   : SINGLE_THREAD}
+        , m_dispatcherType {dispatcherType}
     {
-        m_threads.reserve(m_numberOfThreads);
+        m_threads.reserve(
+            (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD));
 
-        for (unsigned int i = 0; i < m_numberOfThreads; ++i)
+        for (unsigned int i = 0;
+             i
+             < (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD);
+             ++i)
         {
             m_threads.push_back(
                 std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
@@ -76,8 +79,7 @@ public:
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_numberOfThreads {dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD
-                                                                                                   : SINGLE_THREAD}
+        , m_dispatcherType {dispatcherType}
     {
     }
 
@@ -88,9 +90,13 @@ public:
     void startWorker(Functor functor)
     {
         m_functor = std::move(functor);
-        m_threads.reserve(m_numberOfThreads);
+        m_threads.reserve(
+            (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD));
 
-        for (unsigned int i = 0; i < m_numberOfThreads; ++i)
+        for (unsigned int i = 0;
+             i
+             < (m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD);
+             ++i)
         {
             m_threads.push_back(
                 std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
@@ -138,7 +144,7 @@ private:
      * @brief Check if the queue type is a `TSafeQueue`.
      *
      */
-    static constexpr bool isTSafeQueue =
+    static constexpr bool m_isTSafeQueue =
         std::is_same_v<base::utils::queue::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>;
 
     /**
@@ -156,12 +162,12 @@ private:
         while (m_running)
         {
             // If only one thread is used, process the queue in a single-threaded, ordered manner
-            if (m_numberOfThreads == SINGLE_THREAD)
+            if (m_dispatcherType == ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
             {
                 singleAndOrdered();
             }
             // If multiple threads are used, process the queue in a multi-threaded, unordered manner
-            else if (m_numberOfThreads > SINGLE_THREAD)
+            else
             {
                 multiAndUnordered();
             }
@@ -178,7 +184,7 @@ private:
     {
         try
         {
-            if constexpr (isTSafeQueue)
+            if constexpr (m_isTSafeQueue)
             {
                 std::queue<U> data = m_queue->getBulk(m_bulkSize);
                 const auto size = data.size();
@@ -192,7 +198,7 @@ private:
             else
             {
                 // static assert to avoid compilation for unsupported queue types
-                static_assert(isTSafeQueue, "This method is not supported for this queue type");
+                static_assert(m_isTSafeQueue, "This method is not supported for this queue type");
             }
         }
         catch (const std::exception& ex)
@@ -215,7 +221,7 @@ private:
         std::pair<U, std::string> dataPair;
         try
         {
-            if constexpr (isTSafeQueue)
+            if constexpr (m_isTSafeQueue)
             {
                 data = m_queue->getBulkAndPop(m_bulkSize);
 
@@ -227,7 +233,7 @@ private:
             else
             {
                 // static assert to avoid compilation for unsupported queue types
-                static_assert(isTSafeQueue, "This method is not supported for this queue type");
+                static_assert(m_isTSafeQueue, "This method is not supported for this queue type");
             }
         }
         catch (const std::exception& /*ex*/)
@@ -259,7 +265,7 @@ private:
 
     const size_t m_maxQueueSize;
     const uint64_t m_bulkSize;
-    const uint8_t m_numberOfThreads;
+    const ThreadEventDispatcherType m_dispatcherType;
 };
 
 template<typename Type, typename Functor>
