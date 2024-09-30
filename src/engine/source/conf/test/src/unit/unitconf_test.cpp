@@ -6,6 +6,8 @@
 
 #include <conf/unitconf.hpp>
 
+#include "utils.hpp"
+
 using namespace conf::internal;
 
 namespace
@@ -163,34 +165,6 @@ TEST(UConfTest, CreateUConfTestTypes)
 namespace
 {
 
-/************************************************************************
- *                              test getEnv
- ************************************************************************/
-void setEnv(const std::string& env, const std::string& value)
-{
-    setenv(env.c_str(), value.c_str(), 1);
-
-    // Check if the environment variable was set correctly
-    const auto pValue = std::getenv(env.c_str());
-    if (pValue == nullptr)
-    {
-        FAIL() << "Failed to set environment variable: " << env;
-    }
-    const auto envValue = std::string(pValue);
-    EXPECT_EQ(envValue, value);
-}
-
-void unsetEnv(const std::string& env)
-{
-    unsetenv(env.c_str());
-
-    // Check if the environment variable was unset correctly
-    const auto pValue = std::getenv(env.c_str());
-    if (pValue != nullptr)
-    {
-        FAIL() << "Failed to unset environment variable: " << env;
-    }
-}
 
 // Testing empty environment variable
 TEST(UConfGetEnv, EmptyEnv)
