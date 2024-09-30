@@ -529,3 +529,170 @@ checks:
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.locationd" -> r:^1$'
       - 'c:sudo -u _locationd /usr/bin/osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.locationd'').objectForKey(''LocationServicesEnabled'')" -> r:^1$'
+
+  # 2.6.1.2 Ensure 'Show Location Icon in Control Center when System Services Request Your Location' Is Enabled. (Automated)
+  - id: 34022
+    title: "Ensure 'Show Location Icon in Control Center when System Services Request Your Location' Is Enabled."
+    description: "This setting provides the user an understanding of the current status of Location Services and which applications are using it."
+    rationale: 'Apple has fully integrated location services into macOS. When user applications access location an arrow is displayed next to the Control Center in the menu bar to give users an indication when their location is being accessed. By default system services like Time zones, weather, travel times, geolocation, "Find my Mac,"and advertising services do not indicate the location is accessed. Enabling the "Show location icon in the menu bar when System Services request your location" setting will show an arrow in the control center when a system service accesses the location. Although an indication that location was accessed, Control Center will only say that it was accessed by "System Services" and not the individual service. Looking in System Settings > Location Services > System Services > Details... will expose exactly which system services have accessed Location Services in the last 24 hours. Third-party tools will be shown individually when they access location services.'
+    impact: "Users may be provided visibility to a setting they cannot control if organizations control Location Services globally by policy."
+    remediation: "Graphical Method: Perform the following steps to set whether the location services icon is in the menu bar: 1. Open System Settings 2. Select Privacy & Security 3. Select Location Services 4. Select Details... 5. Set Show location icon in menu bar when System Services request your location to enabled Terminal Method: Run the following commands to set the option of the location services icon being in the menu bar: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -bool true."
+    compliance:
+      - cis: ["2.6.1.2"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:defaults read /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -> r:^1$|^true$"
+
+  # 2.6.1.3 Audit Location Services Access. (Manual) - Not Implemented
+  # 2.6.2.1 Audit Full Disk Access for Applications. (Manual) - Not Implemented
+  # 2.6.3 Ensure Sending Diagnostic and Usage Data to Apple Is Disabled. (Automated) - Not Implemented
+  # 2.6.4 Ensure Limit Ad Tracking Is Enabled. (Automated) - Not Implemented
+
+  # 2.6.5 Ensure Gatekeeper Is Enabled. (Automated)
+  - id: 34023
+    title: "Ensure Gatekeeper Is Enabled."
+    description: "Gatekeeper is Apple's application that utilizes allowlisting to restrict downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization. In an update to Gatekeeper in macOS 13 Ventura, Gatekeeper checks every application on every launch, not just quarantined apps."
+    rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
+    remediation: "Graphical Method: Perform the following steps to enable Gatekeeper: 1. Open System Settings 2. Select Privacy & Security 3. Set 'Allow apps downloaded from' to 'App Store and identified developers' Terminal Method: Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: $ /usr/bin/sudo /usr/sbin/spctl --master-enable Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.systempolicy.control 2. The key to include is AllowIdentifiedDevelopers 3. The key must be set to <true/> 4. The key to also include is EnableAssessment 5. The key must be set to <true/>."
+    compliance:
+      - cis: ["2.6.5"]
+      - cis_csc_v8: ["10.1", "10.2", "10.5"]
+      - cis_csc_v7: ["8.2", "8.4"]
+      - cmmc_v2.0: ["SI.L1-3.14.2", "SI.L1-3.14.4"]
+      - hipaa: ["164.308(a)(5)(ii)(B)"]
+      - iso_27001-2013: ["A.12.2.1"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4", "11.4", "5.1", "5.1.1", "5.2"]
+      - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.1", "5.3.2"]
+      - soc_2: ["CC6.8"]
+    condition: all
+    rules:
+      - "c:spctl --status -> r:^assessments enabled"
+
+  # 2.6.6 Ensure FileVault Is Enabled. (Automated)
+  - id: 34024
+    title: "Ensure FileVault Is Enabled."
+    description: "FileVault secures a system's data by automatically encrypting its boot volume and requiring a password or recovery key to access it. FileVault should be used with a saved escrow key to ensure that the owner can decrypt their data if the password is lost. FileVault may also be enabled using command line using the fdesetup command. To use this functionality, consult the Der Flounder blog for more details (see link below under References)."
+    rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it."
+    impact: "Mounting a FileVault encrypted volume from an alternate boot source will require a valid password to decrypt it."
+    remediation: "Graphical Method: Perform the following steps to enable FileVault: 1. Open System Settings 2. Select Security & Privacy 3. Select Turn On... Note: This will allow you to create a recovery key for FileVault. Keep the key saved securely in case it is needed at a later date. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is dontAllowFDEDisable 3. The key must be set to <true/> Note: This profile is required to pass the audit."
+    references:
+      - "https://derflounder.wordpress.com/2015/02/02/managing-yosemites-filevault-2-with-fdesetup/"
+      - "https://derflounder.wordpress.com/2019/01/15/unlock-or-decrypt-your-filevault-encrypted-boot-drive-from-the-command-line-on-macos-mojave/"
+      - "https://derflounder.wordpress.com/2021/10/29/use-of-filevault-institutional-recovery-keys-no-longer-recommended-by-apple/"
+      - "https://support.apple.com/guide/security/passcodes-and-passwords-sec20230a10d/1/web/1"
+    compliance:
+      - cis: ["2.6.6"]
+      - cis_csc_v8: ["3.6", "3.11"]
+      - cis_csc_v7: ["13.6", "14.8"]
+      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.10.1.1", "A.6.2.1"]
+      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
+      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - "c:fdesetup status -> r:^FileVault is On"
+      - 'c:osascript -l JavaScript -e "osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^0$'
+
+  # 2.6.7 Audit Lockdown Mode. (Manual) - Not Implemented
+
+  # 2.6.8 Ensure an Administrator Password Is Required to Access System-Wide Preferences. (Automated)
+  - id: 34025
+    title: "Ensure an Administrator Password Is Required to Access System-Wide Preferences."
+    description: "System Preferences controls system and user settings on a macOS Computer. System Preferences allows the user to tailor their experience on the computer as well as allowing the System Administrator to configure global security settings. Some of the settings should only be altered by the person responsible for the computer."
+    rationale: "By requiring a password to unlock system-wide System Preferences, the risk of a user changing configurations that affect the entire system is mitigated and requires an admin user to re-authenticate to make changes."
+    remediation: "Graphical Method: Perform the following steps to verify that an administrator password is required to access system-wide preferences: 1. Open System Settings 2. Select Privacy & Security 3. Select Advanced 4. Set Require an administrator password to access system-wide settings to enabled. Terminal Method: The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: $ /usr/bin/sudo /usr/bin/security authorizationdb read system.preferences > /tmp/system.preferences.plist YES (0) $ /usr/bin/sudo /usr/bin/defaults write /tmp/system.preferences.plist shared -bool false $ /usr/bin/sudo /usr/bin/security authorizationdb write system.preferences < /tmp/system.preferences.plist YES (0)."
+    impact: "Users will need to enter their password to unlock some additional preference panes that are unlocked by default like Network, Startup and Printers & Scanners."
+    compliance:
+      - cis: ["2.6.8"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:>false<"
+
+  # 2.7.1 Ensure Screen Saver Corners Are Secure. (Automated) - Not Implemented
+  # 2.8.1 Audit Universal Control Settings. (Manual) - Not Implemented
+  # 2.9.1.1 Ensure the OS Is Not Active When Resuming from Standby (Intel). (Automated) - Not Implemented
+  # 2.9.1.2 Ensure the OS Is Not Active When Resuming from Sleep and Display Sleep (Apple Silicon). (Automated) - Not Implemented
+
+  # 2.9.1.3 Ensure FileVault is Locked on Sleep. (Automated)
+  - id: 34026
+    title: "Ensure FileVault is Locked on Sleep."
+    description: "Full Disk Encryption (FDE) is a Data-at-Rest (DAR) solution. It ensures that when the data on the drive is not in use it is full encrypted, but it can be decrypted (unlocked) as needed. When a Mac sleeps, the encryption keys remain in memory so that the drive is encrypted but unlocked. There are attacks available to interact with the OS and data on the unlocked drive. FileVault volumes should be locked when not in use to resist attack."
+    rationale: "The purpose of DAR is to ensure data is encrypted while at rest. If the volume is always unlocked it is not sufficient."
+    impact: "The laptop will require a user to log in with their username and password, not TouchID, into the OS after the FileVault key is destroyed."
+    remediation: "Terminal Method: Run the following command to ensure FileVault keys are set to be destroyed on standby: $ /usr/bin/sudo /usr/bin/pmset -a destroyfvkeyonstandby 1."
+    compliance:
+      - cis: ["2.9.1.3"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:pmset -b -g -> r:^\s*\t*DestroyFVKeyOnStandby\s*\t*1'
+
+  # 2.9.2 Ensure Power Nap Is Disabled for Intel Macs. (Automated)
+  - id: 34027
+    title: "Ensure Power Nap Is Disabled for Intel Macs."
+    description: "Power Nap allows the system to stay in low power mode, especially while on battery power, and periodically connect to previously known networks with stored credentials for user applications to phone home and get updates. This capability requires FileVault to remain unlocked and the use of previously joined networks to be risk accepted based on the SSID without user input. This control has been updated to check the status on both battery and AC Power. The presence of an electrical outlet does not completely correlate with logical and physical security of the device or available networks."
+    rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access. The use of Power Nap adds to the risk of compromised physical and logical security. The user should be able to decrypt FileVault and have the applications download what is required when the computer is actively used. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
+    impact: "Power Nap exists for unattended user application updates like email and social media clients. With Power Nap disabled, the computer will not wake and reconnect to known wireless SSIDs intermittently when slept."
+    remediation: "Graphical Method: Perform the following steps to disable Power Nap: Desktop Instructions: 1. Open System Settings 2. Select Energy Saver 3. Set Power Nap to disabled 4. Select UPS (if applicable) 5. Set Power Nap to disabled Laptop Instructions: 1. Open System Settings 2. Select Battery 3. Select Power Adapter (for laptops only) 4. Set Power Nap to disabled 5. Select Battery 6. Set Power Nap to disabled 7. Select UPS (if applicable) 8. Set Power Nap to disabled Terminal Method: Run the following command to disable Power Nap: $ /usr/bin/sudo /usr/bin/pmset -a powernap 0."
+    compliance:
+      - cis: ["2.9.2"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'not c:sh -c "pmset -g custom" -> r:^\s*\t*powernap\s*\t*1'
+
+  # 2.9.3 Ensure Wake for Network Access Is Disabled. (Automated)
+  - id: 34028
+    title: "Ensure Wake for Network Access Is Disabled."
+    description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer's shared resources, such as shared printers or Apple Music playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer, it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist, the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
+    rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
+    impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
+    remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: 1. Open System Settings 2. Select Energy Saver 3. Set Wake for network access to disabled Laptop Instructions: 1. Open System Settings 2. Select Battery 3. Select Options... 4. Set Wake for network access to Never Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is com.apple.EnergySaver.desktop.ACPower 3. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 4. The key to also include is com.apple.EnergySaver.portable.ACPower 5. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 6. The key to also include is com.apple.EnergySaver.portable.BatteryPower 7. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky."
+    compliance:
+      - cis: ["2.9.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - 'not c:sh -c "pmset -g custom" -> r:^\s*\t*womp\s*\t*1'
+      - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On LAN''" -> n:=\s*(\d) compare != 0'
+      - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On Modem Ring''" -> n:=\s*(\d) compare != 0'
