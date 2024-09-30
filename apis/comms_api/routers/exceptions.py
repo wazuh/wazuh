@@ -53,7 +53,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         JSON response containing an error description and code.
     """
     error = exc.errors()[0]
-    key = '.'.join(error['loc'])
+    key = '.'.join(error['loc']) if isinstance(error['loc'], list) else error['loc']
     message = error['msg'].lower()
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,

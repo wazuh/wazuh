@@ -3,6 +3,7 @@ import os
 from dataclasses import asdict, dataclass, InitVar
 from datetime import datetime
 from hmac import compare_digest
+from typing import List
 
 from wazuh.core.indexer.base import remove_empty_values
 
@@ -40,6 +41,19 @@ def _hash_key(key: str, salt: bytes) -> str:
 
 
 @dataclass
+class OS:
+    """Agent operating system information."""
+    full: str = None
+
+
+@dataclass
+class Host:
+    """Agent host information."""
+    ip: List[str] = None
+    os: OS = None
+
+
+@dataclass
 class Agent:
     """Representation of a Wazuh Agent."""
 
@@ -50,7 +64,8 @@ class Agent:
     type: str = None
     version: str = None
     last_login: datetime = None
-    persistent_connection_node: str = None
+    is_connected: bool = None
+    host: Host = None
 
     raw_key: InitVar[str | None] = None
 
@@ -104,8 +119,8 @@ class Agent:
             The translated data.
         """
         ret_val = {}
-        for k,v in asdict(self, dict_factory=remove_empty_values).items():
+        for k, v in asdict(self, dict_factory=remove_empty_values).items():
             if k == 'groups':
-                v = ','.join(group for group in v)
+                v = ','.join(v)
             ret_val[k] = v
         return ret_val
