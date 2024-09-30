@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-import mimetypes
 from typing import Union
 
 from connexion import request
@@ -12,13 +11,12 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
-from wazuh.core.results import AffectedItemsWazuhResult
 
 from api.controllers.util import JSON_CONTENT_TYPE, json_response
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_group_added_model import GroupAddedModel
 from api.models.base_model_ import Body
-from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from api.validator import check_component_configuration_pair
 
 logger = logging.getLogger('wazuh-api')
@@ -33,7 +31,7 @@ async def delete_agents(
     type: str = None,
     version: str = None,
     older_than: str = None,
-    node_name: str = None,
+    is_connected: bool = None,
 ) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
@@ -46,18 +44,19 @@ async def delete_agents(
     agents_list : str
         List of agents IDs. If the 'all' keyword is indicated, all the agents are deleted.
     name : str
-        Filter by agent name.
+        Filter by name.
     group : str
-        Filter by agent group.
+        Filter by group.
     type : str
-        Filter by agents type.
+        Filter by type.
     version : str
-        Filter by agents version.
+        Filter by version.
     older_than : str
-        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    node_name : str
-        Filter by node name.
+        Filter out disconnected agents for longer than specified. Time in seconds, '[n_days]d',
+        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the register date.
+    is_connected : bool
+        Filter by connection status.
+
     Returns
     -------
     ConnexionResponse
@@ -74,7 +73,9 @@ async def delete_agents(
             'type': type,
             'version': version,
             'last_login': older_than,
-            'persistent_connection_node': node_name,
+            'is_connected': is_connected,
+            'host.ip': request.query_params.get('remote.ip', None),
+            'host.os.full': request.query_params.get('os.full', None),
         },
     }
 
@@ -94,19 +95,19 @@ async def delete_agents(
 
 
 async def get_agents(
-        pretty: bool = False,
-        wait_for_complete: bool = False,
-        agents_list: list = None,
-        name: str = None,
-        group: str = None,
-        type: str = None,
-        version: str = None,
-        older_than: str = None,
-        node_name: str = None,
-        offset: int = 0,
-        limit: int = DATABASE_LIMIT,
-        select: str = None,
-        sort: str = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: list = None,
+    name: str = None,
+    group: str = None,
+    type: str = None,
+    version: str = None,
+    older_than: str = None,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+    select: str = None,
+    sort: str = None,
+    is_connected: bool = None,
 ) -> ConnexionResponse:
     """Get information about all agents or a list of them.
 
@@ -127,10 +128,8 @@ async def get_agents(
     version : str
         Filter by agents version.
     older_than : str
-        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    node_name : str
-        Filter by node name.
+        Filter out disconnected agents for longer than specified. Time in seconds, '[n_days]d',
+        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the register date.
     offset : int
         First element to return in the collection.
     limit : int
@@ -140,6 +139,8 @@ async def get_agents(
     sort : str
         Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
+    is_connected : bool
+        Filter by connection status.
 
     Returns
     -------
@@ -157,7 +158,9 @@ async def get_agents(
             'type': type,
             'version': version,
             'last_login': older_than,
-            'persistent_connection_node': node_name,
+            'is_connected': is_connected,
+            'host.ip': request.query_params.get('remote.ip', None),
+            'host.os.full': request.query_params.get('os.full', None),
         },
         'offset': offset,
         'limit': limit,
