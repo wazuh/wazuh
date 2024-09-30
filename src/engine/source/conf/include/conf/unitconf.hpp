@@ -36,26 +36,6 @@ private:
      *
      * @tparam T The type to cast to. Must be derived from BaseUnitConf.
      * @throw std::runtime_error If the cast is not possible.
-     * @return std::shared_ptr<BaseUnitConf> The casted config.
-     */
-    template<typename T>
-    std::shared_ptr<T> as()
-    {
-        static_assert(std::is_base_of<BaseUnitConf, T>::value, "T must be derived from BaseUnitConf");
-        auto ptr = std::dynamic_pointer_cast<T>(shared_from_this());
-
-        if (!ptr)
-        {
-            throw std::runtime_error(fmt::format("Cannot cast the unit config to '{}'.", typeid(T).name()));
-        }
-        return ptr;
-    }
-
-    /**
-     * @brief Cast the unit config to a specific type.
-     *
-     * @tparam T The type to cast to. Must be derived from BaseUnitConf.
-     * @throw std::runtime_error If the cast is not possible.
      * @return std::shared_ptr<const BaseUnitConf> The casted config.
      */
     template<typename T>
@@ -65,6 +45,7 @@ private:
         auto ptr = std::dynamic_pointer_cast<const T>(shared_from_this());
         if (!ptr)
         {
+            // The type is not the same
             throw std::runtime_error(fmt::format("Cannot cast the unit config to '{}'.", typeid(T).name()));
         }
         return ptr;
@@ -173,6 +154,13 @@ public:
             std::string::size_type pos;
             try
             {
+                // check for whitespace
+                if (std::any_of(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c); }))
+                {
+                    throw std::runtime_error(
+                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", env, value));
+                }
+                // check for invalid characters
                 const auto number = std::stoll(value, &pos);
                 if (pos != value.size())
                 {
@@ -226,7 +214,7 @@ public:
         }
         else
         {
-            throw std::invalid_argument(fmt::format("Invalid type '{}' for the configuration.", typeid(T).name()));
+            throw std::logic_error("Invalid type for the configuration.");
         }
     }
 
