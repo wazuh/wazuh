@@ -9,8 +9,22 @@
  * Foundation.
  */
 
-#include "threadEventDispatcher_test.hpp"
-#include "threadEventDispatcher.hpp"
+#include "base/utils/rocksDBQueue.hpp"
+#include "base/utils/threadEventDispatcher.hpp"
+#include "base/utils/threadSafeMultiQueue.hpp"
+#include <future>
+#include <gtest/gtest.h>
+#include <memory>
+#include <thread>
+
+class ThreadEventDispatcherTest : public ::testing::Test
+{
+protected:
+    ThreadEventDispatcherTest() = default;
+    ~ThreadEventDispatcherTest() override = default;
+    void SetUp() override;
+    void TearDown() override;
+};
 
 auto constexpr TEST_DB = "test.db";
 
@@ -67,7 +81,6 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestSingleThread)
 TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThread)
 {
     static const std::vector<int> MESSAGES_TO_SEND_LIST {120, 100};
-    static const auto NUM_THREADS = 4;
 
     for (auto MESSAGES_TO_SEND : MESSAGES_TO_SEND_LIST)
     {
@@ -95,7 +108,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThread)
             TEST_DB,
             BULK_SIZE,
             UNLIMITED_QUEUE_SIZE,
-            NUM_THREADS);
+            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
 
         for (int i = 0; i < MESSAGES_TO_SEND; ++i)
         {
@@ -109,7 +122,8 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThread)
 TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExceptions)
 {
     const auto MESSAGES_TO_SEND {100};
-    const auto NUM_THREADS = 4;
+    const auto CONDITION {20};
+    const auto BULK_SIZE {10};
     std::vector<int> messagesProcessed;
     std::mutex mutex;
     std::atomic<size_t> counter {0};
@@ -123,7 +137,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
             [&](std::queue<rocksdb::PinnableSlice>& data)
             {
                 // We throw some exceptions to force the reinsertion
-                if (counter % 20 == 0 && fail)
+                if (counter % CONDITION == 0 && fail)
                 {
                     fail = false;
                     throw std::runtime_error("Test exception: " + std::to_string(counter));
@@ -150,9 +164,9 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
                 }
             },
             TEST_DB,
-            10,
+            BULK_SIZE,
             UNLIMITED_QUEUE_SIZE,
-            NUM_THREADS);
+            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
@@ -161,7 +175,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
     promise.get_future().wait_for(std::chrono::seconds(10));
     EXPECT_EQ(MESSAGES_TO_SEND, counter);
 
-    // Check that all messages were processed
+    // Check that all messages were processed. The failing event was reinserted.
     std::sort(messagesProcessed.begin(), messagesProcessed.end());
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
@@ -169,66 +183,90 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
     }
 }
 
-TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeMultiQueueExceptions)
+TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExceptionsDropElement)
 {
     const auto MESSAGES_TO_SEND {100};
-    const auto NUM_THREADS = 4;
+    const auto CONDITION {20};
+    const auto BULK_SIZE {10};
     std::vector<int> messagesProcessed;
+    std::vector<int> messagesDiscarded;
     std::mutex mutex;
     std::atomic<size_t> counter {0};
+    std::atomic<size_t> dropped {0};
     std::promise<void> promise;
     std::atomic<bool> fail {true};
+    std::atomic<int> loops {0};
 
     TThreadEventDispatcher<rocksdb::Slice,
                            rocksdb::PinnableSlice,
-                           std::function<void(rocksdb::PinnableSlice&)>,
-                           RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>,
-                           Utils::TSafeMultiQueue<rocksdb::Slice,
-                                                  rocksdb::PinnableSlice,
-                                                  RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>
+                           std::function<void(std::queue<rocksdb::PinnableSlice>&)>>
         dispatcher(
-            [&](rocksdb::PinnableSlice& element)
+            [&](std::queue<rocksdb::PinnableSlice>& data)
             {
-                // We throw some exceptions to force the reinsertion
-                if (counter % 20 == 0 && fail)
+                ++loops;
+                counter += data.size();
+                while (!data.empty())
                 {
-                    fail = false;
-                    throw std::runtime_error("Test exception: " + std::to_string(counter));
-                }
-                else
-                {
-                    fail = true;
+                    auto& value = data.front();
+                    data.pop();
+                    {
+                        std::lock_guard<std::mutex> lock(mutex);
+                        if (std::stoi(value.ToString()) % CONDITION == 0)
+                        {
+                            try
+                            {
+                                throw std::runtime_error("Unexpected error during event processing");
+                            }
+                            catch (const std::exception& e)
+                            {
+                                // The log message is resposibility of the lambda function.
+                                std::cout << __FUNCTION__ << " ERROR: event discarded: " << value.ToString() << ". "
+                                          << e.what() << "." << std::endl;
+                                ++dropped;
+                                messagesDiscarded.push_back(std::stoi(value.ToString()));
+                                throw std::runtime_error(e.what());
+                            }
+                        }
+                        messagesProcessed.push_back(std::stoi(value.ToString()));
+                    }
                 }
 
-                counter++;
-
-                {
-                    std::lock_guard<std::mutex> lock(mutex);
-                    messagesProcessed.push_back(std::stoi(element.ToString()));
-                }
-
-                if (counter == MESSAGES_TO_SEND)
+                // We need to wait until the reinserted events are processed.
+                if (messagesProcessed.size() == MESSAGES_TO_SEND - dropped)
                 {
                     promise.set_value();
                 }
             },
             TEST_DB,
-            10,
+            BULK_SIZE,
             UNLIMITED_QUEUE_SIZE,
-            NUM_THREADS);
+            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
-        dispatcher.push("test_cf", std::to_string(i));
+        dispatcher.push(std::to_string(i));
     }
-    promise.get_future().wait_for(std::chrono::seconds(10));
-    EXPECT_EQ(MESSAGES_TO_SEND, counter);
 
-    // Check that all messages were processed
+    promise.get_future().wait_for(std::chrono::seconds(10));
+
+    EXPECT_EQ(messagesProcessed.size(), MESSAGES_TO_SEND - dropped);
+
+    // Check that all messages were processed. The failing event was dropped.
     std::sort(messagesProcessed.begin(), messagesProcessed.end());
+    std::sort(messagesDiscarded.begin(), messagesDiscarded.end());
+
+    auto indexProcessed {0};
+    auto indexDiscarded {0};
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
-        EXPECT_EQ(i, messagesProcessed[i]);
+        if (i % CONDITION != 0)
+        {
+            EXPECT_EQ(i, messagesProcessed[indexProcessed++]);
+        }
+        else
+        {
+            EXPECT_EQ(i, messagesDiscarded[indexDiscarded++]);
+        }
     }
 }
 

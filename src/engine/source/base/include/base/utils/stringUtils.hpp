@@ -144,7 +144,7 @@ std::string toSentenceCase(const std::string& str);
 
 bool isNumber(const std::string& str);
 
-bool replaceAll(std::string& data, std::string_view toSearch, std::string_view toReplace);
+bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace);
 bool haveUpperCaseCharacters(const std::string& str);
 
 } // namespace base::utils::string
