@@ -21,15 +21,34 @@ namespace metrics
 class Manager : public IManager
 {
 public:
-    struct ImplConfig;
-    struct ImplOtPipeline;
-    class ImplMetric;
+    struct ImplConfig : public IManager::Config
+    {
+        ImplConfig()
+            : indexerConnectorFactory(nullptr)
+            , exportInterval(1000)
+            , exportTimeout(333)
+            , logLevel(logging::Level::Err)
+        {
+        }
+
+        ~ImplConfig() override = default;
+
+        ImplConfig(const ImplConfig&) = default;
+        ImplConfig(ImplConfig&&) = default;
+        ImplConfig& operator=(const ImplConfig&) = default;
+        ImplConfig& operator=(ImplConfig&&) = default;
+
+        std::function<std::shared_ptr<IIndexerConnector>()> indexerConnectorFactory;
+        std::chrono::milliseconds exportInterval;
+        std::chrono::milliseconds exportTimeout;
+        logging::Level logLevel;
+    };
 
 private:
     std::unique_ptr<ImplConfig> m_config;
-    std::unique_ptr<ImplOtPipeline> m_otPipeline;
-    std::unordered_map<DotPath, std::shared_ptr<ImplMetric>> m_metrics;
+    std::unordered_map<DotPath, std::shared_ptr<detail::IManagedMetric>> m_metrics;
     mutable std::shared_mutex m_mutex;
+    bool m_enabled;
 
     bool unsafeEnabled() const;
 
@@ -46,8 +65,7 @@ private:
     void unsafeDisable();
 
 public:
-    Manager() = default;
-
+    Manager();
     Manager(const Manager&) = delete;
     Manager(Manager&&) = delete;
     Manager& operator=(const Manager&) = delete;
