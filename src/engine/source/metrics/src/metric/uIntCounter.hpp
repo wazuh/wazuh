@@ -10,14 +10,14 @@ namespace metrics
 {
 using OtUIntCounterPtr = otapi::unique_ptr<otapi::Counter<uint64_t>>;
 
-class UIntCounter : public BaseMetric<uint64_t>
+class UIntCounter : public BaseOtMetric<uint64_t>
 {
 private:
     OtUIntCounterPtr m_counter;
 
 public:
     UIntCounter(std::string&& name, std::string&& description, std::string&& unit)
-        : BaseMetric<uint64_t>(std::move(name), std::move(description), std::move(unit))
+        : BaseOtMetric<uint64_t>(std::move(name), std::move(description), std::move(unit))
         , m_counter(nullptr)
     {
     }
@@ -29,15 +29,22 @@ public:
 
     ~UIntCounter() override = default;
 
-    void otCreate(const Manager::ImplOtPipeline& otPipeline) override
+    void otCreate() override
     {
-        m_counter =
-            otPipeline.provider->GetMeter(DEFAULT_METER_NAME)->CreateUInt64Counter(m_name, m_description, m_unit);
+        m_counter = otapi::Provider::GetMeterProvider()
+                        ->GetMeter(DEFAULT_METER_NAME)
+                        ->CreateUInt64Counter(m_name, m_description, m_unit);
     }
 
     void otDestroy() override { m_counter.reset(); }
 
-    void otUpdate(uint64_t value) override { m_counter->Add(value, otapi::RuntimeContext::GetCurrent()); }
+    void otUpdate(uint64_t value) override
+    {
+        if (m_counter)
+        {
+            m_counter->Add(value, otapi::RuntimeContext::GetCurrent());
+        }
+    }
 };
 
 } // namespace metrics

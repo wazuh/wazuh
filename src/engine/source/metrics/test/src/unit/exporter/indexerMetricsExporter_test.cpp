@@ -77,7 +77,6 @@ protected:
 public:
     void SetUp() override
     {
-        logging::testInit();
         m_indexerConnector = std::make_shared<indexerconnector::mocks::MockIConnector>();
 
         // Generate test opentelemetry pipeline
