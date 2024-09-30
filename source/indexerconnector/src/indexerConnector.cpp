@@ -9,9 +9,11 @@
  * Foundation.
  */
 
-#include "indexerConnector.hpp"
+#include "indexerConnector/indexerConnector.hpp"
 #include "HTTPRequest.hpp"
 #include "base/logging.hpp"
+#include "base/utils/stringUtils.hpp"
+#include "base/utils/timeUtils.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
@@ -95,8 +97,13 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
 {
     bulkData.append(R"({"index":{"_index":")");
     bulkData.append(index);
-    bulkData.append(R"(","_id":")");
-    bulkData.append(id);
+
+    if (!id.empty())
+    {
+        bulkData.append(R"(","_id":")");
+        bulkData.append(id);
+    }
+
     bulkData.append(R"("}})");
     bulkData.append("\n");
     bulkData.append(data);
@@ -107,6 +114,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
 {
     // Get index name.
     m_indexName = config.at("name").get_ref<const std::string&>();
+    base::utils::string::replaceAll(m_indexName, "$(date)", base::utils::time::getCurrentDate("."));
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {
@@ -117,7 +125,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
     initConfiguration(secureCommunication, config);
 
     // Initialize publisher.
-    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
+    auto selector {std::make_shared<TServerSelector<Monitoring>>(config.at("hosts"), timeout, secureCommunication)};
 
     // Validate threads number
     if (workingThreads <= 0)
@@ -126,13 +134,14 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
     }
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-        [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
+        [this, selector, secureCommunication, functionName = logging::getLambdaName(__FUNCTION__, "processEventQueue")](
+            std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
 
             if (m_stopping.load())
             {
-                LOG_DEBUG("IndexerConnector is stopping, event processing will be skipped.");
+                LOG_DEBUG_L(functionName.c_str(), "IndexerConnector is stopping, event processing will be skipped.");
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
@@ -145,14 +154,15 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
                 auto data = dataQueue.front();
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data);
-                const auto& id = parsedData.at("id").get_ref<const std::string&>();
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
+                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
                     builderBulkDelete(bulkData, id, m_indexName);
                 }
                 else
                 {
+                    const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
                     const auto dataString = parsedData.at("data").dump();
                     builderBulkIndex(bulkData, id, m_indexName, dataString);
                 }
@@ -161,14 +171,17 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
             if (!bulkData.empty())
             {
                 // Process data.
-                HTTPRequest::instance().post({HttpURL(url), bulkData, secureCommunication},
-                                             {[](const std::string& response)
-                                              { LOG_DEBUG("Response: %s", response.c_str()); },
-                                              [](const std::string& error, const long statusCode)
-                                              {
-                                                  LOG_ERROR("%s, status code: %ld.", error.c_str(), statusCode);
-                                                  throw std::runtime_error(error);
-                                              }});
+                HTTPRequest::instance().post(
+                    {HttpURL(url), bulkData, secureCommunication},
+                    {[functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
+                         const std::string& response)
+                     { LOG_DEBUG_L(functionName.c_str(), "Response: %s", response.c_str()); },
+                     [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
+                         const std::string& error, const long statusCode)
+                     {
+                         LOG_ERROR_L(functionName.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                         throw std::runtime_error(error);
+                     }});
             }
         },
         DATABASE_BASE_PATH + m_indexName,

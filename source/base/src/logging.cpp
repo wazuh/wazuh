@@ -106,8 +106,6 @@ void start(const LoggingConfig& cfg)
     if (cfg.filePath == STD_ERR_PATH || cfg.filePath == STD_OUT_PATH || cfg.filePath.empty())
     {
         auto custumSink = std::make_shared<CustomSink>();
-        custumSink->set_level(spdlog::level::info);
-        custumSink->set_pattern(DEFAULT_LOG_HEADER);
 
         logger = std::make_shared<spdlog::logger>("default", custumSink);
         spdlog::set_default_logger(logger);
@@ -115,9 +113,9 @@ void start(const LoggingConfig& cfg)
     else
     {
         logger = spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
-        setLevel(cfg.level);
     }
 
+    setLevel(cfg.level);
     logger->flush_on(spdlog::level::trace);
 }
 

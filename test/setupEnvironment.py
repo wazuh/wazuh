@@ -20,11 +20,19 @@ def setup_engine(engine_dir, engine_src_dir, environment_dir):
         os.path.join(environment_dir, 'engine'),
         os.path.join(environment_dir, 'queue/sockets'),
         os.path.join(environment_dir, 'logs'),
-        os.path.join(engine_dir, 'etc/kvdb')
+        os.path.join(engine_dir, 'etc/kvdb'),
+        os.path.join(environment_dir, 'bin')
     ]
 
     for directory in dirs_to_create:
         os.makedirs(directory, exist_ok=True)
+
+    # Copy TZDB to bin directory (Remove this fix when the issue tzdb is fixed)
+    tzdb_path = Path(engine_src_dir) / 'build' / 'tzdb'
+    tzdb_dest = Path(environment_dir) / 'bin' / 'tzdb'
+    print(f"Copying from {tzdb_path} to {tzdb_dest}")
+    # Copy dir
+    shutil.copytree(tzdb_path, tzdb_dest)
 
 
 def main():

@@ -87,11 +87,10 @@ private:
              &data,
              &cnaName,
              &vulnerabilityScan,
-             getLambdaName = logging::getLambdaName(__FUNCTION__, "scanPackage")](const PackageData& package)
+             functionName = logging::getLambdaName(__FUNCTION__, "scanPackage")](const PackageData& package)
         {
-            const auto functionName = getLambdaName.c_str();
             LOG_DEBUG_L(
-                functionName,
+                functionName.c_str(),
                 "Initiating a vulnerability scan for package '{}' ({}) ({}) with CVE Numbering Authorities (CNA)"
                 " '{}' on Agent '{}' (ID: '{}', Version: '{}').",
                 package.name,
@@ -559,12 +558,11 @@ public:
      */
     std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> data) override
     {
-        auto vulnerabilityScan = [&data, this, getLambdaName = logging::getLambdaName(__FUNCTION__, "scanPackage")](
+        auto vulnerabilityScan = [&data, this, functionName = logging::getLambdaName(__FUNCTION__, "scanPackage")](
                                      const std::string& cnaName,
                                      const PackageData& package,
                                      const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
         {
-            const auto functionName = getLambdaName.c_str();
             try
             {
                 /* Preliminary verifications before version matching. We return if the basic conditions are not met. */
@@ -601,7 +599,7 @@ public:
             catch (const std::exception& e)
             {
                 // Log the warning and continue with the next vulnerability.
-                LOG_DEBUG_L(functionName,
+                LOG_DEBUG_L(functionName.c_str(),
                             "Failed to scan package: '{}', CVE Numbering Authorities (CNA): '{}', Error: '{}'",
                             package.name,
                             cnaName,

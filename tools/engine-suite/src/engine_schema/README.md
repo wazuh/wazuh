@@ -1,7 +1,13 @@
 # Engine schema tool
 The engine uses a schema to define and standardize the structure of the data it processes, ensuring consistency and accuracy in event categorization and normalization. The `engine-schema` tool facilitates the update of the schema version, allowing seamless integration of new data formats and changes.
 
-## Installation
+1. [Directory structure](#directory-structure)
+2. [Install](#install)
+3. [Usage](#usage)
+    1. [Generate](#generate)
+    2. [Integrate](#integrate)
+
+## Install
 The script is packaged along the engine-suite python packaged, to install simply run:
 ```bash
 pip install wazuh/src/engine/tools/engine-suite
