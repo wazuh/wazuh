@@ -30,7 +30,7 @@ protected:
      *
      * @throw std::runtime_error If cannot retrieve the configuration from the framework API.
      */
-    json::Json loadFromAPI() const;
+    virtual json::Json loadFromAPI() const;
 
     /**
      * @brief Validate the configuration
