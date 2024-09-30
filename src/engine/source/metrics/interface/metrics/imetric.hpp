@@ -21,8 +21,23 @@ namespace metrics
 {
 
 // Forward declaration so that IMetric can downcast to BaseMetric
+namespace detail
+{
 template<typename>
 class BaseMetric;
+}
+
+/**
+ * @brief Available metric types.
+ *
+ */
+enum class MetricType
+{
+    UINTCOUNTER,
+    DOUBLECOUNTER,
+    UINTHISTOGRAM,
+    DOUBLEHISTOGRAM
+};
 
 /**
  * @brief Metric interface.
@@ -62,17 +77,75 @@ public:
     template<typename T>
     void update(T value)
     {
-        as<BaseMetric<T>>()->update(value);
+        as<detail::BaseMetric<T>>()->update(value);
     }
 };
 
-enum class MetricType
+namespace detail
 {
-    UINTCOUNTER,
-    DOUBLECOUNTER,
-    UINTHISTOGRAM,
-    DOUBLEHISTOGRAM
+/**
+ * @brief Interface for managed metrics, defines methods to create, destroy, enable and disable the metric.
+ *
+ */
+class IManagedMetric : public IMetric
+{
+public:
+    virtual ~IManagedMetric() = default;
+
+    /**
+     * @brief Initialize and build all necessary resources for the metric to start working.
+     *
+     */
+    virtual void create() = 0;
+
+    /**
+     * @brief Destroy all resources and clean up the metric.
+     *
+     */
+    virtual void destroy() = 0;
+
+    /**
+     * @brief Allow the metric to start collecting data.
+     *
+     */
+    virtual void enable() = 0;
+
+    /**
+     * @brief Stop the metric from collecting data.
+     *
+     */
+    virtual void disable() = 0;
+
+    /**
+     * @brief Check if the metric is enabled.
+     *
+     * @return true If the metric is enabled.
+     * @return false If the metric is disabled.
+     */
+    virtual bool isEnabled() const = 0;
 };
+
+/**
+ * @brief Base metric class that defines the update method for all metric types.
+ * This class is used to transit static polymorphism to dynamic polymorphism on the update method.
+ *
+ * @tparam T The type of the metric value. Only uint64_t and double are supported.
+ */
+template<typename T>
+class BaseMetric : public IManagedMetric
+{
+public:
+    virtual ~BaseMetric() = default;
+
+    /**
+     * @brief Update the metric with a new value.
+     *
+     * @param value The value to update the metric with.
+     */
+    virtual void update(T value) = 0;
+};
+
+} // namespace detail
 
 } // namespace metrics
 

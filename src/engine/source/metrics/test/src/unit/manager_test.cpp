@@ -7,15 +7,17 @@
 
 #include <gtest/gtest.h>
 
+#include <base/functionExecutor.hpp>
 #include <base/logging.hpp>
+#include <base/threadSynchronizer.hpp>
 #include <indexerConnector/mockiconnector.hpp>
-
-#include "managerImpl.hpp"
-#include "ot.hpp"
 #include <metric/metric.hpp>
+
+#include "ot.hpp"
 
 using namespace metrics;
 using namespace indexerconnector::mocks;
+using namespace base::test;
 
 TEST(MetricsManagerSingletonTest, Instantiate)
 {
@@ -32,11 +34,7 @@ protected:
     Manager m_manager;
     std::shared_ptr<MockIConnector> m_mockIConnector;
 
-    void SetUp() override
-    {
-        logging::testInit();
-        m_mockIConnector = std::make_shared<MockIConnector>();
-    }
+    void SetUp() override { m_mockIConnector = std::make_shared<MockIConnector>(); }
 
     void TearDown() override { m_manager.disable(); }
 
@@ -222,12 +220,15 @@ protected:
 
     void SetUp() override
     {
-        logging::testInit();
         m_mockIConnector = std::make_shared<MockIConnector>();
         m_manager = std::make_shared<Manager>();
     }
 
-    void TearDown() override { m_manager.reset(); }
+    void TearDown() override
+    {
+        m_manager->disable();
+        m_manager.reset();
+    }
 
     std::shared_ptr<Manager::ImplConfig> testConfig() const
     {
@@ -252,38 +253,20 @@ TEST_F(MetricsManagerMultiThreadedTest, Configure)
     for (auto iteration = 0; iteration < times; iteration++)
     {
         std::vector<std::thread> threads(nThreads);
-
-        // Synchronization mechanism
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [manager = m_manager, config = testConfig(), &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [manager = m_manager, config = testConfig(), &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
-
-                    // Step 2: Perform the actual job (configure)
+                    sync.waitForAll();
                     ASSERT_NO_THROW(manager->configure(config));
                 });
         }
 
-        // Join all threads
+        sync.waitNotifyAll();
+
         for (auto& thread : threads)
         {
             thread.join();
@@ -302,38 +285,20 @@ TEST_F(MetricsManagerMultiThreadedTest, Enable)
         std::vector<std::thread> threads(nThreads);
         std::vector<std::shared_ptr<bool>> results(nThreads);
 
-        // Initializing result holders
         for (auto& result : results)
         {
             result = std::make_shared<bool>(false);
         }
 
-        // Synchronization mechanism
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [manager = m_manager, result = results[i], &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [manager = m_manager, result = results[i], &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
+                    sync.waitForAll();
 
-                    // Step 2: Try to enable the manager
                     try
                     {
                         manager->enable();
@@ -341,12 +306,12 @@ TEST_F(MetricsManagerMultiThreadedTest, Enable)
                     }
                     catch (...)
                     {
-                        *result = false;
                     }
                 });
         }
 
-        // Join all threads
+        sync.waitNotifyAll();
+
         for (auto& thread : threads)
         {
             thread.join();
@@ -357,7 +322,6 @@ TEST_F(MetricsManagerMultiThreadedTest, Enable)
             std::count_if(results.begin(), results.end(), [](const std::shared_ptr<bool>& result) { return *result; }),
             1);
 
-        // Clean up by disabling the manager
         ASSERT_NO_THROW(m_manager->disable());
     }
 }
@@ -373,36 +337,19 @@ TEST_F(MetricsManagerMultiThreadedTest, Disable)
         ASSERT_NO_THROW(m_manager->enable());
 
         std::vector<std::thread> threads(nThreads);
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [manager = m_manager, &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [manager = m_manager, &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        // Notify all threads that they can start
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        // Wait until all threads are ready
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
-
-                    // Step 2: Perform the actual job
+                    sync.waitForAll();
                     ASSERT_NO_THROW(manager->disable());
                 });
         }
+
+        sync.waitNotifyAll();
 
         for (auto& thread : threads)
         {
@@ -421,36 +368,19 @@ TEST_F(MetricsManagerMultiThreadedTest, Reload)
     for (auto iteration = 0; iteration < times; iteration++)
     {
         std::vector<std::thread> threads(nThreads);
-
-        // Synchronization mechanism
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [manager = m_manager, config = testConfig(), &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [manager = m_manager, config = testConfig(), &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
-
-                    // Step 2: Perform the actual job (reload)
+                    sync.waitForAll();
                     ASSERT_NO_THROW(manager->reload(config));
                 });
         }
+
+        sync.waitNotifyAll();
 
         // Join all threads
         for (auto& thread : threads)
@@ -478,32 +408,14 @@ TEST_F(MetricsManagerMultiThreadedTest, AddMetric)
             result = std::make_shared<bool>(false);
         }
 
-        // Synchronization mechanism
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [iteration, manager = m_manager, result = results[i], &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [iteration, manager = m_manager, result = results[i], &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
-
-                    // Step 2: Try to add metric
+                    sync.waitForAll();
                     try
                     {
                         manager->addMetric(
@@ -512,18 +424,17 @@ TEST_F(MetricsManagerMultiThreadedTest, AddMetric)
                     }
                     catch (...)
                     {
-                        *result = false;
                     }
                 });
         }
 
-        // Join all threads
+        sync.waitNotifyAll();
+
         for (auto& thread : threads)
         {
             thread.join();
         }
 
-        // Ensure only one succeeded in adding the metric
         ASSERT_EQ(
             std::count_if(results.begin(), results.end(), [](const std::shared_ptr<bool>& result) { return *result; }),
             1);
@@ -549,32 +460,14 @@ TEST_F(MetricsManagerMultiThreadedTest, GetMetric)
             result = std::make_shared<bool>(false);
         }
 
-        // Synchronization mechanism
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [manager = m_manager, result = results[i], &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [manager = m_manager, result = results[i], &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
-
-                    // Step 2: Try to get metric
+                    sync.waitForAll();
                     try
                     {
                         manager->getMetric("module.metric");
@@ -586,13 +479,13 @@ TEST_F(MetricsManagerMultiThreadedTest, GetMetric)
                 });
         }
 
-        // Join all threads
+        sync.waitNotifyAll();
+
         for (auto& thread : threads)
         {
             thread.join();
         }
 
-        // Ensure all threads succeeded in getting the metric
         ASSERT_EQ(
             std::count_if(results.begin(), results.end(), [](const std::shared_ptr<bool>& result) { return *result; }),
             nThreads);
@@ -618,32 +511,14 @@ TEST_F(MetricsManagerMultiThreadedTest, EnableModule)
             result = std::make_shared<bool>(false);
         }
 
-        // Synchronization mechanism
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [manager = m_manager, result = results[i], &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [manager = m_manager, result = results[i], &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
-
-                    // Step 2: Try to enable module
+                    sync.waitForAll();
                     try
                     {
                         manager->enableModule("module");
@@ -655,13 +530,13 @@ TEST_F(MetricsManagerMultiThreadedTest, EnableModule)
                 });
         }
 
-        // Join all threads
+        sync.waitNotifyAll();
+
         for (auto& thread : threads)
         {
             thread.join();
         }
 
-        // Ensure all threads succeeded in enabling the module
         ASSERT_EQ(
             std::count_if(results.begin(), results.end(), [](const std::shared_ptr<bool>& result) { return *result; }),
             nThreads);
@@ -687,32 +562,14 @@ TEST_F(MetricsManagerMultiThreadedTest, DisableModule)
             result = std::make_shared<bool>(false);
         }
 
-        // Synchronization mechanism
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int waiting_threads = 0;
+        ThreadSynchronizer sync(nThreads);
 
         for (auto i = 0; i < nThreads; i++)
         {
             threads[i] = std::thread(
-                [manager = m_manager, result = results[i], &mtx, &cv, &ready, &waiting_threads, nThreads]()
+                [manager = m_manager, result = results[i], &sync]()
                 {
-                    // Step 1: Synchronization mechanism
-                    std::unique_lock<std::mutex> lock(mtx);
-                    waiting_threads++;
-                    if (waiting_threads == nThreads)
-                    {
-                        ready = true;
-                        cv.notify_all();
-                    }
-                    else
-                    {
-                        cv.wait(lock, [&ready]() { return ready; });
-                    }
-                    lock.unlock();
-
-                    // Step 2: Try to disable module
+                    sync.waitForAll();
                     try
                     {
                         manager->disableModule("module");
@@ -724,15 +581,166 @@ TEST_F(MetricsManagerMultiThreadedTest, DisableModule)
                 });
         }
 
-        // Join all threads
+        sync.waitNotifyAll();
+
         for (auto& thread : threads)
         {
             thread.join();
         }
 
-        // Ensure all threads succeeded in disabling the module
         ASSERT_EQ(
             std::count_if(results.begin(), results.end(), [](const std::shared_ptr<bool>& result) { return *result; }),
             nThreads);
     }
+}
+
+TEST_F(MetricsManagerMultiThreadedTest, AllSimultaneously)
+{
+    auto nThreads = 100;
+    auto times = 10;
+
+    struct Results
+    {
+        std::atomic_uint successCount = 0;
+        std::atomic_uint failureCount = 0;
+    };
+
+    // 8 is the number of functions in FunctionExecutor
+    std::vector<std::shared_ptr<Results>> results;
+    for (auto i = 0; i < 8; i++)
+    {
+        results.emplace_back(std::make_shared<Results>());
+    }
+
+    FunctionExecutor funcExec(
+        [manager = m_manager, config = testConfig(), res = results[0]]()
+        {
+            try
+            {
+                manager->configure(config);
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        },
+        [manager = m_manager, config = testConfig(), res = results[1]]()
+        {
+            try
+            {
+                manager->reload(config);
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        },
+        [manager = m_manager, res = results[2]]()
+        {
+            try
+            {
+                manager->enable();
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        },
+        [manager = m_manager, res = results[3]]()
+        {
+            try
+            {
+                manager->disable();
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        },
+        [manager = m_manager, res = results[4]]()
+        {
+            try
+            {
+                manager->addMetric(MetricType::UINTCOUNTER, "module.metric", "desc", "unit");
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        },
+        [manager = m_manager, res = results[5]]()
+        {
+            try
+            {
+                manager->getMetric("module.metric");
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        },
+        [manager = m_manager, res = results[6]]()
+        {
+            try
+            {
+                manager->enableModule("module");
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        },
+        [manager = m_manager, res = results[7]]()
+        {
+            try
+            {
+                manager->disableModule("module");
+                res->successCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            catch (...)
+            {
+                res->failureCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        });
+
+    std::vector<std::thread> threads(nThreads);
+    ThreadSynchronizer sync(nThreads);
+
+    for (auto iteration = 0; iteration < times; iteration++)
+    {
+        sync.reset();
+
+        for (auto i = 0; i < nThreads; i++)
+        {
+            threads[i] = std::thread(
+                [&, i]
+                {
+                    sync.waitForAll();
+                    funcExec.executeRandomFunction();
+                });
+        }
+
+        sync.waitNotifyAll();
+
+        for (auto& thread : threads)
+        {
+            thread.join();
+        }
+    }
+
+    auto totalCounts = 0;
+    for (auto& res : results)
+    {
+        totalCounts += res->successCount.load(std::memory_order_relaxed);
+        totalCounts += res->failureCount.load(std::memory_order_relaxed);
+    }
+
+    ASSERT_EQ(totalCounts, nThreads * times);
 }
