@@ -137,14 +137,14 @@ void stop()
     spdlog::shutdown();
 }
 
-void testInit()
+void testInit(Level lvl)
 {
     auto logger = spdlog::get("default");
 
     if (!logger)
     {
         LoggingConfig logConfig;
-        logConfig.level = Level::Warn;
+        logConfig.level = lvl;
         start(logConfig);
     }
 }

@@ -52,13 +52,15 @@ add_executable(metrics_utest
   ${UNIT_SRC_DIR}/manager_test.cpp
   ${UNIT_SRC_DIR}/mocks_test.cpp
   ${UNIT_SRC_DIR}/metrics/metrics_test.cpp
+  ${UNIT_SRC_DIR}/main.cpp
 )
 target_include_directories(metrics_utest
   PRIVATE
   ${SRC_DIR}
+  ${UNIT_SRC_DIR}
 )
 target_link_libraries(metrics_utest
-  GTest::gtest_main
+  GTest::gtest
   metrics
   indexerconnector::mocks
   opentelemetry-cpp::api
@@ -69,5 +71,16 @@ target_link_libraries(metrics_utest
   metrics::mocks
 )
 gtest_discover_tests(metrics_utest)
+
+add_executable(metrics_ctest
+  ${COMPONENT_SRC_DIR}/metrics_test.cpp
+)
+target_link_libraries(metrics_ctest
+  GTest::gtest_main
+  metrics
+  indexerconnector::mocks
+  base::test
+)
+gtest_discover_tests(metrics_ctest)
 
 endif(ENGINE_BUILD_TEST)
