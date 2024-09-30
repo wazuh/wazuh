@@ -71,3 +71,6 @@ _deps
 test/helper_tests/map/outputs/*
 test/helper_tests/filter/outputs/*
 test/helper_tests/transformation/outputs/*
+
+# Vcpkg
+vcpkg/*

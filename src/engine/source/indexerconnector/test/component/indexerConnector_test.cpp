@@ -11,16 +11,17 @@
 
 #include "base/logging.hpp"
 #include "base/utils/stringUtils.hpp"
+#include "base/utils/timeUtils.hpp"
 #include "fakeIndexer.hpp"
-#include "indexerConnector.hpp"
+#include "indexerConnector/indexerConnector.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <regex>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -327,6 +328,46 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
 }
 
 /**
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against the
+ * expected one. The payload doesn't contain an ID.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishWithoutId)
+{
+    nlohmann::json expectedMetadata;
+    expectedMetadata["index"]["_index"] = INDEXER_NAME;
+
+    // Callback that checks the expected data to be published.
+    // The format of the data published is divided in two lines:
+    // First line: JSON data with the metadata (indexer name, index ID)
+    // Second line: Index data.
+    constexpr auto INDEX_DATA {"contentNoId"};
+    auto callbackCalled {false};
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
+                                   {
+                                       const auto splitData {base::utils::string::split(data, '\n')};
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+                                       callbackCalled = true;
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, INDEXER_TIMEOUT)};
+
+    // Publish content and wait until the publication finishes.
+    nlohmann::json publishData;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = INDEX_DATA;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_TRUE(callbackCalled);
+}
+
+/**
  * @brief Test the publication to an unavailable server.
  *
  */
@@ -485,4 +526,54 @@ TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
     indexerConfig["name"] = "UPPER_case_INDEX";
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
     EXPECT_THROW(IndexerConnector(indexerConfig, INDEXER_TIMEOUT), std::invalid_argument);
+}
+
+/**
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against the
+ * expected one.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
+{
+    // We create an index with the current date as part of the name.
+    nlohmann::json expectedMetadata;
+    std::string indexerName = std::string(INDEXER_NAME) + "_$(date)";
+    const std::string indexerNameDatePlaceHolder = indexerName;
+    base::utils::string::replaceAll(indexerName, "$(date)", base::utils::time::getCurrentDate("."));
+    auto INDEX_NAME_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + "_[0-9]{4}.([0-9]|1[0-2]){2}.(([0-9]|1[0-2]){2})"};
+    EXPECT_TRUE(std::regex_match(indexerName, std::regex(INDEX_NAME_FORMAT_REGEX_STR)));
+
+    expectedMetadata["index"]["_index"] = indexerName;
+    expectedMetadata["index"]["_id"] = INDEX_ID_A;
+
+    // Callback that checks the expected data to be published.
+    // The format of the data published is divided in two lines:
+    // First line: JSON data with the metadata (indexer name, index ID)
+    // Second line: Index data.
+    constexpr auto INDEX_DATA {"content"};
+    auto callbackCalled {false};
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
+                                   {
+                                       const auto splitData {base::utils::string::split(data, '\n')};
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+                                       callbackCalled = true;
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    indexerConfig["name"] = indexerNameDatePlaceHolder;
+    const std::string INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + R"(_\$\(date\))"};
+    EXPECT_TRUE(std::regex_match(indexerNameDatePlaceHolder, std::regex(INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR)));
+    auto indexerConnector {IndexerConnector(indexerConfig, INDEXER_TIMEOUT)};
+
+    // Publish content and wait until the publication finishes.
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = INDEX_DATA;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
 }

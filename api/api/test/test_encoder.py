@@ -11,21 +11,27 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         from api.encoder import prettify, dumps
         from wazuh.core.results import WazuhResult
+        from wazuh.core.indexer.agent import Agent
 
 
 def custom_hook(dct):
+    if 'id' in dct:
+        return Agent(**dct)
+
     if 'key' in dct:
         return {'key': dct['key']}
-    elif 'error' in dct:
+
+    if 'error' in dct:
         return WazuhResult.decode_json({'result': dct, 'str_priority': 'v2'})
-    else:
-        return dct
+
+    return dct
 
 
-@pytest.mark.parametrize('o', [{'key': 'v1'},
-                               WazuhResult({'k1': 'v1'}, str_priority='v2')
-                               ]
-                         )
+@pytest.mark.parametrize('o', [
+    {'key': 'v1'},
+    WazuhResult({'k1': 'v1'}, str_priority='v2'),
+    Agent(id='0191e730-f9eb-7794-b2d1-949405d7d6ce', name='test')
+])
 def test_encoder_dumps(o):
     """Test dumps method from API encoder using WazuhAPIJSONEncoder."""
     encoded = dumps(o)

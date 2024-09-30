@@ -11,7 +11,7 @@ from enum import IntEnum
 from functools import partial
 from shutil import chown
 from time import time
-from typing import Union
+from typing import Union, Optional
 
 import yaml
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_, \
@@ -1040,6 +1040,48 @@ class AuthenticationManager(RBACManager):
                 user_ids.append(user_dict)
         return user_ids
 
+    def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
+                     to_id: Optional[int] = None) -> None:
+        """Get the users from the `source` database filtering by IDs and insert them into the `target` database.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        old_users = manager.get_data(source, User, User.id, from_id=from_id, to_id=to_id)
+
+        for user in old_users:
+            if user.id in (WAZUH_USER_ID, WAZUH_WUI_USER_ID):
+                self.update_user(user.id, user.password, hashed_password=True)
+                continue
+
+            status = self.add_user(username=user.username,
+                                   password=user.password,
+                                   created_at=user.created_at,
+                                   user_id=user.id,
+                                   hashed_password=True,
+                                   check_default=False)
+
+            if status is False:
+                logger.warning(f"User {user.id} ({user.username}) is part of the new default users. "
+                               f"Renaming it to '{user.username}_user'")
+
+                self.add_user(username=f"{user.username}_user",
+                              password=user.password,
+                              created_at=user.created_at,
+                              user_id=user.id,
+                              hashed_password=True,
+                              check_default=False)
+
 
 class RolesManager(RBACManager):
     """Manager of the Roles class.
@@ -1236,6 +1278,43 @@ class RolesManager(RBACManager):
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
+
+    def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
+                     to_id: Optional[int] = None) -> None:
+        """Get the roles from the `source` database filtering by IDs and insert them into the `target` database.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
+        if check_if_reserved_id(from_id, to_id):
+            return
+
+        old_roles = manager.get_data(source, Roles, Roles.id, from_id=from_id, to_id=to_id)
+        for role in old_roles:
+            status = self.add_role(name=role.name,
+                                   created_at=role.created_at,
+                                   role_id=role.id,
+                                   check_default=False)
+
+            if status == SecurityError.ALREADY_EXIST:
+                logger.warning(f"Role {role.id} ({role.name}) is part of the new default roles. "
+                               f"Renaming it to '{role.name}_user'")
+
+                self.add_role(name=f"{role.name}_user",
+                              created_at=role.created_at,
+                              role_id=role.id,
+                              check_default=False)
 
 
 class RulesManager(RBACManager):
@@ -1446,6 +1525,54 @@ class RulesManager(RBACManager):
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
+
+    def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
+                     to_id: Optional[int] = None) -> None:
+        """Get the rules from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
+        if check_if_reserved_id(from_id, to_id):
+            return
+
+        old_rules = manager.get_data(source, Rules, Rules.id, from_id=from_id, to_id=to_id)
+
+        for rule in old_rules:
+            status = self.add_rule(name=rule.name,
+                                   rule=json.loads(rule.rule),
+                                   created_at=rule.created_at,
+                                   rule_id=rule.id,
+                                   check_default=False)
+            # If the user's rule has the same body as an existing default rule, it won't be inserted and its
+            # role-rule relationships will be linked to that default rule instead of replacing it.
+            if status == SecurityError.ALREADY_EXIST:
+                logger.warning(f"Rule {rule.id} ({rule.name}) is part of the new default rules. "
+                               "Attempting to migrate relationships")
+                roles_rules = manager.get_table(manager.sessions[source], RolesRules).filter(
+                    RolesRules.rule_id == rule.id).order_by(RolesRules.id.asc()).all()
+                new_rule_id = manager.sessions[target].query(Rules).filter_by(
+                    rule=str(rule.rule)).first().id
+
+                with RolesRulesManager(manager.sessions[target]) as role_rules_manager:
+                    for role_rule in roles_rules:
+                        role_rules_manager.add_rule_to_role(role_id=role_rule.role_id,
+                                                            rule_id=new_rule_id,
+                                                            created_at=role_rule.created_at,
+                                                            force_admin=True)
+                    logger.info(f"All relationships were migrated to the new rule {new_rule_id}")
 
 
 class PoliciesManager(RBACManager):
@@ -1695,6 +1822,55 @@ class PoliciesManager(RBACManager):
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
+
+    def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
+                     to_id: Optional[int] = None) -> None:
+        """Get the policies from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
+        if check_if_reserved_id(from_id, to_id):
+            return
+
+        old_policies = manager.get_data(source, Policies, Policies.id, from_id=from_id, to_id=to_id)
+
+        for policy in old_policies:
+            status = self.add_policy(name=policy.name,
+                                     policy=json.loads(policy.policy),
+                                     created_at=policy.created_at,
+                                     policy_id=policy.id,
+                                     check_default=False)
+            # If the user's policy has the same body as an existing default policy, it won't be inserted and its
+            # role-policy relationships will be linked to that default policy instead of replacing it.
+            if status == SecurityError.ALREADY_EXIST:
+                logger.warning(f"Policy {policy.id} ({policy.name}) is part of the new default policies. "
+                               "Attempting to migrate relationships")
+                roles_policies = manager.get_table(manager.sessions[source], RolesPolicies).filter(
+                    RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
+                new_policy_id = manager.sessions[target].query(Policies).filter_by(
+                    policy=str(policy.policy)).first().id
+
+                with RolesPoliciesManager(manager.sessions[target]) as role_policy_manager:
+                    for role_policy in roles_policies:
+                        role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
+                                                               policy_id=new_policy_id,
+                                                               position=role_policy.level,
+                                                               created_at=role_policy.created_at,
+                                                               force_admin=True)
+                    logger.info(f"All relationships were migrated to the new policy {new_policy_id}")
 
 
 class UserRolesManager(RBACManager):
@@ -2029,6 +2205,62 @@ class UserRolesManager(RBACManager):
             return True
 
         return False
+
+    def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
+                     to_id: Optional[int] = None) -> None:
+        """Get the user roles from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
+        if check_if_reserved_id(from_id, to_id):
+            return
+
+        old_user_roles = manager.get_data(source, UserRoles, UserRoles.user_id, UserRoles.role_id, from_id=from_id,
+                                          to_id=to_id)
+        old_user_roles = sorted(old_user_roles, key=lambda item: item.level)
+
+        for user_role in old_user_roles:
+            user_id = user_role.user_id
+            role_id = user_role.role_id
+            # Look for the ID of a default resource from the old database in the new database using its name
+            # This allows us to keep the relationship if the related default resource now has a different id
+            if int(user_id) <= MAX_ID_RESERVED:
+                try:
+                    user_name = manager.get_table(manager.sessions[source], User).filter(
+                        User.id == user_id).first().username
+                    user_id = AuthenticationManager(manager.sessions[target]).get_user(username=user_name)['id']
+                except TypeError:
+                    logger.warning(f"User {user_id} ({user_name}) no longer exists. Removing affected "
+                                   "user-role relationships")
+                    continue
+
+            if int(role_id) <= MAX_ID_RESERVED:
+                try:
+                    role_name = manager.get_table(manager.sessions[source], Roles).filter(
+                        Roles.id == role_id).first().name
+                    role_id = RolesManager(manager.sessions[target]).get_role(name=role_name)['id']
+                except TypeError:
+                    logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
+                                   "user-role relationships")
+                    continue
+
+            self.add_role_to_user(user_id=user_id,
+                                  role_id=role_id,
+                                  created_at=user_role.created_at,
+                                  force_admin=True)
 
 
 class RolesPoliciesManager(RBACManager):
@@ -2402,6 +2634,62 @@ class RolesPoliciesManager(RBACManager):
 
         return False
 
+    def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
+                     to_id: Optional[int] = None) -> None:
+        """Get the roles policies from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
+        if check_if_reserved_id(from_id, to_id):
+            return
+
+        old_roles_policies = manager.get_data(source, RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id,
+                                              from_id, to_id)
+        old_roles_policies = sorted(old_roles_policies, key=lambda item: item.level)
+        for role_policy in old_roles_policies:
+            role_id = role_policy.role_id
+            policy_id = role_policy.policy_id
+
+            # Look for the ID of a default resource from the old database in the new database using its name
+            # This allows us to keep the relationship if the related default resource now has a different id
+            if int(role_id) <= MAX_ID_RESERVED:
+                try:
+                    role_name = manager.get_table(manager.sessions[source], Roles).filter(
+                        Roles.id == role_id).first().name
+                    role_id = RolesManager(manager.sessions[target]).get_role(name=role_name)['id']
+                except TypeError:
+                    logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
+                                   "role-policy relationships")
+                    continue
+
+            if int(policy_id) <= MAX_ID_RESERVED:
+                try:
+                    policy_name = manager.get_table(manager.sessions[source], Policies).filter(
+                        Policies.id == policy_id).first().name
+                    policy_id = PoliciesManager(manager.sessions[target]).get_policy(name=policy_name)['id']
+                except TypeError:
+                    logger.warning(f"Policy {policy_id} ({policy_name}) no longer exists. Removing affected "
+                                   "role-policy relationships")
+                    continue
+
+            self.add_policy_to_role(role_id=role_id,
+                                    policy_id=policy_id,
+                                    created_at=role_policy.created_at,
+                                    force_admin=True)
+
 
 class RolesRulesManager(RBACManager):
     """Manager of the RolesRules class.
@@ -2667,6 +2955,61 @@ class RolesRulesManager(RBACManager):
 
         return False
 
+    def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
+                     to_id: Optional[int] = None) -> None:
+        """Get the role rules from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
+        if check_if_reserved_id(from_id, to_id):
+            return
+
+        old_roles_rules = manager.get_data(source, RolesRules, RolesRules.role_id, RolesRules.rule_id, from_id=from_id,
+                                           to_id=to_id)
+        for role_rule in old_roles_rules:
+            role_id = role_rule.role_id
+            rule_id = role_rule.rule_id
+
+            # Look for the ID of a default resource from the old database in the new database using its name
+            # This allows us to keep the relationship if the related default resource now has a different id
+            if int(role_id) <= MAX_ID_RESERVED:
+                try:
+                    role_name = manager.get_table(manager.sessions[source], Roles).filter(
+                        Roles.id == role_id).first().name
+                    role_id = RolesManager(manager.sessions[target]).get_role(name=role_name)['id']
+                except TypeError:
+                    logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
+                                   "role-rule relationships")
+                    continue
+
+            if int(rule_id) <= MAX_ID_RESERVED:
+                try:
+                    rule_name = manager.get_table(manager.sessions[source], Rules).filter(
+                        Rules.id == rule_id).first().name
+                    rule_id = RulesManager(manager.sessions[target]).get_rule_by_name(rule_name=rule_name)['id']
+                except TypeError:
+                    logger.warning(f"Rule {rule_id} ({rule_name}) no longer exists. Removing affected "
+                                   "role-rule relationships")
+                    continue
+
+            self.add_rule_to_role(role_id=role_id,
+                                  rule_id=rule_id,
+                                  created_at=role_rule.created_at,
+                                  force_admin=True)
+
 
 class DatabaseManager:
     """Class used to manage the RBAC databases."""
@@ -2860,7 +3203,7 @@ class DatabaseManager:
 
         return result
 
-    def migrate_data(self, source: str, target: str, from_id: int = None, to_id: int = None):
+    def migrate_data(self, source: str, target: str, from_id: int = None, to_id: int = None) -> None:
         """Get the resources from the `source` database filtering by IDs and insert them into the `target` database.
         This function will adapt the relationship between problematic resources if needed.
 
@@ -2875,206 +3218,19 @@ class DatabaseManager:
         to_id : id
             ID which the resources will be migrated to.
         """
-        old_users = self.get_data(source, User, User.id, from_id=from_id, to_id=to_id)
+        resources = [RolesManager, RulesManager, PoliciesManager, UserRolesManager,
+                             RolesPoliciesManager, RolesRulesManager]
+
         with AuthenticationManager(self.sessions[target]) as auth_manager:
-            for user in old_users:
-                if user.id in (WAZUH_USER_ID, WAZUH_WUI_USER_ID):
-                    auth_manager.update_user(user.id, user.password, hashed_password=True)
-                    continue
-                
-                status = auth_manager.add_user(username=user.username,
-                                               password=user.password,
-                                               created_at=user.created_at,
-                                               user_id=user.id,
-                                               hashed_password=True,
-                                               check_default=False)
+            auth_manager.migrate_data(self, source, target, from_id=from_id, to_id=to_id)
 
-                if status is False:
-                    logger.warning(f"User {user.id} ({user.username}) is part of the new default users. "
-                                   f"Renaming it to '{user.username}_user'")
-
-                    auth_manager.add_user(username=f"{user.username}_user",
-                                          password=user.password,
-                                          created_at=user.created_at,
-                                          user_id=user.id,
-                                          hashed_password=True,
-                                          check_default=False)
-        
-        # This is to avoid an error when trying to update default users roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+        if check_if_reserved_id(from_id=from_id, to_id=to_id):
+            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
             return
 
-        old_roles = self.get_data(source, Roles, Roles.id, from_id=from_id, to_id=to_id)
-        with RolesManager(self.sessions[target]) as role_manager:
-            for role in old_roles:
-                status = role_manager.add_role(name=role.name,
-                                               created_at=role.created_at,
-                                               role_id=role.id,
-                                               check_default=False)
-
-                if status == SecurityError.ALREADY_EXIST:
-                    logger.warning(f"Role {role.id} ({role.name}) is part of the new default roles. "
-                                   f"Renaming it to '{role.name}_user'")
-
-                    role_manager.add_role(name=f"{role.name}_user",
-                                          created_at=role.created_at,
-                                          role_id=role.id,
-                                          check_default=False)
-
-        old_rules = self.get_data(source, Rules, Rules.id, from_id=from_id, to_id=to_id)
-        with RulesManager(self.sessions[target]) as rule_manager:
-            for rule in old_rules:
-                status = rule_manager.add_rule(name=rule.name,
-                                               rule=json.loads(rule.rule),
-                                               created_at=rule.created_at,
-                                               rule_id=rule.id,
-                                               check_default=False)
-                # If the user's rule has the same body as an existing default rule, it won't be inserted and its
-                # role-rule relationships will be linked to that default rule instead of replacing it.
-                if status == SecurityError.ALREADY_EXIST:
-                    logger.warning(f"Rule {rule.id} ({rule.name}) is part of the new default rules. "
-                                   "Attempting to migrate relationships")
-                    roles_rules = self.get_table(self.sessions[source], RolesRules).filter(
-                        RolesRules.rule_id == rule.id).order_by(RolesRules.id.asc()).all()
-                    new_rule_id = self.sessions[target].scalars(select(Rules).filter_by(rule=str(rule.rule)).limit(1)
-                                                                ).first().id
-                    with RolesRulesManager(self.sessions[target]) as role_rules_manager:
-                        for role_rule in roles_rules:
-                            role_rules_manager.add_rule_to_role(role_id=role_rule.role_id,
-                                                                rule_id=new_rule_id,
-                                                                created_at=role_rule.created_at,
-                                                                force_admin=True)
-                        logger.info(f"All relationships were migrated to the new rule {new_rule_id}")
-
-        old_policies = self.get_data(source, Policies, Policies.id, from_id=from_id, to_id=to_id)
-        with PoliciesManager(self.sessions[target]) as policy_manager:
-            for policy in old_policies:
-                status = policy_manager.add_policy(name=policy.name,
-                                                   policy=json.loads(policy.policy),
-                                                   created_at=policy.created_at,
-                                                   policy_id=policy.id,
-                                                   check_default=False)
-                # If the user's policy has the same body as an existing default policy, it won't be inserted and its
-                # role-policy relationships will be linked to that default policy instead of replacing it.
-                if status == SecurityError.ALREADY_EXIST:
-                    logger.warning(f"Policy {policy.id} ({policy.name}) is part of the new default policies. "
-                                   "Attempting to migrate relationships")
-                    roles_policies = self.get_table(self.sessions[source], RolesPolicies).filter(
-                        RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
-                    new_policy_id = self.sessions[target].scalars(select(Policies).
-                                                                  filter_by(policy=str(policy.policy)).limit(1)
-                                                                  ).first().id
-                    with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
-                        for role_policy in roles_policies:
-                            role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
-                                                                   policy_id=new_policy_id,
-                                                                   position=role_policy.level,
-                                                                   created_at=role_policy.created_at,
-                                                                   force_admin=True)
-                        logger.info(f"All relationships were migrated to the new policy {new_policy_id}")
-
-        old_user_roles = self.get_data(source, UserRoles, UserRoles.user_id, UserRoles.role_id, from_id=from_id,
-                                       to_id=to_id)
-        old_user_roles = sorted(old_user_roles, key=lambda item: item.level)
-        with UserRolesManager(self.sessions[target]) as user_role_manager:
-            for user_role in old_user_roles:
-                user_id = user_role.user_id
-                role_id = user_role.role_id
-                # Look for the ID of a default resource from the old database in the new database using its name
-                # This allows us to keep the relationship if the related default resource now has a different id
-                if int(user_id) <= MAX_ID_RESERVED:
-                    try:
-                        user_name = self.get_table(self.sessions[source], User).filter(
-                            User.id == user_id).first().username
-                        user_id = AuthenticationManager(self.sessions[target]).get_user(username=user_name)['id']
-                    except TypeError:
-                        logger.warning(f"User {user_id} ({user_name}) no longer exists. Removing affected "
-                                       "user-role relationships")
-                        continue
-
-                if int(role_id) <= MAX_ID_RESERVED:
-                    try:
-                        role_name = self.get_table(self.sessions[source], Roles).filter(
-                            Roles.id == role_id).first().name
-                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
-                    except TypeError:
-                        logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
-                                       "user-role relationships")
-                        continue
-
-                user_role_manager.add_role_to_user(user_id=user_id,
-                                                   role_id=role_id,
-                                                   created_at=user_role.created_at,
-                                                   force_admin=True)
-
-        # Role-Policies relationships
-        old_roles_policies = self.get_data(source, RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id,
-                                           from_id, to_id)
-        old_roles_policies = sorted(old_roles_policies, key=lambda item: item.level)
-        with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
-            for role_policy in old_roles_policies:
-                role_id = role_policy.role_id
-                policy_id = role_policy.policy_id
-                # Look for the ID of a default resource from the old database in the new database using its name
-                # This allows us to keep the relationship if the related default resource now has a different id
-                if int(role_id) <= MAX_ID_RESERVED:
-                    try:
-                        role_name = self.get_table(self.sessions[source], Roles).filter(
-                            Roles.id == role_id).first().name
-                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
-                    except TypeError:
-                        logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
-                                       "role-policy relationships")
-                        continue
-
-                if int(policy_id) <= MAX_ID_RESERVED:
-                    try:
-                        policy_name = self.get_table(self.sessions[source], Policies).filter(
-                            Policies.id == policy_id).first().name
-                        policy_id = PoliciesManager(self.sessions[target]).get_policy(name=policy_name)['id']
-                    except TypeError:
-                        logger.warning(f"Policy {policy_id} ({policy_name}) no longer exists. Removing affected "
-                                       "role-policy relationships")
-                        continue
-
-                role_policy_manager.add_policy_to_role(role_id=role_id,
-                                                       policy_id=policy_id,
-                                                       created_at=role_policy.created_at,
-                                                       force_admin=True)
-
-        # Role-Rules relationships
-        old_roles_rules = self.get_data(source, RolesRules, RolesRules.role_id, RolesRules.rule_id, from_id=from_id,
-                                        to_id=to_id)
-        with RolesRulesManager(self.sessions[target]) as role_rule_manager:
-            for role_rule in old_roles_rules:
-                role_id = role_rule.role_id
-                rule_id = role_rule.rule_id
-                # Look for the ID of a default resource from the old database in the new database using its name
-                # This allows us to keep the relationship if the related default resource now has a different id
-                if int(role_id) <= MAX_ID_RESERVED:
-                    try:
-                        role_name = self.get_table(self.sessions[source], Roles).filter(
-                            Roles.id == role_id).first().name
-                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
-                    except TypeError:
-                        logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
-                                       "role-rule relationships")
-                        continue
-
-                if int(rule_id) <= MAX_ID_RESERVED:
-                    try:
-                        rule_name = self.get_table(self.sessions[source], Rules).filter(
-                            Rules.id == rule_id).first().name
-                        rule_id = RulesManager(self.sessions[target]).get_rule_by_name(rule_name=rule_name)['id']
-                    except TypeError:
-                        logger.warning(f"Rule {rule_id} ({rule_name}) no longer exists. Removing affected "
-                                       "role-rule relationships")
-                        continue
-
-                role_rule_manager.add_rule_to_role(role_id=role_id,
-                                                   rule_id=rule_id,
-                                                   created_at=role_rule.created_at,
-                                                   force_admin=True)
+        for manager in resources:
+            with manager(self.sessions[target]) as resource_manager:
+                resource_manager.migrate_data(self, source, target, from_id=from_id, to_id=to_id)
 
     def rollback(self, database: str):
         """Abort any pending change for the current session.
@@ -3097,6 +3253,24 @@ class DatabaseManager:
             New database version.
         """
         self.sessions[database].execute(text(f'pragma user_version={version}'))
+
+
+def check_if_reserved_id(from_id: Optional[str], to_id: Optional[str]):
+    """Checks if the ids are reserved ones
+
+    Parameters
+    ----------
+    from_id : Optional[str]
+        ID which the resources will be migrated from.
+    to_id : Optional[str]
+        ID which the resources will be migrated to.
+
+    Returns
+    -------
+    bool
+        Condition result
+    """
+    return from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID
 
 
 def check_database_integrity():

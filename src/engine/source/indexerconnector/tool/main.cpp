@@ -1,6 +1,6 @@
 #include "base/logging.hpp"
 #include "cmdArgParser.hpp"
-#include <indexerConnector.hpp>
+#include <indexerConnector/indexerConnector.hpp>
 #include <iomanip>
 #include <iostream>
 #include <random>

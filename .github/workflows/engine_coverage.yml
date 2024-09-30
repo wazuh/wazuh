@@ -58,11 +58,8 @@ jobs:
       with:
         ref: v2.0
 
-    - name: Install dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: bc
-        version: 1.0
+    - name: Install dependencies (bc lzip)
+      run: sudo apt-get install lzip bc
 
     - name: Check out repository
       uses: actions/checkout@v4
@@ -218,6 +215,7 @@ jobs:
 
 
     - name: Tar coverage reports
+      if: ${{ env.MODULES_LIST != '' }}
       run: |
         cd ${{github.workspace}}/${{env.BUILD_PATH}}
         tar_file="coverage_reports.tar.gz"
@@ -241,6 +239,7 @@ jobs:
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
       id: upload-coverage-reports
+      if: ${{ env.MODULES_LIST != '' }}
       with:
         name: coverage-reports
         path: ${{github.workspace}}/${{env.BUILD_PATH}}/coverage_reports.tar.gz
@@ -248,8 +247,10 @@ jobs:
         retention-days: 1
         if-no-files-found: error
 
+
     - name: Verify coverage
       id: verify-coverage
+      if: ${{ env.MODULES_LIST != '' }}
       run: |
         # Pass coverage requeriments
         PASS=true

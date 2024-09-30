@@ -11,7 +11,7 @@
 
 #include "argsParser.hpp"
 #include "base/logging.hpp"
-#include "scanOrchestrator.hpp"
+#include "vdscanner/scanOrchestrator.hpp"
 #include <exception>
 #include <httplib.h>
 
@@ -22,28 +22,10 @@ int main(const int argc, const char* argv[])
         CmdLineArgs args(argc, argv);
         logging::start({args.getLogFilePath(), logging::Level::Debug});
 
-        std::string configurationData;
-        std::ifstream file(args.getConfigurationFilePath());
-
-        if (file.is_open())
-        {
-            std::string line;
-            while (std::getline(file, line))
-            {
-                configurationData += line;
-            }
-            file.close();
-        }
-        else
-        {
-            throw std::runtime_error("Error: Unable to open configuration file.");
-        }
-
-        ScanOrchestrator scanOrchestrator(configurationData);
-
+        vdscanner::ScanOrchestrator scanOrchestrator;
         httplib::Server svr;
 
-        svr.Post("/v1/vulnerabilityscanner",
+        svr.Post("/vulnerability/scan",
                  [&](const httplib::Request& req, httplib::Response& res)
                  {
                      std::string response;
@@ -61,8 +43,14 @@ int main(const int argc, const char* argv[])
             });
 
         svr.set_logger(
-            [](const auto& req, const auto& res)
-            { LOG_DEBUG("Method: {} - Request: {} - Response status: {}", req.method, req.body, res.status); });
+            [functionName = logging::getLambdaName(__FUNCTION__, "setLogger")](const auto& req, const auto& res)
+            {
+                LOG_DEBUG_L(functionName.c_str(),
+                            "Method: {} - Request: {} - Response status: {}",
+                            req.method,
+                            req.body,
+                            res.status);
+            });
 
         svr.set_address_family(AF_UNIX);
 

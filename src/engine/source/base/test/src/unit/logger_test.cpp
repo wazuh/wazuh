@@ -286,35 +286,40 @@ INSTANTIATE_TEST_CASE_P(
     LevelsTest,
     LoggerTestLevelsParam,
     ::testing::Values(
-        // Level Trace: only "INFO message" should appear
+        // Level Trace: Only Trace, Debug and Info are logged to stdout
         std::make_tuple(logging::Level::Trace,
-                        std::vector<std::string> {"INFO message"},
-                        std::vector<std::string> {
-                            "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
+                        std::vector<std::string> {"TRACE message", "DEBUG message", "INFO message"},
+                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"}),
 
-        // Level Trace: only "INFO message" should appear
+        // Level Debug: Only Debug and Info are logged to stdout
         std::make_tuple(logging::Level::Debug,
-                        std::vector<std::string> {"INFO message"},
+                        std::vector<std::string> {"DEBUG message", "INFO message"},
                         std::vector<std::string> {
-                            "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
+                            "TRACE message", "WARNING message", "ERROR message", "CRITICAL message"}),
 
-        // Level Info: only "INFO message" should appear
+        // Level Info: Only Info is logged to stdout
         std::make_tuple(logging::Level::Info,
                         std::vector<std::string> {"INFO message"},
                         std::vector<std::string> {
                             "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
 
-        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        // Level Warn: Only Warn, Err and Critical are logged to stderr
         std::make_tuple(logging::Level::Warn,
                         std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
                         std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"}),
 
-        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        // Level Err: Only Err and Critical are logged to stderr
         std::make_tuple(logging::Level::Err,
-                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
-                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"}),
+                        std::vector<std::string> {"ERROR message", "CRITICAL message"},
+                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message", "WARNING message"}),
 
-        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        // Level Critical: Only Critical is logged to stderr
         std::make_tuple(logging::Level::Critical,
-                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
-                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"})));
+                        std::vector<std::string> {"CRITICAL message"},
+                        std::vector<std::string> {
+                            "INFO message",
+                            "DEBUG message",
+                            "TRACE message",
+                            "WARNING message",
+                            "ERROR message",
+                        })));
