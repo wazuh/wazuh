@@ -9,10 +9,20 @@ import asyncio
 import logging
 import os
 import signal
+import subprocess
 import sys
 
+from wazuh.core.common import WAZUH_PATH
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
+
+CLUSTER_PROCESS_NAME = 'wazuh-clusterd'
+COMMS_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'apis', 'scripts', 'wazuh_comms_apid.py')
+COMMS_API_PROCESS_NAME = 'wazuh-comms-apid'
+EMBEDDED_PYTHON_PATH = os.path.join(WAZUH_PATH, 'framework', 'python', 'bin', 'python3')
+ENGINE_BINARY_PATH = os.path.join(WAZUH_PATH, 'bin', 'wazuh-engine')
+MANAGEMENT_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'api', 'scripts', 'wazuh_apid.py')
+MANAGEMENT_API_PROCESS_NAME = 'wazuh-apid'
 
 #
 # Aux functions
@@ -48,13 +58,9 @@ def print_version():
 
 def exit_handler(signum, frame):
     cluster_pid = os.getpid()
-    main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Exit...')
+    main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Shutting down...')
 
-    # Terminate cluster's child processes
-    pyDaemonModule.delete_child_pids('wazuh-clusterd', cluster_pid, main_logger)
-
-    # Remove cluster's pidfile
-    pyDaemonModule.delete_pid('wazuh-clusterd', cluster_pid)
+    shutdown_cluster(cluster_pid)
 
     if callable(original_sig_handler):
         original_sig_handler(signum, frame)
@@ -62,6 +68,57 @@ def exit_handler(signum, frame):
         # Call default handler if the original one can't be run
         signal.signal(signum, signal.SIG_DFL)
         os.kill(os.getpid(), signum)
+
+
+def start_subprocesses():
+    """Starts the engine and the management and communications APIs in sub-processes."""
+    # Start the engine
+    # TODO(#25121): Implement
+
+    # Start the management API
+    mapi = subprocess.Popen([EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH])
+    mapi.wait()
+    main_logger.info(f'Started the Management API (pid: {mapi.pid})')
+
+    # Start the communications API
+    capi = subprocess.Popen([EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH])
+    capi.wait()
+    main_logger.info(f'Started the Communications API (pid: {capi.pid})')
+
+
+def shutdown_daemon(name: str):
+    """Sends a SIGTERM signal to the daemon process.
+    
+    Parameters
+    ----------
+    process_name : str
+        Process name.
+    """
+    ppid = pyDaemonModule.get_parent_pid(name)
+    if ppid is not None:
+        os.kill(ppid, signal.SIGTERM)
+
+
+def shutdown_cluster(cluster_pid: int, engine_process: subprocess.Popen = None):
+    """Terminates parent and child processes.
+
+    Parameters
+    ----------
+    cluster_pid : int
+        Cluster process ID.
+    """
+    # Kill the engine
+    # TODO(#25121): Implement
+
+    # Kill the management API
+    shutdown_daemon(MANAGEMENT_API_PROCESS_NAME)
+
+    # Kill the communications API
+    shutdown_daemon(COMMS_API_PROCESS_NAME)
+
+    # Terminate the cluster
+    pyDaemonModule.delete_child_pids(CLUSTER_PROCESS_NAME, cluster_pid, main_logger)
+    pyDaemonModule.delete_pid(CLUSTER_PROCESS_NAME, cluster_pid)
 
 
 #
@@ -83,14 +140,8 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     """
     from wazuh.core.cluster import local_server, master
     from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
-    from wazuh.core.authentication import generate_keypair, keypair_exists
 
     cluster_utils.context_tag.set('Master')
-
-    # Generate JWT signing key pair if it doesn't exist 
-    if not keypair_exists():
-        main_logger.info('Generating JWT signing key pair')
-        generate_keypair()
 
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, logger=logger, cluster_items=cluster_items)
@@ -200,6 +251,8 @@ def get_script_arguments() -> argparse.Namespace:
 def main():
     """Main function of the wazuh-clusterd script in charge of starting the cluster process."""
     import wazuh.core.cluster.cluster
+    from wazuh.core.authentication import generate_keypair, keypair_exists
+
 
     # Set correct permissions on cluster.log file
     if os.path.exists(f'{common.WAZUH_PATH}/logs/cluster.log'):
@@ -225,7 +278,7 @@ def main():
     wazuh.core.cluster.cluster.clean_up()
 
     # Check for unused PID files
-    clean_pid_files('wazuh-clusterd')
+    clean_pid_files(CLUSTER_PROCESS_NAME)
 
     # Foreground/Daemon
     if not args.foreground:
@@ -236,24 +289,36 @@ def main():
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
 
-    pid = os.getpid()
-    pyDaemonModule.create_pid('wazuh-clusterd', pid)
+    cluster_pid = os.getpid()
+    pyDaemonModule.create_pid(CLUSTER_PROCESS_NAME, cluster_pid)
     if args.foreground:
-        print(f"Starting cluster in foreground (pid: {pid})")
+        print(f"Starting cluster in foreground (pid: {cluster_pid})")
 
-    main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
+    if cluster_configuration['node_type'] == 'master':
+        main_function = master_main
+
+        # Generate JWT signing key pair if it doesn't exist 
+        if not keypair_exists():
+            main_logger.info('Generating JWT signing key pair')
+            generate_keypair()
+    else:
+        main_function = worker_main
+
     try:
+        engine_process = start_subprocesses()
+        # Overwrite the SIGTERM signal handler to take into account the engine process
+        signal.signal(signal.SIGTERM, partial(exit_handler, engine_process=engine_process))
+
         asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
     except KeyboardInterrupt:
-        main_logger.info("SIGINT received. Bye!")
+        main_logger.info("SIGINT received. Shutting down...")
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution "
                           "permission for 'wazuh' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:
-        pyDaemonModule.delete_child_pids('wazuh-clusterd', pid, main_logger)
-        pyDaemonModule.delete_pid('wazuh-clusterd', pid)
+        shutdown_cluster(cluster_pid)
 
 
 if __name__ == '__main__':
