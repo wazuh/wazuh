@@ -4,6 +4,7 @@
 
 import asyncio
 import signal
+import subprocess
 import sys
 from unittest.mock import call, patch
 
@@ -120,18 +121,22 @@ def test_start_subprocesses(mock_popen):
             pass
 
     wazuh_clusterd.main_logger = LoggerMock
+    pid = 2
 
-    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock:
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid):
         wazuh_clusterd.start_subprocesses()
 
     mock_popen.assert_has_calls([
+        call([wazuh_clusterd.ENGINE_BINARY_PATH, 'server', 'start']),
         call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.MANAGEMENT_API_SCRIPT_PATH]),
         call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.COMMS_API_SCRIPT_PATH]),
     ], any_order=True)
 
     main_logger_mock.info.assert_has_calls([
-        call(f'Started the Management API (pid: {mock_popen().pid})'),
-        call(f'Started the Communications API (pid: {mock_popen().pid})'),
+        call(f'Started the Engine (pid: {mock_popen().pid})'),
+        call(f'Started the Management API (pid: {pid})'),
+        call(f'Started the Communications API (pid: {pid})'),
     ])
 
 

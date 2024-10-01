@@ -11,6 +11,7 @@ import os
 import signal
 import subprocess
 import sys
+from functools import partial
 
 from wazuh.core.common import WAZUH_PATH
 from wazuh.core.utils import clean_pid_files
@@ -56,11 +57,11 @@ def print_version():
     print(f"\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}")
 
 
-def exit_handler(signum, frame):
+def exit_handler(signum, frame, engine_process: subprocess.Popen = None):
     cluster_pid = os.getpid()
     main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Shutting down...')
 
-    shutdown_cluster(cluster_pid)
+    shutdown_cluster(cluster_pid, engine_process)
 
     if callable(original_sig_handler):
         original_sig_handler(signum, frame)
@@ -70,20 +71,31 @@ def exit_handler(signum, frame):
         os.kill(os.getpid(), signum)
 
 
-def start_subprocesses():
-    """Starts the engine and the management and communications APIs in sub-processes."""
+def start_subprocesses() -> subprocess.Popen:
+    """Starts the engine and the management and communications APIs in sub-processes.
+    
+    Returns
+    -------
+    subprocess.Popen
+        Engine process.
+    """
     # Start the engine
-    # TODO(#25121): Implement
+    engine = subprocess.Popen([ENGINE_BINARY_PATH, 'server', 'start'])
+    main_logger.info(f'Started the Engine (pid: {engine.pid})')
 
     # Start the management API
     mapi = subprocess.Popen([EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH])
     mapi.wait()
-    main_logger.info(f'Started the Management API (pid: {mapi.pid})')
+    mapi_pid = pyDaemonModule.get_parent_pid(MANAGEMENT_API_PROCESS_NAME)
+    main_logger.info(f'Started the Management API (pid: {mapi_pid})')
 
     # Start the communications API
     capi = subprocess.Popen([EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH])
     capi.wait()
-    main_logger.info(f'Started the Communications API (pid: {capi.pid})')
+    capi_pid = pyDaemonModule.get_parent_pid(COMMS_API_PROCESS_NAME)
+    main_logger.info(f'Started the Communications API (pid: {capi_pid})')
+
+    return engine
 
 
 def shutdown_daemon(name: str):
@@ -106,14 +118,17 @@ def shutdown_cluster(cluster_pid: int, engine_process: subprocess.Popen = None):
     ----------
     cluster_pid : int
         Cluster process ID.
+    engine_process : subprocess.Popen
+        Engine process.
     """
-    # Kill the engine
-    # TODO(#25121): Implement
+    # Terminate the engine
+    if engine_process is not None:
+        engine_process.terminate()
 
-    # Kill the management API
+    # Terminate the management API
     shutdown_daemon(MANAGEMENT_API_PROCESS_NAME)
 
-    # Kill the communications API
+    # Terminate the communications API
     shutdown_daemon(COMMS_API_PROCESS_NAME)
 
     # Terminate the cluster
@@ -253,7 +268,6 @@ def main():
     import wazuh.core.cluster.cluster
     from wazuh.core.authentication import generate_keypair, keypair_exists
 
-
     # Set correct permissions on cluster.log file
     if os.path.exists(f'{common.WAZUH_PATH}/logs/cluster.log'):
         os.chown(f'{common.WAZUH_PATH}/logs/cluster.log', common.wazuh_uid(), common.wazuh_gid())
@@ -318,7 +332,7 @@ def main():
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:
-        shutdown_cluster(cluster_pid)
+        shutdown_cluster(cluster_pid, engine_process)
 
 
 if __name__ == '__main__':
