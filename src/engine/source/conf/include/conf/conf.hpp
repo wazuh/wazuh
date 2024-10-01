@@ -10,6 +10,7 @@
 
 #include <base/json.hpp>
 
+#include <conf/apiLoader.hpp>
 #include <conf/unitconf.hpp>
 
 namespace conf
@@ -18,19 +19,12 @@ namespace conf
 /**
  * @brief Engine configuration.
  */
-class Conf
+class Conf final
 {
 private:
     json::Json m_apiConfig; ///< The configuration from the framework API.
     std::unordered_map<std::string, std::shared_ptr<internal::BaseUnitConf>> m_units; ///< The configuration units.
-
-protected:
-    /**
-     * @brief Load the configuration from the framework API.
-     *
-     * @throw std::runtime_error If cannot retrieve the configuration from the framework API.
-     */
-    virtual json::Json loadFromAPI() const;
+    std::shared_ptr<IApiLoader> m_apiLoader;                                          ///< The API loader.
 
     /**
      * @brief Validate the configuration
@@ -39,6 +33,24 @@ protected:
      * @throw std::runtime_error If the configuration is invalid.
      */
     void validate(const json::Json& config) const;
+
+public:
+    Conf() = delete;
+
+    /**
+     * @brief Create a new Engine Config
+     *
+     * This object is used to load and validate the configuration.
+     */
+    explicit Conf(std::shared_ptr<IApiLoader> apiLoader);
+
+    /**
+     * @brief Load the configuration from API and environment variables.
+     *
+     * @throw std::runtime_error If the configuration is invalid.
+     * @throw std::runtime_error If cannot retrieve the configuration from the framework API.
+     */
+    void load();
 
     /**
      * @brief Add a new configuration unit.
@@ -52,24 +64,30 @@ protected:
     template<typename T>
     void addUnit(std::string_view key, std::string_view env, const T& defaultValue)
     {
+        if (!m_apiConfig.isNull())
+        {
+            throw std::logic_error("The configuration is already loaded.");
+        }
+
+        if (key.empty())
+        {
+            throw std::invalid_argument("The key cannot be empty.");
+        }
+
+        // Check if the key or environment variable is already registered
+        for (const auto& [k, unit] : m_units)
+        {
+            if (k == key)
+            {
+                throw std::invalid_argument(fmt::format("The key '{}' is already registered.", key));
+            }
+            if (unit->getEnv().compare(env) == 0)
+            {
+                throw std::invalid_argument(fmt::format("The environment variable '{}' is already registered.", env));
+            }
+        }
         m_units[key.data()] = internal::UConf<T>::make(env, defaultValue);
     }
-
-public:
-    /**
-     * @brief Create a new Engine Config
-     *
-     * This object is used to load and validate the configuration.
-     */
-    explicit Conf();
-
-    /**
-     * @brief Load the configuration from API and environment variables.
-     *
-     * @throw std::runtime_error If the configuration is invalid.
-     * @throw std::runtime_error If cannot retrieve the configuration from the framework API.
-     */
-    void load();
 
     /**
      * @brief Get the value of the key.
@@ -119,7 +137,7 @@ public:
             std::vector<std::string> result;
             for (const auto& item : jArr.value())
             {
-                result.push_back(item.getString().value());
+                result.push_back(item.getString().value_or("ERROR VALUE"));
             }
             return result;
         }
@@ -134,6 +152,6 @@ public:
     }
 };
 
-} // namespace config
+} // namespace conf
 
 #endif // _CONFIG_CONFIG_HPP
