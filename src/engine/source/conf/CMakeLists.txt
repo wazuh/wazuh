@@ -16,8 +16,9 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 add_executable(conf_utest
     ${UNIT_SRC_DIR}/conf_test.cpp
     ${UNIT_SRC_DIR}/unitconf_test.cpp
+    ${UNIT_SRC_DIR}/apiLoader_test.cpp
 )
-target_link_libraries(conf_utest GTest::gtest_main conf)
+target_link_libraries(conf_utest GTest::gtest_main GTest::gmock conf)
 gtest_discover_tests(conf_utest)
 
 endif(ENGINE_BUILD_TEST)
