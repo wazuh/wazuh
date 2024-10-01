@@ -1,9 +1,9 @@
 #ifndef _CONFIG_TEST_UTILS_HPP
 #define _CONFIG_TEST_UTILS_HPP
 
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
 #include <unistd.h>
 
