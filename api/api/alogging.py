@@ -19,6 +19,8 @@ logger = logging.getLogger('wazuh-api')
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
 WARNING = 'WARNING'
+INFO = 'INFO'
+
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
@@ -82,7 +84,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         log_record['data'] = record.message
 
 
-def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> dict:
+def set_logging(log_filepath, log_level = INFO, foreground_mode = False) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -183,7 +185,7 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
         },
         "loggers": {
             "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
-            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False},
+            "start-stop-api": {"handlers": hdls, "level": INFO, "propagate": False},
             "wazuh-comms-api": {"handlers": hdls, "level": log_level, "propagate": False}
         }
     }
@@ -211,9 +213,9 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
     log_config_dict['loggers']['uvicorn.access'] = {'level': WARNING}
 
     # Configure the gunicorn loggers. They will be created by the gunicorn process.
-    log_config_dict['loggers']['gunicorn'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
-    log_config_dict['loggers']['gunicorn.error'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
-    log_config_dict['loggers']['gunicorn.access'] = {'level': WARNING}
+    log_config_dict['loggers']['gunicorn'] = {'handlers': hdls, 'level': INFO, 'propagate': False}
+    log_config_dict['loggers']['gunicorn.error'] = {'handlers': hdls, 'level': INFO, 'propagate': False}
+    log_config_dict['loggers']['gunicorn.access'] = {'level': INFO}
 
     return log_config_dict
 
