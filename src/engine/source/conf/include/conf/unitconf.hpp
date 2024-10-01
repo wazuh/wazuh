@@ -46,12 +46,19 @@ private:
         if (!ptr)
         {
             // The type is not the same
-            throw std::runtime_error(fmt::format("Cannot cast the unit config to '{}'.", typeid(T).name()));
+            throw std::logic_error(
+                fmt::format("Cannot cast the unit config to '{}', the type is not supported.", typeid(T).name()));
         }
         return ptr;
     }
 
+protected:
+    std::string m_env;   ///< The environment variable where the configuration can be store
+    UnitConfType m_type; ///< The type of the configuration.
+
 public:
+    virtual ~BaseUnitConf() = default;
+
     /**
      * @brief Get the Default Value of the configuration.
      *
@@ -84,21 +91,26 @@ public:
      *
      * @return UnitConfType The type of the configuration.
      */
-    virtual UnitConfType getType() const = 0;
+    UnitConfType getType() const { return m_type; }
+
+    /**
+     * @brief Get the environment variable name.
+     *
+     * @return const std::string& The environment variable name.
+     */
+    const std::string& getEnv() const { return m_env; }
 };
 
 template<typename T>
 class UConf : public BaseUnitConf
 {
 private:
-    std::string env;   ///< The environment variable where the configuration can be store
-    T defaultValue;    ///< The default value of the configuration.
-    UnitConfType type; ///< The type of the configuration.
+    T defaultValue; ///< The default value of the configuration.
 
     UConf(std::string_view env, const T& defaultValue)
-        : env(env)
-        , defaultValue(defaultValue)
+        : defaultValue(defaultValue)
     {
+        m_env = env;
         if (env.empty())
         {
             throw std::invalid_argument("The environment variable name cannot be empty.");
@@ -110,19 +122,19 @@ private:
     {
         if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>)
         {
-            type = UnitConfType::INTEGER;
+            m_type = UnitConfType::INTEGER;
         }
         else if constexpr (std::is_same_v<T, std::string>)
         {
-            type = UnitConfType::STRING;
+            m_type = UnitConfType::STRING;
         }
         else if constexpr (std::is_same_v<T, std::vector<std::string>>)
         {
-            type = UnitConfType::STRING_LIST;
+            m_type = UnitConfType::STRING_LIST;
         }
         else if constexpr (std::is_same_v<T, bool>)
         {
-            type = UnitConfType::BOOL;
+            m_type = UnitConfType::BOOL;
         }
         else
         {
@@ -142,7 +154,7 @@ public:
 
     std::optional<T> getEnvValue() const
     {
-        const auto pValue = std::getenv(env.c_str());
+        const auto pValue = std::getenv(m_env.c_str());
         if (pValue == nullptr)
         {
             return std::nullopt;
@@ -158,21 +170,21 @@ public:
                 if (std::any_of(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c); }))
                 {
                     throw std::runtime_error(
-                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", env, value));
+                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
                 }
                 // check for invalid characters
                 const auto number = std::stoll(value, &pos);
                 if (pos != value.size())
                 {
                     throw std::runtime_error(
-                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", env, value));
+                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
                 }
                 if constexpr (std::is_same_v<T, int>)
                 {
                     if (number < std::numeric_limits<int>::min() || number > std::numeric_limits<int>::max())
                     {
                         throw std::runtime_error(fmt::format(
-                            "Number value out of range for environment variable '{}' (value: '{}').", env, value));
+                            "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
                     }
                 }
                 return static_cast<T>(number);
@@ -180,12 +192,12 @@ public:
             catch (const std::invalid_argument& e)
             {
                 throw std::runtime_error(
-                    fmt::format("Invalid number value for environment variable '{}' (value: '{}').", env, value));
+                    fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
             }
             catch (const std::out_of_range& e)
             {
-                throw std::runtime_error(
-                    fmt::format("Number value out of range for environment variable '{}' (value: '{}').", env, value));
+                throw std::runtime_error(fmt::format(
+                    "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
             }
         }
         else if constexpr (std::is_same_v<T, std::string>)
@@ -209,7 +221,7 @@ public:
             else
             {
                 throw std::runtime_error(
-                    fmt::format("Invalid boolean value for environment variable '{}' (value: '{}').", env, value));
+                    fmt::format("Invalid boolean value for environment variable '{}' (value: '{}').", m_env, value));
             }
         }
         else
@@ -217,8 +229,6 @@ public:
             throw std::logic_error("Invalid type for the configuration.");
         }
     }
-
-    UnitConfType getType() const override { return type; }
 };
 
 } // namespace conf::internal
