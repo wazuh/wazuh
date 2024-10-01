@@ -8,9 +8,9 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <type_traits>
-#include <optional>
 
 #include <concurrentqueue/blockingconcurrentqueue.h>
 #include <queue/iqueue.hpp>
@@ -215,8 +215,8 @@ public:
      * push method will block until there is space in the queue.
      */
     explicit ConcurrentQueue(const int capacity,
-                            //  std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-                            //  std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
+                             //  std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
+                             //  std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                              const std::string& pathFloodedFile = {},
                              const int maxAttempts = -1,
                              const int waitTime = -1,
@@ -270,7 +270,8 @@ public:
         // m_metrics.m_flooded = m_metrics.m_metricsScope->getCounterUInteger("FloodedEvents");
 
         // m_metrics.m_metricsScopeDelta = std::move(metricsScopeDelta);
-        // m_metrics.m_consumendPerSecond = m_metrics.m_metricsScopeDelta->getCounterUInteger("ConsumedEventsPerSecond");
+        // m_metrics.m_consumendPerSecond =
+        // m_metrics.m_metricsScopeDelta->getCounterUInteger("ConsumedEventsPerSecond");
     }
 
     void push(T&& element) override
