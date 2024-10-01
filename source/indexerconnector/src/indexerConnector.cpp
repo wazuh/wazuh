@@ -17,7 +17,6 @@
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
-#include <ostream>
 
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
