@@ -17,6 +17,8 @@
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
+#include <iostream>
+#include <ostream>
 
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
@@ -153,7 +155,12 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
             {
                 auto data = dataQueue.front();
                 dataQueue.pop();
-                auto parsedData = nlohmann::json::parse(data);
+                auto parsedData = nlohmann::json::parse(data, nullptr, false);
+
+                if (parsedData.is_discarded())
+                {
+                    continue;
+                }
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
