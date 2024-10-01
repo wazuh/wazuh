@@ -25,8 +25,14 @@ namespace conf
 
 using namespace internal;
 
-Conf::Conf()
+Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
+    : m_apiLoader(apiLoader)
+    , m_apiConfig(R"(null)")
 {
+    if (!m_apiLoader)
+    {
+        throw std::invalid_argument("The API loader cannot be null.");
+    }
 
     // Register aviablable configuration units
 
@@ -61,34 +67,25 @@ Conf::Conf()
     addUnit<bool>("/queue/drop_on_flood", "WAZUH_QUEUE_DROP_ON_FLOOD", false);
 
     // Orchestrator module
-    m_units["/orchestrator/threads"] = UConf<int>::make("WAZUH_ORCHESTRATOR_THREADS", 1);
+    addUnit<int>("/orchestrator/threads", "WAZUH_ORCHESTRATOR_THREADS", 1);
 
     // OLD Server module
     // TODO Deprecate this configuration after the migration to the new httplib server
-    m_units["/server/thread_pool_size"] = UConf<int>::make("WAZUH_SERVER_THREAD_POOL_SIZE", 1);
-    m_units["/server/event_socket"] =
-        UConf<std::string>::make("WAZUH_SERVER_EVENT_SOCKET", "/var/wazuh/sockets/old-queue.sock");
-    m_units["/server/event_queue_size"] = UConf<int>::make("WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
+    addUnit<int>("/server/thread_pool_size", "WAZUH_SERVER_THREAD_POOL_SIZE", 1);
+    addUnit<std::string>("/server/event_socket", "WAZUH_SERVER_EVENT_SOCKET", "/var/wazuh/sockets/old-queue.sock");
+    addUnit<int>("/server/event_queue_size", "WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
 
-    m_units["/server/api_socket"] =
-        UConf<std::string>::make("WAZUH_SERVER_API_SOCKET", "/var/wazuh/sockets/old-api.sock");
-    m_units["/server/api_queue_size"] = UConf<int>::make("WAZUH_SERVER_API_QUEUE_SIZE", 50);
-    m_units["/server/api_timeout"] = UConf<int>::make("WAZUH_SERVER_API_TIMEOUT", 5000);
+    addUnit<std::string>("/server/api_socket", "WAZUH_SERVER_API_SOCKET", "/var/wazuh/sockets/old-api.sock");
+    addUnit<int>("/server/api_queue_size", "WAZUH_SERVER_API_QUEUE_SIZE", 50);
+    addUnit<int>("/server/api_timeout", "WAZUH_SERVER_API_TIMEOUT", 5000);
 
     // New API Server module
-    m_units["/api_server/socket"] =
-        UConf<std::string>::make("WAZUH_API_SERVER_SOCKET", getExecutablePath() + "/sockets/api.sock");
+    addUnit<std::string>("/api_server/socket", "WAZUH_API_SERVER_SOCKET", getExecutablePath() + "/sockets/api.sock");
 
     // TZDB module
-    m_units["/tzdb/path"] = UConf<std::string>::make("WAZUH_TZDB_PATH", getExecutablePath() + "/tzdb");
-    m_units["/tzdb/auto_update"] = UConf<bool>::make("WAZUH_TZDB_AUTO_UPDATE", false);
+    addUnit<std::string>("/tzdb/path", "WAZUH_TZDB_PATH", getExecutablePath() + "/tzdb");
+    addUnit<bool>("/tzdb/auto_update", "WAZUH_TZDB_AUTO_UPDATE", false);
 };
-
-json::Json Conf::loadFromAPI() const
-{
-    // TODO: Connect to the framework API to get the configuration
-    return json::Json("{}");
-}
 
 void Conf::validate(const json::Json& config) const
 {
@@ -150,16 +147,20 @@ void Conf::validate(const json::Json& config) const
                     fmt::format("Invalid configuration type for key '{}'. Expected boolean, got '{}'.",
                                 key,
                                 config.str(key).value_or("errorValue")));
-            default: throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'.", key));
+            default: throw std::logic_error(fmt::format("Invalid configuration type for key '{}'.", key));
         }
     }
 }
 
 void Conf::load()
 {
-    auto apiConf = loadFromAPI();
+    if (!m_apiConfig.isNull())
+    {
+        throw std::logic_error("The configuration is already loaded.");
+    }
+    json::Json apiConf = (*m_apiLoader)();
     validate(apiConf);
     m_apiConfig = std::move(apiConf);
 }
 
-} // namespace config
+} // namespace conf
