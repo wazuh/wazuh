@@ -165,7 +165,6 @@ TEST(UConfTest, CreateUConfTestTypes)
 namespace
 {
 
-
 // Testing empty environment variable
 TEST(UConfGetEnv, EmptyEnv)
 {
