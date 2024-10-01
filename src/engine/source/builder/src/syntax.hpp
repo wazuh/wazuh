@@ -44,6 +44,8 @@ constexpr auto REF_ANCHOR = '$';       ///< Char used to indicate a reference.
 constexpr auto SEPARATOR = '.';        ///< Char used to separate levels in a fields path.
 constexpr auto VAR_ANCHOR = '_';       ///< Char used to indicate a variable.
 constexpr auto NAME_EXTENDED = "_@#-"; ///< Extended allowed chars in a field name.
+constexpr auto DEFAULT_ESCAPE = '\\';  ///< Char used to escape special characters in a field name.
+constexpr auto ESCAPED_CHARS = ".";    ///< Characters that can be escaped in a field name.
 } // namespace field
 
 // Function helpers syntax
