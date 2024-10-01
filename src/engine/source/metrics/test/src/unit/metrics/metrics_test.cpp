@@ -211,4 +211,18 @@ TEST(BaseMetricMultiThreadedTest, CreateDestroyUpdate)
     }
 }
 
+TEST(BaseMetricTest, Interface)
+{
+    std::shared_ptr<IMetric> metric = std::make_shared<TestMetric>("name", "description", "unit");
+    ASSERT_THROW(metric->update<int>(1), std::runtime_error);
+    metric.reset();
+
+    std::shared_ptr<detail::IManagedMetric> managedMetric = std::make_shared<TestMetric>("name", "description", "unit");
+    ASSERT_THROW(managedMetric->update<int>(1), std::runtime_error);
+    managedMetric.reset();
+
+    std::shared_ptr<BaseOtMetric<uint64_t>> baseMetric = std::make_shared<TestMetric>("name", "description", "unit");
+    baseMetric.reset();
+}
+
 } // namespace metrics::test
