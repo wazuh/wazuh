@@ -40,8 +40,9 @@ private:
     //     std::shared_ptr<metricsManager::iCounter<int64_t>> m_connectedClients; ///< Counter for the current clients
     //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_serverBusy;      ///< Counter for the server busy
 
-    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta;     ///< Metrics scope for the endpoint rate
-    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_requestPerSecond; ///< Counter for the requests per second
+    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta;     ///< Metrics scope for the endpoint
+    //     rate std::shared_ptr<metricsManager::iCounter<uint64_t>> m_requestPerSecond; ///< Counter for the requests
+    //     per second
     // };
     // Metric m_metric; ///< Metrics for the endpoint
     /**
