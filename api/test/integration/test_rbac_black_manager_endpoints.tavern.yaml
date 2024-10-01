@@ -30,6 +30,8 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        wait_for_complete: true
     response:
       <<: *permission_allowed
 
