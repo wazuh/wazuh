@@ -291,7 +291,7 @@ checks:
     description: "Screen Sharing allows a computer to connect to another computer on a network and display the computer's screen. While sharing the computer's screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer. While mature administration and management does not use graphical connections for standard maintenance, most help desks have capabilities to assist users in performing their work when they have technical issues and need support. Help desks use graphical remote tools to understand what the user sees and assist them so they can get back to work. For MacOS, some of these remote capabilities can use Apple's OS tools. Control is therefore not meant to prohibit the use of a just-in-time graphical view from authorized personnel with authentication controls. Sharing should not be enabled except in narrow windows when help desk support is required. Screen Sharing on macOS can allow the use of the insecure VNC protocol. VNC is a clear text protocol that should not be used on macOS."
     rationale: "Disabling Screen Sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
     impact: "Help desks may require the periodic use of a graphical connection mechanism to assist users. Any support that relies on native MacOS components will not work unless a scripted solution to enable and disable sharing as neccessary."
-    remediation: "Graphical Method: Perform the following steps to disable Screen Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Screen Sharing to disabled Terminal Method: Run the following command to turn off Screen Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.screensharing."
+    remediation: "Graphical Method: Perform the following steps to disable Screen Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Screen Sharing to disabled Terminal Method: Run the following command to turn off Screen Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.screensharing $ /usr/bin/sudo /bin/launchctl bootout system/com.apple.screensharing."
     references:
       - "https://support.apple.com/guide/mac-help/turn-screen-sharing-on-or-off-mh11848/mac"
     compliance:
@@ -311,10 +311,10 @@ checks:
   # 2.3.3.3 Ensure File Sharing Is Disabled. (Automated)
   - id: 34012
     title: "Ensure File Sharing Is Disabled."
-    description: "File sharing from a user workstation creates additional risks, such as: - Open ports are created that can be probed and attacked - Passwords are attached to user accounts for access that may be exposed and endanger other parts of the organizational environment, including directory accounts Increased complexity makes security more difficult and may expose additional attack vectors - Apple's File Sharing uses the Server Message Block (SMB) protocol to share to other computers that can mount SMB shares. This includes other macOS computers. Apple warns that SMB sharing stored passwords is less secure, and anyone with system access can gain access to the password for that account. When sharing with SMB, each user accessing the Mac must have SMB enabled. Storing passwords, especially copies of valid directory passwords, decreases security for the directory account and should not be used."
+    description: "File sharing from a user workstation creates additional risks, such as: - Open ports are created that can be probed and attacked - Passwords are attached to user accounts for access that may be exposed and endanger other parts of the organizational environment, including directory accounts - Increased complexity makes security more difficult and may expose additional attack vectors Apple's File Sharing uses the Server Message Block (SMB) protocol to share to other computers that can mount SMB shares. This includes other macOS computers. Apple warns that SMB sharing stored passwords is less secure, and anyone with system access can gain access to the password for that account. When sharing with SMB, each user accessing the Mac must have SMB enabled. Storing passwords, especially copies of valid directory passwords, decreases security for the directory account and should not be used."
     rationale: "By disabling File Sharing, the remote attack surface and risk of unauthorized access to files stored on the system is reduced."
     impact: "File Sharing can be used to share documents with other users, but hardened servers should be used rather than user endpoints. Turning on File Sharing increases the visibility and attack surface of a system unnecessarily."
-    remediation: "Graphical Method: Perform the following steps to disable File Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set File Sharing to disabled Terminal Method: Run the following command to disable File Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.smbd."
+    remediation: "Graphical Method: Perform the following steps to disable File Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set File Sharing to disabled Terminal Method: Run the following command to disable File Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.smbd $ /usr/bin/sudo /bin/launchctl bootout system/com.apple.smbd."
     compliance:
       - cis: ["2.3.3.3"]
       - cis_csc_v8: ["4.1", "4.8", "5.4"]
@@ -512,7 +512,7 @@ checks:
     title: "Ensure Location Services Is Enabled."
     description: "macOS uses location information gathered through local Wi-Fi networks to enable applications to supply relevant information to users. With the operating system verifying the location, users do not need to change the time or the time zone. The computer will change them based on the user's location. They do not need to specify their location for weather or travel times, and they will receive alerts on travel times to meetings and appointments where location information is supplied. Location Services simplify some processes with mobile computers, such as asset management and time or log management. There are some use cases where it is important that the computer not be able to report its exact location. While the general use case is to enable Location Services, it should not be allowed if the physical location of the computer and the user should not be public knowledge."
     rationale: "Location Services are helpful in most use cases and can simplify log and time management where computers change time zones."
-    remediation: "Graphical Method: Perform the following steps to enable Location Services: 1. Open System Settings 2. Select Privacy & Security 3. Select Location Services 4. Set Location Services to enabled Terminal Method: Run the following command to enable Location Services: $ /usr/bin/sudo /bin/launchctl load -w /System/Library/LaunchDaemons/com.apple.locationd.plist If the com.apple.locationd.plist outputs 0, run the following command to also ensure Location Services is running: $ /usr/bin/sudo /usr/bin/defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -bool false $ /usr/bin/sudo /bin/launchctl kickstart -k system/com.apple.locationd Note: In some use cases, organizations may not want Location Services running. To disable Location Services, System Integrity Protection must be disabled."
+    remediation: "Graphical Method: Perform the following steps to enable Location Services: 1. Open System Settings 2. Select Privacy & Security 3. Select Location Services 4. Set Location Services to enabled Terminal Method: Run the following command to enable Location Services: $ /usr/bin/sudo /bin/launchctl load -w /System/Library/LaunchDaemons/com.apple.locationd.plist If the com.apple.locationd.plist outputs 0, run the following command to also ensure Location Services is running: $ /usr/bin/sudo /usr/bin/defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -bool true $ /usr/bin/sudo /bin/launchctl kickstart -k system/com.apple.locationd Note: In some use cases, organizations may not want Location Services running. To disable Location Services, run the command: /usr/bin/sudo /usr/bin/defaults write /var/db/locationd/Library/Preferences/ByHost/com.apple.locationd LocationServicesEnabled -bool false."
     references:
       - "https://support.apple.com/en-us/HT204690"
     compliance:
@@ -561,7 +561,7 @@ checks:
     title: "Ensure Gatekeeper Is Enabled."
     description: "Gatekeeper is Apple's application that utilizes allowlisting to restrict downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization. In an update to Gatekeeper in macOS 13 Ventura, Gatekeeper checks every application on every launch, not just quarantined apps."
     rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
-    remediation: "Graphical Method: Perform the following steps to enable Gatekeeper: 1. Open System Settings 2. Select Privacy & Security 3. Set 'Allow apps downloaded from' to 'App Store and identified developers' Terminal Method: Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: $ /usr/bin/sudo /usr/sbin/spctl --master-enable Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.systempolicy.control 2. The key to include is AllowIdentifiedDevelopers 3. The key must be set to <true/> 4. The key to also include is EnableAssessment 5. The key must be set to <true/>."
+    remediation: "Graphical Method: Perform the following steps to enable Gatekeeper: 1. Open System Settings 2. Select Privacy & Security 3. Set 'Allow apps downloaded from' to 'App Store and identified developers' Terminal Method: Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: $ /usr/bin/sudo /usr/sbin/spctl --global-enable Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.systempolicy.control 2. The key to include is AllowIdentifiedDevelopers 3. The key must be set to <true/> 4. The key to also include is EnableAssessment 5. The key must be set to <true/>."
     compliance:
       - cis: ["2.6.5"]
       - cis_csc_v8: ["10.1", "10.2", "10.5"]
@@ -581,7 +581,7 @@ checks:
   - id: 34024
     title: "Ensure FileVault Is Enabled."
     description: "FileVault secures a system's data by automatically encrypting its boot volume and requiring a password or recovery key to access it. FileVault should be used with a saved escrow key to ensure that the owner can decrypt their data if the password is lost. FileVault may also be enabled using command line using the fdesetup command. To use this functionality, consult the Der Flounder blog for more details (see link below under References)."
-    rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it."
+    rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it. Apple has also implemented an escalating policy for failed passwords. To find out more about that, read here: Passcodes and passwords."
     impact: "Mounting a FileVault encrypted volume from an alternate boot source will require a valid password to decrypt it."
     remediation: "Graphical Method: Perform the following steps to enable FileVault: 1. Open System Settings 2. Select Security & Privacy 3. Select Turn On... Note: This will allow you to create a recovery key for FileVault. Keep the key saved securely in case it is needed at a later date. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is dontAllowFDEDisable 3. The key must be set to <true/> Note: This profile is required to pass the audit."
     references:
@@ -612,8 +612,8 @@ checks:
     title: "Ensure an Administrator Password Is Required to Access System-Wide Preferences."
     description: "System Preferences controls system and user settings on a macOS Computer. System Preferences allows the user to tailor their experience on the computer as well as allowing the System Administrator to configure global security settings. Some of the settings should only be altered by the person responsible for the computer."
     rationale: "By requiring a password to unlock system-wide System Preferences, the risk of a user changing configurations that affect the entire system is mitigated and requires an admin user to re-authenticate to make changes."
-    remediation: "Graphical Method: Perform the following steps to verify that an administrator password is required to access system-wide preferences: 1. Open System Settings 2. Select Privacy & Security 3. Select Advanced 4. Set Require an administrator password to access system-wide settings to enabled. Terminal Method: The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: $ /usr/bin/sudo /usr/bin/security authorizationdb read system.preferences > /tmp/system.preferences.plist YES (0) $ /usr/bin/sudo /usr/bin/defaults write /tmp/system.preferences.plist shared -bool false $ /usr/bin/sudo /usr/bin/security authorizationdb write system.preferences < /tmp/system.preferences.plist YES (0)."
     impact: "Users will need to enter their password to unlock some additional preference panes that are unlocked by default like Network, Startup and Printers & Scanners."
+    remediation: 'Graphical Method: Perform the following steps to verify that an administrator password is required to access system-wide preferences: 1. Open System Settings 2. Select Privacy & Security 3. Select Advanced 4. Set Require an administrator password to access system-wide settings to enabled. Terminal Method: The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: $ authDBs=("system.preferences" "system.preferences.energysaver" "system.preferences.network" "system.preferences.printing" "system.preferences.sharing" "system.preferences.softwareupdate" "system.preferences.startupdisk" "system.preferences.timemachine") for section in ${authDBs[@]}; do /usr/bin/security -q authorizationdb read "$section" > "/tmp/$section.plist" class_key_value=$(usr/libexec/PlistBuddy -c "Print :class" "/tmp/$section.plist" 2>&1) if [[ "$class_key_value" == *"Does Not Exist"* ]]; then /usr/libexec/PlistBuddy -c "Add :class string user" "/tmp/$section.plist" else /usr/libexec/PlistBuddy -c "Set :class user" "/tmp/$section.plist" fi key_value=$(/usr/libexec/PlistBuddy -c "Print :shared" "/tmp/$section.plist" 2>&1) if [[ "$key_value" == *"Does Not Exist"* ]]; then /usr/libexec/PlistBuddy -c "Add :shared bool false" "/tmp/$section.plist" else /usr/libexec/PlistBuddy -c "Set :shared false" "/tmp/$section.plist" fi auth_user_key=$(/usr/libexec/PlistBuddy -c "Print :authenticate-user" "/tmp/$section.plist" 2>&1) if [[ "$auth_user_key" == *"Does Not Exist"* ]]; then /usr/libexec/PlistBuddy -c "Add :authenticate-user bool true" "/tmp/$section.plist" else /usr/libexec/PlistBuddy -c "Set :authenticate-user true" "/tmp/$section.plist" fi session_owner_key=$(/usr/libexec/PlistBuddy -c "Print :session-owner" "/tmp/$section.plist" 2>&1) if [[ "$session_owner_key" == *"Does Not Exist"* ]]; then /usr/libexec/PlistBuddy -c "Add :session-owner bool false" "/tmp/$section.plist" else /usr/libexec/PlistBuddy -c "Set :session-owner false" "/tmp/$section.plist" fi group_key=$(usr/libexec/PlistBuddy -c "Print :group" "/tmp/$section.plist" 2>&1) if [[ "$group_key" == *"Does Not Exist"* ]]; then /usr/libexec/PlistBuddy -c "Add :group string admin" "/tmp/$section.plist" else /usr/libexec/PlistBuddy -c "Set :group admin" "/tmp/$section.plist" fi /usr/bin/security -q authorizationdb write "$section" < "/tmp/$section.plist" done Note: Every audit and remediation incudes sudo before all commands. This is an exception because authdb is a variable and using sudo causes an error in the output.'
     compliance:
       - cis: ["2.6.8"]
       - cis_csc_v8: ["4.1"]
@@ -629,30 +629,10 @@ checks:
       - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:>false<"
 
   # 2.7.1 Ensure Screen Saver Corners Are Secure. (Automated) - Not Implemented
+  # 2.7.2 Audit iPhone Mirroring (Manual) - Not Implemented
   # 2.8.1 Audit Universal Control Settings. (Manual) - Not Implemented
-  # 2.9.1.1 Ensure the OS Is Not Active When Resuming from Standby (Intel). (Automated) - Not Implemented
+  # 2.9.1.1 Ensure the OS Is Not Active When Resuming from Standby (Intel). (Manual) - Not Implemented
   # 2.9.1.2 Ensure the OS Is Not Active When Resuming from Sleep and Display Sleep (Apple Silicon). (Automated) - Not Implemented
-
-  # 2.9.1.3 Ensure FileVault is Locked on Sleep. (Automated)
-  - id: 34026
-    title: "Ensure FileVault is Locked on Sleep."
-    description: "Full Disk Encryption (FDE) is a Data-at-Rest (DAR) solution. It ensures that when the data on the drive is not in use it is full encrypted, but it can be decrypted (unlocked) as needed. When a Mac sleeps, the encryption keys remain in memory so that the drive is encrypted but unlocked. There are attacks available to interact with the OS and data on the unlocked drive. FileVault volumes should be locked when not in use to resist attack."
-    rationale: "The purpose of DAR is to ensure data is encrypted while at rest. If the volume is always unlocked it is not sufficient."
-    impact: "The laptop will require a user to log in with their username and password, not TouchID, into the OS after the FileVault key is destroyed."
-    remediation: "Terminal Method: Run the following command to ensure FileVault keys are set to be destroyed on standby: $ /usr/bin/sudo /usr/bin/pmset -a destroyfvkeyonstandby 1."
-    compliance:
-      - cis: ["2.9.1.3"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_v3.2.1: ["11.5", "2.2"]
-      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition: all
-    rules:
-      - 'c:pmset -b -g -> r:^\s*\t*DestroyFVKeyOnStandby\s*\t*1'
 
   # 2.9.2 Ensure Power Nap Is Disabled for Intel Macs. (Automated)
   - id: 34027
@@ -680,7 +660,7 @@ checks:
     title: "Ensure Wake for Network Access Is Disabled."
     description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer's shared resources, such as shared printers or Apple Music playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer, it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist, the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
-    impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
+    impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs. Turning off Wake for Network Access will also not allow Find My to work when the computer is asleep. It will also give this warning \"You won't be able to locate, lock, or erase this Mac while it's asleep because Wake for network access is turned off.\"."
     remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: 1. Open System Settings 2. Select Energy Saver 3. Set Wake for network access to disabled Laptop Instructions: 1. Open System Settings 2. Select Battery 3. Select Options... 4. Set Wake for network access to Never Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is com.apple.EnergySaver.desktop.ACPower 3. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 4. The key to also include is com.apple.EnergySaver.portable.ACPower 5. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 6. The key to also include is com.apple.EnergySaver.portable.BatteryPower 7. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky."
     compliance:
       - cis: ["2.9.3"]
@@ -696,3 +676,184 @@ checks:
       - 'not c:sh -c "pmset -g custom" -> r:^\s*\t*womp\s*\t*1'
       - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On LAN''" -> n:=\s*(\d) compare != 0'
       - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On Modem Ring''" -> n:=\s*(\d) compare != 0'
+
+  # 2.10.1 Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled. (Automated) - Not Implemented
+
+  # 2.10.2 Ensure Require Password After Screen Saver Begins or Display Is Turned Off Is Enabled for 5 Seconds or Immediately. (Automated)
+  - id: 34029
+    title: "Ensure Require Password After Screen Saver Begins or Display Is Turned Off Is Enabled for 5 Seconds or Immediately."
+    description: "Sleep and screen saver modes are low power modes that reduce electrical consumption while the system is not in use."
+    rationale: "Prompting for a password when waking from sleep or screen saver mode mitigates the threat of an unauthorized person gaining access to a system in the user's absence."
+    impact: "Without a screenlock in place, anyone with physical access to the computer would be logged in and able to use the active user's session."
+    remediation: "Graphical Method: Perform the following steps to enable a password for unlock after a screen saver begins or after sleep: 1. Open System Settings 2. Select Lock Screen 3. Set Require password after screensaver begins or display is turned off to either After 0 seconds or After 5 seconds Terminal Method: Run the following command to require a password to unlock the computer after the screen saver engages or the computer sleeps: $ /usr/bin/sudo /usr/sbin/sysadminctl -screenLock immediate -password <administrator password> or $ /usr/bin/sudo /usr/sbin/sysadminctl -screenLock 5 seconds -password <administrator password> Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.screensaver 2. The key to include is askForPassword 3. The key must be set to <true/> 4. The key to also include is askForPasswordDelay 5. The key must be set to <integer><0,5></integer>."
+    references:
+      - "https://blog.kolide.com/screensaver-security-on-macos-10-13-is-broken-a385726e2ae2"
+      - "https://github.com/rtrouton/profiles/blob/master/SetDefaultScreensaver/SetDefaultScreensaver.mobileconfig"
+    compliance:
+      - cis: ["2.10.2"]
+      - cis_csc_v8: ["4.7"]
+      - cis_csc_v7: ["4.2"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
+      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
+      - soc_2: ["CC6.3"]
+    condition: all
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPassword'')" -> n:^(\d+)$ compare == 1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPasswordDelay'')" -> n:^(\d+)$ compare <= 5'
+
+  # 2.10.3 Ensure a Custom Message for the Login Screen Is Enabled. (Automated)
+  - id: 34030
+    title: "Ensure a Custom Message for the Login Screen Is Enabled."
+    description: "An access warning informs the user that the system is reserved for authorized use only, and that the use of the system may be monitored."
+    rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
+    impact: "If users are not informed of their responsibilities, unapproved activities may occur. Users that are not approved for access may take the lack of a warning banner as implied consent to access."
+    remediation: 'Graphical Method: Perform the following steps to enable a login banner set to your organization''s required text: 1. Open System Settings 2. Select Lock Screen 3. Set Show message when locked to enabled 4. Select Set 5. Insert text in the Set a message to appear on the lock screen that matches your organization''s required text 6. Select Done Terminal Method: Run the following command to enable a custom login screen message: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText "<custom message>" example: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText "Center for Internet Security Test Message" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is LoginwindowText 3. The key must be set to <string><Your organization''s required text></string>.'
+    compliance:
+      - cis: ["2.10.3"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''LoginwindowText'')" -> r:^\.+$'
+
+  # 2.10.4 Ensure Login Window Displays as Name and Password Is Enabled. (Automated)
+  - id: 34031
+    title: "Ensure Login Window Displays as Name and Password Is Enabled."
+    description: "The login window prompts a user for his/her credentials, verifies their authorization level, and then allows or denies the user access to the system."
+    rationale: "Prompting the user to enter both their username and password makes it twice as hard for unauthorized users to gain access to the system since they must discover two attributes."
+    remediation: "Graphical Method: Perform the following steps to ensure the login window display name and password: 1. Open System Settings 2. Select Lock Screen 3. Set 'Login window shows to Name and Password` Terminal Method: Run the following command to enable the login window to display name and password: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true Note: The GUI will not display the updated setting until the current user(s) logs out. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is SHOWFULLNAME 3. The key must be set to <true/>."
+    compliance:
+      - cis: ["2.10.4"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''SHOWFULLNAME'')" -> r:^1$|^true$'
+
+  # 2.10.5 Ensure Show Password Hints Is Disabled. (Automated)
+  - id: 34032
+    title: "Ensure Show Password Hints Is Disabled."
+    description: "Password hints are user-created text displayed when an incorrect password is used for an account."
+    rationale: "Password hints make it easier for unauthorized persons to gain access to systems by displaying information provided by the user to assist in remembering the password. This info could include the password itself or other information that might be readily discerned with basic knowledge of the end user."
+    impact: "The user can set the hint to any value, including the password itself or clues that allow trivial social engineering attacks."
+    remediation: "Graphical Method: Perform the following steps to disable password hints from being shown: 1. Open System Settings 2. Select Lock Screen 3. Set 'Show password hints` to disabled Terminal Method: Run the following command to disable password hints: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0 Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is RetriesUntilHint 3. The key must be set to <integer>0</integer>."
+    compliance:
+      - cis: ["2.10.5"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:^0$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:\w+'
+
+  # 2.11.1 Ensure Users' Accounts Do Not Have a Password Hint. (Automated)
+  - id: 34033
+    title: "Ensure Users' Accounts Do Not Have a Password Hint."
+    description: "Password hints help the user recall their passwords for various systems and/or accounts. In most cases, password hints are simple and closely related to the user's password."
+    rationale: "Password hints that are closely related to the user's password are a security vulnerability, especially in the social media age. Unauthorized users are more likely to guess a user's password if there is a password hint. The password hint is very susceptible to social engineering attacks and information exposure on social media networks."
+    remediation: "Graphical Method: Perform the following steps to remove a user's password hint: 1. Open System Settings 2. Select Touch ID & Passwords (or Login Password on non-Touch ID Macs) 3. Select Change... 4. Change the password and ensure that no text is entered in the Password hint box Note: This will only change the currently logged-in user's password, and not any others that are not compliant on the Mac. Use the terminal method if multiple users are not in compliance. Terminal Method: Run the following command to remove a user's password hint: $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/<username> hint example: $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/firstuser hint $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/seconduser hint."
+    compliance:
+      - cis: ["2.11.1"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'not c:dscl . -list /Users hint -> r:^\w*$'
+
+  # 2.11.2 Audit Touch ID. (Manual) - Not Implemented
+
+  # 2.12.1 Ensure Guest Account Is Disabled. (Automated)
+  - id: 34034
+    title: "Ensure Guest Account Is Disabled."
+    description: "The guest account allows users access to the system without having to create an account or password. Guest users are unable to make setting changes and cannot remotely login to the system. All files, caches, and passwords created by the guest user are deleted upon logging out."
+    rationale: "Disabling the guest account mitigates the risk of an untrusted user doing basic reconnaissance and possibly using privilege escalation attacks to take control of the system."
+    impact: "A guest user can use that access to find out additional information about the system and might be able to use privilege escalation vulnerabilities to establish greater access."
+    remediation: "Graphical Method: Perform the following steps to disable guest account availability: 1. Open System Settings 2. Select Users & Groups 3. Select the i next to the Guest User 4. Set Allow guests to log in to this computer to disabled Terminal Method: Run the following command to disable the guest account: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is DisableGuestAccount 3. The key must be set to <true/> 4. The key to include is EnableGuestAccount 5. The key must be set to <false/>."
+    compliance:
+      - cis: ["2.12.1"]
+      - cis_csc_v8: ["5.2", "6.2", "6.8"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "IA.L2-3.5.7", "SC.L2-3.13.3"]
+      - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(3)(ii)(C)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - nist_sp_800-53: ["AC-2(1)", "AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
+      - pci_dss_v3.2.1: ["8.1.3"]
+      - pci_dss_v4.0: ["10.3.1", "2.2.2", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2", "8.2.4", "8.2.5", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC5.2", "CC6.1", "CC6.2", "CC6.3"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''DisableGuestAccount'')" -> r:^1$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''GuestEnabled'')" -> r:^0$'
+
+  # 2.12.2 Ensure Guest Access to Shared Folders Is Disabled. (Automated)
+  - id: 34035
+    title: "Ensure Guest Access to Shared Folders Is Disabled."
+    description: "Allowing guests to connect to shared folders enables users to access selected shared folders and their contents from different computers on a network."
+    rationale: "Not allowing guests to connect to shared folders mitigates the risk of an untrusted user doing basic reconnaissance and possibly using privilege escalation attacks to take control of the system."
+    impact: "Unauthorized users could access shared files on the system."
+    remediation: "Graphical Method: Perform the following steps to no longer allow guest user access to shared folders: 1. Open System Settings 2. Select Users & Groups 3. Select the i next to the Guest User 4. Set Allow guests to connect to shared folders to disabled Terminal Method: Run the following commands to verify that shared folders are not accessible to guest users: $ /usr/bin/sudo /usr/sbin/sysadminctl -smbGuestAccess off."
+    compliance:
+      - cis: ["2.12.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "c:sysadminctl -smbGuestAccess status -> r:SMB guest access disabled"
+
+  # 2.12.3 Ensure Automatic Login Is Disabled. (Automated)
+  - id: 34036
+    title: "Ensure Automatic Login Is Disabled."
+    description: "The automatic login feature saves a user's system access credentials and bypasses the login screen. Instead, the system automatically loads to the user's desktop screen."
+    rationale: "Disabling automatic login decreases the likelihood of an unauthorized person gaining access to a system."
+    impact: "If automatic login is not disabled, an unauthorized user could gain access to the system without supplying any credentials."
+    remediation: "Graphical Method: Perform the following steps to set automatic login to off: 1. Open System Settings 2. Select Users & Groups 3. Set Automatic login in as... to Off Terminal Method: Run the following command to disable automatic login: $ /usr/bin/sudo /usr/bin/defaults delete /Library/Preferences/com.apple.loginwindow autoLoginUser Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.loginwindow 2. The key to include is com.apple.login.mcx.DisableAutoLoginClient 3. The key must be set to <true/> Note: If both the profile is enabled and a user is set to autologin, the profile will take precedent. In this case, the graphical or terminal remediation method should also be applied in case the profile is ever removed."
+    compliance:
+      - cis: ["2.12.3"]
+      - cis_csc_v8: ["4.7"]
+      - cis_csc_v7: ["4.2"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
+      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
+      - soc_2: ["CC6.3"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''com.apple.login.mcx.DisableAutoLoginClient'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''autoLoginUser'')" -> r:^\.+$'
+
+  # 2.13.1 Audit Passwords System Preference Setting. (Manual) - Not Implemented
+  # 2.14.1 Audit Game Center Settings. (Manual) - Not Implemented
+  # 2.15.1 Audit Notification & Focus Settings. (Manual) - Not Implemented
+  # 2.16.1 Audit Wallet & Apple Pay Settings. (Manual) - Not Implemented
+  # 2.17.1 Audit Internet Accounts for Authorized Use. (Manual) - Not Implemented
+  # 2.18.1 Ensure On-Device Dictation Is Enabled. (Automated) - Not Implemented
+  # 2.19.1 Ensure Improve Search Is Disabled. (Automated) - Not Implemented
