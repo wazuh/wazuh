@@ -91,7 +91,6 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
 
 IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnectorOptions)
 {
-    m_indexerConnectorOptions = indexerConnectorOptions;
     // Get index name.
     m_indexName = indexerConnectorOptions.name;
 
@@ -103,14 +102,14 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
     }
 
     auto secureCommunication = SecureCommunication::builder();
-    initConfiguration(secureCommunication, m_indexerConnectorOptions);
+    initConfiguration(secureCommunication, indexerConnectorOptions);
 
     // Initialize publisher.
     auto selector {std::make_shared<TServerSelector<Monitoring>>(
-        m_indexerConnectorOptions.hosts, m_indexerConnectorOptions.timeout, secureCommunication)};
+        indexerConnectorOptions.hosts, indexerConnectorOptions.timeout, secureCommunication)};
 
     // Validate threads number
-    if (m_indexerConnectorOptions.workingThreads <= 0)
+    if (indexerConnectorOptions.workingThreads <= 0)
     {
         LOG_DEBUG("Invalid number of working threads, using default value.");
     }
@@ -171,10 +170,10 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                      }});
             }
         },
-        m_indexerConnectorOptions.databasePath + m_indexName,
+        indexerConnectorOptions.databasePath + m_indexName,
         ELEMENTS_PER_BULK,
-        m_indexerConnectorOptions.workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING
-                                                      : m_indexerConnectorOptions.workingThreads);
+        indexerConnectorOptions.workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING
+                                                    : indexerConnectorOptions.workingThreads);
 }
 
 IndexerConnector::~IndexerConnector()
