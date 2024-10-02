@@ -221,6 +221,7 @@ class StandaloneApplication(BaseApplication):
 def signal_handler(
     signum: int,
     frame: Any,
+    parent_pid: int,
     mux_demux_manager: MuxDemuxManager,
     batcher_process: Process
 ) -> None:
@@ -236,6 +237,8 @@ def signal_handler(
         The signal number received.
     frame : Any
         The current stack frame (unused).
+    parent_pid : int
+        The parent process ID used to verify if the termination should proceed.
     mux_demux_manager : MuxDemuxManager
         The MuxDemux manager instance to be shut down.
     batcher_process : Process
@@ -247,7 +250,7 @@ def signal_handler(
     interruption signals (e.g., SIGTERM).
     """
     logger.info(f"Received signal {signal.Signals(signum).name}, initiating shutdown.")
-    terminate_processes(mux_demux_manager, batcher_process)
+    terminate_processes(parent_pid, mux_demux_manager, batcher_process)
 
 
 def terminate_processes(parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process):
