@@ -24,6 +24,7 @@
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
 #include <conf/conf.hpp>
+#include <conf/keys.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -149,7 +150,7 @@ int main(int argc, char* argv[])
 
         // Set new log level if it is different from the default
         {
-            const auto level = logging::strToLevel(confManager.get<std::string>("/logging/level"));
+            const auto level = logging::strToLevel(confManager.get<std::string>(conf::key::LOGGING_LEVEL));
             const auto currentLevel = logging::getLevel();
             if (level != currentLevel)
             {
@@ -160,7 +161,7 @@ int main(int argc, char* argv[])
 
         // Store
         {
-            auto fileStorage = confManager.get<std::string>("/store/path");
+            auto fileStorage = confManager.get<std::string>(conf::key::STORE_PATH);
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized.");
@@ -174,7 +175,7 @@ int main(int argc, char* argv[])
 
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions {confManager.get<std::string>("/kvdb/path"), "kvdb"};
+            kvdbManager::KVDBManagerOptions kvdbOptions {confManager.get<std::string>(conf::key::KVDB_PATH), "kvdb"};
             kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
@@ -213,7 +214,8 @@ int main(int argc, char* argv[])
 
         // HLP
         {
-            hlp::initTZDB(confManager.get<std::string>("/tzdb/path"), confManager.get<bool>("/tzdb/auto_update"));
+            hlp::initTZDB(confManager.get<std::string>(conf::key::TZDB_PATH),
+                          confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE));
 
             base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
             auto hlpParsers = store->readInternalDoc(hlpConfigFileName);
@@ -233,21 +235,22 @@ int main(int argc, char* argv[])
         {
             nlohmann::json indexerConfig;
             // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available
-            indexerConfig["name"] = confManager.get<std::string>("/indexer/index");
+            indexerConfig["name"] = confManager.get<std::string>(conf::key::INDEXER_INDEX);
             indexerConfig["hosts"] = nlohmann::json::array();
-            auto hosts = confManager.get<std::vector<std::string>>("/indexer/host");
+            auto hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
             for (const auto& host : hosts)
             {
                 indexerConfig["hosts"].push_back(host);
             }
-            indexerConfig["username"] = confManager.get<std::string>("/indexer/user");
-            indexerConfig["password"] = confManager.get<std::string>("/indexer/password");
+            indexerConfig["username"] = confManager.get<std::string>(conf::key::INDEXER_USER);
+            indexerConfig["password"] = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
 
             // SSL configuration
             nlohmann::json ssl;
-            ssl["certificate_authorities"] = confManager.get<std::string>("/indexer/ssl/certificate_authorities");
-            ssl["certificate"] = confManager.get<std::string>("/indexer/ssl/certificate");
-            ssl["key"] = confManager.get<std::string>("/indexer/ssl/key");
+            ssl["certificate_authorities"] =
+                confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE_AUTHORITIES);
+            ssl["certificate"] = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
+            ssl["key"] = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
             if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
             {
                 indexerConfig["ssl"] = ssl;
@@ -300,30 +303,30 @@ int main(int argc, char* argv[])
                 auto scope = metrics->getMetricsScope("EventQueue");
                 auto scopeDelta = metrics->getMetricsScope("EventQueueDelta");
                 // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
-                eventQueue = std::make_shared<QEventType>(confManager.get<int>("/queue/size"),
+                eventQueue = std::make_shared<QEventType>(confManager.get<int>(conf::key::QUEUE_SIZE),
                                                           scope,
                                                           scopeDelta,
-                                                          confManager.get<std::string>("/queue/flood_file"),
-                                                          confManager.get<int>("/queue/flood_attempts"),
-                                                          confManager.get<int>("/queue/flood_sleep"),
-                                                          confManager.get<bool>("/queue/drop_on_flood"));
+                                                          confManager.get<std::string>(conf::key::QUEUE_FLOOD_FILE),
+                                                          confManager.get<int>(conf::key::QUEUE_FLOOD_ATTEMPS),
+                                                          confManager.get<int>(conf::key::QUEUE_FLOOD_SLEEP),
+                                                          confManager.get<bool>(conf::key::QUEUE_DROP_ON_FLOOD));
                 LOG_DEBUG("Event queue created.");
             }
 
             {
                 auto scope = metrics->getMetricsScope("TestQueue");
                 auto scopeDelta = metrics->getMetricsScope("TestQueueDelta");
-                testQueue = std::make_shared<QTestType>(confManager.get<int>("/queue/size"), scope, scopeDelta);
+                testQueue = std::make_shared<QTestType>(confManager.get<int>(conf::key::QUEUE_SIZE), scope, scopeDelta);
                 LOG_DEBUG("Test queue created.");
             }
 
-            router::Orchestrator::Options config {.m_numThreads = confManager.get<int>("/orchestrator/threads"),
+            router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
                                                   .m_wStore = store,
                                                   .m_builder = builder,
                                                   .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
                                                   .m_prodQueue = eventQueue,
                                                   .m_testQueue = testQueue,
-                                                  .m_testTimeout = confManager.get<int>("/server/api_timeout")};
+                                                  .m_testTimeout = confManager.get<int>(conf::key::SERVER_API_TIMEOUT)};
 
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();
@@ -637,7 +640,7 @@ int main(int argc, char* argv[])
         // Server
         {
             using namespace engineserver;
-            server = std::make_shared<EngineServer>();
+            server = std::make_shared<EngineServer>(confManager.get<int>(conf::key::SERVER_THREAD_POOL_SIZE));
             g_engineServer = server;
 
             // API Endpoint
@@ -649,12 +652,12 @@ int main(int argc, char* argv[])
             apiClientFactory->setBusyResponse(base::utils::wazuhProtocol::WazuhResponse::busyServer().toString());
 
             auto apiEndpointCfg =
-                std::make_shared<endpoint::UnixStream>(confManager.get<std::string>("/server/api_socket"),
+                std::make_shared<endpoint::UnixStream>(confManager.get<std::string>(conf::key::SERVER_API_SOCKET),
                                                        apiClientFactory,
                                                        apiMetricScope,
                                                        apiMetricScopeDelta,
-                                                       confManager.get<int>("/server/api_queue_size"),
-                                                       confManager.get<int>("/server/api_timeout"));
+                                                       confManager.get<int>(conf::key::SERVER_API_QUEUE_SIZE),
+                                                       confManager.get<int>(conf::key::SERVER_API_TIMEOUT));
             server->addEndpoint("API", apiEndpointCfg);
 
             // Event Endpoint
@@ -662,11 +665,11 @@ int main(int argc, char* argv[])
             auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
             auto eventHandler = std::bind(&router::Orchestrator::pushEvent, orchestrator, std::placeholders::_1);
             auto eventEndpointCfg =
-                std::make_shared<endpoint::UnixDatagram>(confManager.get<std::string>("/server/event_socket"),
+                std::make_shared<endpoint::UnixDatagram>(confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET),
                                                          eventHandler,
                                                          eventMetricScope,
                                                          eventMetricScopeDelta,
-                                                         confManager.get<int>("/server/event_queue_size"));
+                                                         confManager.get<int>(conf::key::SERVER_EVENT_QUEUE_SIZE));
             server->addEndpoint("EVENT", eventEndpointCfg);
             LOG_DEBUG("Server configured.");
         }
@@ -682,7 +685,7 @@ int main(int argc, char* argv[])
     // Start server
     try
     {
-        g_apiServer->start(confManager.get<std::string>("/api_server/socket"));
+        g_apiServer->start(confManager.get<std::string>(conf::key::API_SERVER_SOCKET));
         server->start();
     }
     catch (const std::exception& e)
