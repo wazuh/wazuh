@@ -70,7 +70,7 @@ async def test_delete_agents(
         'type': 'agent',
         'version': 'v5.0.0',
         'older_than': '1d',
-        'node_name': 'worker1'
+        'is_connected': True,
     }
     result = await delete_agents(agents_list=mock_alist, **filters)
     if 'all' in mock_alist:
@@ -83,7 +83,9 @@ async def test_delete_agents(
             'type': 'agent',
             'version': 'v5.0.0',
             'last_login': '1d',
-            'persistent_connection_node': 'worker1'
+            'is_connected': True,
+            'host.ip': mock_request.query_params.get('remote.ip', None),
+            'host.os.full': mock_request.query_params.get('os.full', None),
         }
     }
 
@@ -120,7 +122,9 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
             'type': None,
             'version': None,
             'last_login': None,
-            'persistent_connection_node': None,
+            'is_connected': None,
+            'host.ip': None,
+            'host.os.full': None,
         },
         'offset': 0,
         'limit': DATABASE_LIMIT,
