@@ -105,7 +105,7 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
     try:
         if not os.path.exists(keyfile) or not os.path.exists(certfile):
             private_key = generate_private_key(keyfile)
-            logger.info(f"Generated private key file in {certfile}")
+            logger.info(f"Generated private key file in {keyfile}")
             
             generate_self_signed_certificate(private_key, certfile)
             logger.info(f"Generated certificate file in {certfile}")
