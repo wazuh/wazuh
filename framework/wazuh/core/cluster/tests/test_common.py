@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import os
+import ssl
 import sys
 from contextvars import ContextVar
 from datetime import datetime
@@ -1350,3 +1351,54 @@ async def test_sync_files_sync_ko(send_request_mock):
                 await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
                 logger_mock.assert_called_with(f"File {compressed_data} could not be removed/not found. "
                                                f"May be due to a lost connection.")
+
+
+@pytest.mark.parametrize('purpose,keyfile_password', [
+    (ssl.Purpose.CLIENT_AUTH, 'test'),
+    (ssl.Purpose.SERVER_AUTH, None)
+])
+@patch('logging.Logger')
+def test_create_ssl_context(logger_mock, purpose, keyfile_password):
+    """Validate that the `create_ssl_context` works as expected."""
+    class SSLMock:
+        def load_cert_chain(self):
+            pass
+
+    ssl_mock = SSLMock()
+    cafile = '/var/wazuh_server/etc/sslmanager.ca'
+    certfile = '/var/wazuh_server/etc/sslmanager.cert'
+    keyfile = '/var/wazuh_server/etc/sslmanager.key'
+
+    with patch("ssl.create_default_context", return_value=ssl_mock) as create_default_context_mock, \
+        patch.object(ssl_mock, "load_cert_chain") as load_cert_chain_mock:
+        ssl_context = cluster_common.create_ssl_context(logger_mock, purpose, cafile, certfile, keyfile, keyfile_password)
+
+        assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_3
+
+    create_default_context_mock.assert_called_once_with(purpose=purpose, cafile=cafile)
+    load_cert_chain_mock.assert_called_once_with(certfile=certfile, keyfile=keyfile, password=keyfile_password)
+
+
+@patch('logging.Logger')
+def test_create_ssl_context_ko(logger_mock):
+    """Validate that the `create_ssl_context` works as expected on an error."""
+    class SSLMock:
+        def load_cert_chain(self):
+            pass
+
+    ssl_mock = SSLMock()
+    cafile = '/var/wazuh_server/etc/sslmanager.ca'
+    certfile = '/var/wazuh_server/etc/sslmanager.cert'
+    keyfile = '/var/wazuh_server/etc/sslmanager.key'
+    purpose = ssl.Purpose.SERVER_AUTH
+
+    with patch("ssl.create_default_context", return_value=ssl_mock) as create_default_context_mock, \
+        patch.object(ssl_mock, "load_cert_chain", side_effect=ssl.SSLError(None, 'test')):
+        ssl_context = cluster_common.create_ssl_context(logger_mock, purpose, cafile, certfile, keyfile)
+
+    logger_mock.error.assert_called_once_with('Failed loading SSL context: test. Using default one.')
+    assert ssl_context.minimum_version == ssl.TLSVersion.TLSv1_3
+    create_default_context_mock.assert_has_calls([
+        call(purpose=purpose, cafile=cafile),
+        call(purpose=purpose)
+    ])

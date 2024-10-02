@@ -531,20 +531,14 @@ class AbstractServer:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 
-        try:
-            ssl_context = ssl.create_default_context(
-                purpose=ssl.Purpose.CLIENT_AUTH,
-                cafile=self.configuration['cafile']
-            )
-            ssl_context.load_cert_chain(
-                certfile=self.configuration['certfile'],
-                keyfile=self.configuration['keyfile'],
-                password=self.configuration['keyfile_password']
-            )
-            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
-        except ssl.SSLError as exc:
-            self.logger.error(f'Failed loading SSL context: {exc}. Using default one.')
-            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+        ssl_context = c_common.create_ssl_context(
+            self.logger,
+            ssl.Purpose.CLIENT_AUTH,
+            self.configuration['cafile'],
+            self.configuration['certfile'],
+            self.configuration['keyfile'],
+            self.configuration['keyfile_password']
+        )
 
         try:
             server = await self.loop.create_server(

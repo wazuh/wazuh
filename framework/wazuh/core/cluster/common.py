@@ -13,6 +13,7 @@ import logging
 import os
 import random
 import re
+import ssl
 import struct
 import time
 import traceback
@@ -1329,3 +1330,47 @@ def as_wazuh_object(dct: Dict):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
                                            cmd_error=True)
+
+
+def create_ssl_context(
+    logger: logging.Logger,
+    purpose: ssl.Purpose,
+    cafile: str,
+    certfile: str,
+    keyfile: str,
+    keyfile_password: str = '',
+) -> ssl.SSLContext:
+    """Create a SSLContext with the key and certificates provided.
+    
+    Parameters
+    ----------
+    logger : logging.Logger
+        Node instance logger.
+    purpose : ssl.Purpose
+        Context purpose.
+    cafile : str
+        Root certificate file path.
+    certfile : str
+        Node certificate file path.
+    keyfile : str
+        Node key file path.
+    keyfile_password : str
+        Node key file password. Default is no password.
+    """
+    try:
+        ssl_context = ssl.create_default_context(
+            purpose=purpose,
+            cafile=cafile
+        )
+        ssl_context.load_cert_chain(
+            certfile=certfile,
+            keyfile=keyfile,
+            password=keyfile_password
+        )
+    except ssl.SSLError as exc:
+        logger.error(f'Failed loading SSL context: {exc}. Using default one.')
+        ssl_context = ssl.create_default_context(purpose=purpose)
+    
+    ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
+
+    return ssl_context
