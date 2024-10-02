@@ -29,30 +29,26 @@
 #endif
 
 /**
- * @brief Options for the secure communication.
- *
- */
-struct SslOptions
-{
-    std::vector<std::string> cacert;
-    std::string cert;
-    std::string key;
-};
-
-/**
- * @brief Options for the IndexerConnector.
- *
+ * @brief Configuration options for the Indexer Connector.
+ * 
  */
 struct IndexerConnectorOptions
 {
-    std::string name;
-    std::vector<std::string> hosts;
-    std::string username;
-    std::string password;
-    SslOptions sslOptions;
-    uint32_t timeout = 60000u;
-    uint8_t workingThreads = 1;
-    std::string databasePath;
+    std::string name;               ///< The name of the index to push the data.
+    std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
+    std::string username;           ///< The username to authenticate with OpenSearch.
+    std::string password;           ///< The password to authenticate with OpenSearch.
+
+    struct
+    {
+        std::vector<std::string> cacert; ///< The list of CA certificates to trust.
+        std::string cert;                ///< The certificate to connect to OpenSearch.
+        std::string key;                 ///< The key to connect to OpenSearch.
+    } sslOptions;                        ///< The SSL options to connect to OpenSearch.
+
+    uint32_t timeout = 60000u;  ///< The timeout in milliseconds to connect to OpenSearch.
+    uint8_t workingThreads = 1; ///< The number of threads to dequeue and send the data.
+    std::string databasePath;   ///< The path to the database file.
 };
 
 template<typename TMonitoring = void>
