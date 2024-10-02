@@ -10367,9 +10367,9 @@ paths:
                           - "wazuh-master"
                         hidden: "no"
                         disabled: "no"
-                        cafile: "/var/ossec/etc/sslmanager.ca"
-                        certfile: "/var/ossec/etc/sslmanager.cert"
-                        keyfile: "/var/ossec/etc/sslmanager.key"
+                        cafile: "/var/wazuh_server/etc/sslmanager.ca"
+                        certfile: "/var/wazuh_server/etc/sslmanager.cert"
+                        keyfile: "/var/wazuh_server/etc/sslmanager.key"
                         keyfile_password: ""
                   total_affected_items: 1
                   total_failed_items: 0
@@ -12893,9 +12893,9 @@ paths:
                         - wazuh-master
                       hidden: no
                       disabled: false
-                      cafile: "/var/ossec/etc/sslmanager.ca"
-                      certfile: "/var/ossec/etc/sslmanager.cert"
-                      keyfile: "/var/ossec/etc/sslmanager.key"
+                      cafile: "/var/wazuh_server/etc/sslmanager.ca"
+                      certfile: "/var/wazuh_server/etc/sslmanager.cert"
+                      keyfile: "/var/wazuh_server/etc/sslmanager.key"
                       keyfile_password: ""
                   total_affected_items: 1
                   total_failed_items: 0
