@@ -134,6 +134,22 @@ public:
                                                        va_list)>& logFunction = {},
                               const uint32_t& timeout = DEFAULT_INTERVAL);
 
+    /**
+     * @brief Class constructor that initializes the publisher in a simplified state that doesn't index the data and
+     * only keeps the local DB synced.
+     *
+     * @param config Indexer configuration, including database_path and servers.
+     * @param logFunction Callback function to be called when trying to log a message.
+     */
+    explicit IndexerConnector(const nlohmann::json& config,
+                              const std::function<void(const int,
+                                                       const std::string&,
+                                                       const std::string&,
+                                                       const int,
+                                                       const std::string&,
+                                                       const std::string&,
+                                                       va_list)>& logFunction = {});
+
     ~IndexerConnector();
 
     /**

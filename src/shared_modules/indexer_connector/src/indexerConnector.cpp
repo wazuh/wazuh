@@ -773,6 +773,67 @@ IndexerConnector::IndexerConnector(
         });
 }
 
+IndexerConnector::IndexerConnector(
+    const nlohmann::json& config,
+    const std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+        logFunction)
+{
+    if (logFunction)
+    {
+        Log::assignLogFunction(logFunction);
+    }
+
+    // Get index name.
+    m_indexName = config.at("name").get_ref<const std::string&>();
+
+    if (Utils::haveUpperCaseCharacters(m_indexName))
+    {
+        throw std::runtime_error("Index name must be lowercase.");
+    }
+
+    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
+
+    m_dispatcher = std::make_unique<ThreadDispatchQueue>(
+        [this](std::queue<std::string>& dataQueue)
+        {
+            while (!dataQueue.empty())
+            {
+                auto data = dataQueue.front();
+                dataQueue.pop();
+                auto parsedData = nlohmann::json::parse(data);
+                const auto& id = parsedData.at("id").get_ref<const std::string&>();
+
+                // We only sync the local DB when the indexer is disabled
+                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+                {
+                    m_db->delete_(id);
+                }
+                else
+                {
+                    const auto dataString = parsedData.at("data").dump();
+                    m_db->put(id, dataString);
+                }
+            }
+        },
+        DATABASE_BASE_PATH + m_indexName,
+        ELEMENTS_PER_BULK);
+
+    m_syncQueue = std::make_unique<ThreadSyncQueue>(
+        [](const std::string& agentId)
+        {
+            // We don't sync the DB when the indexer is disabled
+        },
+        SYNC_WORKERS,
+        SYNC_QUEUE_LIMIT);
+
+    m_initializeThread = std::thread(
+        []()
+        {
+            // We don't initialize when the indexer is disabled
+        });
+}
+
 IndexerConnector::~IndexerConnector()
 {
     m_stopping.store(true);
