@@ -296,20 +296,16 @@ void runStart(ConfHandler confManager)
         }
 
         // Indexer Connector
-        {
-            // SSL configuration
-            SslOptions sslOptions {.cacert = {getEnvOrDefault("WENGINE_ICONNECTOR_CA", "")},
-                                   .cert = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", ""),
-                                   .key = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "")};
-
-            // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available.
+        { // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available.
             // IndexerConnector configuration.
             IndexerConnectorOptions indexerConnectorOptions {
                 .name = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-basic-index"),
                 .hosts = {getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")},
                 .username = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin"),
                 .password = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+"),
-                .sslOptions = sslOptions,
+                .sslOptions = {.cacert = {getEnvOrDefault("WENGINE_ICONNECTOR_CA", "")},
+                               .cert = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", ""),
+                               .key = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "")},
                 .timeout = static_cast<uint32_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_TIMEOUT", "60000"))),
                 .workingThreads =
                     static_cast<uint8_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_WORKING_THREADS", "1"))),

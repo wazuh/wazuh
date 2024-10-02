@@ -30,7 +30,7 @@
 
 /**
  * @brief Configuration options for the Indexer Connector.
- * 
+ *
  */
 struct IndexerConnectorOptions
 {
@@ -72,7 +72,6 @@ class EXPORTED IndexerConnector final : public IIndexerConnector
     std::string m_indexName;
     std::mutex m_syncMutex;
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
-    IndexerConnectorOptions m_indexerConnectorOptions;
 
 public:
     /**
@@ -86,7 +85,7 @@ public:
      * bulk either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages and the
      * interval is 5 seconds.
      *
-     * @param config Indexer connector configuration 
+     * @param config Indexer connector configuration
     unordered
      * processing).
      */

@@ -189,12 +189,12 @@ TEST_F(IndexerConnectorTest, ConnectionWithUserAndPassword)
  */
 TEST_F(IndexerConnectorTest, ConnectionWithSslCredentials)
 {
-    SslOptions sslOptions {.cacert = {"/etc/filebeat/certs/root-ca.pem"},
-                           .cert = "/etc/filebeat/certs/filebeat.pem",
-                           .key = "/etc/filebeat/certs/filebeat-key.pem"};
-
-    IndexerConnectorOptions indexerConfig {
-        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .sslOptions = sslOptions, .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
+                                           .hosts = {A_ADDRESS},
+                                           .sslOptions = {.cacert = {"/etc/filebeat/certs/root-ca.pem"},
+                                                          .cert = "/etc/filebeat/certs/filebeat.pem",
+                                                          .key = "/etc/filebeat/certs/filebeat-key.pem"},
+                                           .timeout = INDEXER_TIMEOUT};
 
     // Create connector and wait until the connection is established.
     auto indexerConnector {IndexerConnector(indexerConfig)};
