@@ -12,7 +12,7 @@ _public_key_path = os.path.join(WAZUH_PATH, 'etc', 'public_key.pem')
 
 
 def get_keypair() -> Tuple[str, str]:
-    """Generate key files to keep safe or load existing public and private keys.
+    """Return key files to keep safe or load existing public and private keys.
 
     Returns
     -------
@@ -76,7 +76,7 @@ def generate_keypair() -> Tuple[str, str]:
 
 
 def keypair_exists() -> bool:
-    """Returns whether the key pair exists or not.
+    """Return whether the key pair exists or not.
     
     Returns
     -------
