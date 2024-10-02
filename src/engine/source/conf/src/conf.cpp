@@ -4,6 +4,8 @@
 
 #include <fmt/format.h>
 
+#include <conf/keys.hpp>
+
 namespace
 {
 std::string getExecutablePath()
@@ -37,54 +39,54 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     // Register aviablable configuration units
 
     // Logging module
-    addUnit<std::string>("/logging/level", "WAZUH_LOG_LEVEL", "info");
+    addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
 
     // Store module
-    addUnit<std::string>("/store/path", "WAZUH_STORE_PATH", "/var/wazuh/store");
+    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", "/var/wazuh/store");
 
     // KVDB module
-    addUnit<std::string>("/kvdb/path", "WAZUH_KVDB_PATH", "/var/wazuh/kvdb");
+    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", "/var/wazuh/kvdb");
 
     // Indexer connector
-    addUnit<std::string>("/indexer/index", "WAZUH_INDEXER_INDEX", "wazuh-alerts-5x");
-    addUnit<std::vector<std::string>>("/indexer/host", "WAZUH_INDEXER_HOST", {"http://127.0.0.1:9200"});
-    addUnit<std::string>("/indexer/user", "WAZUH_INDEXER_USER", "admin");
-    addUnit<std::string>("/indexer/password", "WAZUH_INDEXER_PASSWORD", "WazuhEngine5+");
-    addUnit<std::string>("/indexer/ssl/certificate_authorities", "WAZUH_INDEXER_SSL_CERTIFICATE_AUTHORITIES", "");
-    addUnit<std::string>("/indexer/ssl/certificate", "WAZUH_INDEXER_SSL_CERTIFICATE", "");
-    addUnit<std::string>("/indexer/ssl/key", "WAZUH_INDEXER_SSL_KEY", "");
+    addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5x");
+    addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOST", {"http://127.0.0.1:9200"});
+    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
+    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "WazuhEngine5+");
+    addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE_AUTHORITIES, "WAZUH_INDEXER_SSL_CERTIFICATE_AUTHORITIES", "");
+    addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
+    addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
 
     // Queue module
-    addUnit<int>("/queue/size", "WAZUH_QUEUE_SIZE", 1000000);
+    addUnit<int>(key::QUEUE_SIZE, "WAZUH_QUEUE_SIZE", 1000000);
 
     // If file is "" the queue will block until the event is pushed to the queue.
-    addUnit<std::string>("/queue/flood_file", "WAZUH_QUEUE_FLOOD_FILE", "/var/wazuh/logs/engine-flood.log");
+    addUnit<std::string>(key::QUEUE_FLOOD_FILE, "WAZUH_QUEUE_FLOOD_FILE", "/var/wazuh/logs/engine-flood.log");
     // Number of attempts to try to push an event to the queue.
-    addUnit<int>("/queue/flood_attempts", "WAZUH_QUEUE_FLOOD_ATTEMPTS", 3);
+    addUnit<int>(key::QUEUE_FLOOD_ATTEMPS, "WAZUH_QUEUE_FLOOD_ATTEMPTS", 3);
     // Microseconds to sleep between attempts to push an event to the queue.
-    addUnit<int>("/queue/flood_sleep", "WAZUH_QUEUE_FLOOD_SLEEP", 100);
+    addUnit<int>(key::QUEUE_FLOOD_SLEEP, "WAZUH_QUEUE_FLOOD_SLEEP", 100);
     // If enabled, the queue will drop the flood events instead of storing them in the file.
-    addUnit<bool>("/queue/drop_on_flood", "WAZUH_QUEUE_DROP_ON_FLOOD", false);
+    addUnit<bool>(key::QUEUE_DROP_ON_FLOOD, "WAZUH_QUEUE_DROP_ON_FLOOD", false);
 
     // Orchestrator module
-    addUnit<int>("/orchestrator/threads", "WAZUH_ORCHESTRATOR_THREADS", 1);
+    addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1);
 
     // OLD Server module
     // TODO Deprecate this configuration after the migration to the new httplib server
-    addUnit<int>("/server/thread_pool_size", "WAZUH_SERVER_THREAD_POOL_SIZE", 1);
-    addUnit<std::string>("/server/event_socket", "WAZUH_SERVER_EVENT_SOCKET", "/var/wazuh/sockets/old-queue.sock");
-    addUnit<int>("/server/event_queue_size", "WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
+    addUnit<int>(key::SERVER_THREAD_POOL_SIZE, "WAZUH_SERVER_THREAD_POOL_SIZE", 1);
+    addUnit<std::string>(key::SERVER_EVENT_SOCKET, "WAZUH_SERVER_EVENT_SOCKET", "/var/wazuh/sockets/old-queue.sock");
+    addUnit<int>(key::SERVER_EVENT_QUEUE_SIZE, "WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
 
-    addUnit<std::string>("/server/api_socket", "WAZUH_SERVER_API_SOCKET", "/var/wazuh/sockets/old-api.sock");
-    addUnit<int>("/server/api_queue_size", "WAZUH_SERVER_API_QUEUE_SIZE", 50);
-    addUnit<int>("/server/api_timeout", "WAZUH_SERVER_API_TIMEOUT", 5000);
+    addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/var/wazuh/sockets/old-api.sock");
+    addUnit<int>(key::SERVER_API_QUEUE_SIZE, "WAZUH_SERVER_API_QUEUE_SIZE", 50);
+    addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
 
     // New API Server module
-    addUnit<std::string>("/api_server/socket", "WAZUH_API_SERVER_SOCKET", getExecutablePath() + "/sockets/api.sock");
+    addUnit<std::string>(key::API_SERVER_SOCKET, "WAZUH_API_SERVER_SOCKET", getExecutablePath() + "/sockets/api.sock");
 
     // TZDB module
-    addUnit<std::string>("/tzdb/path", "WAZUH_TZDB_PATH", getExecutablePath() + "/tzdb");
-    addUnit<bool>("/tzdb/auto_update", "WAZUH_TZDB_AUTO_UPDATE", false);
+    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", getExecutablePath() + "/tzdb");
+    addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
 };
 
 void Conf::validate(const json::Json& config) const
