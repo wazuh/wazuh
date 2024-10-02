@@ -1,4 +1,4 @@
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
+from wazuh.core.batcher.mux_demux import MuxDemuxManager
 from wazuh.core.batcher.batcher import BatcherConfig, BatcherProcess
 
 
@@ -17,7 +17,7 @@ def create_batcher_process(config: BatcherConfig) -> (MuxDemuxManager, BatcherPr
     """
     batcher_mux_demux_manager = MuxDemuxManager()
     batcher_process = BatcherProcess(
-        queue=batcher_mux_demux_manager.get_queue(),
+        mux_demux_queue=batcher_mux_demux_manager.get_queue(),
         config=config,
     )
     batcher_process.start()
