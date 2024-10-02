@@ -24,4 +24,4 @@
 # Install
 This package does not expose entry points since it only serves as support for the other packages that need to communicate through a unix socket to send and receive data
 
-`pip install tools/api-communication/`
+`pip3 install tools/api-communication/`

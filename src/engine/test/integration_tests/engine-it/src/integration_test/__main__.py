@@ -3,7 +3,7 @@ import sys
 from argparse import ArgumentParser, Namespace
 
 from integration_test.initial_state import run as init_run
-from integration_test.integration_test import run as test_run
+from integration_test.core import run as test_run
 
 
 def parse_args() -> Namespace:
