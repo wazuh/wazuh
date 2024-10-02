@@ -423,6 +423,35 @@ TEST_F(IndexerConnectorTest, PublishInvalidData)
     ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
 }
+/**
+ * @brief Test the connection and posterior discard of invalid JSON.
+ *
+ */
+TEST_F(IndexerConnectorTest, DiscardInvalidJSON)
+{
+    // Callback function that checks if the callback was executed.
+    auto callbackCalled {false};
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+                                    {
+                                        std::ignore = data;
+                                        callbackCalled = true;
+                                    }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, INDEXER_TIMEOUT)};
+
+    // Trigger publication of invalid data.
+    std::string invalidData = "This is not valid JSON"; // Invalid JSON string
+    ASSERT_NO_THROW(indexerConnector.publish(invalidData));
+
+    // Ensure that the callback is NOT called due to invalid data.
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+                 std::runtime_error);
+}
 
 /**
  * @brief Test the connection and posterior double data publication into a server. The published data is checked against
