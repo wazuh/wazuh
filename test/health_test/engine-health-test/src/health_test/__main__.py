@@ -16,6 +16,7 @@ from health_test.assets_validate import run as assets_validate_run
 from health_test.decoder_mapping_validate import run as decoder_mapping_validate_run
 from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
+from health_test.core import run as test_run
 
 
 def parse_args() -> Namespace:
