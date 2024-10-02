@@ -433,10 +433,8 @@ TEST_F(IndexerConnectorTest, DiscardInvalidJSON)
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
     // Create connector and wait until the connection is established.
-    nlohmann::json indexerConfig;
-    indexerConfig["name"] = INDEXER_NAME;
-    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    auto indexerConnector {IndexerConnector(indexerConfig, INDEXER_TIMEOUT)};
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT};
+    auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Trigger publication of invalid data.
     std::string invalidData = "This is not valid JSON"; // Invalid JSON string
