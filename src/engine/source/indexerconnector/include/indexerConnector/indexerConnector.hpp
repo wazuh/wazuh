@@ -86,13 +86,7 @@ public:
      * bulk either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages and the
      * interval is 5 seconds.
      *
-     * @param config Indexer configuration includes:
-     *  - Index name .
-     *  - Server list .
-     *  - Ssl configuration (cacert, cert, and key).
-     *  - Authentication (username and password).
-     *  - Timeout (Interval for monitoring the server health).
-     *  - Working threads number (Number of working threads used by the dispatcher. More than one results in an
+     * @param config Indexer connector configuration 
     unordered
      * processing).
      */
