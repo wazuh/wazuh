@@ -36,6 +36,7 @@ private:
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
     std::function<void(const std::string&)> m_publishCallback = {};
+    std::function<std::string(const std::string&)> m_searchCallback = {};
 
 public:
     /**
@@ -107,6 +108,16 @@ public:
     void setInitTemplateCallback(std::function<void(const std::string&)> callback)
     {
         m_initTemplateCallback = std::move(callback);
+    }
+
+    /**
+     * @brief Sets the search callback.
+     *
+     * @param callback New callback.
+     */
+    void setSearchCallback(std::function<std::string(const std::string&)> callback)
+    {
+        m_searchCallback = std::move(callback);
     }
 
     /**
@@ -226,6 +237,29 @@ public:
                               }
                               res.status = 200;
                               res.set_content("Content published", "text/plain");
+                          }
+                          catch (const std::exception& e)
+                          {
+                              res.status = 500;
+                              res.set_content(e.what(), "text/plain");
+                          }
+                      });
+
+        // Endpoint where the search is made into.
+        m_server.Post("/" + m_indexName + "/_search",
+                      [this](const httplib::Request& req, httplib::Response& res)
+                      {
+                          try
+                          {
+                              if (m_searchCallback)
+                              {
+                                  res.set_content(m_searchCallback(req.body), "text/plain");
+                              }
+                              else
+                              {
+                                  res.set_content("Search made", "text/plain");
+                              }
+                              res.status = 200;
                           }
                           catch (const std::exception& e)
                           {
