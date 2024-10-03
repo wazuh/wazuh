@@ -10,9 +10,10 @@
  */
 
 #include <future>
-#include <gtest/gtest.h>
 #include <memory>
 #include <thread>
+
+#include <gtest/gtest.h>
 
 #include <base/logging.hpp>
 #include <base/utils/rocksDBQueue.hpp>
