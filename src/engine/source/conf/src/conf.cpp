@@ -58,7 +58,6 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
 
     // Queue module
     addUnit<int>(key::QUEUE_SIZE, "WAZUH_QUEUE_SIZE", 1000000);
-
     // If file is "" the queue will block until the event is pushed to the queue.
     addUnit<std::string>(key::QUEUE_FLOOD_FILE, "WAZUH_QUEUE_FLOOD_FILE", "/var/wazuh/logs/engine-flood.log");
     // Number of attempts to try to push an event to the queue.
@@ -78,7 +77,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<int>(key::SERVER_EVENT_QUEUE_SIZE, "WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
 
     addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/var/wazuh/sockets/old-api.sock");
-    addUnit<int>(key::SERVER_API_QUEUE_SIZE, "WAZUH_SERVER_API_QUEUE_SIZE", 50);
+    addUnit<int>(key::SERVER_API_QUEUE_SIZE, "WAZUH_SERVER_API_QUEUE_SIZE", 300);
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
 
     // New API Server module

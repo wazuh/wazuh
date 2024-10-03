@@ -1,6 +1,6 @@
 import subprocess
 import shlex
-import toml
+import os
 import time
 from typing import Optional
 
@@ -16,16 +16,42 @@ class EngineHandler:
 
         Args:
             binary_path (str): Path to the engine binary
-            configuration_path (str): Path to the engine configuration file
+            configuration_path (str): Path to the environment configuration file (for engine configuration)
         """
 
         self.binary_path = binary_path
         self.configuration_path = configuration_path
         self.process: Optional[subprocess.Popen] = None
 
-        self.api_socket_path = toml.load(configuration_path)[
-            "server"]["api_socket"]
+        self._load_environment_from_file()
+        self.api_socket_path = self._get_env('WAZUH_SERVER_API_SOCKET')
         self.api_client = APIClient(self.api_socket_path)
+
+    def _load_environment_from_file(self) -> None:
+        """Loads the environment configuration file"""
+        with open(self.configuration_path, 'r') as file:
+            for line in file:
+                line = line.strip()
+                if line and not line.startswith('#'):  # Ignora líneas vacías y comentarios
+                    key, value = line.split('=', 1)
+                    os.environ[key] = value
+
+    def _get_env(self, key: str) -> str:
+        """Gets the value of an environment variable
+
+        Args:
+            key (str): The environment variable key
+
+        throws:
+            KeyError: If the environment variable is not found
+        Returns:
+            str: The value of the environment variable
+        """
+
+        # Check if the environment variable exists
+        if key not in os.environ:
+            raise KeyError(f"Environment variable '{key}' not found for the engine configuration")
+        return os.environ[key]
 
     def _wait_to_live(self) -> bool:
         """Waits for the engine process to be live
@@ -67,17 +93,15 @@ class EngineHandler:
             Exception: If the engine process fails to start or exits with a non-zero code
         """
 
-        command = f"{self.binary_path} --config {self.configuration_path} server start"
-
         if log_file_path:
             with open(log_file_path, "w") as log_file:
                 self.process = subprocess.Popen(
-                    shlex.split(command),
+                    shlex.split(self.binary_path),
                     stdout=log_file,
                     stderr=log_file
                 )
         else:
-            self.process = subprocess.Popen(shlex.split(command))
+            self.process = subprocess.Popen(shlex.split(self.binary_path))
 
         # Check if the process has started successfully
         if self.process.returncode is not None and self.process.returncode != 0:
