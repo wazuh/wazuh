@@ -12,11 +12,14 @@
 #ifndef _THREAD_EVENT_DISPATCHER_HPP
 #define _THREAD_EVENT_DISPATCHER_HPP
 
-#include "rocksDBQueue.hpp"
-#include "threadSafeQueue.hpp"
 #include <atomic>
 #include <iostream>
 #include <thread>
+
+#include <base/logging.hpp>
+
+#include "rocksDBQueue.hpp"
+#include "threadSafeQueue.hpp"
 
 constexpr auto UNLIMITED_QUEUE_SIZE = 0;
 static const unsigned int SINGLE_THREAD = 1;
@@ -202,7 +205,7 @@ private:
         catch (const std::exception& ex)
         {
             // Log the error if an exception occurs
-            std::cerr << "Dispatch handler error: " << ex.what() << "\n";
+            LOG_ERROR("Dispatch handler error: {}", ex.what());
         }
     }
 

@@ -9,13 +9,15 @@
  * Foundation.
  */
 
-#include "base/utils/rocksDBQueue.hpp"
-#include "base/utils/threadEventDispatcher.hpp"
-#include "base/utils/threadSafeMultiQueue.hpp"
 #include <future>
 #include <gtest/gtest.h>
 #include <memory>
 #include <thread>
+
+#include <base/logging.hpp>
+#include <base/utils/rocksDBQueue.hpp>
+#include <base/utils/threadEventDispatcher.hpp>
+#include <base/utils/threadSafeMultiQueue.hpp>
 
 class ThreadEventDispatcherTest : public ::testing::Test
 {
@@ -30,6 +32,7 @@ auto constexpr TEST_DB = "test.db";
 
 void ThreadEventDispatcherTest::SetUp()
 {
+    logging::testInit();
     std::filesystem::remove_all(TEST_DB);
 };
 
@@ -220,8 +223,6 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
                             catch (const std::exception& e)
                             {
                                 // The log message is resposibility of the lambda function.
-                                std::cout << __FUNCTION__ << " ERROR: event discarded: " << value.ToString() << ". "
-                                          << e.what() << "." << std::endl;
                                 ++dropped;
                                 messagesDiscarded.push_back(std::stoi(value.ToString()));
                                 throw std::runtime_error(e.what());
