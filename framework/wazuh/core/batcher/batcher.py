@@ -170,7 +170,8 @@ class Batcher:
         signal_number : int
             Signal number indicating the type of signal received (e.g., SIGINT, SIGTERM).
         """
-        logger.info(f'Batcher pid {os.getpid()} - Received signal {signal_number}, initiating shutdown.')
+        signal_name = signal.Signals(signal_number).name
+        logger.info(f'Batcher pid {os.getpid()} - Received signal {signal_name}, initiating shutdown.')
         self._shutdown_event.set()
 
 
