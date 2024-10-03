@@ -9125,8 +9125,8 @@ paths:
                       nodes:
                         - wazuh-master
                       hidden: "no"
-                      certfile: "/var/ossec/etc/sslmanager.cert"
-                      keyfile: "/var/ossec/etc/sslmanager.key"
+                      certfile: "/var/wazuh_server/etc/sslmanager.cert"
+                      keyfile: "/var/wazuh_server/etc/sslmanager.key"
                       keyfile_password: ""
                   total_affected_items: 1
                   total_failed_items: 0
