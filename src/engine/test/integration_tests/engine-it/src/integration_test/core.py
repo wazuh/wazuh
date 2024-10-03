@@ -2,7 +2,7 @@ import sys
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
 
 
 def run_behave_tests(test_path: Path, feature: Optional[str]) -> int:
@@ -42,12 +42,12 @@ def run_behave_tests(test_path: Path, feature: Optional[str]) -> int:
 def it(env_path: Path, test_path: Path, feature: Optional[str]):
     # Start the engine
     print("Validating environment...")
-    conf_path = (env_path / "engine" / "general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.exists():
         print(f"Error: Configuration file {conf_path} not found.")
         sys.exit(1)
 
-    bin_path = (env_path / "bin" / "wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.exists():
         print(f"Error: Engine binary {bin_path} not found.")
         sys.exit(1)
