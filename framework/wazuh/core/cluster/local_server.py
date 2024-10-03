@@ -336,7 +336,7 @@ class LocalServerMaster(LocalServer):
     The LocalServer object running in the master node.
     """
 
-    def __init__(self, node: server.AbstractServer, **kwargs):
+    def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
         """Class constructor.
 
         Parameters
