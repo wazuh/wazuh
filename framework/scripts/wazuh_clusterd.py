@@ -79,21 +79,41 @@ def start_subprocesses() -> subprocess.Popen:
     subprocess.Popen
         Engine process.
     """
-    # Start the engine
-    engine = subprocess.Popen([ENGINE_BINARY_PATH, 'server', 'start'])
-    main_logger.info(f'Started the Engine (pid: {engine.pid})')
+    try:
+        # Start the engine
+        engine = subprocess.Popen([ENGINE_BINARY_PATH, 'server', 'start'])
+        returncode = engine.poll()
+        if returncode not in (0, None):
+            raise Exception(f'return code {returncode}')
 
-    # Start the management API
-    mapi = subprocess.Popen([EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH])
-    mapi.wait()
-    mapi_pid = pyDaemonModule.get_parent_pid(MANAGEMENT_API_PROCESS_NAME)
-    main_logger.info(f'Started the Management API (pid: {mapi_pid})')
+        main_logger.info(f'Started the Engine (pid: {engine.pid})')
+    except Exception as e:
+        engine = None
+        main_logger.error(f'Error starting the Engine: {e}')
 
-    # Start the communications API
-    capi = subprocess.Popen([EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH])
-    capi.wait()
-    capi_pid = pyDaemonModule.get_parent_pid(COMMS_API_PROCESS_NAME)
-    main_logger.info(f'Started the Communications API (pid: {capi_pid})')
+    try:
+        # Start the management API
+        mapi = subprocess.Popen([EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH])
+        returncode = mapi.wait()
+        if returncode != 0:
+            raise Exception(f'return code {returncode}')
+
+        mapi_pid = pyDaemonModule.get_parent_pid(MANAGEMENT_API_PROCESS_NAME)
+        main_logger.info(f'Started the Management API (pid: {mapi_pid})')
+    except Exception as e:
+        main_logger.error(f'Error starting the Management API: {e}')
+
+    try:
+        # Start the communications API
+        capi = subprocess.Popen([EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH])
+        returncode = capi.wait()
+        if returncode != 0:
+            raise Exception(f'return code {returncode}')
+
+        capi_pid = pyDaemonModule.get_parent_pid(COMMS_API_PROCESS_NAME)
+        main_logger.info(f'Started the Communications API (pid: {capi_pid})')
+    except Exception as e:
+        main_logger.error(f'Error starting the Communications API: {e}')    
 
     return engine
 

@@ -4,9 +4,8 @@
 
 import asyncio
 import signal
-import subprocess
 import sys
-from unittest.mock import call, patch
+from unittest.mock import call, patch, Mock
 
 import pytest
 import scripts.wazuh_clusterd as wazuh_clusterd
@@ -122,6 +121,10 @@ def test_start_subprocesses(mock_popen):
 
     wazuh_clusterd.main_logger = LoggerMock
     pid = 2
+    process_mock = Mock()
+    attrs = {'poll.return_value': 0, 'wait.return_value': 0}
+    process_mock.configure_mock(**attrs)
+    mock_popen.return_value = process_mock
 
     with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
         patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid):
@@ -137,6 +140,40 @@ def test_start_subprocesses(mock_popen):
         call(f'Started the Engine (pid: {mock_popen().pid})'),
         call(f'Started the Management API (pid: {pid})'),
         call(f'Started the Communications API (pid: {pid})'),
+    ])
+
+
+@patch('subprocess.Popen')
+def test_start_subprocesses_ko(mock_popen):
+    """Validate that `start_subprocesses` works as expected when the subprocesses fail."""
+    class LoggerMock:
+        def __init__(self):
+            pass
+
+        def info(self, msg):
+            pass
+
+    wazuh_clusterd.main_logger = LoggerMock
+    pid = 2
+    process_mock = Mock()
+    attrs = {'poll.return_value': 1, 'wait.return_value': 1}
+    process_mock.configure_mock(**attrs)
+    mock_popen.return_value = process_mock
+
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid):
+        wazuh_clusterd.start_subprocesses()
+
+    mock_popen.assert_has_calls([
+        call([wazuh_clusterd.ENGINE_BINARY_PATH, 'server', 'start']),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.MANAGEMENT_API_SCRIPT_PATH]),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.COMMS_API_SCRIPT_PATH]),
+    ], any_order=True)
+
+    main_logger_mock.error.assert_has_calls([
+        call('Error starting the Engine: return code 1'),
+        call('Error starting the Management API: return code 1'),
+        call('Error starting the Communications API: return code 1'),
     ])
 
 
