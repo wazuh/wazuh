@@ -9,41 +9,41 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${env:ENGINE_BUILD}/main",
-            "args": [
-                "server",
-                "--event_queue_tasks",
-                "0",
-                "--event_socket",
-                "/var/ossec/queue/sockets/queue",
-                "--api_socket",
-                "/var/ossec/queue/sockets/engine-api",
-                "--api_queue_tasks",
-                "0",
-                "--server_threads",
-                "1",
-                "--router_threads",
-                "2",
-                "--api_timeout",
-                "3600000",
-                "--queue_flood_file",
-                "",
-                "--no-tzdb_automatic_update",
-                //"--tzdb_automatic_update",
-                "--store_path",
-                "${workspaceFolder}/engine-installed/store",
-                "--kvdb_path",
-                "${workspaceFolder}/engine-installed/kvdb/",
-                "--log_level",
-                "debug",
-                "start"
-            ],
             "stopAtEntry": false,
             "cwd": "${env:ENGINE_BUILD}",
             "environment": [
                 {
                     "name": "MALLOC_CHECK_",
                     "value": "2"
-                }
+                },
+                {
+                    "name": "WAZUH_STORE_PATH",
+                    "value": "${workspaceFolder}/engine-installed/store"
+                },
+                {
+                    "name": "WAZUH_QUEUE_FLOOD_FILE",
+                    "value": ""
+                },
+                {
+                    "name": "WAZUH_KVDB_PATH",
+                    "value": "${workspaceFolder}/engine-installed/kvdb/"
+                },
+                {
+                    "name": "WAZUH_LOG_LEVEL",
+                    "value": "info"
+                },
+                {
+                    "name": "WAZUH_SERVER_API_SOCKET",
+                    "value": "/var/wazuh/queue/sockets/engine-api"
+                },
+                {
+                    "name": "WAZUH_SERVER_EVENT_SOCKET",
+                    "value": "/var/wazuh/queue/sockets/queue"
+                },
+                {
+                    "name": "WAZUH_SERVER_EVENT_QUEUE_SIZE",
+                    "value": "0"
+                },
             ],
             "MIMode": "gdb",
             "setupCommands": [
@@ -202,8 +202,7 @@
             "args": [
                 "-e", "${env:TMP_CLEAN_ENV}",
                 "-t", "${env:ENGINE_SRC}/test/integration_tests",
-                "init",
-                "-b", "${env:ENGINE_BUILD}/main"
+                "init"
             ],
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
