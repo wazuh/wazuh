@@ -20,8 +20,6 @@ def parse_args() -> Namespace:
     # init subcommand
     init_parser = subparsers.add_parser(
         'init', help='Initialize the test environment')
-    init_parser.add_argument(
-        '-b', '--binary', help='Specify the path to the engine binary', required=True)
 
     init_parser.set_defaults(func=init_run)
 
