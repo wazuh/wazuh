@@ -13,9 +13,13 @@ def cpy_conf(env_path: Path, it_path: Path) -> Path:
     dest_conf_file = env_path / 'config.env'
     backup_dest_conf_file = env_path / 'config.env.bak'
 
+    if not serv_conf_file.is_file():
+        raise FileNotFoundError(f"File {serv_conf_file} does not exist")
+    if dest_conf_file.is_file():
+        dest_conf_file.rename(backup_dest_conf_file)
+
     conf_str = serv_conf_file.read_text().replace(PLACEHOLDER, env_path.as_posix())
     dest_conf_file.write_text(conf_str)
-    backup_dest_conf_file.write_text(conf_str)
 
     return dest_conf_file
 
