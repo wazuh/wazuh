@@ -249,7 +249,7 @@ def signal_handler(
     This function is designed to be used with the `signal` module to handle termination and
     interruption signals (e.g., SIGTERM).
     """
-    logger.info(f"Received signal {signal.Signals(signum).name}, initiating shutdown.")
+    logger.info(f"Received signal {signal.Signals(signum).name}, shutting down")
     terminate_processes(parent_pid, mux_demux_manager, batcher_process)
 
 
@@ -271,6 +271,7 @@ def terminate_processes(parent_pid: int, mux_demux_manager: MuxDemuxManager, bat
         The batcher process to be terminated.
     """
     if parent_pid == os.getpid():
+        logger.info('Shutting down')
         batcher_process.terminate()
         mux_demux_manager.shutdown()
         pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
@@ -316,6 +317,8 @@ if __name__ == '__main__':
         signal_handler, parent_pid=pid, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process))
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
+    logger.info(f'Listening on {args.host}:{args.port}')
+    
     try:
         app = create_app(mux_demux_manager.get_queue())
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
