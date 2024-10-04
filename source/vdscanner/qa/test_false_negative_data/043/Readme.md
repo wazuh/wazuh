@@ -19,11 +19,12 @@ Vulnerability detection validation for **_notepad++_** package.
 | notepad++ | 4.0.0   | NVD |  CVE-2007-2666   | Vulnerable     |
 | notepad++ | 4.0.0   | NVD |  CVE-2008-3436   | Vulnerable     |
 | notepad++ | 4.0.0   | NVD |  CVE-2019-16294  | Vulnerable     |
+| notepad++ | 4.0.0   | NVD |  CVE-2023-6401   | Vulnerable     |
+| notepad++ | 6.6.9   | NVD |  CVE-2014-9456   | Vulnerable     |
 | notepad++ | 8.4     | NVD |  CVE-2022-32168  | Vulnerable     |
 | notepad++ | 8.4     | NVD |  CVE-2022-31901  | Vulnerable     |
-| notepad++ | 8.4     | NVD |  CVE-2022-31902  | Vulnerable     |
 | notepad++ | 8.4     | NVD |  CVE-2023-40031  | Vulnerable     |
 | notepad++ | 8.4     | NVD |  CVE-2023-40036  | Vulnerable     |
 | notepad++ | 8.4     | NVD |  CVE-2023-40164  | Vulnerable     |
 | notepad++ | 8.4     | NVD |  CVE-2023-40166  | Vulnerable     |
-| notepad++ | 4.0.0   | NVD |  CVE-2023-6401   | Vulnerable     |
+| notepad++ | 6.5     | NVD |  CVE-2023-47452  | Vulnerable     |
