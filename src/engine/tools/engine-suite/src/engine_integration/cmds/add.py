@@ -6,19 +6,15 @@ DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
 DEFAULT_NAMESPACE = 'user'
 
 
-def run(args, resource_handler: rs.ResourceHandler):
-    api_socket = args['api_sock']
-    namespace = args['namespace']
+def add_integration(api_socket, namespace, integration_path, dry_run, resource_handler):
 
-    working_path = resource_handler.cwd()
-    if args['integration-path']:
-        working_path = args['integration-path']
-        path = Path(working_path)
-        if path.is_dir():
-            working_path = str(path.resolve())
-        else:
-            print(f'Error: Directory does not exist ')
-            return -1
+    working_path = resource_handler.cwd() if not integration_path else integration_path
+    path = Path(working_path)
+    if path.is_dir():
+        working_path = str(path.resolve())
+    else:
+        print(f'Error: Directory does not exist')
+        return -1
 
     integration_name = working_path.split('/')[-1]
 
@@ -42,7 +38,7 @@ def run(args, resource_handler: rs.ResourceHandler):
         return -1
 
     # Check if integration exists, if so, then inform error
-    if not args['dry-run']:
+    if not dry_run:
         try:
             resource_handler.get_store_integration(
                 api_socket, integration_name)
@@ -89,11 +85,14 @@ def run(args, resource_handler: rs.ResourceHandler):
     print('\nTasks:')
     executor.list_tasks()
     print('\nExecuting tasks...')
-    executor.execute(args['dry-run'])
+    executor.execute(dry_run)
     print('\nDone')
-    if args['dry-run']:
+    if dry_run:
         print(
             f'If you want to apply the changes, run again without the --dry-run flag')
+
+def run(args, resource_handler):
+    add_integration(args['api_sock'], args['namespace'], args.get('integration-path'), args['dry-run'], resource_handler)
 
 
 def configure(subparsers):

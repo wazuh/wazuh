@@ -13,10 +13,10 @@ def load_rules(ruleset_path: Path, engine_handler: EngineHandler) -> None:
 
     if not rules_directory.exists() or not rules_directory.is_dir():
         raise Exception(f"The directory {rules_directory} was not found.")
-    
+
     for subdirectory in rules_directory.iterdir():
         if subdirectory.is_dir():
-            for rule_file in subdirectory.glob('*.yml'):            
+            for rule_file in subdirectory.glob('*.yml'):
                 request = api_catalog.ResourcePost_Request()
                 request.type = api_catalog.ResourceType.rule
                 if subdirectory.name == 'wazuh-core':
@@ -76,7 +76,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     for ruleset_dir in (ruleset_path / 'rules').iterdir():
         if ruleset_dir.name == 'wazuh-core':
             continue
-        
+
         for yaml_file in ruleset_dir.glob("*.yml"):
             with open(yaml_file, 'r') as f:
                 content = yaml.safe_load(f)
@@ -102,12 +102,12 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
 def run(args):
     env_path = Path(args['environment']).resolve()
 
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         print(f"Configuration file not found: {conf_path}")
         sys.exit(1)
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         print(f"Engine binary not found: {bin_path}")
         sys.exit(1)
