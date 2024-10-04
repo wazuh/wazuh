@@ -18,7 +18,7 @@ from wazuh.core.batcher.config import BatcherConfig
 
 logger = logging.getLogger('wazuh-comms-api')
 
-WAIT_TIME_BETWEEN_QUEUE_READ = 0.01
+QUEUE_READ_INTERVAL = 0.01
 
 
 class Batcher:
@@ -57,7 +57,7 @@ class Batcher:
                 message = self.q.receive_from_mux(block=False)
                 return message
             except queue.Empty:
-                await asyncio.sleep(WAIT_TIME_BETWEEN_QUEUE_READ)
+                await asyncio.sleep(QUEUE_READ_INTERVAL)
             except asyncio.CancelledError:
                 if message is not None:
                     self.q.send_to_mux(uid=message.uid, msg=message.msg)
@@ -123,8 +123,8 @@ class Batcher:
         # Register signal handlers
         self._shutdown_event = asyncio.Event()
         loop = asyncio.get_running_loop()
-        loop.add_signal_handler(signal.SIGINT, self._handle_signal, signal.SIGINT)
         loop.add_signal_handler(signal.SIGTERM, self._handle_signal, signal.SIGTERM)
+        loop.add_signal_handler(signal.SIGINT, self._handle_signal, signal.SIGINT)
 
         try:
             while not self._shutdown_event.is_set():
@@ -170,7 +170,10 @@ class Batcher:
         signal_number : int
             Signal number indicating the type of signal received (e.g., SIGINT, SIGTERM).
         """
-        logger.info(f'Batcher pid {os.getpid()}- Received signal {signal_number}, initiating shutdown.')
+        if signal_number == signal.Signals.SIGINT:
+            return
+        signal_name = signal.Signals(signal_number).name
+        logger.info(f'Batcher (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
         self._shutdown_event.set()
 
 
