@@ -9,7 +9,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 @patch('builtins.open')
 def test_get_keypair(mock_open):
-    """Verify correct params when calling open method inside get_keypair"""
+    """Verify correct params when calling open method inside get_keypair."""
     with patch('wazuh.core.authentication.keypair_exists', return_value=True):
         authentication.get_keypair()
         calls = [call(authentication._private_key_path, mode='r'),
@@ -18,7 +18,7 @@ def test_get_keypair(mock_open):
 
 
 def test_get_keypair_ko():
-    """Verify expected exception is raised when IOError"""
+    """Verify an exception is raised when there's no key pair."""
     with patch('wazuh.core.authentication.keypair_exists', return_value=False):
         with pytest.raises(WazuhInternalError, match='.*6003*.'):
             authentication.get_keypair()
@@ -28,7 +28,7 @@ def test_get_keypair_ko():
 @patch('os.chown')
 @patch('builtins.open')
 def test_generate_keypair(mock_open, mock_chown, mock_chmod):
-    """Verify correct params when calling open method inside generate_keypair"""
+    """Verify correct params when calling open method inside generate_keypair."""
     result = authentication.generate_keypair()
     assert isinstance(result[0], str)
     assert isinstance(result[1], str)
