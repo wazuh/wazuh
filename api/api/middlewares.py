@@ -22,10 +22,9 @@ from wazuh.core.utils import get_utc_now
 
 from api import configuration
 from api.alogging import custom_logging
-from api.authentication import JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.configuration import default_api_configuration
-from wazuh.core.authentication import get_keypair
+from wazuh.core.authentication import get_keypair, JWT_ALGORITHM
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30

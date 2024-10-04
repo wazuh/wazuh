@@ -17,7 +17,7 @@ import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
 from api.constants import SECURITY_CONFIG_PATH
 from api.util import raise_if_exc
-from wazuh.core.authentication import get_keypair
+from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.cluster.utils import read_config
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
@@ -80,11 +80,6 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
 
     if data['result']:
         return {'sub': user, 'active': True }
-
-
-# Set JWT settings
-JWT_ISSUER = 'wazuh'
-JWT_ALGORITHM = 'ES256'
 
 
 def get_security_conf() -> dict:

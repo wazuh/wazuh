@@ -6,9 +6,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import decode, encode
 from jwt.exceptions import PyJWTError
 
-from api.authentication import JWT_ALGORITHM, JWT_ISSUER
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.authentication import get_keypair
+from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
 from wazuh.core.exception import WazuhCommsAPIError
 from wazuh.core.utils import get_utc_now
 

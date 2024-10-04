@@ -10,6 +10,9 @@ from wazuh.core.common import wazuh_uid, wazuh_gid, WAZUH_PATH
 _private_key_path = os.path.join(WAZUH_PATH, 'etc', 'private_key.pem')
 _public_key_path = os.path.join(WAZUH_PATH, 'etc', 'public_key.pem')
 
+JWT_ALGORITHM = 'ES256'
+JWT_ISSUER = 'wazuh'
+
 
 def get_keypair() -> Tuple[str, str]:
     """Return key files to keep safe or load existing public and private keys.
