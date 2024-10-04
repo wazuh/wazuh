@@ -668,10 +668,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     full_path = os.path.join(common.WAZUH_PATH, file_path)
                     item_key = data['cluster_item_key']
 
-                    # Only valid client.keys is the local one (master).
-                    if os.path.basename(file_path) == 'client.keys':
-                        raise exception.WazuhClusterError(3007)
-
                     # If the file is merged, create individual files from it.
                     if data['merged']:
                         for unmerged_file_path, file_data, file_time in cluster.unmerge_info(

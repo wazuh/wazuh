@@ -196,11 +196,14 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
-        'key': '',
         'port': 1516,
         'bind_addr': '0.0.0.0',
         'nodes': ['NODE_IP'],
-        'hidden': 'no'
+        'hidden': 'no',
+        'cafile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.ca'),
+        'certfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
+        'keyfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'),
+        'keyfile_password': '',
     }
 
     try:
@@ -238,6 +241,10 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
 
     if config_cluster.get(HAPROXY_HELPER):
         config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
+    
+    for key in ('cafile', 'certfile', 'keyfile'):
+        if not config_cluster[key].startswith(common.WAZUH_PATH):
+            config_cluster[key] = os.path.join(common.WAZUH_PATH, config_cluster[key])
 
     return config_cluster
 
