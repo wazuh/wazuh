@@ -1,6 +1,5 @@
 from typing import Optional
 
-from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
