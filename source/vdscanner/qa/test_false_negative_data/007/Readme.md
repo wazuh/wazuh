@@ -26,10 +26,7 @@ Vulnerability detection validation for macOS OS. The vulnerabilities found in on
 | macOS     | 14.0              | NVD  |  CVE-2024-23203   | Vulnerable      |
 | macOS     | 14.0              | NVD  |  CVE-2023-4751    | Vulnerable      |
 | macOS     | 14.0              | NVD  |  CVE-2023-4750    | Vulnerable      |
-| macOS     | 14.0              | NVD  |  CVE-2023-4736    | Vulnerable      |
-| macOS     | 14.0              | NVD  |  CVE-2023-4734    | Vulnerable      |
 | macOS     | 14.0              | NVD  |  CVE-2024-23214   | Vulnerable      |
-| macOS     | 14.0              | NVD  |  CVE-2023-4733    | Vulnerable      |
 | macOS     | 14.0              | NVD  |  CVE-2023-45866   | Vulnerable      |
 | macOS     | 14.0              | NVD  |  CVE-2023-42940   | Vulnerable      |
 | macOS     | 14.0              | NVD  |  CVE-2023-4752    | Vulnerable      |

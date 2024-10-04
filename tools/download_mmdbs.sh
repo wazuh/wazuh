@@ -17,7 +17,7 @@ download_and_extract() {
     local type=$2
     local url="${BASE_URL}?edition_id=${edition}&license_key=${GEOIP_LICENCE_KEY}&suffix=tar.gz"
 
-    curl -sS $url >$GEOIP_TMP_FILE
+    curl -sSL $url >$GEOIP_TMP_FILE
     if [ $? -ne 0 ]; then
         echo "Error to download ${edition}"
         exit 1
@@ -29,9 +29,9 @@ download_and_extract() {
         exit 1
     fi
 
+    mkdir -p /var/ossec/etc
     # Move to the correct location
     mv ${edition}.mmdb /var/ossec/etc
-    chown wazuh:wazuh /var/ossec/etc/${edition}.mmdb
 
     # Enable the database
     echo "Enabling ${edition} database"

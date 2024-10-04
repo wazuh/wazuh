@@ -39,6 +39,24 @@ public:
     }
 };
 
+std::string testFunc(std::string lamdaName)
+{
+    auto lambda = [functionName = logging::getLambdaName(__FUNCTION__, lamdaName)]()
+    {
+        return functionName;
+    };
+
+    return lambda();
+}
+
+TEST(LoggerUtilTest, getLambdaName)
+{
+    std::string expectedFunctionName =
+        std::string("testFunc") + std::string(LAMBDA_SEPARATOR) + std::string("lambdaName");
+    std::string actualFunctionName = testFunc("lambdaName");
+    EXPECT_EQ(expectedFunctionName, actualFunctionName);
+}
+
 TEST_F(LoggerTest, LogNonExist)
 {
     ASSERT_ANY_THROW(logging::setLevel(logging::Level::Info));
@@ -107,19 +125,36 @@ TEST_P(LoggerTestLevels, LogChangeLevelInRuntime)
 
     ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = level}));
 
+    auto l = [functionName = logging::getLambdaName(__FUNCTION__, "lambdaName")]()
+    {
+        return functionName;
+    };
+
     LOG_TRACE("TRACE message");
+    LOG_TRACE_L(l().c_str(), "L_TRACE message");
     LOG_DEBUG("DEBUG message");
+    LOG_DEBUG_L(l().c_str(), "L_DEBUG message");
     LOG_INFO("INFO message");
+    LOG_INFO_L(l().c_str(), "L_INFO message");
     LOG_WARNING("WARNING message");
+    LOG_WARNING_L(l().c_str(), "L_WARNING message");
     LOG_ERROR("ERROR message");
+    LOG_ERROR_L(l().c_str(), "L_ERROR message");
     LOG_CRITICAL("CRITICAL message");
+    LOG_CRITICAL_L(l().c_str(), "L_CRITICAL message");
 
     checkLogFileContent("TRACE message", shouldContainMessage(level, logging::Level::Trace));
+    checkLogFileContent("L_TRACE message", shouldContainMessage(level, logging::Level::Trace));
     checkLogFileContent("DEBUG message", shouldContainMessage(level, logging::Level::Debug));
+    checkLogFileContent("L_DEBUG message", shouldContainMessage(level, logging::Level::Debug));
     checkLogFileContent("INFO message", shouldContainMessage(level, logging::Level::Info));
+    checkLogFileContent("L_INFO message", shouldContainMessage(level, logging::Level::Info));
     checkLogFileContent("WARNING message", shouldContainMessage(level, logging::Level::Warn));
+    checkLogFileContent("L_WARNING message", shouldContainMessage(level, logging::Level::Warn));
     checkLogFileContent("ERROR message", shouldContainMessage(level, logging::Level::Err));
+    checkLogFileContent("L_ERROR message", shouldContainMessage(level, logging::Level::Err));
     checkLogFileContent("CRITICAL message", shouldContainMessage(level, logging::Level::Critical));
+    checkLogFileContent("L_CRITICAL message", shouldContainMessage(level, logging::Level::Critical));
 }
 
 INSTANTIATE_TEST_CASE_P(Levels,
@@ -156,12 +191,23 @@ TEST_P(LoggerTestExtraInfo, LogPatternMatching)
 
     ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = level}));
 
+    auto l = [functionName = logging::getLambdaName(__FUNCTION__, "lambdaName")]()
+    {
+        return functionName;
+    };
+
     LOG_TRACE("TRACE message");
+    LOG_TRACE_L(l().c_str(), "L_TRACE message");
     LOG_DEBUG("DEBUG message");
+    LOG_DEBUG_L(l().c_str(), "L_DEBUG message");
     LOG_INFO("INFO message");
+    LOG_INFO_L(l().c_str(), "L_INFO message");
     LOG_WARNING("WARNING message");
+    LOG_WARNING_L(l().c_str(), "L_WARNING message");
     LOG_ERROR("ERROR message");
+    LOG_ERROR_L(l().c_str(), "L_ERROR message");
     LOG_CRITICAL("CRITICAL message");
+    LOG_CRITICAL_L(l().c_str(), "L_CRITICAL message");
 
     std::istringstream iss(readFileContents(m_tmpPath));
     std::string line;
@@ -240,35 +286,40 @@ INSTANTIATE_TEST_CASE_P(
     LevelsTest,
     LoggerTestLevelsParam,
     ::testing::Values(
-        // Level Trace: only "INFO message" should appear
+        // Level Trace: Only Trace, Debug and Info are logged to stdout
         std::make_tuple(logging::Level::Trace,
-                        std::vector<std::string> {"INFO message"},
-                        std::vector<std::string> {
-                            "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
+                        std::vector<std::string> {"TRACE message", "DEBUG message", "INFO message"},
+                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"}),
 
-        // Level Trace: only "INFO message" should appear
+        // Level Debug: Only Debug and Info are logged to stdout
         std::make_tuple(logging::Level::Debug,
-                        std::vector<std::string> {"INFO message"},
+                        std::vector<std::string> {"DEBUG message", "INFO message"},
                         std::vector<std::string> {
-                            "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
+                            "TRACE message", "WARNING message", "ERROR message", "CRITICAL message"}),
 
-        // Level Info: only "INFO message" should appear
+        // Level Info: Only Info is logged to stdout
         std::make_tuple(logging::Level::Info,
                         std::vector<std::string> {"INFO message"},
                         std::vector<std::string> {
                             "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
 
-        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        // Level Warn: Only Warn, Err and Critical are logged to stderr
         std::make_tuple(logging::Level::Warn,
                         std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
                         std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"}),
 
-        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        // Level Err: Only Err and Critical are logged to stderr
         std::make_tuple(logging::Level::Err,
-                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
-                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"}),
+                        std::vector<std::string> {"ERROR message", "CRITICAL message"},
+                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message", "WARNING message"}),
 
-        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        // Level Critical: Only Critical is logged to stderr
         std::make_tuple(logging::Level::Critical,
-                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
-                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"})));
+                        std::vector<std::string> {"CRITICAL message"},
+                        std::vector<std::string> {
+                            "INFO message",
+                            "DEBUG message",
+                            "TRACE message",
+                            "WARNING message",
+                            "ERROR message",
+                        })));

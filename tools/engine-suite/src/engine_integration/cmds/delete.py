@@ -1,6 +1,5 @@
 import shared.resource_handler as rs
 from pathlib import Path
-from .generate_manifest import run as gen_manifest
 import sys
 import json
 

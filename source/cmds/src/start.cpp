@@ -21,6 +21,7 @@
 #include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
+#include <apiserver/apiServer.hpp>
 #include <base/logging.hpp>
 #include <base/parseEvent.hpp>
 #include <bk/rx/controller.hpp>
@@ -29,6 +30,7 @@
 #include <defs/defs.hpp>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
+#include <indexerConnector/indexerConnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
@@ -44,6 +46,7 @@
 #include <sockiface/unixSocketFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
+#include <vdscanner/scanOrchestrator.hpp>
 #include <wdb/wdbManager.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
@@ -57,6 +60,7 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
     static constexpr size_t IMPLICIT_INITIAL_INDEX_SIZE = 8192;
 };
 std::shared_ptr<engineserver::EngineServer> g_engineServer {};
+std::shared_ptr<apiserver::ApiServer> g_apiServer {};
 
 void sigintHandler(const int signum)
 {
@@ -64,6 +68,12 @@ void sigintHandler(const int signum)
     {
         g_engineServer->request_stop();
         g_engineServer.reset();
+    }
+
+    if (g_apiServer)
+    {
+        g_apiServer->stop();
+        g_apiServer.reset();
     }
 }
 
@@ -147,8 +157,20 @@ void runStart(ConfHandler confManager)
     const auto queueDropFlood = confManager->get<bool>("server.queue_drop_flood");
 
     // TZDB config
-    const auto tzdbPath = confManager->get<std::string>("server.tzdb_path");
-    const auto tzdbAutoUpdate = confManager->get<bool>("server.tzdb_automatic_update");
+    auto getExecutablePath = []() -> std::string
+    {
+        char path[PATH_MAX];
+        ssize_t count = readlink("/proc/self/exe", path, PATH_MAX);
+        if (count != -1)
+        {
+            path[count] = '\0';
+            std::string pathStr(path);
+            return pathStr.substr(0, pathStr.find_last_of('/'));
+        }
+        return {};
+    };
+    const auto tzdbPath = getExecutablePath() + "/tzdb"; // confManager->get<std::string>("server.tzdb_path");
+    const auto tzdbAutoUpdate = false;                   // confManager->get<bool>("server.tzdb_automatic_update");
 
     // Set signal [SIGINT]: Crt+C handler
     {
@@ -186,6 +208,15 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
     std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::IPolicy> policyManager;
+    std::shared_ptr<vdscanner::ScanOrchestrator> vdScanner;
+    std::shared_ptr<IIndexerConnector> iConnector;
+
+    // TODO Temporary function, remove after the migration to the new configuration system
+    const auto getEnvOrDefault = [](const char* envVar, const std::string& defaultValue) -> std::string
+    {
+        const char* val = std::getenv(envVar);
+        return val ? std::string(val) : defaultValue;
+    };
 
     try
     {
@@ -211,10 +242,10 @@ void runStart(ConfHandler confManager)
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
             exitHandler.add(
-                [kvdbManager]()
+                [kvdbManager, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
                     kvdbManager->finalize();
-                    LOG_INFO("KVDB terminated.");
+                    LOG_INFO_L(functionName.c_str(), "KVDB terminated.");
                 });
         }
 
@@ -264,6 +295,30 @@ void runStart(ConfHandler confManager)
             LOG_INFO("HLP initialized.");
         }
 
+        // Indexer Connector
+        {
+            nlohmann::json indexerConfig;
+            // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available
+            indexerConfig["name"] = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-basic-index");
+            indexerConfig["hosts"] =
+                nlohmann::json::array({getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")});
+            indexerConfig["username"] = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin");
+            indexerConfig["password"] = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+");
+
+            // SSL configuration
+            nlohmann::json ssl;
+            ssl["certificate_authorities"] = getEnvOrDefault("WENGINE_ICONNECTOR_CA", "");
+            ssl["certificate"] = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", "");
+            ssl["key"] = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "");
+            if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
+            {
+                indexerConfig["ssl"] = ssl;
+            }
+
+            // Create connector and wait until the connection is established.
+            iConnector = std::make_shared<IndexerConnector>(indexerConfig);
+        }
+
         // Builder and registry
         {
             builder::BuilderDeps builderDeps;
@@ -275,6 +330,7 @@ void runStart(ConfHandler confManager)
             builderDeps.wdbManager =
                 std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), builderDeps.sockFactory);
             builderDeps.geoManager = geoManager;
+            builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
             builder = std::make_shared<builder::Builder>(store, schema, defs, builderDeps);
             LOG_INFO("Builder initialized.");
@@ -339,10 +395,10 @@ void runStart(ConfHandler confManager)
             api = std::make_shared<api::Api>(rbac);
             LOG_DEBUG("API created.");
             exitHandler.add(
-                [api]()
+                [api, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
                     eMessage::ShutdownEMessageLibrary();
-                    LOG_INFO("API terminated.");
+                    LOG_INFO_L(functionName.c_str(), "API terminated.");
                 });
 
             // Configuration manager
@@ -364,7 +420,8 @@ void runStart(ConfHandler confManager)
             // Policy
             {
                 api::policy::handlers::registerHandlers(policyManager, api);
-                exitHandler.add([]() { LOG_DEBUG("Policy API terminated."); });
+                exitHandler.add([functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                                { LOG_DEBUG_L(functionName.c_str(), "Policy API terminated."); });
                 LOG_DEBUG("Policy API registered.");
             }
 
@@ -387,6 +444,222 @@ void runStart(ConfHandler confManager)
             // Geo
             api::geo::handlers::registerHandlers(geoManager, api);
             LOG_DEBUG("Geo API registered.");
+        }
+
+        // VD Scanner
+        {
+            vdScanner = std::make_shared<vdscanner::ScanOrchestrator>();
+        }
+
+        // API Server
+        {
+            g_apiServer = std::make_shared<apiserver::ApiServer>();
+
+            // Add apidoc documentation.
+            /**
+             * @api {post} /vulnerability/scan Scan OS and packages for vulnerabilities
+             * @apiName scan
+             * @apiGroup vulnerability
+             * @apiVersion 0.1.0
+             *
+             * @apiBody {String} type Type of scan to perform.
+             * @apiBody {Object} agent Agent information.
+             * @apiBody {String} agent.id ID of the agent.
+             * @apiBody {Object[]} packages List of packages to scan.
+             * @apiBody {String} packages.architecture Architecture of the package.
+             * @apiBody {String} packages.checksum Checksum of the package.
+             * @apiBody {String} packages.description Description of the package.
+             * @apiBody {String} packages.format Format of the package (e.g., deb).
+             * @apiBody {String} packages.groups Groups to which the package belongs.
+             * @apiBody {String} packages.item_id Item ID of the package.
+             * @apiBody {String} packages.multiarch Multiarch compatibility.
+             * @apiBody {String} packages.name Name of the package.
+             * @apiBody {String} packages.priority Priority of the package.
+             * @apiBody {String} packages.scan_time Scan time of the package.
+             * @apiBody {Number} packages.size Size of the package in MB.
+             * @apiBody {String} packages.source Source of the package.
+             * @apiBody {String} packages.vendor Vendor of the package.
+             * @apiBody {String} packages.version Version of the package.
+             * @apiBody {String[]} hotfixes List of hotfixes to scan.
+             * @apiBody {Object} os OS information.
+             * @apiBody {String} os.architecture OS architecture.
+             * @apiBody {String} os.checksum OS checksum.
+             * @apiBody {String} os.hostname Hostname of the OS.
+             * @apiBody {String} os.codename Codename of the OS.
+             * @apiBody {String} os.major_version Major version of the OS.
+             * @apiBody {String} os.minor_version Minor version of the OS.
+             * @apiBody {String} os.name Name of the OS.
+             * @apiBody {String} os.patch Patch level of the OS.
+             * @apiBody {String} os.platform Platform of the OS.
+             * @apiBody {String} os.version Version name of the OS.
+             * @apiBody {String} os.scan_time Scan time of the OS.
+             * @apiBody {String} os.kernel_release Kernel release version.
+             * @apiBody {String} os.kernel_name Kernel name.
+             * @apiBody {String} os.kernel_version Kernel version.
+             *
+             * @apiSuccess {Object[]} vulnerabilities List of detected vulnerabilities.
+             * @apiSuccess {String} vulnerabilities.assigner Assigner of the vulnerability.
+             * @apiSuccess {String} vulnerabilities.category Category of the vulnerability.
+             * @apiSuccess {String} vulnerabilities.classification Classification type (e.g., CVSS).
+             * @apiSuccess {String} vulnerabilities.condition Condition that triggered the vulnerability detection.
+             * @apiSuccess {Object} vulnerabilities.cvss CVSS score details.
+             * @apiSuccess {Object} vulnerabilities.cvss.cvss3 CVSS v3.0 scoring details.
+             * @apiSuccess {Object} vulnerabilities.cvss.cvss3.vector CVSS v3.0 vector details.
+             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.attack_vector Attack vector.
+             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.availability Availability impact.
+             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.confidentiality_impact Confidentiality impact.
+             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.integrity_impact Integrity impact.
+             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.privileges_required Privileges required.
+             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.scope Scope of the vulnerability.
+             * @apiSuccess {String} vulnerabilities.cvss.cvss3.vector.user_interaction User interaction requirement.
+             * @apiSuccess {String} vulnerabilities.cwe_reference CWE reference for the vulnerability.
+             * @apiSuccess {String} vulnerabilities.description Description of the vulnerability.
+             * @apiSuccess {String} vulnerabilities.detected_at Detection time in ISO format.
+             * @apiSuccess {String} vulnerabilities.enumeration Enumeration type (e.g., CVE).
+             * @apiSuccess {String} vulnerabilities.id ID of the vulnerability (e.g., CVE ID).
+             * @apiSuccess {String} vulnerabilities.item_id Internal item ID related to the vulnerability.
+             * @apiSuccess {String} vulnerabilities.published_at Published date of the vulnerability.
+             * @apiSuccess {String} vulnerabilities.reference URL reference for more details about the vulnerability.
+             * @apiSuccess {Object} vulnerabilities.score Vulnerability score details.
+             * @apiSuccess {Number} vulnerabilities.score.base Base score of the vulnerability.
+             * @apiSuccess {String} vulnerabilities.score.version CVSS version.
+             * @apiSuccess {String} vulnerabilities.severity Severity level (e.g., High, Medium).
+             * @apiSuccess {String} vulnerabilities.updated Last updated time of the vulnerability.
+             *
+             * @apiSuccessExample {json} Success-Response:
+             *    HTTP/1.1 200 OK
+             *   [
+             *     {
+             *       "assigner": "microsoft",
+             *       "category": "Packages",
+             *       "classification": "CVSS",
+             *       "condition": "Package equal to 2016",
+             *       "cvss": {
+             *         "cvss3": {
+             *           "vector": {
+             *             "attack_vector": "",
+             *             "availability": "HIGH",
+             *             "confidentiality_impact": "HIGH",
+             *             "integrity_impact": "HIGH",
+             *             "privileges_required": "NONE",
+             *             "scope": "UNCHANGED",
+             *             "user_interaction": "REQUIRED"
+             *           }
+             *         }
+             *       },
+             *       "cwe_reference": "CWE-20",
+             *       "description": "Microsoft Outlook Remote Code Execution Vulnerability",
+             *       "detected_at": "2024-09-04T18:00:02.747Z",
+             *       "enumeration": "CVE",
+             *       "id": "CVE-2024-38021",
+             *       "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+             *       "published_at": "2024-07-09T17:15:28Z",
+             *       "reference": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-38021",
+             *       "score": {
+             *         "base": 8.8,
+             *         "version": "3.1"
+             *       },
+             *       "severity": "High",
+             *       "updated": "2024-07-11T16:49:16Z"
+             *     },
+             *     {
+             *       "assigner": "microsoft",
+             *       "category": "Packages",
+             *       "classification": "CVSS",
+             *       "condition": "Package equal to 2016",
+             *       "cvss": {
+             *         "cvss3": {
+             *           "vector": {
+             *             "attack_vector": "",
+             *             "availability": "NONE",
+             *             "confidentiality_impact": "HIGH",
+             *             "integrity_impact": "NONE",
+             *             "privileges_required": "NONE",
+             *             "scope": "UNCHANGED",
+             *             "user_interaction": "REQUIRED"
+             *           }
+             *         }
+             *       },
+             *       "cwe_reference": "CWE-200",
+             *       "description": "Microsoft Outlook Spoofing Vulnerability",
+             *       "detected_at": "2024-09-04T18:00:02.747Z",
+             *       "enumeration": "CVE",
+             *       "id": "CVE-2024-38020",
+             *       "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+             *       "published_at": "2024-07-09T17:15:28Z",
+             *       "reference": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-38020",
+             *       "score": {
+             *         "base": 6.5,
+             *         "version": "3.1"
+             *       },
+             *       "severity": "Medium",
+             *       "updated": "2024-07-11T16:49:29Z"
+             *     }
+             *   ]
+             *
+             * @apiError {String} error Error message.
+             * @apiError {Number} code Error code.
+             *
+             * @apiErrorExample {json} Error-Response:
+             *   HTTP/1.1 503 Service Unavailable
+             *  {
+             *   "error": "Service Unavailable",
+             *   "code": 503
+             *  }
+             */
+            g_apiServer->addRoute(apiserver::Method::POST,
+                                  "/vulnerability/scan",
+                                  [vdScanner](const auto& req, auto& res)
+                                  {
+                                      vdScanner->processEvent(req.body, res.body);
+                                      res.set_header("Content-Type", "application/json");
+                                  });
+
+            LOG_DEBUG("API Server configured.");
+
+            /**
+             * @api {post} /events/stateless Receive Events for Security Policy Processing
+             * @apiName ReceiveEvents
+             * @apiGroup Events
+             * @apiVersion 0.1.0-alpha
+             *
+             * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
+             * accepts a JSON payload representing the event details.
+             *
+             * @apiBody {Object} wazuh Details about the Wazuh event processing.
+             * @apiBody {Number} wazuh.queue Queue number where the event will be processed (range: 1-127).
+             * @apiBody {String} wazuh.location Location description in the format "(agent ID) (agent-name)
+             * any->/path/to/source".
+             * @apiBody {Object} event Details of the event itself.
+             * @apiBody {String} event.original The original message collected from the agent.
+             *
+             * @apiSuccessExample Success-Response:
+             *     HTTP/1.1 204 No Content
+             *    {}
+             *
+             * @apiError BadRequest The request body is not a valid JSON.
+             *
+             * @apiErrorExample {json} Error-Response:
+             *     HTTP/1.1 400 Bad Request
+             *     {
+             *       "error": ["Service Unavailable"],
+             *       "code": 400
+             *     }
+             */
+            g_apiServer->addRoute(apiserver::Method::POST,
+                                  "/events/stateless",
+                                  [orchestrator](const auto& req, auto& res)
+                                  {
+                                      try
+                                      {
+                                          orchestrator->postEvent(std::make_shared<json::Json>(req.body.c_str()));
+                                          res.status = httplib::StatusCode::NoContent_204;
+                                      }
+                                      catch (const std::runtime_error& e)
+                                      {
+                                          res.status = httplib::StatusCode::BadRequest_400;
+                                      }
+                                  });
         }
 
         // Server
@@ -432,6 +705,7 @@ void runStart(ConfHandler confManager)
     // Start server
     try
     {
+        g_apiServer->start(getExecutablePath() + "/sockets/engine.sock");
         server->start();
     }
     catch (const std::exception& e)

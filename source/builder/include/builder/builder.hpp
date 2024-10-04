@@ -5,6 +5,7 @@
 
 #include <defs/idefinitions.hpp>
 #include <geo/imanager.hpp>
+#include <indexerConnector/iindexerconnector.hpp>
 #include <kvdb/ikvdbmanager.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
@@ -29,6 +30,7 @@ struct BuilderDeps
     std::shared_ptr<sockiface::ISockFactory> sockFactory;
     std::shared_ptr<wazuhdb::IWDBManager> wdbManager;
     std::shared_ptr<geo::IManager> geoManager;
+    std::shared_ptr<IIndexerConnector> iConnector;
 };
 
 class Builder final

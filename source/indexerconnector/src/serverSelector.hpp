@@ -21,13 +21,14 @@
  * @brief ServerSelector class.
  *
  */
-class ServerSelector final : private RoundRobinSelector<std::string>
+template<typename TMonitoring>
+class TServerSelector final : private RoundRobinSelector<std::string>
 {
 private:
-    std::shared_ptr<Monitoring> monitoring;
+    std::shared_ptr<TMonitoring> monitoring;
 
 public:
-    ~ServerSelector() = default;
+    ~TServerSelector() = default;
 
     /**
      * @brief Class constructor. Initializes Round Robin selector and monitoring.
@@ -36,11 +37,11 @@ public:
      * @param timeout Timeout for monitoring.
      * @param secureCommunication Object that provides secure communication.
      */
-    explicit ServerSelector(const std::vector<std::string>& values,
-                            const uint32_t timeout = INTERVAL,
-                            const SecureCommunication& secureCommunication = {})
+    explicit TServerSelector(const std::vector<std::string>& values,
+                             const uint32_t timeout = HEALTH_CHECK_TIMEOUT_MS,
+                             const SecureCommunication& secureCommunication = {})
         : RoundRobinSelector<std::string>(values)
-        , monitoring(std::make_shared<Monitoring>(values, timeout, secureCommunication))
+        , monitoring(std::make_shared<TMonitoring>(values, timeout, secureCommunication))
     {
     }
 
