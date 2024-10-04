@@ -66,15 +66,13 @@ def parse_args() -> Namespace:
         'dynamic', help='Dynamic tests including initialization, rule loading, integration, and validation')
     dynamic_subparsers = dynamic_parser.add_subparsers(
         title='dynamic tests', required=True, dest='dynamic_test')
-    
+
     dynamic_parser.add_argument('-e', '--environment',
                                 help='Environment to run the tests in', type=str, required=True)
 
     # init subcommand
     init_parser = dynamic_subparsers.add_parser(
         'init', help='Initialize the test environment')
-    init_parser.add_argument(
-        '-b', '--binary', help='Specify the path to the engine binary', required=True)
     init_parser.add_argument('-r', '--ruleset',
                             help='Specify the path to the ruleset directory', required=True)
     init_parser.add_argument(
