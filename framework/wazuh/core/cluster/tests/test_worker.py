@@ -48,7 +48,7 @@ def get_worker_handler(loop):
                                                        performance_test=False, logger=None,
                                                        concurrency_test=False, file='None', string=20)
 
-    return worker.WorkerHandler(node_type='master', version='4.0.0', loop=loop, on_con_lost=None, name='Testing',
+    return worker.WorkerHandler(node_type='master', version='5.0.0', loop=loop, on_con_lost=None, name='Testing',
                                 logger=logger, manager=abstract_client, cluster_items=cluster_items)
 
 
@@ -93,7 +93,7 @@ async def test_worker_handler_init(event_loop):
 
     worker_handler = get_worker_handler(event_loop)
     worker_handler.logger = None
-    assert worker_handler.client_data == "Testing master 4.0.0".encode()
+    assert worker_handler.client_data == "Testing master 5.0.0".encode()
     assert "Integrity check" in worker_handler.task_loggers
     assert isinstance(worker_handler.task_loggers["Integrity check"], logging.Logger)
     assert "Integrity sync" in worker_handler.task_loggers

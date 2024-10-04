@@ -55,7 +55,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         Parameters
         ----------
         version : str
-            Wazuh version. E.g., '4.0.0'.
+            Wazuh version. E.g., '5.0.0'.
         node_type : str
             Type of node (will always be worker but it's set as a variable in case more types are added in the future).
         **kwargs
