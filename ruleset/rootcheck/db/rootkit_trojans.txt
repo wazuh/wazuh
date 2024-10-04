@@ -62,7 +62,7 @@ w           !uname -a|proc\.h|bash!
 sendmail    !bash|fuck!
 named       !bash|blah|/dev/[0-9]|^/bin/sh!
 inetd       !bash|^/bin/sh|file\.h|proc\.h|/dev/[^un%]|^/bin/.*sh!
-apachectl   !bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh!
+apachectl   !^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh!
 sshd        !check_global_passwd|panasonic|satori|vejeta|\.ark|/hash\.zk|bash|/dev[a-s]|/dev[A-Z]/!
 syslogd     !bash|/usr/lib/pt07|/dev/[^cln]]|syslogs\.h|proc\.h!
 xinetd      !bash|file\.h|proc\.h!
