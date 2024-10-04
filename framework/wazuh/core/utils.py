@@ -60,8 +60,9 @@ def assign_wazuh_ownership(filepath: str):
         os.stat(filepath).st_uid != common.wazuh_uid():
         os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
 
+
 def clean_pid_files(daemon: str) -> None:
-    """Check the existence of '.pid' files for a specified daemon.
+    """Clean the '.pid' files for a specified daemon and kill their process group.
 
     Parameters
     ----------
@@ -77,7 +78,8 @@ def clean_pid_files(daemon: str) -> None:
                 command = process.cmdline()[-1]
 
                 if daemon.replace('-', '_') in command:
-                    os.kill(pid, SIGKILL)
+                    pgid = os.getpgid(pid)
+                    os.killpg(pgid, SIGKILL)
                     print(f"{daemon}: Orphan child process {pid} was terminated.")
                 else:
                     print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
