@@ -415,21 +415,6 @@ class WazuhException(Exception):
                           'are not granted',
                'remediation': 'Please, ensure /proc exists and permissions are granted'},
 
-        # Database:
-        2000: {'message': 'No such database file'},
-        2001: {'message': 'Incompatible version of SQLite'},
-        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
-        2003: {'message': 'Error in wazuhdb request',
-               'remediation': 'Make sure the request is correct'},
-        2004: {'message': 'Database query not valid'},
-        2005: {'message': 'Could not connect to wdb socket'},
-        2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
-        2007: {'message': 'Error retrieving data from Wazuh DB'},
-        2008: {'message': 'Corrupted RBAC database',
-               'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
-        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
-        2010: {'message': 'The requested read operation did not complete fully'},
-
         # External services
         2100: {'message': 'Error in CTI service request'},
 

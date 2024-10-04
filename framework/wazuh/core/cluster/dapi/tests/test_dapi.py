@@ -29,7 +29,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue, SendSyncRequestQueue
+        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
         from wazuh.core.manager import get_manager_status
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
@@ -610,46 +610,3 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
                         apirequest.logger = logging.getLogger("apirequest")
                         with pytest.raises(Exception):
                             await apirequest.run()
-
-
-@patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception())
-@patch("asyncio.get_event_loop")
-async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
-    """Test `SendSyncRequestQueue.run` function."""
-
-    class NodeMock:
-        async def send_request(self, command, data):
-            pass
-
-        async def send_string(self, command):
-            return command
-
-    class ServerMock:
-        def __init__(self):
-            self.clients = {"names": ["w1", "w2"]}
-
-    class RequestQueueMock:
-        async def get(self):
-            return "wazuh*request_queue*test {\"daemon_name\": \"test\"}"
-
-    with patch.object(logger, "error", side_effect=Exception("break while true")) as logger_mock:
-        server = ServerMock()
-        sendsync = SendSyncRequestQueue(server=server)
-        sendsync.logger = logger
-        sendsync.request_queue = RequestQueueMock()
-        with pytest.raises(Exception, match=".*break while true.*"):
-            await sendsync.run()
-        logger_mock.assert_called_once_with("Error in Sendsync. The destination node is "
-                                            "not connected or does not exist: 'wazuh'.")
-
-        node = NodeMock()
-        with patch.object(node, "send_request", Exception("break while true")):
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect=Exception("break while true")):
-                server.clients = {"wazuh": node}
-                sendsync.logger = logging.getLogger("sendsync")
-                with pytest.raises(Exception):
-                    await sendsync.run()
-
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect="noerror"):
-                with pytest.raises(Exception):
-                    await sendsync.run()

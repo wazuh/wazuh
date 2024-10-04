@@ -76,12 +76,6 @@ class LocalClientHandler(client.AbstractClient):
             # Remove the string after using it
             self.in_str.pop(data, None)
             return b'ok', b'Distributed api response received'
-        elif command == b'ok':
-            if data.startswith(b'Error'):
-                return b'err', self.process_error_from_peer(data)
-            self.response = data
-            self.response_available.set()
-            return b'ok', b'Sendsync response received'
         elif command == b'control_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
@@ -127,7 +121,7 @@ class LocalClient(client.AbstractClientManager):
     """
     Initialize variables, connect to the server, send a request, wait for a response and disconnect.
     """
-    ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file', b'sendasync']
+    ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file']
 
     def __init__(self):
         """Class constructor"""

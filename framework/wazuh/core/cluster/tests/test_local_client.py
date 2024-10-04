@@ -64,16 +64,6 @@ def test_localclienthandler_process_request(mock_set):
     mock_set.assert_called_once()
 
     mock_set.reset_mock()
-    assert lc.process_request(command=b"ok", data=b"Error") == (b"err", b"Error")
-    assert lc.in_str == {b"testing": data_example}
-    mock_set.assert_called_once()
-
-    mock_set.reset_mock()
-    assert lc.process_request(command=b"ok", data=b"test") == (b"ok", b"Sendsync response received")
-    assert lc.response == b"test"
-    mock_set.assert_called_once()
-
-    mock_set.reset_mock()
     assert lc.process_request(command=b"control_res", data=b"Error") == (b"err", b"Error")
     assert lc.in_str == {b"testing": data_example}
     mock_set.assert_called_once()
