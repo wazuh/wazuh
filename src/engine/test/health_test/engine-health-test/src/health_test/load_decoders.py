@@ -4,10 +4,15 @@ from pathlib import Path
 from google.protobuf.json_format import ParseDict
 import json
 from engine_handler.handler import EngineHandler
+from api_communication.client import APIClient
 from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import router_pb2 as api_router
+
+from api_utils.commands import engine_clear
+import shared.resource_handler as ResourceHandler
+from engine_integration.cmds.add import add_integration as engine_integration_add
 
 
 def load_filters(ruleset_path: Path, engine_handler: EngineHandler) -> None:
@@ -32,9 +37,11 @@ def load_filters(ruleset_path: Path, engine_handler: EngineHandler) -> None:
 def load_integrations(ruleset_path: Path, engine_handler: EngineHandler) -> None:
     for integration_dir in (ruleset_path / 'integrations').iterdir():
         ns = "system" if integration_dir.name == 'wazuh-core' else "wazuh"
-        command_str = f'engine-integration add --api-sock {engine_handler.api_socket_path} --namespace {ns} {integration_dir.resolve().as_posix()}'
-        print(f"Loading integration...\n{command_str}")
-        subprocess.run(command_str, check=True, shell=True)
+
+        # Load integration
+        print(f"Loading integration...\n")
+        rs = ResourceHandler.ResourceHandler()
+        engine_integration_add(engine_handler.api_socket_path, ns, integration_dir.resolve().as_posix(), False, rs)
         print(f"Integration loaded.")
 
 
@@ -142,12 +149,12 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
 def run(args):
     env_path = Path(args['environment']).resolve()
 
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         print(f"Configuration file not found: {conf_path}")
         sys.exit(1)
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         print(f"Engine binary not found: {bin_path}")
         sys.exit(1)
@@ -166,9 +173,9 @@ def run(args):
     print("Engine started.")
 
     # Clear environmet
-    command_str = f'engine-clear --api-sock {engine_handler.api_socket_path} -f'
-    print(f"Clear environment...\n{command_str}")
-    subprocess.run(command_str, check=True, shell=True)
+    print(f"Clear environment...\n")
+    apiclient = APIClient(engine_handler.api_socket_path)
+    engine_clear(apiclient)
     print(f"Environment cleared.")
 
     # Load filters
