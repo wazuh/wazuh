@@ -4,10 +4,10 @@ about: Test compatibility with new OS.
 title: Support new OSs - <OS name & version> - <Specific test name>
 labels: level/task, request/operational, type/maintenance
 assignees: ''
-
 ---
 
 # Description
+
 | Related issue | Epic issue |
 |---|---|
 | Issue number | Issue number|
@@ -20,9 +20,29 @@ assignees: ''
 
 <!-- Uncomment for QA issue
 **QA**
-- [ ] Add new tests according to the OS's tier.
-- [ ] Add proper documentation.
-- [ ] Do basic E2E test functionality for all stateful modules according to the OS's tier.
+
+## Considerations
+
+- Testing environment: Deploy the new OS taking into account the following notes:
+  - If the Wazuh central components are supported: 1 VM
+  - If the Wazuh agent is supported: 1 VM for each architecture supported.
+  - If the Wazuh central components or the Wazuh agent is not supported, deploy a Debian 12 VM for the non-supported component.
+- All testing tasks must be completed for each OS architecture supported.
+- The following tasks should be completed in order.
+
+## Tasks
+
+- [ ] Test the Wazuh dashboard one-liner deployment.
+  - [ ] Deploy a Wazuh agent using the Wazuh dashboard one-liner feature provided in the Wazuh user interface with the following cases.
+    - [ ] Only IP address.
+    - [ ] Only FQDN.
+    - [ ] IP address, agent name, and group.
+- [ ] Add/Update/Check CI
+  - [ ] Test the JobFlow testing tool for that specific system.
+  - [ ] Add the OS and each architecture to the JobFlow testing tool.
+  - [ ] Add the OS and each architecture to the GitHub Deployability and Upgrade release templates.
+- [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
+- [ ] Add the OS as supported in the compatibility system spreadsheet.
 -->
 
 <!-- Uncomment for CPPSERVER issue
@@ -59,20 +79,20 @@ assignees: ''
 **Dashboard**
 - [ ] **Central components**: Add support for the new OS to the GitHub Actions package builder.
 - [ ] **Central components**: Smoke test that the package works, including installation and upgrade.
-- [ ] Make sure that the agent-related information in the agent list is correct.
-- [ ] Test the deployment one-liner for the new OS.
 -->
 
 <!-- Uncomment for THREATINTEL issue
 **ThreatIntel**
-- [ ] Define a plan to support the new OS, particularly with regard to SCA policies.
+- [ ] Define a plan to support the new OS, particularly with regard to SCA policies. If there's no official CIS policy for that OS version, we either use an existing draft or we adapt a previous version.
 -->
 
 <!-- Uncomment for AGENT issue
+**Agent**
+
 - [ ] Smoke test that the package works, including installation, upgrade, and its related tier functionality.
+- [ ] Check the default settings of previous versions, and adapt them to the new OS version if necessary.
 - [ ] Add support for the new OS to the GitHub Actions package builder.
 
-**Agent**
 Requested testing code:
 :white_circle: Requested.
 :black_circle: Not requested.
@@ -83,6 +103,7 @@ Result code:
 :yellow_circle: Completed with known issues.
 
 - **Requested checks by tier:**
+
 || Tier 1 | Tier 2 | Tier 3 | Result |
 |-|-|-|-|-|
 | **Log collection - System events** | :white_circle: | :white_circle: | :white_circle: | |

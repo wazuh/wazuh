@@ -8,13 +8,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import wodles.aws.tests.aws_constants
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
+import aws_constants as test_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 import aws_tools
-import services
-
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
-import aws_utils as utils
+import constants
 
 
 @pytest.mark.parametrize('args, class_', [
@@ -31,10 +33,11 @@ import aws_utils as utils
     (['main', '--bucket', 'bucket-name', '--type', 'server_access'], 'buckets_s3.server_access.AWSServerAccess'),
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs'),
-    (['main', '--subscriber', 'security_lake', '--iam_role_arn', utils.TEST_IAM_ROLE_ARN,
-      '--external_id', utils.TEST_EXTERNAL_ID, '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
-    (['main', '--subscriber', 'buckets', '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
-    (['main', '--subscriber', 'security_hub', '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
+    (['main', '--subscriber', 'security_lake', '--iam_role_arn', test_constants.TEST_IAM_ROLE_ARN,
+      '--external_id', test_constants.TEST_EXTERNAL_ID, '--queue',
+      test_constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
+    (['main', '--subscriber', 'buckets', '--queue', test_constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
+    (['main', '--subscriber', 'security_hub', '--queue', test_constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):
@@ -60,23 +63,26 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
         if args[2] == 'inspector':
-            assert mocked_class.call_count == len(services.inspector.SUPPORTED_REGIONS)
-            assert instance.get_alerts.call_count == len(services.inspector.SUPPORTED_REGIONS)
+            assert mocked_class.call_count == len(constants.INSPECTOR_SUPPORTED_REGIONS)
+            assert instance.get_alerts.call_count == len(constants.INSPECTOR_SUPPORTED_REGIONS)
         else:
-            assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
-            assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
+            assert mocked_class.call_count == len(constants.ALL_REGIONS)
+            assert instance.get_alerts.call_count == len(constants.ALL_REGIONS)
     elif 'subscriber' in args[1]:
         mocked_class.assert_called_once()
         instance.sync_events.assert_called_once()
 
 
 @pytest.mark.parametrize('args, error_code', [
-    (['main', '--bucket', 'bucket-name', '--type', 'invalid'], utils.INVALID_TYPE_ERROR_CODE),
-    (['main', '--service', 'invalid'], utils.INVALID_TYPE_ERROR_CODE),
-    (['main', '--subscriber', 'invalid'], utils.INVALID_TYPE_ERROR_CODE),
-    (['main', '--service', 'cloudwatchlogs', '--regions', 'in-valid-1'], utils.INVALID_REGION_ERROR_CODE),
-    (['main', '--service', 'inspector', '--regions', 'in-valid-1'], utils.INVALID_REGION_ERROR_CODE),
-    (['main', '--service', 'inspector', '--regions', 'af-south-1'], utils.INVALID_REGION_ERROR_CODE)
+    (['main', '--bucket', 'bucket-name', '--type', 'invalid'], wodles.aws.tests.aws_constants.INVALID_TYPE_ERROR_CODE),
+    (['main', '--service', 'invalid'], wodles.aws.tests.aws_constants.INVALID_TYPE_ERROR_CODE),
+    (['main', '--subscriber', 'invalid'], wodles.aws.tests.aws_constants.INVALID_TYPE_ERROR_CODE),
+    (['main', '--service', 'cloudwatchlogs', '--regions', 'in-valid-1'],
+     wodles.aws.tests.aws_constants.INVALID_REGION_ERROR_CODE),
+    (['main', '--service', 'inspector', '--regions', 'in-valid-1'],
+     wodles.aws.tests.aws_constants.INVALID_REGION_ERROR_CODE),
+    (['main', '--service', 'inspector', '--regions', 'af-south-1'],
+     wodles.aws.tests.aws_constants.INVALID_REGION_ERROR_CODE)
 ])
 def test_main_type_ko(args: list[str], error_code: int):
     """Test 'main' function handles exceptions when receiving invalid buckets or services.

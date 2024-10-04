@@ -10,12 +10,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
+import aws_constants as test_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_tools
-
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
-import aws_utils as utils
-
+import constants
 
 @pytest.mark.parametrize('msg_level', range(3))
 @patch('builtins.print')
@@ -65,9 +65,9 @@ def test_arg_valid_key_raises_exception_when_invalid_format_provided():
 
 
 @pytest.mark.parametrize('arg_string', [
-    utils.TEST_ACCOUNT_ID,
-    f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID}',
-    f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID}',
+    test_constants.TEST_ACCOUNT_ID,
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID}',
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID}',
     None
 ])
 def test_arg_valid_accountid(arg_string: str or None):
@@ -84,9 +84,9 @@ def test_arg_valid_accountid(arg_string: str or None):
 
 
 @pytest.mark.parametrize('arg_string', [
-    utils.TEST_ACCOUNT_ID[:-1],
-    f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID[:-1]}',
-    f'{utils.TEST_ACCOUNT_ID},{utils.TEST_ACCOUNT_ID},123456789abc'
+    test_constants.TEST_ACCOUNT_ID[:-1],
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID[:-1]}',
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID},123456789abc'
 ])
 def test_arg_valid_accountid_raises_exception_when_invalid_account_provided(arg_string):
     """Test 'arg_valid_accountid' function raises an 'ArgumentTypeError' error
@@ -102,9 +102,9 @@ def test_arg_valid_accountid_raises_exception_when_invalid_account_provided(arg_
 
 
 @pytest.mark.parametrize('arg_string', [
-    utils.TEST_REGION,
-    f'{utils.TEST_REGION},{utils.TEST_REGION}',
-    f'{utils.TEST_REGION},{utils.TEST_REGION},{utils.TEST_REGION}',
+    test_constants.TEST_REGION,
+    f'{test_constants.TEST_REGION},{test_constants.TEST_REGION}',
+    f'{test_constants.TEST_REGION},{test_constants.TEST_REGION},{test_constants.TEST_REGION}',
     None
 ])
 def test_arg_valid_regions(arg_string):
@@ -189,7 +189,7 @@ def test_get_aws_config_params(mock_config):
     config = MagicMock()
     mock_config.return_value = config
     assert aws_tools.get_aws_config_params() == config
-    config.read.assert_called_with(aws_tools.DEFAULT_AWS_CONFIG_PATH)
+    config.read.assert_called_with(constants.DEFAULT_AWS_CONFIG_PATH)
 
 
 @pytest.mark.parametrize('mutually_exclusive_parameter', ['--bucket', '--service'])

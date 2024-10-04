@@ -34,6 +34,9 @@ target_link_libraries(cmds
     sockiface
     rbac
     geo::igeo
+    vdscanner
+    apiserver
+    indexerconnector
 )
 
 target_include_directories(cmds

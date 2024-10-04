@@ -3,10 +3,13 @@ import logging.config
 import os
 import signal
 import ssl
+import atexit
 from argparse import ArgumentParser, Namespace
 from functools import partial
 from sys import exit
 from typing import Any, Callable, Dict
+from multiprocessing import Process
+from multiprocessing.util import _exit_function
 
 from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI
@@ -22,14 +25,31 @@ from comms_api.routers.exceptions import HTTPError, http_error_handler, validati
     exception_handler, starlette_http_exception_handler
 from comms_api.routers.router import router
 from comms_api.middlewares.logging import LoggingMiddleware
+from comms_api.core.batcher import create_batcher_process
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
+from wazuh.core.batcher.config import BatcherConfig
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
+
+# TODO(#25121) - Delete after centralized configuration
+from wazuh.core.batcher.config import BATCHER_MAX_ELEMENTS, BATCHER_MAX_SIZE, BATCHER_MAX_TIME_SECONDS
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 
 
-def create_app() -> FastAPI:
-    """Creates a FastAPI application instance and adds middlewares, exceptions handlers and routers to it."""
+def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
+    """Create a FastAPI application instance and add middlewares, exception handlers, and routers to it.
+
+    Parameters
+    ----------
+    batcher_queue : MuxDemuxQueue
+        Queue instance used for managing batcher processes.
+
+    Returns
+    -------
+    FastAPI
+        FastAPI application instance.
+    """
     app = FastAPI()
     app.add_middleware(SecureHeadersMiddleware)
     app.add_middleware(BrotliMiddleware)
@@ -39,11 +59,14 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, exception_handler)
     app.add_exception_handler(StarletteHTTPException, starlette_http_exception_handler)
     app.include_router(router)
+
+    app.state.batcher_queue = batcher_queue
+
     return app
 
 
 def setup_logging(foreground_mode: bool) -> dict:
-    """Sets up the logging module and returns the configuration used.
+    """Set up the logging module and returns the configuration used.
 
     Parameters
     ----------
@@ -82,7 +105,7 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
     try:
         if not os.path.exists(keyfile) or not os.path.exists(certfile):
             private_key = generate_private_key(keyfile)
-            logger.info(f"Generated private key file in {certfile}")
+            logger.info(f"Generated private key file in {keyfile}")
             
             generate_self_signed_certificate(private_key, certfile)
             logger.info(f"Generated certificate file in {certfile}")
@@ -98,7 +121,7 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
 
 
 def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
-    """Returns the default SSL context with a custom minimum version.
+    """Return the default SSL context with a custom minimum version.
 
     Returns
     -------
@@ -108,6 +131,11 @@ def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
     context = default_ssl_context_factory()
     context.minimum_version = ssl.TLSVersion.MINIMUM_SUPPORTED
     return context
+
+
+def post_worker_init(worker):
+    """Unregister the _exit_function from the worker processes."""
+    atexit.unregister(_exit_function)
 
 
 def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict) -> dict:
@@ -148,7 +176,8 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'ssl_context': ssl_context,
         'ciphers': '',
         'logconfig_dict': log_config_dict,
-        'user': os.getuid()
+        'user': os.getuid(),
+        'post_worker_init': post_worker_init
     }
 
 
@@ -189,6 +218,66 @@ class StandaloneApplication(BaseApplication):
         return self.app
 
 
+def signal_handler(
+    signum: int,
+    frame: Any,
+    parent_pid: int,
+    mux_demux_manager: MuxDemuxManager,
+    batcher_process: Process
+) -> None:
+    """Handle incoming signals for graceful shutdown of the API.
+
+    This function is triggered when a termination signal (SIGTERM) is received. It handles the cleanup
+    of resources by terminating the batcher process, shutting down the mux/demux manager, and deleting
+    any child and main process IDs.
+
+    Parameters
+    ----------
+    signum : int
+        The signal number received.
+    frame : Any
+        The current stack frame (unused).
+    parent_pid : int
+        The parent process ID used to verify if the termination should proceed.
+    mux_demux_manager : MuxDemuxManager
+        The MuxDemux manager instance to be shut down.
+    batcher_process : Process
+        The batcher process to be terminated.
+
+    Notes
+    -----
+    This function is designed to be used with the `signal` module to handle termination and
+    interruption signals (e.g., SIGTERM).
+    """
+    logger.info(f"Received signal {signal.Signals(signum).name}, shutting down")
+    terminate_processes(parent_pid, mux_demux_manager, batcher_process)
+
+
+def terminate_processes(parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process):
+    """Terminate the batcher process, shut down the MuxDemux manager, and delete
+    any child and main process IDs.
+
+    This function checks if the current process ID matches the parent process ID.
+    If they match, it proceeds to terminate the batcher process, shuts down the
+    MuxDemux manager, and removes the corresponding process IDs from the system.
+
+    Parameters
+    ----------
+    parent_pid : int
+        The parent process ID used to verify if the termination should proceed.
+    mux_demux_manager : MuxDemuxManager
+        The MuxDemux manager instance to be shut down.
+    batcher_process : Process
+        The batcher process to be terminated.
+    """
+    if parent_pid == os.getpid():
+        logger.info('Shutting down')
+        batcher_process.terminate()
+        mux_demux_manager.shutdown()
+        pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
+        pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
+
+
 if __name__ == '__main__':
     args = get_script_arguments()
 
@@ -216,12 +305,22 @@ if __name__ == '__main__':
     else:
         logger.info('Starting API as root')
 
+    batcher_config = BatcherConfig(
+        max_elements=BATCHER_MAX_ELEMENTS,
+        max_size=BATCHER_MAX_SIZE,
+        max_time_seconds=BATCHER_MAX_TIME_SECONDS
+    )
+    mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
+
     pid = os.getpid()
-    signal.signal(signal.SIGTERM, partial(pyDaemonModule.exit_handler, process_name=MAIN_PROCESS, logger=logger))
+    signal.signal(signal.SIGTERM, partial(
+        signal_handler, parent_pid=pid, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process))
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
+    logger.info(f'Listening on {args.host}:{args.port}')
+    
     try:
-        app = create_app()
+        app = create_app(mux_demux_manager.get_queue())
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
@@ -231,5 +330,4 @@ if __name__ == '__main__':
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     finally:
-        pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
-        pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
+        terminate_processes(pid, mux_demux_manager, batcher_process)

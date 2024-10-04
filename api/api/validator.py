@@ -9,6 +9,7 @@ from typing import Dict, List
 
 from defusedxml import ElementTree as ET
 from jsonschema import Draft4Validator
+from uuid6 import UUID
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
@@ -21,8 +22,8 @@ _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]
 _boolean = re.compile(r'^true$|^false$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
-_group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[A-Za-z0-9.\-_]+$')
+_group_names = re.compile(r'^(?!^all$)[A-Za-z0-9\-_]+$')
+_group_names_or_all = re.compile(r'^[A-Za-z0-9\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:['
                      r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
@@ -521,3 +522,14 @@ def format_group_names(value):
 @Draft4Validator.FORMAT_CHECKER.checks("group_names_or_all")
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)
+
+@Draft4Validator.FORMAT_CHECKER.checks("uuid7")
+def format_uuid7(value):
+    ret_val = True
+    try:
+        uuid = UUID(value)
+        if uuid.version != 7:
+            ret_val = False
+    except ValueError:
+        ret_val = False
+    return ret_val

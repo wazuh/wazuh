@@ -10,8 +10,10 @@ class IndexerKey(str, Enum):
     _INDEX = '_index'
     _ID = '_id'
     _SOURCE = '_source'
+    ID = 'id'
     DOC = 'doc'
     MATCH = 'match'
+    MATCH_ALL = 'match_all'
     QUERY = 'query'
     CREATE = 'create'
     DELETE = 'delete'
@@ -26,8 +28,15 @@ class IndexerKey(str, Enum):
     WILDCARD = 'wildcard'
     BODY = 'body'
     TERMS = 'terms'
+    TERM = 'term'
     CONFLICTS = 'conflicts'
     ITEMS = 'items'
+    IDS = 'ids'
+    PAINLESS = 'painless'
+    RANGE = 'range'
+    LTE = 'lte'
+    NOW = 'now'
+    FILTER = 'filter'
 
 
 class BaseIndex:
@@ -47,7 +56,7 @@ def remove_empty_values(items: List[Tuple[str, Any]]) -> Dict[str, Any]:
     ----------
     items
         List of tuples to evaluate.
-    
+
     Returns
     -------
     Dict[str, Any]

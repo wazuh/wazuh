@@ -125,14 +125,14 @@ def step_impl(context, item: str, value: str):
 
 @when('I send a restart to server')
 def step_impl(context):
-    context.shared_data['engine_instance'].send_stop_command()
-    context.shared_data['engine_instance'].send_start_command()
+    context.shared_data['engine_instance'].stop()
+    context.shared_data['engine_instance'].start()
 
 @when('I send a restart to server definitely')
 def step_impl(context):
     tear_down_conf()
-    context.shared_data['engine_instance'].send_stop_command()
-    context.shared_data['engine_instance'].send_start_command()
+    context.shared_data['engine_instance'].stop()
+    context.shared_data['engine_instance'].start()
 
 @then('I should receive a {status} response indicating "{response}"')
 def step_impl(context, status: str, response: str):
@@ -160,7 +160,7 @@ def step_impl(context, file_name: str, field_list: str):
 @then('I should receive "{log_level}" like log_level')
 def step_impl(context, log_level: str):
     if context.result[0] != log_level:
-        context.shared_data['engine_instance'].send_stop_command()
+        context.shared_data['engine_instance'].stop()
         assert False, f"{context.result[0]}"
 
 @then('I should receive a {status} response')

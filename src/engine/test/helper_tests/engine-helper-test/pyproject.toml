@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "engine-helper-test"
+version = "1.0.0.dev0"
+authors = [{ name = "Wazuh, Inc." }]
+description = "A tool that allows you to generate automatic test cases for the helper functions"
+requires-python = ">=3.8"
+classifiers = ["Programming Language :: Python :: 3"]
+
+dependencies = ["api-communication", "engine-test-utils", "pyyaml"]
+
+[project.urls]
+Homepage = "https://github.com/wazuh/wazuh/src/engine/test/health_test/engine-health-test"
+
+[project.scripts]
+engine-helper-test = "helper_test.__main__:main"

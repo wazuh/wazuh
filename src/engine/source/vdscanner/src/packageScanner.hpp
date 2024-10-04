@@ -82,17 +82,24 @@ private:
         const auto osPlatform = data->osPlatform().data();
         const auto translations = m_databaseFeedManager->checkAndTranslatePackage(packageCandidate, osPlatform);
 
-        auto scanPackage = [this, &data, &cnaName, &vulnerabilityScan](const PackageData& package)
+        auto scanPackage =
+            [this,
+             &data,
+             &cnaName,
+             &vulnerabilityScan,
+             functionName = logging::getLambdaName(__FUNCTION__, "scanPackage")](const PackageData& package)
         {
-            LOG_DEBUG("Initiating a vulnerability scan for package '{}' ({}) ({}) with CVE Numbering Authorities (CNA)"
-                      " '{}' on Agent '{}' (ID: '{}', Version: '{}').",
-                      package.name,
-                      package.format,
-                      package.vendor,
-                      cnaName,
-                      data->agentName(),
-                      data->agentId(),
-                      data->agentVersion());
+            LOG_DEBUG_L(
+                functionName.c_str(),
+                "Initiating a vulnerability scan for package '{}' ({}) ({}) with CVE Numbering Authorities (CNA)"
+                " '{}' on Agent '{}' (ID: '{}', Version: '{}').",
+                package.name,
+                package.format,
+                package.vendor,
+                cnaName,
+                data->agentName(),
+                data->agentId(),
+                data->agentVersion());
 
             m_databaseFeedManager->getVulnerabilitiesCandidates(cnaName, package, vulnerabilityScan);
         };
@@ -551,9 +558,10 @@ public:
      */
     std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> data) override
     {
-        auto vulnerabilityScan = [&data, this](const std::string& cnaName,
-                                               const PackageData& package,
-                                               const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
+        auto vulnerabilityScan = [&data, this, functionName = logging::getLambdaName(__FUNCTION__, "scanPackage")](
+                                     const std::string& cnaName,
+                                     const PackageData& package,
+                                     const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
         {
             try
             {
@@ -591,10 +599,11 @@ public:
             catch (const std::exception& e)
             {
                 // Log the warning and continue with the next vulnerability.
-                LOG_DEBUG("Failed to scan package: '{}', CVE Numbering Authorities (CNA): '{}', Error: '{}'",
-                          package.name,
-                          cnaName,
-                          e.what());
+                LOG_DEBUG_L(functionName.c_str(),
+                            "Failed to scan package: '{}', CVE Numbering Authorities (CNA): '{}', Error: '{}'",
+                            package.name,
+                            cnaName,
+                            e.what());
 
                 return false;
             }

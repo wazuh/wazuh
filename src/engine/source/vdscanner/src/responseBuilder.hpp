@@ -179,7 +179,6 @@ public:
                 // Alert data
                 json["assigner"] = returnData.data->assignerShortName()->str();
                 json["cwe_reference"] = returnData.data->cweId()->str();
-                json["rationale"] = returnData.data->description()->str();
                 json["updated"] = returnData.data->dateUpdated()->str();
 
                 if (const auto it = data->m_matchConditions.find(cve); it != data->m_matchConditions.end())
