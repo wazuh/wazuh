@@ -437,6 +437,7 @@ class WazuhException(Exception):
         2800: {'message': 'The engine client connection timeout has been exceeded'},
         2801: {'message': 'Invalid request URL scheme'},
         2802: {'message': 'Invalid unix socket path'},
+        2803: {'message': 'Error sending HTTP request'},
 
         # Cluster
         3000: 'Cluster',
