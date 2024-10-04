@@ -29,7 +29,6 @@
     "Match found, the package 'firefox', is vulnerable to 'CVE-2014-1592'. Current version: '31.0' (less than '' or equal to '33.0'). - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2014-1593'. Current version: '31.0' (less than '' or equal to '33.0'). - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2014-1594'. Current version: '31.0' (less than '' or equal to '33.0'). - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'firefox' is vulnerable to 'CVE-2014-6492' due to default status. - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2014-8631'. Current version: '31.0' (less than '' or equal to '33.0'). - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2014-8632'. Current version: '31.0' (less than '' or equal to '33.0'). - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2014-8634'. Current version: '31.0' (less than '' or equal to '34.0.5'). - Agent '' (ID: '001', Version: '').",
@@ -1223,5 +1222,6 @@
     "Match found, the package 'firefox', is vulnerable to 'CVE-2024-0752'. Current version: '31.0' (less than '122.0' or equal to ''). - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2024-0753'. Current version: '31.0' (less than '122.0' or equal to ''). - Agent '' (ID: '001', Version: '').",
     "Match found, the package 'firefox', is vulnerable to 'CVE-2024-0754'. Current version: '31.0' (less than '122.0' or equal to ''). - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'firefox', is vulnerable to 'CVE-2024-0755'. Current version: '31.0' (less than '122.0' or equal to ''). - Agent '' (ID: '001', Version: '')."
+    "Match found, the package 'firefox', is vulnerable to 'CVE-2024-0755'. Current version: '31.0' (less than '122.0' or equal to ''). - Agent '' (ID: '001', Version: '').",
+    "No match due to default status for Package: firefox, Version: 31.0 while scanning for Vulnerability: CVE-2014-6492"
 ]
