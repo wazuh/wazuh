@@ -7,6 +7,7 @@
 #include <unistd.h>     // Unix socket datagram bind
 
 #include <base/logging.hpp>
+#include <metrics/imanager.hpp>
 #include <uvw.hpp>
 
 namespace
@@ -45,15 +46,30 @@ UnixDatagram::UnixDatagram(const std::string& address,
         throw std::runtime_error("Callback must be set");
     }
 
-    // m_metric.m_metricsScope = std::move(metricsScope);
-    // m_metric.m_byteRecv = m_metric.m_metricsScope->getCounterUInteger("BytesReceived");
-    // m_metric.m_busyQueue = m_metric.m_metricsScope->getCounterUInteger("ServerBusy");
-    // m_metric.m_queueSize = m_metric.m_metricsScope->getHistogramUInteger("UsedQueueHistory");
-    // m_metric.m_eventSize = m_metric.m_metricsScope->getHistogramUInteger("EventSizeHistory");
+    // Metrics initialization
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTCOUNTER, "event_endpoint.bytes_received", "Bytes received by the server", "bytes");
 
-    // m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
-    // m_metric.m_byteRecvPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("BytesReceivedPerSeconds");
-    // m_metric.m_eventPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("EventsReceivedPerSeconds");
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTCOUNTER, "event_endpoint.busy_queue", "Server busy queue", "events");
+
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTHISTOGRAM, "event_endpoint.queue_history", "Events queued history", "events");
+
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTHISTOGRAM, "event_endpoint.event_size_history", "Event size history", "bytes");
+
+    // TODO: Rate is not implemented
+    metrics::getManager().addMetric(metrics::MetricType::UINTCOUNTER,
+                                    "event_endpoint.bytes_received_per_second",
+                                    "Bytes received per second",
+                                    "bytes/s");
+
+    // TODO: Rate is not implemented
+    metrics::getManager().addMetric(metrics::MetricType::UINTCOUNTER,
+                                    "event_endpoint.events_received_per_second",
+                                    "Events received per second",
+                                    "events/s");
 }
 
 UnixDatagram::~UnixDatagram()
@@ -85,11 +101,10 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             // Get the data
             auto data = std::string {event.data.get(), event.length};
 
-            // Update metrics
-            // m_metric.m_byteRecv->addValue(event.length);
-            // m_metric.m_byteRecvPerSecond->addValue(event.length);
-            // m_metric.m_eventPerSecond->addValue(1UL);
-            // m_metric.m_eventSize->recordValue(event.length);
+            metrics::getManager().getMetric("event_endpoint.bytes_received")->update<uint64_t>(event.length);
+            metrics::getManager().getMetric("event_endpoint.bytes_received_per_second")->update<uint64_t>(event.length);
+            metrics::getManager().getMetric("event_endpoint.events_received_per_second")->update<uint64_t>(1UL);
+            metrics::getManager().getMetric("event_endpoint.event_size_history")->update<uint64_t>(event.length);
 
             // Call the callback if is synchronous
             if (0 == m_taskQueueSize)
@@ -113,10 +128,11 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             {
                 LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Queue is full, pause listening.", m_address);
                 pause();
-                // Update metric
-                // m_metric.m_busyQueue->addValue(1UL);
+                metrics::getManager().getMetric("event_endpoint.busy_queue")->update<uint64_t>(1UL);
             }
-            // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+            metrics::getManager()
+                .getMetric("event_endpoint.queue_history")
+                ->update<uint64_t>(m_currentTaskQueueSize.load());
 
             // Create a job to the worker thread
             std::shared_ptr<std::string> dataPtr {std::make_shared<std::string>(std::move(data))};
@@ -144,7 +160,9 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     {
                         LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Resume listening.", m_address);
                     }
-                    // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+                    metrics::getManager()
+                        .getMetric("event_endpoint.queue_history")
+                        ->update<uint64_t>(m_currentTaskQueueSize.load());
                 });
 
             workerJob->on<uvw::ErrorEvent>(
@@ -161,7 +179,9 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     {
                         LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Resume listening.", m_address);
                     }
-                    // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+                    metrics::getManager()
+                        .getMetric("event_endpoint.queue_history")
+                        ->update<uint64_t>(m_currentTaskQueueSize.load());
                 });
             workerJob->queue();
         });
