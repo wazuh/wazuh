@@ -14,6 +14,8 @@
 #include <uvw.hpp>
 
 #include <base/logging.hpp>
+#include <base/mockSingletonManager.hpp>
+#include <metrics/noOpManager.hpp>
 #include <server/endpoints/unixStream.hpp>
 #include <server/protocolHandler.hpp>
 
@@ -203,6 +205,18 @@ protected:
     }
 
     void TearDown() override { unlink(m_socketPath.c_str()); }
+
+    static void SetUpTestSuite()
+    {
+        static metrics::mocks::NoOpManager mockManager;
+        SingletonLocator::registerManager<metrics::IManager, base::test::MockSingletonManager<metrics::IManager>>();
+        auto& mockStrategy = dynamic_cast<base::test::MockSingletonManager<metrics::IManager>&>(
+            SingletonLocator::manager<metrics::IManager>());
+        ON_CALL(mockStrategy, instance()).WillByDefault(testing::ReturnRef(mockManager));
+        EXPECT_CALL(mockStrategy, instance()).Times(testing::AnyNumber());
+    }
+
+    static void TearDownTestSuite() { SingletonLocator::unregisterManager<metrics::IManager>(); }
 };
 
 // Helper function to create and connect a Unix domain socket client
