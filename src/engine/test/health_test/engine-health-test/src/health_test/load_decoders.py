@@ -2,12 +2,13 @@ import subprocess
 import sys
 from pathlib import Path
 from google.protobuf.json_format import ParseDict
-
+import json
 from engine_handler.handler import EngineHandler
 from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import router_pb2 as api_router
+
 
 def load_filters(ruleset_path: Path, engine_handler: EngineHandler) -> None:
     for filter_file in (ruleset_path / 'filters').rglob('*.yml'):
@@ -160,7 +161,7 @@ def run(args):
 
     print("Starting the engine...")
     engine_handler = EngineHandler(
-    bin_path.as_posix(), conf_path.as_posix())
+        bin_path.as_posix(), conf_path.as_posix())
     engine_handler.start()
     print("Engine started.")
 
@@ -169,7 +170,7 @@ def run(args):
     print(f"Clear environment...\n{command_str}")
     subprocess.run(command_str, check=True, shell=True)
     print(f"Environment cleared.")
-    
+
     # Load filters
     load_filters(ruleset_path, engine_handler)
 
