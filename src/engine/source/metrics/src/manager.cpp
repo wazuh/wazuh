@@ -41,6 +41,8 @@ createMetric(MetricType metricType, std::string&& name, std::string&& desc, std:
             return std::make_shared<DoubleCounter>(std::move(name), std::move(desc), std::move(unit));
         case MetricType::DOUBLEHISTOGRAM:
             return std::make_shared<DoubleHistogram>(std::move(name), std::move(desc), std::move(unit));
+        case MetricType::INTUPDOWNCOUNTER:
+            return std::make_shared<IntUpDownCounter>(std::move(name), std::move(desc), std::move(unit));
         default: throw std::runtime_error("Unsupported metric type");
     }
 }
