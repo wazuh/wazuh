@@ -289,6 +289,38 @@ engine-health-test dynamic -e health_test/environment validate_rule_mapping --ru
 engine-health-test dynamic -e health_test/environment validate_rule_mapping
 ```
 
+### Validate event indexing
+Creates an opensearch instance along with an index. Ingests different events to the engine and compares the output with the document searched by hash in the index an expected one.
+```bash
+usage: engine-health-test dynamic validate_event_indexing [-h] [--integration INTEGRATION] [--rule_folder RULE_FOLDER] [--skip SKIP]
+                                                          [--target TARGET]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify the name of the integration to test.
+  --rule_folder RULE_FOLDER
+                        Specify the name of the rule folder to test
+  --skip SKIP           Skip the tests with the specified name
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the
+                        rules.
+```
+
+#### Usage
+```bash
+# To run a specific integration
+engine-health-test dynamic -e health_test/environment validate_event_indexing --integration windows
+# To run a specific rule folder
+engine-health-test dynamic -e health_test/environment validate_event_indexing --rule_folder windows
+# To run all tests in decoders
+engine-health-test dynamic -e health_test/environment validate_event_indexing --target decoder
+# To run all tests in rules
+engine-health-test dynamic -e health_test/environment validate_event_indexing --target rules
+# To skip specific tests in decoders
+engine-health-test dynamic -e health_test/environment validate_event_indexing --target decoder --skip windows,wazuh-core
+```
+
+
 ### Run
 This tool injects events into the engine and evaluates the output events with an expected event
 ```bash
