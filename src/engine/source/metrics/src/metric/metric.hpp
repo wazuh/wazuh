@@ -48,7 +48,7 @@ protected:
 
 public:
     static_assert(std::is_arithmetic_v<T>, "BaseMetric type must be arithmetic");
-    static_assert(std::is_same_v<T, uint64_t> || std::is_same_v<T, double>,
+    static_assert(std::is_same_v<T, uint64_t> || std::is_same_v<T, double> || std::is_same_v<T, int64_t>,
                   "BaseMetric type must be uint64_t or double");
 
     ~BaseOtMetric() override = default;
