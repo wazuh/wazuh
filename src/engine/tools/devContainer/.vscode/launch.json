@@ -34,11 +34,11 @@
                 },
                 {
                     "name": "WAZUH_SERVER_API_SOCKET",
-                    "value": "/var/wazuh/queue/sockets/engine-api"
+                    "value": "/var/ossec/queue/sockets/engine-api"
                 },
                 {
                     "name": "WAZUH_SERVER_EVENT_SOCKET",
-                    "value": "/var/wazuh/queue/sockets/queue"
+                    "value": "/var/ossec/queue/sockets/queue"
                 },
                 {
                     "name": "WAZUH_SERVER_EVENT_QUEUE_SIZE",
@@ -66,43 +66,183 @@
         },
         /*********************************************************************************
         *                        Python Tools debug configurations
+        * "cwd": "${env:TMP_CLEAN_ENV}", is temporary,
+        *  it is used until we can have a configuration for indexer conector folder
         *********************************************************************************/
         {
-            "name": "Python: engine-health-test init",
+            "name": "Python: engine-health-test dynamic init",
             "type": "debugpy",
             "request": "launch",
             "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
             "console": "integratedTerminal",
             "python": "${command:python.interpreterPath}",
             "args": [
+                "dynamic",
                 "-e", "${env:TMP_CLEAN_ENV}",
                 "init",
-                "-b", "${env:ENGINE_BUILD}/main",
                 "-r", "${env:ENGINE_RULESET}",
                 "-t", "${env:ENGINE_SRC}/test/health_test/"
             ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
             },
             "justMyCode": false
         },
         {
-            "name": "Python: engine-health-test run",
+            "name": "Python: engine-health-test dynamic load decoder",
             "type": "debugpy",
             "request": "launch",
             "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
             "console": "integratedTerminal",
             "python": "${command:python.interpreterPath}",
             "args": [
+                "dynamic",
                 "-e", "${env:TMP_CLEAN_ENV}",
-                "run",
-                "--skip", "wazuh-core"
+                "load_decoders"
             ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
             },
             "justMyCode": false
         },
+        {
+            "name": "Python: engine-health-test dynamic load rules",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "load_rules"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test dynamic assets_validate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "assets_validate"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test dynamic validate_assets decoder",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "validate_successful_assets",
+                "--target", "decoder",
+                "--skip", "wazuh-core"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test dynamic validate_assets rules",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "validate_successful_assets",
+                "--target", "rule",
+                "--skip", "wazuh-core"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test dynamic validate_rule_mapping",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "validate_rule_mapping",
+                "--skip", "wazuh-core"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test dynamic Health Test decoder",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "run",
+                "--target", "decoder",
+                "--skip", "wazuh-core"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test dynamic Health Test rules",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "run",
+                "--target", "rule",
+                "--skip", "wazuh-core"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+
         {
             "name": "Python: engine-helper-test init",
             "type": "debugpy",
@@ -113,9 +253,8 @@
             "args": [
                 "-e", "${env:TMP_CLEAN_ENV}",
                 "init",
-                "-b", "${env:ENGINE_BUILD}/main",
                 "--mmdb", "${env:ENGINE_SRC}/test/helper_tests/mmdb/",
-                "--conf", "${env:ENGINE_SRC}/test/helper_tests/configuration_files/general.conf"
+                "--conf", "${env:ENGINE_SRC}/test/helper_tests/configuration_files/config.env"
             ],
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
@@ -235,14 +374,14 @@
             "console": "integratedTerminal",
             "args": [
                  // "-e", "/tmp/engine-integration-test",
-                 // "-f","${env:ENGINE_SRC}/test/integration_tests/configuration/features/api.feature"
-                 "${env:ENGINE_SRC}/test/integration_tests/configuration"
+                 // "-f","${env:ENGINE_SRC}/test/integration_tests/router/features/api.feature"
+                 "${env:ENGINE_SRC}/test/integration_tests/router"
             ],
             "env": {
-                "WAZUH_DIR": "${env:ENGINE_SRC}/../..",
-                "PYTHONPATH": "${env:ENGINE_SRC}/tools/engine-suite/src:${env:ENGINE_SRC}/tools/api-communication/src/api_communication:${env:ENGINE_SRC}/test/integration_tests/it-utils/src/cli_communication",
-                "ENV_DIR": "/tmp/engine-integration-test",
-                "ENGINE_DIR": "${env:ENGINE_SRC}"
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+                "ENV_DIR": "${env:TMP_CLEAN_ENV}",
+                "BINARY_DIR": "${env:TMP_CLEAN_ENV}/wazuh-engine",
+                "CONF_FILE": "${env:TMP_CLEAN_ENV}/config.env"
             },
             "justMyCode": false
         },
@@ -305,7 +444,7 @@
             "type": "cppdbg",
             "request": "launch",
             "name": "Open a core dump cpp_test",
-            "program": "${env:ENGINE_BUILD}/test/source/hlp/uhlp_test",
+            "program": "/root/repos/wazuh/src/engine/build/test/source/zz_cpp_test/cpp_test",
             "coreDumpPath": "${input:coreFileName}",
             "cwd": "${env:ENGINE_SRC}",
             "miDebuggerPath": "/usr/bin/gdb",
