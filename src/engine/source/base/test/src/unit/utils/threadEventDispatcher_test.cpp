@@ -70,8 +70,7 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestSingleThread)
                     promise.set_value();
                 }
             },
-            TEST_DB,
-            BULK_SIZE);
+            {.dbPath = TEST_DB, .bulkSize = BULK_SIZE});
 
         for (int i = 0; i < MESSAGES_TO_SEND; ++i)
         {
@@ -109,10 +108,10 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThread)
                     promise.set_value();
                 }
             },
-            TEST_DB,
-            BULK_SIZE,
-            UNLIMITED_QUEUE_SIZE,
-            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
+            {.dbPath = TEST_DB,
+             .bulkSize = BULK_SIZE,
+             .maxQueueSize = UNLIMITED_QUEUE_SIZE,
+             .dispatcherType = ThreadEventDispatcherType::MULTI_THREADED_UNORDERED});
 
         for (int i = 0; i < MESSAGES_TO_SEND; ++i)
         {
@@ -167,10 +166,10 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
                     promise.set_value();
                 }
             },
-            TEST_DB,
-            BULK_SIZE,
-            UNLIMITED_QUEUE_SIZE,
-            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
+            {.dbPath = TEST_DB,
+             .bulkSize = BULK_SIZE,
+             .maxQueueSize = UNLIMITED_QUEUE_SIZE,
+             .dispatcherType = ThreadEventDispatcherType::MULTI_THREADED_UNORDERED});
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
@@ -239,10 +238,10 @@ TEST_F(ThreadEventDispatcherTest, ConstructorTestMultiThreadDifferentTypeExcepti
                     promise.set_value();
                 }
             },
-            TEST_DB,
-            BULK_SIZE,
-            UNLIMITED_QUEUE_SIZE,
-            ThreadEventDispatcherType::MULTI_THREADED_UNORDERED);
+            {.dbPath = TEST_DB,
+             .bulkSize = BULK_SIZE,
+             .maxQueueSize = UNLIMITED_QUEUE_SIZE,
+             .dispatcherType = ThreadEventDispatcherType::MULTI_THREADED_UNORDERED});
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
@@ -282,8 +281,8 @@ TEST_F(ThreadEventDispatcherTest, CtorNoWorkerSingleThread)
         std::promise<void> promise;
         auto index {0};
 
-        ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(TEST_DB,
-                                                                                                     BULK_SIZE);
+        ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
+            {.dbPath = TEST_DB, .bulkSize = BULK_SIZE});
 
         for (int i = 0; i < MESSAGES_TO_SEND; ++i)
         {
@@ -345,8 +344,7 @@ TEST_F(ThreadEventDispatcherTest, CtorPopFeatureSingleThread)
                 promise.set_value();
             }
         },
-        TEST_DB,
-        BULK_SIZE);
+        {.dbPath = TEST_DB, .bulkSize = BULK_SIZE});
 
     for (int i = 0; i < MESSAGES_TO_SEND; ++i)
     {
