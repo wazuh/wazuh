@@ -4,6 +4,7 @@
 
 #include <base/logging.hpp>
 #include <base/timer.hpp>
+#include <metrics/imanager.hpp>
 
 namespace engineserver::endpoint
 {
@@ -48,15 +49,24 @@ UnixStream::UnixStream(const std::string& address,
         throw std::runtime_error("Address must start with '/'");
     }
 
-    // m_metric.m_metricsScope = std::move(metricsScope);
-    // m_metric.m_totalRequest = m_metric.m_metricsScope->getCounterUInteger("TotalRequest");
-    // m_metric.m_responseTime = m_metric.m_metricsScope->getHistogramUInteger("ResponseTime");
-    // m_metric.m_queueSize = m_metric.m_metricsScope->getHistogramUInteger("QueueSize");
-    // m_metric.m_connectedClients = m_metric.m_metricsScope->getUpDownCounterInteger("ConnectedClients");
-    // m_metric.m_serverBusy = m_metric.m_metricsScope->getCounterUInteger("ServerBusy");
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTCOUNTER, "api_endpoint.total_request", "Total requests received", "requests");
 
-    // m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
-    // m_metric.m_requestPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("RequestPerSecond");
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTHISTOGRAM, "api_endpoint.response_time", "Response time", "ms");
+
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTHISTOGRAM, "api_endpoint.queue_size", "Queue size", "requests");
+
+    metrics::getManager().addMetric(
+        metrics::MetricType::INTUPDOWNCOUNTER, "api_endpoint.connected_clients", "Connected clients", "clients");
+
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTCOUNTER, "api_endpoint.server_busy", "Server busy", "events");
+
+    // TODO: Rate is not implemented
+    metrics::getManager().addMetric(
+        metrics::MetricType::UINTCOUNTER, "api_endpoint.request_per_second", "Requests per second", "requests/s");
 }
 
 UnixStream::~UnixStream()
@@ -104,7 +114,7 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
             auto client = createClient();
             handle.accept(*client);
             client->read();
-            // m_metric.m_connectedClients->addValue(1L);
+            metrics::getManager().getMetric("api_endpoint.connected_clients")->update<int64_t>(1L);
         });
 
     // Listen for incoming connections
@@ -205,8 +215,8 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             }
 
             // Send each message to the queue worker
-            // m_metric.m_totalRequest->addValue(result->size());
-            // m_metric.m_requestPerSecond->addValue(result->size());
+            metrics::getManager().getMetric("api_endpoint.total_request")->update<int64_t>(result->size());
+            metrics::getManager().getMetric("api_endpoint.request_per_second")->update<int64_t>(result->size());
 
             processMessages(weakClient, sharedAsyncs, protocolHandler, std::move(result.value()));
         });
@@ -253,7 +263,7 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
                 auto [buffer, size] = protocolHandler->streamToSend(response);
                 client->write(std::move(buffer), size);
                 auto elapsedTime = responseTimer->elapsed<std::chrono::milliseconds>();
-                // metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
+                metrics::getManager().getMetric("api_endpoint.response_time")->update<uint64_t>(elapsedTime);
             };
 
             protocolHandler->onMessage(request, callbackFn);
@@ -275,8 +285,8 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
             client->write(std::move(buffer), size);
 
             auto elapsedTime = responseTimer.elapsed<std::chrono::milliseconds>();
-            // m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
-            // m_metric.m_serverBusy->addValue(1L);
+            metrics::getManager().getMetric("api_endpoint.response_time")->update<uint64_t>(elapsedTime);
+            metrics::getManager().getMetric("api_endpoint.server_busy")->update<int64_t>(1L);
             continue;
         }
 
@@ -404,12 +414,12 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
          functionName = logging::getLambdaName(__FUNCTION__, "WorkerEvent")](const uvw::WorkEvent&, uvw::WorkReq& work)
         {
             --currentTaskQueueSize;
-            // metric.m_queueSize->recordValue(currentTaskQueueSize.load());
+            metrics::getManager().getMetric("api_endpoint.queue_size")->update<uint64_t>(currentTaskQueueSize.load());
             LOG_DEBUG_L(functionName.c_str(), "[Endpoint: {}] endpoint: Finish", address);
         });
 
     work->queue();
-    // m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+    metrics::getManager().getMetric("api_endpoint.queue_size")->update<uint64_t>(m_currentTaskQueueSize.load());
 }
 
 std::shared_ptr<uvw::TimerHandle>
