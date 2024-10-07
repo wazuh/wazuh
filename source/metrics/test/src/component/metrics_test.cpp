@@ -19,6 +19,7 @@ private:
     std::optional<json::Json> m_uintHistogramLastValue;
     std::optional<json::Json> m_doubleCounterLastValue;
     std::optional<json::Json> m_doubleHistogramLastValue;
+    std::optional<json::Json> m_intUpDownCounterLastValue;
 
 public:
     void publish(const std::string& message)
@@ -53,6 +54,11 @@ public:
             {
                 m_doubleHistogramLastValue = metric.getJson("/points/0/sum");
             }
+
+            if (name == "int.updowncounter")
+            {
+                m_intUpDownCounterLastValue = metric.getJson("/points/0/value");
+            }
         }
     }
 
@@ -78,6 +84,12 @@ public:
     {
         std::shared_lock<std::shared_mutex> lock(m_mutex);
         return m_doubleHistogramLastValue;
+    }
+
+    std::optional<json::Json> getIntUpDownCounterLastUpdate()
+    {
+        std::shared_lock<std::shared_mutex> lock(m_mutex);
+        return m_intUpDownCounterLastValue;
     }
 };
 
@@ -126,6 +138,7 @@ TEST_F(MetricsTest, MetricUpdateEnabledManager)
     getManager().addMetric(MetricType::UINTHISTOGRAM, "uint.histogram", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLECOUNTER, "double.counter", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLEHISTOGRAM, "double.histogram", "desc", "unit");
+    getManager().addMetric(MetricType::INTUPDOWNCOUNTER, "int.updowncounter", "desc", "unit");
 
     auto metricUserJob0 = [&, jobUpdates]()
     {
@@ -163,6 +176,15 @@ TEST_F(MetricsTest, MetricUpdateEnabledManager)
         }
     };
 
+    auto metricUserJob4 = [&, jobUpdates]()
+    {
+        auto metric = getManager().getMetric("int.updowncounter");
+        for (auto i = 0; i < jobUpdates; i++)
+        {
+            metric->update<int64_t>(1);
+        }
+    };
+
     EXPECT_CALL(*m_mockConnector, publish(::testing::_)).Times(::testing::AtLeast(1));
     for (auto iter = 0; iter < iterations; iter++)
     {
@@ -172,6 +194,7 @@ TEST_F(MetricsTest, MetricUpdateEnabledManager)
         threads.emplace_back(metricUserJob1);
         threads.emplace_back(metricUserJob2);
         threads.emplace_back(metricUserJob3);
+        threads.emplace_back(metricUserJob4);
 
         for (auto& thread : threads)
         {
@@ -185,11 +208,13 @@ TEST_F(MetricsTest, MetricUpdateEnabledManager)
         ASSERT_TRUE(m_publisher->getUintHistogramLastUpdate().has_value());
         ASSERT_TRUE(m_publisher->getDoubleCounterLastUpdate().has_value());
         ASSERT_TRUE(m_publisher->getDoubleHistogramLastUpdate().has_value());
+        ASSERT_TRUE(m_publisher->getIntUpDownCounterLastUpdate().has_value());
 
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getUintCounterLastUpdate().value().getInt().value());
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getUintHistogramLastUpdate().value().getInt().value());
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getDoubleCounterLastUpdate().value().getDouble().value());
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getDoubleHistogramLastUpdate().value().getDouble().value());
+        EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getIntUpDownCounterLastUpdate().value().getInt().value());
     }
 }
 
@@ -204,6 +229,7 @@ TEST_F(MetricsTest, MetricUpdateDisabledManager)
     getManager().addMetric(MetricType::UINTHISTOGRAM, "uint.histogram", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLECOUNTER, "double.counter", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLEHISTOGRAM, "double.histogram", "desc", "unit");
+    getManager().addMetric(MetricType::INTUPDOWNCOUNTER, "int.updowncounter", "desc", "unit");
 
     auto metricUserJob0 = [&, jobUpdates]()
     {
@@ -241,6 +267,15 @@ TEST_F(MetricsTest, MetricUpdateDisabledManager)
         }
     };
 
+    auto metricUserJob4 = [&, jobUpdates]()
+    {
+        auto metric = getManager().getMetric("int.updowncounter");
+        for (auto i = 0; i < jobUpdates; i++)
+        {
+            metric->update<int64_t>(1);
+        }
+    };
+
     for (auto iter = 0; iter < iterations; iter++)
     {
         std::vector<std::thread> threads;
@@ -248,6 +283,7 @@ TEST_F(MetricsTest, MetricUpdateDisabledManager)
         threads.emplace_back(metricUserJob1);
         threads.emplace_back(metricUserJob2);
         threads.emplace_back(metricUserJob3);
+        threads.emplace_back(metricUserJob4);
 
         for (auto& thread : threads)
         {
@@ -261,6 +297,7 @@ TEST_F(MetricsTest, MetricUpdateDisabledManager)
         ASSERT_FALSE(m_publisher->getUintHistogramLastUpdate().has_value());
         ASSERT_FALSE(m_publisher->getDoubleCounterLastUpdate().has_value());
         ASSERT_FALSE(m_publisher->getDoubleHistogramLastUpdate().has_value());
+        ASSERT_FALSE(m_publisher->getIntUpDownCounterLastUpdate().has_value());
     }
 }
 
@@ -276,6 +313,7 @@ TEST_F(MetricsTest, MetricUpdateReloadManager)
     getManager().addMetric(MetricType::UINTHISTOGRAM, "uint.histogram", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLECOUNTER, "double.counter", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLEHISTOGRAM, "double.histogram", "desc", "unit");
+    getManager().addMetric(MetricType::INTUPDOWNCOUNTER, "int.updowncounter", "desc", "unit");
 
     auto metricUserJob0 = [&, jobUpdates]()
     {
@@ -313,6 +351,15 @@ TEST_F(MetricsTest, MetricUpdateReloadManager)
         }
     };
 
+    auto metricUserJob4 = [&, jobUpdates]()
+    {
+        auto metric = getManager().getMetric("int.updowncounter");
+        for (auto i = 0; i < jobUpdates; i++)
+        {
+            metric->update<int64_t>(1);
+        }
+    };
+
     EXPECT_CALL(*m_mockConnector, publish(::testing::_)).Times(::testing::AtLeast(1));
     for (auto iter = 0; iter < iterations; iter++)
     {
@@ -324,6 +371,7 @@ TEST_F(MetricsTest, MetricUpdateReloadManager)
         threads.emplace_back(metricUserJob1);
         threads.emplace_back(metricUserJob2);
         threads.emplace_back(metricUserJob3);
+        threads.emplace_back(metricUserJob4);
 
         for (auto& thread : threads)
         {
@@ -337,11 +385,13 @@ TEST_F(MetricsTest, MetricUpdateReloadManager)
         ASSERT_TRUE(m_publisher->getUintHistogramLastUpdate().has_value());
         ASSERT_TRUE(m_publisher->getDoubleCounterLastUpdate().has_value());
         ASSERT_TRUE(m_publisher->getDoubleHistogramLastUpdate().has_value());
+        ASSERT_TRUE(m_publisher->getIntUpDownCounterLastUpdate().has_value());
 
         EXPECT_EQ(jobUpdates, m_publisher->getUintCounterLastUpdate().value().getInt().value());
         EXPECT_EQ(jobUpdates, m_publisher->getUintHistogramLastUpdate().value().getInt().value());
         EXPECT_EQ(jobUpdates, m_publisher->getDoubleCounterLastUpdate().value().getDouble().value());
         EXPECT_EQ(jobUpdates, m_publisher->getDoubleHistogramLastUpdate().value().getDouble().value());
+        EXPECT_EQ(jobUpdates, m_publisher->getIntUpDownCounterLastUpdate().value().getInt().value());
     }
 }
 
@@ -357,6 +407,7 @@ TEST_F(MetricsTest, MetricUpdateDisabledModule)
     getManager().addMetric(MetricType::UINTHISTOGRAM, "uint.histogram", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLECOUNTER, "double.counter", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLEHISTOGRAM, "double.histogram", "desc", "unit");
+    getManager().addMetric(MetricType::INTUPDOWNCOUNTER, "int.updowncounter", "desc", "unit");
 
     auto metricUserJob0 = [&, jobUpdates]()
     {
@@ -394,6 +445,15 @@ TEST_F(MetricsTest, MetricUpdateDisabledModule)
         }
     };
 
+    auto metricUserJob4 = [&, jobUpdates]()
+    {
+        auto metric = getManager().getMetric("int.updowncounter");
+        for (auto i = 0; i < jobUpdates; i++)
+        {
+            metric->update<int64_t>(1);
+        }
+    };
+
     EXPECT_CALL(*m_mockConnector, publish(::testing::_)).Times(::testing::AtLeast(1));
     for (auto iter = 0; iter < iterations; iter++)
     {
@@ -405,6 +465,7 @@ TEST_F(MetricsTest, MetricUpdateDisabledModule)
         threads.emplace_back(metricUserJob1);
         threads.emplace_back(metricUserJob2);
         threads.emplace_back(metricUserJob3);
+        threads.emplace_back(metricUserJob4);
 
         for (auto& thread : threads)
         {
@@ -419,9 +480,11 @@ TEST_F(MetricsTest, MetricUpdateDisabledModule)
 
         ASSERT_TRUE(m_publisher->getDoubleCounterLastUpdate().has_value());
         ASSERT_TRUE(m_publisher->getDoubleHistogramLastUpdate().has_value());
+        ASSERT_TRUE(m_publisher->getIntUpDownCounterLastUpdate().has_value());
 
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getDoubleCounterLastUpdate().value().getDouble().value());
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getDoubleHistogramLastUpdate().value().getDouble().value());
+        EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getIntUpDownCounterLastUpdate().value().getInt().value());
     }
 }
 
@@ -437,6 +500,7 @@ TEST_F(MetricsTest, MetricUpdateDisableEnableModule)
     getManager().addMetric(MetricType::UINTHISTOGRAM, "uint.histogram", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLECOUNTER, "double.counter", "desc", "unit");
     getManager().addMetric(MetricType::DOUBLEHISTOGRAM, "double.histogram", "desc", "unit");
+    getManager().addMetric(MetricType::INTUPDOWNCOUNTER, "int.updowncounter", "desc", "unit");
 
     auto metricUserJob0 = [&, jobUpdates]()
     {
@@ -474,6 +538,15 @@ TEST_F(MetricsTest, MetricUpdateDisableEnableModule)
         }
     };
 
+    auto metricUserJob4 = [&, jobUpdates]()
+    {
+        auto metric = getManager().getMetric("int.updowncounter");
+        for (auto i = 0; i < jobUpdates; i++)
+        {
+            metric->update<int64_t>(1);
+        }
+    };
+
     EXPECT_CALL(*m_mockConnector, publish(::testing::_)).Times(::testing::AtLeast(1));
     for (auto iter = 0; iter < iterations; iter++)
     {
@@ -486,6 +559,7 @@ TEST_F(MetricsTest, MetricUpdateDisableEnableModule)
         threads.emplace_back(metricUserJob1);
         threads.emplace_back(metricUserJob2);
         threads.emplace_back(metricUserJob3);
+        threads.emplace_back(metricUserJob4);
 
         for (auto& thread : threads)
         {
@@ -499,10 +573,12 @@ TEST_F(MetricsTest, MetricUpdateDisableEnableModule)
         ASSERT_TRUE(m_publisher->getUintHistogramLastUpdate().has_value());
         ASSERT_TRUE(m_publisher->getDoubleCounterLastUpdate().has_value());
         ASSERT_TRUE(m_publisher->getDoubleHistogramLastUpdate().has_value());
+        ASSERT_TRUE(m_publisher->getIntUpDownCounterLastUpdate().has_value());
 
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getUintCounterLastUpdate().value().getInt().value());
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getUintHistogramLastUpdate().value().getInt().value());
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getDoubleCounterLastUpdate().value().getDouble().value());
         EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getDoubleHistogramLastUpdate().value().getDouble().value());
+        EXPECT_EQ((iter + 1) * jobUpdates, m_publisher->getIntUpDownCounterLastUpdate().value().getInt().value());
     }
 }

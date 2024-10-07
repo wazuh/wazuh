@@ -5,5 +5,6 @@
 #include "doubleHistogram.hpp"
 #include "uIntCounter.hpp"
 #include "uIntHistogram.hpp"
+#include "intUpDownCounter.hpp"
 
 #endif // _METRICS_ALLMETRIC_HPP
