@@ -229,27 +229,23 @@ void runStart(ConfHandler confManager)
             config->exportInterval = std::chrono::milliseconds(5000);
             config->exportTimeout = std::chrono::milliseconds(1000);
 
-            nlohmann::json indexerConfig;
             // TODO Update index configuration when it is defined
-            indexerConfig["name"] = "wazuh-engine-metrics";
-            indexerConfig["hosts"] =
-                nlohmann::json::array({getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")});
-            indexerConfig["username"] = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin");
-            indexerConfig["password"] = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+");
+            IndexerConnectorOptions indexerConnectorOptions {
+                .name = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-metrics-index"),
+                .hosts = {getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")},
+                .username = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin"),
+                .password = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+"),
+                .sslOptions = {.cacert = {getEnvOrDefault("WENGINE_ICONNECTOR_CA", "")},
+                               .cert = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", ""),
+                               .key = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "")},
+                .timeout = static_cast<uint32_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_TIMEOUT", "60000"))),
+                .workingThreads =
+                    static_cast<uint8_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_WORKING_THREADS", "1"))),
+                .databasePath = getEnvOrDefault("WENGINE_ICONNECTOR_DB_PATH", getExecutablePath() + "/queue/indexer")};
 
-            // SSL configuration
-            nlohmann::json ssl;
-            ssl["certificate_authorities"] = getEnvOrDefault("WENGINE_ICONNECTOR_CA", "");
-            ssl["certificate"] = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", "");
-            ssl["key"] = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "");
-            if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
+            config->indexerConnectorFactory = [indexerConnectorOptions]() -> std::shared_ptr<IIndexerConnector>
             {
-                indexerConfig["ssl"] = ssl;
-            }
-
-            config->indexerConnectorFactory = [indexerConfig]() -> std::shared_ptr<IIndexerConnector>
-            {
-                return std::make_shared<IndexerConnector>(indexerConfig);
+                return std::make_shared<IndexerConnector>(indexerConnectorOptions);
             };
 
             SingletonLocator::instance<metrics::IManager>().configure(config);
