@@ -35,6 +35,7 @@ target_link_libraries(cmds
     vdscanner
     apiserver
     indexerconnector
+    metrics
 )
 
 target_include_directories(cmds

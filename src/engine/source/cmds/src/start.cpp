@@ -23,6 +23,8 @@
 #include <apiserver/apiServer.hpp>
 #include <base/logging.hpp>
 #include <base/parseEvent.hpp>
+#include <base/utils/singletonLocator.hpp>
+#include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -33,6 +35,7 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
+#include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
@@ -217,6 +220,53 @@ void runStart(ConfHandler confManager)
 
     try
     {
+        // Metrics
+        {
+            SingletonLocator::registerManager<metrics::IManager,
+                                              base::PtrSingleton<metrics::IManager, metrics::Manager>>();
+            auto config = std::make_shared<metrics::Manager::ImplConfig>();
+            config->logLevel = logging::Level::Err;
+            config->exportInterval = std::chrono::milliseconds(5000);
+            config->exportTimeout = std::chrono::milliseconds(1000);
+
+            nlohmann::json indexerConfig;
+            // TODO Update index configuration when it is defined
+            indexerConfig["name"] = "wazuh-engine-metrics";
+            indexerConfig["hosts"] =
+                nlohmann::json::array({getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")});
+            indexerConfig["username"] = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin");
+            indexerConfig["password"] = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+");
+
+            // SSL configuration
+            nlohmann::json ssl;
+            ssl["certificate_authorities"] = getEnvOrDefault("WENGINE_ICONNECTOR_CA", "");
+            ssl["certificate"] = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", "");
+            ssl["key"] = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "");
+            if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
+            {
+                indexerConfig["ssl"] = ssl;
+            }
+
+            config->indexerConnectorFactory = [indexerConfig]() -> std::shared_ptr<IIndexerConnector>
+            {
+                return std::make_shared<IndexerConnector>(indexerConfig);
+            };
+
+            SingletonLocator::instance<metrics::IManager>().configure(config);
+
+            // TODO add enabled flag to the configuration when config refactor is done
+            SingletonLocator::instance<metrics::IManager>().enable();
+
+            exitHandler.add(
+                []()
+                {
+                    SingletonLocator::instance<metrics::IManager>().disable();
+                    SingletonLocator::clear();
+                });
+
+            LOG_INFO("Metrics initialized.");
+        }
+
         // Store
         {
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
