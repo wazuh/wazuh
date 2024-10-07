@@ -398,12 +398,12 @@ void runStart(ConfHandler confManager)
             {
                 // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
                 eventQueue = std::make_shared<QEventType>(
-                    queueSize, queueFloodFile, queueFloodAttempts, queueFloodSleep, queueDropFlood);
+                    queueSize, "routerEventQueue", queueFloodFile, queueFloodAttempts, queueFloodSleep, queueDropFlood);
 
                 LOG_DEBUG("Event queue created.");
             }
             {
-                testQueue = std::make_shared<QTestType>(queueSize);
+                testQueue = std::make_shared<QTestType>(queueSize, "routerTestQueue");
                 LOG_DEBUG("Test queue created.");
             }
 

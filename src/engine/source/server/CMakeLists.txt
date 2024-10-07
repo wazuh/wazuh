@@ -39,7 +39,7 @@ target_include_directories(server_utest
     ${uvw_SOURCE_DIR}/src/
 )
 
-target_link_libraries(server_utest PRIVATE GTest::gtest_main server libuv::uv_a)
+target_link_libraries(server_utest PRIVATE GTest::gtest_main server libuv::uv_a base::test metrics::mocks)
 gtest_discover_tests(server_utest)
 
 endif(ENGINE_BUILD_TEST)

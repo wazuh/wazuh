@@ -3,8 +3,8 @@
 
 #include "doubleCounter.hpp"
 #include "doubleHistogram.hpp"
+#include "intUpDownCounter.hpp"
 #include "uIntCounter.hpp"
 #include "uIntHistogram.hpp"
-#include "intUpDownCounter.hpp"
 
 #endif // _METRICS_ALLMETRIC_HPP

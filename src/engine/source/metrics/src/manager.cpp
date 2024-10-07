@@ -227,6 +227,8 @@ Manager::addMetric(MetricType metricType, const DotPath& name, const std::string
         it->second->create();
     }
 
+    LOG_DEBUG("Metric '{}' added successfully", name);
+
     return it->second;
 }
 
@@ -243,6 +245,8 @@ std::shared_ptr<IMetric> Manager::getMetric(const DotPath& name) const
     {
         throw std::runtime_error(fmt::format("Metric '{}' not found", name));
     }
+
+    LOG_TRACE("Metric '{}' retreived", name);
 
     return it->second;
 }
