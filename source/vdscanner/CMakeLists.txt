@@ -20,7 +20,7 @@ target_include_directories(vdscanner PUBLIC include)
 
 target_link_libraries(vdscanner PUBLIC database_feed)
 
-add_subdirectory(tool)
+add_subdirectory(testtools)
 
 # Tests
 if(ENGINE_BUILD_TEST)
