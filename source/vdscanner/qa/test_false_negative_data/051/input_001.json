@@ -1,0 +1,43 @@
+{
+  "type": "packagelist",
+  "agent": {
+    "id": "023"
+  },
+  "packages": [
+    {
+      "scan_id": 0,
+      "scan_time": "2024/04/11 02:34:28",
+      "format": "win",
+      "name": "TeamViewer 11",
+      "priority": "",
+      "section": "",
+      "size": 0,
+      "vendor": "TeamViewer",
+      "install_time": "2024/04/11 02:30:23",
+      "version": "11.0.259193",
+      "architecture": "i686",
+      "multiarch": "",
+      "source": "",
+      "description": "",
+      "location": "C:\\Program Files (x86)\\TeamViewer",
+      "cpe": "",
+      "msu_name": "",
+      "checksum": "e5fc4dada01977545372e12f40caca85f89be349",
+      "item_id": "3fd68525088b8459fd4b98cc84ade2b06baf1101"
+    }
+  ],
+  "hotfixes": [],
+  "os": {
+    "architecture": "x86_64",
+    "checksum": "1713967856394802400",
+    "hostname": "DESKTOP-EQ4F57D",
+    "major_version": "10",
+    "minor_version": "0",
+    "build": "19045.4291",
+    "name": "Microsoft Windows 10 Pro",
+    "display_version": "22H2",
+    "platform": "windows",
+    "version": "10.0.19045.4291",
+    "scan_time": "2024/04/24 14:10:57"
+  }
+}
