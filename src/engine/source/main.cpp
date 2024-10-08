@@ -233,31 +233,8 @@ int main(int argc, char* argv[])
 
         // Indexer Connector
         {
-            nlohmann::json indexerConfig;
-            // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available
-            indexerConfig["name"] = confManager.get<std::string>(conf::key::INDEXER_INDEX);
-            indexerConfig["hosts"] = nlohmann::json::array();
-            auto hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-            for (const auto& host : hosts)
-            {
-                indexerConfig["hosts"].push_back(host);
-            }
-            indexerConfig["username"] = confManager.get<std::string>(conf::key::INDEXER_USER);
-            indexerConfig["password"] = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
-
-            // SSL configuration
-            nlohmann::json ssl;
-            ssl["certificate_authorities"] =
-                confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE_AUTHORITIES);
-            ssl["certificate"] = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
-            ssl["key"] = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
-            if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
-            {
-                indexerConfig["ssl"] = ssl;
-            }
-
-            // Create connector and wait until the connection is established.
-            iConnector = std::make_shared<IndexerConnector>(indexerConfig);
+            // TODO Fix after rebase
+            iConnector = nullptr;
         }
 
         // Builder and registry
