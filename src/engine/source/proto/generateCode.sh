@@ -41,8 +41,7 @@ select_clang_format_version() {
     elif [ -x "$(command -v clang-format)" ]; then
         CLANG_FORMAT=clang-format
     else
-        echo 'Error: clang-format is not installed.' >&2
-        exit 1
+        echo 'clang-format is not installed.' >&2
     fi
 }
 

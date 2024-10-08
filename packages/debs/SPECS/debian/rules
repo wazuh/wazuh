@@ -1,0 +1,105 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+#
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+#
+# Modified to make a template file for a multi-binary package with separated
+# build-arch and build-indep targets  by Bill Allombert 2001
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+export PKG_DIR=debian/wazuh-server
+
+export TARGET_DIR=${CURDIR}/${PKG_DIR}
+
+# Package build options
+export INSTALLATION_DIR="/"
+export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/manager_installation_scripts"
+export JOBS="5"
+export DEBUG_ENABLED="no"
+export PATH="${PATH}"
+export LD_LIBRARY_PATH=""
+
+%:
+	dh $@
+
+override_dh_shlibdeps:
+
+override_dh_auto_configure:
+
+override_dh_auto_install:
+
+override_dh_install:
+	# Install Wazuh
+	VCPKG_ROOT="/root/vcpkg" \
+	PATH="${PATH}:${VCPKG_ROOT}" \
+	USER_LANGUAGE="en" \
+	USER_NO_STOP="y" \
+	USER_DIR="$(INSTALLATION_DIR)" \
+	USER_DELETE_DIR="y" \
+	USER_UPDATE="n" \
+	USER_ENABLE_EMAIL="n" \
+	USER_WHITE_LIST="n" \
+	USER_ENABLE_SYSLOG="y" \
+	USER_ENABLE_AUTHD="y" \
+	USER_SERVER_IP="MANAGER_IP" \
+	USER_CA_STORE="/path/to/my_cert.pem" \
+	USER_GENERATE_AUTHD_CERT="y" \
+	USER_AUTO_START="n" \
+	USER_CREATE_SSL_CERT="n" \
+	DOWNLOAD_CONTENT="y" \
+	./install.sh
+
+	# Copying to target
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/tmp
+	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)/tmp/
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/bin
+	cp $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)/bin/
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/run
+	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)/run/
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib
+	cp -p $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib/
+
+	# Copying init.d script
+	# mkdir -p ${TARGET_DIR}/etc/init.d/
+	# sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/ossec-hids-debian.init
+	# cp src/init/templates/ossec-hids-debian.init ${TARGET_DIR}/etc/init.d/wazuh-server
+
+	# Copying systemd file
+	# mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
+	# sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-server.service
+	# install -m 0644 src/init/templates/wazuh-server.service ${TARGET_DIR}/usr/lib/systemd/system/
+
+	# ./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh
+
+	# mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/
+	# cp -r $(INSTALLATION_DIR)/. $(TARGET_DIR)$(INSTALLATION_DIR)/
+
+	# mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src
+	# cp src/VERSION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
+	# cp src/REVISION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
+
+	# mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init
+	# cp -r src/init/*  ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init
+
+override_dh_fixperms:
+	dh_fixperms
+	# Fix Python permissions
+	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/2to3-3.10
+	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/pydoc3.10
+	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/python3-config
+	# chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.10-embed.pc
+	# chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.10.pc
+	# chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python3.pc
+
+override_dh_strip:
+	dh_strip --no-automatic-dbgsym --exclude=dh_strip --no-automatic-dbgsym --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
+
+.PHONY: override_dh_install override_dh_strip override_dh_auto_build override_dh_auto_configure override_dh_fixperms
