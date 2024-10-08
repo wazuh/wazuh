@@ -161,12 +161,12 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                     {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
                     {.onSuccess = [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
                                       const std::string& response)
-                     { LOG_DEBUG_L(functionName.c_str(), "Response: %s", response.c_str()); },
+                     { LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str()); },
                      .onError =
                          [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
                              const std::string& error, const long statusCode)
                      {
-                         LOG_ERROR_L(functionName.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                         LOG_ERROR_L(functionName.c_str(), "{}, status code: {}.", error.c_str(), statusCode);
                          throw std::runtime_error(error);
                      }});
             }
