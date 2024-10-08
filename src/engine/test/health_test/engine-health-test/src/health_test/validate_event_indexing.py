@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional, Union, Dict
 from pathlib import Path
 import docker
 import requests
@@ -198,19 +198,21 @@ class OpensearchManagement:
             print(f"An unexpected error occurred: {e}")
             self.stop()
 
-    def read_index(self, result: TestResult, expecteds: List[UnitOutput], retries=15, delay=5) -> bool:
+    def read_index(self, result: TestResult, expecteds: List[UnitOutput], retries=5, delay=4) -> bool:
         url_search = 'http://localhost:9200/test-basic-index/_search'
         headers = {"Content-Type": "application/json"}
         not_found = []
 
         for i, expected in enumerate(expecteds):
             initial_result_size = len(result.results)
+            event_hash = expected.output['event_hash']
+
             for attempt in range(retries):
                 try:
                     query = {
                         "query": {
                             "term": {
-                                "event_hash": expected.output['event_hash']
+                                "event_hash": event_hash
                             }
                         }
                     }
@@ -264,65 +266,79 @@ def execute(name: str, command: str) -> Tuple[Optional[str], EngineTestOutput]:
     return None, result
 
 
-def validate(name: str, output: EngineTestOutput) -> Tuple[Optional[str], TestResult]:
-    result = TestResult(name)
-
-    success = opensearch_management.read_index(result, output.results)
-    if not success:
-        return "Not all expected were found.", result
-
-    return None, result
-
-
-def test(input_file: Path, command: str) -> TestResult:
+def test(input_file: Path, command: str) -> EngineTestOutput:
     name = input_file.stem.replace("_input", "")
     error, output = execute(name, command)
-    result = TestResult(name, command)
 
     if error:
+        print(error)
         print("F", end="", flush=True)
-        result.make_failure(error)
-        return result
-    error, compare_result = validate(name, output)
-    compare_result.command = command
-    if error:
-        print("F", end="", flush=True)
-        result.make_failure(error)
-        return result
-
-    if compare_result.success:
-        print(".", end="", flush=True)
+        output.add_result(UnitOutput(0, error))
     else:
-        print("F", end="", flush=True)
-    return compare_result
+        print(".", end="", flush=True)
+
+    return output
 
 
-def run_test(test_parent_path: Path, engine_api_socket: str) -> Result:
-    test_parent_name = test_parent_path.name
-    result = Result(test_parent_name)
+def run_all_tests(test_parent_paths: List[Path], engine_api_socket: str) -> Dict[str, List[EngineTestOutput]]:
+    all_outputs_by_integration = {}
 
-    test_dir = (test_parent_path / "test").resolve()
-    if not test_dir.exists():
-        result.make_failure(f"Test directory not found: {test_dir}")
-        return result
+    for test_parent_path in test_parent_paths:
+        test_parent_name = test_parent_path.name
+        test_dir = (test_parent_path / "test").resolve()
 
-    engine_test_conf = test_parent_path / "test" / "engine-test.conf"
-    if not engine_test_conf.exists():
-        result.make_failure(f"engine-test.conf not found: {engine_test_conf}")
-        return result
+        if not test_dir.exists():
+            print(f"Test directory not found: {test_dir}")
+            continue
 
-    test_name = test_parent_name
+        engine_test_conf = test_parent_path / "test" / "engine-test.conf"
+        if not engine_test_conf.exists():
+            print(f"engine-test.conf not found: {engine_test_conf}")
+            continue
 
-    for input_file in test_dir.rglob("*_input.*"):
-        if input_file.parent != test_dir:
-            test_name = f"{test_parent_name}-{input_file.parent.name}"
+        outputs_for_integration = []
 
-        engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_name} --api-socket {engine_api_socket} -j"
-        command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
-        test_result = test(input_file, command)
+        for input_file in test_dir.rglob("*_input.*"):
+            test_name = test_parent_name
+            if input_file.parent != test_dir:
+                test_name = f"{test_parent_name}-{input_file.parent.name}"
+            engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_name} --api-socket {engine_api_socket} -j"
+            command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
+
+            output = test(input_file, command)
+            outputs_for_integration.append(output)
+
+        all_outputs_by_integration[test_parent_name] = outputs_for_integration
+
+    return all_outputs_by_integration
+
+
+def validate_all_outputs(all_outputs: List[EngineTestOutput], integration: str) -> Result:
+    result = Result(integration)
+
+    for output in all_outputs:
+        test_result = TestResult(output.name, output.command)
+        success = opensearch_management.read_index(test_result, output.results)
+
+        if not success:
+            print("F", end="", flush=True)
+            test_result.make_failure("Not all expected were found.")
+        else:
+            print(".", end="", flush=True)
+
         result.add_result(test_result)
 
     return result
+
+
+def run_test(test_parent_paths: List[Path], engine_api_socket: str) -> List[Result]:
+    all_outputs_integration = run_all_tests(test_parent_paths, engine_api_socket)
+    results = []
+
+    for integration in all_outputs_integration:
+        results.append(validate_all_outputs(all_outputs_integration[integration], integration))
+
+    return results
 
 
 def exist_index_output(engine_handler: EngineHandler):
@@ -494,7 +510,6 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix())
 
-    results: List[Result] = []
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
 
@@ -517,7 +532,8 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
                 integrations.append(integration_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'template.json')
-        engine_handler.start()
+        log = (env_path / "logs/engine.log").as_posix()
+        engine_handler.start(log)
         print("Engine started.")
         print("Update wazuh-core-message decoder")
         if not exist_index_output(engine_handler):
@@ -527,10 +543,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         update_wazuh_core_message(CORE_WAZUH_DECODER_PATH, engine_handler)
 
         print("\n\nRunning tests...")
-        for integration_path in integrations:
-            result = run_test(
-                integration_path, engine_handler.api_socket_path)
-            results.append(result)
+        results = run_test(integrations, engine_handler.api_socket_path)
 
     finally:
         if exist_index_output(engine_handler):
@@ -599,7 +612,8 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
                 rules.append(ruleset_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'template.json')
-        engine_handler.start()
+        log = (env_path / "logs/engine.log").as_posix()
+        engine_handler.start(log)
         print("Engine started.")
         if not exist_index_output(engine_handler):
             load_indexer_output(engine_handler)
@@ -609,10 +623,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
         update_wazuh_core_message(CORE_WAZUH_DECODER_PATH, engine_handler)
 
         print("\n\nRunning tests...")
-        for ruleset_path in rules:
-            result = run_test(
-                ruleset_path, engine_handler.api_socket_path)
-            results.append(result)
+        results = run_test(rules, engine_handler.api_socket_path)
 
     finally:
         if exist_index_output(engine_handler):
