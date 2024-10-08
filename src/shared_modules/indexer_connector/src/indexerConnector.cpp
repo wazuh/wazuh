@@ -172,6 +172,14 @@ static void builderBulkDelete(std::string& bulkData, std::string_view id, std::s
     bulkData.append("\n");
 }
 
+static void builderDeleteByQuery(std::string& bulkData, std::string_view id)
+{
+    bulkData.append(R"({"query":{"match": { "agent.id": ")");
+    bulkData.append(id);
+    bulkData.append(R"("}}})");
+    bulkData.append("\n");
+}
+
 static void builderBulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
 {
     bulkData.append(R"({"index":{"_index":")");
@@ -461,7 +469,6 @@ IndexerConnector::IndexerConnector(
 
             auto url = selector->getNext();
             std::string bulkData;
-            url.append("/_bulk?refresh=wait_for");
 
             while (!dataQueue.empty())
             {
@@ -471,6 +478,7 @@ IndexerConnector::IndexerConnector(
                 const auto& id = parsedData.at("id").get_ref<const std::string&>();
                 // If the element should not be indexed, only delete it from the sync database.
                 const bool noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
+                m_isBulk.store(false); // Reset the bulk flag.
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
@@ -479,6 +487,18 @@ IndexerConnector::IndexerConnector(
                         builderBulkDelete(bulkData, id, m_indexName);
                     }
                     m_db->delete_(id);
+                }
+                else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
+                {
+                    m_isBulk.store(true);
+                    if (!noIndex)
+                    {
+                        builderDeleteByQuery(bulkData, id);
+                    }
+                    for (const auto& dbQuery : m_db->seek(id))
+                    {
+                        m_db->delete_(dbQuery.first);
+                    }
                 }
                 else
                 {
@@ -503,6 +523,17 @@ IndexerConnector::IndexerConnector(
                     logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
                     throw std::runtime_error(error);
                 };
+
+                if (m_isBulk.load())
+                {
+                    url.append("/");
+                    url.append(m_indexName);
+                    url.append("/_delete_by_query");
+                }
+                else
+                {
+                    url.append("/_bulk?refresh=wait_for");
+                }
 
                 // Process data.
                 HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url),

@@ -214,6 +214,26 @@ public:
                           }
                       });
 
+        // Endpoint where the publications are made into.
+        m_server.Post("/indexer_connector_test/_delete_by_query",
+                      [this](const httplib::Request& req, httplib::Response& res)
+                      {
+                          try
+                          {
+                              if (m_publishCallback)
+                              {
+                                  m_publishCallback(req.body);
+                              }
+                              res.status = 200;
+                              res.set_content("Content published", "text/plain");
+                          }
+                          catch (const std::exception& e)
+                          {
+                              res.status = 500;
+                              res.set_content(e.what(), "text/plain");
+                          }
+                      });
+
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host, m_port);
     }
