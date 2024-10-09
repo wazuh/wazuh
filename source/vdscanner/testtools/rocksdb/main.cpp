@@ -51,15 +51,37 @@ int main(const int argc, const char** argv)
 
         auto printValue = [&](const std::string& key, const auto& slice)
         {
+            const std::vector<std::string> columnFamilies {"translation", "vendor_map", "oscpe_rules", "cna_mapping"};
+            bool isOneOf = false;
+
+            if (find(columnFamilies.begin(), columnFamilies.end(), columnFamily) != columnFamilies.end())
+            {
+                isOneOf = true;
+            }
+
             if (!fbs.empty())
             {
                 std::string strData;
                 flatbuffers::GenText(parser, reinterpret_cast<const uint8_t*>(slice.data()), &strData);
-                std::cout << key << " ==> " << strData << std::endl;
+                if (isOneOf)
+                {
+                    std::cout << "{\"" << key << "\":" << strData << " } " << std::endl;
+                }
+                else
+                {
+                    std::cout << key << " ==> " << strData << std::endl;
+                }
             }
             else
             {
-                std::cout << key << " ==> " << slice.ToString() << std::endl;
+                if (isOneOf)
+                {
+                    std::cout << "{\"" << key << "\":" << slice.ToString() << " } " << std::endl;
+                }
+                else
+                {
+                    std::cout << key << " ==> " << slice.ToString() << std::endl;
+                }
             }
         };
 
