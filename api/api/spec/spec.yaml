@@ -17273,6 +17273,8 @@ paths:
       summary: "Revoke JWT tokens"
       description: "This method should be called to revoke all active JWT tokens"
       operationId: api.controllers.security_controller.revoke_all_tokens
+      x-rbac-actions:
+        - $ref: "#/x-rbac-catalog/actions/security:revoke"
       responses:
         '200':
           description: "Tokens were successfully revoked"
