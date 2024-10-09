@@ -461,14 +461,11 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
 }
 
-IndexerConnector::IndexerConnector(
-    const nlohmann::json& config,
-    const std::string& templatePath,
-    const std::string& updateMappingsPath,
+void IndexerConnector::preInitialization(
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
-    const uint32_t& timeout)
+    const nlohmann::json& config)
 {
     if (logFunction)
     {
@@ -484,6 +481,17 @@ IndexerConnector::IndexerConnector(
     }
 
     m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
+}
+
+IndexerConnector::IndexerConnector(
+    const nlohmann::json& config,
+    const std::string& templatePath,
+    const std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+        logFunction,
+    const uint32_t& timeout)
+{
+    preInitialization(logFunction, config);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -779,20 +787,7 @@ IndexerConnector::IndexerConnector(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction)
 {
-    if (logFunction)
-    {
-        Log::assignLogFunction(logFunction);
-    }
-
-    // Get index name.
-    m_indexName = config.at("name").get_ref<const std::string&>();
-
-    if (Utils::haveUpperCaseCharacters(m_indexName))
-    {
-        throw std::runtime_error("Index name must be lowercase.");
-    }
-
-    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
+    preInitialization(logFunction, config);
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [this](std::queue<std::string>& dataQueue)
