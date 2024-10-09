@@ -415,21 +415,6 @@ class WazuhException(Exception):
                           'are not granted',
                'remediation': 'Please, ensure /proc exists and permissions are granted'},
 
-        # Database:
-        2000: {'message': 'No such database file'},
-        2001: {'message': 'Incompatible version of SQLite'},
-        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
-        2003: {'message': 'Error in wazuhdb request',
-               'remediation': 'Make sure the request is correct'},
-        2004: {'message': 'Database query not valid'},
-        2005: {'message': 'Could not connect to wdb socket'},
-        2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
-        2007: {'message': 'Error retrieving data from Wazuh DB'},
-        2008: {'message': 'Corrupted RBAC database',
-               'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
-        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
-        2010: {'message': 'The requested read operation did not complete fully'},
-
         # External services
         2100: {'message': 'Error in CTI service request'},
 
@@ -466,7 +451,6 @@ class WazuhException(Exception):
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
-        3007: 'Client.keys file received in master node',
         3009: {'message': 'Error executing distributed API request',
                'remediation': ''},
         3012: 'Cluster is not running',
@@ -489,11 +473,6 @@ class WazuhException(Exception):
                'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
                               'connection errors. Restart the `wazuh-manager` service.'},
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
-        3025: {'message': "Could not decrypt message",
-               'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
-                              f"ossec-conf/cluster.html#key)"
-                              ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
         3028: {'message': "Worker node ID already exists",
@@ -516,7 +495,6 @@ class WazuhException(Exception):
         3034: "Error sending file. File not found.",
         3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
-        3037: 'Error while processing Agent-info chunks',
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",

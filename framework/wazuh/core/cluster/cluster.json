@@ -1,74 +1,30 @@
 {
     "files":{
+
         "etc/": {
             "permissions": "0o640",
             "source": "master",
-            "files": ["client.keys"],
+            "files": ["private_key.pem", "public_key.pem"],
             "recursive": false,
             "restart": false,
             "remove_subdirs_if_empty": false,
             "extra_valid": false,
-            "description": "client keys file database"
+            "description": "JWT signing key pair"
         },
 
         "etc/shared/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
-            "recursive": true,
+            "recursive": false,
             "restart": false,
             "remove_subdirs_if_empty": true,
             "extra_valid": false,
-            "description": "shared configuration files"
-        },
-
-        "var/multigroups/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["merged.mg"],
-            "recursive": true,
-            "restart": false,
-            "remove_subdirs_if_empty": true,
-            "extra_valid": false,
-            "description": "shared configuration files"
-        },
-
-        "etc/rules/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user rules"
-        },
-
-        "etc/decoders/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user decoders"
-        },
-
-        "etc/lists/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user CDB lists"
+            "description": "group files"
         },
 
         "excluded_files": [
-            "ar.conf",
-            "ossec.conf"
+            "ar.conf"
         ],
 
         "excluded_extensions": [
@@ -82,21 +38,15 @@
     "intervals":{
         "worker": {
             "sync_integrity": 9,
-            "sync_agent_info": 10,
-            "sync_agent_groups": 30,
-            "timeout_agent_groups": 40,
             "keep_alive": 60,
             "connection_retry": 10,
-            "max_failed_keepalive_attempts": 2,
-            "agent_groups_mismatch_limit": 5
+            "max_failed_keepalive_attempts": 2
         },
 
         "master": {
             "process_pool_size": 2,
-            "sync_agent_groups": 10,
             "timeout_extra_valid": 40,
             "recalculate_integrity": 8,
-            "agent_group_start_delay": 30,
             "check_worker_lastkeepalive": 60,
             "max_allowed_time_without_keepalive": 120,
             "max_locked_integrity_time": 1000

@@ -90,18 +90,18 @@ def test_exit_handler(os_getpid_mock, os_kill_mock):
                         delete_pid_mock.assert_called_once_with('wazuh-clusterd', 1001)
                         original_sig_handler_mock.assert_not_called()
 
-@pytest.mark.parametrize('helper_disabled', (True, False))
+
 @pytest.mark.asyncio
+@pytest.mark.parametrize('helper_disabled', (True, False))
 async def test_master_main(helper_disabled: bool):
     """Check and set the behavior of master_main function."""
     import wazuh.core.cluster.utils as cluster_utils
     cluster_config = {'test': 'config', HAPROXY_HELPER: {HAPROXY_DISABLED: helper_disabled}}
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test, ssl):
+        def __init__(self, performance_test, concurrency_test):
             self.performance_test = performance_test
             self.concurrency_test = concurrency_test
-            self.ssl = ssl
 
     class TaskPoolMock:
         def __init__(self):
@@ -112,11 +112,10 @@ async def test_master_main(helper_disabled: bool):
             assert second == range(1)
 
     class MasterMock:
-        def __init__(self, performance_test, concurrency_test, configuration, enable_ssl, logger, cluster_items):
+        def __init__(self, performance_test, concurrency_test, configuration, logger, cluster_items):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
             assert configuration == cluster_config
-            assert enable_ssl is True
             assert logger == 'test_logger'
             assert cluster_items == {'node': 'item'}
             self.task_pool = TaskPoolMock()
@@ -125,12 +124,11 @@ async def test_master_main(helper_disabled: bool):
             return 'MASTER_START'
 
     class LocalServerMasterMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, configuration, enable_ssl, cluster_items):
+        def __init__(self, performance_test, logger, concurrency_test, node, configuration, cluster_items):
             assert performance_test == 'test_performance'
             assert logger == 'test_logger'
             assert concurrency_test == 'concurrency_test'
             assert configuration == cluster_config
-            assert enable_ssl is True
             assert cluster_items == {'node': 'item'}
 
         def start(self):
@@ -150,17 +148,23 @@ async def test_master_main(helper_disabled: bool):
 
 
     wazuh_clusterd.cluster_utils = cluster_utils
-    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', ssl=True)
-    with patch('scripts.wazuh_clusterd.asyncio.gather', gather):
-        with patch('wazuh.core.cluster.master.Master', MasterMock):
-            with patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock):
-                with patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock):
-                    await wazuh_clusterd.master_main(
-                        args=args,
-                        cluster_config=cluster_config,
-                        cluster_items={'node': 'item'},
-                        logger='test_logger'
-                    )
+    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test')
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch('wazuh.core.authentication.keypair_exists', return_value=False), \
+        patch('wazuh.core.authentication.generate_keypair') as generate_keypair_mock, \
+        patch('scripts.wazuh_clusterd.asyncio.gather', gather), \
+        patch('wazuh.core.cluster.master.Master', MasterMock), \
+        patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock), \
+        patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock):
+        await wazuh_clusterd.master_main(
+            args=args,
+            cluster_config=cluster_config,
+            cluster_items={'node': 'item'},
+            logger='test_logger'
+        )
+
+        main_logger_mock.info.assert_called_once_with('Generating JWT signing key pair')
+        generate_keypair_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -170,10 +174,9 @@ async def test_worker_main(asyncio_sleep_mock):
     import wazuh.core.cluster.utils as cluster_utils
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test, ssl, send_file, send_string):
+        def __init__(self, performance_test, concurrency_test, send_file, send_string):
             self.performance_test = performance_test
             self.concurrency_test = concurrency_test
-            self.ssl = ssl
             self.send_file = send_file
             self.send_string = send_string
 
@@ -193,12 +196,11 @@ async def test_worker_main(asyncio_sleep_mock):
             pass
 
     class WorkerMock:
-        def __init__(self, performance_test, concurrency_test, configuration,
-                     enable_ssl, logger, cluster_items, file, string, task_pool):
+        def __init__(self, performance_test, concurrency_test, configuration, logger, cluster_items, file, string,
+                     task_pool):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl is True
             assert file is True
             assert string is True
             assert logger == 'test_logger'
@@ -210,12 +212,11 @@ async def test_worker_main(asyncio_sleep_mock):
             return 'WORKER_START'
 
     class LocalServerWorkerMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, configuration, enable_ssl, cluster_items):
+        def __init__(self, performance_test, logger, concurrency_test, node, configuration, cluster_items):
             assert performance_test == 'test_performance'
             assert logger == 'test_logger'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl is True
             assert cluster_items == {'intervals': {'worker': {'connection_retry': 34}}}
 
         def start(self):
@@ -228,7 +229,7 @@ async def test_worker_main(asyncio_sleep_mock):
 
     wazuh_clusterd.cluster_utils = cluster_utils
     wazuh_clusterd.main_logger = LoggerMock
-    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', ssl=True,
+    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test',
                      send_file=True, send_string=True)
 
     with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock:
@@ -272,7 +273,6 @@ def test_get_script_arguments(argument_parser_mock):
              call('--concurrency_test', type=int, dest='concurrency_test', help='==SUPPRESS=='),
              call('--string', help='==SUPPRESS==', type=int, dest='send_string'),
              call('--file', help='==SUPPRESS==', type=str, dest='send_file'),
-             call('--ssl', help='Enable communication over SSL', action='store_true', dest='ssl', default=False),
              call('-f', help='Run in foreground', action='store_true', dest='foreground'),
              call('-d', help='Enable debug messages. Use twice to increase verbosity.', action='count',
                   dest='debug_level'),

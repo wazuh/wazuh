@@ -15,6 +15,7 @@ with patch('wazuh.core.common.getgrnam'):
             with patch('wazuh.core.common.wazuh_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
+                from wazuh.core import common
                 from wazuh.core.cluster import utils
                 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhPermissionError, \
                     WazuhResourceNotFound, WazuhHAPHelperError
@@ -25,11 +26,14 @@ default_cluster_config = {
     'node_type': 'master',
     'name': 'wazuh',
     'node_name': 'node01',
-    'key': '',
     'port': 1516,
     'bind_addr': '0.0.0.0',
     'nodes': ['NODE_IP'],
-    'hidden': 'no'
+    'hidden': 'no',
+    'cafile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.ca'),
+    'certfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
+    'keyfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'),
+    'keyfile_password': '',
 }
 
 
@@ -275,40 +279,35 @@ def test_get_cluster_items():
             utils.get_cluster_items()
 
     items = utils.get_cluster_items()
-    assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
-                                        'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
-                                        'extra_valid': False, 'description': 'client keys file database'},
-                               'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
-                                               'extra_valid': False, 'description': 'shared configuration files'},
-                               'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
-                                                    'recursive': True, 'restart': False,
-                                                    'remove_subdirs_if_empty': True, 'extra_valid': False,
-                                                    'description': 'shared configuration files'},
-                               'etc/rules/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                              'extra_valid': False, 'description': 'user rules'},
-                               'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                 'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                                 'extra_valid': False, 'description': 'user decoders'},
-                               'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                              'extra_valid': False, 'description': 'user CDB lists'},
-                               'excluded_files': ['ar.conf', 'ossec.conf'],
-                               'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
-                     'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_groups': 30,
-                                              'keep_alive': 60, 'connection_retry': 10, 'timeout_agent_groups': 40,
-                                              'max_failed_keepalive_attempts': 2, "agent_groups_mismatch_limit": 5},
-                                   'master': {'timeout_extra_valid': 40, 'recalculate_integrity': 8,
-                                              'check_worker_lastkeepalive': 60,
-                                              'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,
-                                              'sync_agent_groups': 10,
-                                              'max_locked_integrity_time': 1000, 'agent_group_start_delay': 30},
-                                   'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
-                                                     'timeout_receiving_file': 120, 'min_zip_size': 31457280,
-                                                     'max_zip_size': 1073741824, 'compress_level': 1,
-                                                     'zip_limit_tolerance': 0.2}},
-                     'distributed_api': {'enabled': True}}
+    assert items == {
+        'files': {
+            'etc/': {
+                'permissions': 416, 'source': 'master', 'files': ['private_key.pem', 'public_key.pem'],
+                'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False, 'extra_valid': False,
+                'description': 'JWT signing key pair'
+            },
+            'etc/shared/': {
+                'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': False, 'restart': False,
+                'remove_subdirs_if_empty': True, 'extra_valid': False, 'description': 'group files'
+            },
+            'excluded_files': ['ar.conf'],
+            'excluded_extensions': ['~', '.tmp', '.lock', '.swp']
+        },
+        'intervals': {
+            'worker': {
+                'sync_integrity': 9,'keep_alive': 60, 'connection_retry': 10, 'max_failed_keepalive_attempts': 2
+            },
+            'master': {
+                'timeout_extra_valid': 40, 'recalculate_integrity': 8, 'check_worker_lastkeepalive': 60,
+                'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2, 'max_locked_integrity_time': 1000
+            },
+            'communication': {
+                'timeout_cluster_request': 20, 'timeout_dapi_request': 200, 'timeout_receiving_file': 120,
+                'min_zip_size': 31457280,'max_zip_size': 1073741824, 'compress_level': 1, 'zip_limit_tolerance': 0.2
+            }
+        },
+        'distributed_api': {'enabled': True}
+    }
 
 
 def test_ClusterFilter():

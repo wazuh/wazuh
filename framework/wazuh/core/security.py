@@ -9,10 +9,9 @@ import yaml
 
 import api.middlewares as middlewares
 from api import __path__ as api_path
-from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
-from cryptography.hazmat.primitives.asymmetric import ec
 from wazuh import WazuhInternalError, WazuhError
+from wazuh.core.authentication import generate_keypair
 from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
@@ -116,7 +115,7 @@ def revoke_tokens() -> dict:
     dict
         Confirmation message.
     """
-    change_keypair(ec.SECP521R1())
+    generate_keypair()
     with TokenManager() as tm:
         tm.delete_all_rules()
 

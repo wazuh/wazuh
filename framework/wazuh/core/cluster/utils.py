@@ -196,11 +196,14 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
-        'key': '',
         'port': 1516,
         'bind_addr': '0.0.0.0',
         'nodes': ['NODE_IP'],
-        'hidden': 'no'
+        'hidden': 'no',
+        'cafile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.ca'),
+        'certfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
+        'keyfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'),
+        'keyfile_password': '',
     }
 
     try:
@@ -238,6 +241,10 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
 
     if config_cluster.get(HAPROXY_HELPER):
         config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
+    
+    for key in ('cafile', 'certfile', 'keyfile'):
+        if not config_cluster[key].startswith(common.WAZUH_PATH):
+            config_cluster[key] = os.path.join(common.WAZUH_PATH, config_cluster[key])
 
     return config_cluster
 
@@ -263,9 +270,9 @@ def get_manager_status(cache=False) -> typing.Dict:
     except (PermissionError, FileNotFoundError) as e:
         raise WazuhInternalError(1913, extra_message=str(e))
 
-    processes = ['wazuh-agentlessd', 'wazuh-analysisd', 'wazuh-authd', 'wazuh-csyslogd', 'wazuh-dbd', 'wazuh-monitord',
+    processes = ['wazuh-agentlessd', 'wazuh-analysisd', 'wazuh-authd', 'wazuh-csyslogd', 'wazuh-monitord',
                  'wazuh-execd', 'wazuh-integratord', 'wazuh-logcollector', 'wazuh-maild', 'wazuh-remoted',
-                 'wazuh-reportd', 'wazuh-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid',
+                 'wazuh-reportd', 'wazuh-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-apid',
                  'wazuh-comms-apid']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")

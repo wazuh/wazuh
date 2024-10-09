@@ -27,7 +27,7 @@ class AbstractServerHandler(c_common.Handler):
     Define abstract server protocol. Handle communication with a single client.
     """
 
-    def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
+    def __init__(self, server, loop: asyncio.AbstractEventLoop,
                  cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
         """Class constructor.
 
@@ -37,8 +37,6 @@ class AbstractServerHandler(c_common.Handler):
             Abstract server object that created this handler.
         loop : asyncio.AbstractEventLoop
             Asyncio loop.
-        fernet_key : str
-            Key used to encrypt and decrypt messages.
         cluster_items : dict
             Cluster.json object containing cluster internal variables.
         logger : Logger object
@@ -46,7 +44,7 @@ class AbstractServerHandler(c_common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
+        super().__init__(logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
                          cluster_items=cluster_items)
         self.server = server
         self.loop = loop
@@ -249,7 +247,7 @@ class AbstractServer:
     NO_RESULT = 'no_result'
 
     def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
-                 enable_ssl: bool, logger: logging.Logger = None, tag: str = "Abstract Server"):
+                 logger: logging.Logger = None, tag: str = "Abstract Server"):
         """Class constructor.
 
         Parameters
@@ -262,8 +260,6 @@ class AbstractServer:
             ossec.conf cluster configuration.
         cluster_items : dict
             cluster.json cluster internal configuration.
-        enable_ssl : bool
-            Whether to enable asyncio's SSL support.
         logger : Logger object
             Logger to use.
         tag : str
@@ -274,7 +270,6 @@ class AbstractServer:
         self.concurrency = concurrency_test
         self.configuration = configuration
         self.cluster_items = cluster_items
-        self.enable_ssl = enable_ssl
         self.tag = tag
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
@@ -536,19 +531,24 @@ class AbstractServer:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 
-        if self.enable_ssl:
-            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'))
-        else:
-            ssl_context = None
+        ssl_context = c_common.create_ssl_context(
+            self.logger,
+            ssl.Purpose.CLIENT_AUTH,
+            self.configuration['cafile'],
+            self.configuration['certfile'],
+            self.configuration['keyfile'],
+            self.configuration['keyfile_password']
+        )
 
         try:
             server = await self.loop.create_server(
-                protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
-                                                            fernet_key=self.configuration['key'],
-                                                            cluster_items=self.cluster_items),
-                host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
+                protocol_factory=lambda: self.handler_class(
+                    server=self, loop=self.loop, logger=self.logger, cluster_items=self.cluster_items
+                ),
+                host=self.configuration['bind_addr'],
+                port=self.configuration['port'],
+                ssl=ssl_context
+            )
         except OSError as e:
             self.logger.error(f"Could not start master: {e}")
             raise KeyboardInterrupt

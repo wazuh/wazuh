@@ -25,8 +25,6 @@ with patch('wazuh.common.wazuh_uid'):
 
 from wazuh.core.exception import WazuhClusterError
 
-fernet_key = "00000000000000000000000000000000"
-
 cluster_items = {'intervals': {'worker': {'keep_alive': 1, 'max_failed_keepalive_attempts': 0, "connection_retry": 2}}}
 configuration = {"node_name": "manager", "nodes": [0], "port": 1515}
 
@@ -59,12 +57,12 @@ class LoopMock:
 
 
 future_mock = FutureMock()
-abstract_client = client.AbstractClient(loop=None, on_con_lost=future_mock, name="name", fernet_key=fernet_key,
+abstract_client = client.AbstractClient(loop=None, on_con_lost=future_mock, name="name",
                                         logger=None, manager=None, cluster_items=cluster_items)
 with patch("asyncio.get_running_loop"):
     abstract_client_manager = client.AbstractClientManager(configuration=configuration, cluster_items=cluster_items,
-                                                           enable_ssl=True, performance_test=10,
-                                                           concurrency_test=10, file="/file/path", string=1000)
+                                                           performance_test=10, concurrency_test=10, file="/file/path",
+                                                           string=1000)
 
 
 # Test AbstractClientManager methods
@@ -75,7 +73,6 @@ def test_acm_init():
     assert abstract_client_manager.name == "manager"
     assert abstract_client_manager.configuration == configuration
     assert abstract_client_manager.cluster_items == cluster_items
-    assert abstract_client_manager.ssl is True
     assert abstract_client_manager.performance_test == 10
     assert abstract_client_manager.concurrency_test == 10
     assert abstract_client_manager.file == "/file/path"
@@ -147,30 +144,37 @@ async def test_acm_start(add_tasks_mock, starmap_mock, asyncio_sleep_mock):
                       return_value=(TransportMock(), ClientMock())) as create_connection_mock:
         abstract_client_manager.loop = LoopMock()
         abstract_client_manager.tasks = [(0, 0), (1, 1)]
+        abstract_client_manager.configuration |= {
+            'cafile': '/test/sslmanager.ca',
+            'certfile': '/test/sslmanager.cert',
+            'keyfile': '/test/sslmanager.key',
+            'keyfile_password': '',
+        }
 
-        with patch.object(logging.getLogger("wazuh"), "info") as logger_info_mock:
-            with patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock:
-                # Test the try
-                try:
-                    await abstract_client_manager.start()
-                except Exception:
-                    logger_info_mock.assert_called_with("The connection has been closed. Reconnecting in 10 seconds.")
+        with patch.object(logging.getLogger("wazuh"), "info") as logger_info_mock, \
+            patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock, \
+            patch("ssl.create_default_context"):
+            # Test the try
+            try:
+                await abstract_client_manager.start()
+            except Exception:
+                logger_info_mock.assert_called_with("The connection has been closed. Reconnecting in 10 seconds.")
 
-                # Test the first exception
-                create_connection_mock.side_effect = ConnectionRefusedError
-                try:
-                    await abstract_client_manager.start()
-                except Exception:
-                    logger_error_mock.assert_called_with("Could not connect to master. Trying again in 10 seconds.")
+            # Test the first exception
+            create_connection_mock.side_effect = ConnectionRefusedError
+            try:
+                await abstract_client_manager.start()
+            except Exception:
+                logger_error_mock.assert_called_with("Could not connect to master. Trying again in 10 seconds.")
 
-                # Test the second exception
-                create_connection_mock.side_effect = OSError
-                try:
-                    await abstract_client_manager.start()
-                except Exception:
-                    logger_error_mock.assert_called_with("Could not connect to master: . Trying again in 10 seconds.")
-                    add_tasks_mock.assert_called_with()
-                    starmap_mock.assert_called()
+            # Test the second exception
+            create_connection_mock.side_effect = OSError
+            try:
+                await abstract_client_manager.start()
+            except Exception:
+                logger_error_mock.assert_called_with("Could not connect to master: . Trying again in 10 seconds.")
+                add_tasks_mock.assert_called_with()
+                starmap_mock.assert_called()
 
 
 # Test AbstractClient methods

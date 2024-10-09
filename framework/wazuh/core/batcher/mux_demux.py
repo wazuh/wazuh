@@ -135,7 +135,7 @@ class MuxDemuxRunner(Process):
     signals for graceful shutdown and processing items from the queue.
 
     The MuxDemuxRunner class runs as a separate process to manage the `MuxDemuxQueue`. It listens
-    for termination signals (SIGTERM, SIGINT) to initiate a graceful shutdown, and continuously
+    for termination signals to initiate a graceful shutdown, and continuously
     processes items from the queue, storing them as responses if they are of the correct type.
     """
 
@@ -145,7 +145,7 @@ class MuxDemuxRunner(Process):
         self._shutdown_event = Event()
 
     def _handle_signal(self, signum: int, frame: Any):
-        """Handle termination signals (SIGTERM, SIGINT) by setting the shutdown event.
+        """Handle termination signals by setting the shutdown event.
 
         Parameters
         ----------
@@ -154,7 +154,8 @@ class MuxDemuxRunner(Process):
         frame : Any
             Current stack frame (unused).
         """
-        logger.info(f'MuxDemuxQueue pid {os.getpid()} - received signal {signal.Signals(signum).name}')
+        signal_name = signal.Signals(signum).name
+        logger.info(f'MuxDemuxQueue (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
         self._shutdown_event.set()
 
     def run(self) -> None:
@@ -167,7 +168,7 @@ class MuxDemuxRunner(Process):
         shutdown status to decide whether to continue or terminate.
         """
         signal.signal(signal.SIGTERM, self._handle_signal)
-        signal.signal(signal.SIGINT, self._handle_signal)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         while not self._shutdown_event.is_set():
             try:
@@ -176,7 +177,6 @@ class MuxDemuxRunner(Process):
                     self.queue.internal_store_response(item)
             except Exception as e:
                 if self._shutdown_event.is_set():
-                    logger.info(f'MuxDemuxQueue pid {os.getpid()} - shutting down')
                     return
                 else:
                     logger.error(f'Error with MuxDemuxQueue run: {e}', exc_info=True)
