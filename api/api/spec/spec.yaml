@@ -466,7 +466,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/user:id'
         - $ref: '#/x-rbac-catalog/resources/rule:id'
       example:
-        actions: ['security:update']
+        actions: ['security:delete']
         resources: ['policy:id:*', 'role:id:3', 'user:id:4', 'rule:id:2']
         effect: "deny"
     'security:read_config':
@@ -485,6 +485,14 @@ x-rbac-catalog:
         actions: ['security:update_config']
         resources: ['*:*:*']
         effect: "allow"
+    'security:revoke':
+      description: "Revoke all active JWT tokens"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['security:revoke']
+        resources: ['*:*:*']
+        effect: "deny"
     'syscheck:read':
       description: "Access information from agents syscheck database"
       resources:
