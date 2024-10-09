@@ -96,6 +96,21 @@ class EXPORTED IndexerConnector final
      */
     bool abuseControl(const std::string& agentId);
 
+    /**
+     * @brief Initializing steps before the module starts.
+     *
+     * @param logFunction Callback function to be called when trying to log a message.
+     * @param config Indexer configuration, including database_path and servers.
+     */
+    void preInitialization(const std::function<void(const int,
+                                                    const std::string&,
+                                                    const std::string&,
+                                                    const int,
+                                                    const std::string&,
+                                                    const std::string&,
+                                                    va_list)>& logFunction,
+                           const nlohmann::json& config);
+
 public:
     /**
      * @brief Class constructor that initializes the publisher.
