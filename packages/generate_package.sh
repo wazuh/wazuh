@@ -60,6 +60,8 @@ build_pkg() {
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
     cp ${CURRENT_PATH}/${SYSTEM}s/utils/* ${DOCKERFILE_PATH}
+    cp ${CURRENT_PATH}/../src/engine/vcpkg.json ${DOCKERFILE_PATH}
+    cp ${CURRENT_PATH}/../src/engine/vcpkg-configuration.json ${DOCKERFILE_PATH}
 
     # Build the Docker image
     if [[ ${BUILD_DOCKER} == "yes" ]]; then

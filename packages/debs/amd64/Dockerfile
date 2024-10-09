@@ -19,6 +19,12 @@ RUN git clone "https://github.com/microsoft/vcpkg.git" "$VCPKG_ROOT" \
     && echo "export VCPKG_ROOT=$VCPKG_ROOT" >> ~/.bashrc \
     && echo "export PATH=\$PATH:\$VCPKG_ROOT" >> ~/.bashrc
 
+# Install vcpkg packages using vcpkg json file
+COPY vcpkg.json /build_deps_vcpkg/vcpkg.json
+COPY vcpkg-configuration.json /build_deps_vcpkg/vcpkg-configuration.json
+ENV PATH=$PATH:$VCPKG_ROOT
+RUN cd /build_deps_vcpkg && vcpkg install --triplet x64-linux --feature-flags=manifests
+
 # Add the script to build the Debian package
 ADD build.sh /usr/local/bin/build_package
 RUN chmod +x /usr/local/bin/build_package
