@@ -43,7 +43,6 @@ class EXPORTED IndexerConnector final
      *
      */
     std::atomic<bool> m_initialized {false};
-    std::atomic<bool> m_isBulk {false};
     std::thread m_initializeThread;
     std::condition_variable m_cv;
     std::mutex m_mutex;

@@ -467,20 +467,25 @@ IndexerConnector::IndexerConnector(
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
-            auto url = selector->getNext();
+            // Accumulator for data to be sent to the indexer via bulk requests.
             std::string bulkData;
+
+            // Accumulator for data to be sent to the indexer via query requests.
+            std::string queryData;
 
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
                 dataQueue.pop();
-                auto parsedData = nlohmann::json::parse(data);
-                const auto& id = parsedData.at("id").get_ref<const std::string&>();
-                // If the element should not be indexed, only delete it from the sync database.
-                const bool noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
-                m_isBulk.store(false); // Reset the bulk flag.
 
-                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+                const auto parsedData = nlohmann::json::parse(data);
+
+                // If the element should not be indexed, only delete it from the sync database.
+                const auto noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
+                const auto& operation = parsedData.at("operation").get_ref<const std::string&>();
+                const auto& id = parsedData.at("id").get_ref<const std::string&>();
+
+                if (operation.compare("DELETED") == 0)
                 {
                     if (!noIndex)
                     {
@@ -488,16 +493,16 @@ IndexerConnector::IndexerConnector(
                     }
                     m_db->delete_(id);
                 }
-                else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
+                else if (operation.compare("DELETED_BY_QUERY") == 0)
                 {
-                    m_isBulk.store(true);
                     if (!noIndex)
                     {
-                        builderDeleteByQuery(bulkData, id);
+                        builderDeleteByQuery(queryData, id);
                     }
-                    for (const auto& dbQuery : m_db->seek(id))
+
+                    for (const auto& [key, _] : m_db->seek(id))
                     {
-                        m_db->delete_(dbQuery.first);
+                        m_db->delete_(key);
                     }
                 }
                 else
@@ -511,36 +516,38 @@ IndexerConnector::IndexerConnector(
                 }
             }
 
-            if (!bulkData.empty())
+            // Send data to the indexer to be processed.
+            const auto processData = [&secureCommunication](const std::string& data, const std::string& url)
             {
-                auto onSuccess = [](const std::string& response)
+                const auto onSuccess = [](const std::string& response)
                 {
                     logDebug2(IC_NAME, "Response: %s", response.c_str());
                 };
 
-                auto onError = [](const std::string& error, const long statusCode)
+                const auto onError = [](const std::string& error, const long statusCode)
                 {
                     logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
                     throw std::runtime_error(error);
                 };
 
-                if (m_isBulk.load())
-                {
-                    url.append("/");
-                    url.append(m_indexName);
-                    url.append("/_delete_by_query");
-                }
-                else
-                {
-                    url.append("/_bulk?refresh=wait_for");
-                }
+                HTTPRequest::instance().post(
+                    RequestParameters {.url = HttpURL(url), .data = data, .secureCommunication = secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                    {});
+            };
 
-                // Process data.
-                HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url),
-                                                                .data = bulkData,
-                                                                .secureCommunication = secureCommunication},
-                                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                             {});
+            const auto serverUrl = selector->getNext();
+
+            if (!bulkData.empty())
+            {
+                const auto url = serverUrl + "/_bulk?refresh=wait_for";
+                processData(bulkData, url);
+            }
+
+            if (!queryData.empty())
+            {
+                const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
+                processData(queryData, url);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
