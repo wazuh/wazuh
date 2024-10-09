@@ -19,7 +19,7 @@
 ### END INIT INFO
 
 WAZUH_HOME=WAZUH_HOME_TMP
-WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
+WAZUH_CONTROL="$WAZUH_HOMEbin/wazuh-control"
 
 start() {
     ${WAZUH_CONTROL} start

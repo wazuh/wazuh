@@ -26,7 +26,7 @@ setup_build(){
     cp ${specs_path}/wazuh-server.spec ${rpm_build_dir}/SPECS/${package_name}.spec
 
     # Generating source tar.gz
-    cd ${build_dir}/server && ls -lh && tar czf "${rpm_build_dir}/SOURCES/${package_name}.tar.gz" "${package_name}"
+    cd ${build_dir}/server && tar czf "${rpm_build_dir}/SOURCES/${package_name}.tar.gz" "${package_name}"
 }
 
 set_debug(){

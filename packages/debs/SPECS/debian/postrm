@@ -2,53 +2,9 @@
 # postrm script for Wazuh
 # Wazuh, Inc 2015
 set -e
-DIR="/var/ossec"
-WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 
 case "$1" in
     remove|failed-upgrade|abort-install|abort-upgrade|disappear)
-
-        if [ -d ${WAZUH_TMP_DIR} ]; then
-            rm -rf ${WAZUH_TMP_DIR}
-        fi
-
-        # Back up the old configuration files as .save
-        if [ ! -d ${DIR}/etc/shared/default ]; then
-            mkdir -p ${DIR}/etc/shared/default
-        fi
-
-        # Move files from ${DIR}/tmp to ${DIR}/etc
-        if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ]; then
-            mv ${DIR}/tmp/conffiles/shared/default/agent.conf ${DIR}/etc/shared/default/agent.conf.save
-        fi
-
-        # Move files from ${DIR}/tmp to ${DIR}/etc
-        if [ -f ${DIR}/tmp/conffiles/api.yaml ]; then
-            mkdir -p ${DIR}/api/configuration
-            mv ${DIR}/tmp/conffiles/api.yaml ${DIR}/api/configuration/api.yaml
-        fi
-
-        # If the directory is not empty, copy the files into ${DIR}/etc
-        if ls -A ${DIR}/tmp/conffiles > /dev/null 2>&1 ; then
-            cp -Rf ${DIR}/tmp/conffiles/* ${DIR}/etc
-        fi
-        rm -rf ${DIR}/tmp
-        if [ "$1" = "remove" ]; then
-            rm -rf ${DIR}/ruleset
-            rm -rf ${DIR}/var
-            rm -rf ${DIR}/logs
-            rm -rf ${DIR}/etc/rootcheck
-            rm -rf ${DIR}/etc/rules
-            rm -rf ${DIR}/etc/decoders
-        fi
-
-        # Delete old .save
-        find ${DIR}/etc/ -type f  -name "*save" -exec rm -f {} \;
-        find ${DIR}/api/ -type f  -name "*save" -exec rm -f {} \;
-
-        # Rename the files
-        find ${DIR}/etc/ -type f ! -name *shared* -exec mv {} {}.save \;
-        find ${DIR}/api/ -type f -exec mv {} {}.save \;
 
     ;;
 
@@ -59,11 +15,10 @@ case "$1" in
         if getent group wazuh > /dev/null 2>&1; then
             delgroup wazuh  > /dev/null 2>&1
         fi
-        rm -rf ${DIR}
+        #rm -rf ${DIR}
     ;;
 
     upgrade)
-
     ;;
 
     *)

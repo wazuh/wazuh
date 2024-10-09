@@ -33,7 +33,6 @@ ExclusiveOS: linux
 
 %define _source_payload w9.xzdio
 %define _binary_payload w9.xzdio
-%define _unpackaged_files_terminate_build 0
 
 %description
 Wazuh helps you to gain security visibility into your infrastructure by monitoring
@@ -72,43 +71,26 @@ export PATH="${PATH}:${VCPKG_ROOT}"
 scl enable devtoolset-11 ./install.sh
 
 # Create directories
-#mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
-#mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}.ssh
+mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
 
 # Copy the installed files into RPM_BUILD_ROOT directory
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
-cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
-cp -p %{_localstatedir}usr/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}run/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/wazuh-server
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
 
+cp -p %{_localstatedir}usr/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
 
-#sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-rh.init
-#install -m 0755 src/init/templates/ossec-hids-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-server
+cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
+cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/
+cp -pr %{_localstatedir}var/lib/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/
 
-#mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
-#sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-server.service
-#install -m 0644 src/init/templates/wazuh-server.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-server-rh.init
+install -m 0755 src/init/templates/wazuh-server-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-server
 
-# Add configuration scripts
-# mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
-# cp gen_ossec.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
-# cp add_localfiles.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/
-
-# Templates for initscript
-#mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/init
-#mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic
-#mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/centos
-#mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
-#mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/suse
-#mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/sles
-
-# install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/init
-
-# Add installation scripts
-# cp src/VERSION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/
-# cp src/REVISION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/
+mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-server.service
+install -m 0644 src/init/templates/wazuh-server.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 
 exit 0
 
@@ -152,73 +134,11 @@ if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-server
 fi
 
-# CentOS
-if [ -r "/etc/centos-release" ]; then
-  if grep -q "AlmaLinux" /etc/centos-release; then
-    DIST_NAME=almalinux
-  elif grep -q "Rocky" /etc/centos-release; then
-    DIST_NAME=almalinux
-  else
-    DIST_NAME="centos"
-  fi
-  DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/centos-release`
-# RedHat
-elif [ -r "/etc/redhat-release" ]; then
-  if grep -q "AlmaLinux" /etc/redhat-release; then
-    DIST_NAME=almalinux
-  elif grep -q "Rocky" /etc/redhat-release; then
-    DIST_NAME=almalinux
-  elif grep -q "CentOS" /etc/redhat-release; then
-      DIST_NAME="centos"
-  else
-      DIST_NAME="rhel"
-  fi
-  DIST_VER=`sed -rn 's/.* ([0-9]{1,2})\.*[0-9]{0,2}.*/\1/p' /etc/redhat-release`
-elif [ -r "/etc/os-release" ]; then
-  . /etc/os-release
-  DIST_NAME=$ID
-  DIST_VER=$(echo $VERSION_ID | sed -rn 's/[^0-9]*([0-9]+).*/\1/p')
-  if [ "X$DIST_VER" = "X" ]; then
-      DIST_VER="0"
-  fi
-  if [ "$DIST_NAME" = "amzn" ] && [ "$DIST_VER" != "2" ] && [ "$DIST_VER" != "2023" ]; then
-      DIST_VER="1"
-  fi
-  DIST_SUBVER=$(echo $VERSION_ID | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
-  if [ "X$DIST_SUBVER" = "X" ]; then
-      DIST_SUBVER="0"
-  fi
-else
-  DIST_NAME="generic"
-  DIST_VER=""
-fi
-
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
 
 # Remove unnecessary files from default group
 rm -f %{_localstatedir}/etc/shared/default/*.rpmnew
-
-# Remove old ossec user and group if exists and change ownwership of files
-
-if getent group ossec > /dev/null 2>&1; then
-  find %{_localstatedir}/ -group ossec -user root -print0 | xargs -0 chown root:wazuh > /dev/null 2>&1 || true
-  if getent passwd ossec > /dev/null 2>&1; then
-    find %{_localstatedir}/ -group ossec -user ossec -print0 | xargs -0 chown wazuh:wazuh > /dev/null 2>&1 || true
-    userdel ossec > /dev/null 2>&1
-  fi
-  if getent passwd ossecm > /dev/null 2>&1; then
-    find %{_localstatedir}/ -group ossec -user ossecm -print0 | xargs -0 chown wazuh:wazuh > /dev/null 2>&1 || true
-    userdel ossecm > /dev/null 2>&1
-  fi
-  if getent passwd ossecr > /dev/null 2>&1; then
-    find %{_localstatedir}/ -group ossec -user ossecr -print0 | xargs -0 chown wazuh:wazuh > /dev/null 2>&1 || true
-    userdel ossecr > /dev/null 2>&1
-  fi
-  if getent group ossec > /dev/null 2>&1; then
-    groupdel ossec > /dev/null 2>&1
-  fi
-fi
 
 %preun
 
@@ -273,9 +193,6 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   fi
 fi
 
-# Remove groups backup files
-rm -rf %{_localstatedir}/backup/groups
-
 %triggerin -- glibc
 
 %clean
@@ -285,12 +202,17 @@ rm -fr %{buildroot}
 %defattr(-,root,wazuh)
 %dir %attr(750, root, wazuh) %{_localstatedir}run/wazuh-server
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/vd
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/ruleset
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/indexer-connector
+
 %attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-engine
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
 
-#%config(missingok) %{_initrddir}/wazuh-server
+%config(missingok) %{_initrddir}/wazuh-server
+/usr/lib/systemd/system/wazuh-server.service
+
 #%attr(640, root, wazuh) %verify(not md5 size mtime) %ghost %{_sysconfdir}/ossec-init.conf
-#/usr/lib/systemd/system/wazuh-server.service
 #%dir %attr(750, root, wazuh) %{_localstatedir}
 #%dir %attr(750, root, wazuh) %{_localstatedir}/api
 #%dir %attr(770, root, wazuh) %{_localstatedir}/api/configuration

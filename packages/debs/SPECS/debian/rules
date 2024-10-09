@@ -59,23 +59,25 @@ override_dh_install:
 
 	# Copying to target
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/tmp
-	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)/tmp/
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/bin
-	cp $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)/bin/
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/run
-	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)/run/
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib
-	cp -p $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib/
+
+	cp -p $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)bin/
+
+	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)tmp/
+	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
+	cp -pr $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/
 
 	# Copying init.d script
-	# mkdir -p ${TARGET_DIR}/etc/init.d/
-	# sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/ossec-hids-debian.init
-	# cp src/init/templates/ossec-hids-debian.init ${TARGET_DIR}/etc/init.d/wazuh-server
+	mkdir -p ${TARGET_DIR}/etc/init.d/
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-server-debian.init
+	install -m 0644 src/init/templates/wazuh-server-debian.init ${TARGET_DIR}/etc/init.d/wazuh-server
 
 	# Copying systemd file
-	# mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
-	# sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-server.service
-	# install -m 0644 src/init/templates/wazuh-server.service ${TARGET_DIR}/usr/lib/systemd/system/
+	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-server.service
+	install -m 0644 src/init/templates/wazuh-server.service ${TARGET_DIR}/usr/lib/systemd/system/
 
 	# ./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh
 
@@ -91,6 +93,24 @@ override_dh_install:
 
 override_dh_fixperms:
 	dh_fixperms
+	# Folders
+	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server
+	chmod -R 750 $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server
+	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
+	chmod -R 750 $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
+	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
+	chmod -R 750 $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
+
+	# Binaries
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-engine
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-engine
+
+	# Services
+	chown root:root $(TARGET_DIR)/etc/init.d/wazuh-server
+	chmod 755 $(TARGET_DIR)/etc/init.d/wazuh-server
+	chown root:root $(TARGET_DIR)/usr/lib/systemd/system/wazuh-server.service
+	chmod 644 $(TARGET_DIR)/usr/lib/systemd/system/wazuh-server.service
+
 	# Fix Python permissions
 	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/2to3-3.10
 	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/pydoc3.10

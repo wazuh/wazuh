@@ -10,7 +10,6 @@ Package: wazuh-server
 Architecture: any
 Depends: ${shlibs:Depends}, libc6 (>= 2.7), lsb-release, debconf, adduser
 Suggests: expect
-Conflicts: ossec-hids-agent, wazuh-agent, ossec-hids, wazuh-api
 Replaces: wazuh-api
 Description: Wazuh server
  Wazuh helps you to gain security visibility into your infrastructure by monitoring

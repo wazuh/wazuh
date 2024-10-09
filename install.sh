@@ -64,7 +64,7 @@ Install()
     cd ../
 
     # Calling the init script to start Wazuh during boot
-    runInit $INSTYPE ${update_only}
+    runInit
     runinit_value=$?
 }
 
