@@ -256,7 +256,7 @@ def get_manager_status(cache=False) -> typing.Dict:
     except (PermissionError, FileNotFoundError) as e:
         raise WazuhInternalError(1913, extra_message=str(e))
 
-    processes = ['wazuh-clusterd', 'wazuh-apid', 'wazuh-comms-apid']
+    processes = ['wazuh-clusterd', 'wazuh-engined', 'wazuh-apid', 'wazuh-comms-apid']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
     for process in processes:
