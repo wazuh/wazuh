@@ -11,19 +11,20 @@ import os
 import signal
 import subprocess
 import sys
-from functools import partial
+from typing import List
 
 from wazuh.core.common import WAZUH_PATH
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 
-CLUSTER_PROCESS_NAME = 'wazuh-clusterd'
+CLUSTER_DAEMON_NAME = 'wazuh-clusterd'
 COMMS_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'apis', 'scripts', 'wazuh_comms_apid.py')
-COMMS_API_PROCESS_NAME = 'wazuh-comms-apid'
+COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
 EMBEDDED_PYTHON_PATH = os.path.join(WAZUH_PATH, 'framework', 'python', 'bin', 'python3')
 ENGINE_BINARY_PATH = os.path.join(WAZUH_PATH, 'bin', 'wazuh-engine')
+ENGINE_DAEMON_NAME = 'wazuh-engined'
 MANAGEMENT_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'api', 'scripts', 'wazuh_apid.py')
-MANAGEMENT_API_PROCESS_NAME = 'wazuh-apid'
+MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
 
 #
 # Aux functions
@@ -57,11 +58,11 @@ def print_version():
     print(f"\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}")
 
 
-def exit_handler(signum, frame, engine_process: subprocess.Popen = None):
+def exit_handler(signum, frame):
     cluster_pid = os.getpid()
     main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Shutting down...')
 
-    shutdown_cluster(cluster_pid, engine_process)
+    shutdown_cluster(cluster_pid)
 
     if callable(original_sig_handler):
         original_sig_handler(signum, frame)
@@ -71,51 +72,59 @@ def exit_handler(signum, frame, engine_process: subprocess.Popen = None):
         os.kill(os.getpid(), signum)
 
 
-def start_subprocesses() -> subprocess.Popen:
-    """Starts the engine and the management and communications APIs in sub-processes.
+def start_daemon(foreground: bool, name: str, args: List[str]):
+    """Starts a daemon in a subprocess and validates that there were no errors during its execution.
     
-    Returns
-    -------
-    subprocess.Popen
-        Engine process.
+    Parameters
+    ----------
+    foreground : bool
+        Whether the script is running in foreground mode or not.
+    name : str
+        Daemon name.
+    args : list
+        Start command arguments.
     """
     try:
-        # Start the engine
-        engine = subprocess.Popen([ENGINE_BINARY_PATH, 'server', 'start'])
-        returncode = engine.poll()
-        if returncode not in (0, None):
-            raise Exception(f'return code {returncode}')
+        p = subprocess.Popen(args)
+        pid = p.pid
+        if foreground or name == ENGINE_DAEMON_NAME:
+            returncode = p.poll()
+            if returncode not in (0, None):
+                raise Exception(f'return code {returncode}')
+        
+            if name == ENGINE_DAEMON_NAME:
+                pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
+        else:
+            returncode = p.wait()
+            if returncode != 0:
+                raise Exception(f'return code {returncode}')
+            
+            pid = pyDaemonModule.get_parent_pid(name)
 
-        main_logger.info(f'Started the Engine (pid: {engine.pid})')
+        main_logger.info(f'Started {name} (pid: {pid})')
     except Exception as e:
-        engine = None
-        main_logger.error(f'Error starting the Engine: {e}')
+        main_logger.error(f'Error starting {name}: {e}')
 
-    try:
-        # Start the management API
-        mapi = subprocess.Popen([EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH])
-        returncode = mapi.wait()
-        if returncode != 0:
-            raise Exception(f'return code {returncode}')
 
-        mapi_pid = pyDaemonModule.get_parent_pid(MANAGEMENT_API_PROCESS_NAME)
-        main_logger.info(f'Started the Management API (pid: {mapi_pid})')
-    except Exception as e:
-        main_logger.error(f'Error starting the Management API: {e}')
-
-    try:
-        # Start the communications API
-        capi = subprocess.Popen([EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH])
-        returncode = capi.wait()
-        if returncode != 0:
-            raise Exception(f'return code {returncode}')
-
-        capi_pid = pyDaemonModule.get_parent_pid(COMMS_API_PROCESS_NAME)
-        main_logger.info(f'Started the Communications API (pid: {capi_pid})')
-    except Exception as e:
-        main_logger.error(f'Error starting the Communications API: {e}')    
-
-    return engine
+def start_daemons(foreground: bool, root: bool):
+    """Starts the engine, the management and communications APIs daemons in subprocesses.
+    
+    Parameters
+    ----------
+    foreground : bool
+        Whether the script is running in foreground mode or not.
+    root : bool
+        Whether the script is running as root or not.
+    """
+    daemons = {
+        ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', 'start'],
+        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH] + \
+              (['-r'] if root else []) + (['-f'] if foreground else []),
+        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH] + \
+              (['-r'] if root else []) + (['-f'] if foreground else []),
+    }
+    for name, args in daemons.items():
+        start_daemon(foreground, name, args)
 
 
 def shutdown_daemon(name: str):
@@ -123,37 +132,33 @@ def shutdown_daemon(name: str):
     
     Parameters
     ----------
-    process_name : str
-        Process name.
+    name : str
+        Daemon name.
     """
     ppid = pyDaemonModule.get_parent_pid(name)
     if ppid is not None:
+        main_logger.info(f'Shutting down {name} (pid: {ppid})')
         os.kill(ppid, signal.SIGTERM)
 
+        if name == ENGINE_DAEMON_NAME:
+            pyDaemonModule.delete_pid(name, ppid)
 
-def shutdown_cluster(cluster_pid: int, engine_process: subprocess.Popen = None):
+
+def shutdown_cluster(cluster_pid: int):
     """Terminates parent and child processes.
 
     Parameters
     ----------
     cluster_pid : int
         Cluster process ID.
-    engine_process : subprocess.Popen
-        Engine process.
     """
-    # Terminate the engine
-    if engine_process is not None:
-        engine_process.terminate()
-
-    # Terminate the management API
-    shutdown_daemon(MANAGEMENT_API_PROCESS_NAME)
-
-    # Terminate the communications API
-    shutdown_daemon(COMMS_API_PROCESS_NAME)
+    daemons = [ENGINE_DAEMON_NAME, MANAGEMENT_API_DAEMON_NAME, COMMS_API_DAEMON_NAME]
+    for daemon in daemons:
+        shutdown_daemon(daemon)
 
     # Terminate the cluster
-    pyDaemonModule.delete_child_pids(CLUSTER_PROCESS_NAME, cluster_pid, main_logger)
-    pyDaemonModule.delete_pid(CLUSTER_PROCESS_NAME, cluster_pid)
+    pyDaemonModule.delete_child_pids(CLUSTER_DAEMON_NAME, cluster_pid, main_logger)
+    pyDaemonModule.delete_pid(CLUSTER_DAEMON_NAME, cluster_pid)
 
 
 #
@@ -312,7 +317,7 @@ def main():
     wazuh.core.cluster.cluster.clean_up()
 
     # Check for unused PID files
-    clean_pid_files(CLUSTER_PROCESS_NAME)
+    clean_pid_files(CLUSTER_DAEMON_NAME)
 
     # Foreground/Daemon
     if not args.foreground:
@@ -324,7 +329,7 @@ def main():
         os.setuid(common.wazuh_uid())
 
     cluster_pid = os.getpid()
-    pyDaemonModule.create_pid(CLUSTER_PROCESS_NAME, cluster_pid)
+    pyDaemonModule.create_pid(CLUSTER_DAEMON_NAME, cluster_pid)
     if args.foreground:
         print(f"Starting cluster in foreground (pid: {cluster_pid})")
 
@@ -339,9 +344,7 @@ def main():
         main_function = worker_main
 
     try:
-        engine_process = start_subprocesses()
-        # Overwrite the SIGTERM signal handler to take into account the engine process
-        signal.signal(signal.SIGTERM, partial(exit_handler, engine_process=engine_process))
+        start_daemons(args.foreground, args.root)
 
         asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
     except KeyboardInterrupt:
@@ -352,7 +355,7 @@ def main():
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:
-        shutdown_cluster(cluster_pid, engine_process)
+        shutdown_cluster(cluster_pid)
 
 
 if __name__ == '__main__':

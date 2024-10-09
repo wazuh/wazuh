@@ -8,8 +8,12 @@ import sys
 from unittest.mock import call, patch, Mock
 
 import pytest
+
 import scripts.wazuh_clusterd as wazuh_clusterd
+from wazuh.core import pyDaemonModule
 from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
+
+wazuh_clusterd.pyDaemonModule = pyDaemonModule
 
 
 def test_set_logging():
@@ -38,7 +42,6 @@ def test_print_version(print_mock):
 @patch('scripts.wazuh_clusterd.os.getpid', return_value=1001)
 def test_exit_handler(os_getpid_mock):
     """Set the behavior when exiting the script."""
-    from wazuh.core import pyDaemonModule
 
     class SignalMock:
         SIGTERM = 0
@@ -66,7 +69,6 @@ def test_exit_handler(os_getpid_mock):
     original_sig_handler_not_callable = 1
 
     wazuh_clusterd.main_logger = LoggerMock()
-    wazuh_clusterd.pyDaemonModule = pyDaemonModule
     wazuh_clusterd.original_sig_handler = original_sig_handler
     with patch('scripts.wazuh_clusterd.signal', SignalMock), \
         patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
@@ -109,9 +111,17 @@ def test_exit_handler(os_getpid_mock):
         original_sig_handler_mock.assert_not_called()
 
 
+@pytest.mark.parametrize("foreground, root", [
+    (True, True),
+    (True, False),
+    (False, True),
+    (False, False),
+])
 @patch('subprocess.Popen')
-def test_start_subprocesses(mock_popen):
-    """Validate that `start_subprocesses` works as expected."""
+def test_start_daemons(mock_popen, foreground, root):
+    """Validate that `start_daemons` works as expected."""
+    from wazuh.core import pyDaemonModule
+
     class LoggerMock:
         def __init__(self):
             pass
@@ -125,27 +135,34 @@ def test_start_subprocesses(mock_popen):
     attrs = {'poll.return_value': 0, 'wait.return_value': 0}
     process_mock.configure_mock(**attrs)
     mock_popen.return_value = process_mock
+    
 
     with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
-        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid):
-        wazuh_clusterd.start_subprocesses()
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid), \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'create_pid'):
+        wazuh_clusterd.start_daemons(foreground, root)
 
     mock_popen.assert_has_calls([
         call([wazuh_clusterd.ENGINE_BINARY_PATH, 'server', 'start']),
-        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.MANAGEMENT_API_SCRIPT_PATH]),
-        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.COMMS_API_SCRIPT_PATH]),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.MANAGEMENT_API_SCRIPT_PATH] + \
+              (['-r'] if root else []) + (['-f'] if foreground else [])),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.COMMS_API_SCRIPT_PATH] + \
+              (['-r'] if root else []) + (['-f'] if foreground else [])),
     ], any_order=True)
 
+    if foreground:
+        pid = mock_popen().pid
+
     main_logger_mock.info.assert_has_calls([
-        call(f'Started the Engine (pid: {mock_popen().pid})'),
-        call(f'Started the Management API (pid: {pid})'),
-        call(f'Started the Communications API (pid: {pid})'),
+        call(f'Started wazuh-engined (pid: {mock_popen().pid})'),
+        call(f'Started wazuh-apid (pid: {pid})'),
+        call(f'Started wazuh-comms-apid (pid: {pid})'),
     ])
 
 
 @patch('subprocess.Popen')
-def test_start_subprocesses_ko(mock_popen):
-    """Validate that `start_subprocesses` works as expected when the subprocesses fail."""
+def test_start_daemons_ko(mock_popen):
+    """Validate that `start_daemons` works as expected when the subprocesses fail."""
     class LoggerMock:
         def __init__(self):
             pass
@@ -162,7 +179,7 @@ def test_start_subprocesses_ko(mock_popen):
 
     with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
         patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid):
-        wazuh_clusterd.start_subprocesses()
+        wazuh_clusterd.start_daemons(False, False)
 
     mock_popen.assert_has_calls([
         call([wazuh_clusterd.ENGINE_BINARY_PATH, 'server', 'start']),
@@ -171,9 +188,9 @@ def test_start_subprocesses_ko(mock_popen):
     ], any_order=True)
 
     main_logger_mock.error.assert_has_calls([
-        call('Error starting the Engine: return code 1'),
-        call('Error starting the Management API: return code 1'),
-        call('Error starting the Communications API: return code 1'),
+        call('Error starting wazuh-engined: return code 1'),
+        call('Error starting wazuh-apid: return code 1'),
+        call('Error starting wazuh-comms-apid: return code 1'),
     ])
 
 
@@ -181,10 +198,23 @@ def test_start_subprocesses_ko(mock_popen):
 @patch('scripts.wazuh_clusterd.os.getpid', return_value=999)
 def test_shutdown_daemon(os_getpid_mock, os_kill_mock):
     """Validate that `shutdown_daemon` works as expected."""
-    with patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=os_getpid_mock.return_value):
-        wazuh_clusterd.shutdown_daemon('wazuh-apid')
+    class LoggerMock:
+        def __init__(self):
+            pass
+
+        def info(self, msg):
+            pass
+
+    wazuh_clusterd.main_logger = LoggerMock
+
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=os_getpid_mock.return_value):
+        wazuh_clusterd.shutdown_daemon(wazuh_clusterd.MANAGEMENT_API_DAEMON_NAME)
 
     os_kill_mock.assert_called_once_with(999, signal.SIGTERM)
+    main_logger_mock.info.assert_has_calls([
+        call(f'Shutting down {wazuh_clusterd.MANAGEMENT_API_DAEMON_NAME} (pid: {os_getpid_mock.return_value})'),
+    ])
 
 
 @pytest.mark.asyncio
@@ -406,7 +436,6 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
     wazuh_clusterd.main_logger = LoggerMock()
     wazuh_clusterd.args = args
     wazuh_clusterd.common = common
-    wazuh_clusterd.pyDaemonModule = pyDaemonModule
     wazuh_clusterd.cluster_utils = cluster_utils
     with patch.object(common, 'wazuh_uid', return_value='uid_test'), \
         patch.object(common, 'wazuh_gid', return_value='gid_test'), \
@@ -447,7 +476,7 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                 patch('scripts.wazuh_clusterd.clean_pid_files') as clean_pid_files_mock, \
                 patch('wazuh.core.authentication.keypair_exists', return_value=False), \
                 patch('wazuh.core.authentication.generate_keypair') as generate_keypair_mock, \
-                patch('scripts.wazuh_clusterd.start_subprocesses') as start_subprocesses_mock, \
+                patch('scripts.wazuh_clusterd.start_daemons') as start_daemons_mock, \
                 patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=999), \
                 patch('os.kill') as os_kill_mock, \
                 patch.object(wazuh_clusterd.pyDaemonModule, 'pyDaemon') as pyDaemon_mock, \
@@ -472,9 +501,14 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                 delete_pid_mock.assert_has_calls([
                     call('wazuh-clusterd', 543),
                 ])
-                main_logger_info_mock.assert_called_once_with('Generating JWT signing key pair')
+                main_logger_info_mock.assert_has_calls([
+                    call('Generating JWT signing key pair'),
+                    call('Shutting down wazuh-engined (pid: 999)'),
+                    call('Shutting down wazuh-apid (pid: 999)'),
+                    call('Shutting down wazuh-comms-apid (pid: 999)'),
+                ])
                 generate_keypair_mock.assert_called_once()
-                start_subprocesses_mock.assert_called_once()
+                start_daemons_mock.assert_called_once()
 
                 args.foreground = True
                 wazuh_clusterd.main()
