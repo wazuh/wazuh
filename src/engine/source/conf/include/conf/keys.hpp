@@ -16,9 +16,12 @@ constexpr std::string_view INDEXER_INDEX = "/indexer/index";
 constexpr std::string_view INDEXER_HOST = "/indexer/host";
 constexpr std::string_view INDEXER_USER = "/indexer/user";
 constexpr std::string_view INDEXER_PASSWORD = "/indexer/password";
-constexpr std::string_view INDEXER_SSL_CERTIFICATE_AUTHORITIES = "/indexer/ssl/certificate_authorities";
+constexpr std::string_view INDEXER_SSL_CA_LIST = "/indexer/ssl/certificate_authorities";
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "/indexer/ssl/certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "/indexer/ssl/key";
+constexpr std::string_view INDEXER_TIMEOUT = "/indexer/timeout";
+constexpr std::string_view INDEXER_THREADS = "/indexer/threads";
+constexpr std::string_view INDEXER_DB_PATH = "/indexer/db_path";
 
 constexpr std::string_view QUEUE_SIZE = "/queue/size";
 constexpr std::string_view QUEUE_FLOOD_FILE = "/queue/flood_file";

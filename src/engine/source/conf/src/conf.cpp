@@ -52,9 +52,12 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOST", {"http://127.0.0.1:9200"});
     addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
     addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "WazuhEngine5+");
-    addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE_AUTHORITIES, "WAZUH_INDEXER_SSL_CERTIFICATE_AUTHORITIES", "");
+    addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_LIST, "WAZUH_INDEXER_SSL_CA_LIST", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
+    addUnit<int>(key::INDEXER_TIMEOUT, "WAZUH_INDEXER_TIMEOUT", 60000);
+    addUnit<int>(key::INDEXER_THREADS, "WAZUH_INDEXER_THREADS", 1);
+    addUnit<std::string>(key::INDEXER_DB_PATH, "WAZUH_INDEXER_DB_PATH", getExecutablePath() + "/queue/indexer");
 
     // Queue module
     addUnit<int>(key::QUEUE_SIZE, "WAZUH_QUEUE_SIZE", 1000000);
