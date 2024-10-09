@@ -10,7 +10,7 @@ def get_asset_doc_fn(resource_handler: rs.ResourceHandler, results: list):
         decoder = resource_handler.load_file(file_path, rs.Format.YML)
         for type in manifest:
             if type is not 'name':
-                if decoder['name'] in manifest[type]:
+                if 'name' in decoder and decoder['name'] in manifest[type]:
                     doc = f'| {decoder["name"]} | {decoder["metadata"]["description"]} |'
                     results.append(doc)
 
