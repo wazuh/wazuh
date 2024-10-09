@@ -37,6 +37,7 @@ WAZUH_TAG_KEY = 'wazuh-tag'
 USER_AGENT_KEY = 'user-agent'
 DEFAULT_TIMEOUT = 10.0
 
+
 class LoggingFormat(Enum):
     plain = "plain"
     json = "json"
