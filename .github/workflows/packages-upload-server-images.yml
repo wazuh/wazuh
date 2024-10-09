@@ -49,12 +49,14 @@ jobs:
             echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
           fi
 
-      - name: Copy build.sh and utils to Dockerfile path
+      - name: Copy build.sh, vcpkg-configuration.json and utils to Dockerfile path
         run: |
           dockerfile_path="packages/${{ inputs.system }}s/amd64"
           echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
           cp packages/build.sh $dockerfile_path
           cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
+          cp src/engine/vcpkg-configuration.json $dockerfile_path
+          cp src/engine/vcpkg.json $dockerfile_path
 
       - name: Build and push image pkg_${{ inputs.system }}_server_builder_amd64 with tag ${{ env.TAG }} to Github Container Registry
         run:
