@@ -119,7 +119,6 @@ def check_cluster_config(config):
         - Port is an int type.
         - 1024 < port < 65535.
         - Only 1 node is specified.
-        - Reserved IPs are not used.
         - CAfile, certfile and keyfile paths exist.
 
     Parameters
@@ -133,7 +132,6 @@ def check_cluster_config(config):
         If any of above conditions is not met.
     """
     iv = InputValidator()
-    reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
     if config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
@@ -156,11 +154,6 @@ def check_cluster_config(config):
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
                 format(config['nodes'][0]))
 
-    invalid_elements = list(reservated_ips & set(config['nodes']))
-
-    if len(invalid_elements) != 0:
-        raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
-
     validate_haproxy_helper_config(config.get(HAPROXY_HELPER, {}))
 
 
@@ -170,27 +163,15 @@ def get_node():
     Returns
     -------
     data : dict
-        Dict containing current node_name, node_type and cluster_name.
+        Dict containing current node_name and node_type.
     """
     data = {}
     config_cluster = read_config()
 
     data["node"] = config_cluster["node_name"]
-    data["cluster"] = config_cluster["name"]
     data["type"] = config_cluster["node_type"]
 
     return data
-
-
-def check_cluster_status():
-    """Get whether cluster is enabled in current active configuration.
-
-    Returns
-    -------
-    bool
-        Whether cluster is enabled.
-    """
-    return not read_config()['disabled']
 
 
 #

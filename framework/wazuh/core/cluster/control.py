@@ -181,8 +181,6 @@ async def get_system_nodes():
         result = await get_nodes(lc)
         return [node['name'] for node in result['items']]
     except WazuhInternalError as e:
-        if e.code == 3012:
-            return WazuhError(3013)
         raise e
 
 

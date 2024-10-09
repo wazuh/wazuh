@@ -451,19 +451,15 @@ class WazuhException(Exception):
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
-        3009: {'message': 'Error executing distributed API request',
-               'remediation': ''},
-        3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
+        3007: {'message': 'Could not start the server',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-                              ' to get more information about how to configure a cluster'
-               },
+                              ' to get more information about how to configure a cluster'},
+        3009: {'message': 'Error executing distributed API request',
+               'remediation': ''},
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3018: 'Error sending request',
-        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, '
-              'try again in the master node: {MASTER_IP}',
         3020: {'message': 'Timeout sending request',
                'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
@@ -483,17 +479,11 @@ class WazuhException(Exception):
                "remediation": f"Check and fix the [worker name](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service in the node"},
-        3030: {'message': 'Worker does not belong to the same cluster',
-               'remediation': f"Change the [cluster name](https://documentation.wazuh.com/{DOCU_VERSION}/"
-                              f"user-manual/reference/ossec-conf/cluster.html#name)"
-                              " in the worker configuration to match the master's and restart the `wazuh-manager` "
-                              "service"},
         3031: {'message': "Worker and master versions are not the same",
                'remediation': f"[Update](https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3034: "Error sending file. File not found.",
-        3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",

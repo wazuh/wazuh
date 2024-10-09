@@ -48,8 +48,7 @@ def get_worker_handler(loop):
                                                        performance_test=False, logger=None,
                                                        concurrency_test=False, file='None', string=20)
 
-    return worker.WorkerHandler(cluster_name='Testing', node_type='master', version='4.0.0',
-                                loop=loop, on_con_lost=None, name='Testing',
+    return worker.WorkerHandler(node_type='master', version='5.0.0', loop=loop, on_con_lost=None, name='Testing',
                                 logger=logger, manager=abstract_client, cluster_items=cluster_items)
 
 
@@ -94,7 +93,7 @@ async def test_worker_handler_init(event_loop):
 
     worker_handler = get_worker_handler(event_loop)
     worker_handler.logger = None
-    assert worker_handler.client_data == "Testing Testing master 4.0.0".encode()
+    assert worker_handler.client_data == "Testing master 5.0.0".encode()
     assert "Integrity check" in worker_handler.task_loggers
     assert isinstance(worker_handler.task_loggers["Integrity check"], logging.Logger)
     assert "Integrity sync" in worker_handler.task_loggers
@@ -815,13 +814,10 @@ async def test_worker_init(api_request_queue, event_loop):
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 
-    assert nested_worker.cluster_name == "wazuh"
     assert nested_worker.node_type == "master"
     assert nested_worker.handler_class == worker.WorkerHandler
-    assert "cluster_name" in nested_worker.extra_args
     assert "version" in nested_worker.extra_args
     assert "node_type" in nested_worker.extra_args
-    assert nested_worker.extra_args["cluster_name"] == nested_worker.cluster_name
     assert nested_worker.extra_args["version"] == nested_worker.version
     assert nested_worker.extra_args["node_type"] == nested_worker.node_type
     assert nested_worker.dapi == api_request_queue.return_value
@@ -868,6 +864,5 @@ async def test_worker_get_node(api_request_queue, event_loop):
                                   task_pool=task_pool)
 
     assert nested_worker.get_node() == {'type': nested_worker.configuration['node_type'],
-                                        'cluster': nested_worker.configuration['name'],
                                         'node': nested_worker.configuration['node_name']}
     api_request_queue.assert_called_once_with(server=nested_worker)
