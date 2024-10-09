@@ -233,8 +233,31 @@ int main(int argc, char* argv[])
 
         // Indexer Connector
         {
-            // TODO Fix after rebase
-            iConnector = nullptr;
+            IndexerConnectorOptions icConfig {};
+            icConfig.name = confManager.get<std::string>(conf::key::INDEXER_INDEX);
+            icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
+            icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
+            icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
+            icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
+            icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
+            icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+
+            icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
+            const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);
+            if (to < 0)
+            {
+                throw std::runtime_error("Invalid indexer timeout value.");
+            }
+            icConfig.timeout = to;
+            const auto wt = confManager.get<int>(conf::key::INDEXER_THREADS);
+            if (wt < 0)
+            {
+                throw std::runtime_error("Invalid indexer threads value.");
+            }
+            icConfig.workingThreads = wt;
+
+            iConnector = std::make_shared<IndexerConnector>(icConfig);
+            LOG_INFO("Indexer Connector initialized.");
         }
 
         // Builder and registry
