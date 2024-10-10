@@ -551,7 +551,7 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
     cafile = "/test/path/CAcert.pem"
     certfile = "/test/path/cert.pem"
     keyfile = "/test/path/key.pem"
-    keyfile_password = "test_password"
+    password = "test_password"
 
     cluster_items = {"intervals": {"master": {"check_worker_lastkeepalive": 987}}}
     abstract_server = AbstractServer(
@@ -563,7 +563,7 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
            "cafile": cafile,
            "certfile": certfile,
            "keyfile": keyfile,
-           "keyfile_password": keyfile_password,
+           "keyfile_password": password,
         },
         cluster_items=cluster_items,
         logger=logger    
@@ -580,7 +580,7 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
         loop.set_exception_handler.assert_called_once_with(c_common.asyncio_exception_handler)
         loop.create_server.assert_awaited_once()
         create_default_context_mock.assert_called_once_with(purpose=ssl.Purpose.CLIENT_AUTH, cafile=cafile)
-        load_cert_chain_mock.assert_called_once_with(certfile=certfile, keyfile=keyfile, password=keyfile_password)
+        load_cert_chain_mock.assert_called_once_with(certfile=certfile, keyfile=keyfile, password=password)
 
 
 @pytest.mark.asyncio
@@ -611,7 +611,7 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
         patch.object(logger, "error") as mock_logger, \
         patch("ssl.create_default_context", return_value=ssl_mock), \
         patch.object(ssl_mock, "load_cert_chain"):
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3007 .*'):
             abstract_server = AbstractServer(
                 performance_test=1,
                 concurrency_test=2,
@@ -631,4 +631,3 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
                 logger=logger
             )
             await abstract_server.start()
-            mock_logger.assert_called_once_with("Could not start master: ")

@@ -19,7 +19,6 @@ from wazuh.core.agent import (
     get_rbac_filters,
 )
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
@@ -34,8 +33,7 @@ from wazuh.core.utils import (
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
+node_id = get_node().get('node')
 
 UPGRADE_CHUNK_SIZE = 500
 UPGRADE_RESULT_CHUNK_SIZE = 97

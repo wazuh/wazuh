@@ -1,6 +1,17 @@
 {
     "files":{
 
+        "etc/": {
+            "permissions": "0o640",
+            "source": "master",
+            "files": ["private_key.pem", "public_key.pem"],
+            "recursive": false,
+            "restart": false,
+            "remove_subdirs_if_empty": false,
+            "extra_valid": false,
+            "description": "JWT signing key pair"
+        },
+
         "etc/shared/": {
             "permissions": "0o660",
             "source": "master",

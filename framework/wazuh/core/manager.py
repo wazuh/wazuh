@@ -35,6 +35,8 @@ ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
 USER_AGENT_KEY = 'user-agent'
+DEFAULT_TIMEOUT = 10.0
+
 
 class LoggingFormat(Enum):
     plain = "plain"
@@ -335,7 +337,7 @@ async def query_update_check_service(installation_uid: str) -> dict:
         last_check_date=get_utc_now()
     )
 
-    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
+    async with httpx.AsyncClient(verify=_get_ssl_context(), timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
         try:
             response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
             response_data = response.json()

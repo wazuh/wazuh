@@ -33,13 +33,11 @@ agent_groups = b"default,windows-servers"
 # Valid configurations
 default_cluster_configuration = {
     'cluster': {
-        'disabled': 'yes',
         'node_type': 'master',
-        'name': 'wazuh',
         'node_name': 'node01',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['NODE_IP'],
+        'bind_addr': 'localhost',
+        'nodes': ['127.0.0.1'],
         'hidden': 'no',
         'certfile': '/test/path/cert.pem',
         'keyfile': '/test/path/key.pem',
@@ -49,12 +47,10 @@ default_cluster_configuration = {
 
 custom_cluster_configuration = {
     'cluster': {
-        'disabled': 'no',
         'node_type': 'master',
-        'name': 'wazuh',
         'node_name': 'node01',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
+        'bind_addr': 'localhost',
         'nodes': ['172.10.0.100'],
         'hidden': False
     }
@@ -113,44 +109,9 @@ def test_check_cluster_config(mock_logger, exists_mock):
     }, "Port must be"),
     ({
         'cluster': {
-            'port': 1516,
-            'nodes': ['NODE_IP'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['localhost'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['0.0.0.0'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['127.0.1.1'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
-            'nodes': ['127.0.1.1', '127.0.1.2'],
-            'node_type': 'master',
-            **certificates_configuration
-        }
-    }, "Invalid elements"),
-    ({
-        'cluster': {
             'node_type': 'master',
             'nodes': ['192.168.0.1'],
+            'port': 30000,
             'certfile': os.path.join(common.WAZUH_PATH, 'test.cert'),
             'keyfile': os.path.join(common.WAZUH_PATH, 'test.cert')
         }
@@ -196,20 +157,13 @@ def test_check_cluster_config_ko(read_config, message):
 
 def test_get_node():
     """Check the correct output of the get_node function."""
-    test_dict = {"node_name": "master", "name": "master",
-                 "node_type": "master"}
+    test_dict = {"node_name": "master", "node_type": "master"}
 
     with patch('wazuh.core.cluster.cluster.read_config', return_value=test_dict):
         get_node = cluster.get_node()
         assert isinstance(get_node, dict)
         assert get_node["node"] == test_dict["node_name"]
-        assert get_node["cluster"] == test_dict["name"]
         assert get_node["type"] == test_dict["node_type"]
-
-
-def test_check_cluster_status():
-    """Check the correct output of the check_cluster_status function."""
-    assert isinstance(cluster.check_cluster_status(), bool)
 
 
 @patch('os.path.getmtime', return_value=45)

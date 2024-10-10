@@ -90,8 +90,9 @@ def test_exit_handler(os_getpid_mock, os_kill_mock):
                         delete_pid_mock.assert_called_once_with('wazuh-clusterd', 1001)
                         original_sig_handler_mock.assert_not_called()
 
-@pytest.mark.parametrize('helper_disabled', (True, False))
+
 @pytest.mark.asyncio
+@pytest.mark.parametrize('helper_disabled', (True, False))
 async def test_master_main(helper_disabled: bool):
     """Check and set the behavior of master_main function."""
     import wazuh.core.cluster.utils as cluster_utils
@@ -148,16 +149,22 @@ async def test_master_main(helper_disabled: bool):
 
     wazuh_clusterd.cluster_utils = cluster_utils
     args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test')
-    with patch('scripts.wazuh_clusterd.asyncio.gather', gather):
-        with patch('wazuh.core.cluster.master.Master', MasterMock):
-            with patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock):
-                with patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock):
-                    await wazuh_clusterd.master_main(
-                        args=args,
-                        cluster_config=cluster_config,
-                        cluster_items={'node': 'item'},
-                        logger='test_logger'
-                    )
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch('wazuh.core.authentication.keypair_exists', return_value=False), \
+        patch('wazuh.core.authentication.generate_keypair') as generate_keypair_mock, \
+        patch('scripts.wazuh_clusterd.asyncio.gather', gather), \
+        patch('wazuh.core.cluster.master.Master', MasterMock), \
+        patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock), \
+        patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock):
+        await wazuh_clusterd.master_main(
+            args=args,
+            cluster_config=cluster_config,
+            cluster_items={'node': 'item'},
+            logger='test_logger'
+        )
+
+        main_logger_mock.info.assert_called_once_with('Generating JWT signing key pair')
+        generate_keypair_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -314,9 +321,8 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
     wazuh_clusterd.cluster_utils = cluster_utils
     with patch.object(common, 'wazuh_uid', return_value='uid_test'):
         with patch.object(common, 'wazuh_gid', return_value='gid_test'):
-
             with patch.object(wazuh_clusterd.cluster_utils, 'read_config',
-                              return_value={'disabled': False, 'node_type': 'master'}):
+                              return_value={'node_type': 'master'}):
                 with patch.object(wazuh_clusterd.main_logger, 'error') as main_logger_mock:
                     with patch.object(wazuh_clusterd.main_logger, 'info') as main_logger_info_mock:
                         with patch.object(wazuh_clusterd.cluster_utils, 'read_config', side_effect=Exception):
@@ -329,12 +335,6 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                           'gid_test')
                             chmod_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 432)
                             exit_mock.assert_called_once_with(1)
-                            exit_mock.reset_mock()
-
-                        with patch.object(wazuh_clusterd.cluster_utils, 'read_config', return_value={'disabled': True}):
-                            with pytest.raises(SystemExit):
-                                wazuh_clusterd.main()
-                            exit_mock.assert_called_once_with(0)
                             exit_mock.reset_mock()
 
                         with patch('wazuh.core.cluster.cluster.check_cluster_config', side_effect=IndexError):

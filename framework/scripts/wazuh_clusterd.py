@@ -83,8 +83,15 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     """
     from wazuh.core.cluster import local_server, master
     from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
+    from wazuh.core.authentication import generate_keypair, keypair_exists
 
     cluster_utils.context_tag.set('Master')
+
+    # Generate JWT signing key pair if it doesn't exist 
+    if not keypair_exists():
+        main_logger.info('Generating JWT signing key pair')
+        generate_keypair()
+
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, logger=logger, cluster_items=cluster_items)
     # Spawn pool processes
@@ -205,8 +212,6 @@ def main():
         main_logger.error(e)
         sys.exit(1)
 
-    if cluster_configuration['disabled']:
-        sys.exit(0)
     try:
         wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:

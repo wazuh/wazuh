@@ -11,7 +11,6 @@ import shutil
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
-from datetime import datetime, timezone
 from time import perf_counter
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
@@ -132,7 +131,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Variables which will be filled when the worker sends the hello request.
         self.version = ""
-        self.cluster_name = ""
         self.node_type = ""
 
         # Dictionary to save loggers for each sync task.
@@ -266,7 +264,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         Parameters
         ----------
         data : bytes
-            Node name, cluster name, node type and wazuh version all separated by spaces.
+            Node name, node type and wazuh version all separated by spaces.
 
         Returns
         -------
@@ -275,7 +273,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         payload : bytes
             Response message.
         """
-        name, cluster_name, node_type, version = data.split(b' ')
+        name, node_type, version = data.split(b' ', 2)
         # Add client to global clients dictionary.
         cmd, payload = super().hello(name)
 
@@ -283,11 +281,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
 
         # Fill more information and check both name and version are correct.
-        self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
+        self.version, self.node_type = version.decode(), node_type.decode()
 
-        if self.cluster_name != self.server.configuration['name']:
-            raise exception.WazuhClusterError(3030)
-        elif self.version != metadata.__version__:
+        if self.version != metadata.__version__:
             raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
@@ -874,5 +870,4 @@ class Master(server.AbstractServer):
         dict
             Basic node information.
         """
-        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
-                'node': self.configuration['node_name']}
+        return {'type': self.configuration['node_type'], 'node': self.configuration['node_name']}

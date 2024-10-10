@@ -248,38 +248,6 @@ x-rbac-catalog:
         actions: ['cluster:status']
         resources: ['*:*:*']
         effect: "allow"
-    'manager:read':
-      description: "Read Wazuh manager configuration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['manager:read']
-        resources: ['*:*:*']
-        effect: "allow"
-    'manager:update_config':
-      description: "Update current Wazuh manager configuration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'manager:update_config' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
-    'manager:read_api_config':
-      description: "Read Wazuh manager API configuration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['manager:read_api_config']
-        resources: ['*:*:*']
-        effect: "allow"
-    'manager:restart':
-      description: "Restart Wazuh managers"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['manager:restart']
-        resources: ['*:*:*']
-        effect: "deny"
     'mitre:read':
       description: "Access information from MITRE database"
       resources:
@@ -2113,9 +2081,6 @@ components:
             node:
               description: "Node name"
               type: string
-            cluster:
-              description: "Cluster name the node belongs to"
-              type: string
             type:
               description: "Node type"
               type: string
@@ -2125,9 +2090,6 @@ components:
       properties:
         data:
           properties:
-            name:
-              description: "Cluster name"
-              type: string
             node_name:
               description: "Node name"
               type: string
@@ -2155,9 +2117,15 @@ components:
             hidden:
               description: "Whether to hide the cluster information in the alerts"
               type: string
-            disabled:
-              description: "Whether the cluster is enabled or not"
-              type: boolean
+            certfile:
+              description: "Path to the X.509 certificate file."
+              type: string
+            keyfile:
+              description: "Path to the certificate private key file."
+              type: string
+            keyfile_password:
+              description: "Private key encryption password."
+              type: string
 
     ClusterStatus:
       type: object
@@ -9077,7 +9045,6 @@ paths:
                 data:
                   affected_items:
                     - node: "master-node"
-                      cluster: "wazuh"
                       type: "master"
                   total_affected_items: 1
                   total_failed_items: 0
@@ -9119,16 +9086,16 @@ paths:
               example:
                 data:
                   affected_items:
-                    - name: wazuh
-                      node_name: master-node
+                    - node_name: master-node
                       node_type: master
-                      key: 9d273b53510fef702b54a92e9cffc82e
                       port: 1516
-                      bind_addr: 0.0.0.0
+                      bind_addr: localhost
                       nodes:
                         - wazuh-master
                       hidden: "no"
-                      disabled: false
+                      certfile: "/var/wazuh_server/etc/sslmanager.cert"
+                      keyfile: "/var/wazuh_server/etc/sslmanager.key"
+                      keyfile_password: ""
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -9942,11 +9909,10 @@ paths:
                         node_name: "master-node"
                         node_type: "master"
                         port: "1516"
-                        bind_addr: "0.0.0.0"
+                        bind_addr: "localhost"
                         nodes:
                           - "wazuh-master"
                         hidden: "no"
-                        disabled: "no"
                         cafile: "/var/wazuh_server/etc/sslmanager.ca"
                         certfile: "/var/wazuh_server/etc/sslmanager.cert"
                         keyfile: "/var/wazuh_server/etc/sslmanager.key"
@@ -11315,7 +11281,7 @@ paths:
       description: "Return the status of all Wazuh daemons"
       operationId: api.controllers.manager_controller.get_status
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11375,7 +11341,7 @@ paths:
       description: "Return basic information such as version, compilation date, installation path"
       operationId: api.controllers.manager_controller.get_info
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11425,7 +11391,7 @@ paths:
       description: "Return wazuh configuration used. The 'section' and 'field' parameters will be ignored if 'raw' parameter is provided."
       operationId: api.controllers.manager_controller.get_configuration
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11512,7 +11478,7 @@ paths:
       description: "Replace Wazuh configuration with the data contained in the API request"
       operationId: api.controllers.manager_controller.update_configuration
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:update_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11561,7 +11527,7 @@ paths:
       description: "Return Wazuh statistical information from specified daemons"
       operationId: api.controllers.manager_controller.get_daemon_stats
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11636,7 +11602,7 @@ paths:
       description: "Return Wazuh statistical information for the current or specified date"
       operationId: api.controllers.manager_controller.get_stats
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11705,7 +11671,7 @@ paths:
       average of alerts per hour"
       operationId: api.controllers.manager_controller.get_stats_hourly
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11773,7 +11739,7 @@ paths:
       average of alerts per hour for that specific day"
       operationId: api.controllers.manager_controller.get_stats_weekly
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12004,7 +11970,7 @@ paths:
       description: "Return Wazuh analysisd statistical information"
       operationId: api.controllers.manager_controller.get_stats_analysisd
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12088,7 +12054,7 @@ paths:
       description: "Return Wazuh remoted statistical information"
       operationId: api.controllers.manager_controller.get_stats_remoted
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12138,7 +12104,7 @@ paths:
       description: "Return the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12202,7 +12168,7 @@ paths:
       description: "Return a summary of the last 2000 wazuh log entries"
       operationId: api.controllers.manager_controller.get_log_summary
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12280,7 +12246,7 @@ paths:
       description: "Return the local API configuration in JSON format"
       operationId: api.controllers.manager_controller.get_api_config
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read_api_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_api_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12367,8 +12333,8 @@ paths:
       description: "Restart the wazuh manager"
       operationId: api.controllers.manager_controller.put_restart
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
-        - $ref: '#/x-rbac-catalog/actions/manager:restart'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12407,7 +12373,7 @@ paths:
       description: "Return whether the Wazuh configuration is correct"
       operationId: api.controllers.manager_controller.get_conf_validation
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12447,7 +12413,7 @@ paths:
       description: "Return the requested active configuration in JSON format"
       operationId: api.controllers.manager_controller.get_manager_config_ondemand
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -12468,11 +12434,10 @@ paths:
                       node_name: master-node
                       node_type: master
                       port: 1516
-                      bind_addr: "0.0.0.0"
+                      bind_addr: "localhost"
                       nodes:
                         - wazuh-master
                       hidden: no
-                      disabled: false
                       cafile: "/var/wazuh_server/etc/sslmanager.ca"
                       certfile: "/var/wazuh_server/etc/sslmanager.cert"
                       keyfile: "/var/wazuh_server/etc/sslmanager.key"
