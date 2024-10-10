@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Tuple
 
 from httpx import AsyncClient
 
+APPLICATION_JSON = 'application/json'
+
 
 class BaseModule:
     """Base class to interact with Engine modules."""
