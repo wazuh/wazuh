@@ -1,13 +1,16 @@
-name: Engine VD Scanner Test Tools Delivery
+name: Engine VD Scanner Tools Delivery
 
 # Controls when the action will run.
 on:
-  # Triggers the workflow on pull request but only changes in src/engine/source/vdscanner/testtools/ directory.
+  # Triggers the workflow on pull request but only changes in src/engine/source/vdscanner/{tools,src,include} directories.
   pull_request:
-    types: [synchronize, opened, reopened, ready_for_review]
+    branches: master
+    types: closed
     paths:
-      - "src/engine/source/vdscanner/testtools/**"
-      - ".github/workflows/engine_vdscanner_testtools_delivery.yml"
+      - "src/engine/source/vdscanner/tools/**"
+      - "src/engine/source/vdscanner/src/**"
+      - "src/engine/source/vdscanner/include/**"
+      - ".github/workflows/engine_vdscanner_tools_delivery.yml"
 
   # Allows manual trigger.
   workflow_dispatch:
@@ -19,12 +22,12 @@ concurrency:
 env:
   BUILD_PRESET: debug
   ENGINE_DIR: ${{github.workspace}}/src/engine
-  TEST_TOOLS_DIR: ${{github.workspace}}/src/engine/build/source/vdscanner/testtools
-  TEST_TOOLS_FILE: vdscanner_testtools
+  TOOLS_DIR: ${{github.workspace}}/src/engine/build/source/vdscanner/tools
+  TOOLS_FILE_NAME: vdscanner_tools
 
 jobs:
   build:
-    name: Engine VD Test Tools Delivery
+    name: Engine VD Scanner Tools Delivery
 
     # Runs only if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
@@ -50,27 +53,27 @@ jobs:
       - name: Configure CMake
         run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
 
-      - name: Build Test Tools
+      - name: Build vdscanner tools
         run: |
-          cmake --build ${{env.ENGINE_DIR}}/build --target vdscanner_testtool -j$(nproc)
-          cmake --build ${{env.ENGINE_DIR}}/build --target rocksdb_testtool -j$(nproc)
+          cmake --build ${{env.ENGINE_DIR}}/build --target vdscanner_tool -j$(nproc)
+          cmake --build ${{env.ENGINE_DIR}}/build --target rocksdb_tool -j$(nproc)
 
-      - name: Compress Test Tools
+      - name: Compress vdscanner tools
         run: |
-          cd ${{env.TEST_TOOLS_DIR}}; XZ_OPT=-9; find . -type f -executable -exec tar cfJ ${{env.TEST_TOOLS_FILE}}.tar.xz {} +;
+          cd ${{env.TOOLS_DIR}}; XZ_OPT=-9; find . -type f -executable -exec tar cfJ ${{env.TOOLS_FILE_NAME}}.tar.xz {} +;
           if [ $? -eq 0 ]; then
-            size=$(du -sh ${{env.TEST_TOOLS_FILE}}.tar.xz)
-            echo "Test Tools successfully compressed: ${size}"
-            mv ${{env.TEST_TOOLS_FILE}}.tar.xz ${{github.workspace}}
+            size=$(du -sh ${{env.TOOLS_FILE_NAME}}.tar.xz)
+            echo "vdscanner tools successfully compressed: ${size}"
+            mv ${{env.TOOLS_FILE_NAME}}.tar.xz ${{github.workspace}}
             exit 0
           fi
 
-      - name: Upload Test Tools
+      - name: Upload vdscanner tools
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{env.TEST_TOOLS_FILE}}
-          path: ${{env.TEST_TOOLS_FILE}}.tar.xz
+          name: ${{env.TOOLS_FILE_NAME}}
+          path: ${{env.TOOLS_FILE_NAME}}.tar.xz
           if-no-files-found: error
           compression-level: 0
           overwrite: true

@@ -1,13 +1,13 @@
-project(rocksdb_testtool)
+project(rocksdb_tool)
 
 include_directories(${CMAKE_SOURCE_DIR}/source/base/include)
 
-file(GLOB ROCKS_DB_QUERY_TESTTOOL_SRC
+file(GLOB ROCKSDB_TOOL_SRC
     "*.cpp"
     )
 
 add_executable(${PROJECT_NAME}
-    ${ROCKS_DB_QUERY_TESTTOOL_SRC}
+    ${ROCKSDB_TOOL_SRC}
     )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE RocksDB::rocksdb flatbuffers::flatbuffers)
