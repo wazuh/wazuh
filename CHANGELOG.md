@@ -64,6 +64,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Wazuh Agent crash at `syscollector`. ([#25469](https://github.com/wazuh/wazuh/pull/25469))
 - Fixed a bug in the processed dates in the AWS module related to the AWS Config type. ([#23528](https://github.com/wazuh/wazuh/pull/23528))
 - Fixed an error in Custom Logs Buckets when parsing a CSV file that exceeds a certain size. ([#24694](https://github.com/wazuh/wazuh/pull/24694))
+- Fixed macOS syslog and ULS not configured out-of-the-box. ([#26108](https://github.com/wazuh/wazuh/issues/26108))
 
 ### RESTful API
 
@@ -71,6 +72,10 @@ All notable changes to this project will be documented in this file.
 
 - Fixed requests logging to obtain the hash_auth_context from JWT tokens. ([#25764](https://github.com/wazuh/wazuh/pull/25764)) 
 - Enabled API to listen IPV4 and IPV6 stacks. ([#25216](https://github.com/wazuh/wazuh/pull/25216))
+
+#### Changed
+
+- Changed the error status code thrown when basic services are down to 500. ([#26103](https://github.com/wazuh/wazuh/pull/26103))
 
 
 ## [v4.9.0]

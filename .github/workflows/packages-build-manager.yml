@@ -16,11 +16,13 @@ on:
         required: false
       architecture:
         description: |
-          Architecture of the package [amd64, x86_64]
+          Architecture of the package [amd64, x86_64, arm64, aarch64]
         type: choice
         options:
           - amd64
           - x86_64
+          - arm64
+          - aarch64
         required: true
       system:
         description: 'Package format [deb, rpm]'
@@ -90,7 +92,7 @@ on:
 
 jobs:
   Build-manager-packages:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
@@ -104,13 +106,24 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Set ARCH
+        run: |
+            if [ ${{ inputs.architecture }} = 'x86_64' ]; then
+              arch="amd64"
+            elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
+              arch="arm64"
+            else
+              arch=${{ inputs.architecture }}
+            fi
+            echo "ARCH=$arch" >> $GITHUB_ENV;
+
       - name: Set tag and container name
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_amd64" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.ARCH }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
