@@ -1,0 +1,87 @@
+name: Engine VD Scanner Test Tools Delivery
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on pull request but only changes in src/engine/source/vdscanner/testtools/ directory.
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/engine/source/vdscanner/testtools/**"
+      - ".github/workflows/engine_vdscanner_testtools_delivery.yml"
+
+  # Allows manual trigger.
+  workflow_dispatch:
+    inputs:
+      build_preset:
+        type: choice
+        description: "Choose the CMake build preset"
+        required: false
+        default: "debug"
+        options:
+          - debug
+          - release
+          - relwithdebinfo
+          - minsize
+
+# Ensures only one instance of this workflow is running per PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  BUILD_PRESET: ${{ github.event.inputs.build_preset || 'debug' }}
+  ENGINE_DIR: ${{github.workspace}}/src/engine
+  TEST_TOOLS_DIR: ${{github.workspace}}/src/engine/build/source/vdscanner/testtools
+  TEST_TOOLS_FILE: vdscanner_testtools
+
+jobs:
+  build:
+    name: Engine VD Test Tools Delivery
+
+    # Runs only if the PR status is different to Draft
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get install lzip xz-utils
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup VCPKG
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: "${{env.ENGINE_DIR}}/vcpkg"
+          vcpkgGitCommitId: "a42af01b72c28a8e1d7b48107b33e4f286a55ef6"
+          vcpkgJsonGlob: "${{env.ENGINE_DIR}}/vcpkg.json"
+
+      - name: Configure CMake
+        run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
+
+      - name: Build Test Tools
+        run: |
+          cmake --build ${{env.ENGINE_DIR}}/build --target vdscanner_testtool -j$(nproc)
+          cmake --build ${{env.ENGINE_DIR}}/build --target rocksdb_testtool -j$(nproc)
+
+      - name: Compress Test Tools
+        run: |
+          cd ${{env.TEST_TOOLS_DIR}}; XZ_OPT=-9; find . -type f -executable -exec tar cfJ ${{env.TEST_TOOLS_FILE}}.tar.xz {} +;
+          if [ $? -eq 0 ]; then
+            size=$(du -sh ${{env.TEST_TOOLS_FILE}}.tar.xz)
+            echo "Test Tools successfully compressed: ${size}"
+            mv ${{env.TEST_TOOLS_FILE}}.tar.xz ${{github.workspace}}
+            exit 0
+          fi
+
+      - name: Upload Test Tools
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.TEST_TOOLS_FILE}}
+          path: ${{env.TEST_TOOLS_FILE}}.tar.xz
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
