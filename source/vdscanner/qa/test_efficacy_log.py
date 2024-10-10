@@ -106,8 +106,8 @@ def run_process_and_monitor_log(request, run_on_end):
             pytest.fail("The test can't continue because there isn't a decompressed content in queue folder")
 
     # Set the path to the binary
-    cmd = Path("engine/build/source/vdscanner/tool/", "vdscanner_testtool")
-    cmd_alt = Path("engine/source/vdscanner/tool/", "vdscanner_testtool")
+    cmd = Path("engine/build/source/vdscanner/testtools/scanner", "vdscanner_testtool")
+    cmd_alt = Path("engine/source/vdscanner/testtools/scanner", "vdscanner_testtool")
 
     # Ensure the binary exists
     if not cmd.exists():
