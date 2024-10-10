@@ -16,6 +16,7 @@
 #include "base/utils/rocksDBWrapper.hpp"
 #include "flatbuffers/flatbuffers.h"
 #include "flatbuffers/idl.h"
+#include "nlohmann/json.hpp"
 
 #include "argsParser.hpp"
 
@@ -59,29 +60,42 @@ int main(const int argc, const char** argv)
                 isOneOf = true;
             }
 
+            nlohmann::json responseJson = nlohmann::json();
             if (!fbs.empty())
             {
                 std::string strData;
                 flatbuffers::GenText(parser, reinterpret_cast<const uint8_t*>(slice.data()), &strData);
                 if (isOneOf)
                 {
-                    std::cout << "{\"" << key << "\":" << strData << " } " << std::endl;
+                    try
+                    {
+                        responseJson[key] = nlohmann::json::parse(strData);
+                        std::cout << responseJson.dump() << std::endl;
+                        return;
+                    }
+                    catch (...)
+                    {
+                    }
                 }
-                else
-                {
-                    std::cout << key << " ==> " << strData << std::endl;
-                }
+
+                std::cout << key << " ==> " << strData << std::endl;
             }
             else
             {
                 if (isOneOf)
                 {
-                    std::cout << "{\"" << key << "\":" << slice.ToString() << " } " << std::endl;
+                    try
+                    {
+                        responseJson[key] = nlohmann::json::parse(slice.ToString());
+                        std::cout << responseJson.dump() << std::endl;
+                        return;
+                    }
+                    catch (...)
+                    {
+                    }
                 }
-                else
-                {
-                    std::cout << key << " ==> " << slice.ToString() << std::endl;
-                }
+
+                std::cout << key << " ==> " << slice.ToString() << std::endl;
             }
         };
 
