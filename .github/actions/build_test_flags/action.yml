@@ -1,0 +1,14 @@
+name: "Build Wazuh with test flags"
+description: "This action builds Wazuh on Ubuntu Linux/Windows"
+inputs:
+   target:
+     required: true
+     description: "Target specifies whether the build is for Linux or Windows"
+runs:
+  using: "composite"
+  steps:
+    - name: Build Wazuh with test flags
+      shell: bash
+      run: |
+          make deps -C src TARGET=${{ matrix.target }} -j2
+          make -C src TARGET=${{ matrix.target }} DEBUG=1 TEST=1 -j2

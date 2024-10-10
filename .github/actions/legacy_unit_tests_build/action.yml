@@ -1,0 +1,25 @@
+name: "Legacy unit tests build for Wazuh agent"
+description: "This action builds Wazuh agent on Ubuntu Linux/Windows"
+inputs:
+   target:
+     required: true
+     description: "Target specifies whether the build is for Linux or Windows"
+runs:
+  using: "composite"
+  steps:
+    - name: Build Wazuh Agent Unit Tests on Linux
+      if: ${{ inputs.target == 'agent' }}
+      shell: bash
+      run: |
+          mkdir src/unit_tests/build
+          cd src/unit_tests/build
+          cmake -DTARGET=${{ matrix.target }} ..
+          make
+    - name: Build Wazuh Agent Unit Tests on Windows
+      if: ${{ inputs.target == 'winagent' }}
+      shell: bash
+      run: |
+          mkdir src/unit_tests/build
+          cd src/unit_tests/build
+          cmake -DTARGET=${{ matrix.target }} -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake ..
+          make

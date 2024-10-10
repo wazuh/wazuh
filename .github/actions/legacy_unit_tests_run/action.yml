@@ -1,0 +1,42 @@
+name: "Legacy unit tests run for Wazuh agent"
+description: "This action runs Wazuh agent unit tests on Ubuntu Linux/Windows"
+inputs:
+   target:
+     required: true
+     description: "Target specifies whether the build is for Linux or Windows"
+runs:
+  using: "composite"
+  steps:
+    - name: Run Unit Tests with coverage on Linux
+      if: ${{ inputs.target == 'agent' }}
+      shell: bash
+      run: |
+        cd src/unit_tests/build
+        ctest --output-on-failure > test_results.txt || true
+        make coverage > coverage_results.txt || true
+    - name: Run Unit Tests on Windows
+      if: ${{ inputs.target == 'winagent' }}
+      shell: bash
+      run: |
+        cd src/unit_tests/build
+        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;$(realpath $(pwd)/../..)" ctest --output-on-failure > test_results.txt || true
+    - name: Format and Display Test Results
+      shell: bash
+      run: |
+        cd src/unit_tests/build
+        echo -e "## Test Results\n\n### Tests\n\n|Test|Status|\n|---|:-:|"
+        sed -En 's- *[[:digit:]]+/[[:digit:]]+ Test +#[[:digit:]]+: ([[:graph:]]+) \.+[ *]+([[:alpha:]]+) +.+-|\1|\2|-p' test_results.txt | sed 's/|Passed|/|🟢|/;s/|Failed|/|🔴|/'
+        if grep -q "Failed" test_results.txt; then
+          cat test_results.txt
+          exit 1
+        fi
+    - name: Format and Display Test Coverage
+      if: ${{ inputs.target == 'agent' }}
+      shell: bash
+      run: |
+        cd src/unit_tests/build
+        if grep "Summary coverage rate:" coverage_results.txt > /dev/null
+        then
+            echo -e "\n### Coverage\n\n|Coverage type|Percentage|Result|\n|---|---|---|"
+            sed -En 's/ +([[:alpha:]])([[:alpha:]]+)\.+: ([[:digit:]]+\.[[:digit:]]+%) \(([[:print:]]+)\)/|\U\1\L\2|\3|\4|/p' coverage_results.txt
+        fi
