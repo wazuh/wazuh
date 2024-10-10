@@ -487,6 +487,7 @@ IndexerConnector::IndexerConnector(
 
                 if (operation.compare("DELETED") == 0)
                 {
+                    logDebug2(IC_NAME, "Added document for deletion with id: %s.", id.c_str());
                     if (!noIndex)
                     {
                         builderBulkDelete(bulkData, id, m_indexName);
@@ -495,6 +496,7 @@ IndexerConnector::IndexerConnector(
                 }
                 else if (operation.compare("DELETED_BY_QUERY") == 0)
                 {
+                    logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
                     if (!noIndex)
                     {
                         builderDeleteByQuery(queryData, id);
@@ -507,6 +509,7 @@ IndexerConnector::IndexerConnector(
                 }
                 else
                 {
+                    logDebug2(IC_NAME, "Added document for insertion with id: %s.", id.c_str());
                     const auto dataString = parsedData.at("data").dump();
                     if (!noIndex)
                     {
