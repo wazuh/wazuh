@@ -493,7 +493,7 @@ class WazuhException(Exception):
         3041: "Server status check timed out after adding new servers",
         3042: "User configuration is not valid",
         3043: "Could not initialize Proxy API",
-        3044: "Could not connect to the HAProxy dataplane API",
+        3044: "Could not connect to the HAProxy Dataplane API",
         3045: "Could not connect to HAProxy",
         3046: "Invalid credentials for the Proxy API",
         3047: "Invalid HAProxy Dataplane API specification configured",
