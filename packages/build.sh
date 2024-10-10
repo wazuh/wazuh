@@ -84,9 +84,11 @@ set -x
 
 # Download source code if it is not shared from the local host
 if [ ! -d "/wazuh-local-src" ] ; then
-    curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx
-    short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
-                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
+    git clone --branch ${WAZUH_BRANCH} --recurse-submodules https://github.com/wazuh/wazuh.git
+    cd wazuh
+    git submodule update --init --recursive
+    short_commit_hash=$(git rev-parse --short HEAD)
+    cd ..
 else
     short_commit_hash="$(cd /wazuh-local-src && git config --global --add safe.directory /wazuh-local-src && git rev-parse --short HEAD)"
 fi
