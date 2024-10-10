@@ -11,24 +11,13 @@ on:
 
   # Allows manual trigger.
   workflow_dispatch:
-    inputs:
-      build_preset:
-        type: choice
-        description: "Choose the CMake build preset"
-        required: false
-        default: "debug"
-        options:
-          - debug
-          - release
-          - relwithdebinfo
-          - minsize
 
 # Ensures only one instance of this workflow is running per PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 env:
-  BUILD_PRESET: ${{ github.event.inputs.build_preset || 'debug' }}
+  BUILD_PRESET: debug
   ENGINE_DIR: ${{github.workspace}}/src/engine
   TEST_TOOLS_DIR: ${{github.workspace}}/src/engine/build/source/vdscanner/testtools
   TEST_TOOLS_FILE: vdscanner_testtools
