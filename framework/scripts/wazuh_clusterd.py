@@ -36,7 +36,7 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
     Parameters
     ----------
     foreground_mode : bool
-        Whether to log in the standard output or not.
+        Whether the script is running in foreground mode or not.
     debug_mode : int
         Debug mode.
 
@@ -73,7 +73,7 @@ def exit_handler(signum, frame):
 
 
 def start_daemon(foreground: bool, name: str, args: List[str]):
-    """Starts a daemon in a subprocess and validates that there were no errors during its execution.
+    """Start a daemon in a subprocess and validate that there were no errors during its execution.
     
     Parameters
     ----------
@@ -107,7 +107,7 @@ def start_daemon(foreground: bool, name: str, args: List[str]):
 
 
 def start_daemons(foreground: bool, root: bool):
-    """Starts the engine, the management and communications APIs daemons in subprocesses.
+    """Start the engine and the management and communications APIs daemons in subprocesses.
     
     Parameters
     ----------
@@ -128,7 +128,7 @@ def start_daemons(foreground: bool, root: bool):
 
 
 def shutdown_daemon(name: str):
-    """Sends a SIGTERM signal to the daemon process.
+    """Send a SIGTERM signal to the daemon process.
     
     Parameters
     ----------
@@ -145,7 +145,7 @@ def shutdown_daemon(name: str):
 
 
 def shutdown_cluster(cluster_pid: int):
-    """Terminates parent and child processes.
+    """Terminate daemons and cluster parent and child processes.
 
     Parameters
     ----------
@@ -165,7 +165,7 @@ def shutdown_cluster(cluster_pid: int):
 # Master main
 #
 async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_items: dict, logger: WazuhLogger):
-    """Start main process of the master node.
+    """Start the master node main process.
 
     Parameters
     ----------
