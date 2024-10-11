@@ -9093,6 +9093,7 @@ paths:
                       nodes:
                         - wazuh-master
                       hidden: "no"
+                      cafile: "/var/wazuh_server/etc/sslmanager.ca"
                       certfile: "/var/wazuh_server/etc/sslmanager.cert"
                       keyfile: "/var/wazuh_server/etc/sslmanager.key"
                       keyfile_password: ""
