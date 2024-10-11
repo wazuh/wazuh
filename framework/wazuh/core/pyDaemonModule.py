@@ -4,11 +4,11 @@
 
 import glob
 import logging
+import psutil
 import os
+import re
 import sys
 from os import path
-
-import psutil
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
@@ -80,6 +80,25 @@ def create_pid(name: str, pid: int):
             os.chmod(filename, 0o640)
         except OSError as e:
             raise WazuhInternalError(3002, str(e))
+    
+
+def get_parent_pid(name: str) -> int:
+    """Given the name of a daemon, return its parent ID.
+    
+    Parameters
+    ----------
+    name : str
+        Daemon name.
+    
+    Returns
+    -------
+    pids : int
+        Parent process ID.
+    """
+    regex = rf'{name}*-(\d+).pid'
+    for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
+        if match := re.match(regex, pid_file):
+            return int(match.group(1))
 
 
 def delete_pid(name: str, pid: int):
@@ -129,6 +148,7 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
                 except OSError:
                     pass
                 filenames.remove(filename)
+
 
 def exit_handler(signum, frame, process_name: str, logger: logging.Logger) -> None:
     """Try to kill API child processes and remove their PID files."""

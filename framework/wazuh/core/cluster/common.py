@@ -4,7 +4,6 @@
 
 import ast
 import asyncio
-import base64
 import contextlib
 import datetime
 import hashlib

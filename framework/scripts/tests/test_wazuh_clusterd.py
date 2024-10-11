@@ -3,12 +3,17 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import signal
 import sys
-from unittest.mock import call, patch
+from unittest.mock import call, patch, Mock
 
 import pytest
+
 import scripts.wazuh_clusterd as wazuh_clusterd
+from wazuh.core import pyDaemonModule
 from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
+
+wazuh_clusterd.pyDaemonModule = pyDaemonModule
 
 
 def test_set_logging():
@@ -34,13 +39,12 @@ def test_print_version(print_mock):
             'Free Software Foundation. For more details, go to \nhttps://www.gnu.org/licenses/gpl.html\n')
 
 
-@patch('scripts.wazuh_clusterd.os.kill')
 @patch('scripts.wazuh_clusterd.os.getpid', return_value=1001)
-def test_exit_handler(os_getpid_mock, os_kill_mock):
+def test_exit_handler(os_getpid_mock):
     """Set the behavior when exiting the script."""
-    from wazuh.core import pyDaemonModule
 
     class SignalMock:
+        SIGTERM = 0
         SIG_DFL = 1
 
         class Signals:
@@ -65,30 +69,152 @@ def test_exit_handler(os_getpid_mock, os_kill_mock):
     original_sig_handler_not_callable = 1
 
     wazuh_clusterd.main_logger = LoggerMock()
-    wazuh_clusterd.pyDaemonModule = pyDaemonModule
     wazuh_clusterd.original_sig_handler = original_sig_handler
-    with patch('scripts.wazuh_clusterd.signal', SignalMock):
-        with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock:
-            with patch.object(wazuh_clusterd.pyDaemonModule, 'delete_child_pids') as delete_child_pids_mock:
-                with patch.object(wazuh_clusterd.pyDaemonModule, 'delete_pid') as delete_pid_mock:
-                    with patch.object(wazuh_clusterd, 'original_sig_handler') as original_sig_handler_mock:
-                        wazuh_clusterd.exit_handler(9, 99)
-                        main_logger_mock.assert_has_calls([call.info('SIGNAL [(9)-(9)] received. Exit...')])
-                        delete_child_pids_mock.assert_called_once_with(
-                            'wazuh-clusterd', os_getpid_mock.return_value, main_logger_mock)
-                        delete_pid_mock.assert_called_once_with('wazuh-clusterd', os_getpid_mock.return_value)
-                        original_sig_handler_mock.assert_called_once_with(9, 99)
-                        main_logger_mock.reset_mock()
-                        delete_child_pids_mock.reset_mock()
-                        delete_pid_mock.reset_mock()
-                        original_sig_handler_mock.reset_mock()
+    with patch('scripts.wazuh_clusterd.signal', SignalMock), \
+        patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'delete_child_pids') as delete_child_pids_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'delete_pid') as delete_pid_mock, \
+        patch.object(wazuh_clusterd, 'original_sig_handler') as original_sig_handler_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=999), \
+        patch('scripts.wazuh_clusterd.os.kill') as os_kill_mock:
+        wazuh_clusterd.exit_handler(9, 99)
+        main_logger_mock.assert_has_calls([call.info('SIGNAL [(9)-(9)] received. Shutting down...')])
+        os_kill_mock.assert_has_calls([
+            call(999, SignalMock.SIGTERM),
+            call(999, SignalMock.SIGTERM),
+        ])
+        delete_child_pids_mock.assert_has_calls([
+            call('wazuh-clusterd', os_getpid_mock.return_value, main_logger_mock),
+        ])
+        delete_pid_mock.assert_has_calls([
+            call('wazuh-clusterd', os_getpid_mock.return_value),
+        ])
+        original_sig_handler_mock.assert_called_once_with(9, 99)
+        main_logger_mock.reset_mock()
+        delete_child_pids_mock.reset_mock()
+        delete_pid_mock.reset_mock()
+        original_sig_handler_mock.reset_mock()
 
-                        wazuh_clusterd.original_sig_handler = original_sig_handler_not_callable
-                        wazuh_clusterd.exit_handler(9, 99)
-                        main_logger_mock.assert_has_calls([call.info('SIGNAL [(9)-(9)] received. Exit...')])
-                        delete_child_pids_mock.assert_called_once_with('wazuh-clusterd', 1001, main_logger_mock)
-                        delete_pid_mock.assert_called_once_with('wazuh-clusterd', 1001)
-                        original_sig_handler_mock.assert_not_called()
+        wazuh_clusterd.original_sig_handler = original_sig_handler_not_callable
+        wazuh_clusterd.exit_handler(9, 99)
+        main_logger_mock.assert_has_calls([call.info('SIGNAL [(9)-(9)] received. Shutting down...')])
+        os_kill_mock.assert_has_calls([
+            call(999, SignalMock.SIGTERM),
+            call(999, SignalMock.SIGTERM),
+        ])
+        delete_child_pids_mock.assert_has_calls([
+            call('wazuh-clusterd', 1001, main_logger_mock),
+        ])
+        delete_pid_mock.assert_has_calls([
+            call('wazuh-clusterd', 1001),
+        ])
+        original_sig_handler_mock.assert_not_called()
+
+
+@pytest.mark.parametrize("foreground, root", [
+    (True, True),
+    (True, False),
+    (False, True),
+    (False, False),
+])
+@patch('subprocess.Popen')
+def test_start_daemons(mock_popen, foreground, root):
+    """Validate that `start_daemons` works as expected."""
+    from wazuh.core import pyDaemonModule
+
+    class LoggerMock:
+        def __init__(self):
+            pass
+
+        def info(self, msg):
+            pass
+
+    wazuh_clusterd.main_logger = LoggerMock
+    pid = 2
+    process_mock = Mock()
+    attrs = {'poll.return_value': 0, 'wait.return_value': 0}
+    process_mock.configure_mock(**attrs)
+    mock_popen.return_value = process_mock
+    
+
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid), \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'create_pid'):
+        wazuh_clusterd.start_daemons(foreground, root)
+
+    mock_popen.assert_has_calls([
+        call([wazuh_clusterd.ENGINE_BINARY_PATH, 'server', 'start']),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.MANAGEMENT_API_SCRIPT_PATH] + \
+              (['-r'] if root else []) + (['-f'] if foreground else [])),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.COMMS_API_SCRIPT_PATH] + \
+              (['-r'] if root else []) + (['-f'] if foreground else [])),
+    ], any_order=True)
+
+    if foreground:
+        pid = mock_popen().pid
+
+    main_logger_mock.info.assert_has_calls([
+        call(f'Started wazuh-engined (pid: {mock_popen().pid})'),
+        call(f'Started wazuh-apid (pid: {pid})'),
+        call(f'Started wazuh-comms-apid (pid: {pid})'),
+    ])
+
+
+@patch('subprocess.Popen')
+def test_start_daemons_ko(mock_popen):
+    """Validate that `start_daemons` works as expected when the subprocesses fail."""
+    class LoggerMock:
+        def __init__(self):
+            pass
+
+        def info(self, msg):
+            pass
+
+    wazuh_clusterd.main_logger = LoggerMock
+    pid = 2
+    process_mock = Mock()
+    attrs = {'poll.return_value': 1, 'wait.return_value': 1}
+    process_mock.configure_mock(**attrs)
+    mock_popen.return_value = process_mock
+
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=pid):
+        wazuh_clusterd.start_daemons(False, False)
+
+    mock_popen.assert_has_calls([
+        call([wazuh_clusterd.ENGINE_BINARY_PATH, 'server', 'start']),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.MANAGEMENT_API_SCRIPT_PATH]),
+        call([wazuh_clusterd.EMBEDDED_PYTHON_PATH, wazuh_clusterd.COMMS_API_SCRIPT_PATH]),
+    ], any_order=True)
+
+    main_logger_mock.error.assert_has_calls([
+        call('Error starting wazuh-engined: return code 1'),
+        call('Error starting wazuh-apid: return code 1'),
+        call('Error starting wazuh-comms-apid: return code 1'),
+    ])
+
+
+@patch('scripts.wazuh_clusterd.os.kill')
+@patch('scripts.wazuh_clusterd.os.getpid', return_value=999)
+def test_shutdown_daemon(os_getpid_mock, os_kill_mock):
+    """Validate that `shutdown_daemon` works as expected."""
+    class LoggerMock:
+        def __init__(self):
+            pass
+
+        def info(self, msg):
+            pass
+
+    wazuh_clusterd.main_logger = LoggerMock
+
+    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
+        patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=os_getpid_mock.return_value):
+        wazuh_clusterd.shutdown_daemon(wazuh_clusterd.MANAGEMENT_API_DAEMON_NAME)
+
+    os_kill_mock.assert_called_once_with(999, signal.SIGTERM)
+    main_logger_mock.info.assert_has_calls([
+        call(f'Shutting down {wazuh_clusterd.MANAGEMENT_API_DAEMON_NAME} (pid: {os_getpid_mock.return_value})'),
+    ])
 
 
 @pytest.mark.asyncio
@@ -149,10 +275,7 @@ async def test_master_main(helper_disabled: bool):
 
     wazuh_clusterd.cluster_utils = cluster_utils
     args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test')
-    with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock, \
-        patch('wazuh.core.authentication.keypair_exists', return_value=False), \
-        patch('wazuh.core.authentication.generate_keypair') as generate_keypair_mock, \
-        patch('scripts.wazuh_clusterd.asyncio.gather', gather), \
+    with patch('scripts.wazuh_clusterd.asyncio.gather', gather), \
         patch('wazuh.core.cluster.master.Master', MasterMock), \
         patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock), \
         patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock):
@@ -162,10 +285,6 @@ async def test_master_main(helper_disabled: bool):
             cluster_items={'node': 'item'},
             logger='test_logger'
         )
-
-        main_logger_mock.info.assert_called_once_with('Generating JWT signing key pair')
-        generate_keypair_mock.assert_called_once()
-
 
 @pytest.mark.asyncio
 @patch("asyncio.sleep", side_effect=IndexError)
@@ -317,78 +436,91 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
     wazuh_clusterd.main_logger = LoggerMock()
     wazuh_clusterd.args = args
     wazuh_clusterd.common = common
-    wazuh_clusterd.pyDaemonModule = pyDaemonModule
     wazuh_clusterd.cluster_utils = cluster_utils
-    with patch.object(common, 'wazuh_uid', return_value='uid_test'):
-        with patch.object(common, 'wazuh_gid', return_value='gid_test'):
-            with patch.object(wazuh_clusterd.cluster_utils, 'read_config',
-                              return_value={'node_type': 'master'}):
-                with patch.object(wazuh_clusterd.main_logger, 'error') as main_logger_mock:
-                    with patch.object(wazuh_clusterd.main_logger, 'info') as main_logger_info_mock:
-                        with patch.object(wazuh_clusterd.cluster_utils, 'read_config', side_effect=Exception):
-                            with pytest.raises(SystemExit):
-                                wazuh_clusterd.main()
-                            main_logger_mock.assert_called_once()
-                            main_logger_mock.reset_mock()
-                            path_exists_mock.assert_any_call(f'{common.WAZUH_PATH}/logs/cluster.log')
-                            chown_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 'uid_test',
-                                                          'gid_test')
-                            chmod_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 432)
-                            exit_mock.assert_called_once_with(1)
-                            exit_mock.reset_mock()
+    with patch.object(common, 'wazuh_uid', return_value='uid_test'), \
+        patch.object(common, 'wazuh_gid', return_value='gid_test'), \
+        patch.object(wazuh_clusterd.cluster_utils, 'read_config', return_value={'node_type': 'master'}), \
+        patch.object(wazuh_clusterd.main_logger, 'error') as main_logger_mock, \
+        patch.object(wazuh_clusterd.main_logger, 'info') as main_logger_info_mock:
+    
+        with patch.object(wazuh_clusterd.cluster_utils, 'read_config', side_effect=Exception):
+            with pytest.raises(SystemExit):
+                wazuh_clusterd.main()
+            main_logger_mock.assert_called_once()
+            main_logger_mock.reset_mock()
+            path_exists_mock.assert_any_call(f'{common.WAZUH_PATH}/logs/cluster.log')
+            chown_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 'uid_test',
+                                        'gid_test')
+            chmod_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 432)
+            exit_mock.assert_called_once_with(1)
+            exit_mock.reset_mock()
 
-                        with patch('wazuh.core.cluster.cluster.check_cluster_config', side_effect=IndexError):
-                            with pytest.raises(SystemExit):
-                                wazuh_clusterd.main()
-                            main_logger_mock.assert_called_once()
-                            exit_mock.assert_called_once_with(1)
-                            exit_mock.reset_mock()
+        with patch('wazuh.core.cluster.cluster.check_cluster_config', side_effect=IndexError):
+            with pytest.raises(SystemExit):
+                wazuh_clusterd.main()
+            main_logger_mock.assert_called_once()
+            exit_mock.assert_called_once_with(1)
+            exit_mock.reset_mock()
 
-                        with patch('wazuh.core.cluster.cluster.check_cluster_config', return_value=None):
-                            with pytest.raises(SystemExit):
-                                wazuh_clusterd.main()
-                            main_logger_mock.assert_called_once()
-                            exit_mock.assert_called_once_with(0)
-                            main_logger_mock.reset_mock()
-                            exit_mock.reset_mock()
+        with patch('wazuh.core.cluster.cluster.check_cluster_config', return_value=None):
+            with pytest.raises(SystemExit):
+                wazuh_clusterd.main()
+            main_logger_mock.assert_called_once()
+            exit_mock.assert_called_once_with(0)
+            main_logger_mock.reset_mock()
+            exit_mock.reset_mock()
 
-                            args.test_config = False
-                            wazuh_clusterd.args = args
-                            with patch('wazuh.core.cluster.cluster.clean_up') as clean_up_mock:
-                                with patch('scripts.wazuh_clusterd.clean_pid_files') as clean_pid_files_mock:
-                                    with patch.object(wazuh_clusterd.pyDaemonModule, 'pyDaemon') as pyDaemon_mock:
-                                        with patch.object(wazuh_clusterd.pyDaemonModule,
-                                                          'create_pid') as create_pid_mock:
-                                            with patch.object(wazuh_clusterd.pyDaemonModule, 'delete_child_pids'):
-                                                with patch.object(wazuh_clusterd.pyDaemonModule,
-                                                                  'delete_pid') as delete_pid_mock:
-                                                    wazuh_clusterd.main()
-                                                    main_logger_mock.assert_any_call(
-                                                        "Unhandled exception: name 'cluster_items' is not defined")
-                                                    clean_up_mock.assert_called_once()
-                                                    clean_pid_files_mock.assert_called_once_with('wazuh-clusterd')
-                                                    pyDaemon_mock.assert_called_once()
-                                                    setuid_mock.assert_called_once_with('uid_test')
-                                                    setgid_mock.assert_called_once_with('gid_test')
-                                                    getpid_mock.assert_called()
-                                                    create_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
-                                                    delete_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
+            args.test_config = False
+            wazuh_clusterd.args = args
+            with patch('wazuh.core.cluster.cluster.clean_up') as clean_up_mock, \
+                patch('scripts.wazuh_clusterd.clean_pid_files') as clean_pid_files_mock, \
+                patch('wazuh.core.authentication.keypair_exists', return_value=False), \
+                patch('wazuh.core.authentication.generate_keypair') as generate_keypair_mock, \
+                patch('scripts.wazuh_clusterd.start_daemons') as start_daemons_mock, \
+                patch.object(wazuh_clusterd.pyDaemonModule, 'get_parent_pid', return_value=999), \
+                patch('os.kill') as os_kill_mock, \
+                patch.object(wazuh_clusterd.pyDaemonModule, 'pyDaemon') as pyDaemon_mock, \
+                patch.object(wazuh_clusterd.pyDaemonModule, 'create_pid') as create_pid_mock, \
+                patch.object(wazuh_clusterd.pyDaemonModule, 'delete_child_pids'), \
+                patch.object(wazuh_clusterd.pyDaemonModule,'delete_pid') as delete_pid_mock:
+                wazuh_clusterd.main()
+                main_logger_mock.assert_any_call(
+                    "Unhandled exception: name 'cluster_items' is not defined")
+                main_logger_mock.reset_mock()
+                clean_up_mock.assert_called_once()
+                clean_pid_files_mock.assert_called_once_with('wazuh-clusterd')
+                pyDaemon_mock.assert_called_once()
+                setuid_mock.assert_called_once_with('uid_test')
+                setgid_mock.assert_called_once_with('gid_test')
+                getpid_mock.assert_called()
+                os_kill_mock.assert_has_calls([
+                    call(999, signal.SIGTERM),
+                    call(999, signal.SIGTERM),
+                ])
+                create_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
+                delete_pid_mock.assert_has_calls([
+                    call('wazuh-clusterd', 543),
+                ])
+                main_logger_info_mock.assert_has_calls([
+                    call('Generating JWT signing key pair'),
+                    call('Shutting down wazuh-engined (pid: 999)'),
+                    call('Shutting down wazuh-apid (pid: 999)'),
+                    call('Shutting down wazuh-comms-apid (pid: 999)'),
+                ])
+                generate_keypair_mock.assert_called_once()
+                start_daemons_mock.assert_called_once()
 
-                                                    args.foreground = True
-                                                    wazuh_clusterd.main()
-                                                    print_mock.assert_called_once_with(
-                                                        'Starting cluster in foreground (pid: 543)')
+                args.foreground = True
+                wazuh_clusterd.main()
+                print_mock.assert_called_once_with('Starting cluster in foreground (pid: 543)')
 
-                                                    wazuh_clusterd.cluster_items = {}
-                                                    with patch('scripts.wazuh_clusterd.master_main',
-                                                               side_effect=KeyboardInterrupt('TESTING')):
-                                                        wazuh_clusterd.main()
-                                                        main_logger_info_mock.assert_any_call(
-                                                            'SIGINT received. Bye!')
+                wazuh_clusterd.cluster_items = {}
+                with patch('scripts.wazuh_clusterd.master_main', side_effect=KeyboardInterrupt('TESTING')):
+                    wazuh_clusterd.main()
+                    main_logger_info_mock.assert_any_call('SIGINT received. Shutting down...')
 
-                                                    with patch('scripts.wazuh_clusterd.master_main',
-                                                               side_effect=MemoryError('TESTING')):
-                                                        wazuh_clusterd.main()
-                                                        main_logger_mock.assert_any_call(
-                                                            "Directory '/tmp' needs read, write & execution "
-                                                            "permission for 'wazuh' user")
+                with patch('scripts.wazuh_clusterd.master_main', side_effect=MemoryError('TESTING')):
+                    wazuh_clusterd.main()
+                    main_logger_mock.assert_any_call(
+                        "Directory '/tmp' needs read, write & execution "
+                        "permission for 'wazuh' user")

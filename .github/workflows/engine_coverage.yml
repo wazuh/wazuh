@@ -19,7 +19,7 @@ on:
         type: string
         description: 'Modules to exclude, separated by commas'
         required: false
-        default: "feedmanager"
+        default: "feedmanager,proto"
       min_coverage:
         type: number
         description: 'Minimum coverage required'
@@ -40,7 +40,7 @@ env:
   BUILD_PATH: src/engine/build
   BUILD_MODULES_PATH: src/engine/build/source
   FULL_COVERAGE: ${{ inputs.full_coverage }}
-  EXCLUDE_MODULES: ${{ inputs.exlude_modules || 'feedmanager' }}
+  EXCLUDE_MODULES: ${{ inputs.exlude_modules || 'feedmanager,proto' }}
   MIN_COVERAGE: ${{ inputs.min_coverage || 80 }}
 
 jobs:

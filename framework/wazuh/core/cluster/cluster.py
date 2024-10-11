@@ -12,7 +12,6 @@ import zlib
 from asyncio import wait_for
 from collections import defaultdict
 from functools import partial
-from operator import eq
 from os import listdir, path, remove, stat, walk
 from uuid import uuid4
 
