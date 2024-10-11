@@ -1,10 +1,3 @@
-%if %{_debugenabled} == yes
-  %global _enable_debug_package 0
-  %global debug_package %{nil}
-  %global __os_install_post %{nil}
-  %define __strip /bin/true
-%endif
-
 %if %{_isstage} == no
   %define _rpmfilename %%{NAME}_%%{VERSION}-%%{RELEASE}_%%{ARCH}_%{_hashcommit}.rpm
 %else
@@ -42,6 +35,13 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 # Don't generate build_id links to prevent conflicts with other
 # packages.
 %global _build_id_links none
+
+# Build debuginfo package
+%debug_package
+%package wazuh-server-debuginfo
+Summary: Debug information for package %{name}.
+%description wazuh-server-debuginfo
+This package provides debug information for package %{name}.
 
 %prep
 %setup -q
@@ -92,7 +92,7 @@ mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-server.service
 install -m 0644 src/init/templates/wazuh-server.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 
-exit 0
+%{_rpmconfigdir}/find-debuginfo.sh
 
 %pre
 
@@ -117,6 +117,8 @@ if [ $1 = 2 ]; then
   elif command -v service > /dev/null 2>&1 && service wazuh-server status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-server stop > /dev/null 2>&1
     touch %{_localstatedir}/tmp/wazuh.restart
+  else
+    echo "Unable to stop wazuh-server. Neither systemctl nor service are available."
   fi
 
 fi
@@ -151,6 +153,8 @@ if [ $1 = 0 ]; then
   # Check for SysV
   elif command -v service > /dev/null 2>&1 && service wazuh-server status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-server stop > /dev/null 2>&1
+  else
+    echo "Unable to stop wazuh-server. Neither systemctl nor service are available."
   fi
 fi
 
@@ -203,55 +207,27 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}run/wazuh-server
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/vd
-%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/ruleset
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/tzdb
+%{_localstatedir}var/lib/wazuh-server/engine/tzdb/*
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-asset
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-policy
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/engine-schema
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/kvdb
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/indexer-connector
 
 %attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-engine
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
+%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types/0
+%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-asset/0
+%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-policy/0
+%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/engine-schema/0
 
 %config(missingok) %{_initrddir}/wazuh-server
 /usr/lib/systemd/system/wazuh-server.service
-
-#%attr(640, root, wazuh) %verify(not md5 size mtime) %ghost %{_sysconfdir}/ossec-init.conf
-#%dir %attr(750, root, wazuh) %{_localstatedir}
-#%dir %attr(750, root, wazuh) %{_localstatedir}/api
-#%dir %attr(770, root, wazuh) %{_localstatedir}/api/configuration
-#%attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/api/configuration/api.yaml
-#%dir %attr(770, root, wazuh) %{_localstatedir}/api/configuration/security
-#%dir %attr(770, root, wazuh) %{_localstatedir}/api/configuration/ssl
-#%dir %attr(750, root, wazuh) %{_localstatedir}/api/scripts
-#%attr(640, root, wazuh) %{_localstatedir}/api/scripts/*.py
-#%dir %attr(750, root, wazuh) %{_localstatedir}/bin
-#%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
-#%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-clusterd
-#%attr(750, root, wazuh) %{_localstatedir}/bin/rbac_control
-#%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/shared/default/*
-#%dir %attr(770, root, wazuh) %{_localstatedir}/etc/rootcheck
-#%attr(660, root, wazuh) %{_localstatedir}/etc/rootcheck/*.txt
-#%dir %attr(750, root, wazuh) %{_localstatedir}/framework
-#%dir %attr(750, root, wazuh) %{_localstatedir}/framework/python
-#%{_localstatedir}/framework/python/*
-#%dir %attr(750, root, wazuh) %{_localstatedir}/framework/scripts
-#%attr(640, root, wazuh) %{_localstatedir}/framework/scripts/*.py
-#%dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh
-#%attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/*.py
-#%dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster
-#%attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/*.py
-#%attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/*.json
-#%dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/hap_helper
-#%attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/hap_helper/*.py
-#%dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi
-#%attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
-#%dir %attr(750, root, wazuh) %{_localstatedir}/lib
-#%{_localstatedir}/lib/libpython3.10.so.1.0
-#%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/src/REVISION
-#%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/src/VERSION
-#%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/src/init/
-#%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/src/init/*
-#%attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/%{_vdfilename}
-#%dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
-#%dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
-#%dir %attr(750, root, wazuh) %{_localstatedir}/var
 
 %changelog
 * Mon Jun 2 2025 support <info@wazuh.com> - 5.0.0

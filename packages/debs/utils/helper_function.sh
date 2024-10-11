@@ -55,18 +55,22 @@ get_package_and_checksum(){
     wazuh_version="$1"
     short_commit_hash="$2"
     base_name="wazuh-server_${wazuh_version}-${REVISION}"
+    symbols_base_name="wazuh-server-dbg_${wazuh_version}-${REVISION}"
 
     deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
-
+    symbols_deb_file="${symbols_base_name}_${ARCHITECTURE_TARGET}.deb"
 
     if [[ "${IS_STAGE}" == "no" ]]; then
         deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$deb_file")"
+        symbols_deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$symbols_deb_file")"
     fi
 
     pkg_path="${build_dir}/server"
     if [[ "${checksum}" == "yes" ]]; then
-        cd ${pkg_path} && sha512sum wazuh-server*deb > /var/local/wazuh/${deb_file}.sha512
+        cd ${pkg_path} && sha512sum wazuh-server_*deb > /var/local/wazuh/${deb_file}.sha512
+        sha512sum wazuh-server-dbg_*deb > /var/local/wazuh/${symbols_deb_file}.sha512
     fi
-
-    find ${pkg_path} -type f -name "wazuh-server*deb" -exec mv {} /var/local/wazuh/${deb_file} \;
+    ls -lh ${pkg_path}
+    find ${pkg_path} -type f -name "wazuh-server_*deb" -exec mv {} /var/local/wazuh/${deb_file} \;
+    find ${pkg_path} -type f -name "wazuh-server-dbg_*deb" -exec mv {} /var/local/wazuh/${symbols_deb_file} \;
 }

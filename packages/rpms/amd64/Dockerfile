@@ -28,7 +28,9 @@ RUN yum install -y \
     wget \
     sudo \
     gettext \
-    curl-devel
+    curl-devel \
+    xz \
+    elfutils
 
 RUN yum install epel-release -y
 RUN yum install lzip -y

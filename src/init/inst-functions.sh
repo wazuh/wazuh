@@ -102,8 +102,28 @@ InstallEngine()
   # Folder for persistent databases (vulnerability scanner, ruleset, connector).
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/vd
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/ruleset
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-asset
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-policy
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/engine-schema
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/kvdb
+  #${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} engine/build/tzdb ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
+  cp -rp engine/build/tzdb ${INSTALLDIR}var/lib/wazuh-server/engine/
+  chown -R root:${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
+  chmod 0750 ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
+  chmod 0640 ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb/*
+
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/indexer-connector
+
+  # Copy the engine configuration file
+  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/wazuh-logpar-types.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types/0
+  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/wazuh-asset.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-asset/0
+  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/wazuh-policy.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-policy/0
+  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/engine-schema.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/engine-schema/0
+
 }
 
 #InstallCluster()
