@@ -1,6 +1,6 @@
 # Description
 
-**Current version: 20240817-0.dev**
+**Current version: 20241010-0.dev**
 
 This is a container for the develop wazuh-engine. It is based on the `ubuntu:20.04` image and contains all the necessary dependencies to run the engine.
 To connect to the container, you can use the `ssh` service. The default user is `root` and the password is `Engine123`.
@@ -20,7 +20,7 @@ Once the container is created, you will not require to build the image again unt
 First step is to build the image. You can use the following command:
 
 ``` bash
-export VERSION=20240817-0.dev
+export VERSION=20241010-0.dev
 docker buildx build -t engine-container:$VERSION . --no-cache
 # Tag the image as latest to use it as the default image (recommended)
 docker tag engine-container:$VERSION engine-container:latest
@@ -35,9 +35,9 @@ To check the image, you can use the `docker images` command, you should see the 
 ```bash
 ╰─# docker images
 
-REPOSITORY                                TAG              IMAGE ID       CREATED         SIZE
-engine-container                          20240817-0.dev   0989baeb51f7   5 minutes ago   1.35GB
-engine-container                          latest           0989baeb51f7   5 minutes ago   1.35GB
+REPOSITORY         TAG              IMAGE ID       CREATED              SIZE
+engine-container   20241010-0.dev   8bf75f1cd7a4   About a minute ago   8.92GB
+engine-container   latest           8bf75f1cd7a4   About a minute ago   8.92GB
 ```
 
 ## Create the container
@@ -50,7 +50,7 @@ docker create -p 4022:22 --name engine-container engine-container:latest
 
 Alternatively, you can use a specific version of the image
 ``` bash
-export VERSION=20240817-0.dev
+export VERSION=20241010-0.dev
 docker create -p 4022:22 --name engine-container engine-container:$VERSION
 ```
 This command will create a container named `engine-container` and will map the port `4022` of the host to the port `22` of the container. A container is created in a stopped state.

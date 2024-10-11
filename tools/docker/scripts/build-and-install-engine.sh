@@ -32,7 +32,7 @@ pip3 install ${ENGINE_SRC}/tools/engine-suite
 pip3 install ${ENGINE_SRC}/test/engine-test-utils
 pip3 install ${ENGINE_SRC}/test/health_test/engine-health-test
 pip3 install ${ENGINE_SRC}/test/integration_tests/engine-it
-pip3 install ${ENGINE_SRC}/test/helper_tests/engine_helper_test
+pip3 install ${ENGINE_SRC}/test/helper_tests/engine-helper-test
 
 
 # Create directories for the engine
