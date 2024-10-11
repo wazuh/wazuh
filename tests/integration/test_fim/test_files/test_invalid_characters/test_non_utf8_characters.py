@@ -96,6 +96,19 @@ test_configuration = load_configuration_template(config_path, test_configuration
 local_internal_options = {configuration.SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
 if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
+
+# Invalid UTF-8 byte sequences
+invalid_byte_sequences = [
+    b"\xC0\xAF",           # Overlong encoding of '/'
+    b"\xE0\x80\xAF",       # Overlong encoding (null character U+002F)
+    b"\xED\xA0\x80",       # UTF-16 surrogate half (invalid in UTF-8)
+    # 5-byte sequence (invalid, as UTF-8 only supports up to 4 bytes)
+    b"\xF8\x88\x80\x80\x80",
+    b"\xFF",               # Invalid single byte (not valid in UTF-8)
+    b"\x80",               # Continuation byte without a start
+    b"\xC3\x28",           # Invalid 2-byte sequence (invalid second byte)
+]
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_nonUTF8(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                   truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring):
@@ -151,21 +164,24 @@ def test_nonUTF8(test_configuration, test_metadata, set_wazuh_configuration, con
     '''
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    # Create
-    test_path = os.path.join(test_metadata['folder_to_monitor'], '§¨©ª«¬-®¯±²³¶¹º»¼½¾testáéíóú')
-    file.truncate_file(WAZUH_LOG_PATH)
-    if sys.platform == 'win32':
-        file.write_file(test_path)
-    else:
-        subprocess.run(f'touch $(echo -n "{test_path}" | iconv -f UTF-8 -t ISO-8859-1)', shell=True, check=True)
-    monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
-    assert monitor.callback_result
+    # iterate over invalid sequences
+    for invalid_sequence in invalid_byte_sequences:
+        # Create
+        test_path = os.path.join(
+            test_metadata['folder_to_monitor'], invalid_sequence)
+        file.truncate_file(WAZUH_LOG_PATH)
+        if sys.platform == 'win32':
+            file.write_file(test_path)
+        else:
+            subprocess.run(f'touch $(echo -n "{test_path}" | iconv -f UTF-8 -t ISO-8859-1)', shell=True, check=True)
+        monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
+        assert monitor.callback_result
 
-    # Check Sync
-    time.sleep(5)
-    file.truncate_file(WAZUH_LOG_PATH)
-    monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
-    assert monitor.callback_result
+        # Check Sync
+        time.sleep(5)
+        file.truncate_file(WAZUH_LOG_PATH)
+        monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
+        assert monitor.callback_result
 
 if sys.platform == WINDOWS:
     cases_path = Path(TEST_CASES_PATH, 'cases_registries.yaml')
@@ -221,15 +237,18 @@ if sys.platform == WINDOWS:
         '''
         monitor = FileMonitor(WAZUH_LOG_PATH)
 
-        # Create
-        sub_key = os.path.join(test_metadata['sub_key'], '§¨©ª«¬-®¯±²³¶¹º»¼½¾testáéíóú')
-        file.truncate_file(WAZUH_LOG_PATH)
-        create_registry(win32con.HKEY_LOCAL_MACHINE, sub_key, KEY_WOW64_64KEY)
-        monitor.start(generate_callback(EVENT_TYPE_ADDED))
-        assert monitor.callback_result
+        # iterate over invalid sequences
+        for invalid_byte_sequence in invalid_byte_sequences:
+            # Create
+            sub_key = os.path.join(
+                test_metadata['sub_key'], invalid_byte_sequence)
+            file.truncate_file(WAZUH_LOG_PATH)
+            create_registry(win32con.HKEY_LOCAL_MACHINE, sub_key, KEY_WOW64_64KEY)
+            monitor.start(generate_callback(EVENT_TYPE_ADDED))
+            assert monitor.callback_result
 
-        # Check Sync
-        time.sleep(5)
-        file.truncate_file(WAZUH_LOG_PATH)
-        monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
-        assert monitor.callback_result
+            # Check Sync
+            time.sleep(5)
+            file.truncate_file(WAZUH_LOG_PATH)
+            monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
+            assert monitor.callback_result
