@@ -52,50 +52,33 @@ int main(const int argc, const char** argv)
 
         auto printValue = [&](const std::string& key, const auto& slice)
         {
-            const std::vector<std::string> columnFamilies {"translation", "vendor_map", "oscpe_rules", "cna_mapping"};
-            bool isOneOf = false;
-
-            if (find(columnFamilies.begin(), columnFamilies.end(), columnFamily) != columnFamilies.end())
-            {
-                isOneOf = true;
-            }
-
-            nlohmann::json responseJson = nlohmann::json();
+            nlohmann::json response = nlohmann::json();
             if (!fbs.empty())
             {
                 std::string strData;
                 flatbuffers::GenText(parser, reinterpret_cast<const uint8_t*>(slice.data()), &strData);
-                if (isOneOf)
-                {
-                    try
-                    {
-                        responseJson[key] = nlohmann::json::parse(strData);
-                        std::cout << responseJson.dump() << std::endl;
-                        return;
-                    }
-                    catch (...)
-                    {
-                    }
-                }
 
-                std::cout << key << " ==> " << strData << std::endl;
+                response[key] = nlohmann::json::parse(strData, nullptr, false);
+                if (response[key].is_discarded())
+                {
+                    std::cerr << "Error parsing " << key << std::endl;
+                }
+                else
+                {
+                    std::cout << response.dump() << std::endl;
+                }
             }
             else
             {
-                if (isOneOf)
+                response[key] = nlohmann::json::parse(slice.ToString(), nullptr, false);
+                if (response[key].is_discarded())
                 {
-                    try
-                    {
-                        responseJson[key] = nlohmann::json::parse(slice.ToString());
-                        std::cout << responseJson.dump() << std::endl;
-                        return;
-                    }
-                    catch (...)
-                    {
-                    }
+                    std::cerr << "Error parsing " << key << std::endl;
                 }
-
-                std::cout << key << " ==> " << slice.ToString() << std::endl;
+                else
+                {
+                    std::cout << response.dump() << std::endl;
+                }
             }
         };
 
