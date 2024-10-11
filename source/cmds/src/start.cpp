@@ -701,7 +701,7 @@ void runStart(ConfHandler confManager)
     // Start server
     try
     {
-        g_apiServer->start(getExecutablePath() + "/sockets/engine.sock");
+        g_apiServer->start(ENGINE_SRV_SOCK);
         server->start();
     }
     catch (const std::exception& e)
