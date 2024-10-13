@@ -29,7 +29,7 @@
 /* Four bytes: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
 /* 0xF0 could start overlong encodings */
 /* Starting bytes 111101xx are forbidden (Unicode limit) */
-#define valid_4(x) (x[0] & 0xF8) == 0xF0 && x[0] != (char)0xF0 && (x[0] & 0x04) == 0 && (x[1] & 0xC0) == 0x80 && (x[2] & 0xC0) == 0x80 && (x[3] & 0xC0) == 0x80
+#define valid_4(x) (((x)[0] & 0xF8) == 0xF0 && (((x)[0] != (char)0xF0 || ((x)[1] & 0xF0) != 0x80) && ((x)[0] != (char)0xF4 || ((x)[1] & 0xF0) <= 0x80)) && ((x)[1] & 0xC0) == 0x80 && ((x)[2] & 0xC0) == 0x80 && ((x)[3] & 0xC0) == 0x80)
 
 /* Return whether a string is UTF-8 */
 bool w_utf8_valid(const char * string) {
