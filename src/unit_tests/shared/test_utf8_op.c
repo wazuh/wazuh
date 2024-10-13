@@ -144,6 +144,40 @@ void test_continuation_without_leading(void **state) {
     }
 }
 
+void test_surrogate_pair_extended_boundary(void **state) {
+    const char *boundary_cases[] = {
+        "\xED\x9F\xBF",     // U+D7FF (valid)
+        "\xED\xBF\xBF",     // U+DFFF (invalid, end of surrogate range)
+        NULL
+    };
+
+    assert_valid_utf8(boundary_cases[0], false, true);  // Should be valid
+    assert_valid_utf8(boundary_cases[1], false, false); // Should be invalid
+}
+
+void test_multilingual_plane_cases(void **state) {
+    const char *multilingual_plane_cases[] = {
+        "\xF0\x90\x80\x80", // U+10000 (valid, start of SMP)
+        "\xF0\x9F\xBF\xBF", // U+1FFFF (valid, end of SMP)
+        NULL
+    };
+
+    for (int i = 0; multilingual_plane_cases[i] != NULL; ++i) {
+        assert_valid_utf8(multilingual_plane_cases[i], false, true); // Should be valid
+    }
+}
+
+void test_mixed_valid_invalid_utf8(void **state) {
+    const char *mixed_cases[] = {
+        "Valid\xC0\xAFInvalid", // Mixed: Valid ASCII followed by overlong encoding
+        "A\xE0\x80\xAFB",       // Mixed: Valid ASCII, invalid overlong encoding, valid ASCII
+        NULL
+    };
+
+    assert_valid_utf8(mixed_cases[0], false, false); // Should be invalid
+    assert_valid_utf8(mixed_cases[1], false, false); // Should be invalid
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_valid_utf8_sequences),
@@ -156,7 +190,10 @@ int main(void) {
         cmocka_unit_test(test_overlong_encodings),
         cmocka_unit_test(test_surrogate_pair_boundary),
         cmocka_unit_test(test_maximal_overhead_cases),
-        cmocka_unit_test(test_continuation_without_leading)
+        cmocka_unit_test(test_continuation_without_leading),
+        cmocka_unit_test(test_surrogate_pair_extended_boundary),
+        cmocka_unit_test(test_multilingual_plane_cases),
+        cmocka_unit_test(test_mixed_valid_invalid_utf8)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
