@@ -107,3 +107,16 @@ class Command:
                 data=data.get('result').get('data'),
             ) if 'result' in data else None,
         )
+
+
+class Response(str, Enum):
+    """Command manager response status data model."""
+    SUCCESS = 'success'
+    FAILURE = 'failure'
+
+
+@dataclass
+class CreateCommandResponse:
+    """Create command response data model."""
+    response: Response
+    document_id: str = None
