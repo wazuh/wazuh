@@ -296,27 +296,23 @@ void runStart(ConfHandler confManager)
         }
 
         // Indexer Connector
-        {
-            nlohmann::json indexerConfig;
-            // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available
-            indexerConfig["name"] = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-basic-index");
-            indexerConfig["hosts"] =
-                nlohmann::json::array({getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")});
-            indexerConfig["username"] = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin");
-            indexerConfig["password"] = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+");
-
-            // SSL configuration
-            nlohmann::json ssl;
-            ssl["certificate_authorities"] = getEnvOrDefault("WENGINE_ICONNECTOR_CA", "");
-            ssl["certificate"] = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", "");
-            ssl["key"] = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "");
-            if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
-            {
-                indexerConfig["ssl"] = ssl;
-            }
+        { // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available.
+            // IndexerConnector configuration.
+            IndexerConnectorOptions indexerConnectorOptions {
+                .name = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-basic-index"),
+                .hosts = {getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")},
+                .username = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin"),
+                .password = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+"),
+                .sslOptions = {.cacert = {getEnvOrDefault("WENGINE_ICONNECTOR_CA", "")},
+                               .cert = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", ""),
+                               .key = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "")},
+                .timeout = static_cast<uint32_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_TIMEOUT", "60000"))),
+                .workingThreads =
+                    static_cast<uint8_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_WORKING_THREADS", "1"))),
+                .databasePath = getEnvOrDefault("WENGINE_ICONNECTOR_DB_PATH", getExecutablePath() + "/queue/indexer")};
 
             // Create connector and wait until the connection is established.
-            iConnector = std::make_shared<IndexerConnector>(indexerConfig);
+            iConnector = std::make_shared<IndexerConnector>(indexerConnectorOptions);
         }
 
         // Builder and registry
@@ -616,6 +612,50 @@ void runStart(ConfHandler confManager)
                                   });
 
             LOG_DEBUG("API Server configured.");
+
+            /**
+             * @api {post} /events/stateless Receive Events for Security Policy Processing
+             * @apiName ReceiveEvents
+             * @apiGroup Events
+             * @apiVersion 0.1.0-alpha
+             *
+             * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
+             * accepts a JSON payload representing the event details.
+             *
+             * @apiBody {Object} wazuh Details about the Wazuh event processing.
+             * @apiBody {Number} wazuh.queue Queue number where the event will be processed (range: 1-127).
+             * @apiBody {String} wazuh.location Location description in the format "(agent ID) (agent-name)
+             * any->/path/to/source".
+             * @apiBody {Object} event Details of the event itself.
+             * @apiBody {String} event.original The original message collected from the agent.
+             *
+             * @apiSuccessExample Success-Response:
+             *     HTTP/1.1 204 No Content
+             *    {}
+             *
+             * @apiError BadRequest The request body is not a valid JSON.
+             *
+             * @apiErrorExample {json} Error-Response:
+             *     HTTP/1.1 400 Bad Request
+             *     {
+             *       "error": ["Service Unavailable"],
+             *       "code": 400
+             *     }
+             */
+            g_apiServer->addRoute(apiserver::Method::POST,
+                                  "/events/stateless",
+                                  [orchestrator](const auto& req, auto& res)
+                                  {
+                                      try
+                                      {
+                                          orchestrator->postEvent(std::make_shared<json::Json>(req.body.c_str()));
+                                          res.status = httplib::StatusCode::NoContent_204;
+                                      }
+                                      catch (const std::runtime_error& e)
+                                      {
+                                          res.status = httplib::StatusCode::BadRequest_400;
+                                      }
+                                  });
         }
 
         // Server
@@ -661,7 +701,7 @@ void runStart(ConfHandler confManager)
     // Start server
     try
     {
-        g_apiServer->start();
+        g_apiServer->start(getExecutablePath() + "/sockets/engine.sock");
         server->start();
     }
     catch (const std::exception& e)

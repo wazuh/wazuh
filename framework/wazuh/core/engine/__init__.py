@@ -12,7 +12,7 @@ logger = getLogger('wazuh')
 # TODO: use actual default path
 ENGINE_API_SOCKET_PATH = '/var/wazuh/queue/engine.sock'
 DEFAULT_RETRIES = 3
-DEFAULT_TIMEOUT = 0.5
+DEFAULT_TIMEOUT = 10.0
 
 
 class Engine:

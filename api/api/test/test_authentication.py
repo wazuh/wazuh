@@ -10,7 +10,6 @@ from copy import deepcopy
 from unittest.mock import patch, MagicMock, ANY, call
 
 from connexion.exceptions import Unauthorized
-from cryptography.hazmat.primitives.asymmetric import ec
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -75,52 +74,6 @@ async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi
     mock_raise_if_exc.assert_called_once()
 
 
-@pytest.mark.parametrize('curve', [ec.SECP256R1(), ec.SECP521R1()])
-@patch('api.authentication.change_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
-                                                          '-----BEGIN PUBLIC KEY-----'))
-@patch('os.chmod')
-@patch('os.chown')
-@patch('builtins.open')
-def test_get_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair, curve):
-    """Verify correct params when calling open method inside get_keypair"""
-    result = authentication.get_keypair(curve)
-    assert result == ('-----BEGIN PRIVATE KEY-----',
-                      '-----BEGIN PUBLIC KEY-----')
-
-    calls = [call(authentication._private_key_path, authentication.wazuh_uid(), authentication.wazuh_gid()),
-             call(authentication._public_key_path, authentication.wazuh_uid(), authentication.wazuh_gid())]
-    mock_chown.assert_has_calls(calls)
-    calls = [call(authentication._private_key_path, 0o640),
-             call(authentication._public_key_path, 0o640)]
-    mock_chmod.assert_has_calls(calls)
-
-    with patch('os.path.exists', return_value=True):
-        authentication.get_keypair(curve)
-        calls = [call(authentication._private_key_path, mode='r'),
-                 call(authentication._public_key_path, mode='r')]
-        mock_open.assert_has_calls(calls, any_order=True)
-
-
-def test_get_keypair_ko():
-    """Verify expected exception is raised when IOError"""
-    with patch('builtins.open'):
-        with patch('os.chmod'):
-            with patch('os.chown', side_effect=PermissionError):
-                assert authentication.get_keypair(ec.SECP521R1())
-
-
-@pytest.mark.parametrize('curve', [ec.SECP256R1(), ec.SECP521R1()])
-@patch('builtins.open')
-def test_change_keypair(mock_open, curve):
-    """Verify correct params when calling open method inside change_keypair"""
-    result = authentication.change_keypair(curve)
-    assert isinstance(result[0], str)
-    assert isinstance(result[1], str)
-    calls = [call(authentication._private_key_path, mode='w'),
-             call(authentication._public_key_path, mode='w')]
-    mock_open.assert_has_calls(calls, any_order=True)
-
-
 def test_get_security_conf():
     """Check that returned object is as expected"""
     result = authentication.get_security_conf()
@@ -156,9 +109,11 @@ async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_
     mock_raise_if_exc.assert_called_once()
     mock_get_keypair.assert_called_once()
     expected_payload = original_payload | (
-        {"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(),
-                                              digest_size=16).hexdigest(), "run_as": True} if auth_context is not None else {})
-    mock_encode.assert_called_once_with(expected_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES512')
+        {
+            "hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest(), 
+            "run_as": True
+        } if auth_context is not None else {})
+    mock_encode.assert_called_once_with(expected_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES256')
 
 
 @patch('api.authentication.TokenManager')
@@ -194,7 +149,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
     mock_dapi.assert_has_calls(calls)
     mock_get_keypair.assert_called_once()
     mock_decode.assert_called_once_with('test_token', '-----BEGIN PUBLIC KEY-----',
-                                        algorithms=['ES512'],
+                                        algorithms=['ES256'],
                                         audience='Wazuh API REST')
     assert mock_distribute_function.call_count == 2
     assert mock_raise_if_exc.call_count == 2

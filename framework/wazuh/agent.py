@@ -19,7 +19,6 @@ from wazuh.core.agent import (
     get_rbac_filters,
 )
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
@@ -34,8 +33,7 @@ from wazuh.core.utils import (
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
+node_id = get_node().get('node')
 
 UPGRADE_CHUNK_SIZE = 500
 UPGRADE_RESULT_CHUNK_SIZE = 97
@@ -78,16 +76,17 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
 
     query_filters = []
     if agent_list:
-        query_filters.append({IndexerKey.TERMS: {'_id': agent_list}})
+        query_filters.append({IndexerKey.TERMS: {IndexerKey._ID: agent_list}})
 
-    if LAST_LOGIN_KEY in filters:
+    if LAST_LOGIN_KEY in filters and filters[LAST_LOGIN_KEY] is not None:
         query_filters.append(
             {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f"{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}"}}}
         )
         filters.pop(LAST_LOGIN_KEY)
 
     for key, value in filters.items():
-        query_filters.append({IndexerKey.TERM: {key: value}})
+        if value is not None:
+            query_filters.append({IndexerKey.TERM: {key: value}})
 
     return {
         IndexerKey.QUERY: {
@@ -326,15 +325,15 @@ async def get_agents(
     agent_list : list
         List of agent UUIDs to filter.
     filters : dict
-        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}.
+        Defines required field filters. Format: {"field1": "value1", "field2": ["value2", "value3"]}.
     offset : int
         First element to return in the collection.
     limit : int
         Maximum number of elements to return. Default: common.DATABASE_LIMIT
     select : dict
-        Select fields to return. Format: {"fields":["field1","field2"]}.
+        Select fields to return. Format: {"fields": ["field1", "field2"]}.
     sort : dict
-        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        Sorts the items. Format: {"fields": ["field1","field2"], "order": "asc|desc"}.
 
     Returns
     -------
@@ -346,8 +345,6 @@ async def get_agents(
         some_msg='Some agents information was not returned',
         none_msg='No agent information was returned'
     )
-    if filters is None:
-        filters = dict()
 
     query = build_agents_query(agent_list, filters)
 

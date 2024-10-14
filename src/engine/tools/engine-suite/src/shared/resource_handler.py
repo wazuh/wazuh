@@ -172,6 +172,10 @@ class ResourceHandler:
             raise Exception(
                 f'{response["data"]["error"]}')
 
+    def validate_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):                
+        self._base_catalog_command(
+            path, type, name, yaml.dump(content, sort_keys=False), namespace, format, 'validate')
+
     def update_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):
         self._base_catalog_command(
             path, type, name, content, namespace, format, 'put')
@@ -190,6 +194,21 @@ class ResourceHandler:
             return None
 
         info = f'[{namespace}] Add {name} to catalog'
+
+        return exec.RecoverableTask(do_task, undo_task, info)
+
+    def get_validate_catalog_task(self, path: str,  type: str, name: str, content: dict, namespace: str, format: Format = Format.YML) -> exec.RecoverableTask:
+        def do_task():
+            self.validate_catalog_file(
+                path, type, name, content, namespace, format)
+            return None
+
+        def undo_task():
+            self.validate_catalog_file(
+                path, type, name, content, namespace, format)
+            return None
+
+        info = f'[{namespace}] Validate {name} from catalog'
 
         return exec.RecoverableTask(do_task, undo_task, info)
 

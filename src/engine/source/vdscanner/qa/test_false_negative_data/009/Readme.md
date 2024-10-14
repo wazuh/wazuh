@@ -28,7 +28,6 @@ Vulnerability detection validation for snap package `firefox` on Ubuntu.
 | Firefox  | 116.0.2-1  | NVD  | CVE-2011-0064 | Vulnerable       |
 | Firefox  | 116.0.2-1  | NVD  | CVE-2012-4929 | Vulnerable       |
 | Firefox  | 116.0.2-1  | NVD  | CVE-2012-4930 | Vulnerable       |
-| Firefox  | 116.0.2-1  | NVD  | CVE-2014-6492 | Vulnerable       |
 | Firefox  | 116.0.2-1  | NVD  | CVE-2016-7152 | Vulnerable       |
 | Firefox  | 116.0.2-1  | NVD  | CVE-2016-7153 | Vulnerable       |
 | Firefox  | 116.0.2-1  | NVD  | CVE-2023-4573 | Vulnerable       |
@@ -101,3 +100,4 @@ Vulnerability detection validation for snap package `firefox` on Ubuntu.
 | Firefox  | 116.0.2-1  | NVD  | CVE-2024-0753 | Vulnerable       |
 | Firefox  | 116.0.2-1  | NVD  | CVE-2024-0754 | Vulnerable       |
 | Firefox  | 116.0.2-1  | NVD  | CVE-2024-0755 | Vulnerable       |
+| Firefox  | 116.0.2-1  | NVD  | CVE-2014-6492 | Non vulnerable   |

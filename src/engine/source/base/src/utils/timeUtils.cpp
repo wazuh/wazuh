@@ -34,6 +34,14 @@ std::string getCurrentTimestamp()
     return getTimestamp(std::time(nullptr));
 }
 
+std::string getCurrentDate(const std::string& separator = "/")
+{
+    auto date = base::utils::string::split(getCurrentTimestamp(), ' ').at(0);
+    base::utils::string::replaceAll(date, "/", separator);
+
+    return date;
+}
+
 std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
 {
     std::stringstream ss;

@@ -415,21 +415,6 @@ class WazuhException(Exception):
                           'are not granted',
                'remediation': 'Please, ensure /proc exists and permissions are granted'},
 
-        # Database:
-        2000: {'message': 'No such database file'},
-        2001: {'message': 'Incompatible version of SQLite'},
-        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
-        2003: {'message': 'Error in wazuhdb request',
-               'remediation': 'Make sure the request is correct'},
-        2004: {'message': 'Database query not valid'},
-        2005: {'message': 'Could not connect to wdb socket'},
-        2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
-        2007: {'message': 'Error retrieving data from Wazuh DB'},
-        2008: {'message': 'Corrupted RBAC database',
-               'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
-        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
-        2010: {'message': 'The requested read operation did not complete fully'},
-
         # External services
         2100: {'message': 'Error in CTI service request'},
 
@@ -466,20 +451,15 @@ class WazuhException(Exception):
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
-        3007: 'Client.keys file received in master node',
-        3009: {'message': 'Error executing distributed API request',
-               'remediation': ''},
-        3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
+        3007: {'message': 'Could not start the server',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-                              ' to get more information about how to configure a cluster'
-               },
+                              ' to get more information about how to configure a cluster'},
+        3009: {'message': 'Error executing distributed API request',
+               'remediation': ''},
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3018: 'Error sending request',
-        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, '
-              'try again in the master node: {MASTER_IP}',
         3020: {'message': 'Timeout sending request',
                'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
@@ -489,11 +469,6 @@ class WazuhException(Exception):
                'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
                               'connection errors. Restart the `wazuh-manager` service.'},
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
-        3025: {'message': "Could not decrypt message",
-               'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
-                              f"ossec-conf/cluster.html#key)"
-                              ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
         3028: {'message': "Worker node ID already exists",
@@ -504,19 +479,12 @@ class WazuhException(Exception):
                "remediation": f"Check and fix the [worker name](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service in the node"},
-        3030: {'message': 'Worker does not belong to the same cluster',
-               'remediation': f"Change the [cluster name](https://documentation.wazuh.com/{DOCU_VERSION}/"
-                              f"user-manual/reference/ossec-conf/cluster.html#name)"
-                              " in the worker configuration to match the master's and restart the `wazuh-manager` "
-                              "service"},
         3031: {'message': "Worker and master versions are not the same",
                'remediation': f"[Update](https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3034: "Error sending file. File not found.",
-        3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
-        3037: 'Error while processing Agent-info chunks',
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
@@ -525,7 +493,7 @@ class WazuhException(Exception):
         3041: "Server status check timed out after adding new servers",
         3042: "User configuration is not valid",
         3043: "Could not initialize Proxy API",
-        3044: "Could not connect to the HAProxy dataplane API",
+        3044: "Could not connect to the HAProxy Dataplane API",
         3045: "Could not connect to HAProxy",
         3046: "Invalid credentials for the Proxy API",
         3047: "Invalid HAProxy Dataplane API specification configured",
