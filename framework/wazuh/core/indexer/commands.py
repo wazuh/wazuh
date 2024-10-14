@@ -3,19 +3,43 @@ from typing import List, Optional, Union
 
 from uuid6 import UUID
 
-from .base import BaseIndex, IndexerKey, remove_empty_values
+from .base import BaseIndex, IndexerKey, remove_empty_values, POST_METHOD
 from wazuh.core.exception import WazuhResourceNotFound
-from wazuh.core.indexer.models.commands import Command, Result, Status
+from wazuh.core.indexer.models.commands import Command, Result, Status, CreateCommandResponse
 
 DOC_ID_KEY = 'id'
-AGENT_ID_KEY = 'agent.id'
+TARGET_ID_KEY = 'target.id'
 STATUS_KEY = 'status'
 
 
 class CommandsIndex(BaseIndex):
     """Set of methods to interact with the commands index."""
 
-    INDEX = 'commands'
+    INDEX = 'command-manager'
+    COMMAND_MANAGER_PLUGIN_URL = '/_plugins/_commandmanager'
+
+    async def create(self, command: Command) -> CreateCommandResponse:
+        """Create a new command.
+        
+        Parameters
+        ----------
+        command : Command
+            New command.
+        
+        Returns
+        -------
+        CreateCommandResponse
+            Indexer command manager response.
+        """
+        response = await self._client.transport.perform_request(
+            method=POST_METHOD,
+            url=self.COMMAND_MANAGER_PLUGIN_URL,
+            body=asdict(command, dict_factory=remove_empty_values),
+        )
+        return CreateCommandResponse(
+            response=response.get('response'),
+            document_id=response.get('document_id'),
+        )
 
     async def get(self, uuid: UUID, status: Status) -> Optional[List[Command]]:
         """Get commands with the provided status from an specific agent.
@@ -36,7 +60,7 @@ class CommandsIndex(BaseIndex):
             IndexerKey.QUERY: {
                 IndexerKey.BOOL: {
                     IndexerKey.MUST: [
-                        {IndexerKey.MATCH: {AGENT_ID_KEY: uuid}},
+                        {IndexerKey.MATCH: {TARGET_ID_KEY: uuid}},
                         {IndexerKey.MATCH: {STATUS_KEY: status}},
                     ]
                 }

@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Tuple
 
 from opensearchpy import AsyncOpenSearch
 
+POST_METHOD = 'POST'
+
 
 class IndexerKey(str, Enum):
     """Opensearch API request fields keys."""
