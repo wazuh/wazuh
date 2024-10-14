@@ -7,8 +7,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Build Wazuh with test flags
+    - name: Set permissions and prepare the library
       shell: bash
       run: |
-          make deps -C src TARGET=${{ matrix.target }} -j2
-          make -C src TARGET=${{ matrix.target }} DEBUG=1 TEST=1 -j2
+        chmod +x .github/actions/legacy_unit_tests.sh
+    - name: Build Wazuh
+      shell: bash
+      run: |
+        source .github/actions/legacy_unit_tests.sh
+        build_wazuh_test_flags ${{ inputs.target }}
