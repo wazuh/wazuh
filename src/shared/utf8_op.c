@@ -24,12 +24,12 @@
 /* Three bytes: 1110xxxx 10xxxxxx 10xxxxxx */
 /* 0xE0 could start overlong encodings */
 /* 0xED (range U+D800–U+DFFF) is reserved for UTF-16 surrogate halves */
-#define valid_3(x) (x[0] & 0xF0) == 0xE0 && x[0] != (char)0xE0 && x[0] != (char)0xED && (x[1] & 0xC0) == 0x80 && (x[2] & 0xC0) == 0x80
+#define valid_3(x) (((x)[0] & 0xF0) == 0xE0 && ((x)[1] & 0xC0) == 0x80 && ((x)[2] & 0xC0) == 0x80 && ((x)[0] != (char)0xE0 || (unsigned char)(x)[1] >= 0xA0) && ((x)[0] != (char)0xED || (unsigned char)(x)[1] < 0xA0) && ((x)[0] != (char)0xEF || (unsigned char)(x)[1] <= 0xBF))
 
 /* Four bytes: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
 /* 0xF0 could start overlong encodings */
 /* Starting bytes 111101xx are forbidden (Unicode limit) */
-#define valid_4(x) (((x)[0] & 0xF8) == 0xF0 && (((x)[0] != (char)0xF0 || ((x)[1] & 0xF0) != 0x80) && ((x)[0] != (char)0xF4 || ((x)[1] & 0xF0) <= 0x80)) && ((x)[1] & 0xC0) == 0x80 && ((x)[2] & 0xC0) == 0x80 && ((x)[3] & 0xC0) == 0x80)
+#define valid_4(x) (((x)[0] & 0xF8) == 0xF0 && ((x)[1] & 0xC0) == 0x80 && ((x)[2] & 0xC0) == 0x80 && ((x)[3] & 0xC0) == 0x80 && ((x)[0] != (char)0xF0 || (unsigned char)(x)[1] >= 0x90) && ((x)[0] != (char)0xF4 || (unsigned char)(x)[1] <= 0x8F))
 
 /* Return whether a string is UTF-8 */
 bool w_utf8_valid(const char * string) {
