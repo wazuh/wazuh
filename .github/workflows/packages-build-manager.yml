@@ -139,8 +139,8 @@ jobs:
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
-          echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
-          bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
+          bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
           if [ "${{ inputs.system }}" == "deb" ]; then 
             SYMBOLS_TAG="dbg"
