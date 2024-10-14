@@ -1,18 +1,31 @@
-from wazuh.core.indexer.models.commands import Command, Status, CommandAgent
+from wazuh.core.indexer.models.commands import Command, Status, Source, Type
 
 
 def test_command_from_dict():
     """Validate the correct functionality of the `Command.from_dict` method."""
-    agent_id = 'agent_id'
+    target_id = 'agent_id'
+    target_type = Type.AGENT
     args = ['/bin/bash', '-c']
-    id = 'id'
+    document_id = 'id'
     info = 'info'
     status = 'pending'
-    data = {'agent': {'id': agent_id}, 'args': args, 'info': info, 'status': status}
-    command = Command().from_dict(id, data)
+    timeout = 100
+    source = Source.SERVICES
+    data = {
+        'target': {'id': target_id, 'type': target_type},
+        'action': {'args': args},
+        'result': {'info': info},
+        'status': status,
+        'timeout': timeout,
+        'source': source,
+    }
+    command = Command().from_dict(document_id, data)
 
-    assert command.agent == CommandAgent(id=agent_id)
-    assert command.args == args
-    assert command.id == id
-    assert command.info == info
+    assert command.document_id == document_id
+    assert command.target.id == target_id
+    assert command.target.type == target_type
+    assert command.action.args == args
+    assert command.result.info == info
     assert command.status == Status.PENDING
+    assert command.timeout == timeout
+    assert command.source == source

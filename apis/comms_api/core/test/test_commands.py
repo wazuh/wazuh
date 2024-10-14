@@ -30,7 +30,7 @@ async def test_pull_commands(commands_update_mock, commands_get_mock, create_ind
 @patch('wazuh.core.indexer.create_indexer', return_value=INDEXER)
 @patch('wazuh.core.indexer.commands.CommandsIndex.update')
 async def test_post_results(commands_update_mock, create_indexer_mock):
-    results = [Result(id=COMMAND_ID, status=Status.COMPLETED)]
+    results = [Result(id=COMMAND_ID, status=Status.SUCCESS)]
     await post_results(results)
 
     create_indexer_mock.assert_called_once()

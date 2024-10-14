@@ -44,7 +44,7 @@ async def test_get_commands_ko(decode_token_mock, exception):
 @patch('comms_api.routers.commands.post_results')
 async def test_post_commands_results(post_results_mock):
     """Verify that the `post_commands_results` handler works as expected."""
-    results = [Result(id='id', status=Status.COMPLETED)]
+    results = [Result(id='id', status=Status.SUCCESS)]
     body = CommandsResults(results=results)
     response = await post_commands_results(body)
 
@@ -56,7 +56,7 @@ async def test_post_commands_results(post_results_mock):
 async def test_post_commands_results_ko():
     """Verify that the `post_commands_results` handler catches exceptions successfully."""
     exception = WazuhResourceNotFound(2202)
-    results = [Result(id='id', status=Status.COMPLETED)]
+    results = [Result(id='id', status=Status.SUCCESS)]
 
     with patch('comms_api.routers.commands.post_results', MagicMock(side_effect=exception)):
         with pytest.raises(HTTPError, match=fr'{exception.code}: {exception.message}'):

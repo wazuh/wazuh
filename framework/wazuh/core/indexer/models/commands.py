@@ -4,51 +4,76 @@ from typing import List
 
 
 @dataclass
-class CommandAgent:
-    """Agent data model in the context of commands."""
-    # TODO(25121): this should be a UUID, but pydantic supports up to v5 only.
-    # Related to https://github.com/python/cpython/issues/89083.
-    id: str
+class Action:
+    """Command action data model."""
+    name: str
+    args: List[str]
+    version: str
+
+
+@dataclass
+class Result:
+    """Command result data model."""
+    info: str = None
+    code: int = None
+    message: str = None
+    data: str = None
+
+
+class Source(str, Enum):
+    """Command source data model."""
+    SERVICES = 'Users/Services'
+    ENGINE = 'Engine'
+    CONTENT_MANAGER = 'Content manager'
 
 
 class Status(str, Enum):
-    """Command execution status."""
+    """Command status data model."""
     PENDING = 'pending'
     SENT = 'sent'
-    COMPLETED = 'completed'
+    SUCCESS = 'success'
     FAILED = 'failed'
 
 
-@dataclass
-class Document:
-    """OpenSearch document model."""
-    id: str = None
+class Type(str, Enum):
+    """Command target type data model."""
+    AGENT = 'agent'
+    GROUP = 'group'
+    SERVER = 'server'
 
 
 @dataclass
-class Result(Document):
-    """Command result data model."""
-    # Cannot extend enumerations, custom validators are used to prevent agents 
-    # from uploading a result with a status other than completed or failed.
-    # https://docs.python.org/3/howto/enum.html#restricted-enum-subclassing
-    status: Status = None
-    info: str = None
+class Target:
+    """Command target data model."""
+    # TODO(25121): this should be a UUID, but pydantic supports up to v5 only.
+    # Related to https://github.com/python/cpython/issues/89083.
+    id: str
+    type: Type
 
 
 @dataclass
-class Command(Result):
+class Command:
     """Command data model."""
-    args: List[str] = None
-    agent: CommandAgent = None
+    document_id: str = None
+    request_id: str = None
+    order_id: str = None
+    groups: str = None
+    source: Source = None
+    user: str = None
+    target: Target = None
+    action: Action = None
+    timeout: int = None
+    status: Status = None
+    result: Result = None
 
     @classmethod
-    def from_dict(cls, id: str, data: dict):
+    def from_dict(cls, document_id: str, data: dict):
         """Create an object instance from a dictionary.
         
         Parameters
         ----------
-        id : str
-            Command ID.
+        document_id : str
+            Document ID.
         data : dict
             Command data.
         
@@ -58,9 +83,27 @@ class Command(Result):
             Object instance with its fields initialized.
         """
         return cls(
-            id=id,
-            args=data.get('args'),
-            agent=CommandAgent(id=data.get('agent').get('id')),
-            status=Status(data.get('status')),
-            info=data.get('info'),
+            document_id=document_id,
+            order_id=data.get('order_id'),
+            request_id=data.get('request_id'),
+            groups=data.get('groups'),
+            source=Source(data.get('source')) if 'source' in data else None,
+            user=data.get('user'),
+            target=Target(
+                id=data.get('target').get('id'),
+                type=Type(data.get('target').get('type')),
+            ) if 'target' in data else None,
+            action=Action(
+                name=data.get('action').get('name'),
+                args=data.get('action').get('args'),
+                version=data.get('action').get('version'),
+            ) if 'action' in data else None,
+            timeout=data.get('timeout'),
+            status=Status(data.get('status')) if 'status' in data else None,
+            result=Result(
+                info=data.get('result').get('info'),
+                code=data.get('result').get('code'),
+                message=data.get('result').get('message'),
+                data=data.get('result').get('data'),
+            ) if 'result' in data else None,
         )

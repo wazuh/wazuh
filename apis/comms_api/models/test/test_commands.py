@@ -6,7 +6,7 @@ from wazuh.core.indexer.models.commands import Result, Status
 
 async def test_check_status():
     """Verify that the `check_status` model validator works as expected."""
-    results = [Result(id='id', status=Status.COMPLETED)]
+    results = [Result(id='id', status=Status.SUCCESS)]
     CommandsResults(results=results)
 
 
