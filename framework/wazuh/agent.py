@@ -22,6 +22,8 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.commands import create_restart_command
+from wazuh.core.indexer.models.commands import ResponseMessage
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
@@ -268,7 +270,32 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
         none_msg='Restart command was not sent to any agent'
     )
 
-    raise NotImplementedError('Implement once the restart endpoint is defined')
+    async with get_indexer_client() as indexer_client:
+        query = {IndexerKey.MATCH_ALL: {}}
+        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+        
+        available_agents = [agent.id for agent in agents]
+
+        if len(agent_list) == 0:
+            # Send the restart command to all available agents
+            agent_list = available_agents
+        else:
+            for not_found_id in set(agent_list) - set(available_agents):
+                result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
+                agent_list.remove(not_found_id)
+
+        for agent_id in agent_list:
+            command = create_restart_command(agent_id=agent_id)
+
+            response = await indexer_client.commands_manager.create(command)
+            if response.response == ResponseMessage.SUCCESS:
+                result.affected_items.append(agent_id)
+            else:
+                result.add_failed_item(id_=agent_id, error='Error creating restart command')
+
+    result.total_affected_items = len(agent_list)
+
+    return result
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
@@ -280,24 +307,6 @@ def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
     ----------
     agent_list : list, optional
         List of agents. Default `None`
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    return restart_agents(agent_list=agent_list)
-
-
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1707], 'force': True})
-def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Restart all agents belonging to a group.
-
-    Parameters
-    ----------
-    agent_list : list, optional
-        List of agents. Default `None`.
 
     Returns
     -------

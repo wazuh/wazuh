@@ -35,7 +35,7 @@ class Status(str, Enum):
     FAILED = 'failed'
 
 
-class Type(str, Enum):
+class TargetType(str, Enum):
     """Command target type data model."""
     AGENT = 'agent'
     GROUP = 'group'
@@ -48,7 +48,7 @@ class Target:
     # TODO(25121): this should be a UUID, but pydantic supports up to v5 only.
     # Related to https://github.com/python/cpython/issues/89083.
     id: str
-    type: Type
+    type: TargetType
 
 
 @dataclass
@@ -91,7 +91,7 @@ class Command:
             user=data.get('user'),
             target=Target(
                 id=data.get('target').get('id'),
-                type=Type(data.get('target').get('type')),
+                type=TargetType(data.get('target').get('type')),
             ) if 'target' in data else None,
             action=Action(
                 name=data.get('action').get('name'),
@@ -109,7 +109,7 @@ class Command:
         )
 
 
-class Response(str, Enum):
+class ResponseMessage(str, Enum):
     """Command manager response status data model."""
     SUCCESS = 'success'
     FAILURE = 'failure'
@@ -118,5 +118,5 @@ class Response(str, Enum):
 @dataclass
 class CreateCommandResponse:
     """Create command response data model."""
-    response: Response
+    response: ResponseMessage
     document_id: str = None

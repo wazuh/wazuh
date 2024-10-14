@@ -56,6 +56,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.exception import WazuhResourceNotFound
         from wazuh.core.indexer.agent import Agent as IndexerAgent
         from wazuh.core.indexer.base import IndexerKey
+        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseMessage
         from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
         from wazuh.core.tests.test_agent import InitAgent
 
@@ -183,10 +184,29 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
 
-@pytest.mark.parametrize('agent_list, expected_items, error_code', [])
-@pytest.mark.skip('To be implemented along `restart_agents` function')
-def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
-                              expected_items, error_code):
+@pytest.mark.parametrize('agent_list, expected_items, fail', [
+    (
+        ['01928c6a-3069-7056-80d0-eb397a8fec78', '01928c6a-3069-736d-a641-647352e4fd0d'],
+        ['01928c6a-3069-7056-80d0-eb397a8fec78', '01928c6a-3069-736d-a641-647352e4fd0d'],
+        False
+    ),
+    (
+        [],
+        [
+            '01928c6a-3069-7056-80d0-eb397a8fec78',
+            '01928c6a-3069-736d-a641-647352e4fd0d',
+            '01928c6a-3069-719c-a32c-44671da04717'
+        ],
+        False
+    ),
+    (
+        ['01928c6a-3069-7056-80d0-eb397a8fec78', '01928c6a-3069-736d-a641-647352e4fd0d'],
+        ['01928c6a-3069-7056-80d0-eb397a8fec78', '01928c6a-3069-736d-a641-647352e4fd0d'],
+        True
+    ),
+])
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_items, fail):
     """Test `restart_agents` function from agent module.
 
     Parameters
@@ -198,16 +218,33 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_res
     error_code : int
         The expected error code.
     """
-    result = restart_agents(agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
-    if result.failed_items:
-        code = next(iter(result.failed_items.keys())).code
-        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+    all_agent_ids = [
+        '01928c6a-3069-7056-80d0-eb397a8fec78',
+        '01928c6a-3069-736d-a641-647352e4fd0d',
+        '01928c6a-3069-719c-a32c-44671da04717'
+    ]
+    agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in all_agent_ids])
+    create_indexer_mock.return_value.agents.search = agents_search_mock
+
+    create_response = CreateCommandResponse(response=ResponseMessage.FAILURE)
+    if not fail:
+        create_response.response = ResponseMessage.SUCCESS
+        create_response.document_id = 'pBjePGfvgm'
+
+    commands_create_mock = AsyncMock(return_value=create_response)
+    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
+
+    result = await restart_agents(agent_list)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.total_affected_items == len(expected_items)
+    if fail:
+        assert result.failed_items['Error creating restart command'] == set(expected_items)
+    else:
+        assert result.affected_items == expected_items
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [])
-@pytest.mark.skip('To be implemented along `restart_agents` function')
+@pytest.mark.skip('We should find a way of getting the list of agents connected to each node.')
 def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
                                       expected_items, error_code):
     """Test `restart_agents_by_node` function from agent module.

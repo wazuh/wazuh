@@ -5,11 +5,13 @@ from uuid6 import UUID
 
 from .base import BaseIndex, IndexerKey, remove_empty_values, POST_METHOD
 from wazuh.core.exception import WazuhResourceNotFound
-from wazuh.core.indexer.models.commands import Command, Result, Status, CreateCommandResponse
-
+from wazuh.core.indexer.models.commands import Action, Command, Result, Source, Status, Target, TargetType, \
+    CreateCommandResponse
+ 
 DOC_ID_KEY = 'id'
 TARGET_ID_KEY = 'target.id'
 STATUS_KEY = 'status'
+COMMAND_USER_NAME = 'Management API'
 
 
 class CommandsManager(BaseIndex):
@@ -104,3 +106,31 @@ class CommandsManager(BaseIndex):
         for item in response[IndexerKey.ITEMS]:
             if item[IndexerKey.UPDATE][STATUS_KEY] == 404:
                 raise WazuhResourceNotFound(2202)
+
+
+def create_restart_command(agent_id: str) -> Command:
+    """Create a restart command for an agent with the ID specified.
+    
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    
+    Returns
+    -------
+    Command
+        Restart command.
+    """
+    return Command(
+        source=Source.SERVICES,
+        target=Target(
+            type=TargetType.AGENT,
+            id=agent_id,
+        ),
+        action=Action(
+            name='restart',
+            args=['wazuh-agent', 'restart'],
+            version='v5.0.0'
+        ),
+        user=COMMAND_USER_NAME
+    )

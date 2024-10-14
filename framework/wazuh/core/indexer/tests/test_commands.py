@@ -2,9 +2,11 @@ from dataclasses import asdict
 from unittest import mock
 
 import pytest
-from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY
+from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY, create_restart_command, \
+    COMMAND_USER_NAME
 from wazuh.core.indexer.base import IndexerKey, POST_METHOD, remove_empty_values
-from wazuh.core.indexer.models.commands import Command, Source, Status, Type, CreateCommandResponse
+from wazuh.core.indexer.models.commands import Action, Command, Source, Status, Target, TargetType, \
+    CreateCommandResponse
 
 
 class TestCommandsManager:
@@ -47,11 +49,11 @@ class TestCommandsManager:
         search_result = {IndexerKey.HITS: {IndexerKey.HITS: [
             {
                 IndexerKey._ID: 'pBjePGfvgm',
-                IndexerKey._SOURCE: {'target': {'id': uuid, 'type': Type.AGENT}, 'status': status}
+                IndexerKey._SOURCE: {'target': {'id': uuid, 'type': TargetType.AGENT}, 'status': status}
             },
             {
                 IndexerKey._ID: 'pBjePGfvgn',
-                IndexerKey._SOURCE: {'target': {'id': '001', 'type': Type.AGENT}, 'status': status}
+                IndexerKey._SOURCE: {'target': {'id': '001', 'type': TargetType.AGENT}, 'status': status}
             },
         ]}}
         client_mock.search.return_value = search_result
@@ -64,3 +66,25 @@ class TestCommandsManager:
             index=index_instance.INDEX,
             body=query,
         )
+
+
+def test_create_restart_command():
+    """Check the correct functionality of the `create_restart_command` function."""
+    agent_id = '0191dd54-bd16-7025-80e6-ae49bc101c7a'
+    expected_command = Command(
+        source=Source.SERVICES,
+        target=Target(
+            type=TargetType.AGENT,
+            id=agent_id,
+        ),
+        action=Action(
+            name='restart',
+            args=['wazuh-agent', 'restart'],
+            version='v5.0.0'
+        ),
+        user=COMMAND_USER_NAME
+    )
+
+    command = create_restart_command(agent_id=agent_id)
+
+    assert command == expected_command

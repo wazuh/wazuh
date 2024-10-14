@@ -1,10 +1,10 @@
-from wazuh.core.indexer.models.commands import Command, Status, Source, Type
+from wazuh.core.indexer.models.commands import Command, Status, Source, TargetType
 
 
 def test_command_from_dict():
     """Validate the correct functionality of the `Command.from_dict` method."""
     target_id = 'agent_id'
-    target_type = Type.AGENT
+    target_type = TargetType.AGENT
     args = ['/bin/bash', '-c']
     document_id = 'id'
     info = 'info'
