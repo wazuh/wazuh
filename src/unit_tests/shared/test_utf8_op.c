@@ -20,14 +20,22 @@
 
 // Utility function for verifying the result
 void assert_valid_utf8(const char *input, bool replacement, bool expect_valid) {
-    char *filtered = w_utf8_filter(input, replacement);
-    int result = w_utf8_valid(filtered);
-    if (expect_valid) {
-        assert_int_equal(result, 1);
+    char *filtered;
+    int result;
+
+    if (replacement) {
+        filtered = w_utf8_filter(input, true);
+        result = w_utf8_valid(filtered);
+        assert_int_equal(result, 1); // After replacement, should be valid
+        free(filtered);
     } else {
-        assert_int_equal(result, 0);
+        result = w_utf8_valid(input);
+        if (expect_valid) {
+            assert_int_equal(result, 1);
+        } else {
+            assert_int_equal(result, 0);
+        }
     }
-    free(filtered);
 }
 
 // Test valid UTF-8 sequences
@@ -79,14 +87,13 @@ void test_utf8_random_replace(void **state)
     randombytes(buffer, LENGTH - 1);
 
     /* Avoid zeroes */
-
     for (i = 0; i < LENGTH - 1; i++) {
         buffer[i] = buffer[i] ? buffer[i] : '0';
     }
 
     buffer[LENGTH - 1] = '\0';
 
-    char * copy = w_utf8_filter(buffer, true);
+    char *copy = w_utf8_filter((char *)buffer, true);
     int r = w_utf8_valid(copy);
 
     /* Check if the output is valid */
@@ -110,13 +117,10 @@ void test_utf8_random_not_replace(void **state)
 
     buffer[LENGTH - 1] = '\0';
 
-    char * copy = w_utf8_filter(buffer, false);
-    int r = w_utf8_valid(copy);
+    int r = w_utf8_valid((char *)buffer);
 
     /* The result could be either valid or invalid */
     (void)r; // Use (void) to avoid unused variable warning in case you don't assert
-
-    free(copy);
 }
 
 void test_utf8_edge_cases(void **state)
@@ -128,7 +132,7 @@ void test_utf8_edge_cases(void **state)
     };
 
     // Check edge cases
-    assert_valid_utf8(edge_cases[0], false, true); // Should be valid
+    assert_valid_utf8(edge_cases[0], false, true);  // Should be valid
     assert_valid_utf8(edge_cases[1], false, false); // Should be invalid
 }
 
@@ -231,8 +235,101 @@ void test_mixed_valid_invalid_utf8(void **state) {
         NULL
     };
 
-    assert_valid_utf8(mixed_cases[0], false, false); // Should be invalid
-    assert_valid_utf8(mixed_cases[1], false, false); // Should be invalid
+    for (int i = 0; mixed_cases[i] != NULL; ++i) {
+        assert_valid_utf8(mixed_cases[i], false, false); // Should be invalid
+    }
+}
+
+void test_boundary_cases(void **state){
+    const char *boundary_cases[] = {
+        "\xED\x80\x80",     // U+D000 (valid, not U+D800)
+        "\xED\xA0\x80",     // U+D800 (invalid, start of surrogate range)
+        NULL
+    };
+
+    assert_valid_utf8(boundary_cases[0], false, true);  // Should be valid
+    assert_valid_utf8(boundary_cases[1], false, false); // Should be invalid
+}
+
+// New test functions added based on recommendations
+
+void test_surrogate_range_after(void **state) {
+    const char *test_case = "\xEE\x80\x80"; // U+E000 (valid, just after surrogate range)
+    assert_valid_utf8(test_case, false, true); // Should be valid
+}
+
+void test_invalid_start_bytes(void **state) {
+    const char *invalid_starts[] = {
+        "\xF5\x80\x80\x80", // Invalid start byte beyond 0xF4
+        "\xFE",             // Invalid start byte
+        NULL
+    };
+
+    for (int i = 0; invalid_starts[i] != NULL; ++i) {
+        assert_valid_utf8(invalid_starts[i], false, false); // Should be invalid
+    }
+}
+
+void test_invalid_second_byte_sequences(void **state) {
+    const char *invalid_sequences[] = {
+        "\xE0\x9F\xBF",     // Invalid second byte for 0xE0 start byte
+        "\xF0\x8F\xBF\xBF", // Invalid second byte for 0xF0 start byte
+        NULL
+    };
+
+    for (int i = 0; invalid_sequences[i] != NULL; ++i) {
+        assert_valid_utf8(invalid_sequences[i], false, false); // Should be invalid
+    }
+}
+
+void test_incomplete_three_byte_sequence(void **state) {
+    const char *incomplete_sequence = "\xE2\x82"; // Missing third byte
+    assert_valid_utf8(incomplete_sequence, false, false); // Should be invalid
+}
+
+void test_mixed_valid_invalid_with_surrogates(void **state) {
+    const char *mixed_case = "Test\xED\xA0\x80End"; // Contains invalid surrogate code point
+    assert_valid_utf8(mixed_case, false, false); // Should be invalid
+}
+
+void test_specific_byte_sequence_boundaries(void **state) {
+    const char *test_cases[] = {
+        "\xC2\x80",         // Minimum 2-byte sequence (U+0080, valid)
+        "\xE0\xA0\x80",     // Minimum 3-byte sequence (U+0800, valid)
+        "\xC2\x80\x80",     // Invalid: extra continuation byte
+        "\xE0\xA0\x80\x80", // Invalid: extra continuation byte
+        NULL
+    };
+
+    int expected[] = {1, 1, 0, 0};
+
+    for (int i = 0; test_cases[i] != NULL; ++i) {
+        assert_valid_utf8(test_cases[i], false, expected[i]);
+    }
+}
+
+void test_non_characters(void **state) {
+    const char *non_characters[] = {
+        "\xEF\xB7\x90", // U+FDD0 (valid but non-character)
+        "\xEF\xBF\xBE", // U+FFFE (valid but non-character)
+        NULL
+    };
+
+    for (int i = 0; non_characters[i] != NULL; ++i) {
+        assert_valid_utf8(non_characters[i], false, true); // Should be valid
+    }
+}
+
+void test_special_unicode_characters(void **state) {
+    const char *special_chars[] = {
+        "\xE2\x80\x8B", // U+200B Zero-width space
+        "\xCC\x81",     // U+0301 Combining acute accent
+        NULL
+    };
+
+    for (int i = 0; special_chars[i] != NULL; ++i) {
+        assert_valid_utf8(special_chars[i], false, true); // Should be valid
+    }
 }
 
 int main(void) {
@@ -250,7 +347,16 @@ int main(void) {
         cmocka_unit_test(test_continuation_without_leading),
         cmocka_unit_test(test_surrogate_pair_extended_boundary),
         cmocka_unit_test(test_multilingual_plane_cases),
-        cmocka_unit_test(test_mixed_valid_invalid_utf8)
+        cmocka_unit_test(test_mixed_valid_invalid_utf8),
+        cmocka_unit_test(test_boundary_cases),
+        cmocka_unit_test(test_surrogate_range_after),
+        cmocka_unit_test(test_invalid_start_bytes),
+        cmocka_unit_test(test_invalid_second_byte_sequences),
+        cmocka_unit_test(test_incomplete_three_byte_sequence),
+        cmocka_unit_test(test_mixed_valid_invalid_with_surrogates),
+        cmocka_unit_test(test_specific_byte_sequence_boundaries),
+        cmocka_unit_test(test_non_characters),
+        cmocka_unit_test(test_special_unicode_characters)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
