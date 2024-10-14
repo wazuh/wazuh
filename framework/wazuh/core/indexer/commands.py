@@ -12,11 +12,11 @@ TARGET_ID_KEY = 'target.id'
 STATUS_KEY = 'status'
 
 
-class CommandsIndex(BaseIndex):
-    """Set of methods to interact with the commands index."""
+class CommandsManager(BaseIndex):
+    """Set of methods to interact with the commands manager."""
 
     INDEX = 'command-manager'
-    COMMAND_MANAGER_PLUGIN_URL = '/_plugins/_commandmanager'
+    PLUGIN_URL = '/_plugins/_commandmanager'
 
     async def create(self, command: Command) -> CreateCommandResponse:
         """Create a new command.
@@ -33,7 +33,7 @@ class CommandsIndex(BaseIndex):
         """
         response = await self._client.transport.perform_request(
             method=POST_METHOD,
-            url=self.COMMAND_MANAGER_PLUGIN_URL,
+            url=self.PLUGIN_URL,
             body=asdict(command, dict_factory=remove_empty_values),
         )
         return CreateCommandResponse(

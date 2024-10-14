@@ -2,13 +2,13 @@ from dataclasses import asdict
 from unittest import mock
 
 import pytest
-from wazuh.core.indexer.commands import CommandsIndex, STATUS_KEY, TARGET_ID_KEY
+from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY
 from wazuh.core.indexer.base import IndexerKey, POST_METHOD, remove_empty_values
 from wazuh.core.indexer.models.commands import Command, Source, Status, Type, CreateCommandResponse
 
 
-class TestCommandsIndex:
-    index_class = CommandsIndex
+class TestCommandsManager:
+    index_class = CommandsManager
     create_command = Command(source=Source.ENGINE)
 
     @pytest.fixture
@@ -16,21 +16,21 @@ class TestCommandsIndex:
         return mock.AsyncMock()
 
     @pytest.fixture
-    def index_instance(self, client_mock) -> CommandsIndex:
+    def index_instance(self, client_mock) -> CommandsManager:
         return self.index_class(client=client_mock)
 
-    async def test_create(self, index_instance: CommandsIndex, client_mock: mock.AsyncMock):
+    async def test_create(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `create` method."""
         response = await index_instance.create(self.create_command)
 
         assert isinstance(response, CreateCommandResponse)
         client_mock.transport.perform_request.assert_called_once_with(
             method=POST_METHOD,
-            url=index_instance.COMMAND_MANAGER_PLUGIN_URL,
+            url=index_instance.PLUGIN_URL,
             body=asdict(self.create_command, dict_factory=remove_empty_values),
         )
 
-    async def test_get(self, index_instance: CommandsIndex, client_mock: mock.AsyncMock):
+    async def test_get(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `get` method."""
         uuid = '0191dd54-bd16-7025-80e6-ae49bc101c7a'
         status = Status.PENDING
