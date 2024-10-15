@@ -216,7 +216,7 @@ void initTZDB(const std::string& path, const bool autoUpdate)
 {
     date::set_install(path);
 
-    std::string rv = date::remote_version();
+    std::string rv = "2024a"; // TODO: change to date::remote_version();
     LOG_DEBUG("Remote timezone database version: '{}'", rv);
 
     if (loadTimeZoneDB(rv, autoUpdate))
