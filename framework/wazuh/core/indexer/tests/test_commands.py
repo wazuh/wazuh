@@ -1,7 +1,10 @@
 from dataclasses import asdict
 from unittest import mock
 
+from opensearchpy import exceptions
 import pytest
+
+from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY, create_restart_command, \
     COMMAND_USER_NAME
 from wazuh.core.indexer.base import IndexerKey, POST_METHOD, remove_empty_values
@@ -31,6 +34,12 @@ class TestCommandsManager:
             url=index_instance.PLUGIN_URL,
             body=asdict(self.create_command, dict_factory=remove_empty_values),
         )
+    
+    async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
+        """Check the error handling of the `create` method."""
+        client_mock.transport.perform_request.side_effect = exceptions.RequestError(400, 'error')
+        with pytest.raises(WazuhError, match='.*1761.*'):
+            await index_instance.create(self.create_command)
 
     async def test_get(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `get` method."""

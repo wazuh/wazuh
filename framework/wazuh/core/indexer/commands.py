@@ -1,10 +1,11 @@
 from dataclasses import asdict
 from typing import List, Optional, Union
 
+from opensearchpy import exceptions
 from uuid6 import UUID
 
 from .base import BaseIndex, IndexerKey, remove_empty_values, POST_METHOD
-from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.models.commands import Action, Command, Result, Source, Status, Target, TargetType, \
     CreateCommandResponse
  
@@ -33,11 +34,15 @@ class CommandsManager(BaseIndex):
         CreateCommandResponse
             Indexer command manager response.
         """
-        response = await self._client.transport.perform_request(
-            method=POST_METHOD,
-            url=self.PLUGIN_URL,
-            body=asdict(command, dict_factory=remove_empty_values),
-        )
+        try:
+            response = await self._client.transport.perform_request(
+                method=POST_METHOD,
+                url=self.PLUGIN_URL,
+                body=asdict(command, dict_factory=remove_empty_values),
+            )
+        except exceptions.RequestError as e:
+            raise WazuhError(1761, extra_message=str(e))
+
         return CreateCommandResponse(
             response=response.get('response'),
             document_id=response.get('document_id'),
