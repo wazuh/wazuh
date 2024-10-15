@@ -32,6 +32,14 @@ enum class ThreadEventDispatcherType
     MULTI_THREADED_UNORDERED
 };
 
+struct ThreadEventDispatcherParams
+{
+    const std::string& dbPath;
+    const uint64_t bulkSize = 1;
+    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE;
+    const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED;
+};
+
 /**
  * @brief Class in charge to dispatch events in a queue to be processed by a functor.
  *
@@ -49,22 +57,15 @@ template<typename T,
 class TThreadEventDispatcher
 {
 public:
-    explicit TThreadEventDispatcher(
-        Functor functor,
-        const std::string& dbPath,
-        const uint64_t bulkSize = 1,
-        const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-        const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
+    explicit TThreadEventDispatcher(Functor functor, const ThreadEventDispatcherParams& threadEventDispatcherParams)
         : m_functor {std::move(functor)}
-        , m_maxQueueSize {maxQueueSize}
-        , m_bulkSize {bulkSize}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_dispatcherType {dispatcherType}
+        , m_maxQueueSize {threadEventDispatcherParams.maxQueueSize}
+        , m_bulkSize {threadEventDispatcherParams.bulkSize}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(threadEventDispatcherParams.dbPath))}
+        , m_dispatcherType {threadEventDispatcherParams.dispatcherType}
     {
         const auto threadsAmount =
             m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD;
-
-        m_threads.reserve(threadsAmount);
 
         for (unsigned int i = 0; i < threadsAmount; ++i)
         {
@@ -73,15 +74,11 @@ public:
         }
     }
 
-    explicit TThreadEventDispatcher(
-        const std::string& dbPath,
-        const uint64_t bulkSize = 1,
-        const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-        const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
-        : m_maxQueueSize {maxQueueSize}
-        , m_bulkSize {bulkSize}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_dispatcherType {dispatcherType}
+    explicit TThreadEventDispatcher(const ThreadEventDispatcherParams& threadEventDispatcherParams)
+        : m_maxQueueSize {threadEventDispatcherParams.maxQueueSize}
+        , m_bulkSize {threadEventDispatcherParams.bulkSize}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(threadEventDispatcherParams.dbPath))}
+        , m_dispatcherType {threadEventDispatcherParams.dispatcherType}
     {
     }
 
