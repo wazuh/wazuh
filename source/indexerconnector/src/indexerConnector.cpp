@@ -158,22 +158,25 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
             {
                 // Process data.
                 HTTPRequest::instance().post(
-                    {HttpURL(url), bulkData, secureCommunication},
-                    {[functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
-                         const std::string& response)
-                     { LOG_DEBUG_L(functionName.c_str(), "Response: %s", response.c_str()); },
-                     [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
-                         const std::string& error, const long statusCode)
+                    {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
+                    {.onSuccess = [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
+                                      const std::string& response)
+                     { LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str()); },
+                     .onError =
+                         [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
+                             const std::string& error, const long statusCode)
                      {
-                         LOG_ERROR_L(functionName.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                         LOG_ERROR_L(functionName.c_str(), "{}, status code: {}.", error.c_str(), statusCode);
                          throw std::runtime_error(error);
                      }});
             }
         },
-        indexerConnectorOptions.databasePath + m_indexName,
-        ELEMENTS_PER_BULK,
-        indexerConnectorOptions.workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING
-                                                    : indexerConnectorOptions.workingThreads);
+        ThreadEventDispatcherParams {.dbPath = indexerConnectorOptions.databasePath + m_indexName,
+                                     .bulkSize = ELEMENTS_PER_BULK,
+                                     .dispatcherType =
+                                         (indexerConnectorOptions.workingThreads <= SINGLE_ORDERED_DISPATCHING
+                                              ? ThreadEventDispatcherType::SINGLE_THREADED_ORDERED
+                                              : ThreadEventDispatcherType::MULTI_THREADED_UNORDERED)});
 }
 
 IndexerConnector::~IndexerConnector()
