@@ -32,6 +32,7 @@ jobs:
           rm -rf MacPorts-2.8.1-13-Ventura.pkg
       - name: Install port
         run: |
+          sudo /opt/local/bin/port selfupdate
           sudo /opt/local/bin/port -b install nano
       - name: Run tests
         run: |
