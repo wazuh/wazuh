@@ -288,6 +288,7 @@ async def restart_agents(
     return json_response(data, pretty=pretty)
 
 
+# TODO(#25554): Review whether to keep this endpoint or not
 async def restart_agents_by_node(node_id: str, pretty: bool = False,
                                  wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart all agents belonging to a node.
