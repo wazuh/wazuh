@@ -159,12 +159,6 @@ def main(argv):
                 service.get_alerts()
         elif options.subscriber:
             if options.subscriber.lower() == "security_lake":
-                if options.aws_profile:
-                    aws_tools.error(
-                        "The AWS Security Lake integration does not make use of the Profile authentication "
-                        f"method. Check the available ones for it in "
-                        f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
-                    sys.exit(3)
                 aws_tools.arg_validate_security_lake_auth_params(options.external_id,
                                                                  options.queue,
                                                                  options.iam_role_arn)
