@@ -120,27 +120,15 @@ if [ $1 = 2 ]; then
   else
     echo "Unable to stop wazuh-server. Neither systemctl nor service are available."
   fi
-
 fi
 
 %post
 
 %define _vdfilename vd_1.0.0_vd_4.10.0.tar.xz
 
-# Fresh install code block
-if [ $1 = 1 ]; then
-  . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/dist-detect.sh
-fi
-
 if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-server
 fi
-
-# Delete the installation files used to configure the manager
-rm -rf %{_localstatedir}/packages_files
-
-# Remove unnecessary files from default group
-rm -f %{_localstatedir}/etc/shared/default/*.rpmnew
 
 %preun
 
@@ -192,7 +180,7 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
     systemctl daemon-reload > /dev/null 2>&1
     systemctl restart wazuh-server.service > /dev/null 2>&1
-  else command -v service > /dev/null 2>&1 ; then
+  elif command -v service > /dev/null 2>&1 ; then
     service wazuh-server restart > /dev/null 2>&1
   fi
 fi

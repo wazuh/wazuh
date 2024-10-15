@@ -13,8 +13,6 @@ case "$1" in
         WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
         WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
         OSMYSHELL="/sbin/nologin"
-        SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
-        SCA_BASE_DIR="${SCRIPTS_DIR}/sca"
 
         if [ -d /run/systemd/system ]; then
             rm -f /etc/init.d/wazuh-server

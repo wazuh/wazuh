@@ -21,7 +21,6 @@ export TARGET_DIR=${CURDIR}/${PKG_DIR}
 
 # Package build options
 export INSTALLATION_DIR="/"
-export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/manager_installation_scripts"
 export JOBS="5"
 export DEBUG_ENABLED="no"
 export PATH="${PATH}"
@@ -78,18 +77,6 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
 	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-server.service
 	install -m 0644 src/init/templates/wazuh-server.service ${TARGET_DIR}/usr/lib/systemd/system/
-
-	# ./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh
-
-	# mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/
-	# cp -r $(INSTALLATION_DIR)/. $(TARGET_DIR)$(INSTALLATION_DIR)/
-
-	# mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src
-	# cp src/VERSION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
-	# cp src/REVISION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
-
-	# mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init
-	# cp -r src/init/*  ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init
 
 override_dh_fixperms:
 	dh_fixperms
