@@ -309,7 +309,7 @@ void runStart(ConfHandler confManager)
                 .timeout = static_cast<uint32_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_TIMEOUT", "60000"))),
                 .workingThreads =
                     static_cast<uint8_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_WORKING_THREADS", "1"))),
-                .databasePath = getEnvOrDefault("WENGINE_ICONNECTOR_DB_PATH", getExecutablePath() + "/queue/indexer")};
+                .databasePath = getEnvOrDefault("WENGINE_ICONNECTOR_DB_PATH", cmd::ENGINE_INDEXER_CONNECTOR_QUEUE)};
 
             // Create connector and wait until the connection is established.
             iConnector = std::make_shared<IndexerConnector>(indexerConnectorOptions);
