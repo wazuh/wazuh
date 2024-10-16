@@ -574,7 +574,6 @@ IndexerConnector::IndexerConnector(
             {
                 builderDeleteByQuery(queryData, idsToDeleteByQuery);
                 const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
-                std::cerr << url << std::endl;
                 processData(queryData, url);
             }
         },
