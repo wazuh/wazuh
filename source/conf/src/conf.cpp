@@ -36,16 +36,16 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
         throw std::invalid_argument("The API loader cannot be null.");
     }
 
-    // Register aviablable configuration units
+    // Register aviablable configuration units with Default Settings
 
     // Logging module
     addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
 
     // Store module
-    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", "/var/wazuh/store");
+    addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", "/var/lib/wazuh-server/engine/store");
 
     // KVDB module
-    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", "/var/wazuh/kvdb");
+    addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", "/var/lib/wazuh-server/engine/kvdb/");
 
     // Indexer connector
     addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5x");
@@ -57,12 +57,12 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
     addUnit<int>(key::INDEXER_TIMEOUT, "WAZUH_INDEXER_TIMEOUT", 60000);
     addUnit<int>(key::INDEXER_THREADS, "WAZUH_INDEXER_THREADS", 1);
-    addUnit<std::string>(key::INDEXER_DB_PATH, "WAZUH_INDEXER_DB_PATH", getExecutablePath() + "/queue/indexer");
+    addUnit<std::string>(key::INDEXER_DB_PATH, "WAZUH_INDEXER_DB_PATH", "/var/lib/wazuh-server/indexer-connector");
 
     // Queue module
     addUnit<int>(key::QUEUE_SIZE, "WAZUH_QUEUE_SIZE", 1000000);
     // If file is "" the queue will block until the event is pushed to the queue.
-    addUnit<std::string>(key::QUEUE_FLOOD_FILE, "WAZUH_QUEUE_FLOOD_FILE", "/var/wazuh/logs/engine-flood.log");
+    addUnit<std::string>(key::QUEUE_FLOOD_FILE, "WAZUH_QUEUE_FLOOD_FILE", ""); // or /var/wazuh/logs/engine-flood.log
     // Number of attempts to try to push an event to the queue.
     addUnit<int>(key::QUEUE_FLOOD_ATTEMPS, "WAZUH_QUEUE_FLOOD_ATTEMPTS", 3);
     // Microseconds to sleep between attempts to push an event to the queue.
@@ -76,18 +76,18 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     // OLD Server module
     // TODO Deprecate this configuration after the migration to the new httplib server
     addUnit<int>(key::SERVER_THREAD_POOL_SIZE, "WAZUH_SERVER_THREAD_POOL_SIZE", 1);
-    addUnit<std::string>(key::SERVER_EVENT_SOCKET, "WAZUH_SERVER_EVENT_SOCKET", "/var/wazuh/sockets/old-queue.sock");
+    addUnit<std::string>(key::SERVER_EVENT_SOCKET, "WAZUH_SERVER_EVENT_SOCKET", "/run/wazuh-server/queue");
     addUnit<int>(key::SERVER_EVENT_QUEUE_SIZE, "WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
 
-    addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/var/wazuh/sockets/old-api.sock");
+    addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/run/wazuh-server/engine-api.socket");
     addUnit<int>(key::SERVER_API_QUEUE_SIZE, "WAZUH_SERVER_API_QUEUE_SIZE", 300);
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
 
     // New API Server module
-    addUnit<std::string>(key::API_SERVER_SOCKET, "WAZUH_API_SERVER_SOCKET", getExecutablePath() + "/sockets/api.sock");
+    addUnit<std::string>(key::API_SERVER_SOCKET, "WAZUH_API_SERVER_SOCKET", "/run/wazuh-server/engine.socket");
 
     // TZDB module
-    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", getExecutablePath() + "/tzdb");
+    addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/lib/wazuh-server/engine/tzdb");
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
 };
 
