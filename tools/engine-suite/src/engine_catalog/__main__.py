@@ -8,6 +8,7 @@ from engine_catalog.cmds.get import configure as configure_get
 from engine_catalog.cmds.update import configure as configure_update
 from engine_catalog.cmds.create import configure as configure_create
 from engine_catalog.cmds.validate import configure as configure_validate
+from engine_catalog.cmds.load import configure as configure_load
 
 
 def parse_args():
@@ -35,6 +36,7 @@ def parse_args():
     configure_update(subparsers)
     configure_create(subparsers)
     configure_validate(subparsers)
+    configure_load(subparsers)
 
     return parser.parse_args()
 
