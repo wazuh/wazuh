@@ -182,16 +182,14 @@ static void builderDeleteByQuery(std::string& bulkData, const std::vector<std::s
           "agent.id": [)");
 
     // Append each agent ID to the JSON array
-    for (size_t i = 0; i < agentIds.size(); ++i)
+    for (const auto& agentId : agentIds)
     {
         bulkData.append(R"(")");
-        bulkData.append(agentIds[i]);
+        bulkData.append(agentId);
         bulkData.append(R"(")");
-        if (i < agentIds.size() - 1)
-        {
-            bulkData.append(", ");
-        }
+        bulkData.append(",");
     }
+    bulkData.pop_back(); // Remove the last comma
 
     bulkData.append(R"(]
         }
@@ -576,6 +574,7 @@ IndexerConnector::IndexerConnector(
             {
                 builderDeleteByQuery(queryData, idsToDeleteByQuery);
                 const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
+                std::cerr << url << std::endl;
                 processData(queryData, url);
             }
         },

@@ -407,8 +407,10 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
  */
 TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
 {
+    // Define the agent IDs
+    std::vector<std::string> agentIds {INDEX_ID_A};
     nlohmann::json expectedMetadata;
-    expectedMetadata["query"]["match"]["agent.id"] = INDEX_ID_A;
+    expectedMetadata["query"]["bool"]["filter"]["terms"]["agent.id"] = agentIds;
 
     // Callback that checks the expected data to be published.
     // The format of the data published is divided in two lines:
@@ -417,8 +419,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
     auto callbackCalled {false};
     const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
                                    {
-                                       const auto splitData {Utils::split(data, '\n')};
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       ASSERT_EQ(nlohmann::json::parse(data), expectedMetadata);
                                        callbackCalled = true;
                                    }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
