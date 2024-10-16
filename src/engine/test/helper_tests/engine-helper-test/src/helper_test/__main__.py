@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 
 from helper_test.initial_state import configure as init_configure

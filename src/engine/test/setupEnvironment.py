@@ -6,22 +6,20 @@ import argparse
 from pathlib import Path
 
 
-def setup_engine(engine_dir, engine_src_dir, environment_dir):
-    schemas = ["wazuh-logpar-types", "wazuh-asset", "wazuh-policy", "engine-schema"]
+def setup_engine(engine_src_dir, environment_dir):
+    schemas = ["wazuh-logpar-types", "engine-schema"]
 
     for schema in schemas:
-        schema_dir = os.path.join(engine_dir, 'store/schema', schema)
+        print(f"Copying schema {schema}")
+        schema_dir = os.path.join(environment_dir, 'store/schema', schema)
         os.makedirs(schema_dir, exist_ok=True)
         schema_json_path = os.path.join(engine_src_dir, 'ruleset/schemas', f'{schema}.json')
         shutil.copy(schema_json_path, os.path.join(schema_dir, '0'))
 
     dirs_to_create = [
-        engine_dir,
-        os.path.join(environment_dir, 'engine'),
         os.path.join(environment_dir, 'queue/sockets'),
+        os.path.join(environment_dir, 'kvdb'),
         os.path.join(environment_dir, 'logs'),
-        os.path.join(engine_dir, 'etc/kvdb'),
-        os.path.join(environment_dir, 'bin')
     ]
 
     for directory in dirs_to_create:
@@ -29,10 +27,23 @@ def setup_engine(engine_dir, engine_src_dir, environment_dir):
 
     # Copy TZDB to bin directory (Remove this fix when the issue tzdb is fixed)
     tzdb_path = Path(engine_src_dir) / 'build' / 'tzdb'
-    tzdb_dest = Path(environment_dir) / 'bin' / 'tzdb'
+    tzdb_dest = Path(environment_dir) / 'tzdb'
     print(f"Copying from {tzdb_path} to {tzdb_dest}")
-    # Copy dir
+    # If source not exists, show error message
+    if not tzdb_path.exists():
+        print(f"Error: TZDB in {tzdb_path} not exists, compile the engine first")
+        exit(1)
     shutil.copytree(tzdb_path, tzdb_dest)
+
+    # Copy engine binary
+    engine_bin = Path(engine_src_dir) / 'build' / 'main'
+    engine_bin_dest = Path(environment_dir) / 'wazuh-engine'
+    print(f"Copying from {engine_bin} to {engine_bin_dest}")
+    # If source not exists, show error message
+    if not engine_bin.exists():
+        print(f"Error: {engine_bin} not exists, compile the engine first")
+        exit(1)
+    shutil.copy(engine_bin, engine_bin_dest)
 
 
 def main():
@@ -50,9 +61,8 @@ def main():
     WAZUH_DIR = os.path.realpath(os.path.join(SCRIPT_DIR, '../../../'))
     ENVIRONMENT_DIR = environment_directory or os.path.join(WAZUH_DIR, 'environment')
     ENVIRONMENT_DIR = str(Path(ENVIRONMENT_DIR).resolve())
-    ENGINE_DIR = os.path.join(ENVIRONMENT_DIR, 'engine')
 
-    setup_engine(ENGINE_DIR, ENGINE_SRC_DIR, ENVIRONMENT_DIR)
+    setup_engine(ENGINE_SRC_DIR, ENVIRONMENT_DIR)
 
 
 if __name__ == "__main__":

@@ -12,7 +12,6 @@ class Config:
     A class to store the configuration of the test runner.
     """
     environment_directory: str = ""
-    binary_path: str = ""
     input: str = ""
     output: str = ""
 
@@ -26,7 +25,6 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="Generate and run all helper test cases")
     parser.add_argument("-e", "--environment", required=True, help="Environment directory")
-    parser.add_argument("-b", "--binary", required=True, help="Path to the binary file")
 
     parser.add_argument(
         "-i", "--input", required=True,
@@ -37,7 +35,6 @@ def parse_arguments():
     args = parser.parse_args()
 
     config.environment_directory = args.environment
-    config.binary_path = args.binary
 
     config.input = args.input
     config.output = args.output
@@ -58,12 +55,15 @@ def main():
             sys.exit(e.stderr)
 
     environment = Path(config.environment_directory).as_posix()
-    binary = Path(config.binary_path).resolve()
     for output in outputs:
         for file in output.iterdir():
-            command = f'engine-helper-test-runner -e {environment} -b {binary} --input_file_path {file} --failure_cases'
+            command = f'engine-helper-test-runner -e {environment} --input_file_path {file} --failure_cases'
             print(f"Executing - {file.name}")
             try:
                 subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE)
             except subprocess.CalledProcessError as e:
                 sys.exit(e.stderr)
+
+
+if __name__ == "__main__":
+    main()

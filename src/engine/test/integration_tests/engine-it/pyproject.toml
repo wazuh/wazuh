@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 classifiers = ["Programming Language :: Python :: 3"]
 
-dependencies = ["api-communication", "toml", "engine-test-utils", "behave"]
+dependencies = ["api-communication", "engine-test-utils", "behave"]
 
 # [project.urls]
 # Homepage = ""

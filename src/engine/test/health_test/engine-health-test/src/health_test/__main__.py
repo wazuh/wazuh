@@ -12,7 +12,7 @@ from health_test.load_rules import run as load_rules_run
 from health_test.assets_validate import run as assets_validate_run
 from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
-from health_test.health_test import run as test_run
+from health_test.core import run as test_run
 
 
 def parse_args() -> Namespace:
@@ -66,15 +66,13 @@ def parse_args() -> Namespace:
         'dynamic', help='Dynamic tests including initialization, rule loading, integration, and validation')
     dynamic_subparsers = dynamic_parser.add_subparsers(
         title='dynamic tests', required=True, dest='dynamic_test')
-    
+
     dynamic_parser.add_argument('-e', '--environment',
                                 help='Environment to run the tests in', type=str, required=True)
 
     # init subcommand
     init_parser = dynamic_subparsers.add_parser(
         'init', help='Initialize the test environment')
-    init_parser.add_argument(
-        '-b', '--binary', help='Specify the path to the engine binary', required=True)
     init_parser.add_argument('-r', '--ruleset',
                             help='Specify the path to the ruleset directory', required=True)
     init_parser.add_argument(

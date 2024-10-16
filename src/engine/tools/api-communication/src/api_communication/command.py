@@ -4,7 +4,6 @@ from google.protobuf.message import Message
 
 # Import all proto messages to deduce component, resource and action
 import api_communication.proto.catalog_pb2 as catalog
-import api_communication.proto.config_pb2 as config
 import api_communication.proto.graph_pb2 as graph
 import api_communication.proto.kvdb_pb2 as kvdb
 import api_communication.proto.metrics_pb2 as metrics
@@ -37,14 +36,6 @@ def get_command(message: Message) -> Tuple[Optional[str], str]:
         return None, 'catalog.resource/validate'
     elif isinstance(message, catalog.NamespacesGet_Request):
         return None, 'catalog.namespaces/get'
-
-    # Config
-    elif isinstance(message, config.RuntimeGet_Request):
-        return None, 'config.runtime/get'
-    elif isinstance(message, config.RuntimePut_Request):
-        return None, 'config.runtime/put'
-    elif isinstance(message, config.RuntimeSave_Request):
-        return None, 'config.runtime/save'
 
     # Graph
     elif isinstance(message, graph.GraphGet_Request):

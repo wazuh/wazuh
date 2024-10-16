@@ -3,7 +3,7 @@ import sys
 from argparse import ArgumentParser, Namespace
 
 from integration_test.initial_state import run as init_run
-from integration_test.integration_test import run as test_run
+from integration_test.core import run as test_run
 
 
 def parse_args() -> Namespace:
@@ -20,8 +20,6 @@ def parse_args() -> Namespace:
     # init subcommand
     init_parser = subparsers.add_parser(
         'init', help='Initialize the test environment')
-    init_parser.add_argument(
-        '-b', '--binary', help='Specify the path to the engine binary', required=True)
 
     init_parser.set_defaults(func=init_run)
 

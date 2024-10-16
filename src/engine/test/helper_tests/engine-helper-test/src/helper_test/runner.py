@@ -40,18 +40,6 @@ def configure(subparsers):
 
     parser.set_defaults(func=run)
 
-    # if args.input_file_path and args.folder_path:
-    #     args.error("Only one of --input_file_path or --folder_path can be specified.")
-
-    # config.environment_directory = args.environment
-    # config.binary_path = args.binary
-
-    # config.input_file_path = args.input_file_path
-    # config.folder_path = args.folder_path
-    # config.only_success = args.success_cases
-    # config.only_failure = args.failure_cases
-
-
 def load_yaml(file_path: str) -> dict:
     """
     Loads data from a YAML file.
@@ -768,15 +756,15 @@ def runner(input_path: Path, env_dir: Path, show_failure: bool):
     success = True
 
     print("Validating parameters...")
-    bin_path = (env_dir / "bin/wazuh-engine").resolve()
+    bin_path = (env_dir / "wazuh-engine").resolve()
     if not bin_path.is_file():
         raise FileNotFoundError(f"Binary file not found: {bin_path}")
 
-    config_path = (env_dir / "engine/general.conf").resolve()
+    config_path = (env_dir / "config.env").resolve()
     if not config_path.is_file():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-    kvdb_path = env_dir / "engine/etc/kvdb/test.json"
+    kvdb_path = env_dir / "tmp" / "kvdb_test.json"
     if not kvdb_path.is_file():
         raise FileNotFoundError(f"KVDB file not found: {kvdb_path}")
 

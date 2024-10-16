@@ -134,12 +134,12 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
 def run(args):
     env_path = Path(args['environment']).resolve()
     resource_handler = rs.ResourceHandler()
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         sys.exit(f"Configuration file not found: {conf_path}")
         sys.exit(1)
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
         sys.exit(1)
@@ -148,7 +148,7 @@ def run(args):
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
         sys.exit(1)
-    
+
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix())
     api_socket = engine_handler.api_socket_path
