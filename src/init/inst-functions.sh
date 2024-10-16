@@ -44,6 +44,25 @@ InstallCommon()
 
 }
 
+InstallPython()
+{
+    PYTHON_VERSION='3.10.15'
+    PYTHON_FILENAME='python.tar.gz'
+    PYTHON_INSTALLDIR=${INSTALLDIR}framework/python/
+    PYTHON_FULL_PATH=${PYTHON_INSTALLDIR}$PYTHON_FILENAME
+
+    echo "Download Python ${PYTHON_VERSION} file"
+    mkdir -p ${PYTHON_INSTALLDIR}
+    wget -O ${PYTHON_FULL_PATH} http://packages.wazuh.com/deps/50/libraries/python/${PYTHON_VERSION}/${PYTHON_FILENAME}
+
+    tar -xf $PYTHON_FULL_PATH -C ${PYTHON_INSTALLDIR} && rm -rf ${PYTHON_FULL_PATH}
+
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libwazuhext.so ${INSTALLDIR}lib
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libpython3.10.so.1.0 ${INSTALLDIR}lib
+
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${PYTHON_INSTALLDIR}
+}
+
 #InstallAPI()
 #{
     #if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
@@ -149,6 +168,7 @@ InstallWazuh()
 {
   InstallCommon
   InstallEngine
+  InstallPython
   #InstallAPI
   #InstallCluster
 }
