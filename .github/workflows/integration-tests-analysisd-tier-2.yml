@@ -69,10 +69,14 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
+          sudo apt-get install python3-venv
+          python3 -m venv python_env
+          source python_env/bin/activate
+          pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
       # Run analysisd integration tests.
       - name: Run analysisd integration tests
         run: |
+          source python_env/bin/activate
           cd tests/integration
-          sudo python -m pytest --tier 2 test_analysisd/
+          sudo ../../python_env/bin/python3 -m pytest --tier 2 test_analysisd/
