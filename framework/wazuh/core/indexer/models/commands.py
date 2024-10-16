@@ -109,14 +109,17 @@ class Command:
         )
 
 
-class ResponseMessage(str, Enum):
-    """Command manager response status data model."""
-    SUCCESS = 'success'
-    FAILURE = 'failure'
+class ResponseResult(str, Enum):
+    CREATED = 'CREATED'
+    OK = 'OK'
+    ACCEPTED = 'Accepted'
+    INTERNAL_ERROR = 'Internal Error'
+    NOT_FOUND = 'Not found'
 
 
 @dataclass
 class CreateCommandResponse:
     """Create command response data model."""
-    response: ResponseMessage
-    document_id: str = None
+    index: str
+    document_id: str
+    result: ResponseResult

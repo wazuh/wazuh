@@ -56,7 +56,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.exception import WazuhResourceNotFound
         from wazuh.core.indexer.agent import Agent as IndexerAgent
         from wazuh.core.indexer.base import IndexerKey
-        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseMessage
+        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
         from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
         from wazuh.core.tests.test_agent import InitAgent
 
@@ -226,10 +226,12 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
     agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in all_agent_ids])
     create_indexer_mock.return_value.agents.search = agents_search_mock
 
-    create_response = CreateCommandResponse(response=ResponseMessage.FAILURE)
-    if not fail:
-        create_response.response = ResponseMessage.SUCCESS
-        create_response.document_id = 'pBjePGfvgm'
+    document_id = 'pBjePGfvgm'
+    create_response = CreateCommandResponse(
+        index='.commands',
+        document_id=document_id,
+        result=ResponseResult.INTERNAL_ERROR if fail else ResponseResult.CREATED,
+    )
 
     commands_create_mock = AsyncMock(return_value=create_response)
     create_indexer_mock.return_value.commands_manager.create = commands_create_mock
@@ -238,7 +240,10 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(expected_items)
     if fail:
-        assert result.failed_items['Error creating restart command'] == set(expected_items)
+        error = str(list(result.failed_items.keys())[0])
+        assert error == f'Error 1762 - Error creating restart command: {ResponseResult.INTERNAL_ERROR.value}'
+        failed_ids = list(result.failed_items.values())[0]
+        assert failed_ids == set(expected_items)
     else:
         assert result.affected_items == expected_items
 

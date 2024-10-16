@@ -22,8 +22,8 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.models.commands import ResponseResult
 from wazuh.core.indexer.commands import create_restart_command
-from wazuh.core.indexer.models.commands import ResponseMessage
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
@@ -288,10 +288,10 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
             command = create_restart_command(agent_id=agent_id)
 
             response = await indexer_client.commands_manager.create(command)
-            if response.response == ResponseMessage.SUCCESS:
+            if response.result is ResponseResult.CREATED:
                 result.affected_items.append(agent_id)
             else:
-                result.add_failed_item(id_=agent_id, error='Error creating restart command')
+                result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
 
     result.total_affected_items = len(agent_list)
 
