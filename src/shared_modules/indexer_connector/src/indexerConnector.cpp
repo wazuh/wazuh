@@ -172,11 +172,33 @@ static void builderBulkDelete(std::string& bulkData, std::string_view id, std::s
     bulkData.append("\n");
 }
 
-static void builderDeleteByQuery(std::string& bulkData, std::string_view id)
+static void builderDeleteByQuery(std::string& bulkData, const std::vector<std::string>& agentIds)
 {
-    bulkData.append(R"({"query":{"match": { "agent.id": ")");
-    bulkData.append(id);
-    bulkData.append(R"("}}})");
+    bulkData.append(R"({
+  "query": {
+    "bool": {
+      "filter": {
+        "terms": {
+          "agent.id": [)");
+
+    // Append each agent ID to the JSON array
+    for (size_t i = 0; i < agentIds.size(); ++i)
+    {
+        bulkData.append(R"(")");
+        bulkData.append(agentIds[i]);
+        bulkData.append(R"(")");
+        if (i < agentIds.size() - 1)
+        {
+            bulkData.append(", ");
+        }
+    }
+
+    bulkData.append(R"(]
+        }
+      }
+    }
+  }
+})");
     bulkData.append("\n");
 }
 
@@ -473,6 +495,9 @@ IndexerConnector::IndexerConnector(
             // Accumulator for data to be sent to the indexer via query requests.
             std::string queryData;
 
+            // Vector of ids to be deleted by query.
+            std::vector<std::string> idsToDeleteByQuery;
+
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
@@ -499,7 +524,7 @@ IndexerConnector::IndexerConnector(
                     logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
                     if (!noIndex)
                     {
-                        builderDeleteByQuery(queryData, id);
+                        idsToDeleteByQuery.push_back(id);
                     }
 
                     for (const auto& [key, _] : m_db->seek(id))
@@ -547,8 +572,9 @@ IndexerConnector::IndexerConnector(
                 processData(bulkData, url);
             }
 
-            if (!queryData.empty())
+            if (!idsToDeleteByQuery.empty())
             {
+                builderDeleteByQuery(queryData, idsToDeleteByQuery);
                 const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
                 processData(queryData, url);
             }
