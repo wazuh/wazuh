@@ -249,7 +249,7 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [])
-@pytest.mark.skip('We should find a way of getting the list of agents connected to each node.')
+@pytest.mark.skip('We sould review whether to keep this endpoint or not.')
 def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
                                       expected_items, error_code):
     """Test `restart_agents_by_node` function from agent module.
