@@ -4,15 +4,21 @@ from pathlib import Path
 import shared.resource_handler as rs
 from health_test.error_managment import ErrorReporter
 
+
 def load_custom_fields(custom_fields_path, reporter):
     """
-    Load custom fields from 'custom_fields.yml'.
+    Load custom fields from 'custom_fields.yml' into a map of field -> type.
     """
+    custom_fields_map = {}
     try:
-        custom_fields = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
-        return custom_fields.get('custom_fields', [])
+        custom_fields_data = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
+        for item in custom_fields_data:
+            custom_fields_map[item['field']] = item['type']
+        return custom_fields_map
     except Exception as e:
         reporter.add_error("Load Custom Fields", str(custom_fields_path), f"Error loading custom fields: {e}")
+        return {}
+
 
 def transform_dict_to_list(d):
     def extract_keys(d, prefix=""):
@@ -24,10 +30,29 @@ def transform_dict_to_list(d):
             else:
                 result.append(new_prefix)
         return result
-    
+
     return extract_keys(d)
 
-def verify_schema_types(schema, expected_json_files, custom_fields, integration_name, reporter):
+
+def should_ignore_field(field, custom_fields_map):
+    """
+    Determine if a field should be ignored based on its type in custom_fields_map.
+    """
+    parts = field.split('.')
+    for i in range(len(parts)):
+        current_field = '.'.join(parts[:i + 1])
+        if current_field in custom_fields_map:
+            field_type = custom_fields_map[current_field]
+            if field_type == 'object':
+                return True
+            elif field_type == 'array':
+                return True
+            else:
+                return True
+    return False
+
+
+def verify_schema_types(schema, expected_json_files, custom_fields_map, integration_name, reporter):
     """
     Compare the fields in the '_expected.json' files with the schema and custom fields.
     """
@@ -39,48 +64,41 @@ def verify_schema_types(schema, expected_json_files, custom_fields, integration_
         reporter.add_error(integration_name, str(schema), f"Error reading the JSON schema file: {e}")
         return
 
-    custom_fields_set = set(custom_fields)
-    
     for json_file in expected_json_files:
         try:
             with open(json_file, 'r') as f:
                 expected_data = json.load(f)
                 for expected in expected_data:
                     extracted_fields = transform_dict_to_list(expected)
-                    
-                    def is_custom_field(field, custom_fields_set):
-                        if '.' in field:
-                            prefix = field.split('.')[0]
-                            return prefix in custom_fields_set
-                        else:
-                            return field in custom_fields_set
 
-                    # Check for invalid fields
                     invalid_fields = [
                         field for field in extracted_fields
-                        if field not in schema_fields and not is_custom_field(field, custom_fields_set)
+                        if field not in schema_fields and not should_ignore_field(field, custom_fields_map)
                     ]
-                    
+
                     if invalid_fields:
                         reporter.add_error(
-                            integration_name, 
-                            json_file, 
+                            integration_name,
+                            json_file,
                             f"{invalid_fields}"
                         )
         except Exception as e:
             reporter.add_error(integration_name, str(json_file), f"Error reading the file: {e}")
 
+
 def find_expected_json_files(test_folder):
     return list(test_folder.rglob('*_expected.json'))
+
 
 def verify(schema, integration: Path, reporter):
     if integration.name != 'wazuh-core':
         custom_fields_path = integration / 'test' / 'custom_fields.yml'
         if not custom_fields_path.exists():
-            reporter.add_error(integration.name, str(custom_fields_path), "Error: custom_fields.yml file does not exist.")
+            reporter.add_error(integration.name, str(custom_fields_path),
+                               "Error: custom_fields.yml file does not exist.")
             return
 
-        custom_fields = load_custom_fields(custom_fields_path, reporter)    
+        custom_fields = load_custom_fields(custom_fields_path, reporter)
         test_folder = integration / 'test'
         if not test_folder.exists() or not test_folder.is_dir():
             reporter.add_error(integration.name, str(test_folder), "Error: No 'test' folder found.")
@@ -91,13 +109,14 @@ def verify(schema, integration: Path, reporter):
             reporter.add_error(integration.name, str(test_folder), "Error: No '_expected.json' files found.")
             return
 
-        # Only errors from this function are recorded, not exiting immediately
         verify_schema_types(schema, expected_json_files, custom_fields, integration.name, reporter)
+
 
 def integration_validator(schema, ruleset_path: Path, integration: str, reporter):
     integration_path = ruleset_path / 'integrations'
     if not integration_path.exists() or not integration_path.is_dir():
-        reporter.add_error("Integration Validator", str(integration_path), "Error: 'integrations' directory does not exist.")
+        reporter.add_error("Integration Validator", str(integration_path),
+                           "Error: 'integrations' directory does not exist.")
         return
 
     if integration:
@@ -109,6 +128,7 @@ def integration_validator(schema, ruleset_path: Path, integration: str, reporter
         for integration in integration_path.iterdir():
             if integration.is_dir():
                 verify(schema, integration, reporter)
+
 
 def rules_validator(schema, ruleset_path: Path, rule_folder: str, reporter):
     rules_path = ruleset_path / 'rules'
@@ -125,6 +145,7 @@ def rules_validator(schema, ruleset_path: Path, rule_folder: str, reporter):
         for rule_folder in rules_path.iterdir():
             if rule_folder.is_dir():
                 verify(schema, rule_folder, reporter)
+
 
 def run(args):
     ruleset_path = Path(args['ruleset']).resolve()
@@ -156,8 +177,10 @@ def run(args):
             integration_validator(schema, ruleset_path, integration, reporter)
             rules_validator(schema, ruleset_path, rule_folder, reporter)
 
-        reporter.exit_with_errors("There are fields present in the expected event that are not in the schema and were not defined as custom", ruleset_path)
-        
+        reporter.exit_with_errors(
+            "There are fields present in the expected event that are not in the schema and were not defined as custom",
+            ruleset_path)
+
         print("Success execution")
     except Exception as e:
         sys.exit(f"Error running test: {e}")
