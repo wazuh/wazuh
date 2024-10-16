@@ -63,6 +63,14 @@ InstallPython()
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${PYTHON_INSTALLDIR}
 }
 
+InstallPythonDependencies()
+{
+    PYTHON_BIN_PATH=${INSTALLDIR}framework/python/bin/python
+
+    echo "Installing Python dependecies"
+    ${PYTHON_BIN_PATH} -m pip install -r ../framework/requirements.txt
+}
+
 #InstallAPI()
 #{
     #if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
@@ -169,6 +177,7 @@ InstallWazuh()
   InstallCommon
   InstallEngine
   InstallPython
+  InstallPythonDependencies
   #InstallAPI
   #InstallCluster
 }
