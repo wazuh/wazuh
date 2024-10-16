@@ -5,9 +5,10 @@ from opensearchpy import exceptions
 from uuid6 import UUID
 
 from .base import BaseIndex, IndexerKey, remove_empty_values, POST_METHOD
+from .utils import convert_enums
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.models.commands import Action, Command, Result, Source, Status, Target, TargetType, \
-    CreateCommandResponse
+    CreateCommandResponse, ResponseResult
  
 DOC_ID_KEY = 'id'
 TARGET_ID_KEY = 'target.id'
@@ -18,8 +19,8 @@ COMMAND_USER_NAME = 'Management API'
 class CommandsManager(BaseIndex):
     """Set of methods to interact with the commands manager."""
 
-    INDEX = 'command-manager'
-    PLUGIN_URL = '/_plugins/_commandmanager'
+    INDEX = '.commands'
+    PLUGIN_URL = '/_plugins/_command_manager'
 
     async def create(self, command: Command) -> CreateCommandResponse:
         """Create a new command.
@@ -37,15 +38,16 @@ class CommandsManager(BaseIndex):
         try:
             response = await self._client.transport.perform_request(
                 method=POST_METHOD,
-                url=self.PLUGIN_URL,
-                body=asdict(command, dict_factory=remove_empty_values),
+                url=f'{self.PLUGIN_URL}/commands',
+                body=asdict(command, dict_factory=convert_enums),
             )
         except exceptions.RequestError as e:
             raise WazuhError(1761, extra_message=str(e))
 
         return CreateCommandResponse(
-            response=response.get('response'),
-            document_id=response.get('document_id'),
+            index=response.get('_index'),
+            document_id=response.get('_id'),
+            result=ResponseResult(response.get('result')),
         )
 
     async def get(self, uuid: UUID, status: Status) -> Optional[List[Command]]:
@@ -126,6 +128,8 @@ def create_restart_command(agent_id: str) -> Command:
     Command
         Restart command.
     """
+    # The restart command hasn't been designed yet, this is a sample value.
+    # To be defined in https://github.com/wazuh/wazuh-agent/issues/54.
     return Command(
         source=Source.SERVICES,
         target=Target(
@@ -134,8 +138,8 @@ def create_restart_command(agent_id: str) -> Command:
         ),
         action=Action(
             name='restart',
-            args=['wazuh-agent', 'restart'],
             version='v5.0.0'
         ),
-        user=COMMAND_USER_NAME
+        user=COMMAND_USER_NAME,
+        timeout=100,
     )

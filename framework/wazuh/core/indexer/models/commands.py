@@ -7,8 +7,8 @@ from typing import List
 class Action:
     """Command action data model."""
     name: str
-    args: List[str]
     version: str
+    args: List[str] = None
 
 
 @dataclass

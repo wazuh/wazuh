@@ -7,7 +7,8 @@ import pytest
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY, create_restart_command, \
     COMMAND_USER_NAME
-from wazuh.core.indexer.base import IndexerKey, POST_METHOD, remove_empty_values
+from wazuh.core.indexer.base import IndexerKey, POST_METHOD
+from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.indexer.models.commands import Action, Command, Source, Status, Target, TargetType, \
     CreateCommandResponse
 
@@ -26,13 +27,17 @@ class TestCommandsManager:
 
     async def test_create(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `create` method."""
+        client_mock.transport.perform_request.return_value = {
+            '_index': 'commands', '_id': 'pBjePGfvgm', 'result': 'CREATED'
+        }
+
         response = await index_instance.create(self.create_command)
 
         assert isinstance(response, CreateCommandResponse)
         client_mock.transport.perform_request.assert_called_once_with(
             method=POST_METHOD,
-            url=index_instance.PLUGIN_URL,
-            body=asdict(self.create_command, dict_factory=remove_empty_values),
+            url=f'{index_instance.PLUGIN_URL}/commands',
+            body=asdict(self.create_command, dict_factory=convert_enums),
         )
     
     async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
@@ -88,10 +93,10 @@ def test_create_restart_command():
         ),
         action=Action(
             name='restart',
-            args=['wazuh-agent', 'restart'],
             version='v5.0.0'
         ),
-        user=COMMAND_USER_NAME
+        user=COMMAND_USER_NAME,
+        timeout=100
     )
 
     command = create_restart_command(agent_id=agent_id)
