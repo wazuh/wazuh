@@ -48,7 +48,7 @@ InstallPython()
 {
     PYTHON_VERSION='3.10.15'
     PYTHON_FILENAME='python.tar.gz'
-    PYTHON_INSTALLDIR=${INSTALLDIR}framework/python/
+    PYTHON_INSTALLDIR=${INSTALLDIR}var/lib/wazuh-server/framework/python/
     PYTHON_FULL_PATH=${PYTHON_INSTALLDIR}$PYTHON_FILENAME
 
     echo "Download Python ${PYTHON_VERSION} file"
@@ -57,15 +57,17 @@ InstallPython()
 
     tar -xf $PYTHON_FULL_PATH -C ${PYTHON_INSTALLDIR} && rm -rf ${PYTHON_FULL_PATH}
 
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libwazuhext.so ${INSTALLDIR}lib
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libpython3.10.so.1.0 ${INSTALLDIR}lib
+    mkdir -p ${INSTALLDIR}var/lib/wazuh-server/lib
+
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libwazuhext.so ${INSTALLDIR}var/lib/wazuh-server/lib
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libpython3.10.so.1.0 ${INSTALLDIR}var/lib/wazuh-server/lib
 
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${PYTHON_INSTALLDIR}
 }
 
 InstallPythonDependencies()
 {
-    PYTHON_BIN_PATH=${INSTALLDIR}framework/python/bin/python
+    PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
 
     echo "Installing Python dependecies"
     ${PYTHON_BIN_PATH} -m pip install -r ../framework/requirements.txt
