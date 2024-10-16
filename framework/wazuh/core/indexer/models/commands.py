@@ -21,14 +21,14 @@ class Result:
 
 
 class Source(str, Enum):
-    """Command source data model."""
+    """Command source enum."""
     SERVICES = 'Users/Services'
     ENGINE = 'Engine'
     CONTENT_MANAGER = 'Content manager'
 
 
 class Status(str, Enum):
-    """Command status data model."""
+    """Command status enum."""
     PENDING = 'pending'
     SENT = 'sent'
     SUCCESS = 'success'
@@ -36,7 +36,7 @@ class Status(str, Enum):
 
 
 class TargetType(str, Enum):
-    """Command target type data model."""
+    """Command target type enum."""
     AGENT = 'agent'
     GROUP = 'group'
     SERVER = 'server'
@@ -110,6 +110,7 @@ class Command:
 
 
 class ResponseResult(str, Enum):
+    """Create command response result enum."""
     CREATED = 'CREATED'
     OK = 'OK'
     ACCEPTED = 'Accepted'
