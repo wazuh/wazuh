@@ -87,8 +87,7 @@ class Result:
                 elif not result.success:
                     out += "\n    Event index:"
                     for unit_result in result.results:
-                        out += f"\n      {unit_result.index} -> {
-                            'Success' if unit_result.success else 'Failure'}"
+                        out += f"\n      {unit_result.index} -> {'Success' if unit_result.success else 'Failure'}"
                         if not unit_result.success:
                             for key, value in unit_result.diff.items():
                                 out += f"\n        {key}: {value}"
@@ -188,10 +187,9 @@ def run_test(test_parent_path: Path, engine_api_socket: str, unit_result: type, 
             test_name = f"{test_parent_name}-{input_file.parent.name}"
 
         ns = "wazuh system" if target == 'rule' else "wazuh"
-        engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix(
-        )} run {test_name} --api-socket {engine_api_socket} -n {ns} {debug_mode} -j"
-        command = f"cat {input_file.resolve().as_posix()} | {
-            engine_test_command}"
+        engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} "
+        engine_test_command += f"run {test_name} --api-socket {engine_api_socket} -n {ns} {debug_mode} -j"
+        command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
         test_result = test(input_file, expected_file,
                            unit_result, command, target, help)
         result.add_result(test_result)
