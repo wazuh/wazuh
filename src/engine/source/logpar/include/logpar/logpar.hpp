@@ -30,6 +30,7 @@ enum class SchemaType
     // String types
     KEYWORD,
     TEXT,
+    WILDCARD,
     // Other types
     BOOLEAN,
     IP,
@@ -55,6 +56,7 @@ constexpr auto schemaTypeToStr(SchemaType type)
         case SchemaType::BYTE: return "byte";
         case SchemaType::KEYWORD: return "keyword";
         case SchemaType::TEXT: return "text";
+        case SchemaType::WILDCARD: return "wildcard";
         case SchemaType::BOOLEAN: return "boolean";
         case SchemaType::IP: return "ip";
         case SchemaType::OBJECT: return "object";
@@ -83,6 +85,8 @@ constexpr auto strToSchemaType(std::string_view str)
         return SchemaType::KEYWORD;
     if (str == schemaTypeToStr(SchemaType::TEXT))
         return SchemaType::TEXT;
+    if (str == schemaTypeToStr(SchemaType::WILDCARD))
+        return SchemaType::WILDCARD;
     if (str == schemaTypeToStr(SchemaType::BOOLEAN))
         return SchemaType::BOOLEAN;
     if (str == schemaTypeToStr(SchemaType::IP))
