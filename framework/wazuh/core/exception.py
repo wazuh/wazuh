@@ -365,7 +365,7 @@ class WazuhException(Exception):
         1761: {'message': 'Error sending request to opensearch',
                'remediation': 'Please check the request body and try again'
                },
-        1762: 'Error creating restart command',
+        1762: 'Error sending command to the commands manager',
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
