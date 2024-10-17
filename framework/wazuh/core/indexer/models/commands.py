@@ -66,6 +66,14 @@ class Command:
     status: Status = None
     result: Result = None
 
+    def __post_init__(self):
+        if isinstance(self.target, dict):
+            self.target = Target(**self.target)
+        if isinstance(self.action, dict):
+            self.action = Action(**self.action)
+        if isinstance(self.result, dict):
+            self.result = Result(**self.result)
+
     @classmethod
     def from_dict(cls, document_id: str, data: dict):
         """Create an object instance from a dictionary.
@@ -82,31 +90,7 @@ class Command:
         Command
             Object instance with its fields initialized.
         """
-        return cls(
-            document_id=document_id,
-            order_id=data.get('order_id'),
-            request_id=data.get('request_id'),
-            groups=data.get('groups'),
-            source=Source(data.get('source')) if 'source' in data else None,
-            user=data.get('user'),
-            target=Target(
-                id=data.get('target').get('id'),
-                type=TargetType(data.get('target').get('type')),
-            ) if 'target' in data else None,
-            action=Action(
-                name=data.get('action').get('name'),
-                args=data.get('action').get('args'),
-                version=data.get('action').get('version'),
-            ) if 'action' in data else None,
-            timeout=data.get('timeout'),
-            status=Status(data.get('status')) if 'status' in data else None,
-            result=Result(
-                info=data.get('result').get('info'),
-                code=data.get('result').get('code'),
-                message=data.get('result').get('message'),
-                data=data.get('result').get('data'),
-            ) if 'result' in data else None,
-        )
+        return cls(document_id=document_id, **data)
 
 
 class ResponseResult(str, Enum):
