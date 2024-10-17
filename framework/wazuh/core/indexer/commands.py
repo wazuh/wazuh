@@ -45,9 +45,9 @@ class CommandsManager(BaseIndex):
             raise WazuhError(1761, extra_message=str(e))
 
         return CreateCommandResponse(
-            index=response.get('_index'),
-            document_id=response.get('_id'),
-            result=ResponseResult(response.get('result')),
+            index=response.get(IndexerKey._INDEX),
+            document_id=response.get(IndexerKey._ID),
+            result=ResponseResult(response.get(IndexerKey.RESULT)),
         )
 
     async def get(self, uuid: UUID, status: Status) -> Optional[List[Command]]:
