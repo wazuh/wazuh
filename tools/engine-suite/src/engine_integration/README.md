@@ -92,7 +92,7 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -a API_SOCK, --api-sock API_SOCK
-                        [default="/var/ossec/queue/sockets/engine-api"] Engine
+                        [default="/run/wazuh-server/engine-api.socket"] Engine
                         instance API socket path
   --dry-run             When set it will print all the steps to apply but wont
                         affect the store
@@ -113,7 +113,7 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -a API_SOCK, --api-sock API_SOCK
-                        [default="/var/ossec/queue/sockets/engine-api"] Engine
+                        [default="/run/wazuh-server/engine-api.socket"] Engine
                         instance API socket path
   --dry-run             default False, When True will print all the steps to
                         apply without affecting the store
@@ -131,7 +131,7 @@ usage: engine-integration update [-h] [-a API_SOCK] [-p INTEGRATION-PATH]
 options:
   -h, --help            show this help message and exit
   -a API_SOCK, --api-sock API_SOCK
-                        [default="/var/ossec/queue/sockets/engine-api"] Engine
+                        [default="/run/wazuh-server/engine-api.socket"] Engine
                         instance API socket path
   -p INTEGRATION-PATH, --integration-path INTEGRATION-PATH
                         [default=current directory] Integration directory path
