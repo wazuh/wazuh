@@ -14,8 +14,8 @@ VULNERABILITY_INDEX = 'stateful-vulnerability'
 
 
 @dataclass
-class Result:
-    """Stateful event response data model."""
+class TaskResult:
+    """Stateful event bulk task result data model."""
     id: str
     result: str
     status: int

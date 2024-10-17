@@ -3,7 +3,7 @@ from typing import List
 from pydantic import BaseModel
 
 from wazuh.core.engine.models.events import StatelessEvent
-from wazuh.core.indexer.models.events import StatefulEvent, Result
+from wazuh.core.indexer.models.events import StatefulEvent, TaskResult
 
 
 class StatefulEvents(BaseModel):
@@ -11,7 +11,7 @@ class StatefulEvents(BaseModel):
 
 
 class StatefulEventsResponse(BaseModel):
-    results: List[Result]
+    results: List[TaskResult]
 
 
 class StatelessEvents(BaseModel):

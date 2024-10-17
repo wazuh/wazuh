@@ -5,7 +5,7 @@ from comms_api.core.events import create_stateful_events, send_stateless_events
 from comms_api.models.events import StatefulEvents, StatelessEvents
 from wazuh.core.engine.models.events import StatelessEvent
 from wazuh.core.indexer import Indexer
-from wazuh.core.indexer.models.events import SCAEvent, Result
+from wazuh.core.indexer.models.events import SCAEvent, TaskResult
 
 INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 
@@ -25,8 +25,8 @@ async def test_send_stateless_events(events_send_mock):
 async def test_create_stateful_events(create_indexer_mock):
     """Check that the `create_stateful_events` function works as expected."""
     expected = [
-        Result(id='1', result='created', status=201),
-        Result(id='2', result='created', status=201),
+        TaskResult(id='1', result='created', status=201),
+        TaskResult(id='2', result='created', status=201),
     ]
     create_indexer_mock.return_value.events.create.return_value = expected
     batcher_queue = AsyncMock()

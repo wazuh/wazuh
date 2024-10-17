@@ -3,7 +3,7 @@ from typing import List
 from uuid import UUID
 
 from .base import BaseIndex
-from wazuh.core.indexer.models.events import StatefulEvent, Result
+from wazuh.core.indexer.models.events import StatefulEvent, TaskResult
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.batcher.client import BatcherClient
@@ -17,7 +17,7 @@ class EventsIndex(BaseIndex, MixinBulk):
     def __init__(self, client: AsyncOpenSearch):
         super().__init__(client)
 
-    async def create(self, events: List[StatefulEvent], batcher_client: BatcherClient) -> List[Result]:
+    async def create(self, events: List[StatefulEvent], batcher_client: BatcherClient) -> List[TaskResult]:
         """Post new events to the indexer.
 
         Parameters
@@ -29,8 +29,8 @@ class EventsIndex(BaseIndex, MixinBulk):
 
         Returns
         -------
-        tasks_results : List[Result]
-            Indexer response for each one of the indexing tasks.
+        results : List[TaskResult]
+            Indexer response for each one of the bulk tasks.
         """
         item_ids: List[UUID] = []
 
@@ -50,9 +50,9 @@ class EventsIndex(BaseIndex, MixinBulk):
         # Wait for all of them and create response
         tasks_results = await asyncio.gather(*tasks)
 
-        results: List[Result] = []
+        results: List[TaskResult] = []
         for result in tasks_results:
-            results.append(Result(
+            results.append(TaskResult(
                 id=result[IndexerKey._ID],
                 result=result[IndexerKey.RESULT],
                 status=result[IndexerKey.STATUS]
