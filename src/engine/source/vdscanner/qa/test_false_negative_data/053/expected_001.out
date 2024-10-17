@@ -1,0 +1,4 @@
+[
+    "Match found, the package 'linux', is vulnerable to 'CVE-2024-1086'. Current version: '5.4.0-170.193' (less than '5.4.0-174.193' or equal to ''). - Agent '' (ID: '033', Version: '').",
+    "No match due to default status for Package: linux, Version: 5.4.0-170.193 while scanning for Vulnerability: CVE-2024-46869"
+]
