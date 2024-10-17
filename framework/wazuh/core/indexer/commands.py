@@ -143,3 +143,62 @@ def create_restart_command(agent_id: str) -> Command:
         user=COMMAND_USER_NAME,
         timeout=100,
     )
+
+
+def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
+    """Create a set group command for an agent with the ID specified.
+    
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    groups : str
+        Group names list.
+    
+    Returns
+    -------
+    Command
+        Set group command.
+    """
+    return Command(
+        source=Source.SERVICES,
+        target=Target(
+            type=TargetType.AGENT,
+            id=agent_id,
+        ),
+        action=Action(
+            name='set-group',
+            args=groups,
+            version='v5.0.0'
+        ),
+        user=COMMAND_USER_NAME,
+        timeout=100,
+    )
+
+
+def create_update_group_command(agent_id: str) -> Command:
+    """Create a update group command for an agent with the ID specified.
+    
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    
+    Returns
+    -------
+    Command
+        Update group command.
+    """
+    return Command(
+        source=Source.SERVICES,
+        target=Target(
+            type=TargetType.AGENT,
+            id=agent_id,
+        ),
+        action=Action(
+            name='update-group',
+            version='v5.0.0'
+        ),
+        user=COMMAND_USER_NAME,
+        timeout=100,
+    )

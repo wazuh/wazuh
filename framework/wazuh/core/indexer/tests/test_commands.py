@@ -6,7 +6,7 @@ import pytest
 
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY, create_restart_command, \
-    COMMAND_USER_NAME
+    COMMAND_USER_NAME, create_set_group_command, create_update_group_command
 from wazuh.core.indexer.base import IndexerKey, POST_METHOD
 from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.indexer.models.commands import Action, Command, Source, Status, Target, TargetType, \
@@ -100,5 +100,51 @@ def test_create_restart_command():
     )
 
     command = create_restart_command(agent_id=agent_id)
+
+    assert command == expected_command
+
+
+def test_create_set_group_command():
+    """Check the correct functionality of the `create_set_group_command` function."""
+    agent_id = '0191dd54-bd16-7025-80e6-ae49bc101c7a'
+    groups = ['default', 'group1', 'group3']
+    expected_command = Command(
+        source=Source.SERVICES,
+        target=Target(
+            type=TargetType.AGENT,
+            id=agent_id,
+        ),
+        action=Action(
+            name='set-group',
+            args=groups,
+            version='v5.0.0'
+        ),
+        user=COMMAND_USER_NAME,
+        timeout=100
+    )
+
+    command = create_set_group_command(agent_id=agent_id, groups=groups)
+
+    assert command == expected_command
+
+
+def test_create_update_group_command():
+    """Check the correct functionality of the `create_update_group_command` function."""
+    agent_id = '0191dd54-bd16-7025-80e6-ae49bc101c7a'
+    expected_command = Command(
+        source=Source.SERVICES,
+        target=Target(
+            type=TargetType.AGENT,
+            id=agent_id,
+        ),
+        action=Action(
+            name='update-group',
+            version='v5.0.0'
+        ),
+        user=COMMAND_USER_NAME,
+        timeout=100
+    )
+
+    command = create_update_group_command(agent_id=agent_id)
 
     assert command == expected_command
