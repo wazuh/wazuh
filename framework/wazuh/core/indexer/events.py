@@ -14,17 +14,15 @@ from opensearchpy import AsyncOpenSearch
 class EventsIndex(BaseIndex, MixinBulk):
     """Set of methods to interact with the stateful events indices."""
 
-    INDEX = 'events'
-
     def __init__(self, client: AsyncOpenSearch):
         super().__init__(client)
 
-    async def create(self, events: StatefulEvent, batcher_client: BatcherClient) -> dict:
+    async def create(self, events: List[StatefulEvent], batcher_client: BatcherClient) -> dict:
         """Post new events to the indexer.
 
         Parameters
         ----------
-        events : StatefulEvent
+        events : List[StatefulEvent]
             List of events.
         batcher_client : BatcherClient
             Client responsible for sending the events to the batcher and managing responses.
@@ -38,7 +36,7 @@ class EventsIndex(BaseIndex, MixinBulk):
         response = {'events': []}
 
         # Sends the events to the batcher
-        for event in events.events:
+        for event in events:
             uid_of_request = batcher_client.send_event(asdict(event))
             ids.append(uid_of_request)
 
@@ -52,7 +50,7 @@ class EventsIndex(BaseIndex, MixinBulk):
 
         # Wait for all of them and create response
         results = await asyncio.gather(*tasks)
-        for i, result in enumerate(results):
+        for result in results:
             response['events'].append({
                 'id': result['_id'],
                 'result': result['result'],

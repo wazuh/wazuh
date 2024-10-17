@@ -23,7 +23,7 @@ async def create_stateful_events(events: StatefulEvents, batcher_queue: MuxDemux
     """
     async with get_indexer_client() as indexer_client:
         batcher_client = BatcherClient(queue=batcher_queue)
-        return await indexer_client.events.create(events, batcher_client)
+        return await indexer_client.events.create(events.events, batcher_client)
 
 
 async def send_stateless_events(events: StatelessEvents) -> None:

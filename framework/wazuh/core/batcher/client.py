@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional
 
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue
+from wazuh.core.indexer.models.events import StatefulEvent
 
 
 class BatcherClient:
@@ -20,12 +21,12 @@ class BatcherClient:
         self.queue = queue
         self.wait_frequency = wait_frequency
 
-    def send_event(self, event) -> int:
+    def send_event(self, event: StatefulEvent) -> int:
         """Send an event through the RouterQueue.
 
         Parameters
         ----------
-        event : any
+        event : StatefulEvent
             Event to send.
 
         Returns
