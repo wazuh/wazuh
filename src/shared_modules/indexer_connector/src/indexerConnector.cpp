@@ -172,32 +172,9 @@ static void builderBulkDelete(std::string& bulkData, std::string_view id, std::s
     bulkData.append("\n");
 }
 
-static void builderDeleteByQuery(std::string& bulkData, const std::vector<std::string>& agentIds)
+static void builderDeleteByQuery(nlohmann::json& bulkData, const std::string& agentId)
 {
-    bulkData.append(R"({
-  "query": {
-    "bool": {
-      "filter": {
-        "terms": {
-          "agent.id": [)");
-
-    // Append each agent ID to the JSON array
-    for (const auto& agentId : agentIds)
-    {
-        bulkData.append(R"(")");
-        bulkData.append(agentId);
-        bulkData.append(R"(")");
-        bulkData.append(",");
-    }
-    bulkData.pop_back(); // Remove the last comma
-
-    bulkData.append(R"(]
-        }
-      }
-    }
-  }
-})");
-    bulkData.append("\n");
+    bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
 }
 
 static void builderBulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
@@ -491,10 +468,7 @@ IndexerConnector::IndexerConnector(
             std::string bulkData;
 
             // Accumulator for data to be sent to the indexer via query requests.
-            std::string queryData;
-
-            // Vector of ids to be deleted by query.
-            std::vector<std::string> idsToDeleteByQuery;
+            nlohmann::json queryData;
 
             while (!dataQueue.empty())
             {
@@ -522,7 +496,7 @@ IndexerConnector::IndexerConnector(
                     logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
                     if (!noIndex)
                     {
-                        idsToDeleteByQuery.push_back(id);
+                        builderDeleteByQuery(queryData, id);
                     }
 
                     for (const auto& [key, _] : m_db->seek(id))
@@ -570,11 +544,10 @@ IndexerConnector::IndexerConnector(
                 processData(bulkData, url);
             }
 
-            if (!idsToDeleteByQuery.empty())
+            if (!queryData.empty())
             {
-                builderDeleteByQuery(queryData, idsToDeleteByQuery);
                 const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
-                processData(queryData, url);
+                processData(queryData.dump(), url);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
