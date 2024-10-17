@@ -3,24 +3,30 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 from fastapi import status
 
+from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.events import post_stateful_events, post_stateless_events
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.exception import WazuhEngineError, WazuhError
+from wazuh.core.indexer.models.events import Result
 
 
 @pytest.mark.asyncio
-@patch('comms_api.routers.events.create_stateful_events', return_value={'foo': 'bar'})
+@patch('comms_api.routers.events.create_stateful_events')
 async def test_post_stateful_events(create_stateful_events_mock):
     """Verify that the `post_stateful_events` handler works as expected."""
     request = MagicMock()
     request.app.state.batcher_queue = AsyncMock()  # Mock the batcher_queue
+
     events = [{"example": 1}]
+    results = [Result(id='123', result='created', status=201)]
+    create_stateful_events_mock.return_value = results
 
     response = await post_stateful_events(request, events)
 
     create_stateful_events_mock.assert_called_once_with(events, request.app.state.batcher_queue)
-    assert response.status_code == status.HTTP_200_OK
-    assert response.body == b'{"foo":"bar"}'
+
+    assert isinstance(response, StatefulEventsResponse)
+    assert response.results == results
 
 
 @pytest.mark.asyncio

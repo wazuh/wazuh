@@ -14,6 +14,14 @@ VULNERABILITY_INDEX = 'stateful-vulnerability'
 
 
 @dataclass
+class Result:
+    """Stateful event response data model."""
+    id: str
+    result: str
+    status: int
+
+
+@dataclass
 class Hash:
     """Hash data model."""
     md5: str
@@ -214,7 +222,7 @@ class VulnerabilityEvent(BaseModel):
 class CommandResult(BaseModel):
     """Command result data model."""
     document_id: str
-    result = Result
+    result: Result
 
     def get_index_name(self) -> str:
         """Get the index name for the event type.

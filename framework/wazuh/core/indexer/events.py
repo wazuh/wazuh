@@ -1,10 +1,10 @@
 import asyncio
-from dataclasses import asdict
 from typing import List
 from uuid import UUID
 
 from .base import BaseIndex
-from wazuh.core.indexer.models.events import StatefulEvent
+from wazuh.core.indexer.models.events import StatefulEvent, Result
+from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.batcher.client import BatcherClient
 
@@ -17,7 +17,7 @@ class EventsIndex(BaseIndex, MixinBulk):
     def __init__(self, client: AsyncOpenSearch):
         super().__init__(client)
 
-    async def create(self, events: List[StatefulEvent], batcher_client: BatcherClient) -> dict:
+    async def create(self, events: List[StatefulEvent], batcher_client: BatcherClient) -> List[Result]:
         """Post new events to the indexer.
 
         Parameters
@@ -29,32 +29,33 @@ class EventsIndex(BaseIndex, MixinBulk):
 
         Returns
         -------
-        dict
-            Indexer response for each one of the events.
+        tasks_results : List[Result]
+            Indexer response for each one of the indexing tasks.
         """
-        ids: List[UUID] = []
-        response = {'events': []}
+        item_ids: List[UUID] = []
 
         # Sends the events to the batcher
         for event in events:
-            uid_of_request = batcher_client.send_event(asdict(event))
-            ids.append(uid_of_request)
+            item_id = batcher_client.send_event(event)
+            item_ids.append(item_id)
 
         # Create tasks using a lambda function to obtain the result of each one
         tasks = []
-        for uid in ids:
+        for id in item_ids:
             task = asyncio.create_task(
-                (lambda u: batcher_client.get_response(u))(uid)
+                (lambda u: batcher_client.get_response(u))(id)
             )
             tasks.append(task)
 
         # Wait for all of them and create response
-        results = await asyncio.gather(*tasks)
-        for result in results:
-            response['events'].append({
-                'id': result['_id'],
-                'result': result['result'],
-                'status': result['status']
-            })
+        tasks_results = await asyncio.gather(*tasks)
 
-        return response
+        results: List[Result] = []
+        for result in tasks_results:
+            results.append(Result(
+                id=result[IndexerKey._ID],
+                result=result[IndexerKey.RESULT],
+                status=result[IndexerKey.STATUS]
+            ))
+
+        return results
