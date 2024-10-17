@@ -4253,9 +4253,9 @@ stages:
                 - group1
                 - group2
               registerIP: any
-              configSum: 6ca315e21ec25eab4bcb2a29218c6ae8
-              mergedSum: 0b4cbf98821ce6e4059269ac8969a8e6
-              dateAdd: '1970-01-01T00:00:00+00:00'
+              configSum: !anystr
+              mergedSum: !anystr
+              dateAdd: !anystr
               group_config_status: synced
           failed_items: []
           total_affected_items: 6

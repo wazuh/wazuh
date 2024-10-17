@@ -440,7 +440,9 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
     // Add macOS specific paths
     pypyMacOSPaths.emplace("/Library/Python/*/*-packages");
-    pypyMacOSPaths.emplace("/Library/Frameworks/Python.framework/Versions/*/lib/python*/*-packages");
+    pypyMacOSPaths.emplace("/Users/*/Library/Python/*/lib/python/*-packages");
+    pypyMacOSPaths.emplace("/Users/*/.pyenv/versions/*/lib/python*/*-packages");
+    pypyMacOSPaths.emplace("/private/var/root/.pyenv/versions/*/lib/python*/*-packages");
     pypyMacOSPaths.emplace(
         "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/*/lib/python*/*-packages");
     pypyMacOSPaths.emplace("/System/Library/Frameworks/Python.framework/*-packages");

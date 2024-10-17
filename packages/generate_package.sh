@@ -70,7 +70,7 @@ build_pkg() {
         fi
     else
         CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
-        if [ "${ARCHITECTURE}" = "arm64" ] || [ "${ARCHITECTURE}" = "ppc64le" ]; then
+        if [ "${ARCHITECTURE}" = "ppc64le" ]; then
             DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}"
         else
             DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"

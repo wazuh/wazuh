@@ -26,7 +26,7 @@ stages:
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders
-              filename: 0007-wazuh-api_decoders.xml
+              filename: 0006-json_decoders.xml
             - <<: *full_item_decoders
               filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders
@@ -259,13 +259,13 @@ stages:
               position: !anyint
               status: !anystr
             - <<: *full_item_decoders_parent
-              filename: 0007-wazuh-api_decoders.xml
+              filename: 0006-json_decoders.xml
             - <<: *full_item_decoders_parent
               filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders_parent
               filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders_parent
-              filename: 0010-active-response_decoders.xml
+              filename: 0007-wazuh-api_decoders.xml
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0

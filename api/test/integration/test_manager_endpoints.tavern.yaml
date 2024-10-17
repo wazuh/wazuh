@@ -899,9 +899,8 @@ stages:
           affected_items:
             - node_name: !anystr
               node_api_config:
-                host: !anystr
+                host: !anylist
                 port: !anyint
-
                 https:
                   enabled: !anybool
                   key: !anystr
@@ -944,10 +943,10 @@ stages:
                   indexer:
                     allow: !anybool
                   integrations:
-                       virustotal:
-                         public_key:
-                           allow: !anybool
-                           minimum_quota: !anyint
+                    virustotal:
+                      public_key:
+                        allow: !anybool
+                        minimum_quota: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []

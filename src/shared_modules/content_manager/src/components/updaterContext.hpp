@@ -102,7 +102,7 @@ struct UpdaterBaseContext
     explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition,
                                 FileProcessingCallback fileProcessingCallback)
         : spStopCondition(std::move(spStopCondition))
-        , fileProcessingCallback(fileProcessingCallback)
+        , fileProcessingCallback(std::move(fileProcessingCallback))
     {
     }
 };
