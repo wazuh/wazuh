@@ -9,12 +9,6 @@
  * Foundation.
  */
 
-#include "base/logging.hpp"
-#include "base/utils/stringUtils.hpp"
-#include "base/utils/timeUtils.hpp"
-#include "fakeIndexer.hpp"
-#include "indexerConnector/indexerConnector.hpp"
-#include "gtest/gtest.h"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -25,6 +19,15 @@
 #include <stdexcept>
 #include <thread>
 #include <utility>
+
+#include <base/logging.hpp>
+#include <base/utils/stringUtils.hpp>
+#include <base/utils/timeUtils.hpp>
+
+#include <gtest/gtest.h>
+#include <indexerConnector/indexerConnector.hpp>
+
+#include "fakeIndexer.hpp"
 
 class IndexerConnectorTest : public ::testing::Test
 {
@@ -198,6 +201,28 @@ TEST_F(IndexerConnectorTest, ConnectionWithSslCredentials)
 
     // Create connector and wait until the connection is established.
     auto indexerConnector {IndexerConnector(indexerConfig)};
+}
+
+/**
+ * @brief Test the connection to an available server with SSL credentials.
+ *
+ * @note The SSL data is a dummy one and there are no functionality checks here. The target of this test is to increase
+ * the test coverage.
+ *
+ */
+TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
+{
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME,
+        .hosts = {A_ADDRESS},
+        .sslOptions = {.cacert = {"/etc/filebeat/certs/root-ca.pem", "/etc/filebeat/certs/root-ca-two.pem"},
+                       .cert = "/etc/filebeat/certs/filebeat.pem",
+                       .key = "/etc/filebeat/certs/filebeat-key.pem"},
+        .timeout = INDEXER_TIMEOUT};
+
+    // Create connector and wait until the connection is established.
+    // Throw is expected if the certs are not found.
+    EXPECT_THROW(auto indexerConnector {IndexerConnector(indexerConfig)}, std::runtime_error);
 }
 
 /**
