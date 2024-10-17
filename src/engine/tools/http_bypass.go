@@ -3,21 +3,21 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-    "fmt"
-    "net"
-	"net/http"
-	"log"
 	"flag"
+	"fmt"
 	"io"
+	"log"
+	"net"
+	"net/http"
 	"os"
 )
 
 /*****************************************************************************************
  *  API Handler
  *****************************************************************************************/
-func apiHandler(path string)  http.HandlerFunc {
+func apiHandler(path string) http.HandlerFunc {
 
-	return func (w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
 
 		// Conect to unix socket to api
 		addr, err := net.ResolveUnixAddr("unix", path)
@@ -30,7 +30,6 @@ func apiHandler(path string)  http.HandlerFunc {
 			log.Fatal(fmt.Sprintf("Failed to dial: %v\n", err))
 		}
 
-
 		// Print de json request
 		defer req.Body.Close()
 		b, err := io.ReadAll(req.Body)
@@ -39,7 +38,7 @@ func apiHandler(path string)  http.HandlerFunc {
 		}
 		reqStr := string(b)
 
-		if(reqStr == "") {
+		if reqStr == "" {
 			reqStr = "{}"
 		}
 
@@ -60,10 +59,10 @@ func apiHandler(path string)  http.HandlerFunc {
 func sockQuery(conn net.Conn, message string, secure bool) string {
 	response := make([]byte, 650000)
 	var sizeBuf int32 = 0
-	var  payload []byte
+	var payload []byte
 
 	if secure {
-		payload = secureMessage(message);
+		payload = secureMessage(message)
 	} else {
 		payload = []byte(message)
 	}
@@ -78,7 +77,7 @@ func sockQuery(conn net.Conn, message string, secure bool) string {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		return  string(response);
+		return string(response)
 	}
 
 	if _, err := conn.Read(response[0:4]); err != nil {
@@ -123,19 +122,17 @@ func secureMessage(message string) []byte {
 
 func main() {
 
-	var portServer string // port to listen
+	var portServer string    // port to listen
 	var apiSocketPath string // Path to unix socket
 
 	flag.StringVar(&portServer, "p", ":80", "Address to listen")
-	flag.StringVar(&apiSocketPath, "a", "/var/ossec/queue/sockets/engine-api", "API engine socket path") // Datagram + header
+	flag.StringVar(&apiSocketPath, "a", "/run/wazuh-server/engine-api.socket", "API engine socket path") // Datagram + header
 
 	flag.Parse()
 
+	http.HandleFunc("/api", apiHandler(apiSocketPath))
+	// http.HandleFunc("/events", headers)
 
-    http.HandleFunc("/api", apiHandler(apiSocketPath))
-    // http.HandleFunc("/events", headers)
-
-    log.Fatal(http.ListenAndServe(portServer, nil))
-
+	log.Fatal(http.ListenAndServe(portServer, nil))
 
 }

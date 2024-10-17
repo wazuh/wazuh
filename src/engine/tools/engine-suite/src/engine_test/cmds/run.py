@@ -10,7 +10,7 @@ DEFAULT_VERBOSE = False
 DEFAULT_POLICY = "policy/wazuh/0"
 DEFAULT_ASSETS = []
 DEFAULT_JSON_FORMAT = False
-DEFAULT_API_SOCKET = "/var/ossec/queue/sockets/engine-api"
+DEFAULT_API_SOCKET = "/run/wazuh-server/engine-api.socket"
 
 
 class RunCommand(Command):

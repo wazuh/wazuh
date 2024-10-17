@@ -2,7 +2,7 @@ import shared.resource_handler as rs
 import shared.executor as exec
 from pathlib import Path
 
-DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
+DEFAULT_API_SOCK = '/run/wazuh-server/engine-api.socket'
 DEFAULT_NAMESPACE = 'user'
 
 
