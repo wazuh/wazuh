@@ -8,15 +8,16 @@ from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 
+
 def load_rules(ruleset_path: Path, engine_handler: EngineHandler) -> None:
     rules_directory = ruleset_path / 'rules'
 
     if not rules_directory.exists() or not rules_directory.is_dir():
         raise Exception(f"The directory {rules_directory} was not found.")
-    
+
     for subdirectory in rules_directory.iterdir():
         if subdirectory.is_dir():
-            for rule_file in subdirectory.glob('*.yml'):            
+            for rule_file in subdirectory.glob('*.yml'):
                 request = api_catalog.ResourcePost_Request()
                 request.type = api_catalog.ResourceType.rule
                 if subdirectory.name == 'wazuh-core':
@@ -25,17 +26,17 @@ def load_rules(ruleset_path: Path, engine_handler: EngineHandler) -> None:
                     request.namespaceid = "wazuh"
                 request.content = rule_file.read_text()
                 request.format = api_catalog.ResourceFormat.yml
-                
+
                 print(f"Loading rule...\n{request}")
                 error, response = engine_handler.api_client.send_recv(request)
-                
+
                 if error:
                     raise Exception(error)
 
                 parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
                 if parsed_response.status == api_engine.ERROR:
                     raise Exception(parsed_response.error)
-                
+
                 print(f"Rules loaded.")
 
 
@@ -76,7 +77,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     for ruleset_dir in (ruleset_path / 'rules').iterdir():
         if ruleset_dir.name == 'wazuh-core':
             continue
-        
+
         for yaml_file in ruleset_dir.glob("*.yml"):
             with open(yaml_file, 'r') as f:
                 content = yaml.safe_load(f)
@@ -121,7 +122,7 @@ def run(args):
 
     print("Starting the engine...")
     engine_handler = EngineHandler(
-    bin_path.as_posix(), conf_path.as_posix())
+        bin_path.as_posix(), conf_path.as_posix())
     engine_handler.start()
     print("Engine started.")
 
