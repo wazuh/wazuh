@@ -90,6 +90,25 @@ checkDownloadContent()
     fi
 }
 
+installEngineStore()
+{
+    STORE_FILENAME='engine_store_0.0.1_5.0.0.tar.gz'
+    STORE_FULL_PATH=${INSTALLDIR}tmp/wazuh-server/${STORE_FILENAME}
+    STORE_URL=https://packages.wazuh.com/deps/engine_store_model_database/${STORE_FILENAME}
+    DEST_FULL_PATH=${INSTALLDIR}var/lib/wazuh-server/engine
+
+    echo "Download ${STORE_FILENAME} file"
+    mkdir -p ${INSTALLDIR}tmp/wazuh-server
+    wget -O ${STORE_FULL_PATH} ${STORE_URL}
+
+    chmod 640 ${STORE_FULL_PATH}
+    chown ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_FULL_PATH}
+
+    tar -xzf ${STORE_FULL_PATH} -C ${DEST_FULL_PATH}
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}
+    find ${DEST_FULL_PATH}/store -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+}
+
 InstallEngine()
 {
   # Check if the content needs to be downloaded.
@@ -103,13 +122,10 @@ InstallEngine()
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/vd
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-asset
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-policy
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/engine-schema
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/kvdb
+  ${INSTALL} -d -m 0755 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server
+  ${INSTALL} -d -m 0755 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server/engine
+
   #${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} engine/build/tzdb ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
   cp -rp engine/build/tzdb ${INSTALLDIR}var/lib/wazuh-server/engine/
   chown -R root:${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
@@ -118,12 +134,8 @@ InstallEngine()
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/indexer-connector
 
-  # Copy the engine configuration file
-  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/wazuh-logpar-types.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types/0
-  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/wazuh-asset.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-asset/0
-  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/wazuh-policy.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/wazuh-policy/0
-  ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} engine/ruleset/schemas/engine-schema.json ${INSTALLDIR}var/lib/wazuh-server/engine/store/schema/engine-schema/0
-
+  # Download and extract the Engine store
+  installEngineStore
 }
 
 #InstallCluster()
