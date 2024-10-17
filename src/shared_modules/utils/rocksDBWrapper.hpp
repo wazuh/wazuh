@@ -562,19 +562,18 @@ namespace Utils
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
             if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
             {
-                // Find the column handle on the list and drop it
-                const auto it =
-                    std::find_if(m_columnsInstances.begin(),
-                                 m_columnsInstances.end(),
-                                 [&columnName](const auto& handle) { return columnName == handle->GetName(); });
+                // Create an iterator for the current column family
+                std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
 
-                // Check if the column exists
-                if (it != m_columnsInstances.end())
+                it->SeekToFirst();
+                while (it->Valid())
                 {
-                    it->drop();
-                    m_columnsInstances.erase(it);
-
-                    createColumn(columnName);
+                    if (auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle.handle(), it->key());
+                        !status.ok())
+                    {
+                        throw std::runtime_error("Error deleting data: " + status.ToString());
+                    }
+                    it->Next();
                 }
             }
             else
