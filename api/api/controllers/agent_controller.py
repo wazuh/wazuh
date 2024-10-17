@@ -269,26 +269,26 @@ async def restart_agents(
     ConnexionResponse
         API response.
     """
-    # if agents_list == '*':
-    #     agents_list = []
+    if agents_list == '*':
+        agents_list = []
 
-    # f_kwargs = {'agent_list': agents_list}
+    f_kwargs = {'agent_list': agents_list}
 
-    # dapi = DistributedAPI(
-    #     f=agent.restart_agents,
-    #     f_kwargs=remove_nones_to_dict(f_kwargs),
-    #     request_type='local_any',
-    #     is_async=True,
-    #     wait_for_complete=wait_for_complete,
-    #     rbac_permissions=request.context['token_info']['rbac_policies'],
-    #     logger=logger
-    # )
-    # data = raise_if_exc(await dapi.distribute_function())
+    dapi = DistributedAPI(
+        f=agent.restart_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=wait_for_complete,
+        rbac_permissions=request.context['token_info']['rbac_policies'],
+        logger=logger
+    )
+    data = raise_if_exc(await dapi.distribute_function())
 
-    # return json_response(data, pretty=pretty)
-    return json_response({'message': 'To be implemented'}, status_code=501)
+    return json_response(data, pretty=pretty)
 
 
+# TODO(#25554): Review whether to keep this endpoint or not
 async def restart_agents_by_node(node_id: str, pretty: bool = False,
                                  wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart all agents belonging to a node.
@@ -296,7 +296,7 @@ async def restart_agents_by_node(node_id: str, pretty: bool = False,
     Parameters
     ----------
     node_id : str
-        Cluster node name.
+        Cluster node ID.
     pretty : bool, optional
         Show results in human-readable format. Default `False`
     wait_for_complete : bool, optional
