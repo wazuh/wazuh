@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+
 class ErrorReporter:
     def __init__(self, target):
         self.errors = {}
@@ -40,8 +41,8 @@ class ErrorReporter:
         for integration, assets in self.errors.items():
             report += f"\n{self.target}: {integration}\n"
             for asset, missing_fields in assets.items():
-                relative_path = Path(asset).relative_to(base_path)
-                report += f"  File: {relative_path}\n"
+                # relative_path = Path(asset).relative_to(base_path)
+                report += f"  File: {base_path}\n"
                 report += "   Fields:\n"
                 for field in sorted(missing_fields):
                     report += f"    - {field}\n"
