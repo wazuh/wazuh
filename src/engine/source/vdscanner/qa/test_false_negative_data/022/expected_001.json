@@ -1,0 +1,2664 @@
+[
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "An elevation of privilege vulnerability exists in Windows when the Win32k component fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability.\" This affects Windows 7, Windows Server 2012 R2, Windows RT 8.1, Windows Server 2008, Windows Server 2012, Windows 8.1, Windows Server 2016, Windows Server 2008 R2, Windows 10, Windows 10 Servers. This CVE ID is unique from CVE-2018-8120, CVE-2018-8124, CVE-2018-8164.",
+        "id": "CVE-2018-8166",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A remote code execution vulnerability exists in the way that Windows handles objects in memory, aka \"Windows Remote Code Execution Vulnerability.\" This affects Windows 7, Windows Server 2012 R2, Windows RT 8.1, Windows Server 2008, Windows Server 2012, Windows 8.1, Windows Server 2016, Windows Server 2008 R2, Windows 10, Windows 10 Servers.",
+        "id": "CVE-2018-8136",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A denial of service vulnerability exists in the way that Windows handles objects in memory, aka \"Microsoft Graphics Component Denial of Service Vulnerability.\" This affects Windows 7, Windows Server 2012 R2, Windows RT 8.1, Windows Server 2008, Windows Server 2012, Windows 8.1, Windows Server 2016, Windows Server 2008 R2, Windows 10, Windows 10 Servers.",
+        "id": "CVE-2018-8116",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "An elevation of privilege vulnerability exists in Windows Adobe Type Manager Font Driver (ATMFD.dll) when it fails to properly handle objects in memory, aka \"OpenType Font Driver Elevation of Privilege Vulnerability.\" This affects Windows 7, Windows Server 2012 R2, Windows RT 8.1, Windows Server 2008, Windows Server 2012, Windows 8.1, Windows Server 2016, Windows Server 2008 R2, Windows 10, Windows 10 Servers.",
+        "id": "CVE-2018-1008",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows Common Log File System (CLFS) driver in Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2008 SP2 and R2 SP1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703 and 1709, Windows Server 2016 and Windows Server, version 1709 allows an elevation of privilege vulnerability due to how objects in memory are handled, aka \"Windows Common Log File System Driver Elevation Of Privilege Vulnerability\". This CVE is unique from CVE-2018-0844.",
+        "id": "CVE-2018-0846",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows Common Log File System (CLFS) driver in Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2008 SP2 and R2 SP1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703 and 1709, Windows Server 2016 and Windows Server, version 1709 allows an elevation of privilege vulnerability due to how objects in memory are handled, aka \"Windows Common Log File System Driver Elevation Of Privilege Vulnerability\". This CVE is unique from CVE-2018-0846.",
+        "id": "CVE-2018-0844",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "StructuredQuery in Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2008 SP2 and R2 SP1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703 and 1709, Windows Server 2016 and Windows Server, version 1709 allows a remote code execution vulnerability due to how objects are handled in memory, aka \"StructuredQuery Remote Code Execution Vulnerability\".",
+        "id": "CVE-2018-0825",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel in Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2008 SP2 and R2 SP1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703 and 1709, Windows Server 2016 and Windows Server, version 1709 allows an elevation of privilege vulnerability due to the way objects are handled in memory, aka \"Windows Kernel Elevation of Privilege Vulnerability\". This CVE is unique from CVE-2018-0756. CVE-2018-0809, CVE-2018-0820 and CVE-2018-0843.",
+        "id": "CVE-2018-0742",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Color Management Module (Icm32.dll) in Windows 7 SP1 and Windows Server 2008 SP2 and R2 SP1 allows an information disclosure vulnerability due to the way objects are handled in memory, aka \"Microsoft Color Management Information Disclosure Vulnerability\".",
+        "id": "CVE-2018-0741",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allow an attacker to execute arbitrary code in the context of the current user, due to how Microsoft Windows Text Services Framework handles objects in memory, aka \"Windows Shell Memory Corruption Vulnerability\".",
+        "id": "CVE-2017-8727",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows graphics component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when the Win32k component fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8675.",
+        "id": "CVE-2017-8720",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft JET Database Engine in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an attacker to take control of an affected system, due to how it handles objects in memory, aka \"Microsoft JET Database Engine Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-8718.",
+        "id": "CVE-2017-8717",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-8708, CVE-2017-8679, and CVE-2017-8719.",
+        "id": "CVE-2017-8709",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows Hyper-V component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it fails to properly validate input from an authenticated user on a guest operating system, aka Hyper-V Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-8706, CVE-2017-8711, CVE-2017-8712, and CVE-2017-8713.",
+        "id": "CVE-2017-8707",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Shell in Microsoft Windows 7 SP1, Windows Server 2008 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an attacker to run arbitrary code in the context of the current user, due to the way that Windows Shell validates file copy destinations, aka \"Windows Shell Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-8699",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Kernel Mode Driver on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8689.",
+        "id": "CVE-2017-8694",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allow an attacker to execute code remotely on a target system when the Windows font library fails to properly handle specially crafted embedded fonts, aka \"Express Compressed Fonts Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2017-8691",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Kernel Mode Driver on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8694.",
+        "id": "CVE-2017-8689",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Win32k Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-8678, CVE-2017-8680, CVE-2017-8677, and CVE-2017-8681.",
+        "id": "CVE-2017-8687",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Win32k Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-8678, CVE-2017-8680, CVE-2017-8677, and CVE-2017-8687.",
+        "id": "CVE-2017-8681",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows GDI+ component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it improperly discloses kernel memory addresses, aka \"Win32k Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-8678, CVE-2017-8680, CVE-2017-8681, and CVE-2017-8687.",
+        "id": "CVE-2017-8677",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows Kernel-Mode Drivers component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when the Win32k component fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\".. This CVE ID is unique from CVE-2017-8720.",
+        "id": "CVE-2017-8675",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Volume Manager Extension Driver in Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2 allows an attacker to run a specially crafted application and obtain kernel information, aka \"Volume Manager Extension Driver Information Disclosure Vulnerability\".",
+        "id": "CVE-2017-8668",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Win32k in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it fails to properly handle objects in memory, aka \"Win32k Information Disclosure Vulnerability\".",
+        "id": "CVE-2017-8666",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "CLFS in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an elevation of privilege vulnerability due to the way it handles objects in memory, aka \"Windows CLFS Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-8624",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Win32k in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8577, CVE-2017-8578, CVE-2017-8581, and CVE-2017-8467.",
+        "id": "CVE-2017-8580",
+        "score": {
+            "base": 6.2,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Win32k in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8577, CVE-2017-8580, CVE-2017-8581, and CVE-2017-8467.",
+        "id": "CVE-2017-8578",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Win32k in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8578, CVE-2017-8580, CVE-2017-8581, and CVE-2017-8467.",
+        "id": "CVE-2017-8577",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an elevation of privilege vulnerability due to Kerberos falling back to NT LAN Manager (NTLM) Authentication Protocol as the default authentication protocol, aka \"Windows Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-8563",
+        "score": {
+            "base": 5.1,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows kernel in Microsoft Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability due to the way it handles objects in memory, aka \"Windows Kernel Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-8561",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft WordPad in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows a remote code execution vulnerability due to the way it parses specially crafted files, aka \"WordPad Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-8588",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Graphics in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Microsoft Graphics Component Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8573 and CVE-2017-8574.",
+        "id": "CVE-2017-8556",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows Adobe Type Manager Font Driver (Atmfd.dll) in Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2008 SP2 and R2 SP1, and Windows Server 2012 and R2 allows an elevation of privilege vulnerability due to the way objects are handled in memory, aka \"OpenType Font Driver Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2018-0788",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel in Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an authenticated attacker to obtain memory contents via a specially crafted application.",
+        "id": "CVE-2017-8554",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, Windows Server 2016, Microsoft Office 2007 SP3, and Microsoft Office 2010 SP2 allows improper disclosure of memory contents, aka \"Windows Uniscribe Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-0282, CVE-2017-0284, and CVE-2017-0285.",
+        "id": "CVE-2017-8534",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Graphics in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, Windows Server 2016, Microsoft Office 2007 Service Pack 3, and Microsoft Office 2010 Service Pack 2 allows improper disclosure of memory contents, aka \"Graphics Uniscribe Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-0286, CVE-2017-0287, CVE-2017-0288, CVE-2017-0289, CVE-2017-8532, and CVE-2017-8533.",
+        "id": "CVE-2017-8531",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, Windows Server 2016, Microsoft Office 2007 SP3, and Microsoft Office 2010 SP2 allows a remote code execution vulnerability due to the way it handles objects in memory, aka \"Windows Uniscribe Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-0283.",
+        "id": "CVE-2017-8528",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an attacker to bypass Extended Protection for Authentication when Kerberos fails to prevent tampering with the SNAME field during ticket exchange, aka \"Kerberos SNAME Security Feature Bypass Vulnerability\" or Orpheus' Lyre.",
+        "id": "CVE-2017-8495",
+        "score": {
+            "base": 6.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Graphics in Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an elevation of privilege vulnerability due to the way it handles objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-8467",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows kernel in Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and RT 8.1, Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and 1709, Windows Server 2016, and Windows Server, version 1709 allows an attacker to log in and run a specially crafted application due to the Windows kernel improperly initializing a memory address, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-11842, CVE-2017-11849, and CVE-2017-11851.",
+        "id": "CVE-2017-11853",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows embedded OpenType (EOT) font engine in Windows 7 SP1, Windows Server 2008 SP2 and 2008 R2 SP1, and Windows Server 2012 allows an attacker to potentially read data that was not intended to be disclosed, due to the way that the Microsoft Windows EOT font engine parses specially crafted embedded fonts, aka \"Windows EOT Font Engine Information Disclosure Vulnerability.\" This CVE ID is unique from CVE-2017-11835.",
+        "id": "CVE-2017-11832",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Graphics Component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability in the way it handles objects in memory, aka \"Windows Graphics Component Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-11824",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016, allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-11765, CVE-2017-11784, and CVE-2017-11785.",
+        "id": "CVE-2017-11814",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Search in Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703 and 1709, Windows Server 2016 and Windows server, version 1709 allows an unauthenticated attacker to remotely send specially crafted messages that could cause a denial of service against the system due to improperly handing objects in memory, aka \"Windows Search Denial of Service Vulnerability\".",
+        "id": "CVE-2017-11788",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-11765, CVE-2017-11785, and CVE-2017-11814.",
+        "id": "CVE-2017-11784",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Block Message (SMB) on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016, allows a denial of service vulnerability when an attacker sends specially crafted requests to the server, aka \"Windows SMB Denial of Service Vulnerability\".",
+        "id": "CVE-2017-11781",
+        "score": {
+            "base": 7.8,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows PDF Library in Microsoft Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an attacker to execute arbitrary code in the context of the current user, due to the way that Windows PDF Library handles objects in memory, aka \"Windows PDF Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-8737.",
+        "id": "CVE-2017-8728",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an information disclosure due to the way it handles objects in memory, aka \"Win32k Information Disclosure Vulnerability\".",
+        "id": "CVE-2017-8486",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Search component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure when it fails to properly handle objects in memory, aka \"Microsoft Search Information Disclosure Vulnerability\".",
+        "id": "CVE-2017-11772",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Search component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows a remote code execution vulnerability when it fails to properly handle DNS responses, aka \"Windows Search Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-11771",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016, allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-11784, CVE-2017-11785, and CVE-2017-11814.",
+        "id": "CVE-2017-11765",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Graphics Component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows a remote code execution vulnerability in the way it handles specially crafted embedded fonts, aka \"Microsoft Graphics Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-11763.",
+        "id": "CVE-2017-11763",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Win32k in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8578, CVE-2017-8580, CVE-2017-8577, and CVE-2017-8467.",
+        "id": "CVE-2017-8581",
+        "score": {
+            "base": 3.7,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A DCOM object in Helppane.exe in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016, when configured to run as the interactive user, allows an authenticated attacker to run arbitrary code in another user's session, aka \"Windows COM Session Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2017-0298",
+        "score": {
+            "base": 4.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Message Block 1.0 (SMBv1) server on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an attacker to execute remote code by the way it handles certain requests, aka \"Windows SMB Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-0272, CVE-2017-0277, and CVE-2017-0278.",
+        "id": "CVE-2017-0279",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Message Block 1.0 (SMBv1) server on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an attacker to execute remote code by the way it handles certain requests, aka \"Windows SMB Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-0272, CVE-2017-0277, and CVE-2017-0279.",
+        "id": "CVE-2017-0278",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Message Block 1.0 (SMBv1) server on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an attacker to execute remote code by the way it handles certain requests, aka \"Windows SMB Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-0272, CVE-2017-0278, and CVE-2017-0279.",
+        "id": "CVE-2017-0277",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Message Block 1.0 (SMBv1) allows denial of service when an attacker sends specially crafted requests to the server, aka \"Windows SMB Denial of Service Vulnerability\". This CVE ID is unique from CVE-2017-0269 and CVE-2017-0280.",
+        "id": "CVE-2017-0273",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Message Block 1.0 (SMBv1) server on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an attacker to execute remote code by the way it handles certain requests, aka \"Windows SMB Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-0277, CVE-2017-0278, and CVE-2017-0279.",
+        "id": "CVE-2017-0272",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A remote code execution vulnerability exists in Microsoft Office when the software fails to properly handle objects in memory, aka \"Office Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-8509, CVE-2017-8510, CVE-2017-8511, CVE-2017-8512, and CVE-2017-8506.",
+        "id": "CVE-2017-0260",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft JET Database Engine in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows a remote code execution vulnerability due to buffer overflow, aka \"Microsoft JET Database Engine Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-0250",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1 and Windows Server 2012 Gold allow a local authenticated attacker to execute a specially crafted application to obtain kernel information, aka \"Win32k Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0245",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A denial of service vulnerability exists when Microsoft Hyper-V Network Switch running on a Windows 10, Windows Server 2008 R2, Windows 8.1, Windows Server 2012 R2, or Windows Server 2016 host server fails to properly validate input from a privileged user on a guest operating system, aka \"Hyper-V Denial of Service Vulnerability.\" This CVE ID is unique from CVE-2017-0178, CVE-2017-0179, CVE-2017-0183, CVE-2017-0184, CVE-2017-0185, and CVE-2017-0186.",
+        "id": "CVE-2017-0182",
+        "score": {
+            "base": 6.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A remote code execution vulnerability exists when Windows Hyper-V Network Switch running on a Windows 10 or Windows Server 2016 host server fails to properly validate input from an authenticated user on a guest operating system, aka \"Hyper-V Remote Code Execution Vulnerability.\" This CVE ID is unique from CVE-2017-0162, CVE-2017-0163, and CVE-2017-0180.",
+        "id": "CVE-2017-0181",
+        "score": {
+            "base": 7.4,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A remote code execution vulnerability exists when Windows Hyper-V Network Switch running on a host server fails to properly validate input from an authenticated user on a guest operating system, aka \"Hyper-V Remote Code Execution Vulnerability.\" This CVE ID is unique from CVE-2017-0162, CVE-2017-0163, and CVE-2017-0181.",
+        "id": "CVE-2017-0180",
+        "score": {
+            "base": 7.4,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Win32k Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-8677, CVE-2017-8680, CVE-2017-8681, and CVE-2017-8687.",
+        "id": "CVE-2017-8678",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "An information disclosure vulnerability exists when the Windows Hyper-V Network Switch running on a Windows 8.1, Windows Server 2008, Windows Server 2008 R2, Windows Server 2012, or Windows Server 2012 R2 host operating system fails to properly validate input from an authenticated user on a guest operating system, aka \"Hyper-V Information Disclosure Vulnerability.\" This CVE ID is unique from CVE-2017-0169.",
+        "id": "CVE-2017-0168",
+        "score": {
+            "base": 6.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics Component in the kernel-mode drivers in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application or in Windows 7 for x64-based Systems and later, cause denial of service, aka \"Win32k Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2017-0246",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "An elevation of privilege vulnerability exists in Windows when LDAP request buffer lengths are improperly calculated. In a remote attack scenario, an attacker could exploit this vulnerability by running a specially crafted application to send malicious traffic to a Domain Controller, aka \"LDAP Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2017-0166",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "An elevation of privilege vulnerability exists when Microsoft Windows running on Windows 10, Windows 10 1511, Windows 8.1 Windows RT 8.1, and Windows Server 2012 R2 fails to properly sanitize handles in memory, aka \"Scripting Engine Memory Corruption Vulnerability.\"",
+        "id": "CVE-2017-0158",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics component in the kernel in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; and Windows 7 SP1 allows local users to gain privileges via a crafted application, aka \"Windows Graphics Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2017-0155",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, and CVE-2017-0127.",
+        "id": "CVE-2017-0128",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0126",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0125",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0124",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0123",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A denial of service vulnerability exists when Microsoft Hyper-V Network Switch running on a Windows 10, Windows Server 2008 R2, Windows 8.1, Windows Server 2012 R2, or Windows Server 2016 host server fails to properly validate input from a privileged user on a guest operating system, aka \"Hyper-V Denial of Service Vulnerability.\" This CVE ID is unique from CVE-2017-0178, CVE-2017-0179, CVE-2017-0182, CVE-2017-0184, CVE-2017-0185, and CVE-2017-0186.",
+        "id": "CVE-2017-0183",
+        "score": {
+            "base": 6.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics Device Interface (GDI) in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; and Windows 10 Gold, 1511, and 1607 allows local users to gain privileges via a crafted application, aka \"Windows GDI Elevation of Privilege Vulnerability.\" This vulnerability is different from those described in CVE-2017-0001, CVE-2017-0005 and CVE-2017-0025.",
+        "id": "CVE-2017-0047",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-7260",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an elevation of privilege vulnerability due to the way that the Windows Common Log File System (CLFS) driver handles objects in memory, aka \"Windows CLFS Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-8590",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Print Spooler service in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows local users to gain privileges via vectors involving filesystem write operations, aka \"Windows Print Spooler Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3239",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Windows Kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016, allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-11765, CVE-2017-11784, and CVE-2017-11814.",
+        "id": "CVE-2017-11785",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows kernel in Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and RT 8.1, Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and 1709, Windows Server 2016, and Windows Server, version 1709 allows an attacker to log in and run a specially crafted application due to the Windows kernel improperly initializing a memory address, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-11842, CVE-2017-11851, and CVE-2017-11853.",
+        "id": "CVE-2017-11849",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when it improperly handles objects in memory, aka \"Windows Kernel Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-8708, CVE-2017-8709, and CVE-2017-8679.",
+        "id": "CVE-2017-8719",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an authenticated attacker to obtain information via a specially crafted application. aka \"Windows Kernel Information Disclosure Vulnerability,\" a different vulnerability than CVE-2017-8491, CVE-2017-8490, CVE-2017-8489, CVE-2017-8488, CVE-2017-8485, CVE-2017-8483, CVE-2017-8482, CVE-2017-8481, CVE-2017-8480, CVE-2017-8478, CVE-2017-8479, CVE-2017-8476, CVE-2017-8474, CVE-2017-8469, CVE-2017-8462, CVE-2017-0300, and CVE-2017-0297.",
+        "id": "CVE-2017-0299",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Hyper-V in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and 2008 R2; Windows 7 SP1; Windows 8.1; Windows Server 2012 and R2; Windows 10, 1511, and 1607; and Windows Server 2016 allows guest OS users, running as virtual machines, to cause a denial of service via a crafted application, aka \"Hyper-V Denial of Service Vulnerability.\" This vulnerability is different from those described in CVE-2017-0098, CVE-2017-0074, CVE-2017-0076, and CVE-2017-0099.",
+        "id": "CVE-2017-0097",
+        "score": {
+            "base": 2.3,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The GDI component in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and Windows Server 2016 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"GDI Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0190",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3218.",
+        "id": "CVE-2016-3221",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0116",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "atmfd.dll in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows remote attackers to obtain sensitive information from process memory via a crafted Open Type font on a web site, aka \"Open Type Font Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-7210",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, and CVE-2017-0128.",
+        "id": "CVE-2017-0127",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; and Windows 10 Gold, 1511, and 1607 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3308, CVE-2016-3309, and CVE-2016-3310.",
+        "id": "CVE-2016-3311",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows a remote code execution vulnerability due to the way that Windows Search handles objects in memory, aka \"Windows Search Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-8589",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0171, CVE-2016-0174, and CVE-2016-0196.",
+        "id": "CVE-2016-0173",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "An elevation of privilege vulnerability exists in Windows when the Win32k component fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability.\" This affects Windows 7, Windows Server 2012 R2, Windows RT 8.1, Windows Server 2008, Windows Server 2012, Windows 8.1, Windows Server 2016, Windows Server 2008 R2, Windows 10, Windows 10 Servers. This CVE ID is unique from CVE-2018-8120, CVE-2018-8124, CVE-2018-8166.",
+        "id": "CVE-2018-8164",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Message Block 1.0 (SMBv1) allows denial of service when an attacker sends specially crafted requests to the server, aka \"Windows SMB Denial of Service Vulnerability\". This CVE ID is unique from CVE-2017-0273 and CVE-2017-0280.",
+        "id": "CVE-2017-0269",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0085",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; and Windows 10 Gold, 1511, and 1607 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3309, CVE-2016-3310, and CVE-2016-3311.",
+        "id": "CVE-2016-3308",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows font library in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; Windows 10 Gold, 1511, and 1607; Office 2007 SP3; Office 2010 SP2; Word Viewer; Skype for Business 2016; Lync 2013 SP1; Lync 2010; Lync 2010 Attendee; and Live Meeting 2007 Console allows remote attackers to execute arbitrary code via a crafted embedded font, aka \"Windows Graphics Component RCE Vulnerability.\"",
+        "id": "CVE-2016-3301",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "dxgkrnl.sys in the DirectX Graphics kernel subsystem in the kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows local users to gain privileges via a crafted application, aka \"Microsoft DirectX Graphics Kernel Subsystem Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-0197",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The RPC NDR Engine in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 mishandles free operations, which allows remote attackers to execute arbitrary code via malformed RPC requests, aka \"RPC Network Data Representation Engine Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-0178",
+        "score": {
+            "base": 9.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows Vista SP2 and Server 2008 SP2 mishandle dynamic link library (DLL) loading, which allows local users to gain privileges via a crafted application, aka \"Library Loading Input Validation Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2017-0039",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0118",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "GDI in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows remote attackers to obtain sensitive information via a crafted document, aka \"Windows Graphics Component Information Disclosure Vulnerability,\" a different vulnerability than CVE-2016-0169.",
+        "id": "CVE-2016-0168",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows font library in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Office 2007 SP3, Office 2010 SP2, Word Viewer, Skype for Business 2016, Lync 2013 SP1, Lync 2010, Lync 2010 Attendee, and Live Meeting 2007 Console allows remote attackers to execute arbitrary code via a crafted embedded font, aka \"Windows Graphics Component RCE Vulnerability,\" a different vulnerability than CVE-2016-3304.",
+        "id": "CVE-2016-3303",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Server Message Block 1.0 (SMBv1) allows an information disclosure vulnerability in the way that Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 handles certain requests, aka \"Windows SMB Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-0267, CVE-2017-0268, CVE-2017-0270, CVE-2017-0271, CVE-2017-0274, and CVE-2017-0275.",
+        "id": "CVE-2017-0276",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to obtain sensitive information about kernel-object addresses, and consequently bypass the KASLR protection mechanism, via a crafted application, aka \"Win32k Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-0175",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Win32k in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Win32k Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-8593",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics component in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Windows Graphics Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-7272",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows Graphics Device Interface (GDI) in Microsoft Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; Windows 10 Gold, 1511, 1607, 1703, and Server 2016; Office 2007 SP3; Office 2010 SP2; Word Viewer; Office for Mac 2011 and 2016; Skype for Business 2016; Lync 2013 SP1; Lync 2010; Lync 2010 Attendee; and Live Meeting 2007 Add-in and Console allows an authenticated attacker to retrieve information from a targeted system via a specially crafted application, aka \"Windows GDI+ Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-8676",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Uniscribe Remote Code Execution Vulnerability.\" This vulnerability is different from those described in CVE-2017-0083, CVE-2017-0084, CVE-2017-0086, CVE-2017-0087, CVE-2017-0088, CVE-2017-0089, and CVE-2017-0090.",
+        "id": "CVE-2017-0072",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3333, CVE-2016-3334, CVE-2016-3335, CVE-2016-3338, CVE-2016-3342, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-3340",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The SMBv1 server in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allows remote attackers to execute arbitrary code via crafted packets, aka \"Windows SMB Authenticated Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-3345",
+        "score": {
+            "base": 9.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Server Message Block 1.0 (SMBv1) allows an information disclosure vulnerability in the way that Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 handles certain requests, aka \"Windows SMB Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-0267, CVE-2017-0268, CVE-2017-0270, CVE-2017-0271, CVE-2017-0274, and CVE-2017-0276.",
+        "id": "CVE-2017-0275",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Performance Monitor in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an information disclosure vulnerability due to the way it parses XML input, aka \"Windows Performance Monitor Information Disclosure Vulnerability\".",
+        "id": "CVE-2017-0170",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an authenticated attacker to obtain information via a specially crafted application. aka \"Windows Kernel Information Disclosure Vulnerability,\" a different vulnerability than CVE-2017-8491, CVE-2017-8490, CVE-2017-8489, CVE-2017-8488, CVE-2017-8485, CVE-2017-8483, CVE-2017-8482, CVE-2017-8481, CVE-2017-8480, CVE-2017-8478, CVE-2017-8479, CVE-2017-8476, CVE-2017-8474, CVE-2017-8469, CVE-2017-8462, CVE-2017-0299, and CVE-2017-0297.",
+        "id": "CVE-2017-0300",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allow an attacker to obtain information to further compromise the user's system when Windows Search fails to handle objects in memory, aka \"Windows Search Information Disclosure Vulnerability\".",
+        "id": "CVE-2017-8544",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3249, CVE-2016-3254, and CVE-2016-3286.",
+        "id": "CVE-2016-3252",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Graphics in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation of privilege vulnerability when it fails to properly handle objects in memory, aka \"Microsoft Graphics Component Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-8574 and CVE-2017-8556.",
+        "id": "CVE-2017-8573",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Uniscribe in Microsoft Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Office 2007 SP3; Office 2010 SP2; Word Viewer; Office for Mac 2011 and 2016; Skype for Business 2016; Lync 2013 SP1; Lync 2010; Lync 2010 Attendee; and Live Meeting 2007 Add-in and Console allows an attacker to execute code remotely via a specially crafted website or a specially crafted document or email attachment, aka \"Microsoft Graphics Component Remote Code Execution.\"",
+        "id": "CVE-2017-8696",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The SMB server component in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows local users to gain privileges via a crafted application that forwards an authentication request to an unintended service, aka \"Windows SMB Server Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3225",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Graphics Component on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows a remote code execution vulnerability in the way it handles specially crafted embedded fonts, aka \"Microsoft Graphics Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-11763.",
+        "id": "CVE-2017-11762",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3333, CVE-2016-3334, CVE-2016-3335, CVE-2016-3338, CVE-2016-3340, CVE-2016-3342, and CVE-2016-3343.",
+        "id": "CVE-2016-7184",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\" a different vulnerability than CVE-2016-3266, CVE-2016-3376, and CVE-2016-7211.",
+        "id": "CVE-2016-7185",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Shell in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows a remote code execution vulnerability due to the way it improperly handles executable files and shares during rename operations, aka \"Windows Explorer Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-8463",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Hyper-V in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2; Windows 7 SP1; Windows 8.1, Windows Server 2012 Gold and R2; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allows guest OS users to obtain sensitive information from host OS memory via a crafted application, aka \"Hyper-V Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0096",
+        "score": {
+            "base": 2.3,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Color Management Module (ICM32.dll) memory handling functionality in Windows Vista SP2, Windows Server 2008 SP2 and R2, and Windows 7 SP1 allows remote attackers to bypass ASLR and execute code in combination with another vulnerability through a crafted website, aka \"Microsoft Color Management Information Disclosure Vulnerability.\" This vulnerability is different from that described in CVE-2017-0063.",
+        "id": "CVE-2017-0061",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel API in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7; Windows 8; Windows 10 Gold, 1511, and 1607; Windows RT 8.1; Windows Server 2012 Gold and R2; and Windows Server 2016 does not properly enforce permissions, which allows local users to spoof processes, spoof inter-process communication, or cause a denial of service via a crafted application, aka \"Windows Kernel Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2017-0050",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel in Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2008 SP2 and R2 SP1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703 and 1709, Windows Server 2016 and Windows Server, version 1709 allows an elevation of privilege vulnerability due to the way objects are handled in memory, aka \"Windows Kernel Elevation Of Privilege Vulnerability\". This CVE is unique from CVE-2018-0742, CVE-2018-0756, CVE-2018-0809 and CVE-2018-0843.",
+        "id": "CVE-2018-0820",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3252, CVE-2016-3254, and CVE-2016-3286.",
+        "id": "CVE-2016-3249",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allow remote attackers to execute arbitrary code via a crafted image file, aka \"Windows Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-7212",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3249, CVE-2016-3252, and CVE-2016-3286.",
+        "id": "CVE-2016-3254",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The SAM and LSAD protocol implementations in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 do not properly establish an RPC channel, which allows man-in-the-middle attackers to perform protocol-downgrade attacks and impersonate users by modifying the client-server data stream, aka \"Windows SAM and LSAD Downgrade Vulnerability\" or \"BADLOCK.\"",
+        "id": "CVE-2016-0128",
+        "score": {
+            "base": 5.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The OLE Automation mechanism and VBScript scripting engine in Microsoft Internet Explorer 9 through 11, Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allow remote attackers to execute arbitrary code or cause a denial of service (memory corruption) via a crafted web site, aka \"Scripting Engine Memory Corruption Vulnerability.\"",
+        "id": "CVE-2016-3375",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Web Proxy Auto Discovery (WPAD) protocol implementation in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 mishandles proxy discovery, which allows remote attackers to redirect network traffic via unspecified vectors, aka \"Windows WPAD Proxy Discovery Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3236",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0091",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allow a local authenticated attacker to execute a specially crafted application to obtain information, or in Windows 7 and later, cause denial of service, aka \"Win32k Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0077",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "atmfd.dll in the Adobe Type Manager Font Driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows local users to gain privileges via a crafted application, aka \"ATMFD.dll Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3220",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Error Reporting (WER) in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an elevation of privilege vulnerability, aka \"Windows Error Reporting Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-8633",
+        "score": {
+            "base": 8.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3333, CVE-2016-3334, CVE-2016-3335, CVE-2016-3340, CVE-2016-3342, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-3338",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Web Proxy Auto Discovery (WPAD) protocol implementation in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold and 1511, and Internet Explorer 9 through 11 has an improper fallback mechanism, which allows remote attackers to gain privileges via NetBIOS name responses, aka \"WPAD Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3213",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0117",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics Device Interface (GDI) in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allows local users to gain privileges via a crafted application, aka \"GDI Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3355",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Crypto driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to obtain sensitive information via a crafted application, aka \"Windows Crypto Driver Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-7219",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows PowerShell in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows a remote code execution vulnerability when PSObject wraps a CIM Instance, aka \"Windows PowerShell Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-8565",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Hyper-V in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and 2008 R2; Windows 7 SP1; Windows 8.1; Windows Server 2012 and R2; Windows 10, 1511, and 1607; and Windows Server 2016 allows guest OS users, running as virtual machines, to cause a denial of service via a crafted application, aka \"Hyper-V Denial of Service Vulnerability.\" This vulnerability is different from those described in CVE-2017-0098, CVE-2017-0074, CVE-2017-0097, and CVE-2017-0099.",
+        "id": "CVE-2017-0076",
+        "score": {
+            "base": 2.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-7215",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows NetBT Session Services component on Microsoft Windows Server 2008 R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows a remote code execution vulnerability when it fails to maintain certain sequencing requirements, aka \"NetBIOS Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-0161",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Uniscribe Remote Code Execution Vulnerability.\" This vulnerability is different from those described in CVE-2017-0072, CVE-2017-0083, CVE-2017-0084, CVE-2017-0086, CVE-2017-0087, CVE-2017-0088, and CVE-2017-0089.",
+        "id": "CVE-2017-0090",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allow remote authenticated users to execute arbitrary code by leveraging a domain account to make a crafted request, aka \"Windows Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-3368",
+        "score": {
+            "base": 9.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "OLE in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, and Windows RT 8.1 allows remote attackers to execute arbitrary code via a crafted file, aka \"Windows OLE Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-0153",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0114",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3334, CVE-2016-3335, CVE-2016-3338, CVE-2016-3340, CVE-2016-3342, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-3333",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft graphics in Windows 7 SP1 and Windows Server 2008 SP2 and R2 SP1 allows an attacker to potentially read data that was not intended to be disclosed due to the way that the Microsoft Windows Embedded OpenType (EOT) font engine parses specially crafted embedded fonts, aka \"Windows EOT Font Engine Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-11832.",
+        "id": "CVE-2017-11835",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft JET Database Engine in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1 and RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows an attacker to take control of an affected system, due to how it handles objects in memory, aka \"Microsoft JET Database Engine Remote Code Execution Vulnerability\". This CVE ID is unique from CVE-2017-8717.",
+        "id": "CVE-2017-8718",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "GDI32.dll in the Graphics component in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows remote attackers to bypass the ASLR protection mechanism via unspecified vectors, aka \"Windows Graphics Component Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-3216",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics component in the kernel in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; and Windows 10 Gold, 1511, and 1607 allows local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3270",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A remote code execution vulnerability exists when Windows Hyper-V on a host server fails to properly validate input from an authenticated user on a guest operating system, aka \"Hyper-V Remote Code Execution Vulnerability.\" This affects Windows 7, Windows Server 2012 R2, Windows RT 8.1, Windows Server 2008, Windows Server 2012, Windows 8.1, Windows Server 2016, Windows Server 2008 R2, Windows 10, Windows 10 Servers.",
+        "id": "CVE-2018-0959",
+        "score": {
+            "base": 7.4,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "HTTP.sys in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an information disclosure vulnerability when the component improperly handles objects in memory, aka \"Https.sys Information Disclosure Vulnerability\".",
+        "id": "CVE-2017-8582",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A remote code execution vulnerability exists when Windows Hyper-V Network Switch running on a host server fails to properly validate input from an authenticated user on a guest operating system, aka \"Hyper-V Remote Code Execution Vulnerability.\" This CVE ID is unique from CVE-2017-0162, CVE-2017-0180, and CVE-2017-0181.",
+        "id": "CVE-2017-0163",
+        "score": {
+            "base": 7.4,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and Windows RT 8.1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allow an attacker to execute remote code when Windows fails to properly handle cabinet files, aka \"Windows Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-0294",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel API in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 does not properly enforce permissions, which allows local users to obtain sensitive information via a crafted application, aka \"Windows Kernel Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3371",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Explorer in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511 allows a denial of service vulnerability when it attempts to open a non-existent file, aka \"Windows Explorer Denial of Service Vulnerability\".",
+        "id": "CVE-2017-8587",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A Win32k information disclosure vulnerability exists in Microsoft Windows when the win32k component improperly provides kernel information. An attacker who successfully exploited the vulnerability could obtain information to further compromise the user's system, aka \"Win32k Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0058",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Microsoft Server Message Block 1.0 (SMBv1) allows denial of service when an attacker sends specially crafted requests to the server, aka \"Windows SMB Denial of Service Vulnerability\". This CVE ID is unique from CVE-2017-0269 and CVE-2017-0273.",
+        "id": "CVE-2017-0280",
+        "score": {
+            "base": 7.1,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3348",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Local Security Authority Subsystem Service (LSASS) in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows remote authenticated users to cause a denial of service (system hang) via a crafted request, aka \"Local Security Authority Subsystem Service Denial of Service Vulnerability.\"",
+        "id": "CVE-2016-7237",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0171, CVE-2016-0173, and CVE-2016-0196.",
+        "id": "CVE-2016-0174",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; and Windows 10 Gold, 1511, and 1607 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3308, CVE-2016-3309, and CVE-2016-3311.",
+        "id": "CVE-2016-3310",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3333, CVE-2016-3335, CVE-2016-3338, CVE-2016-3340, CVE-2016-3342, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-3334",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Internet Information Services (IIS) in Microsoft Windows Vista SP2 and Server 2008 SP2 mishandles library loading, which allows local users to gain privileges via a crafted application, aka \"Windows DLL Loading Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-0152",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3376, CVE-2016-7185, and CVE-2016-7211.",
+        "id": "CVE-2016-3266",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3332, CVE-2016-3333, CVE-2016-3334, CVE-2016-3335, CVE-2016-3338, CVE-2016-3340, CVE-2016-3342, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-0026",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allows local users to gain privileges via a crafted application that makes an API call to access sensitive information in the registry, aka \"Windows Kernel Local Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-0070",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "gdi32.dll in Graphics Device Interface (GDI) in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allows remote attackers to obtain sensitive information from process heap memory via a crafted EMF file, as demonstrated by an EMR_SETDIBITSTODEVICE record with modified Device Independent Bitmap (DIB) dimensions. NOTE: this vulnerability exists because of an incomplete fix for CVE-2016-3216, CVE-2016-3219, and/or CVE-2016-3220.",
+        "id": "CVE-2017-0038",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0165 and CVE-2016-0167.",
+        "id": "CVE-2016-0143",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "An elevation of privilege vulnerability exists when the Windows Common Log File System (CLFS) driver improperly handles objects in memory, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability.\" This affects Windows 7, Windows Server 2012 R2, Windows RT 8.1, Windows Server 2008, Windows Server 2012, Windows 8.1, Windows Server 2016, Windows Server 2008 R2, Windows 10, Windows 10 Servers.",
+        "id": "CVE-2018-8167",
+        "score": {
+            "base": 4.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "GDI in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows remote attackers to obtain sensitive information via a crafted document, aka \"Windows Graphics Component Information Disclosure Vulnerability,\" a different vulnerability than CVE-2016-0168.",
+        "id": "CVE-2016-0169",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft browsers on when Microsoft Windows 7 SP1, Windows Server 2008 R2 SP1, Windows 8.1, Windows RT 8.1, and Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allow a security feature bypass vulnerability when they improperly handle redirect requests, aka \"Microsoft Browser Security Feature Bypass\".",
+        "id": "CVE-2017-8592",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Hyper-V in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allows guest OS users to execute arbitrary code on the host OS via a crafted application, aka \"Hyper-V Remote Code Execution Vulnerability.\" This vulnerability is different from that described in CVE-2017-0109.",
+        "id": "CVE-2017-0075",
+        "score": {
+            "base": 7.4,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Uniscribe Remote Code Execution Vulnerability.\" This vulnerability is different from those described in CVE-2017-0072, CVE-2017-0084, CVE-2017-0086, CVE-2017-0087, CVE-2017-0088, CVE-2017-0089, and CVE-2017-0090.",
+        "id": "CVE-2017-0083",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "GDI in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows remote attackers to execute arbitrary code via a crafted document, aka \"Windows Graphics Component RCE Vulnerability.\"",
+        "id": "CVE-2016-0170",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0173, CVE-2016-0174, and CVE-2016-0196.",
+        "id": "CVE-2016-0171",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 mishandles symbolic links, which allows local users to gain privileges via a crafted application, aka \"Windows Kernel Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-0180",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel API in Microsoft Windows Vista SP2 and Windows Server 2008 SP2 does not properly enforce permissions, which allows local users to spoof processes, spoof inter-process communication, or cause a denial of service via a crafted application, aka \"Windows Kernel Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3372",
+        "score": {
+            "base": 3.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Use-after-free vulnerability in GDI in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows remote attackers to execute arbitrary code via a crafted document, aka \"Direct3D Use After Free Vulnerability.\"",
+        "id": "CVE-2016-0184",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics Device Interface (GDI) in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; and Windows 10 Gold, 1511, and 1607 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"GDI+ Information Disclosure Vulnerability.\" This vulnerability is different from those described in CVE-2017-0060 and CVE-2017-0073.",
+        "id": "CVE-2017-0062",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Imaging Component in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows remote attackers to execute arbitrary code via a crafted document, aka \"Windows Imaging Component Memory Corruption Vulnerability.\"",
+        "id": "CVE-2016-0195",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Windows Uniscribe Remote Code Execution Vulnerability.\" This vulnerability is different from those described in CVE-2017-0072, CVE-2017-0083, CVE-2017-0086, CVE-2017-0087, CVE-2017-0088, CVE-2017-0089, and CVE-2017-0090.",
+        "id": "CVE-2017-0084",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0171, CVE-2016-0173, and CVE-2016-0174.",
+        "id": "CVE-2016-0196",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3221.",
+        "id": "CVE-2016-3218",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 mishandle LDAP authentication, which allows man-in-the-middle attackers to gain privileges by modifying group-policy update data within a domain-controller data stream, aka \"Group Policy Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3223",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Adobe Type Manager Font Driver (ATMFD.dll) in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; and Windows 10 Gold , 1511, 1607, and 1703 allows an attacker to gain sensitive information via a specially crafted document or an untrusted website, aka \"ATMFD.dll Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0192",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Print Spooler service in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows man-in-the-middle attackers to execute arbitrary code by providing a crafted print driver during printer installation, aka \"Windows Print Spooler Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-3238",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Graphics in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows improper disclosure of memory contents, aka \"Graphics Uniscribe Information Disclosure Vulnerability\". This CVE ID is unique from CVE-2017-0286, CVE-2017-0287, CVE-2017-0288, CVE-2017-0289, CVE-2017-8531, and CVE-2017-8532.",
+        "id": "CVE-2017-8533",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The GDI component in the kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allows local users to obtain sensitive kernel-address information via a crafted application, aka \"Win32k Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-3251",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold and 1511 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-3249, CVE-2016-3252, and CVE-2016-3254.",
+        "id": "CVE-2016-3286",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows font library in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Office 2007 SP3, Office 2010 SP2, Word Viewer, Skype for Business 2016, Lync 2013 SP1, Lync 2010, Lync 2010 Attendee, and Live Meeting 2007 Console allows remote attackers to execute arbitrary code via a crafted embedded font, aka \"Windows Graphics Component RCE Vulnerability,\" a different vulnerability than CVE-2016-3303.",
+        "id": "CVE-2016-3304",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3333, CVE-2016-3334, CVE-2016-3335, CVE-2016-3338, CVE-2016-3340, CVE-2016-3342, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-3332",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3333, CVE-2016-3334, CVE-2016-3338, CVE-2016-3340, CVE-2016-3342, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-3335",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3333, CVE-2016-3334, CVE-2016-3335, CVE-2016-3338, CVE-2016-3340, CVE-2016-3343, and CVE-2016-7184.",
+        "id": "CVE-2016-3342",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Common Log File System (CLFS) driver in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Windows Common Log File System Driver Elevation of Privilege Vulnerability,\" a different vulnerability than CVE-2016-0026, CVE-2016-3332, CVE-2016-3333, CVE-2016-3334, CVE-2016-3335, CVE-2016-3338, CVE-2016-3340, CVE-2016-3342, and CVE-2016-7184.",
+        "id": "CVE-2016-3343",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics Device Interface (GDI) in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allows local users to bypass the ASLR protection mechanism via a crafted application, aka \"GDI Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-3354",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel API in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 does not properly implement registry access control, which allows local users to obtain sensitive account information via a crafted application, aka \"Windows Kernel Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-3373",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, and Windows 10 Gold, 1511, and 1607 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\" a different vulnerability than CVE-2016-3266, CVE-2016-3376, and CVE-2016-7185.",
+        "id": "CVE-2016-7211",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allow local users to bypass the ASLR protection mechanism via a crafted application, aka \"Win32k Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-7214",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "A denial of service vulnerability exists when Microsoft Hyper-V running on a host server fails to properly validate input from a privileged user on a guest operating system, aka \"Hyper-V Denial of Service Vulnerability.\" This CVE ID is unique from CVE-2017-0178, CVE-2017-0179, CVE-2017-0182, CVE-2017-0183, CVE-2017-0185, and CVE-2017-0186.",
+        "id": "CVE-2017-0184",
+        "score": {
+            "base": 5.2,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\" This vulnerability is different from those described in CVE-2017-0024, CVE-2017-0026, CVE-2017-0078, CVE-2017-0079, CVE-2017-0080, CVE-2017-0081, CVE-2017-0082.",
+        "id": "CVE-2017-0056",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel API in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 mishandles permissions, which allows local users to gain privileges via a crafted application, aka \"Windows Kernel Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-7216",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows COM in Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016 allows an elevation privilege vulnerability when Windows fails to properly validate input before loading type libraries, aka \"Windows COM Elevation of Privilege Vulnerability\". This CVE ID is unique from CVE-2017-0213.",
+        "id": "CVE-2017-0214",
+        "score": {
+            "base": 4.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Bowser.sys in the kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to obtain sensitive information via a crafted application, aka \"Windows Bowser.sys Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-7218",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Input Method Editor (IME) in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 mishandles DLL loading, which allows local users to gain privileges via unspecified vectors, aka \"Windows IME Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-7221",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 mishandle caching for NTLM password-change requests, which allows local users to gain privileges via a crafted application, aka \"Windows NTLM Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-7238",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Graphics Component in the kernel-mode drivers in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2016-7259",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows kernel in Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, Windows 8.1 and RT1, Windows Server 2012 and R2, Windows 10 Gold, 1511, 1607, 1703, and 1709, Windows Server 2016, and Windows Server, version 1709 allows an attacker to run arbitrary code in kernel mode, install programs, view, change or delete data, and create new accounts with full user rights due to improperly handing objects in memory, aka \"Windows Kernel Elevation of Privilege Vulnerability\".",
+        "id": "CVE-2017-11847",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows NetBIOS in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, 1703, and Windows Server 2016 allows a denial of service vulnerability when it improperly handles NetBIOS packets, aka \"Windows NetBIOS Denial of Service Vulnerability\".",
+        "id": "CVE-2017-0174",
+        "score": {
+            "base": 6.1,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Windows Uniscribe Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2016-7274",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The kernel-mode drivers in Microsoft Windows Vista; Windows Server 2008 SP2 and R2 SP1; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allow local users to gain privileges via a crafted application, aka \"Win32k Elevation of Privilege Vulnerability.\" This vulnerability is different from those described in CVE-2017-0001, CVE-2017-0005, and CVE-2017-0047.",
+        "id": "CVE-2017-0025",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows Media Player in Microsoft Windows 8.1; Windows Server 2012 R2; Windows RT 8.1; Windows 7 SP1; Windows 2008 SP2 and R2 SP1, Windows Server 2016; Windows Vista SP2; and Windows 10 Gold, 1511, and 1607 allows remote attackers to obtain sensitive information via a crafted web site, aka \"Windows Media Player Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0042",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Server Message Block 1.0 (SMBv1) on Microsoft Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, 1607, and 1703, and Windows Server 2016, allows a remote code execution vulnerability when it fails to properly handle certain requests, aka \"Windows SMB Remote Code Execution Vulnerability\".",
+        "id": "CVE-2017-11780",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Active Directory Federation Services in Microsoft Windows 10 1607, Windows Server 2008 SP2 and R2 SP1, Windows Server 2012 Gold and R2, and Windows Server 2016 allows local users to obtain sensitive information via a crafted application, aka \"Microsoft Active Directory Federation Services Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0043",
+        "score": {
+            "base": 2.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Windows DVD Maker in Windows 7 SP1, Windows Server 2008 SP2 and R2 SP1, and Windows Vista SP2 does not properly parse crafted .msdvd files, which allows attackers to obtain information to compromise a target system, aka \"Windows DVD Maker Cross-Site Request Forgery Vulnerability.\"",
+        "id": "CVE-2017-0045",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft Internet Information Server (IIS) in Windows Vista SP2; Windows Server 2008 SP2 and R2; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allows remote attackers to perform cross-site scripting and run script with local user privileges via a crafted request, aka \"Microsoft IIS Server XSS Elevation of Privilege Vulnerability.\"",
+        "id": "CVE-2017-0055",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Color Management Module (ICM32.dll) memory handling functionality in Windows Vista SP2; Windows Server 2008 SP2 and R2; and Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows RT 8.1; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allows remote attackers to bypass ASLR and execute code in combination with another vulnerability through a crafted website, aka \"Microsoft Color Management Information Disclosure Vulnerability.\" This vulnerability is different from that described in CVE-2017-0061.",
+        "id": "CVE-2017-0063",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Hyper-V in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and 2008 R2; Windows 7 SP1; Windows 8.1; Windows Server 2012 and R2; Windows 10, 1511, and 1607; and Windows Server 2016 allows guest OS users, running as virtual machines, to cause a denial of service via a crafted application, aka \"Hyper-V Denial of Service Vulnerability.\" This vulnerability is different from those described in CVE-2017-0098, CVE-2017-0076, CVE-2017-0097, and CVE-2017-0099.",
+        "id": "CVE-2017-0074",
+        "score": {
+            "base": 2.3,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The GDI component in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Office for Mac 2011, and Office 2016 for Mac allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"GDI Information Disclosure Vulnerability.\"",
+        "id": "CVE-2016-7257",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Uniscribe Remote Code Execution Vulnerability.\" This vulnerability is different from those described in CVE-2017-0072, CVE-2017-0083, CVE-2017-0084, CVE-2017-0087, CVE-2017-0088, CVE-2017-0089, and CVE-2017-0090.",
+        "id": "CVE-2017-0086",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Uniscribe Remote Code Execution Vulnerability.\" This vulnerability is different from those described in CVE-2017-0072, CVE-2017-0083, CVE-2017-0084, CVE-2017-0086, CVE-2017-0088, CVE-2017-0089, and CVE-2017-0090.",
+        "id": "CVE-2017-0087",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Windows Uniscribe Remote Code Execution Vulnerability.\"",
+        "id": "CVE-2017-0088",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "The Windows kernel in Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, and Windows Server 2012 Gold allows authenticated attackers to obtain sensitive information via a specially crafted document, aka \"Windows Kernel Information Disclosure Vulnerability,\" a different vulnerability than CVE-2017-0175, CVE-2017-0258, and CVE-2017-0259.",
+        "id": "CVE-2017-0220",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Windows Uniscribe Information Disclosure Vulnerability.\"",
+        "id": "CVE-2017-0120",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to execute arbitrary code via a crafted web site, aka \"Uniscribe Remote Code Execution Vulnerability.\" This vulnerability is different from those described in CVE-2017-0072, CVE-2017-0083, CVE-2017-0084, CVE-2017-0086, CVE-2017-0087, CVE-2017-0088, and CVE-2017-0090.",
+        "id": "CVE-2017-0089",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0092",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Hyper-V in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and 2008 R2; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allows guest OS users, running as virtual machines, to cause a denial of service via a crafted application, aka \"Hyper-V Denial of Service Vulnerability.\" This vulnerability is different from those described in CVE-2017-0098, CVE-2017-0074, CVE-2017-0076, and CVE-2017-0097.",
+        "id": "CVE-2017-0099",
+        "score": {
+            "base": 2.3,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Hyper-V in Microsoft Windows Vista SP2; Windows Server 2008 SP2 and R2; Windows 7 SP1; Windows 8.1; Windows Server 2012 Gold and R2; Windows 10 Gold, 1511, and 1607; and Windows Server 2016 allows guest OS users to execute arbitrary code on the host OS via a crafted application, aka \"Hyper-V Remote Code Execution Vulnerability.\" This vulnerability is different from that described in CVE-2017-0075.",
+        "id": "CVE-2017-0109",
+        "score": {
+            "base": 7.4,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0111",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0112",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0113",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0115",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0120, CVE-2017-0121, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0119",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT 8.1, Windows 10 Gold, 1511, and 1607, and Windows Server 2016 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0122, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0121",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Uniscribe in Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, and Windows 7 SP1 allows remote attackers to obtain sensitive information from process memory via a crafted web site, aka \"Uniscribe Information Disclosure Vulnerability.\" CVE-2017-0085, CVE-2017-0091, CVE-2017-0092, CVE-2017-0111, CVE-2017-0112, CVE-2017-0113, CVE-2017-0114, CVE-2017-0115, CVE-2017-0116, CVE-2017-0117, CVE-2017-0118, CVE-2017-0119, CVE-2017-0120, CVE-2017-0121, CVE-2017-0123, CVE-2017-0124, CVE-2017-0125, CVE-2017-0126, CVE-2017-0127, and CVE-2017-0128.",
+        "id": "CVE-2017-0122",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

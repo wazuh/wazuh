@@ -1,0 +1,2466 @@
+[
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Mark of the Web Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-43487",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Authentication Information Disclosure Vulnerability",
+        "id": "CVE-2024-38254",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Graphics Component Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38247",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Kernel Streaming Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38244",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Kernel Streaming Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38243",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Kernel Streaming Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38241",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Networking Denial of Service Vulnerability",
+        "id": "CVE-2024-38234",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Line Printer Daemon (LPD) Service Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38199",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Print Spooler Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38198",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Ancillary Function Driver for WinSock Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38193",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Kernel-Mode Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38187",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Kernel-Mode Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38185",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Kernel-Mode Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38184",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows SmartScreen Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38180",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Scripting Engine Memory Corruption Vulnerability",
+        "id": "CVE-2024-38178",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38161",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Security Center Broker Information Disclosure Vulnerability",
+        "id": "CVE-2024-38155",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Remote Access Connection Manager Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38240",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38153",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows DWM Core Library Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38150",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Layer-2 Bridge Network Driver Denial of Service Vulnerability",
+        "id": "CVE-2024-38146",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Kernel Streaming WOW Thunk Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38144",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Ancillary Function Driver for WinSock Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38141",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Reliable Multicast Transport Driver (RMCAST) Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38140",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Resource Manager PSM Service Extension Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38136",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38133",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Network Address Translation (NAT) Denial of Service Vulnerability",
+        "id": "CVE-2024-38132",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Clipboard Virtual Channel Extension Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38131",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Microsoft Local Security Authority (LSA) Server Information Disclosure Vulnerability",
+        "id": "CVE-2024-38122",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Kernel Streaming WOW Thunk Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38237",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Microsoft Local Security Authority (LSA) Server Information Disclosure Vulnerability",
+        "id": "CVE-2024-38118",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Graphics Component Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38249",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Win32k Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38246",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows IP Routing Management Snapin Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38116",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows MSHTML Platform Spoofing Vulnerability",
+        "id": "CVE-2024-38112",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Common Log File System Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38196",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38106",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Microsoft DWM Core Library Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38147",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Layer-2 Bridge Network Driver Denial of Service Vulnerability",
+        "id": "CVE-2024-38105",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Fax Service Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38104",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft WS-Discovery Denial of Service Vulnerability",
+        "id": "CVE-2024-38091",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Graphics Component Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38085",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows IP Routing Management Snapin Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38115",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows LockDown Policy (WLDP) Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38070",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Online Certificate Status Protocol (OCSP) Server Denial of Service Vulnerability",
+        "id": "CVE-2024-38068",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Mark of the Web Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38217",
+        "score": {
+            "base": 5.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Win32k Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38066",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38065",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows TCP/IP Information Disclosure Vulnerability",
+        "id": "CVE-2024-38064",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows TCP/IP Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38063",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Kernel-Mode Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38062",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "DCOM Remote Cross-Session Activation Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38061",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Kernel Streaming Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38238",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Layer-2 Bridge Network Driver Denial of Service Vulnerability",
+        "id": "CVE-2024-38145",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Win32k Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38059",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "BitLocker Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38058",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Hyper-V Denial of Service Vulnerability",
+        "id": "CVE-2024-38235",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Kernel Information Disclosure Vulnerability",
+        "id": "CVE-2024-38151",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Kernel Streaming WOW Thunk Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38057",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Windows Codecs Library Information Disclosure Vulnerability",
+        "id": "CVE-2024-38055",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Layer-2 Bridge Network Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38053",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Kernel Streaming WOW Thunk Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38052",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Graphics Component Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38051",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Kerberos Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-29995",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4170",
+        "description": "Windows Hyper-V Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21407",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Win32 Kernel Subsystem Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30086",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Cloud Files Mini Filter Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38215",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Printing Service Spoofing Vulnerability",
+        "id": "CVE-2024-21406",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Kernel Streaming Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38245",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows SmartScreen Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-21351",
+        "score": {
+            "base": 7.6,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4170",
+        "description": "Windows Error Reporting Service Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-26169",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "NTFS Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38117",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4291",
+        "description": "Windows Storage Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-29052",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37972",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-21371",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21350",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Layer-2 Bridge Network Driver Denial of Service Vulnerability",
+        "id": "CVE-2024-38101",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30004",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30000",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Enroll Engine Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38069",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows TCP/IP Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21416",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "PowerShell Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38046",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30005",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21359",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows WLAN AutoConfig Service Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38143",
+        "score": {
+            "base": 4.2,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37970",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows OLE Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21372",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Installer Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38014",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Initial Machine Configuration Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38223",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Network Address Translation (NAT) Denial of Service Vulnerability",
+        "id": "CVE-2024-21343",
+        "score": {
+            "base": 5.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21375",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Kernel Information Disclosure Vulnerability",
+        "id": "CVE-2024-21340",
+        "score": {
+            "base": 4.6,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-26184",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21367",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37973",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Kernel Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-21362",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Internet Shortcut Files Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-21412",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Kernel-Mode Driver Information Disclosure Vulnerability",
+        "id": "CVE-2024-38256",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Kernel Streaming Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38242",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30002",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21370",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows USB Generic Parent Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21339",
+        "score": {
+            "base": 6.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows MSHTML Platform Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-30040",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Secure Kernel Mode Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38142",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Winlogon Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30066",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Network Address Translation (NAT) Denial of Service Vulnerability",
+        "id": "CVE-2024-21344",
+        "score": {
+            "base": 5.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37981",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Workstation Service Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38050",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4291",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-29061",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37988",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-29998",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Distributed Transaction Coordinator Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38049",
+        "score": {
+            "base": 6.6,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Mark of the Web Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38213",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-21338",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21369",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4291",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-29062",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package default status",
+        "description": "Microsoft PostScript and PCL6 Class Printer Driver Information Disclosure Vulnerability",
+        "id": "CVE-2023-32040",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows NTLM Spoofing Vulnerability",
+        "id": "CVE-2024-30081",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Kernel Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21341",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft Message Queuing (MSMQ) Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-21405",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Kernel Streaming WOW Thunk Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38134",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Imaging Component Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38060",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21352",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Kernel Streaming Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38191",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Resource Manager PSM Service Extension Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38137",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Graphics Component Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38079",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-29997",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Layer-2 Bridge Network Driver Denial of Service Vulnerability",
+        "id": "CVE-2024-38102",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Routing and Remote Access Service (RRAS) Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30094",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Win32k Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30087",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21366",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft Message Queuing (MSMQ) Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-21355",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Trusted Compute Base Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-21304",
+        "score": {
+            "base": 4.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21368",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Perception Service Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-35265",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft ActiveX Data Objects Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21349",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows OLE Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38152",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21391",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows Lightweight Directory Access Protocol (LDAP) Denial of Service Vulnerability",
+        "id": "CVE-2024-21356",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows DWM Core Library Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30051",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37986",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Message Queuing Information Disclosure Vulnerability",
+        "id": "CVE-2024-38017",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37974",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-28899",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21361",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21360",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft ODBC Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21347",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Power Dependency Coordinator Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38107",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30003",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21365",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Windows Codecs Library Information Disclosure Vulnerability",
+        "id": "CVE-2024-38056",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Kernel-Mode Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30084",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Storage Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30093",
+        "score": {
+            "base": 7.3,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Internet Connection Sharing (ICS) Denial of Service Vulnerability",
+        "id": "CVE-2024-21348",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37987",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Themes Denial of Service Vulnerability",
+        "id": "CVE-2024-30065",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Microsoft AllJoyn API Information Disclosure Vulnerability",
+        "id": "CVE-2024-38257",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Winlogon Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30067",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Remote Access Connection Manager Information Disclosure Vulnerability",
+        "id": "CVE-2024-30069",
+        "score": {
+            "base": 4.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Windows Server Backup Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38013",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows MSHTML Platform Spoofing Vulnerability",
+        "id": "CVE-2024-43461",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Kernel Information Disclosure Vulnerability",
+        "id": "CVE-2024-38041",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Remote Access Connection Manager Information Disclosure Vulnerability",
+        "id": "CVE-2024-30071",
+        "score": {
+            "base": 4.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Network Address Translation (NAT) Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38119",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30088",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Windows DNS Information Disclosure Vulnerability",
+        "id": "CVE-2024-21377",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.22621.3447",
+        "description": "SmartScreen Prompt Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-29988",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Security Zone Mapping Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-30073",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Kernel-Mode Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38186",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows OLE Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30077",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Kernel Streaming WOW Thunk Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38125",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Container Manager Service Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30076",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Kerberos Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38239",
+        "score": {
+            "base": 7.2,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37989",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Win32 Kernel Subsystem Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38252",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft WDAC OLE DB provider for SQL Server Remote Code Execution Vulnerability",
+        "id": "CVE-2024-21358",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38011",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Wi-Fi Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30078",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Remote Access Connection Manager Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30079",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Cryptographic Services Information Disclosure Vulnerability",
+        "id": "CVE-2024-30096",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "PowerShell Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38047",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Summary: Microsoft was notified that an elevation of privilege vulnerability exists in Windows based systems supporting Virtualization Based Security (VBS), including a subset of Azure Virtual Machine SKUS. This vulnerability enables an attacker with administrator privileges to replace current versions of Windows system files with outdated versions. By exploiting this vulnerability, an attacker could reintroduce previously mitigated vulnerabilities, circumvent some features of VBS, and exfiltrate data protected by VBS. Microsoft is developing a security update to mitigate this threat, but it is not yet available. Guidance to help customers reduce the risks associated with this vulnerability and to protect their systems until the mitigation is available in a Windows security update is provided in the Recommended Actions section of this CVE. This CVE will be updated when the mitigation is available in a Windows security update. We highly encourage customers to subscribe to Security Update Guide notifications to receive an alert when this update occurs. Update: August 13, 2024 Microsoft has released the August 2024 security updates that include an opt-in revocation policy mitigation to address this vulnerability. Customers running affected versions of Windows are encouraged to review KB5042562: Guidance for blocking rollback of virtualization-based security related updates to assess if this opt-in policy meets the needs of their environment before implementing this mitigation. There are risks associated with this mitigation that should be understood prior to applying it to your systems. Detailed information about these risks is also available in KB5042562. Details: A security researcher informed Microsoft of an elevation of privilege vulnerability in Windows 10, Windows 11, Windows Server 2016, and higher based systems including Azure Virtual Machines (VM) that support VBS. For more information on Windows versions and VM SKUs supporting VBS, reference: Virtualization-based Security (VBS) | Microsoft Learn. The vulnerability enables an attacker with administrator privileges on the target system to replace current Windows system files with outdated versions. Successful exploitation provides an attacker with the ability to reintroduce previously mitigated vulnerabilities, circumvent VBS security features, and exfiltrate data protected by VBS. Microsoft is developing a security... See more at https://msrc.microsoft.com/update-guide/vulnerability/CVE-2024-21302",
+        "id": "CVE-2024-21302",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Win32k Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30082",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Cloud Files Mini Filter Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30085",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows IP Routing Management Snapin Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38114",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Microsoft Streaming Service Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30089",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Win32k Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30091",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4170",
+        "description": "Windows Hyper-V Denial of Service Vulnerability",
+        "id": "CVE-2024-21408",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Microsoft Streaming Service Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30090",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Cryptographic Services Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-30098",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Microsoft Speech Application Programming Interface (SAPI) Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30097",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Routing and Remote Access Service (RRAS) Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30095",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Kernel-Mode Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-35250",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows iSCSI Service Denial of Service Vulnerability",
+        "id": "CVE-2024-35270",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30001",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37969",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Routing and Remote Access Service (RRAS) Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38130",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37971",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Themes Spoofing Vulnerability",
+        "id": "CVE-2024-38030",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Distributed File System (DFS) Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30063",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37975",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4412",
+        "description": "Windows Mobile Broadband Driver Remote Code Execution Vulnerability",
+        "id": "CVE-2024-29999",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-37984",
+        "score": {
+            "base": 8.4,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Secure Boot Security Feature Bypass Vulnerability",
+        "id": "CVE-2024-38010",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Network Address Translation (NAT) Denial of Service Vulnerability",
+        "id": "CVE-2024-38126",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Windows Performance Data Helper Library Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38019",
+        "score": {
+            "base": 7.2,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4780",
+        "description": "Windows Hyper-V Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38127",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Image Acquisition Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38022",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Windows Performance Data Helper Library Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38025",
+        "score": {
+            "base": 7.2,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Line Printer Daemon Service Denial of Service Vulnerability",
+        "id": "CVE-2024-38027",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Graphics Component Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38250",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Xbox Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38032",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Microsoft Windows Performance Data Helper Library Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38028",
+        "score": {
+            "base": 7.2,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4046",
+        "description": "Microsoft Message Queuing (MSMQ) Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-21354",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "PowerShell Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38033",
+        "score": {
+            "base": 7.3,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows MultiPoint Services Remote Code Execution Vulnerability",
+        "id": "CVE-2024-30013",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Filtering Platform Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38034",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Kernel Streaming WOW Thunk Service Driver Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38054",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30068",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "PowerShell Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38043",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows TCP/IP Remote Code Execution Vulnerability",
+        "id": "CVE-2024-38045",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4894",
+        "description": "Windows Storage Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-38248",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4529",
+        "description": "Windows Kernel Elevation of Privilege Vulnerability",
+        "id": "CVE-2024-30099",
+        "score": {
+            "base": 7.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 10.0.19045.4651",
+        "description": "Windows Network Driver Interface Specification (NDIS) Denial of Service Vulnerability",
+        "id": "CVE-2024-38048",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

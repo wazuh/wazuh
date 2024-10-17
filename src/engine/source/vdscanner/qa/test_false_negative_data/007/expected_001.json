@@ -1,0 +1,2796 @@
+[
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A path handling issue was addressed with improved validation. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to read arbitrary files.",
+        "id": "CVE-2024-44190",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "An access issue was addressed with additional sandbox restrictions. This issue is fixed in macOS Sequoia 15. An app may be able to access protected user data.",
+        "id": "CVE-2024-44186",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Ventura 13.7, iOS 17.7 and iPadOS 17.7, iOS 18 and iPadOS 18, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-44184",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "An issue was addressed with improved handling of temporary files. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to read sensitive location information.",
+        "id": "CVE-2024-44181",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "This issue was addressed with improved validation of symlinks. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-44178",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "An out-of-bounds access issue was addressed with improved bounds checking. This issue is fixed in macOS Ventura 13.7, iOS 17.7 and iPadOS 17.7, visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, macOS Sonoma 14.7, tvOS 18. Processing an image may lead to a denial-of-service.",
+        "id": "CVE-2024-44176",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A library injection issue was addressed with additional restrictions. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-44168",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. A malicious application may be able to access private information.",
+        "id": "CVE-2024-44163",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A privacy issue was addressed by moving sensitive data to a more secure location. This issue is fixed in iOS 18 and iPadOS 18, watchOS 11, macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-44170",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "An out-of-bounds read was addressed with improved bounds checking. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. Processing a maliciously crafted texture may lead to unexpected app termination.",
+        "id": "CVE-2024-44161",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access sensitive data logged when a shortcut fails to launch another app.",
+        "id": "CVE-2024-44182",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "This issue was addressed with improved validation of file attributes. This issue is fixed in macOS Sequoia 15. An app may be able to break out of its sandbox.",
+        "id": "CVE-2024-44148",
+        "score": {
+            "base": 10.0,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A logic issue was addressed with improved file handling. This issue is fixed in macOS Sequoia 15. An app may be able to break out of its sandbox.",
+        "id": "CVE-2024-44146",
+        "score": {
+            "base": 10.0,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access protected files within an App Sandbox container.",
+        "id": "CVE-2024-44135",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "This issue was addressed through improved state management. This issue is fixed in iOS 17.7 and iPadOS 17.7, Xcode 16, visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, tvOS 18. An app may gain unauthorized access to Bluetooth.",
+        "id": "CVE-2024-44191",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "This issue was addressed with improved data protection. This issue is fixed in macOS Sequoia 15. An app with root privileges may be able to access private information.",
+        "id": "CVE-2024-44130",
+        "score": {
+            "base": 4.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "This issue was addressed by adding an additional prompt for user consent. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An Automator Quick Action workflow may be able to bypass Gatekeeper.",
+        "id": "CVE-2024-44128",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-40860",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "The issue was addressed with improved UI. This issue is fixed in Safari 18, macOS Sequoia 15. Visiting a malicious website may lead to address bar spoofing.",
+        "id": "CVE-2024-40866",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A downgrade issue was addressed with additional code-signing restrictions. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An attacker may be able to read sensitive information.",
+        "id": "CVE-2024-40848",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "The issue was addressed with additional code-signing restrictions. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access sensitive user data.",
+        "id": "CVE-2024-40847",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. Processing a maliciously crafted video file may lead to unexpected app termination.",
+        "id": "CVE-2024-40846",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A privacy issue was addressed with improved handling of temporary files. This issue is fixed in iOS 17.7 and iPadOS 17.7, macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to observe data displayed to the user by Shortcuts.",
+        "id": "CVE-2024-40844",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sequoia 15. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-40843",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "An issue was addressed with improved validation of environment variables. This issue is fixed in macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-40842",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. Processing a maliciously crafted video file may lead to unexpected app termination.",
+        "id": "CVE-2024-40845",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A privacy issue was addressed by moving sensitive data to a protected location. This issue is fixed in macOS Sequoia 15. A malicious app may be able to access notifications from the user's device.",
+        "id": "CVE-2024-40838",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. An app may be able to access protected user data.",
+        "id": "CVE-2024-40837",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, macOS Sonoma 14.6. A shortcut may be able to use sensitive data with certain actions without prompting the user.",
+        "id": "CVE-2024-40835",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.6, iOS 16.7.9 and iPadOS 16.7.9, macOS Monterey 12.7.6, macOS Ventura 13.6.8. A shortcut may be able to use sensitive data with certain actions without prompting the user.",
+        "id": "CVE-2024-40833",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.6. An app may be able to view a contact's phone number in system logs.",
+        "id": "CVE-2024-40832",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. An app may be able to access protected user data.",
+        "id": "CVE-2024-44188",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. An app may be able to access a user's Photos Library.",
+        "id": "CVE-2024-40831",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An app may be able to overwrite arbitrary files.",
+        "id": "CVE-2024-40827",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed by restricting options offered on a locked device. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, iOS 17.6 and iPadOS 17.6, watchOS 10.6, macOS Sonoma 14.6. An attacker with physical access may be able to use Siri to access sensitive user data.",
+        "id": "CVE-2024-40818",
+        "score": {
+            "base": 4.6,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "The issue was addressed with improved UI handling. This issue is fixed in macOS Sonoma 14.6, Safari 17.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. Visiting a website that frames malicious content may lead to UI spoofing.",
+        "id": "CVE-2024-40817",
+        "score": {
+            "base": 6.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than or equal to 14.6",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, visionOS 1.3, macOS Sonoma 14.6. A shortcut may be able to bypass Internet permission requirements.",
+        "id": "CVE-2024-40812",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, visionOS 1.3, macOS Sonoma 14.6. A shortcut may be able to bypass Internet permission requirements.",
+        "id": "CVE-2024-40809",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. A shortcut may be able to use sensitive data with certain actions without prompting the user.",
+        "id": "CVE-2024-40807",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.6. A malicious application may be able to access private information.",
+        "id": "CVE-2024-40804",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A type confusion issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An attacker may be able to cause unexpected app termination.",
+        "id": "CVE-2024-40803",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Sonoma 14.6, iOS 16.7.9 and iPadOS 16.7.9, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An app may be able to read Safari's browsing history.",
+        "id": "CVE-2024-40798",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed by removing the vulnerable code. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, macOS Sonoma 14.6. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-40793",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A type confusion issue was addressed with improved memory handling. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. A local attacker may be able to cause unexpected system shutdown.",
+        "id": "CVE-2024-40788",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed with improved checks. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, Safari 17.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. Processing maliciously crafted web content may lead to a cross site scripting attack.",
+        "id": "CVE-2024-40785",
+        "score": {
+            "base": 6.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An authentication issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.6, iOS 17.6 and iPadOS 17.6, iOS 16.7.9 and iPadOS 16.7.9. Photos in the Hidden Photos Album may be viewed without authentication.",
+        "id": "CVE-2024-40778",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A downgrade issue was addressed with additional code-signing restrictions. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An app may be able to leak sensitive user information.",
+        "id": "CVE-2024-40775",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. A non-privileged user may be able to modify restricted network settings.",
+        "id": "CVE-2024-40770",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-40823",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A path handling issue was addressed with improved validation. This issue is fixed in macOS Sonoma 14.4. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-27887",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A use-after-free issue was addressed with improved memory management. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, Safari 17.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. Processing maliciously crafted web content may lead to an unexpected process crash.",
+        "id": "CVE-2024-40776",
+        "score": {
+            "base": 4.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed with a new entitlement. This issue is fixed in macOS Sonoma 14.5, watchOS 10.5, visionOS 1.2, tvOS 17.5, iOS 17.5 and iPadOS 17.5. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-27884",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-27883",
+        "score": {
+            "base": 4.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-27882",
+        "score": {
+            "base": 4.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A downgrade issue was addressed with additional code-signing restrictions. This issue is fixed in macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, macOS Sonoma 14.6. An app may be able to bypass Privacy preferences.",
+        "id": "CVE-2024-40774",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. Processing a maliciously crafted file may lead to a denial-of-service or potentially disclose memory contents.",
+        "id": "CVE-2024-27877",
+        "score": {
+            "base": 6.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "This issue was addressed by removing the vulnerable code. This issue is fixed in macOS Sequoia 15. On MDM managed devices, an app may be able to bypass certain Privacy preferences.",
+        "id": "CVE-2024-44133",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An out-of-bounds write issue was addressed with improved input validation. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, macOS Sonoma 14.6. Processing a maliciously crafted video file may lead to unexpected app termination.",
+        "id": "CVE-2024-27873",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed with improved validation of symlinks. This issue is fixed in macOS Sonoma 14.6. An app may be able to access protected user data.",
+        "id": "CVE-2024-27872",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A path handling issue was addressed with improved validation. This issue is fixed in macOS Sonoma 14.6, iOS 17.6 and iPadOS 17.6. An app may be able to access protected user data.",
+        "id": "CVE-2024-27871",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sequoia 15. An application may be able to read restricted memory.",
+        "id": "CVE-2024-27861",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. An app may be able to access protected user data.",
+        "id": "CVE-2024-27858",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. An app may be able to access information about a user’s contacts.",
+        "id": "CVE-2024-27881",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.5, macOS Ventura 13.6.7, iOS 17.5 and iPadOS 17.5, iOS 16.7.8 and iPadOS 16.7.8. A shortcut may be able to use sensitive data with certain actions without prompting the user.",
+        "id": "CVE-2024-27855",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved bounds checks. This issue is fixed in tvOS 17.5, visionOS 1.2, Safari 17.5, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. Processing maliciously crafted web content may lead to arbitrary code execution.",
+        "id": "CVE-2024-27851",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed by adding an additional prompt for user consent. This issue is fixed in macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, macOS Sonoma 14.6. A shortcut may be able to bypass Internet permission requirements.",
+        "id": "CVE-2024-40787",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed with improvements to the noise injection algorithm. This issue is fixed in visionOS 1.2, macOS Sonoma 14.5, Safari 17.5, iOS 17.5 and iPadOS 17.5. A maliciously crafted webpage may be able to fingerprint the user.",
+        "id": "CVE-2024-27850",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed with improved permissions checking. This issue is fixed in macOS Sonoma 14.5, iOS 17.5 and iPadOS 17.5. A malicious app may be able to gain root privileges.",
+        "id": "CVE-2024-27848",
+        "score": {
+            "base": 7.4,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in visionOS 1.2, macOS Sonoma 14.5, Safari 17.5. A website's permission dialog may persist after navigation away from the site.",
+        "id": "CVE-2024-27844",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in iOS 17.7 and iPadOS 17.7, macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. A shortcut may output sensitive user data without consent.",
+        "id": "CVE-2024-44158",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed by adding additional logic. This issue is fixed in tvOS 17.5, iOS 16.7.8 and iPadOS 16.7.8, visionOS 1.2, Safari 17.5, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. A maliciously crafted webpage may be able to fingerprint the user.",
+        "id": "CVE-2024-27838",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in visionOS 1.2, macOS Sonoma 14.5, iOS 17.5 and iPadOS 17.5. Processing a maliciously crafted image may lead to arbitrary code execution.",
+        "id": "CVE-2024-27836",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "An out-of-bounds write issue was addressed with improved input validation. This issue is fixed in macOS Ventura 13.6.7, macOS Monterey 12.7.5, iOS 16.7.8 and iPadOS 16.7.8, tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, macOS Sonoma 14.5. Processing a file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2024-27831",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A privacy issue was addressed by removing sensitive data. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-44177",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sonoma 14.6, iOS 16.7.9 and iPadOS 16.7.9, macOS Monterey 12.7.6, macOS Ventura 13.6.8. Private browsing may leak some browsing history.",
+        "id": "CVE-2024-40796",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed through improved state management. This issue is fixed in tvOS 17.5, visionOS 1.2, Safari 17.5, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. A maliciously crafted webpage may be able to fingerprint the user.",
+        "id": "CVE-2024-27830",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An out-of-bounds access issue was addressed with improved bounds checking. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, Safari 17.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. Processing maliciously crafted web content may lead to an unexpected process crash.",
+        "id": "CVE-2024-40789",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "A race condition was addressed with improved locking. This issue is fixed in macOS Sonoma 14.5, iOS 16.7.8 and iPadOS 16.7.8, macOS Ventura 13.6.7, watchOS 10.5, visionOS 1.3, tvOS 17.5, iOS 17.5 and iPadOS 17.5, macOS Monterey 12.7.5. An attacker in a privileged network position may be able to spoof network packets.",
+        "id": "CVE-2024-27823",
+        "score": {
+            "base": 5.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "An out-of-bounds write issue was addressed with improved input validation. This issue is fixed in tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2024-27815",
+        "score": {
+            "base": 5.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed through improved state management. This issue is fixed in macOS Sonoma 14.6, iOS 17.6 and iPadOS 17.6, Safari 17.6. Private Browsing tabs may be accessed without authentication.",
+        "id": "CVE-2024-40794",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. An app may be able to elevate privileges.",
+        "id": "CVE-2024-27811",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-40859",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sonoma 14.4. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-27809",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed with improved environment sanitization. This issue is fixed in macOS Ventura 13.6.7, macOS Monterey 12.7.5, iOS 16.7.8 and iPadOS 16.7.8, tvOS 17.5, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. An app may be able to access sensitive user data.",
+        "id": "CVE-2024-27806",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42903",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. An app may be able to access protected user data.",
+        "id": "CVE-2024-44149",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed by restricting options offered on a locked device. This issue is fixed in watchOS 10.6, macOS Sonoma 14.6, iOS 17.6 and iPadOS 17.6, iOS 16.7.9 and iPadOS 16.7.9. An attacker with physical access to a device may be able to access contacts from the lock screen.",
+        "id": "CVE-2024-40822",
+        "score": {
+            "base": 2.4,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42907",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42901",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.2. An app may be able to access user-sensitive data.",
+        "id": "CVE-2023-42900",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.2, iOS 17.2 and iPadOS 17.2, watchOS 10.2, macOS Ventura 13.6.3, tvOS 17.2, iOS 16.7.3 and iPadOS 16.7.3, macOS Monterey 12.7.2. Processing an image may lead to arbitrary code execution.",
+        "id": "CVE-2023-42899",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "This issue was addressed with improved validation of symlinks. This issue is fixed in iOS 18 and iPadOS 18, macOS Sequoia 15. An app may be able to access sensitive user data.",
+        "id": "CVE-2024-44131",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.2, watchOS 10.2, iOS 17.2 and iPadOS 17.2, tvOS 17.2. Processing an image may lead to arbitrary code execution.",
+        "id": "CVE-2023-42898",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "An issue was addressed with improved handling of temporary files. This issue is fixed in macOS Monterey 12.7.2, macOS Ventura 13.6.3, iOS 17.2 and iPadOS 17.2, iOS 16.7.3 and iPadOS 16.7.3, macOS Sonoma 14.2. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2023-42896",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A logic error was addressed with improved error handling. This issue is fixed in macOS Ventura 13.7, iOS 17.7 and iPadOS 17.7, visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, macOS Sonoma 14.7, tvOS 18. An app may be able to cause a denial-of-service.",
+        "id": "CVE-2024-44183",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A use-after-free issue was addressed with improved memory management. This issue is fixed in macOS Ventura 13.6.3, macOS Sonoma 14.2, macOS Monterey 12.7.2. A local attacker may be able to elevate their privileges.",
+        "id": "CVE-2023-42892",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Sonoma 14.2, macOS Ventura 13.6.3, macOS Monterey 12.7.2. An app may be able to access information about a user's contacts.",
+        "id": "CVE-2023-42894",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A memory initialization issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. Processing a maliciously crafted file may lead to unexpected app termination.",
+        "id": "CVE-2024-44154",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in iOS 16.7.5 and iPadOS 16.7.5, watchOS 10.2, macOS Ventura 13.6.4, macOS Sonoma 14.2, macOS Monterey 12.7.3, iOS 17.2 and iPadOS 17.2. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-42937",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.4, macOS Monterey 12.7.4, macOS Ventura 13.6.5. An app may be able to elevate privileges.",
+        "id": "CVE-2024-23276",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "This issue was addressed with improved data protection. This issue is fixed in watchOS 10.6, macOS Sonoma 14.6, iOS 17.6 and iPadOS 17.6, tvOS 17.6. An app may be able to read sensitive location information.",
+        "id": "CVE-2024-40795",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "An out-of-bounds read was addressed with improved bounds checking. This issue is fixed in macOS Sonoma 14.2, macOS Ventura 13.6.3, macOS Monterey 12.7.2. A user may be able to cause unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42886",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sonoma 14.1, macOS Monterey 12.7.1, macOS Ventura 13.6.1. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-40421",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Sequoia 15. An app may be able to read sensitive location information.",
+        "id": "CVE-2024-44134",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.2, iOS 17.2 and iPadOS 17.2, watchOS 10.2, macOS Ventura 13.6.3, tvOS 17.2, iOS 16.7.3 and iPadOS 16.7.3, macOS Monterey 12.7.2. An app may be able to break out of its sandbox.",
+        "id": "CVE-2023-42914",
+        "score": {
+            "base": 6.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An information disclosure issue was addressed with improved private data redaction for log entries. This issue is fixed in iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. A local attacker may be able to determine kernel memory layout.",
+        "id": "CVE-2024-27863",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Sonoma 14.2, iOS 17.2 and iPadOS 17.2, macOS Ventura 13.6.3, tvOS 17.2, iOS 16.7.3 and iPadOS 16.7.3. An app may be able to disclose kernel memory.",
+        "id": "CVE-2023-42884",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An out-of-bounds read issue was addressed with improved input validation. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. Processing a maliciously crafted file may lead to unexpected app termination.",
+        "id": "CVE-2024-40799",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A logic issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.1. An attacker with knowledge of a standard user's credentials can unlock another standard user's locked screen on the same Mac.",
+        "id": "CVE-2023-42861",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "An out-of-bounds read issue was addressed with improved input validation. This issue is fixed in iOS 17.7 and iPadOS 17.7, visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, macOS Sonoma 14.7, tvOS 18. Processing a maliciously crafted file may lead to unexpected app termination.",
+        "id": "CVE-2024-27880",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.3, watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2024-23208",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.4, macOS Monterey 12.7.4, macOS Ventura 13.6.5. An app may be able to bypass certain Privacy preferences.",
+        "id": "CVE-2024-23267",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.2. Processing an image may lead to arbitrary code execution.",
+        "id": "CVE-2023-42882",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "This issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.2. Secure text fields may be displayed via the Accessibility Keyboard when using a physical keyboard.",
+        "id": "CVE-2023-42874",
+        "score": {
+            "base": 2.4,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved permissions logic. This issue is fixed in macOS Sonoma 14.1. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-42850",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in iOS 17.1 and iPadOS 17.1, macOS Monterey 12.7.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Ventura 13.6.1, macOS Sonoma 14.1. An app may be able to cause a denial-of-service.",
+        "id": "CVE-2023-40449",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.1, macOS Monterey 12.7.1, macOS Ventura 13.6.1. Processing a file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42856",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "This issue was addressed through improved state management. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. Visiting a malicious website may lead to user interface spoofing.",
+        "id": "CVE-2024-40797",
+        "score": {
+            "base": 6.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in iOS 17.1 and iPadOS 17.1, macOS Monterey 12.7.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Ventura 13.6.1, macOS Sonoma 14.1. An attacker that has already achieved kernel code execution may be able to bypass kernel memory mitigations.",
+        "id": "CVE-2023-42849",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "A race condition was addressed with additional validation. This issue is fixed in macOS Ventura 13.6.8, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, macOS Sonoma 14.6. A malicious attacker with arbitrary read and write capability may be able to bypass Pointer Authentication.",
+        "id": "CVE-2024-40815",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Ventura 13.6.7, macOS Monterey 12.7.5, iOS 16.7.8 and iPadOS 16.7.8, tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, macOS Sonoma 14.5. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2024-27817",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.2. Processing a file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42881",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "An authentication issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.1, iOS 17.1 and iPadOS 17.1. Photos in the Hidden Photos Album may be viewed without authentication.",
+        "id": "CVE-2023-42845",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "This issue was addressed through improved state management. This issue is fixed in Safari 18, visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, tvOS 18. Processing maliciously crafted web content may lead to universal cross site scripting.",
+        "id": "CVE-2024-40857",
+        "score": {
+            "base": 6.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in iOS 17.1 and iPadOS 17.1, macOS Monterey 12.7.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Ventura 13.6.1, macOS Sonoma 14.1. Processing an image may result in disclosure of process memory.",
+        "id": "CVE-2023-40416",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in tvOS 17.5, visionOS 1.2, Safari 17.5, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2024-27808",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.4, macOS Monterey 12.7.4, macOS Ventura 13.6.5. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-23266",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. An app may be able to elevate privileges.",
+        "id": "CVE-2024-27801",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A permissions issue was addressed by removing vulnerable code and adding additional checks. This issue is fixed in macOS Monterey 12.7.2, macOS Ventura 13.6.3, iOS 17.2 and iPadOS 17.2, iOS 16.7.3 and iPadOS 16.7.3, tvOS 17.2, watchOS 10.2, macOS Sonoma 14.2. An app may be able to access protected user data.",
+        "id": "CVE-2023-42893",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A cross-origin issue existed with \"iframe\" elements. This was addressed with improved tracking of security origins. This issue is fixed in Safari 18, visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, tvOS 18. A malicious website may exfiltrate data cross-origin.",
+        "id": "CVE-2024-44187",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.1, iOS 17.1 and iPadOS 17.1. An attacker may be able to access passkeys without authentication.",
+        "id": "CVE-2023-42847",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "An out-of-bounds access issue was addressed with improved bounds checking. This issue is fixed in visionOS 1.2, macOS Sonoma 14.5, tvOS 17.5, iOS 17.5 and iPadOS 17.5. A remote attacker may be able to cause unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2024-27857",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A use-after-free issue was addressed with improved memory management. This issue is fixed in iOS 17.1 and iPadOS 17.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Sonoma 14.1, Safari 17.1, tvOS 17.1. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2023-41976",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Sonoma 14.2, iOS 17.2 and iPadOS 17.2, macOS Ventura 13.6.3, iOS 16.7.3 and iPadOS 16.7.3, macOS Monterey 12.7.2. An app may be able to read sensitive location information.",
+        "id": "CVE-2023-42922",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sonoma 14.1. An app may be able to access user-sensitive data.",
+        "id": "CVE-2023-40444",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package equal to 14.0",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sonoma 14.1. An app may be able to read sensitive location information.",
+        "id": "CVE-2023-40405",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "This issue was addressed by restricting options offered on a locked device. This issue is fixed in macOS Sonoma 14.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, iOS 17.1 and iPadOS 17.1. An attacker with physical access may be able to use Siri to access sensitive user data.",
+        "id": "CVE-2023-41982",
+        "score": {
+            "base": 4.6,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-44151",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sequoia 15. A camera extension may be able to access the internet.",
+        "id": "CVE-2024-27795",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "An issue was addressed with improved validation of environment variables. This issue is fixed in macOS Ventura 13.6.7, macOS Monterey 12.7.5, iOS 16.7.8 and iPadOS 16.7.8, tvOS 17.5, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. An app may be able to access sensitive user data.",
+        "id": "CVE-2024-27805",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in iOS 17.1 and iPadOS 17.1, macOS Monterey 12.7.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Ventura 13.6.1, macOS Sonoma 14.1. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2023-40423",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Ventura 13.7, iOS 17.7 and iPadOS 17.7, visionOS 2, iOS 18 and iPadOS 18, macOS Sonoma 14.7, macOS Sequoia 15. Network traffic may leak outside a VPN tunnel.",
+        "id": "CVE-2024-44165",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "A privacy issue was addressed with improved handling of files. This issue is fixed in macOS Sonoma 14.3, watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3. An app may be able to access sensitive user data.",
+        "id": "CVE-2024-23223",
+        "score": {
+            "base": 6.2,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sequoia 15. An application may be able to read restricted memory.",
+        "id": "CVE-2024-27860",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "This issue was addressed by removing the vulnerable code. This issue is fixed in macOS Sonoma 14.1, macOS Monterey 12.7.1, macOS Ventura 13.6.1. An app may be able to cause a denial-of-service to Endpoint Security clients.",
+        "id": "CVE-2023-42854",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in iOS 17.1 and iPadOS 17.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Ventura 13.6.1, macOS Sonoma 14.1. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-41254",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "This issue was addressed with improved checks. This issue is fixed in iOS 17.7 and iPadOS 17.7, macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to bypass Privacy preferences.",
+        "id": "CVE-2024-44164",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved checks. This issue is fixed in iOS 16.7.5 and iPadOS 16.7.5, watchOS 10.2, macOS Ventura 13.6.4, macOS Sonoma 14.2, macOS Monterey 12.7.3, iOS 17.2 and iPadOS 17.2. Processing a maliciously crafted image may result in disclosure of process memory.",
+        "id": "CVE-2023-42888",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package equal to 14.0",
+        "description": "iperf3 before 3.14 allows peers to cause an integer overflow and heap corruption via a crafted length field.",
+        "id": "CVE-2023-38403",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sequoia 15. A logic issue existed where a process may be able to capture screen contents without user consent.",
+        "id": "CVE-2024-44189",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Ventura 13.7, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-44166",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in iOS 17.1 and iPadOS 17.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Sonoma 14.1, Safari 17.1, tvOS 17.1. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2023-42852",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Monterey 12.7.4, macOS Ventura 13.6.5, macOS Sonoma 14.4, iOS 17.4 and iPadOS 17.4, tvOS 17.4. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2024-23270",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A file access issue was addressed with improved input validation. This issue is fixed in macOS Ventura 13.7, iOS 17.7 and iPadOS 17.7, visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, macOS Sonoma 14.7, tvOS 18. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-40850",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "An injection issue was addressed with improved input validation. This issue is fixed in macOS Sonoma 14.4, macOS Monterey 12.7.4, macOS Ventura 13.6.5. An app may be able to elevate privileges.",
+        "id": "CVE-2024-23274",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package equal to 14.0",
+        "description": "A use-after-free issue was addressed with improved memory management. This issue is fixed in macOS Sonoma 14.1. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2023-40404",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.1, iOS 17.1 and iPadOS 17.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Ventura 13.6.1. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2023-42841",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.2, macOS Ventura 13.6.3, macOS Monterey 12.7.2. An app may be able to access protected user data.",
+        "id": "CVE-2023-42932",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package equal to 14.0",
+        "description": "An inconsistent user interface issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, iOS 17.1 and iPadOS 17.1. Hide My Email may be deactivated unexpectedly.",
+        "id": "CVE-2023-40408",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "This issue was addressed by removing the vulnerable code. This issue is fixed in macOS Sonoma 14.1, macOS Monterey 12.7.1, macOS Ventura 13.6.1. A website may be able to access the microphone without the microphone use indicator being shown.",
+        "id": "CVE-2023-41975",
+        "score": {
+            "base": 4.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42904",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.5, watchOS 10.5, iOS 17.5 and iPadOS 17.5, iOS 16.7.8 and iPadOS 16.7.8. A maliciously crafted email may be able to initiate FaceTime calls without user authorization.",
+        "id": "CVE-2024-23282",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Ventura 13.7, iOS 17.7 and iPadOS 17.7, iOS 18 and iPadOS 18, macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access information about a user's contacts.",
+        "id": "CVE-2024-40791",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in tvOS 17.5, iOS 16.7.8 and iPadOS 16.7.8, visionOS 1.2, Safari 17.5, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2024-27820",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42910",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42902",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1.2",
+        "description": "A memory corruption vulnerability was addressed with improved locking. This issue is fixed in iOS 17.1.2 and iPadOS 17.1.2, macOS Sonoma 14.1.2, Safari 17.1.2. Processing web content may lead to arbitrary code execution. Apple is aware of a report that this issue may have been exploited against versions of iOS before iOS 16.7.1.",
+        "id": "CVE-2023-42917",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access protected user data.",
+        "id": "CVE-2024-40801",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42905",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in Safari 17.2, macOS Sonoma 14.2, iOS 17.2 and iPadOS 17.2, watchOS 10.2, tvOS 17.2, iOS 16.7.3 and iPadOS 16.7.3. Processing an image may lead to a denial-of-service.",
+        "id": "CVE-2023-42883",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A privacy issue was addressed by moving sensitive data to a protected location. This issue is fixed in macOS Sonoma 14.2. An app may be able to access user-sensitive data.",
+        "id": "CVE-2023-40390",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "An access issue was addressed with additional sandbox restrictions. This issue is fixed in macOS Ventura 13.6.4, macOS Sonoma 14.2. An app may be able to read arbitrary files.",
+        "id": "CVE-2023-42887",
+        "score": {
+            "base": 6.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sequoia 15. An app may be able to cause a denial-of-service.",
+        "id": "CVE-2024-23237",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-44152",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A race condition was addressed with additional validation. This issue is fixed in macOS Sonoma 14.4, macOS Monterey 12.7.4, macOS Ventura 13.6.5. An app may be able to access protected user data.",
+        "id": "CVE-2024-23275",
+        "score": {
+            "base": 4.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "This issue was addressed by adding an additional prompt for user consent. This issue is fixed in macOS Sonoma 14.4. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-27792",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed by restricting options offered on a locked device. This issue is fixed in macOS Sonoma 14.1. An attacker may be able to execute arbitrary code as root from the Lock Screen.",
+        "id": "CVE-2023-41989",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.1, Safari 17.1, iOS 16.7.2 and iPadOS 16.7.2, iOS 17.1 and iPadOS 17.1. Processing web content may lead to a denial-of-service.",
+        "id": "CVE-2023-41983",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42906",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Ventura 13.6.3, macOS Sonoma 14.2, macOS Monterey 12.7.2. A process may gain admin privileges without proper authentication.",
+        "id": "CVE-2023-42931",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. A malicious application may be able to leak sensitive user information.",
+        "id": "CVE-2024-44125",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "This issue was addressed with improved handling of symlinks. This issue is fixed in macOS Sonoma 14.1, macOS Monterey 12.7.1, macOS Ventura 13.6.1. A website may be able to access sensitive user data when resolving symlinks.",
+        "id": "CVE-2023-42844",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A vulnerability was found in the libtiff library. This flaw causes a heap buffer overflow issue via the TIFFTAG_INKNAMES and TIFFTAG_NUMBEROFINKS values.",
+        "id": "CVE-2023-30774",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed with improved validation of symlinks. This issue is fixed in macOS Sonoma 14.5, macOS Ventura 13.6.7, macOS Monterey 12.7.5. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2024-27885",
+        "score": {
+            "base": 6.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than or equal to 14.0",
+        "description": "A permissions issue was addressed with additional restrictions. This issue is fixed in iOS 17 and iPadOS 17, macOS Sonoma 14, watchOS 10. An app may be able to read sensitive location information.",
+        "id": "CVE-2023-42957",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An out-of-bounds read was addressed with improved bounds checking. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, Safari 17.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. Processing maliciously crafted web content may lead to an unexpected process crash.",
+        "id": "CVE-2024-40780",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "This issue was addressed by restricting options offered on a locked device. This issue is fixed in macOS Sonoma 14.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, iOS 17.1 and iPadOS 17.1. An attacker with physical access may be able to use Siri to access sensitive user data.",
+        "id": "CVE-2023-41997",
+        "score": {
+            "base": 4.6,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42908",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42911",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3, macOS Sonoma 14.3, iOS 16.7.5 and iPadOS 16.7.5, macOS Ventura 13.6.4, macOS Monterey 12.7.3. An app may be able to execute arbitrary code with kernel privileges.",
+        "id": "CVE-2024-23212",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "An integer overflow was addressed through improved input validation. This issue is fixed in visionOS 2, watchOS 11, macOS Sequoia 15, iOS 18 and iPadOS 18, tvOS 18. Processing maliciously crafted web content may lead to an unexpected process crash.",
+        "id": "CVE-2024-44198",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42912",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "This issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.4. A maliciously crafted ZIP archive may bypass Gatekeeper checks.",
+        "id": "CVE-2024-27853",
+        "score": {
+            "base": 4.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.4, iOS 17.4 and iPadOS 17.4. An attacker in a privileged network position may be able to inject keystrokes by spoofing a keyboard.",
+        "id": "CVE-2024-23277",
+        "score": {
+            "base": 5.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "This issue was addressed through improved state management. This issue is fixed in macOS Sonoma 14.2. Remote Login sessions may be able to obtain full disk access permissions.",
+        "id": "CVE-2023-42913",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "An integrity issue was addressed with Beacon Protection. This issue is fixed in iOS 18 and iPadOS 18, tvOS 18, macOS Sequoia 15. An attacker may be able to force a device to disconnect from a secure network.",
+        "id": "CVE-2024-40856",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sonoma 14.1, iOS 17.1 and iPadOS 17.1. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-42857",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "An injection issue was addressed with improved input validation. This issue is fixed in macOS Sonoma 14.4, macOS Monterey 12.7.4, macOS Ventura 13.6.5. An app may be able to elevate privileges.",
+        "id": "CVE-2024-23268",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1.2",
+        "description": "An out-of-bounds read was addressed with improved input validation. This issue is fixed in iOS 17.1.2 and iPadOS 17.1.2, macOS Sonoma 14.1.2, Safari 17.1.2. Processing web content may disclose sensitive information. Apple is aware of a report that this issue may have been exploited against versions of iOS before iOS 16.7.1.",
+        "id": "CVE-2023-42916",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved handling of caches. This issue is fixed in iOS 17.1 and iPadOS 17.1, macOS Monterey 12.7.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Ventura 13.6.1, macOS Sonoma 14.1. An app may be able to read sensitive location information.",
+        "id": "CVE-2023-40413",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A use after free issue was addressed with improved memory management. This issue is fixed in Safari 17.2, iOS 17.2 and iPadOS 17.2, tvOS 17.2, watchOS 10.2, macOS Sonoma 14.2. Processing maliciously crafted web content may lead to arbitrary code execution.",
+        "id": "CVE-2023-42950",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sonoma 14.2, iOS 17.2 and iPadOS 17.2, watchOS 10.2, macOS Ventura 13.6.3, iOS 16.7.3 and iPadOS 16.7.3, macOS Monterey 12.7.2. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-42919",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.2, macOS Ventura 13.6.3. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-42924",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "The issue was addressed with improved checks. This issue is fixed in tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. An app may be able to elevate privileges.",
+        "id": "CVE-2024-27832",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than or equal to 14.0",
+        "description": "The issue was addressed with improved restriction of data container access. This issue is fixed in iOS 17 and iPadOS 17, macOS Sonoma 14. An app may be able to access Notes attachments.",
+        "id": "CVE-2023-42925",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.4, macOS Ventura 13.6.5, macOS Monterey 12.7.4. An app may be able to break out of its sandbox.",
+        "id": "CVE-2024-23299",
+        "score": {
+            "base": 8.6,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "An authentication issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.2, macOS Ventura 13.6.3, macOS Monterey 12.7.2. An app may be able to monitor keystrokes without user permission.",
+        "id": "CVE-2023-42891",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42926",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An out-of-bounds read was addressed with improved input validation. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. A local attacker may be able to cause unexpected system shutdown.",
+        "id": "CVE-2024-40816",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in Safari 17.2, macOS Sonoma 14.2, watchOS 10.2, iOS 17.2 and iPadOS 17.2, tvOS 17.2. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2023-42890",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "An authentication issue was addressed with improved state management. This issue is fixed in macOS Ventura 13.6.4. A local attacker may be able to view the previous logged in user’s desktop from the fast user switching screen.",
+        "id": "CVE-2023-42935",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "This issue was addressed through improved state management. This issue is fixed in Safari 17.4, iOS 17.4 and iPadOS 17.4, macOS Sonoma 14.4. Private Browsing tabs may be accessed without authentication.",
+        "id": "CVE-2024-23273",
+        "score": {
+            "base": 4.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in iOS 17.1 and iPadOS 17.1, watchOS 10.1, iOS 16.7.2 and iPadOS 16.7.2, macOS Sonoma 14.1, Safari 17.1, tvOS 17.1. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2023-40447",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2.1",
+        "description": "A session rendering issue was addressed with improved session tracking. This issue is fixed in macOS Sonoma 14.2.1. A user who shares their screen may unintentionally share the incorrect content.",
+        "id": "CVE-2023-42940",
+        "score": {
+            "base": 5.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "A path handling issue was addressed with improved validation. This issue is fixed in macOS Monterey 12.7.2, macOS Ventura 13.6.3, iOS 17.2 and iPadOS 17.2, tvOS 17.2, watchOS 10.2, macOS Sonoma 14.2. An app may be able to break out of its sandbox.",
+        "id": "CVE-2023-42947",
+        "score": {
+            "base": 8.6,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed by removing the vulnerable code. This issue is fixed in macOS Ventura 13.6.7, macOS Monterey 12.7.5, iOS 16.7.8 and iPadOS 16.7.8, tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, watchOS 10.5, macOS Sonoma 14.5. Processing a maliciously crafted message may lead to a denial-of-service.",
+        "id": "CVE-2024-27800",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "An out-of-bounds read issue was addressed with improved input validation. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, macOS Ventura 13.6.8, macOS Monterey 12.7.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. Processing a maliciously crafted file may lead to unexpected app termination.",
+        "id": "CVE-2024-40806",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "A privacy issue was addressed with improved handling of temporary files. This issue is fixed in macOS Sonoma 14.3, watchOS 10.3, iOS 17.3 and iPadOS 17.3. An app may be able to bypass certain Privacy preferences.",
+        "id": "CVE-2024-23217",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in Safari 17.2, iOS 17.2 and iPadOS 17.2, macOS Sonoma 14.2. Processing web content may lead to a denial-of-service.",
+        "id": "CVE-2023-42956",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Bluetooth HID Hosts in BlueZ may permit an unauthenticated Peripheral role HID Device to initiate and establish an encrypted connection, and accept HID keyboard reports, potentially permitting injection of HID messages when no user interaction has occurred in the Central role to authorize such access. An example affected package is bluez 5.64-0ubuntu1 in Ubuntu 22.04LTS. NOTE: in some cases, a CVE-2020-0556 mitigation would have already addressed this Bluetooth HID Hosts issue.",
+        "id": "CVE-2023-45866",
+        "score": {
+            "base": 6.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "An authentication issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.5, watchOS 10.5, iOS 17.5 and iPadOS 17.5, iOS 16.7.8 and iPadOS 16.7.8. An attacker with physical access may be able to leak Mail account credentials.",
+        "id": "CVE-2024-23251",
+        "score": {
+            "base": 4.6,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A logic issue was addressed with improved state management. This issue is fixed in macOS Sequoia 15. Privacy Indicators for microphone or camera access may be attributed  incorrectly.",
+        "id": "CVE-2024-27875",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "The SSH transport protocol with certain OpenSSH extensions, found in OpenSSH before 9.6 and other products, allows remote attackers to bypass integrity checks such that some packets are omitted (from the extension negotiation message), and a client and server may consequently end up with a connection for which some security features have been downgraded or disabled, aka a Terrapin attack. This occurs because the SSH Binary Packet Protocol (BPP), implemented by these extensions, mishandles the handshake phase and mishandles use of sequence numbers. For example, there is an effective attack against SSH's use of ChaCha20-Poly1305 (and CBC with Encrypt-then-MAC). The bypass occurs in chacha20-poly1305@openssh.com and (if CBC is used) the -etm@openssh.com MAC algorithms. This also affects Maverick Synergy Java SSH API before 3.1.0-SNAPSHOT, Dropbear through 2022.83, Ssh before 5.1.1 in Erlang/OTP, PuTTY before 0.80, AsyncSSH before 2.14.2, golang.org/x/crypto before 0.17.0, libssh before 0.10.6, libssh2 through 1.11.0, Thorn Tech SFTP Gateway before 3.4.6, Tera Term before 5.1, Paramiko before 3.4.0, jsch before 0.2.15, SFTPGo before 2.5.6, Netgate pfSense Plus through 23.09.1, Netgate pfSense CE through 2.7.2, HPN-SSH through 18.2.0, ProFTPD before 1.3.8b (and before 1.3.9rc2), ORYX CycloneSSH before 2.3.4, NetSarang XShell 7 before Build 0144, CrushFTP before 10.6.0, ConnectBot SSH library before 2.2.22, Apache MINA sshd through 2.11.0, sshj through 0.37.0, TinySSH through 20230101, trilead-ssh2 6401, LANCOM LCOS and LANconfig, FileZilla before 3.66.4, Nova before 11.8, PKIX-SSH before 14.4, SecureCRT before 9.4.3, Transmit5 before 5.10.4, Win32-OpenSSH before 9.5.0.0p1-Beta, WinSCP before 6.2.2, Bitvise SSH Server before 9.32, Bitvise SSH Client before 9.33, KiTTY through 0.76.1.13, the net-ssh gem 7.2.0 for Ruby, the mscdex ssh2 module before 1.15.0 for Node.js, the thrussh library before 0.35.1 for Rust, and the Russh crate before 0.40.2 for Rust.",
+        "id": "CVE-2023-48795",
+        "score": {
+            "base": 5.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "The issue was addressed with additional permissions checks. This issue is fixed in macOS Sonoma 14.3, iOS 17.3 and iPadOS 17.3. A shortcut may be able to use sensitive data with certain actions without prompting the user.",
+        "id": "CVE-2024-23203",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3, macOS Sonoma 14.3, iOS 16.7.5 and iPadOS 16.7.5, Safari 17.3. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2024-23213",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.6",
+        "description": "An out-of-bounds read was addressed with improved bounds checking. This issue is fixed in iOS 16.7.9 and iPadOS 16.7.9, Safari 17.6, iOS 17.6 and iPadOS 17.6, watchOS 10.6, tvOS 17.6, visionOS 1.3, macOS Sonoma 14.6. Processing maliciously crafted web content may lead to an unexpected process crash.",
+        "id": "CVE-2024-40779",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "The issue was addressed with additional permissions checks. This issue is fixed in macOS Sonoma 14.3, watchOS 10.3, iOS 17.3 and iPadOS 17.3. A shortcut may be able to use sensitive data with certain actions without prompting the user.",
+        "id": "CVE-2024-23204",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "An access issue was addressed with improved access restrictions. This issue is fixed in watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3, macOS Sonoma 14.3, iOS 16.7.5 and iPadOS 16.7.5, Safari 17.3. A maliciously crafted webpage may be able to fingerprint the user.",
+        "id": "CVE-2024-23206",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "A timing side-channel issue was addressed with improvements to constant-time computation in cryptographic functions. This issue is fixed in macOS Sonoma 14.3, watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3. An attacker may be able to decrypt legacy RSA PKCS#1 v1.5 ciphertexts without having the private key.",
+        "id": "CVE-2024-23218",
+        "score": {
+            "base": 5.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 15.0",
+        "description": "A privacy issue was addressed with improved handling of files. This issue is fixed in iOS 18 and iPadOS 18, macOS Sequoia 15. An unencrypted document may be written to a temporary file when using print preview.",
+        "id": "CVE-2024-40826",
+        "score": {
+            "base": 6.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in watchOS 10.3, iOS 17.3 and iPadOS 17.3, macOS Sonoma 14.3, macOS Ventura 13.6.4, macOS Monterey 12.7.3. An app may be able to access sensitive user data.",
+        "id": "CVE-2024-23207",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "The issue was addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.3. Processing web content may lead to arbitrary code execution.",
+        "id": "CVE-2024-23209",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Sonoma 14.3, watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3. An app may be able to view a user's phone number in system logs.",
+        "id": "CVE-2024-23210",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "A privacy issue was addressed with improved handling of user preferences. This issue is fixed in watchOS 10.3, iOS 17.3 and iPadOS 17.3, macOS Sonoma 14.3, iOS 16.7.5 and iPadOS 16.7.5, Safari 17.3. A user's private browsing activity may be visible in Settings.",
+        "id": "CVE-2024-23211",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.1. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-42842",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "Multiple memory corruption issues were addressed with improved input validation. This issue is fixed in macOS Sonoma 14.2. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2023-42909",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "Multiple memory corruption issues were addressed with improved memory handling. This issue is fixed in macOS Sonoma 14.3, iOS 16.7.5 and iPadOS 16.7.5, iOS 17.3 and iPadOS 17.3. Processing maliciously crafted web content may lead to arbitrary code execution.",
+        "id": "CVE-2024-23214",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "The issue was addressed with improved handling of caches. This issue is fixed in macOS Sonoma 14.1, iOS 16.7.2 and iPadOS 16.7.2. Visiting a malicious website may reveal browsing history.",
+        "id": "CVE-2023-41977",
+        "score": {
+            "base": 4.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A memory corruption issue was addressed with improved validation. This issue is fixed in iOS 16.7.6 and iPadOS 16.7.6, iOS 17.4 and iPadOS 17.4. An attacker with arbitrary kernel read and write capability may be able to bypass kernel memory protections. Apple is aware of a report that this issue may have been exploited.",
+        "id": "CVE-2024-23225",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than or equal to 14.6",
+        "description": "This issue was addressed by adding an additional prompt for user consent. This issue is fixed in macOS Sonoma 14.6, macOS Monterey 12.7.6, macOS Ventura 13.6.8. A shortcut may be able to bypass sensitive Shortcuts app settings.",
+        "id": "CVE-2024-40834",
+        "score": {
+            "base": 4.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "A privacy issue was addressed with improved private data redaction for log entries. This issue is fixed in macOS Sonoma 14.1, iOS 17.1 and iPadOS 17.1. An app may be able to access sensitive user data.",
+        "id": "CVE-2023-41072",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "An issue was addressed with improved handling of temporary files. This issue is fixed in macOS Sonoma 14.3, watchOS 10.3, tvOS 17.3, iOS 17.3 and iPadOS 17.3. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-23215",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "This issue was addressed with improved redaction of sensitive information. This issue is fixed in macOS Monterey 12.7.2, macOS Ventura 13.6.3, iOS 17.2 and iPadOS 17.2, tvOS 17.2, watchOS 10.2, macOS Sonoma 14.2. An app may be able to access user-sensitive data.",
+        "id": "CVE-2023-42936",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "A type confusion issue was addressed with improved checks. This issue is fixed in iOS 17.3 and iPadOS 17.3, macOS Sonoma 14.3, tvOS 17.3. Processing maliciously crafted web content may lead to arbitrary code execution. Apple is aware of a report that this issue may have been exploited.",
+        "id": "CVE-2024-23222",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.3",
+        "description": "The issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.3, macOS Ventura 13.6.4. An app may be able to access sensitive user data.",
+        "id": "CVE-2024-23224",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "An inconsistent user interface issue was addressed with improved state management. This issue is fixed in macOS Sonoma 14.1. Visiting a malicious website may lead to user interface spoofing.",
+        "id": "CVE-2023-42438",
+        "score": {
+            "base": 4.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A logic issue was addressed with improved state management. This issue is fixed in macOS Monterey 12.7.6, macOS Sonoma 14.4, macOS Ventura 13.6.8. An attacker may be able to read information belonging to another user.",
+        "id": "CVE-2024-23261",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A logic issue was addressed with improved checks. This issue is fixed in macOS Sonoma 14.4, macOS Monterey 12.7.4, macOS Ventura 13.6.5. A user may gain access to protected parts of the file system.",
+        "id": "CVE-2024-23272",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.7",
+        "description": "The issue was addressed with improved permissions logic. This issue is fixed in macOS Sonoma 14.7, macOS Sequoia 15. An app may be able to access user-sensitive data.",
+        "id": "CVE-2024-44153",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.4",
+        "description": "A memory corruption issue was addressed with improved validation. This issue is fixed in iOS 17.4 and iPadOS 17.4. An attacker with arbitrary kernel read and write capability may be able to bypass kernel memory protections. Apple is aware of a report that this issue may have been exploited.",
+        "id": "CVE-2024-23296",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.2",
+        "description": "This issue was addressed with improved checks. This issue is fixed in macOS Ventura 13.6.3, macOS Sonoma 14.2, macOS Monterey 12.7.2. An app may be able to modify protected parts of the file system.",
+        "id": "CVE-2023-42930",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "This issue was addressed with additional entitlement checks. This issue is fixed in macOS Sonoma 14.5, macOS Ventura 13.6.7, macOS Monterey 12.7.5, iOS 16.7.8 and iPadOS 16.7.8. An unprivileged app may be able to log keystrokes in other apps including those using secure input mode.",
+        "id": "CVE-2024-27799",
+        "score": {
+            "base": 3.3,
+            "version": "3.1"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.1",
+        "description": "This issue was addressed by restricting options offered on a locked device. This issue is fixed in macOS Sonoma 14.1, watchOS 10.1, iOS 17.1 and iPadOS 17.1. An attacker with physical access may be able to use Siri to access sensitive user data.",
+        "id": "CVE-2023-41988",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "OS",
+        "condition": "Package less than 14.5",
+        "description": "An out-of-bounds read was addressed with improved input validation. This issue is fixed in macOS Ventura 13.6.7, macOS Monterey 12.7.5, iOS 16.7.8 and iPadOS 16.7.8, tvOS 17.5, visionOS 1.2, iOS 17.5 and iPadOS 17.5, macOS Sonoma 14.5. Processing a maliciously crafted file may lead to unexpected app termination or arbitrary code execution.",
+        "id": "CVE-2024-27802",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    }
+]

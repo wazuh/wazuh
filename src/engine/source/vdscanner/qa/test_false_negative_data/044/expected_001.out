@@ -1,5 +1,0 @@
-[
-    "Translation for package 'Skype' on platform 'windows' found in Level 2 cache.",
-    "Match found, the package 'skype', is vulnerable to 'CVE-2005-2300'. Current version: '0.92.0.12' (less than '' or equal to '1.1.0.20'). - Agent '' (ID: '017', Version: '').",
-    "Match found, the package 'skype', is vulnerable to 'CVE-2004-1778'. Current version: '0.92.0.12' is equal to '0.92.0.12'. - Agent '' (ID: '017', Version: '')."
-]

@@ -1,0 +1,50 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 4.23.0",
+        "description": "Docker Desktop before 4.23.0 allows Access Token theft via a crafted extension icon URL.  This issue affects Docker Desktop: before 4.23.0.",
+        "id": "CVE-2023-5166",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 8.0,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 4.23.0",
+        "description": "Docker Desktop before 4.23.0 allows an unprivileged user to bypass Enhanced Container Isolation (ECI) restrictions via the debug shell which remains accessible for a short time window after launching Docker Desktop. The affected functionality is available for Docker Business customers only and assumes an environment where users are not granted local root or Administrator privileges.   This issue has been fixed in Docker Desktop 4.23.0.   Affected Docker Desktop versions: from 4.13.0 before 4.23.0.",
+        "id": "CVE-2023-5165",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 4.34.2",
+        "description": "A remote code execution (RCE) vulnerability via crafted extension publisher-url/additional-urls could be abused by a malicious extension in Docker Desktop before 4.34.2.",
+        "id": "CVE-2024-8696",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 4.34.2",
+        "description": "A remote code execution (RCE) vulnerability via crafted extension description/changelog could be abused by a malicious extension in Docker Desktop before 4.34.2.",
+        "id": "CVE-2024-8695",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    }
+]

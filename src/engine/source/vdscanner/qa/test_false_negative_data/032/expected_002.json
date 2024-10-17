@@ -1,0 +1,86 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a LOW severity vulnerability affecting CPython, specifically the 'http.cookies' standard library module.   When parsing cookies that contained backslashes for quoted characters in the cookie value, the parser would use an algorithm with quadratic complexity, resulting in excess CPU resources being used while parsing the value.",
+        "id": "CVE-2024-7592",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a MEDIUM severity vulnerability affecting CPython.  The  email module didn’t properly quote newlines for email headers when  serializing an email message allowing for header injection when an email  is serialized.",
+        "id": "CVE-2024-6923",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a HIGH severity vulnerability affecting the CPython \"zipfile\" module affecting \"zipfile.Path\". Note that the more common API \"zipfile.ZipFile\" class is unaffected.      When iterating over names of entries in a zip archive (for example, methods of \"zipfile.Path\" like \"namelist()\", \"iterdir()\", etc) the process can be put into an infinite loop with a maliciously crafted zip archive. This defect applies when reading only metadata or extracting the contents of the zip archive. Programs that are not handling user-controlled zip archives are not affected.",
+        "id": "CVE-2024-8088",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 0.0,
+            "version": ""
+        },
+        "severity": ""
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a MEDIUM severity vulnerability affecting CPython.      Regular expressions that allowed excessive backtracking during tarfile.TarFile header parsing are vulnerable to ReDoS via specifically-crafted tar archives.",
+        "id": "CVE-2024-6232",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.5",
+        "description": "The “ipaddress” module contained incorrect information about whether certain IPv4 and IPv6 addresses were designated as “globally reachable” or “private”. This affected the is_private and is_global properties of the ipaddress.IPv4Address, ipaddress.IPv4Network, ipaddress.IPv6Address, and ipaddress.IPv6Network classes, where values wouldn’t be returned in accordance with the latest information from the IANA Special-Purpose Address Registries.  CPython 3.12.4 and 3.13.0a6 contain updated information from these registries and thus have the intended behavior.",
+        "id": "CVE-2024-4032",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.5",
+        "description": "A defect was discovered in the Python “ssl” module where there is a memory race condition with the ssl.SSLContext methods “cert_store_stats()” and “get_ca_certs()”. The race condition can be triggered if the methods are called at the same time as certificates are loaded into the SSLContext, such as during the TLS handshake with a certificate directory configured. This issue is fixed in CPython 3.10.14, 3.11.9, 3.12.3, and 3.13.0a5.",
+        "id": "CVE-2024-0397",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.4,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "The email module of Python through 3.11.3 incorrectly parses e-mail addresses that contain a special character. The wrong portion of an RFC2822 header is identified as the value of the addr-spec. In some applications, an attacker can bypass a protection mechanism in which application access is granted only after verifying receipt of e-mail to a specific domain (e.g., only @company.example.com addresses may be used for signup). This occurs in email/_parseaddr.py in recent versions of Python.",
+        "id": "CVE-2023-27043",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

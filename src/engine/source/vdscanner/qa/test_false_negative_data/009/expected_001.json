@@ -1,0 +1,1202 @@
+[
+  {
+    "category": "Packages",
+    "condition": "Package less than 130.0",
+    "description": "If a site had been granted the permission to open popup windows, it could cause Select elements to appear on top of another site to perform a spoofing attack. This vulnerability affects Firefox < 130, Firefox ESR < 128.2, and Thunderbird < 128.2.",
+    "id": "CVE-2024-8386",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.1,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 130.0",
+    "description": "The JavaScript garbage collector could mis-color cross-compartment objects if OOM conditions were detected at the right point between two passes. This could have led to memory corruption. This vulnerability affects Firefox < 130, Firefox ESR < 128.2, Firefox ESR < 115.15, Thunderbird < 128.2, and Thunderbird < 115.15.",
+    "id": "CVE-2024-8384",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 130.0",
+    "description": "Internal browser event interfaces were exposed to web content when privileged EventHandler listener callbacks ran for those events. Web content that tried to use those interfaces would not be able to use them with elevated privileges, but their presence would indicate certain browser features had been used, such as when a user opened the Dev Tools console. This vulnerability affects Firefox < 130, Firefox ESR < 128.2, Firefox ESR < 115.15, Thunderbird < 128.2, and Thunderbird < 115.15.",
+    "id": "CVE-2024-8382",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Incorrect garbage collection interaction could have led to a use-after-free. This vulnerability affects Firefox < 129.",
+    "id": "CVE-2024-7530",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "It was possible for a web extension with minimal permissions to create a `StreamFilter` which could be used to read and modify the response body of requests on any site. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, Firefox ESR < 128.1, Thunderbird < 128.1, and Thunderbird < 115.14.",
+    "id": "CVE-2024-7525",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.1,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Editor code failed to check an attribute value. This could have led to an out-of-bounds read. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, Firefox ESR < 128.1, Thunderbird < 128.1, and Thunderbird < 115.14.",
+    "id": "CVE-2024-7522",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "A type confusion bug in WebAssembly could be leveraged by an attacker to potentially achieve code execution. This vulnerability affects Firefox < 129, Firefox ESR < 128.1, and Thunderbird < 128.1.",
+    "id": "CVE-2024-7520",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129",
+    "description": "Select options could obscure the fullscreen notification dialog. This could be used by a malicious site to perform a spoofing attack. This vulnerability affects Firefox < 129, Firefox ESR < 128.1, and Thunderbird < 128.1.",
+    "id": "CVE-2024-7518",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Incorrect garbage collection interaction in IndexedDB could have led to a use-after-free. This vulnerability affects Firefox < 129, Firefox ESR < 128.1, and Thunderbird < 128.1.",
+    "id": "CVE-2024-7528",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 128.0",
+    "description": "Form validation popups could capture escape key presses. Therefore, spamming form validation messages could be used to prevent users from exiting full-screen mode. This vulnerability affects Firefox < 128 and Thunderbird < 128.",
+    "id": "CVE-2024-6610",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 127",
+    "description": "A website was able to detect when a user took a screenshot of a page using the built-in Screenshot functionality in Firefox. This vulnerability affects Firefox < 127.",
+    "id": "CVE-2024-5697",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 128.0",
+    "description": "It was possible to move the cursor using pointerlock from an iframe. This allowed moving the cursor outside of the viewport and the Firefox window. This vulnerability affects Firefox < 128 and Thunderbird < 128.",
+    "id": "CVE-2024-6608",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 127.0",
+    "description": "If an out-of-memory condition occurs at a specific point using allocations in the probabilistic heap checker, an assertion could have been triggered, and in rarer situations, memory corruption could have occurred. This vulnerability affects Firefox < 127.",
+    "id": "CVE-2024-5695",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 127.0",
+    "description": "By tricking the browser with a `X-Frame-Options` header, a sandboxed iframe could have presented a button that, if clicked by a user, would bypass restrictions to open a new window. This vulnerability affects Firefox < 127, Firefox ESR < 115.12, and Thunderbird < 115.12.",
+    "id": "CVE-2024-5691",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.7,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "ANGLE failed to initialize parameters which lead to reading from uninitialized memory. This could be leveraged to leak sensitive data from memory. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, Firefox ESR < 128.1, Thunderbird < 128.1, and Thunderbird < 115.14.",
+    "id": "CVE-2024-7526",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 127.0",
+    "description": "In addition to detecting when a user was taking a screenshot (XXX), a website was able to overlay the 'My Shots' button that appeared, and direct the user to a replica Firefox Screenshots page that could be used for phishing. This vulnerability affects Firefox < 127.",
+    "id": "CVE-2024-5689",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Insufficient checks when processing graphics shared memory could have led to memory corruption. This could be leveraged by an attacker to perform a sandbox escape. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, Firefox ESR < 128.1, Thunderbird < 128.1, and Thunderbird < 115.14.",
+    "id": "CVE-2024-7519",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "Memory safety bugs present in Firefox 121, Firefox ESR 115.6, and Thunderbird 115.6. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0755",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 130.0",
+    "description": "A difference in the handling of StructFields and ArrayTypes in WASM could be used to trigger an exploitable type confusion vulnerability. This vulnerability affects Firefox < 130, Firefox ESR < 128.2, and Thunderbird < 128.2.",
+    "id": "CVE-2024-8385",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "Some WASM source files could have caused a crash when loaded in devtools. This vulnerability affects Firefox < 122.",
+    "id": "CVE-2024-0754",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "An attacker could write data to the user's clipboard, bypassing the user prompt, during a certain sequence of navigational events. This vulnerability affects Firefox < 129, Firefox ESR < 128.3, and Thunderbird < 128.3.",
+    "id": "CVE-2024-8900",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Firefox adds web-compatibility shims in place of some tracking scripts blocked by Enhanced Tracking Protection.  On a site protected by Content Security Policy in \"strict-dynamic\" mode, an attacker able to inject an HTML element could have used a DOM Clobbering attack on some of the shims and achieved XSS, bypassing the CSP strict-dynamic protection. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, and Firefox ESR < 128.1.",
+    "id": "CVE-2024-7524",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.1,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 127",
+    "description": "By manipulating the fullscreen feature while opening a data-list, an attacker could have overlaid a text box over the address bar. This could have led to user confusion and possible spoofing attacks. This vulnerability affects Firefox < 127.",
+    "id": "CVE-2024-5698",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.1,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "A use-after-free crash could have occurred on macOS if a Firefox update were being applied on a very busy system. This could have resulted in an exploitable crash. This vulnerability affects Firefox < 122.",
+    "id": "CVE-2024-0752",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "A malicious devtools extension could have been used to escalate privileges. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0751",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "A bug in popup notifications delay calculation could have made it possible for an attacker to trick a user into granting permissions. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0750",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "A compromised content process could have updated the document URI. This could have allowed an attacker to set an arbitrary URI in the address bar or history. This vulnerability affects Firefox < 122.",
+    "id": "CVE-2024-0748",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "When a parent page loaded a child in an iframe with `unsafe-inline`, the parent Content Security Policy could have overridden the child Content Security Policy. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0747",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "A Linux user opening the print preview dialog could have caused the browser to crash. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0746",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "The WebAudio `OscillatorNode` object was susceptible to a stack buffer overflow. This could have led to a potentially exploitable crash. This vulnerability affects Firefox < 122.",
+    "id": "CVE-2024-0745",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "During garbage collection extra operations were performed on a object that should not be. This could have led to a potentially exploitable crash. This vulnerability affects Firefox < 119, Firefox ESR < 115.4, and Thunderbird < 115.4.1.",
+    "id": "CVE-2023-5728",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "Relative URLs starting with three slashes were incorrectly parsed, and a path-traversal \"/../\" part in the path could be used to override the specified host. This could contribute to security problems in web sites. This vulnerability affects Firefox < 120, Firefox ESR < 115.5.0, and Thunderbird < 115.5.",
+    "id": "CVE-2023-6209",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "The `VideoBridge` allowed any content process to use textures produced by remote decoders.  This could be abused to escape the sandbox. This vulnerability affects Firefox ESR < 115.6, Thunderbird < 115.6, and Firefox < 121.",
+    "id": "CVE-2023-6860",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "Ownership mismanagement led to a use-after-free in ReadableByteStreams This vulnerability affects Firefox < 120, Firefox ESR < 115.5.0, and Thunderbird < 115.5.",
+    "id": "CVE-2023-6207",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "The date picker could partially obscure security prompts. This could be used by a malicious site to trick a user into granting permissions. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, Firefox ESR < 128.1, Thunderbird < 128.1, and Thunderbird < 115.14.",
+    "id": "CVE-2024-7529",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "When an https: web page created a pop-up from a \"javascript:\" URL, that pop-up was incorrectly allowed to load blockable content such as iframes from insecure http: URLs This vulnerability affects Firefox < 120.",
+    "id": "CVE-2023-6210",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "The `nsWindow::PickerOpen(void)` method was susceptible to a heap buffer overflow when running in headless mode. This vulnerability affects Firefox ESR < 115.6, Thunderbird < 115.6, and Firefox < 121.",
+    "id": "CVE-2023-6861",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Incomplete WebAssembly exception handing could have led to a use-after-free. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, Firefox ESR < 128.1, Thunderbird < 128.1, and Thunderbird < 115.14.",
+    "id": "CVE-2024-7521",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "A malicious installed WebExtension could open arbitrary URLs, which under the right circumstance could be leveraged to collect sensitive user data. This vulnerability affects Firefox < 119, Firefox ESR < 115.4, and Thunderbird < 115.4.1.",
+    "id": "CVE-2023-5725",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118",
+    "description": "During process shutdown, it was possible that an `ImageBitmap` was created that would later be used after being freed from a different codepath, leading to a potentially exploitable crash. This vulnerability affects Firefox < 118.",
+    "id": "CVE-2023-5175",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "Search queries in the default search engine could appear to have been the currently navigated URL if the search query itself was a well formed URL. This could have led to a site spoofing another if it had been maliciously set as the default search engine. This vulnerability affects Firefox < 117.",
+    "id": "CVE-2023-4579",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 3.1,
+      "version": "3.1"
+    },
+    "severity": "Low"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "A use-after-free condition affected TLS socket creation when under memory pressure. This vulnerability affects Firefox ESR < 115.6, Thunderbird < 115.6, and Firefox < 121.",
+    "id": "CVE-2023-6859",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "A `&lt;dialog>` element could have been manipulated to paint content outside of a sandboxed iframe. This could allow untrusted content to display under the guise of trusted content. This vulnerability affects Firefox < 121.",
+    "id": "CVE-2023-6869",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "When receiving rendering data over IPC `mStream` could have been destroyed when initialized, which could have led to a use-after-free causing a potentially exploitable crash. This vulnerability affects Firefox < 117, Firefox ESR < 102.15, Firefox ESR < 115.2, Thunderbird < 102.15, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4573",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 130.0",
+    "description": "A potentially exploitable type confusion could be triggered when looking up a property name on an object being used as the `with` environment. This vulnerability affects Firefox < 130, Firefox ESR < 128.2, Firefox ESR < 115.15, Thunderbird < 128.2, and Thunderbird < 115.15.",
+    "id": "CVE-2024-8381",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "It was possible for certain browser prompts and dialogs to be activated or dismissed unintentionally by the user due to an incorrect timestamp used to prevent input after page load. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0742",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118.0",
+    "description": "In canvas rendering, a compromised content process could have caused a surface to change unexpectedly, leading to a memory leak of a privileged process. This memory leak could be used to effect a sandbox escape if the correct data was leaked. This vulnerability affects Firefox < 118.",
+    "id": "CVE-2023-5170",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.4,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "Memory safety bugs present in Firefox 118. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 119.",
+    "id": "CVE-2023-5731",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 130.0",
+    "description": "Firefox normally asks for confirmation before asking the operating system to find an application to handle a scheme that the browser does not support. It did not ask before doing so for the Usenet-related schemes news: and snews:. Since most operating systems don't have a trusted newsreader installed by default, an unscrupulous program that the user downloaded could register itself as a handler. The website that served the application download could then launch that application at will. This vulnerability affects Firefox < 130, Firefox ESR < 128.2, and Firefox ESR < 115.15.",
+    "id": "CVE-2024-8383",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "When `UpdateRegExpStatics` attempted to access `initialStringHeap` it could already have been garbage collected prior to entering the function, which could potentially have led to an exploitable crash. This vulnerability affects Firefox < 117, Firefox ESR < 115.2, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4577",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 127.0",
+    "description": "An attacker could have caused a use-after-free in the JavaScript engine to read memory in the JavaScript string section of the heap. This vulnerability affects Firefox < 127.",
+    "id": "CVE-2024-5694",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "It was possible for certain browser prompts and dialogs to be activated or dismissed unintentionally by the user due to an insufficient activation-delay. This vulnerability affects Firefox < 119, Firefox ESR < 115.4, and Thunderbird < 115.4.1.",
+    "id": "CVE-2023-5721",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0.1",
+    "description": "Heap buffer overflow in libwebp in Google Chrome prior to 116.0.5845.187 and libwebp 1.3.2 allowed a remote attacker to perform an out of bounds memory write via a crafted HTML page. (Chromium security severity: Critical)",
+    "id": "CVE-2023-4863",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118.0.1",
+    "description": "Heap buffer overflow in vp8 encoding in libvpx in Google Chrome prior to 117.0.5938.132 and libvpx 1.13.1 allowed a remote attacker to potentially exploit heap corruption via a crafted HTML page. (Chromium security severity: High)",
+    "id": "CVE-2023-5217",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "Memory safety bugs present in Firefox 119, Firefox ESR 115.4, and Thunderbird 115.4. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 120, Firefox ESR < 115.5.0, and Thunderbird < 115.5.",
+    "id": "CVE-2023-6212",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "An unchecked return value in TLS handshake code could have caused a potentially exploitable crash. This vulnerability affects Firefox < 122, Firefox ESR < 115.9, and Thunderbird < 115.9.",
+    "id": "CVE-2024-0743",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "Drivers are not always robust to extremely large draw calls and in some cases this scenario could have led to a crash. This vulnerability affects Firefox < 119, Firefox ESR < 115.4, and Thunderbird < 115.4.1.",
+    "id": "CVE-2023-5724",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "Browser tab titles were being leaked by GNOME to system logs. This could potentially expose the browsing habits of users running in a private tab. This vulnerability affects Firefox < 121.",
+    "id": "CVE-2023-6872",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "An attacker with temporary script access to a site could have set a cookie containing invalid characters using `document.cookie` that could have led to unknown errors. This vulnerability affects Firefox < 119.",
+    "id": "CVE-2023-5723",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 5.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "When creating a callback over IPC for showing the Color Picker window, multiple of the same callbacks could have been created at a time and eventually all simultaneously destroyed as soon as one of the callbacks finished. This could have led to a use-after-free causing a potentially exploitable crash. This vulnerability affects Firefox < 117, Firefox ESR < 102.15, Firefox ESR < 115.2, Thunderbird < 102.15, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4574",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "A malicious web site can enter fullscreen mode while simultaneously triggering a WebAuthn prompt. This could have obscured the fullscreen notification and could have been leveraged in a spoofing attack. This vulnerability affects Firefox < 119.",
+    "id": "CVE-2023-5729",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "On some systems—depending on the graphics settings and drivers—it was possible to force an out-of-bounds read and leak memory data into the images created on the canvas element. This vulnerability affects Firefox < 120, Firefox ESR < 115.5.0, and Thunderbird < 115.5.",
+    "id": "CVE-2023-6204",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "Push notifications stored on disk in private browsing mode were not being encrypted potentially allowing the leak of sensitive information. This vulnerability affects Firefox < 117, Firefox ESR < 115.2, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4580",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "Memory safety bugs present in Firefox 120, Firefox ESR 115.5, and Thunderbird 115.5. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox ESR < 115.6, Thunderbird < 115.6, and Firefox < 121.",
+    "id": "CVE-2023-6864",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "Using iterative requests an attacker was able to learn the size of an opaque response, as well as the contents of a server-supplied Vary header. This vulnerability affects Firefox < 119.",
+    "id": "CVE-2023-5722",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 5.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "`EncryptingOutputStream` was susceptible to exposing uninitialized data.  This issue could only be abused in order to write data to a local disk which may have implications for private browsing mode. This vulnerability affects Firefox ESR < 115.6 and Firefox < 121.",
+    "id": "CVE-2023-6865",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Calling `PK11_Encrypt()` in NSS using CKM_CHACHA20 and the same buffer for input and output can result in plaintext on an Intel Sandy Bridge processor. In Firefox this only affects the QUIC header protection feature when the connection is using the ChaCha20-Poly1305 cipher suite. The most likely outcome is connection failure, but if the connection persists despite the high packet loss it could be possible for a network observer to identify packets as coming from the same source despite a network path change. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, and Firefox ESR < 128.1.",
+    "id": "CVE-2024-7531",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118",
+    "description": "During Ion compilation, a Garbage Collection could have resulted in a use-after-free condition, allowing an attacker to write two NUL bytes, and cause a potentially exploitable crash. This vulnerability affects Firefox < 118, Firefox ESR < 115.3, and Thunderbird < 115.3.",
+    "id": "CVE-2023-5171",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 127.0",
+    "description": "By monitoring the time certain operations take, an attacker could have guessed which external protocol handlers were functional on a user's system. This vulnerability affects Firefox < 127, Firefox ESR < 115.12, and Thunderbird < 115.12.",
+    "id": "CVE-2024-5690",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "When checking if the Browsing Context had been discarded in `HttpBaseChannel`, if the load group was not available then it was assumed to have already been discarded which was not always the case for private channels after the private session had ended. This vulnerability affects Firefox < 117, Firefox ESR < 115.2, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4583",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "Memory safety bugs present in Firefox 116, Firefox ESR 102.14, Firefox ESR 115.1, Thunderbird 102.14, and Thunderbird 115.1. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 117, Firefox ESR < 102.15, Firefox ESR < 115.2, Thunderbird < 102.15, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4584",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "When calling `JS::CheckRegExpSyntax` a Syntax Error could have been set which would end in calling `convertToRuntimeErrorAndClear`. A path in the function could attempt to allocate memory when none is available which would have caused a newly created Out of Memory exception to be mishandled as a Syntax Error. This vulnerability affects Firefox < 117, Firefox ESR < 115.2, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4578",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "The WebGL `DrawElementsInstanced` method was susceptible to a heap buffer overflow when used on systems with the Mesa VM driver.  This issue could allow an attacker to perform remote code execution and sandbox escape. This vulnerability affects Firefox ESR < 115.6, Thunderbird < 115.6, and Firefox < 121.",
+    "id": "CVE-2023-6856",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "Excel `.xll` add-in files did not have a blocklist entry in Firefox's executable blocklist which allowed them to be downloaded without any warning of their potential harm. This vulnerability affects Firefox < 117, Firefox ESR < 102.15, Firefox ESR < 115.2, Thunderbird < 102.15, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4581",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 119.0",
+    "description": "Memory safety bugs present in Firefox 118, Firefox ESR 115.3, and Thunderbird 115.3. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 119, Firefox ESR < 115.4, and Thunderbird < 115.4.1.",
+    "id": "CVE-2023-5730",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118",
+    "description": "A compromised content process could have provided malicious data in a `PathRecording` resulting in an out-of-bounds write, leading to a potentially exploitable crash in a privileged process. This vulnerability affects Firefox < 118, Firefox ESR < 115.3, and Thunderbird < 115.3.",
+    "id": "CVE-2023-5169",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "In specific HSTS configurations an attacker could have bypassed HSTS on a subdomain. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0753",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "Memory safety bugs present in Firefox 116, Firefox ESR 115.1, and Thunderbird 115.1. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 117, Firefox ESR < 115.2, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4585",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "When creating a callback over IPC for showing the File Picker window, multiple of the same callbacks could have been created at a time and eventually all simultaneously destroyed as soon as one of the callbacks finished. This could have led to a use-after-free causing a potentially exploitable crash. This vulnerability affects Firefox < 117, Firefox ESR < 102.15, Firefox ESR < 115.2, Thunderbird < 102.15, and Thunderbird < 115.2.",
+    "id": "CVE-2023-4575",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 117.0",
+    "description": "An attacker could have created a malicious link using bidirectional characters to spoof the location in the address bar when visited. This vulnerability affects Firefox < 117, Firefox ESR < 115.4, and Thunderbird < 115.4.1.",
+    "id": "CVE-2023-5732",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "Multiple NSS NIST curves were susceptible to a side-channel attack known as \"Minerva\". This attack could potentially allow an attacker to recover the private key. This vulnerability affects Firefox < 121.",
+    "id": "CVE-2023-6135",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "It was possible to cause the use of a MessagePort after it had already been freed, which could potentially have led to an exploitable crash. This vulnerability affects Firefox < 120, Firefox ESR < 115.5.0, and Thunderbird < 115.5.",
+    "id": "CVE-2023-6205",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "The black fade animation when exiting fullscreen is roughly the length of the anti-clickjacking delay on permission prompts. It was possible to use this fact to surprise users by luring them to click where the permission grant button would be about to appear. This vulnerability affects Firefox < 120, Firefox ESR < 115.5.0, and Thunderbird < 115.5.",
+    "id": "CVE-2023-6206",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 5.4,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "TypedArrays can be fallible and lacked proper exception handling. This could lead to abuse in other APIs which expect TypedArrays to always succeed. This vulnerability affects Firefox < 121.",
+    "id": "CVE-2023-6866",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "If an attacker needed a user to load an insecure http: page and knew that user had enabled HTTPS-only mode, the attacker could have tricked the user into clicking to grant an HTTPS-only exception if they could get the user to participate in a clicking game. This vulnerability affects Firefox < 120.",
+    "id": "CVE-2023-6211",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118",
+    "description": "Memory safety bugs present in Firefox 117, Firefox ESR 115.2, and Thunderbird 115.2. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 118, Firefox ESR < 115.3, and Thunderbird < 115.3.",
+    "id": "CVE-2023-5176",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "When using X11, text selected by the page using the Selection API was erroneously copied into the primary selection, a temporary storage not unlike the clipboard. *This bug only affects Firefox on X11. Other systems are unaffected.* This vulnerability affects Firefox < 120, Firefox ESR < 115.5.0, and Thunderbird < 115.5.",
+    "id": "CVE-2023-6208",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 120.0",
+    "description": "Memory safety bugs present in Firefox 119. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 120.",
+    "id": "CVE-2023-6213",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 128.0",
+    "description": "When almost out-of-memory an elliptic curve key which was never allocated could have been freed again. This vulnerability affects Firefox < 128 and Thunderbird < 128.",
+    "id": "CVE-2024-6609",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "A phishing site could have repurposed an `about:` dialog to show phishing content with an incorrect origin in the address bar. This vulnerability affects Firefox < 122 and Thunderbird < 115.7.",
+    "id": "CVE-2024-0749",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "Firefox was susceptible to a heap buffer overflow in `nsTextFragment` due to insufficient OOM handling. This vulnerability affects Firefox ESR < 115.6, Thunderbird < 115.6, and Firefox < 121.",
+    "id": "CVE-2023-6858",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "The `ShutdownObserver()` was susceptible to potentially undefined behavior due to its reliance on a dynamic type that lacked a virtual destructor. This vulnerability affects Firefox ESR < 115.6, Thunderbird < 115.6, and Firefox < 121.",
+    "id": "CVE-2023-6863",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "The timing of a button click causing a popup to disappear was approximately the same length as the anti-clickjacking delay on permission prompts. It was possible to use this fact to surprise users by luring them to click where the permission grant button would be about to appear. This vulnerability affects Firefox ESR < 115.6 and Firefox < 121.",
+    "id": "CVE-2023-6867",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.1,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 129.0",
+    "description": "Unexpected marking work at the start of sweeping could have led to a use-after-free. This vulnerability affects Firefox < 129, Firefox ESR < 115.14, Firefox ESR < 128.1, Thunderbird < 128.1, and Thunderbird < 115.14.",
+    "id": "CVE-2024-7527",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "Under certain conditions, Firefox did not display a warning when a user attempted to navigate to a new protocol handler. This vulnerability affects Firefox < 121.",
+    "id": "CVE-2023-6871",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118",
+    "description": "A hashtable  in the Ion Engine could have been mutated while there was a live interior reference, leading to a potential use-after-free and exploitable crash. This vulnerability affects Firefox < 118.",
+    "id": "CVE-2023-5172",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 121.0",
+    "description": "Memory safety bugs present in Firefox 120. Some of these bugs showed evidence of memory corruption and we presume that with enough effort some of these could have been exploited to run arbitrary code. This vulnerability affects Firefox < 121.",
+    "id": "CVE-2023-6873",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 118",
+    "description": "In a non-standard configuration of Firefox, an integer overflow could have occurred based on network traffic (possibly under influence of a local unprivileged webpage), leading to an out-of-bounds write to privileged process memory.  *This bug only affects Firefox if a non-standard preference allowing non-HTTPS Alternate Services (`network.http.altsvc.oe`) is enabled.* This vulnerability affects Firefox < 118.",
+    "id": "CVE-2023-5173",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "An out of bounds write in ANGLE could have allowed an attacker to corrupt memory leading to a potentially exploitable crash. This vulnerability affects Firefox < 122, Firefox ESR < 115.7, and Thunderbird < 115.7.",
+    "id": "CVE-2024-0741",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.5,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 122.0",
+    "description": "In some circumstances, JIT compiled code could have dereferenced a wild pointer value. This could have led to an exploitable crash. This vulnerability affects Firefox < 122.",
+    "id": "CVE-2024-0744",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.5,
+      "version": "3.1"
+    },
+    "severity": "High"
+  }
+]

@@ -1,0 +1,110 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to heap buffer read overflow in `FileManager::detectLanguageFromTextBegining `. The exploitability of this issue is not clear. Potentially, it may be used to leak internal memory allocation information. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40166",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to global buffer read overflow in `CharDistributionAnalysis::HandleOneChar`. The exploitability of this issue is not clear. Potentially, it may be used to leak internal memory allocation information. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40036",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.4.3",
+        "description": "Notepad++ v8.4.1 was discovered to contain a stack overflow via the component Finder::add().",
+        "id": "CVE-2022-31902",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to global buffer read overflow in `nsCodingStateMachine::NextStater`. The exploitability of this issue is not clear. Potentially, it may be used to leak internal memory allocation information. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40164",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.4.3",
+        "description": "Buffer overflow in function Notepad_plus::addHotSpot in Notepad++ v8.4.3 and earlier allows attackers to crash the application via two crafted files.",
+        "id": "CVE-2022-31901",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 7.7",
+        "description": "SciLexer.dll in Scintilla in Notepad++ (x64) before 7.7 allows remote code execution or denial of service via Unicode characters in a crafted .ml file.",
+        "id": "CVE-2019-16294",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.1",
+        "description": "A vulnerability classified as problematic was found in NotePad++ up to 8.1. Affected by this vulnerability is an unknown functionality of the file dbghelp.exe. The manipulation leads to uncontrolled search path. An attack has to be approached locally. The identifier VDB-246421 was assigned to this vulnerability. NOTE: The vendor was contacted early about this disclosure but did not respond in any way.",
+        "id": "CVE-2023-6401",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to heap buffer write overflow in `Utf8_16_Read::convert`. This issue may lead to arbitrary code execution. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40031",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 6.6.9",
+        "description": "Buffer overflow in NotePad++ 6.6.9 allows remote attackers to have unspecified impact via a long Time attribute in an Event element in an XML file.  NOTE: this issue was originally incorrectly mapped to CVE-2014-1004; see CVE-2014-1004 for more information.",
+        "id": "CVE-2014-9456",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    }
+]

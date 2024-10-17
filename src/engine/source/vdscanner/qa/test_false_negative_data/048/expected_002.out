@@ -1,5 +1,0 @@
-[
-    "Translation for package 'Docker Desktop' on platform 'windows' found in Level 2 cache.",
-    "Match found, the package 'docker_desktop', is vulnerable to 'CVE-2023-0625'. Current version: '2.1.0' (less than '4.12.0' or equal to ''). - Agent '' (ID: '002', Version: '').",
-    "Match found, the package 'desktop', is vulnerable to 'CVE-2020-10665'. Current version: '2.1.0' (less than '2.1.0.9' or equal to ''). - Agent '' (ID: '002', Version: '')."
-]

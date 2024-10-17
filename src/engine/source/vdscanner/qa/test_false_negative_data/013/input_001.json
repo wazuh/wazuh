@@ -1,40 +1,36 @@
 {
   "type": "packagelist",
   "agent": {
-    "id": "001"
+    "id": "002"
   },
   "packages": [
     {
-      "version": "16.0.4266.1001",
-      "vendor": "Microsoft Corporation",
-      "architecture": " ",
-      "name": "Microsoft Office Professional Plus 2016",
-      "size": 0,
-      "format": "win",
-      "checksum": "12c8e8d9df8f9a9f54d4aaf43568d10c79f3cc56",
+      "architecture": "amd64",
+      "checksum": "b800d14290607fe293713459d384464f75dc46d4",
       "description": " ",
-      "install_time": "2024/04/03 22:53:13",
-      "item_id": "eff251a49a142accf85b170526462e13d3265f03",
-      "multiarch": null,
-      "priority": " ",
-      "scan_time": "2024/04/24 14:11:04",
-      "source": " "
+      "format": "deb",
+      "groups": " ",
+      "install_time": " ",
+      "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+      "location": " ",
+      "multiarch": "same",
+      "name": "Docker",
+      "priority": "optional",
+      "scan_time": "2024/08/20 12:30:36",
+      "size": 5768,
+      "source": " ",
+      "vendor": "docker",
+      "version": "4.19.0"
     }
   ],
-  "hotfixes": [
-    "KB5002537"
-  ],
+  "hotfixes": [],
   "os": {
-    "architecture": "x86_64",
-    "checksum": "1713967856394802400",
-    "hostname": "DESKTOP-EQ4F57D",
-    "major_version": "10",
-    "minor_version": "0",
-    "build": "19045.4291",
-    "name": "Microsoft Windows 10 Pro",
-    "display_version": "22H2",
-    "platform": "windows",
-    "version": "10.0.19045.4291",
-    "scan_time": "2024/04/24 14:10:57"
+    "build": "23G93",
+    "codename": "Sonoma",
+    "major": "14",
+    "minor": "6",
+    "name": "macOS",
+    "platform": "darwin",
+    "version": "14.6.1"
   }
 }

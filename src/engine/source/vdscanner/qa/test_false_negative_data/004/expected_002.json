@@ -1,0 +1,26 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.6.12-0ubuntu1~20.04.3",
+        "description": "containerd is an open source container runtime. A bug was found in containerd prior to versions 1.6.18 and 1.5.18 where supplementary groups are not set up properly inside a container. If an attacker has direct access to a container and manipulates their supplementary group access, they may be able to use supplementary group access to bypass primary group restrictions in some cases, potentially gaining access to sensitive information or gaining the ability to execute code in that container. Downstream applications that use the containerd client library may be affected as well.  This bug has been fixed in containerd v1.6.18 and v.1.5.18. Users should update to these versions and recreate containers to resolve this issue. Users who rely on a downstream application that uses containerd's client library should check that application for a separate advisory and instructions. As a workaround, ensure that the `\"USER $USERNAME\"` Dockerfile instruction is not used. Instead, set the container entrypoint to a value similar to `ENTRYPOINT [\"su\", \"-\", \"user\"]` to allow `su` to properly set up supplementary groups.",
+        "id": "CVE-2023-25173",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.6.12-0ubuntu1~20.04.3",
+        "description": "containerd is an open source container runtime. Before versions 1.6.18 and 1.5.18, when importing an OCI image, there was no limit on the number of bytes read for certain files. A maliciously crafted image with a large file where a limit was not applied could cause a denial of service. This bug has been fixed in containerd 1.6.18 and 1.5.18.  Users should update to these versions to resolve the issue. As a workaround, ensure that only trusted images are used and that only trusted users have permissions to import images.",
+        "id": "CVE-2023-25153",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

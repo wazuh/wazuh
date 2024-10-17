@@ -1,0 +1,38 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 10.3.0",
+        "description": "VMware Tools (10.x and prior before 10.3.0) contains an out-of-bounds read vulnerability in HGFS. Successful exploitation of this issue may lead to information disclosure or may allow attackers to escalate their privileges on the guest VMs. In order to be able to exploit this issue, file sharing must be enabled.",
+        "id": "CVE-2018-6969",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 4.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.0.3",
+        "description": "VMware Workstation through 10.0.3 and other products, uses 0644 permissions for the vm-support archive, which allows local users to obtain sensitive information by extracting files from this archive.",
+        "id": "CVE-2014-4200",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 4.7,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.0.3",
+        "description": "VMware Workstation through 10.0.3 and other products, allows local users to write to arbitrary files via a symlink attack on a file in /tmp.",
+        "id": "CVE-2014-4199",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

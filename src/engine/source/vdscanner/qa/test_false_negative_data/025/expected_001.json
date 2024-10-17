@@ -1,0 +1,26 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 1.76.20",
+        "description": "Multi-Remote Next Generation Connection Manager (mRemoteNG) is free software that enables users to store and manage multi-protocol connection configurations to remotely connect to systems. mRemoteNG configuration files can be stored in an encrypted state on disk. mRemoteNG version <= v1.76.20 and <= 1.77.3-dev loads configuration files in plain text into memory (after decrypting them if necessary) at application start-up, even if no connection has been established yet. This allows attackers to access contents of configuration files in plain text through a memory dump and thus compromise user credentials when no custom password encryption key has been set. This also bypasses the connection configuration file encryption setting by dumping already decrypted configurations from memory.",
+        "id": "CVE-2023-30367",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 1.76.20",
+        "description": "An issue in mRemoteNG v1.76.20 allows attackers to escalate privileges via a crafted executable file. NOTE: third parties were unable to reproduce any scenario in which the claimed access of BUILTIN\\Users:(M) is present.",
+        "id": "CVE-2020-24307",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    }
+]

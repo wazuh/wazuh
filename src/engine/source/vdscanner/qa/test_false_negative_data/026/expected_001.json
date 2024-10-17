@@ -1,0 +1,98 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.1.40416.0",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT Gold and 8.1, Windows 10, Office 2007 SP3 and 2010 SP2, Live Meeting 2007 Console, Lync 2010, Lync 2010 Attendee, Lync 2013 SP1, Lync Basic 2013 SP1, Silverlight before 5.1.40728, and .NET Framework 3.0 SP2, 3.5, 3.5.1, 4, 4.5, 4.5.1, 4.5.2, and 4.6 allow remote attackers to execute arbitrary code via a crafted TrueType font, aka \"TrueType Font Parsing Vulnerability,\" a different vulnerability than CVE-2015-2455.",
+        "id": "CVE-2015-2456",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.1.40416.0",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT Gold and 8.1, Office 2007 SP3 and 2010 SP2, Live Meeting 2007 Console, Lync 2010, Lync 2010 Attendee, Lync 2013 SP1, Lync Basic 2013 SP1, Silverlight before 5.1.40728, and .NET Framework 3.0 SP2, 3.5, 3.5.1, 4, 4.5, 4.5.1, 4.5.2, and 4.6 allow remote attackers to execute arbitrary code via a crafted TrueType font, aka \"TrueType Font Parsing Vulnerability,\" a different vulnerability than CVE-2015-2463.",
+        "id": "CVE-2015-2464",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.1.40416.0",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT Gold and 8.1, Windows 10, Office 2007 SP3 and 2010 SP2, Live Meeting 2007 Console, Lync 2010, Lync 2010 Attendee, Lync 2013 SP1, Lync Basic 2013 SP1, Silverlight before 5.1.40728, and .NET Framework 3.0 SP2, 3.5, 3.5.1, 4, 4.5, 4.5.1, 4.5.2, and 4.6 allow remote attackers to execute arbitrary code via a crafted TrueType font, aka \"TrueType Font Parsing Vulnerability,\" a different vulnerability than CVE-2015-2456.",
+        "id": "CVE-2015-2455",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.1.40416.0",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT Gold and 8.1, Windows 10, Office 2007 SP3 and 2010 SP2, Live Meeting 2007 Console, Lync 2010, Lync 2010 Attendee, Lync 2013 SP1, Lync Basic 2013 SP1, and Silverlight before 5.1.40728 allow remote attackers to execute arbitrary code via a crafted TrueType font, aka \"TrueType Font Parsing Vulnerability.\"",
+        "id": "CVE-2015-2435",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.1.30214.0",
+        "description": "Microsoft Silverlight 5 before 5.1.40416.00 allows remote attackers to bypass intended integrity-level restrictions via a crafted Silverlight application, aka \"Microsoft Silverlight Out of Browser Application Vulnerability.\"",
+        "id": "CVE-2015-1715",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.1.40416.0",
+        "description": "Microsoft Windows Vista SP2, Windows Server 2008 SP2 and R2 SP1, Windows 7 SP1, Windows 8, Windows 8.1, Windows Server 2012 Gold and R2, Windows RT Gold and 8.1, Office 2007 SP3 and 2010 SP2, Live Meeting 2007 Console, Lync 2010, Lync 2010 Attendee, Lync 2013 SP1, Lync Basic 2013 SP1, Silverlight before 5.1.40728, and .NET Framework 3.0 SP2, 3.5, 3.5.1, 4, 4.5, 4.5.1, 4.5.2, and 4.6 allow remote attackers to execute arbitrary code via a crafted TrueType font, aka \"TrueType Font Parsing Vulnerability,\" a different vulnerability than CVE-2015-2464.",
+        "id": "CVE-2015-2463",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 4.0.60831.0",
+        "description": "Double free vulnerability in Microsoft Silverlight 4 before 4.1.10329 on Windows allows remote attackers to execute arbitrary code via vectors involving crafted XAML glyphs, aka \"Silverlight Double-Free Vulnerability.\"",
+        "id": "CVE-2012-0176",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 4.0.60831.0",
+        "description": "Microsoft Windows XP SP2 and SP3, Windows Server 2003 SP2, Windows Vista SP2, Windows Server 2008 SP2, R2, and R2 SP1, Windows 7 Gold and SP1, and Windows 8 Consumer Preview; Office 2003 SP3, 2007 SP2 and SP3, and 2010 Gold and SP1; Silverlight 4 before 4.1.10329; and Silverlight 5 before 5.1.10411 allow remote attackers to execute arbitrary code via a crafted TrueType font (TTF) file, aka \"TrueType Font Parsing Vulnerability.\"",
+        "id": "CVE-2012-0159",
+        "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    }
+]

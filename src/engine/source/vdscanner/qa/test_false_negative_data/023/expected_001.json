@@ -1,0 +1,362 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 7.4.6",
+        "description": "A flaw was found in the Libreoffice package. An attacker can craft an odb containing a \"database/script\" file with a SCRIPT command where the contents of the file could be written to a new file whose location was determined by the attacker.",
+        "id": "CVE-2023-1183",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 5.0,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.0.4",
+        "description": "LibreOffice before 5.0.5 allows remote attackers to cause a denial of service (memory corruption) or possibly have unspecified other impact via a crafted LwpTocSuperLayout record in a LotusWordPro (lwp) document.",
+        "id": "CVE-2016-0795",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 6.0.5",
+        "description": "The get_app_path function in desktop/unx/source/start.c in LibreOffice through 6.0.5 mishandles the realpath function in certain environments such as FreeBSD libc, which might allow attackers to cause a denial of service (buffer overflow and application crash) or possibly have unspecified other impact if LibreOffice is automatically launched during web browsing with pathnames controlled by a remote web site.",
+        "id": "CVE-2018-14939",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.3.0.0",
+        "description": "LibreOffice before 2016-12-22 has an out-of-bounds write caused by a heap-based buffer overflow related to the EnhWMFReader::ReadEnhWMF function in vcl/source/filter/wmf/enhwmf.cxx.",
+        "id": "CVE-2016-10327",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.2.6.1",
+        "description": "LibreOffice before 2017-03-11 has an out-of-bounds write caused by a heap-based buffer overflow in the SVMConverter::ImplConvertFromSVM1 function in vcl/source/gdi/svmconverter.cxx.",
+        "id": "CVE-2017-7856",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 4.4.4",
+        "description": "Integer overflow in LibreOffice before 4.4.5 and Apache OpenOffice before 4.1.2 allows remote attackers to cause a denial of service (memory corruption and application crash) or possibly execute arbitrary code via a long DOC file, which triggers a buffer overflow.",
+        "id": "CVE-2015-5213",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.2.6",
+        "description": "LibreOffice before 2017-03-17 has an out-of-bounds write caused by a heap-based buffer overflow related to the ReadJPEG function in vcl/source/filter/jpeg/jpegc.cxx.",
+        "id": "CVE-2017-8358",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 5.4.5.1",
+        "description": "sot/source/sdstor/stgstrms.cxx in LibreOffice before 5.4.5.1 and 6.x before 6.0.1.1 uses an incorrect integer data type in the StgSmallStrm class, which allows remote attackers to cause a denial of service (use-after-free with write access) or possibly have unspecified other impact via a crafted document that uses the structured storage ole2 wrapper file format.",
+        "id": "CVE-2018-10119",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.0.3",
+        "description": "The lwp filter in LibreOffice before 5.0.4 allows remote attackers to cause a denial of service (memory corruption) or possibly have unspecified other impact via a crafted LotusWordPro (lwp) document.",
+        "id": "CVE-2016-0794",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 4.4.4",
+        "description": "Integer underflow in LibreOffice before 4.4.5 and Apache OpenOffice before 4.1.2, when the configuration setting \"Load printer settings with the document\" is enabled, allows remote attackers to cause a denial of service (memory corruption and application crash) or possibly execute arbitrary code via crafted PrinterSetup data in an ODF document.",
+        "id": "CVE-2015-5212",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.3.6",
+        "description": "WP1StylesListener.cpp, WP5StylesListener.cpp, and WP42StylesListener.cpp in libwpd 0.10.1 mishandle iterators, which allows remote attackers to cause a denial of service (heap-based buffer over-read in the WPXTableList class in WPXTable.cpp). This vulnerability can be triggered in LibreOffice before 5.3.7. It may lead to suffering a remote attack against a LibreOffice application.",
+        "id": "CVE-2017-14226",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 4.3.6",
+        "description": "The HWP filter in LibreOffice before 4.3.7 and 4.4.x before 4.4.2 and Apache OpenOffice before 4.1.2 allows remote attackers to cause a denial of service (crash) or possibly execute arbitrary code via a crafted HWP document, which triggers an out-of-bounds write.",
+        "id": "CVE-2015-1774",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 4.3.4",
+        "description": "LibreOffice before 4.3.5 allows remote attackers to cause a denial of service (invalid write operation and crash) and possibly execute arbitrary code via a crafted RTF file.",
+        "id": "CVE-2014-9093",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 4.2.6",
+        "description": "The OLE preview generation in Apache OpenOffice before 4.1.1 and OpenOffice.org (OOo) might allow remote attackers to embed arbitrary data into documents via crafted OLE objects.",
+        "id": "CVE-2014-3575",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 4.2.6",
+        "description": "Apache OpenOffice before 4.1.1 allows remote attackers to execute arbitrary commands and possibly have other unspecified impact via a crafted Calc spreadsheet.",
+        "id": "CVE-2014-3524",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.3.0.0",
+        "description": "LibreOffice before 2017-01-02 has an out-of-bounds write caused by a heap-based buffer overflow related to the tools::Polygon::Insert function in tools/source/generic/poly.cxx.",
+        "id": "CVE-2017-7870",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.2.6",
+        "description": "LibreOffice before 2017-03-14 has an out-of-bounds write related to the HWPFile::TagsRead function in hwpfilter/source/hwpfile.cxx.",
+        "id": "CVE-2017-7882",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 4.4.4",
+        "description": "LibreOffice before 4.4.5 and Apache OpenOffice before 4.1.2 uses the stored LinkUpdateMode configuration information in OpenDocument Format files and templates when handling links, which might allow remote attackers to obtain sensitive information via a crafted document, which embeds data from local files into (1) Calc or (2) Writer.",
+        "id": "CVE-2015-4551",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 5.4.6.1",
+        "description": "The SwCTBWrapper::Read function in sw/source/filter/ww8/ww8toolbar.cxx in LibreOffice before 5.4.6.1 and 6.x before 6.0.2.1 does not validate a customizations index, which allows remote attackers to cause a denial of service (heap-based buffer overflow with write access) or possibly have unspecified other impact via a crafted document that contains a certain Microsoft Word record.",
+        "id": "CVE-2018-10120",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 5.1.3",
+        "description": "Use-after-free vulnerability in LibreOffice before 5.1.4 allows remote attackers to execute arbitrary code via a crafted RTF file, related to stylesheet and superscript tokens.",
+        "id": "CVE-2016-4324",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 5.4.5",
+        "description": "LibreOffice before 5.4.5 and 6.x before 6.0.1 allows remote attackers to read arbitrary files via =WEBSERVICE calls in a document, which use the COM.MICROSOFT.WEBSERVICE function.",
+        "id": "CVE-2018-6871",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.0.7",
+        "description": "It was found that libreoffice before versions 6.0.7 and 6.1.3 was vulnerable to a directory traversal attack which could be used to execute arbitrary macros bundled with a document. An attacker could craft a document, which when opened by LibreOffice, would execute a Python method from a script in any arbitrary file system location, specified relative to the LibreOffice install location.",
+        "id": "CVE-2018-16858",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.2.5",
+        "description": "LibreOffice has a 'stealth mode' in which only documents from locations deemed 'trusted' are allowed to retrieve remote resources. This mode is not the default mode, but can be enabled by users who want to disable LibreOffice's ability to include remote resources within a document. A flaw existed where bullet graphics were omitted from this protection prior to version 6.2.5. This issue affects: Document Foundation LibreOffice versions prior to 6.2.5.",
+        "id": "CVE-2019-9849",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 4.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.2.6",
+        "description": "LibreOffice is typically bundled with LibreLogo, a programmable turtle vector graphics script, which can execute arbitrary python commands contained with the document it is launched from. LibreOffice also has a feature where documents can specify that pre-installed scripts can be executed on various document script events such as mouse-over, etc. Protection was added, to address CVE-2019-9848, to block calling LibreLogo from script event handers. However an insufficient url validation vulnerability in LibreOffice allowed malicious to bypass that protection and again trigger calling LibreLogo from script event handlers. This issue affects: Document Foundation LibreOffice versions prior to 6.2.6.",
+        "id": "CVE-2019-9850",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.4.4",
+        "description": "ODF documents can contain forms to be filled out by the user. Similar to HTML forms, the contained form data can be submitted to a URI, for example, to an external web server. To create submittable forms, ODF implements the XForms W3C standard, which allows data to be submitted without the need for macros or other active scripting Prior to version 6.4.4 LibreOffice allowed forms to be submitted to any URI, including file: URIs, enabling form submissions to overwrite local files. User-interaction is required to submit the form, but to avoid the possibility of malicious documents engineered to maximize the possibility of inadvertent user submission this feature has now been limited to http[s] URIs, removing the possibility to overwrite local files. This issue affects: The Document Foundation LibreOffice versions prior to 6.4.4.",
+        "id": "CVE-2020-12803",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.2.5",
+        "description": "LibreOffice has a feature where documents can specify that pre-installed scripts can be executed on various document events such as mouse-over, etc. LibreOffice is typically also bundled with LibreLogo, a programmable turtle vector graphics script, which can be manipulated into executing arbitrary python commands. By using the document event feature to trigger LibreLogo to execute python contained within a document a malicious document could be constructed which would execute arbitrary python commands silently without warning. In the fixed versions, LibreLogo cannot be called from a document event handler. This issue affects: Document Foundation LibreOffice versions prior to 6.2.5.",
+        "id": "CVE-2019-9848",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.2.6",
+        "description": "LibreOffice is typically bundled with LibreLogo, a programmable turtle vector graphics script, which can execute arbitrary python commands contained with the document it is launched from. Protection was added, to address CVE-2019-9848, to block calling LibreLogo from document event script handers, e.g. mouse over. However LibreOffice also has a separate feature where documents can specify that pre-installed scripts can be executed on various global script events such as document-open, etc. In the fixed versions, global script event handlers are validated equivalently to document script event handlers. This issue affects: Document Foundation LibreOffice versions prior to 6.2.6.",
+        "id": "CVE-2019-9851",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 4.4.5",
+        "description": "LibreOffice before 4.4.6 and 5.x before 5.0.1 and Apache OpenOffice before 4.1.2 allows remote attackers to cause a denial of service (memory corruption and application crash) or execute arbitrary code via an index to a non-existent bookmark in a DOC file.",
+        "id": "CVE-2015-5214",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.2.6",
+        "description": "LibreOffice has a feature where documents can specify that pre-installed macros can be executed on various script events such as mouse-over, document-open etc. Access is intended to be restricted to scripts under the share/Scripts/python, user/Scripts/python sub-directories of the LibreOffice install. Protection was added, to address CVE-2018-16858, to avoid a directory traversal attack where scripts in arbitrary locations on the file system could be executed. However this new protection could be bypassed by a URL encoding attack. In the fixed versions, the parsed url describing the script location is correctly encoded before further processing. This issue affects: Document Foundation LibreOffice versions prior to 6.2.6.",
+        "id": "CVE-2019-9852",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.4.4",
+        "description": "LibreOffice has a 'stealth mode' in which only documents from locations deemed 'trusted' are allowed to retrieve remote resources. This mode is not the default mode, but can be enabled by users who want to disable LibreOffice's ability to include remote resources within a document. A flaw existed where remote graphic links loaded from docx documents were omitted from this protection prior to version 6.4.4. This issue affects: The Document Foundation LibreOffice versions prior to 6.4.4.",
+        "id": "CVE-2020-12802",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

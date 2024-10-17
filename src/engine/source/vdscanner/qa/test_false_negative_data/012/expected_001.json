@@ -1,0 +1,62 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 15.18.5.0",
+        "description": "This vulnerability allows local attackers to disclose sensitive information on affected installations of TeamViewer. An attacker must first obtain the ability to execute low-privileged code on the target system in order to exploit this vulnerability. The specific flaw exists within the TeamViewer service. The issue results from the lack of proper validation of user-supplied data, which can result in a read past the end of an allocated array. An attacker can leverage this in conjunction with other vulnerabilities to execute arbitrary code in the context of SYSTEM. Was ZDI-CAN-13818.",
+        "id": "CVE-2021-35005",
+        "item_id": "3fd68525088b8459fd4b98cc84ade2b06baf1101",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 15.21.2",
+        "description": "This vulnerability allows remote attackers to execute arbitrary code on affected installations of TeamViewer. User interaction is required to exploit this vulnerability in that the target must visit a malicious page or open a malicious file. The specific flaw exists within the parsing of TVS files. The issue results from the lack of proper validation of user-supplied data, which can result in a read past the end of an allocated structure. An attacker can leverage this vulnerability to execute code in the context of the current process. Was ZDI-CAN-13606.",
+        "id": "CVE-2021-34858",
+        "item_id": "3fd68525088b8459fd4b98cc84ade2b06baf1101",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 14.7.1965",
+        "description": "TeamViewer Desktop through 14.7.1965 allows a bypass of remote-login access control because the same key is used for different customers' installations. It used a shared AES key for all installations since at least as far back as v7.0.43148, and used it for at least OptionsPasswordAES in the current version of the product. If an attacker were to know this key, they could decrypt protect information stored in the registry or configuration files of TeamViewer. With versions before v9.x , this allowed for attackers to decrypt the Unattended Access password to the system (which allows for remote login to the system as well as headless file browsing). The latest version still uses the same key for OptionPasswordAES but appears to have changed how the Unattended Access password is stored. While in most cases an attacker requires an existing session on a system, if the registry/configuration keys were stored off of the machine (such as in a file share or online), an attacker could then decrypt the required password to login to the system.",
+        "id": "CVE-2019-18988",
+        "item_id": "3fd68525088b8459fd4b98cc84ade2b06baf1101",
+        "score": {
+            "base": 4.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 13.2.9356",
+        "description": "TeamViewer 10.x through 13.x allows remote attackers to bypass the brute-force authentication protection mechanism by skipping the \"Cancel\" step, which makes it easier to determine the correct value of the default 4-digit PIN.",
+        "id": "CVE-2018-16550",
+        "item_id": "3fd68525088b8459fd4b98cc84ade2b06baf1101",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 13.1.1548",
+        "description": "TeamViewer through 13.1.1548 stores a password in Unicode format within TeamViewer.exe process memory between \"[00 88] and \"[00 00 00]\" delimiters, which might make it easier for attackers to obtain sensitive information by leveraging an unattended workstation on which TeamViewer has disconnected but remains running.",
+        "id": "CVE-2018-14333",
+        "item_id": "3fd68525088b8459fd4b98cc84ade2b06baf1101",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

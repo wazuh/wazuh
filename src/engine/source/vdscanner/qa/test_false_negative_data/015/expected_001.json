@@ -1,0 +1,110 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 17.1.2",
+        "description": "An out-of-bounds read was addressed with improved input validation. This issue is fixed in iOS 17.1.2 and iPadOS 17.1.2, macOS Sonoma 14.1.2, Safari 17.1.2. Processing web content may disclose sensitive information. Apple is aware of a report that this issue may have been exploited against versions of iOS before iOS 16.7.1.",
+        "id": "CVE-2023-42916",
+        "item_id": "fa9d02c26416f247eea8bf98edced25a444feada",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 16.0",
+        "description": "An issue existed with the file paths used to store website data. The issue was resolved by improving how website data is stored. This issue is fixed in iOS 16. An unauthorized user may be able to access browsing history.",
+        "id": "CVE-2022-32833",
+        "item_id": "fa9d02c26416f247eea8bf98edced25a444feada",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 16.5.1",
+        "description": "A vulnerability was found in LibTIFF. It has been classified as critical. This affects the function TIFFReadRGBATileExt of the file libtiff/tif_getimage.c. The manipulation leads to integer overflow. It is possible to initiate the attack remotely. The exploit has been disclosed to the public and may be used. The name of the patch is 227500897dfb07fb7d27f7aa570050e62617e3be. It is recommended to apply a patch to fix this issue. The identifier VDB-213549 was assigned to this vulnerability.",
+        "id": "CVE-2022-3970",
+        "item_id": "fa9d02c26416f247eea8bf98edced25a444feada",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 16.1",
+        "description": "A use after free issue was addressed with improved memory management. This issue is fixed in Safari 16.1, iOS 16.1 and iPadOS 16, macOS Ventura 13. Processing maliciously crafted web content may lead to arbitrary code execution.",
+        "id": "CVE-2022-32922",
+        "item_id": "fa9d02c26416f247eea8bf98edced25a444feada",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 115.0.5790.98",
+        "description": "Use after free in WebRTC in Google Chrome prior to 115.0.5790.98 allowed a remote attacker to potentially exploit heap corruption via a crafted HTML page. (Chromium security severity: High)",
+        "id": "CVE-2023-3728",
+        "item_id": "cb8feef4300eb9deacf750e08ed3a1514fc54b3f",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 121.0.6167.85",
+        "description": "Inappropriate implementation in Accessibility in Google Chrome prior to 121.0.6167.85 allowed a remote attacker to potentially exploit object corruption via a crafted HTML page. (Chromium security severity: High)",
+        "id": "CVE-2024-0812",
+        "item_id": "cb8feef4300eb9deacf750e08ed3a1514fc54b3f",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 116.0.5845.140",
+        "description": "Use after free in MediaStream in Google Chrome prior to 116.0.5845.140 allowed a remote attacker to potentially exploit heap corruption via a crafted HTML page. (Chromium security severity: High)",
+        "id": "CVE-2023-4572",
+        "item_id": "cb8feef4300eb9deacf750e08ed3a1514fc54b3f",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 109.0.5414.119",
+        "description": "Use after free in WebTransport in Google Chrome prior to 109.0.5414.119 allowed a remote attacker to potentially exploit heap corruption via a crafted HTML page. (Chromium security severity: High)",
+        "id": "CVE-2023-0471",
+        "item_id": "cb8feef4300eb9deacf750e08ed3a1514fc54b3f",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 119.0.6045.105",
+        "description": "Integer overflow in USB in Google Chrome prior to 119.0.6045.105 allowed a remote attacker to potentially exploit heap corruption via a crafted HTML page. (Chromium security severity: High)",
+        "id": "CVE-2023-5849",
+        "item_id": "cb8feef4300eb9deacf750e08ed3a1514fc54b3f",
+        "score": {
+            "base": 8.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    }
+]

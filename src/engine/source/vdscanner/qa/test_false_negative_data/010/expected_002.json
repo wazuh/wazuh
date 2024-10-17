@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package equal to 7.2",
+        "description": "A stack buffer overflow vulnerability has been discovered in Microsoft Skype 7.2, 7.35, and 7.36 before 7.37, involving MSFTEDIT.DLL mishandling of remote RDP clipboard content within the message box.",
+        "id": "CVE-2017-9948",
+        "item_id": "d8283a90c35f855cb15d39b0c1f2a36cfeacaadb",
+        "score": {
+            "base": 6.5,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

@@ -1,0 +1,158 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.6+esm2",
+        "description": "containerd is an open source container runtime. A bug was found in the containerd's CRI implementation where programs inside a container can cause the containerd daemon to consume memory without bound during invocation of the `ExecSync` API. This can cause containerd to consume all available memory on the computer, denying service to other legitimate workloads. Kubernetes and crictl can both be configured to use containerd's CRI implementation; `ExecSync` may be used when running probes or when executing processes via an \"exec\" facility. This bug has been fixed in containerd 1.6.6 and 1.5.13. Users should update to these versions to resolve the issue. Users unable to upgrade should ensure that only trusted images and commands are used.",
+        "id": "CVE-2022-31030",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package default status",
+        "description": "The imgcrypt library provides API exensions for containerd to support encrypted container images and implements the ctd-decoder command line tool for use by containerd to decrypt encrypted container images. The imgcrypt function `CheckAuthorization` is supposed to check whether the current used is authorized to access an encrypted image and prevent the user from running an image that another user previously decrypted on the same system. In versions prior to 1.1.4, a failure occurs when an image with a ManifestList is used and the architecture of the local host is not the first one in the ManifestList. Only the first architecture in the list was tested, which may not have its layers available locally since it could not be run on the host architecture. Therefore, the verdict on unavailable layers was that the image could be run anticipating that image run failure would occur later due to the layers not being available. However, this verdict to allow the image to run enabled other architectures in the ManifestList to run an image without providing keys if thatimage had previously been decrypted. A patch has been applied to imgcrypt 1.1.4. Workarounds may include usage of different namespaces for each remote user.",
+        "id": "CVE-2022-24778",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.6+esm4",
+        "description": "containerd is an open source container runtime. A bug was found in containerd prior to versions 1.6.18 and 1.5.18 where supplementary groups are not set up properly inside a container. If an attacker has direct access to a container and manipulates their supplementary group access, they may be able to use supplementary group access to bypass primary group restrictions in some cases, potentially gaining access to sensitive information or gaining the ability to execute code in that container. Downstream applications that use the containerd client library may be affected as well.  This bug has been fixed in containerd v1.6.18 and v.1.5.18. Users should update to these versions and recreate containers to resolve this issue. Users who rely on a downstream application that uses containerd's client library should check that application for a separate advisory and instructions. As a workaround, ensure that the `\"USER $USERNAME\"` Dockerfile instruction is not used. Instead, set the container entrypoint to a value similar to `ENTRYPOINT [\"su\", \"-\", \"user\"]` to allow `su` to properly set up supplementary groups.",
+        "id": "CVE-2023-25173",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package default status",
+        "description": "Moby is an open-source project created by Docker to enable and accelerate software containerization. A bug was found in Moby (Docker Engine) prior to version 20.10.14 where containers were incorrectly started with non-empty inheritable Linux process capabilities, creating an atypical Linux environment and enabling programs with inheritable file capabilities to elevate those capabilities to the permitted set during `execve(2)`. Normally, when executable programs have specified permitted file capabilities, otherwise unprivileged users and processes can execute those programs and gain the specified file capabilities up to the bounding set. Due to this bug, containers which included executable programs with inheritable file capabilities allowed otherwise unprivileged users and processes to additionally gain these inheritable file capabilities up to the container's bounding set. Containers which use Linux users and groups to perform privilege separation inside the container are most directly impacted. This bug did not affect the container security sandbox as theinheritable set never contained more capabilities than were included in the container's bounding set. This bug has been fixed in Moby (Docker Engine) 20.10.14. Running containers should be stopped, deleted, and recreated for the inheritable capabilities to be reset. This fix changes Moby (Docker Engine) behavior such that containers are started with a more typical Linux environment. As a workaround, the entry point of a container can be modified to use a utility like `capsh(1)` to drop inheritable capabilities prior to the primary process starting.",
+        "id": "CVE-2022-24769",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.6+esm2",
+        "description": "containerd is a container runtime available as a daemon for Linux and Windows. A bug was found in containerd prior to versions 1.6.1, 1.5.10, and 1.14.12 where containers launched through containerd’s CRI implementation on Linux with a specially-crafted image configuration could gain access to read-only copies of arbitrary files and directories on the host. This may bypass any policy-based enforcement on container setup (including a Kubernetes Pod Security Policy) and expose potentially sensitive information. Kubernetes and crictl can both be configured to use containerd’s CRI implementation. This bug has been fixed in containerd 1.6.1, 1.5.10, and 1.4.12. Users should update to these versions to resolve the issue.",
+        "id": "CVE-2022-23648",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.6+esm4",
+        "description": "containerd is an open source container runtime. Before versions 1.6.18 and 1.5.18, when importing an OCI image, there was no limit on the number of bytes read for certain files. A maliciously crafted image with a large file where a limit was not applied could cause a denial of service. This bug has been fixed in containerd 1.6.18 and 1.5.18.  Users should update to these versions to resolve the issue. As a workaround, ensure that only trusted images are used and that only trusted users have permissions to import images.",
+        "id": "CVE-2023-25153",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package default status",
+        "description": "containerd is an open source container runtime. A bug was found in containerd's CRI implementation where a user can exhaust memory on the host. In the CRI stream server, a goroutine is launched to handle terminal resize events if a TTY is requested. If the user's process fails to launch due to, for example, a faulty command, the goroutine will be stuck waiting to send without a receiver, resulting in a memory leak. Kubernetes and crictl can both be configured to use containerd's CRI implementation and the stream server is used for handling container IO. This bug has been fixed in containerd 1.6.12 and 1.5.16.  Users should update to these versions to resolve the issue. Users unable to upgrade should ensure that only trusted images and commands are used and that only trusted users have permissions to execute commands in running containers.",
+        "id": "CVE-2022-23471",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 5.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.6+esm2",
+        "description": "containerd is a container runtime. A bug was found in containerd versions prior to 1.4.8 and 1.5.4 where pulling and extracting a specially-crafted container image can result in Unix file permission changes for existing files in the host’s filesystem. Changes to file permissions can deny access to the expected owner of the file, widen access to others, or set extended bits like setuid, setgid, and sticky. This bug does not directly allow files to be read, modified, or executed without an additional cooperating process. This bug has been fixed in containerd 1.5.4 and 1.4.8. As a workaround, ensure that users only pull images from trusted sources. Linux security modules (LSMs) like SELinux and AppArmor can limit the files potentially affected by this bug through policies and profiles that prevent containerd from interacting with specific files.",
+        "id": "CVE-2021-32760",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package default status",
+        "description": "In containerd (an industry-standard container runtime) before versions 1.3.10 and 1.4.4, containers launched through containerd's CRI implementation (through Kubernetes, crictl, or any other pod/container client that uses the containerd CRI service) that share the same image may receive incorrect environment variables, including values that are defined for other containers. If the affected containers have different security contexts, this may allow sensitive information to be unintentionally shared. If you are not using containerd's CRI implementation (through one of the mechanisms described above), you are not vulnerable to this issue. If you are not launching multiple containers or Kubernetes pods from the same image which have different environment variables, you are not vulnerable to this issue. If you are not launching multiple containers or Kubernetes pods from the same image in rapid succession, you have reduced likelihood of being vulnerable to this issue This vulnerability has been fixed in containerd 1.3.10 and containerd 1.4.4. Users should update to these versions.",
+        "id": "CVE-2021-21334",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.6+esm2",
+        "description": "containerd is an open source container runtime with an emphasis on simplicity, robustness and portability. A bug was found in containerd where container root directories and some plugins had insufficiently restricted permissions, allowing otherwise unprivileged Linux users to traverse directory contents and execute programs. When containers included executable programs with extended permission bits (such as setuid), unprivileged Linux users could discover and execute those programs. When the UID of an unprivileged Linux user on the host collided with the file owner or group inside a container, the unprivileged Linux user on the host could discover, read, and modify those files. This vulnerability has been fixed in containerd 1.4.11 and containerd 1.5.7. Users should update to these version when they are released and may restart containers or update directory permissions to mitigate the vulnerability. Users unable to update should limit access to the host to trusted users. Update directory permission on container bundles directories.",
+        "id": "CVE-2021-41103",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.5",
+        "description": "containerd is an industry-standard container runtime and is available as a daemon for Linux and Windows. In containerd before versions 1.3.9 and 1.4.3, the containerd-shim API is improperly exposed to host network containers. Access controls for the shim’s API socket verified that the connecting process had an effective UID of 0, but did not otherwise restrict access to the abstract Unix domain socket. This would allow malicious containers running in the same network namespace as the shim, with an effective UID of 0 but otherwise reduced privileges, to cause new processes to be run with elevated privileges. This vulnerability has been fixed in containerd 1.3.9 and 1.4.3. Users should update to these versions as soon as they are released. It should be noted that containers started with an old version of containerd-shim should be stopped and restarted, as running containers will continue to be vulnerable even after an upgrade. If you are not providing the ability for untrusted users to start containers in the same network namespace as the shim (typically the \"host\" network namespace, for example with docker run --net=host or hostNetwork: true in a Kubernetes pod) and run with an effective UID of 0, you are not vulnerable to this issue. If you are running containers with a vulnerable configuration, you can deny access to all abstract sockets with AppArmor by adding a line similar to deny unix addr=@**, to your policy. It is best practice to run containers with a reduced set of privileges, with a non-zero UID, and with isolated namespaces. The containerd maintainers strongly advise against sharing namespaces with the host. Reducing the set of isolation mechanisms used for a container necessarily increases that container's privilege, regardless of what container runtime is used for running that container.",
+        "id": "CVE-2020-15257",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 3.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package default status",
+        "description": "containerd is an open source container runtime. On installations using SELinux, such as EL8 (CentOS, RHEL), Fedora, or SUSE MicroOS, with containerd since v1.5.0-beta.0 as the backing container runtime interface (CRI), an unprivileged pod scheduled to the node may bind mount, via hostPath volume, any privileged, regular file on disk for complete read/write access (sans delete). Such is achieved by placing the in-container location of the hostPath volume mount at either `/etc/hosts`, `/etc/hostname`, or `/etc/resolv.conf`. These locations are being relabeled indiscriminately to match the container process-label which effectively elevates permissions for savvy containers that would not normally be able to access privileged host files. This issue has been resolved in version 1.5.9. Users are advised to upgrade as soon as possible.",
+        "id": "CVE-2021-43816",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.2.6-0ubuntu1~16.04.4",
+        "description": "In containerd (an industry-standard container runtime) before version 1.2.14 there is a credential leaking vulnerability. If a container image manifest in the OCI Image format or Docker Image V2 Schema 2 format includes a URL for the location of a specific image layer (otherwise known as a “foreign layer”), the default containerd resolver will follow that URL to attempt to download it. In v1.2.x but not 1.3.0 or later, the default containerd resolver will provide its authentication credentials if the server where the URL is located presents an HTTP 401 status code along with registry-specific HTTP headers. If an attacker publishes a public image with a manifest that directs one of the layers to be fetched from a web server they control and they trick a user or system into pulling the image, they can obtain the credentials used for pulling that image. In some cases, this may be the user's username and password for the registry. In other cases, this may be the credentials attached to the cloud virtual instance which can grant access to other cloud resources in the account. The default containerd resolver is used by the cri-containerd plugin (which can be used by Kubernetes), the ctr development tool, and other client programs that have explicitly linked against it. This vulnerability has been fixed in containerd 1.2.14. containerd 1.3 and later are not affected. If you are using containerd 1.3 or later, you are not affected. If you are using cri-containerd in the 1.2 series or prior, you should ensure you only pull images from trusted sources. Other container runtimes built on top of containerd but not using the default resolver (such as Docker) are not affected.",
+        "id": "CVE-2020-15157",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    }
+]

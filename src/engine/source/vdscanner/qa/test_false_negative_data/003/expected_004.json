@@ -1,0 +1,26 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 2.1-2ubuntu0.22.04.1",
+        "description": "A time-of-check-time-of-use (TOCTOU) race condition vulnerability was found in networkd-dispatcher. This flaw exists because there is a certain time between the scripts being discovered and them being run. An attacker can abuse this vulnerability to replace scripts that networkd-dispatcher believes to be owned by root with ones that are not.",
+        "id": "CVE-2022-29800",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 4.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 2.1-2ubuntu0.22.04.1",
+        "description": "A vulnerability was found in networkd-dispatcher. This flaw exists because no functions are sanitized by the OperationalState or the AdministrativeState of networkd-dispatcher. This attack leads to a directory traversal to escape from the “/etc/networkd-dispatcher” base directory.",
+        "id": "CVE-2022-29799",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

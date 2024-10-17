@@ -1,0 +1,38 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 5.8.8-12ubuntu0.3",
+        "description": "Race condition in the rmtree function in File::Path 1.08 and 2.07 (lib/File/Path.pm) in Perl 5.8.8 and 5.10.0 allows local users to create arbitrary setuid binaries via a symlink attack, a different vulnerability than CVE-2005-0448, CVE-2004-0452, and CVE-2008-2827. NOTE: this is a regression error related to CVE-2005-0448.  It is different from CVE-2008-5303 due to affected versions.",
+        "id": "CVE-2008-5302",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 5.8.8-12ubuntu0.3",
+        "description": "Race condition in the rmtree function in File::Path 1.08 (lib/File/Path.pm) in Perl 5.8.8 allows local users to to delete arbitrary files via a symlink attack, a different vulnerability than CVE-2005-0448, CVE-2004-0452, and CVE-2008-2827. NOTE: this is a regression error related to CVE-2005-0448. It is different from CVE-2008-5302 due to affected versions.",
+        "id": "CVE-2008-5303",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 6.9,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 5.8.8-12ubuntu0.3",
+        "description": "Double free vulnerability in Perl 5.8.8 allows context-dependent attackers to cause a denial of service (memory corruption and crash) via a crafted regular expression containing UTF8 characters.  NOTE: this issue might only be present on certain operating systems.",
+        "id": "CVE-2008-1927",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

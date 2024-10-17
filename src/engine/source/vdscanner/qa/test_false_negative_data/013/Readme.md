@@ -1,16 +1,25 @@
 # Description
 
-Vulnerability detection validation for Windows package `Microsoft Office Professional Plus 2016`.
-It's verified that the installation of a hotfix before the insertion of a vulnerable package prevents the vulnerability from being detected.
+Vulnerability detection validation for `Docker Desktop` on macOS Darwin and Windows.
 
 # Platforms
+
+## Darwin
+
+- Input events
+  - [001](input_001.json)
+
+| Name           | Version  | Feed  | CVE IDs        | Expected   |
+| ---------------| -------- | ----- | -------------- | ---------- |
+| docker         | 4.19.0   | NVD   | CVE-2024-8695  | Vulnerable |
+| docker         | 4.19.0   | NVD   | CVE-2024-8696  | Vulnerable |
 
 ## Windows
 
 - Input events
-    - [001](input_001.json)
+  - [002](input_002.json)
 
-
-| Name                                    | Version | Feed | CVE IDs         | Expected        |
-|-----------------------------------------|---------|------|-----------------|-----------------|
-| Microsoft Office Professional Plus 2016 | 2016    | NVD  | CVE-2024-20673  | Not vulnerable  |
+| Name           | Version  | Feed  | CVE IDs        | Expected   |
+| ---------------| -------- | ----- | -------------- | ---------- |
+| Docker Desktop | 2.1.0    | NVD   | CVE-2020-10665 | Vulnerable |
+| Docker Desktop | 2.1.0    | NVD   | CVE-2023-0625  | Vulnerable |

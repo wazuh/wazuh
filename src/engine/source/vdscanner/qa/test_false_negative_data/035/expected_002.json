@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package equal to 0.992",
+        "description": "An issue was discovered in Npcap 0.992. Sending a malformed .pcap file with the loopback adapter using either pcap_sendqueue_queue() or pcap_sendqueue_transmit() results in kernel pool corruption. This could lead to arbitrary code executing inside the Windows kernel and allow escalation of privileges.",
+        "id": "CVE-2019-11490",
+        "item_id": "61e71c9fe4bab8cd4a5eb2a10ec16c99f8326c7b",
+        "score": {
+            "base": 7.2,
+            "version": "2.0"
+        },
+        "severity": "High"
+    }
+]

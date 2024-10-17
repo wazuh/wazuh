@@ -1,4 +1,0 @@
-[
-    "Match found, the package 'containerd', is vulnerable to 'CVE-2023-25153'. Current version: '1.6.11-0ubuntu1~20.04.3' (less than '1.6.12-0ubuntu1~20.04.3' or equal to ''). - Agent '' (ID: '002', Version: '').",
-    "Match found, the package 'containerd', is vulnerable to 'CVE-2023-25173'. Current version: '1.6.11-0ubuntu1~20.04.3' (less than '1.6.12-0ubuntu1~20.04.3' or equal to ''). - Agent '' (ID: '002', Version: '')."
-]

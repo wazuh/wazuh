@@ -1,0 +1,158 @@
+[
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.23.0",
+    "description": "Docker Desktop before 4.23.0 allows Access Token theft via a crafted extension icon URL.  This issue affects Docker Desktop: before 4.23.0.",
+    "id": "CVE-2023-5166",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.0,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.17.0",
+    "description": "Docker Desktop before 4.17.0 allows an attacker to execute an arbitrary command inside a Dev Environments container during initialization by tricking a user to open a crafted malicious docker-desktop:// URL.",
+    "id": "CVE-2023-0628",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.12.0",
+    "description": "Docker Desktop before 4.12.0 is vulnerable to RCE via a crafted extension description or changelog.  This issue affects Docker Desktop: before 4.12.0.",
+    "id": "CVE-2023-0625",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.0,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.12.0",
+    "description": "In Docker Desktop on Windows before 4.12.0 an argument injection to installer may result in local privilege escalation (LPE).This issue affects Docker Desktop: before 4.12.0.",
+    "id": "CVE-2023-0633",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.2,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.34.2",
+    "description": "A remote code execution (RCE) vulnerability via crafted extension publisher-url/additional-urls could be abused by a malicious extension in Docker Desktop before 4.34.2.",
+    "id": "CVE-2024-8696",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.34.2",
+    "description": "A remote code execution (RCE) vulnerability via crafted extension description/changelog could be abused by a malicious extension in Docker Desktop before 4.34.2.",
+    "id": "CVE-2024-8695",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 9.8,
+      "version": "3.1"
+    },
+    "severity": "Critical"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.12.0",
+    "description": "Docker Desktop before 4.12.0 is vulnerable to RCE via query parameters in message-box route.  This issue affects Docker Desktop: before 4.12.0.",
+    "id": "CVE-2023-0626",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 8.0,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.6.0",
+    "description": "Docker Desktop for Windows before 4.6 allows attackers to overwrite any file through the windowscontainers/start dockerBackendV2 API by controlling the data-root field inside the DaemonJSON field in the WindowsContainerStartRequest class. This allows exploiting a symlink vulnerability in ..\\dataRoot\\network\\files\\local-kv.db because of a TOCTOU race condition.",
+    "id": "CVE-2022-38730",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 6.3,
+      "version": "3.1"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.6.0",
+    "description": "Docker Desktop for Windows before 4.6.0 allows attackers to delete (or create) any file through the dockerBackendV2 windowscontainers/start API by controlling the pidfile field inside the DaemonJSON field in the WindowsContainerStartRequest class. This can indirectly lead to privilege escalation.",
+    "id": "CVE-2022-37326",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.8,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.6.0",
+    "description": "Docker Desktop before 4.6.0 on Windows allows attackers to delete any file through the hyperv/destroy dockerBackendV2 API via a symlink in the DataFolder parameter, a different vulnerability than CVE-2022-26659.",
+    "id": "CVE-2022-31647",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.1,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 3.6.0",
+    "description": "Docker Desktop before 3.6.0 suffers from incorrect access control. If a low-privileged account is able to access the server running the Windows containers, it can lead to a full container compromise in both process isolation and Hyper-V isolation modes. This security issue leads an attacker with low privilege to read, write and possibly even execute code inside the containers.",
+    "id": "CVE-2021-37841",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 4.6,
+      "version": "2.0"
+    },
+    "severity": "Medium"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 4.6.0",
+    "description": "Docker Desktop for Windows before 4.6.0 allows attackers to overwrite any file through a symlink attack on the hyperv/create dockerBackendV2 API by controlling the DataFolder parameter for DockerDesktop.vhdx, a similar issue to CVE-2022-31647.",
+    "id": "CVE-2022-34292",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.1,
+      "version": "3.1"
+    },
+    "severity": "High"
+  },
+  {
+    "category": "Packages",
+    "condition": "Package less than 2.1.0.9",
+    "description": "Docker Desktop allows local privilege escalation to NT AUTHORITY\\SYSTEM because it mishandles the collection of diagnostics with Administrator privileges, leading to arbitrary DACL permissions overwrites and arbitrary file writes. This affects Docker Desktop Enterprise before 2.1.0.9, Docker Desktop for Windows Stable before 2.2.0.4, and Docker Desktop for Windows Edge before 2.2.2.0.",
+    "id": "CVE-2020-10665",
+    "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+    "score": {
+      "base": 7.2,
+      "version": "2.0"
+    },
+    "severity": "High"
+  }
+]

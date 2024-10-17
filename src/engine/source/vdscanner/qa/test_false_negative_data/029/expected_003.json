@@ -1,0 +1,86 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to heap buffer read overflow in `FileManager::detectLanguageFromTextBegining `. The exploitability of this issue is not clear. Potentially, it may be used to leak internal memory allocation information. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40166",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to global buffer read overflow in `CharDistributionAnalysis::HandleOneChar`. The exploitability of this issue is not clear. Potentially, it may be used to leak internal memory allocation information. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40036",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to heap buffer write overflow in `Utf8_16_Read::convert`. This issue may lead to arbitrary code execution. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40031",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.4.5",
+        "description": "Notepad++ versions 8.4.1 and before are vulnerable to DLL hijacking where an attacker can replace the vulnerable dll (UxTheme.dll) with his own dll and run arbitrary code in the context of Notepad++.",
+        "id": "CVE-2022-32168",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.4.3",
+        "description": "Notepad++ v8.4.1 was discovered to contain a stack overflow via the component Finder::add().",
+        "id": "CVE-2022-31902",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.5.6",
+        "description": "Notepad++ is a free and open-source source code editor. Versions 8.5.6 and prior are vulnerable to global buffer read overflow in `nsCodingStateMachine::NextStater`. The exploitability of this issue is not clear. Potentially, it may be used to leak internal memory allocation information. As of time of publication, no known patches are available in existing versions of Notepad++.",
+        "id": "CVE-2023-40164",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 8.4.3",
+        "description": "Buffer overflow in function Notepad_plus::addHotSpot in Notepad++ v8.4.3 and earlier allows attackers to crash the application via two crafted files.",
+        "id": "CVE-2022-31901",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

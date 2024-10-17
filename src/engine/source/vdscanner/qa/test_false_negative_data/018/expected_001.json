@@ -1,0 +1,26 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 0.10.16",
+        "description": "Google V8, as used in Google Chrome before 28.0.1500.95, allows remote attackers to cause a denial of service or possibly have unspecified other impact via vectors that leverage \"type confusion.\"",
+        "id": "CVE-2013-2882",
+        "item_id": "6addad2bb4b7340e6a59f5cb027e00ede1a3fa36",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 0.10.0",
+        "description": "The HTTP server in Node.js 0.10.x before 0.10.21 and 0.8.x before 0.8.26 allows remote attackers to cause a denial of service (memory and CPU consumption) by sending a large number of pipelined requests without reading the response.",
+        "id": "CVE-2013-4450",
+        "item_id": "6addad2bb4b7340e6a59f5cb027e00ede1a3fa36",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

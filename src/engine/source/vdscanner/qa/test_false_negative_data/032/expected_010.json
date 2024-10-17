@@ -1,0 +1,182 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a LOW severity vulnerability affecting CPython, specifically the 'http.cookies' standard library module.   When parsing cookies that contained backslashes for quoted characters in the cookie value, the parser would use an algorithm with quadratic complexity, resulting in excess CPU resources being used while parsing the value.",
+        "id": "CVE-2024-7592",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.4-3ubuntu0.1",
+        "description": "In Python (aka CPython) up to 3.10.8, the mailcap module does not add escape characters into commands discovered in the system mailcap file. This may allow attackers to inject shell commands into applications that call mailcap.findmatch with untrusted input (if they lack validation of user-provided filenames or arguments). The fix is also back-ported to 3.7, 3.8, 3.9",
+        "id": "CVE-2015-20107",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 8.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.6-1~22.04.1",
+        "description": "Python 3.9.x before 3.9.16 and 3.10.x before 3.10.9 on Linux allows local privilege escalation in a non-default configuration. The Python multiprocessing library, when used with the forkserver start method on Linux, allows pickles to be deserialized from any user in the same machine local network namespace, which in many system configurations means any user on the same machine. Pickles can execute arbitrary code. Thus, this allows for local user privilege escalation to the user that any forkserver process is running as. Setting multiprocessing.util.abstract_sockets_supported to False is a workaround. The forkserver start method for multiprocessing is not the default start method. This issue is Linux specific because only Linux supports abstract namespace sockets. CPython before 3.9 does not make use of Linux abstract namespace sockets by default. Support for users manually specifying an abstract namespace socket was added as a bugfix in 3.7.8 and 3.8.3, but users would need to make specific uncommon API calls in order to do that in CPython before 3.9.",
+        "id": "CVE-2022-42919",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.5",
+        "description": "The “ipaddress” module contained incorrect information about whether certain IPv4 and IPv6 addresses were designated as “globally reachable” or “private”. This affected the is_private and is_global properties of the ipaddress.IPv4Address, ipaddress.IPv4Network, ipaddress.IPv6Address, and ipaddress.IPv6Network classes, where values wouldn’t be returned in accordance with the latest information from the IANA Special-Purpose Address Registries.  CPython 3.12.4 and 3.13.0a6 contain updated information from these registries and thus have the intended behavior.",
+        "id": "CVE-2024-4032",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.6-1~22.04.2",
+        "description": "The Keccak XKCP SHA-3 reference implementation before fdc6fef has an integer overflow and resultant buffer overflow that allows attackers to execute arbitrary code or eliminate expected cryptographic properties. This occurs in the sponge function interface.",
+        "id": "CVE-2022-37454",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.6-1~22.04.2",
+        "description": "An issue was discovered in Python before 3.11.1. An unnecessary quadratic algorithm exists in one path when processing some inputs to the IDNA (RFC 3490) decoder, such that a crafted, unreasonably long name being presented to the decoder could lead to a CPU denial of service. Hostnames are often supplied by remote servers that could be controlled by a malicious actor; in such a scenario, they could trigger excessive CPU consumption on the client attempting to make use of an attacker-supplied supposed hostname. For example, the attack payload could be placed in the Location header of an HTTP response with status code 302. A fix is planned in 3.11.1, 3.10.9, 3.9.16, 3.8.16, and 3.7.16.",
+        "id": "CVE-2022-45061",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "The email module of Python through 3.11.3 incorrectly parses e-mail addresses that contain a special character. The wrong portion of an RFC2822 header is identified as the value of the addr-spec. In some applications, an attacker can bypass a protection mechanism in which application access is granted only after verifying receipt of e-mail to a specific domain (e.g., only @company.example.com addresses may be used for signup). This occurs in email/_parseaddr.py in recent versions of Python.",
+        "id": "CVE-2023-27043",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.5",
+        "description": "A defect was discovered in the Python “ssl” module where there is a memory race condition with the ssl.SSLContext methods “cert_store_stats()” and “get_ca_certs()”. The race condition can be triggered if the methods are called at the same time as certificates are loaded into the SSLContext, such as during the TLS handshake with a certificate directory configured. This issue is fixed in CPython 3.10.14, 3.11.9, 3.12.3, and 3.13.0a5.",
+        "id": "CVE-2024-0397",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.4,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.6-1~22.04.2ubuntu1",
+        "description": "An issue in the urllib.parse component of Python before 3.11.4 allows attackers to bypass blocklisting methods by supplying a URL that starts with blank characters.",
+        "id": "CVE-2023-24329",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.3",
+        "description": "An issue was discovered in Python before 3.8.18, 3.9.x before 3.9.18, 3.10.x before 3.10.13, and 3.11.x before 3.11.5. It primarily affects servers (such as HTTP servers) that use TLS client authentication. If a TLS server-side socket is created, receives data into the socket buffer, and then is closed quickly, there is a brief window where the SSLSocket instance will detect the socket as \"not connected\" and won't initiate a handshake, but buffered data will still be readable from the socket buffer. This data will not be authenticated if the server-side TLS peer is expecting client certificate authentication, and is indistinguishable from valid TLS stream data. Data is limited in size to the amount that will fit in the buffer. (The TLS connection cannot directly be used for data exfiltration because the vulnerable code path requires that the connection be closed on initialization of the SSLSocket.)",
+        "id": "CVE-2023-40217",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 5.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.4",
+        "description": "An issue was found in the CPython `tempfile.TemporaryDirectory` class affecting versions 3.12.1, 3.11.7, 3.10.13, 3.9.18, and 3.8.18 and prior.  The tempfile.TemporaryDirectory class would dereference symlinks during cleanup of permissions-related errors. This means users which can run privileged programs are potentially able to modify permissions of files referenced by symlinks in some circumstances.",
+        "id": "CVE-2023-6597",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.4",
+        "description": "An issue was found in the CPython `zipfile` module affecting versions 3.12.1, 3.11.7, 3.10.13, 3.9.18, and 3.8.18 and prior.  The zipfile module is vulnerable to “quoted-overlap” zip-bombs which exploit the zip format to create a zip-bomb with a high compression ratio. The fixed versions of CPython makes the zipfile module reject zip archives which overlap entries in the archive.",
+        "id": "CVE-2024-0450",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 6.2,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a HIGH severity vulnerability affecting the CPython \"zipfile\" module affecting \"zipfile.Path\". Note that the more common API \"zipfile.ZipFile\" class is unaffected.      When iterating over names of entries in a zip archive (for example, methods of \"zipfile.Path\" like \"namelist()\", \"iterdir()\", etc) the process can be put into an infinite loop with a maliciously crafted zip archive. This defect applies when reading only metadata or extracting the contents of the zip archive. Programs that are not handling user-controlled zip archives are not affected.",
+        "id": "CVE-2024-8088",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 0.0,
+            "version": ""
+        },
+        "severity": ""
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a MEDIUM severity vulnerability affecting CPython.      Regular expressions that allowed excessive backtracking during tarfile.TarFile header parsing are vulnerable to ReDoS via specifically-crafted tar archives.",
+        "id": "CVE-2024-6232",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 3.10.12-1~22.04.6",
+        "description": "There is a MEDIUM severity vulnerability affecting CPython.  The  email module didn’t properly quote newlines for email headers when  serializing an email message allowing for header injection when an email  is serialized.",
+        "id": "CVE-2024-6923",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

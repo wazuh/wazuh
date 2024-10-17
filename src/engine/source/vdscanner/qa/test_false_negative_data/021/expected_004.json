@@ -1,0 +1,158 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.20",
+        "description": "Grafana is validating Azure AD accounts based on the email claim.   On Azure AD, the profile email field is not unique and can be easily modified.   This leads to account takeover and authentication bypass when Azure AD OAuth is configured with a multi-tenant app.",
+        "id": "CVE-2023-3128",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.10",
+        "description": "Grafana is an open-source platform for monitoring and observability. On 2023-01-01 during an internal audit of Grafana, a member of the security team found a stored XSS vulnerability affecting the core plugin \"Text\". The stored XSS vulnerability requires several user interactions in order to be fully exploited. The vulnerability was possible due to React's render cycle that will pass though the unsanitized HTML code, but in the next cycle the HTML is cleaned up and saved in Grafana's database. An attacker needs to have the Editor role in order to change a Text panel to include JavaScript. Another user needs to edit the same Text panel, and click on \"Markdown\" or \"HTML\" for the code to be executed. This means that vertical privilege escalation is possible, where a user with Editor role can change to a known password for a user having Admin role if the user with Admin role executes malicious JavaScript viewing a dashboard. This issue has been patched in versions 9.2.10 and 9.3.4.",
+        "id": "CVE-2023-22462",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.19",
+        "description": "Grafana is an open-source platform for monitoring and observability.   The option to send a test alert is not available from the user panel UI for users having the Viewer role. It is still possible for a user with the Viewer role to send a test alert using the API as the API does not check access to this function.  This might enable malicious users to abuse the functionality by sending multiple alert messages to e-mail and Slack, spamming users, prepare Phishing attack or block SMTP server.  Users may upgrade to version 9.5.3, 9.4.12, 9.3.15, 9.2.19 and 8.5.26 to receive a fix.",
+        "id": "CVE-2023-2183",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.17",
+        "description": "Grafana is an open-source platform for monitoring and observability.   Starting with the 9.1 branch, Grafana introduced the ability to search for a JWT in the URL query parameter auth_token and use it as the authentication token.   By enabling the \"url_login\" configuration option (disabled by default), a JWT might be sent to data sources. If an attacker has access to the data source, the leaked token could be used to authenticate to Grafana.",
+        "id": "CVE-2023-1387",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.2,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.13",
+        "description": "Grafana is an open-source platform for monitoring and observability.   Starting with the 7.0 branch, Grafana had a stored XSS vulnerability in the trace view visualization.   The stored XSS vulnerability was possible due the value of a span's attributes/resources were not properly sanitized and this will be rendered when the span's attributes/resources are expanded.  An attacker needs to have the Editor role in order to change the value of a trace view visualization to contain JavaScript.   This means that vertical privilege escalation is possible, where a user with Editor role can change to a known password for a user having Admin role if the user with Admin role executes malicious JavaScript viewing a dashboard.   Users may upgrade to version 8.5.21, 9.2.13 and 9.3.8 to receive a fix.",
+        "id": "CVE-2023-0594",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.13",
+        "description": "Grafana is an open-source platform for monitoring and observability.   Starting with the 8.1 branch, Grafana had a stored XSS vulnerability affecting the core plugin GeoMap.   The stored XSS vulnerability was possible due to map attributions weren't properly sanitized and allowed arbitrary JavaScript to be executed in the context of the currently authorized user of the Grafana instance.   An attacker needs to have the Editor role in order to change a panel to include a map attribution containing JavaScript.   This means that vertical privilege escalation is possible, where a user with Editor role can change to a known password for a user having Admin role if the user with Admin role executes malicious JavaScript viewing a dashboard.   Users may upgrade to version 8.5.21, 9.2.13 and 9.3.8 to receive a fix.",
+        "id": "CVE-2023-0507",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.15",
+        "description": "Grafana is an open-source platform for monitoring and observability.   Grafana had a stored XSS vulnerability in the Graphite FunctionDescription tooltip.   The stored XSS vulnerability was possible due the value of the Function Description was not properly sanitized.  An attacker needs to have control over the Graphite data source in order to manipulate a function description and a Grafana admin needs to configure the data source, later a Grafana user needs to select a tampered function and hover over the description.     Users may upgrade to version 8.5.22, 9.2.15 and 9.3.11 to receive a fix.",
+        "id": "CVE-2023-1410",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.2,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.8",
+        "description": "Grafana is an open-source platform for monitoring and observability. Prior to versions 8.5.16 and 9.2.8, malicious user can create a snapshot and arbitrarily choose the `originalUrl` parameter by editing the query, thanks to a web proxy. When another user opens the URL of the snapshot, they will be presented with the regular web interface delivered by the trusted Grafana server. The `Open original dashboard` button no longer points to the to the real original dashboard but to the attacker’s injected URL. This issue is fixed in versions 8.5.16 and 9.2.8.",
+        "id": "CVE-2022-39324",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.4",
+        "description": "Grafana is an open-source platform for monitoring and observability. When using the forget password on the login page, a POST request is made to the `/api/user/password/sent-reset-email` URL. When the username or email does not exist, a JSON response contains a “user not found” message. This leaks information to unauthenticated users and introduces a security risk. This issue has been patched in 9.2.4 and backported to 8.5.15. There are no known workarounds.",
+        "id": "CVE-2022-39307",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.4",
+        "description": "Grafana is an open-source platform for monitoring and observability. Versions starting with 9.2.0 and less than 9.2.4 contain a race condition in the authentication middlewares logic which may allow an unauthenticated user to query an administration endpoint under heavy load. This issue is patched in 9.2.4. There are no known workarounds.",
+        "id": "CVE-2022-39328",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.10",
+        "description": "Grafana is an open-source platform for monitoring and observability. Starting with the 8.1 branch and prior to versions 8.5.16, 9.2.10, and 9.3.4, Grafana had a stored XSS vulnerability affecting the core plugin GeoMap. The stored XSS vulnerability was possible because SVG files weren't properly sanitized and allowed arbitrary JavaScript to be executed in the context of the currently authorized user of the Grafana instance.   An attacker needs to have the Editor role in order to change a panel to include either an external URL to a SVG-file containing JavaScript, or use the `data:` scheme to load an inline SVG-file containing JavaScript. This means that vertical privilege escalation is possible, where a user with Editor role can change to a known password for a user having Admin role if the user with Admin role executes malicious JavaScript viewing a dashboard.     Users may upgrade to version 8.5.16, 9.2.10, or 9.3.4 to receive a fix.",
+        "id": "CVE-2022-23552",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.4",
+        "description": "Grafana is an open-source platform for monitoring and observability. Versions prior to 9.2.4, or 8.5.15 on the 8.X branch, are subject to Improper Input Validation. Grafana admins can invite other members to the organization they are an admin for. When admins add members to the organization, non existing users get an email invite, existing members are added directly to the organization. When an invite link is sent, it allows users to sign up with whatever username/email address the user chooses and become a member of the organization. This introduces a vulnerability which can be used with malicious intent. This issue is patched in version 9.2.4, and has been backported to 8.5.15. There are no known workarounds.",
+        "id": "CVE-2022-39306",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.10",
+        "description": "Grafana is an open-source platform for monitoring and observability. When datasource query caching is enabled, Grafana caches all headers, including `grafana_session`. As a result, any user that queries a datasource where the caching is enabled can acquire another user’s session. To mitigate the vulnerability you can disable datasource query caching for all datasources. This issue has been patched in versions 9.2.10 and 9.3.4.",
+        "id": "CVE-2022-23498",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    }
+]

@@ -1,9 +1,0 @@
-[
-    "Translation for package 'Notepad++ (64-bit x64)' on platform 'windows' found in Level 2 cache.",
-    "Match found, the package 'notepad\\+\\+', is vulnerable to 'CVE-2022-32168'. Current version: '8.4' (less than '8.4.5' or equal to ''). - Agent '' (ID: '017', Version: '').",
-    "Match found, the package 'notepad\\+\\+', is vulnerable to 'CVE-2022-31901'. Current version: '8.4' (less than '' or equal to '8.4.3'). - Agent '' (ID: '017', Version: '').",
-    "Match found, the package 'notepad\\+\\+', is vulnerable to 'CVE-2023-40031'. Current version: '8.4' (less than '' or equal to '8.5.6'). - Agent '' (ID: '017', Version: '').",
-    "Match found, the package 'notepad\\+\\+', is vulnerable to 'CVE-2023-40036'. Current version: '8.4' (less than '' or equal to '8.5.6'). - Agent '' (ID: '017', Version: '').",
-    "Match found, the package 'notepad\\+\\+', is vulnerable to 'CVE-2023-40164'. Current version: '8.4' (less than '' or equal to '8.5.6'). - Agent '' (ID: '017', Version: '').",
-    "Match found, the package 'notepad\\+\\+', is vulnerable to 'CVE-2023-40166'. Current version: '8.4' (less than '' or equal to '8.5.6'). - Agent '' (ID: '017', Version: '')."
-]

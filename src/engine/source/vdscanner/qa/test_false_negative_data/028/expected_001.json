@@ -1,0 +1,98 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 3.8.0.115",
+        "description": "Skype 3.6.0.248, and other versions before 3.8.0.139, uses a case-sensitive comparison when checking for dangerous extensions, which allows user-assisted remote attackers to bypass warning dialogs and possibly execute arbitrary code via a file: URI with a dangerous extension that uses a different case.",
+        "id": "CVE-2008-2545",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 0.92.0.12",
+        "description": "Integer overflow in Skype client before 1.4.x.84 on Windows, before 1.3.x.17 on Mac OS, before 1.2.x.18 on Linux, and 1.1.x.6 and earlier allows remote attackers to cause a denial of service (crash) via crafted network data with a large Object Counter value, which leads to a resultant heap-based buffer overflow.",
+        "id": "CVE-2005-3267",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 1.1.0.20",
+        "description": "Skype 1.1.0.20 and earlier allows local users to overwrite arbitrary files via a symlink attack on the skype_profile.jpg temporary file.",
+        "id": "CVE-2005-2300",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 3.8.0.115",
+        "description": "Incomplete blacklist vulnerability in Skype 3.6.0.248, and other versions before 3.8.0.139, allows user-assisted remote attackers to bypass warning dialogs and possibly execute arbitrary code via a file: URI that ends in an executable extension that is not covered by the blacklist.",
+        "id": "CVE-2008-1805",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 0.98.0.27",
+        "description": "A \"range check error\" in Skype for Windows before 0.98.0.28 allows local and remote attackers to cause a denial of service (application crash) via long command line arguments or a long callto:// URL, a different vulnerability than CVE-2004-1114.",
+        "id": "CVE-2004-1777",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 1.5.0.79",
+        "description": "Format string vulnerability in the NSRunAlertPanel function in eBay Skype for Mac 1.5.*.79 and earlier allows remote attackers to cause a denial of service (application crash) and possibly execute arbitrary code via a malformed Skype URL, as originally reported to involve a null dereference.",
+        "id": "CVE-2006-5084",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 4.2.0.169",
+        "description": "Untrusted search path vulnerability in Skype 4.2.0.169 and earlier allows local users, and possibly remote attackers, to execute arbitrary code and conduct DLL hijacking attacks via a Trojan horse wab32.dll that is located in the same folder as a .skype file.",
+        "id": "CVE-2010-3136",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 0.92.0.12",
+        "description": "Skype 0.92.0.12 and 1.0.0.1 for Linux, and possibly other versions, creates the /usr/share/skype/lang directory with world-writable permissions, which allows local users to modify language files and possibly conduct social engineering or other attacks.",
+        "id": "CVE-2004-1778",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

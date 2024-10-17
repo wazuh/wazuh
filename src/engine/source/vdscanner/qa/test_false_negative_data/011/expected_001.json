@@ -1,0 +1,2018 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.14",
+        "description": "Opera before 12.15 does not properly block top-level domains in Set-Cookie headers, which allows remote attackers to obtain sensitive information by leveraging control of a different web site in the same top-level domain.",
+        "id": "CVE-2013-3210",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.12",
+        "description": "Opera before 12.13 does not send CORS preflight requests in all required cases, which allows remote attackers to bypass a CSRF protection mechanism via a crafted web site that triggers a CORS request.",
+        "id": "CVE-2013-1639",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.12",
+        "description": "Opera before 12.13 allows remote attackers to execute arbitrary code via crafted clipPaths in an SVG document.",
+        "id": "CVE-2013-1638",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.12",
+        "description": "Opera before 12.13 allows remote attackers to execute arbitrary code via vectors involving DOM events.",
+        "id": "CVE-2013-1637",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.12",
+        "description": "The TLS implementation in Opera before 12.13 does not properly consider timing side-channel attacks on a MAC check operation during the processing of malformed CBC padding, which allows remote attackers to conduct distinguishing attacks and plaintext-recovery attacks via statistical analysis of timing data for crafted packets, a related issue to CVE-2013-0169.",
+        "id": "CVE-2013-1618",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.11",
+        "description": "Opera before 12.12 allows remote attackers to spoof the address field via a high rate of HTTP requests.",
+        "id": "CVE-2012-6471",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.11",
+        "description": "Opera before 12.12 does not properly allocate memory for GIF images, which allows remote attackers to execute arbitrary code or cause a denial of service (memory overwrite) via a malformed image.",
+        "id": "CVE-2012-6470",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Heap-based buffer overflow in Opera before 12.11 allows remote attackers to execute arbitrary code or cause a denial of service (memory corruption) via a long HTTP response.",
+        "id": "CVE-2012-6468",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Opera before 12.10 follows Internet shortcuts that are referenced by a (1) IMG element or (2) other inline element, which makes it easier for remote attackers to conduct phishing attacks via a crafted web site, as exploited in the wild in November 2012.",
+        "id": "CVE-2012-6467",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Opera before 12.10 allows remote attackers to execute arbitrary code or cause a denial of service (application crash) via a malformed SVG image.",
+        "id": "CVE-2012-6465",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Opera before 12.10 does not properly implement the Cross-Origin Resource Sharing (CORS) specification, which allows remote attackers to bypass intended page-content restrictions via a crafted request.",
+        "id": "CVE-2012-6462",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.66",
+        "description": "Opera before 11.67 and 12.x before 12.02 allows remote attackers to cause truncation of a dialog, and possibly trigger downloading and execution of arbitrary programs, via a crafted web site.",
+        "id": "CVE-2012-6460",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.00",
+        "description": "Opera before 12.01 allows remote attackers to cause a denial of service (application crash) via a crafted web site, as demonstrated by the Lenovo \"Shop now\" page.",
+        "id": "CVE-2012-4146",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Cross-site scripting (XSS) vulnerability in Opera before 12.10 allows remote attackers to inject arbitrary web script or HTML via vectors involving an unspecified sequence of loading of documents and loading of data: URLs.",
+        "id": "CVE-2012-6463",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.65",
+        "description": "Opera before 12.00 Beta allows remote attackers to cause a denial of service (application crash) via crafted WebGL content, as demonstrated by a codeflow.org WebGL demo.",
+        "id": "CVE-2012-3568",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.65",
+        "description": "Opera before 12.00 Beta allows user-assisted remote attackers to cause a denial of service (application hang) via JavaScript code that changes a form before submission.",
+        "id": "CVE-2012-3566",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.65",
+        "description": "Opera before 12.00 Beta allows remote attackers to cause a denial of service (application hang) via an absolutely positioned wrap=off TEXTAREA element located next to an \"overflow: auto\" block element.",
+        "id": "CVE-2012-3564",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.65",
+        "description": "Opera before 12.00 Beta allows remote attackers to cause a denial of service (application crash) via a web page that contains invalid character encodings.",
+        "id": "CVE-2012-3563",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.65",
+        "description": "Opera before 12.00 Beta allows user-assisted remote attackers to cause a denial of service (application crash) via a crafted web page that is not properly handled during a reload, as demonstrated by a \"multiple origin camera test\" page.",
+        "id": "CVE-2012-3562",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.64",
+        "description": "Opera before 11.65 does not ensure that the address field corresponds to the displayed web page during blocked navigation, which makes it easier for remote attackers to conduct spoofing attacks by detecting and preventing attempts to load a different web page.",
+        "id": "CVE-2012-3560",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.62",
+        "description": "Opera before 11.65 does not properly restrict the reading of JSON strings, which allows remote attackers to perform cross-domain loading of JSON resources and consequently obtain sensitive information via a crafted web site.",
+        "id": "CVE-2012-3557",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.62",
+        "description": "Opera before 11.65 does not ensure that keyboard sequences are associated with a visible window, which makes it easier for user-assisted remote attackers to conduct cross-site scripting (XSS) attacks or execute arbitrary code via a crafted web site, related to a \"hidden keyboard navigation\" issue.",
+        "id": "CVE-2012-3555",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 7.6,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.61",
+        "description": "Opera before 11.62 allows remote attackers to bypass the Same Origin Policy via the (1) history.pushState and (2) history.replaceState functions in conjunction with cross-domain frames, leading to unintended read access to history.state information.",
+        "id": "CVE-2012-1926",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.61",
+        "description": "Opera before 11.62 does not ensure that a dialog window is placed on top of content windows, which makes it easier for user-assisted remote attackers to trick users into downloading and executing arbitrary files via a download dialog located under other windows.",
+        "id": "CVE-2012-1925",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.62",
+        "description": "Opera before 9.63 does not properly verify X.509 certificates from SSL servers, which allows man-in-the-middle attackers to spoof servers and obtain sensitive information via a crafted certificate.",
+        "id": "CVE-2012-1251",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Multiple integer overflows in Opera 11.60 and earlier allow remote attackers to cause a denial of service (application crash) via a large integer argument to the (1) Int32Array, (2) Float32Array, (3) Float64Array, (4) Uint32Array, (5) Int16Array, or (6) ArrayBuffer function.  NOTE: the vendor reportedly characterizes this as \"a stability issue, not a security issue.\"",
+        "id": "CVE-2012-1003",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "Heap-based buffer overflow in Opera before 10.61 allows remote attackers to execute arbitrary code or cause a denial of service (application crash or hang) via vectors related to HTML5 canvas painting operations that occur during the application of transformations.",
+        "id": "CVE-2010-3019",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "The X.509 certificate-validation functionality in the https implementation in Opera before 12.10 allows remote attackers to trigger a false indication of successful revocation-status checking by causing a failure of a single checking service.",
+        "id": "CVE-2012-6461",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Unspecified vulnerability in Opera before 11.10 allows remote attackers to cause a denial of service (application crash) via unknown content on a web page, as demonstrated by games on zylom.com.",
+        "id": "CVE-2011-2638",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "Opera before 10.60 allows remote attackers to cause a denial of service (application hang) via certain HTML content that has an unclosed SPAN element with absolute positioning.",
+        "id": "CVE-2010-2664",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in the DOM implementation in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via unknown content on a web page, as demonstrated by live.com.",
+        "id": "CVE-2011-2627",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Unspecified vulnerability in Opera before 11.11 allows remote attackers to cause a denial of service (application crash) via unknown content on a web page, as demonstrated by www.falk.de.",
+        "id": "CVE-2011-2629",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.53",
+        "description": "Multiple unspecified vulnerabilities in Opera before 10.54 have unknown impact and attack vectors related to (1) \"extremely severe,\" (2) \"highly severe,\" (3) \"moderately severe,\" and (4) \"less severe\" issues.",
+        "id": "CVE-2010-2421",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.65",
+        "description": "Opera before 12.00 Beta allows remote attackers to cause a denial of service (memory consumption or application hang) via an IFRAME element that uses the src=\"#\" syntax to embed a parent document.",
+        "id": "CVE-2012-3567",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.02",
+        "description": "The Javascript SVG support in Opera before 9.10 does not properly validate object types in a createSVGTransformFromMatrix request, which allows remote attackers to execute arbitrary code via JavaScript code that uses an invalid object in this request that causes a controlled pointer to be referenced during the virtual function call.",
+        "id": "CVE-2007-0127",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.64",
+        "description": "Opera before 11.65 does not ensure that the address field corresponds to the displayed web page during unusually timed changes to this field, which makes it easier for user-assisted remote attackers to conduct spoofing attacks via vectors involving navigation, reloads, and redirects.",
+        "id": "CVE-2012-3558",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.50",
+        "description": "Unspecified vulnerability in Opera before 9.5 allows remote attackers to read cross-domain images via HTML CANVAS elements that use the images as patterns.",
+        "id": "CVE-2008-2715",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Unspecified vulnerability in Opera before 11.01 allows remote attackers to cause a denial of service (application crash) via unknown content on a web page, as demonstrated by vkontakte.ru.",
+        "id": "CVE-2011-0686",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Opera before 11.60 allows remote attackers to spoof the address bar via unspecified homograph characters, a different vulnerability than CVE-2010-2660.",
+        "id": "CVE-2012-4010",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Dragonfly in Opera before 11.60 allows remote attackers to cause a denial of service (application crash) via unspecified content on a web page, as demonstrated by forbes.com.",
+        "id": "CVE-2011-4685",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.10",
+        "description": "Opera before 10.10, when exception stacktraces are enabled, places scripting error messages from a web site into variables that can be read by a different web site, which allows remote attackers to obtain sensitive information or conduct cross-site scripting (XSS) attacks via unspecified vectors.",
+        "id": "CVE-2009-4071",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Unspecified vulnerability in the Web Workers implementation in Opera before 11.60 allows remote attackers to cause a denial of service (application crash) via unknown vectors.",
+        "id": "CVE-2011-4686",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.65",
+        "description": "Opera before 12.00 Beta allows remote attackers to cause a denial of service (application crash) via crafted characters in domain names, as demonstrated by \"IDNA2008 tests.\"",
+        "id": "CVE-2012-3565",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.61",
+        "description": "Opera before 11.62 allows user-assisted remote attackers to trick users into downloading and executing arbitrary files via a small window for the download dialog.",
+        "id": "CVE-2012-1924",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.00",
+        "description": "Opera before 10.00 does not properly handle a (1) '\\0' character or (2) invalid wildcard character in a domain name in the subject's Common Name (CN) field of an X.509 certificate, which allows man-in-the-middle attackers to spoof arbitrary SSL servers via a crafted certificate issued by a legitimate Certification Authority.",
+        "id": "CVE-2009-3044",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.52",
+        "description": "Opera 9.52 and earlier allows remote attackers to cause a denial of service (unusable browser) by calling the window.print function in a loop, aka a \"printing DoS attack,\" possibly a related issue to CVE-2009-0821.",
+        "id": "CVE-2008-7245",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 does not properly select the security context of JavaScript code associated with an error page, which allows user-assisted remote attackers to conduct cross-site scripting (XSS) attacks via a crafted web site.",
+        "id": "CVE-2010-4047",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.52",
+        "description": "Opera 9.52 and earlier allows remote attackers to cause a denial of service (CPU and memory consumption, and application hang) via a long Unicode string argument to the write method, a related issue to CVE-2009-2479.",
+        "id": "CVE-2009-2577",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.22",
+        "description": "Opera detects http content in https web pages only when the top-level frame uses https, which allows man-in-the-middle attackers to execute arbitrary web script, in an https site's context, by modifying an http page to include an https iframe that references a script file on an http site, related to \"HTTP-Intended-but-HTTPS-Loadable (HPIHSL) pages.\"",
+        "id": "CVE-2009-2067",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.00",
+        "description": "Opera before 10.00 does not properly display all characters in Internationalized Domain Names (IDN) in the address bar, which allows remote attackers to spoof URLs and conduct phishing attacks, related to Unicode and Punycode.",
+        "id": "CVE-2009-3049",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.62",
+        "description": "Opera before 11.64 does not properly allocate memory for URL strings, which allows remote attackers to execute arbitrary code or cause a denial of service (memory corruption and application crash) via a crafted string.",
+        "id": "CVE-2012-3561",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Unspecified vulnerability in Opera before 11.00 has unknown impact and attack vectors, related to \"a high severity issue.\"",
+        "id": "CVE-2010-4581",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 15.00",
+        "description": "Cross-site scripting (XSS) vulnerability in Opera before 15.00 allows remote attackers to inject arbitrary web script or HTML by leveraging UTF-8 encoding.",
+        "id": "CVE-2013-4705",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.00 does not properly handle security policies during updates to extensions, which might allow remote attackers to bypass intended access restrictions via unspecified vectors.",
+        "id": "CVE-2010-4582",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.63",
+        "description": "Unspecified vulnerability in Opera before 9.64 has unknown impact and attack vectors, related to a \"moderately severe issue.\"",
+        "id": "CVE-2009-0916",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.64",
+        "description": "Opera, possibly 9.64 and earlier, allows remote attackers to cause a denial of service (memory consumption) via a large integer value for the length property of a Select object, a related issue to CVE-2009-1692.",
+        "id": "CVE-2009-2540",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.62",
+        "description": "Opera before 11.65 does not properly restrict the opening of a pop-up window in response to the first click of a double-click action, which makes it easier for user-assisted remote attackers to conduct cross-site scripting (XSS) attacks or execute arbitrary code via a crafted web site.",
+        "id": "CVE-2012-3556",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.62",
+        "description": "Unspecified vulnerability in Opera before 9.63 allows remote attackers to \"reveal random data\" via unknown vectors.",
+        "id": "CVE-2008-5683",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 7.8,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 allows remote attackers to cause a denial of service (memory corruption) by referencing an SVG document in an IMG element.",
+        "id": "CVE-2010-4050",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Integer truncation error in opera.dll in Opera before 11.01 allows remote attackers to execute arbitrary code or cause a denial of service (memory corruption) via an HTML form with a select element that contains a large number of children.",
+        "id": "CVE-2011-0682",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.62",
+        "description": "Cross-site scripting (XSS) vulnerability in Opera before 9.63 allows remote attackers to inject arbitrary web script or HTML via built-in XSLT templates.",
+        "id": "CVE-2008-5682",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.00 does not properly constrain dialogs to appear on top of rendered documents, which makes it easier for remote attackers to trick users into interacting with a crafted web site that spoofs the (1) security information dialog or (2) download dialog.",
+        "id": "CVE-2010-4579",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.62",
+        "description": "Opera before 9.63 does not block unspecified \"scripted URLs\" during the feed preview, which allows remote attackers to read existing subscriptions and force subscriptions to arbitrary feed URLs.",
+        "id": "CVE-2008-5681",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.61",
+        "description": "Opera before 11.62 allows remote attackers to spoof the address field by triggering the launch of a dialog window associated with a different domain.",
+        "id": "CVE-2012-1927",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.51",
+        "description": "Opera before 9.52 does not properly restrict the ability of a framed web page to change the address associated with a different frame, which allows remote attackers to trigger the display of an arbitrary address in a frame via unspecified use of web script.",
+        "id": "CVE-2008-4195",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.51",
+        "description": "Cross-site scripting (XSS) vulnerability in Opera before 9.52 allows remote attackers to inject arbitrary web script or HTML via unspecified vectors.",
+        "id": "CVE-2008-4196",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.25",
+        "description": "Opera before 9.26 allows user-assisted remote attackers to execute arbitrary script via images that contain custom comments, which are treated as script when the user displays the image properties.",
+        "id": "CVE-2008-1081",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.24",
+        "description": "Opera before 9.25 allows remote attackers to conduct cross-domain scripting attacks via unknown vectors related to plug-ins.",
+        "id": "CVE-2007-6520",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.25",
+        "description": "Opera before 9.26 allows remote attackers to misrepresent web page addresses using \"certain characters\" that \"cause the page address text to be misplaced.\"",
+        "id": "CVE-2008-2714",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in Opera before 11.50 allows remote attackers to cause a denial of service (application hang) via unknown content on a web page, as demonstrated by domiteca.com.",
+        "id": "CVE-2011-2615",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.24",
+        "description": "The rich text editing functionality in Opera before 9.25 allows remote attackers to conduct cross-domain scripting attacks by using designMode to modify contents of pages in other domains.",
+        "id": "CVE-2007-6522",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.23",
+        "description": "Unspecified vulnerability in Opera before 9.24, when using an \"external\" newsgroup or e-mail client, allows remote attackers to execute arbitrary commands via unknown vectors.",
+        "id": "CVE-2007-5541",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.52",
+        "description": "Opera 9.52 and earlier, and 10.00 Beta 3 Build 1699, does not properly block data: URIs in Location headers in HTTP responses, which allows remote attackers to conduct cross-site scripting (XSS) attacks via vectors related to (1) injecting a Location header that contains JavaScript sequences in a data:text/html URI or (2) entering a data:text/html URI with JavaScript sequences when specifying the content of a Location header.  NOTE: the JavaScript executes outside of the context of the HTTP site.",
+        "id": "CVE-2009-3013",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.26",
+        "description": "Opera before 9.27 allows remote attackers to cause a denial of service (crash) and possibly execute arbitrary code via a crafted scaled image pattern in an HTML CANVAS element, which triggers memory corruption.",
+        "id": "CVE-2008-1762",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 10.10",
+        "description": "Opera before 10.10 permits cross-origin loading of CSS stylesheets even when the stylesheet download has an incorrect MIME type and the stylesheet document is malformed, which allows remote attackers to obtain sensitive information via a crafted document.",
+        "id": "CVE-2010-0653",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Opera 11.60 and earlier does not prevent capture of data about the times of Same Origin Policy violations during IFRAME loading attempts, which makes it easier for remote attackers to determine whether a document exists in the browser cache via crafted JavaScript code.",
+        "id": "CVE-2011-4690",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.10",
+        "description": "Unspecified vulnerability in Opera before 10.10 has unknown impact and attack vectors, related to a \"moderately severe issue.\"",
+        "id": "CVE-2009-4072",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.23",
+        "description": "Unspecified vulnerability in Opera before 9.24 allows remote attackers to overwrite functions on pages from other domains and bypass the same-origin policy via unknown vectors.",
+        "id": "CVE-2007-5540",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Opera before 11.11 does not properly implement FRAMESET elements, which allows remote attackers to execute arbitrary code or cause a denial of service (memory corruption) via vectors related to page unload.",
+        "id": "CVE-2011-2628",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.23",
+        "description": "Opera before 9.23 allows remote attackers to execute arbitrary code via crafted Javascript that triggers a \"virtual function call on an invalid pointer.\"",
+        "id": "CVE-2007-4367",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.61",
+        "description": "Opera before 11.62 allows remote attackers to spoof the address field by triggering a page reload followed by a redirect to a different domain.",
+        "id": "CVE-2012-1928",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 does not properly verify the origin of video content, which allows remote attackers to obtain sensitive information by using a video stream as HTML5 canvas content.",
+        "id": "CVE-2010-4046",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.51 allows remote attackers to cause an insecure site to appear secure or trusted via unspecified actions related to Extended Validation and loading content from trusted sources in an unspecified sequence that causes the address field and page information dialog to contain security information based on the trusted site, instead of the insecure site.",
+        "id": "CVE-2011-3388",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.21",
+        "description": "Buffer overflow in the transfer manager in Opera before 9.21 for Windows allows user-assisted remote attackers to execute arbitrary code via a crafted torrent file.  NOTE: due to the lack of details, it is not clear if this is the same issue as CVE-2007-2274.",
+        "id": "CVE-2007-2809",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.64",
+        "description": "Opera before 9.64 allows remote attackers to conduct cross-domain scripting attacks via unspecified vectors related to plug-ins.",
+        "id": "CVE-2009-0915",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.01 does not properly handle redirections and unspecified other HTTP responses, which allows remote web servers to obtain sufficient access to local files to use these files as page resources, and consequently obtain potentially sensitive information from the contents of the files, via an unknown response manipulation.",
+        "id": "CVE-2011-0684",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.00",
+        "description": "Opera before 10.00 trusts root X.509 certificates signed with the MD2 algorithm, which makes it easier for man-in-the-middle attackers to spoof arbitrary SSL servers via a crafted server certificate.",
+        "id": "CVE-2009-3045",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in the SVG BiDi implementation in Opera before 11.50 allows remote attackers to cause a denial of service (application crash or hang) via unknown vectors.",
+        "id": "CVE-2011-2623",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.25",
+        "description": "Opera before 9.26 allows user-assisted remote attackers to read arbitrary files by tricking a user into typing the characters of the target filename into a file input.",
+        "id": "CVE-2008-1080",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "Unspecified vulnerability in Opera before 10.61 allows remote attackers to cause a denial of service (CPU consumption and application hang) via an animated PNG image.",
+        "id": "CVE-2010-3021",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "The Cascading Style Sheets (CSS) implementation in Opera before 11.10 allows remote attackers to cause a denial of service (application crash) via vectors involving use of the :hover pseudo-class, in conjunction with transforms, for a floated element.",
+        "id": "CVE-2011-2635",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.25",
+        "description": "Opera before 9.26 allows remote attackers to \"bypass sanitization filters\" and conduct cross-site scripting (XSS) attacks via crafted attribute values in an XML document, which are not properly handled during DOM presentation.",
+        "id": "CVE-2008-1082",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Cross-site scripting (XSS) vulnerability in Opera before 12.10 allows remote attackers to inject arbitrary web script or HTML via crafted JavaScript code that overrides methods of unspecified native objects in documents that have different origins.",
+        "id": "CVE-2012-6464",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 does not prevent interpretation of a cross-origin document as a CSS stylesheet when the document lacks a CSS token sequence, which allows remote attackers to obtain sensitive information via a crafted document.",
+        "id": "CVE-2010-4043",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.24",
+        "description": "Unspecified vulnerability in Opera before 9.25 allows remote attackers to execute arbitrary code via crafted TLS certificates.",
+        "id": "CVE-2007-6521",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "The SVG implementation in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via vectors involving a path on which many characters are drawn.",
+        "id": "CVE-2011-2614",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via a gradient with many stops, related to the implementation of CANVAS elements, SVG, and Cascading Style Sheets (CSS).",
+        "id": "CVE-2011-2619",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 does not ensure that the portion of a URL shown in the Address Bar contains the beginning of the URL, which allows remote attackers to spoof URLs by changing a window's size.",
+        "id": "CVE-2010-4044",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Opera before 12.10 does not properly handle incorrect size data in a WebP image, which allows remote attackers to obtain potentially sensitive information from process memory by using a crafted image as the fill pattern for a canvas.",
+        "id": "CVE-2012-6466",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.22",
+        "description": "Use-after-free vulnerability in the BitTorrent support in Opera before 9.22 allows user-assisted remote attackers to execute arbitrary code via a crafted header in a torrent file, which leaves a dangling pointer to an invalid object.",
+        "id": "CVE-2007-3929",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.51",
+        "description": "Opera before 9.52 does not ensure that the address field of a news feed represents the feed's actual URL, which allows remote attackers to change this field to display the URL of a page containing web script controlled by the attacker.",
+        "id": "CVE-2008-4200",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.5",
+        "description": "Unspecified vulnerability in Opera before 9.5 allows remote attackers to spoof the contents of trusted frames on the same parent page by modifying the location, which can facilitate phishing attacks.",
+        "id": "CVE-2008-2716",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.01",
+        "description": "Opera 9 allows remote attackers to cause a denial of service (crash) via a crafted web page that triggers an out-of-bounds memory access, related to an iframe and JavaScript that accesses certain style sheets properties.",
+        "id": "CVE-2006-3353",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.00, when Opera Turbo is used, does not properly present information about problematic X.509 certificates on https web sites, which might make it easier for remote attackers to spoof trusted content via a crafted web site.",
+        "id": "CVE-2010-4584",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Unspecified vulnerability in the auto-update functionality in Opera before 11.00 allows remote attackers to cause a denial of service (application crash) by triggering an Opera Unite update.",
+        "id": "CVE-2010-4585",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.51",
+        "description": "Opera before 9.52 does not prevent use of links from web pages to feed source files on the local disk, which might allow remote attackers to determine the validity of local filenames via vectors involving \"detection of JavaScript events and appropriate manipulation.\"",
+        "id": "CVE-2008-4199",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.60",
+        "description": "The Fast Forward feature in Opera before 9.61, when a page is located in a frame, executes a javascript: URL in the context of the outermost page instead of the page that contains this URL, which allows remote attackers to conduct cross-site scripting (XSS) attacks.",
+        "id": "CVE-2008-4697",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "Opera before 10.60 allows remote attackers to bypass the popup blocker via a javascript: URL and a \"fake click.\"",
+        "id": "CVE-2010-2662",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in the Web Workers implementation in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via unknown vectors.",
+        "id": "CVE-2011-2622",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "Opera before 10.60 allows remote attackers to cause a denial of service (application hang) via an ended event handler that changes the SRC attribute of an AUDIO element.",
+        "id": "CVE-2010-2663",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Opera before 11.10 allows remote attackers to hijack (1) searches and (2) customizations via unspecified third party applications.",
+        "id": "CVE-2011-2634",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.60",
+        "description": "Opera before 9.61 does not properly block scripts during preview of a news feed, which allows remote attackers to create arbitrary new feed subscriptions and read the contents of arbitrary feeds.",
+        "id": "CVE-2008-4698",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "The news-feed preview feature in Opera before 10.61 does not properly remove scripts, which allows remote attackers to force subscriptions to arbitrary feeds via crafted content.",
+        "id": "CVE-2010-3020",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 does not properly restrict web script in unspecified circumstances involving reloads and redirects, which allows remote attackers to spoof the Address Bar, conduct cross-site scripting (XSS) attacks, and possibly execute arbitrary code by leveraging the ability of a script to interact with a web page from (1) a different domain or (2) a different security context.",
+        "id": "CVE-2010-4045",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.14",
+        "description": "Unspecified vulnerability in Opera before 12.15 has unknown impact and attack vectors, related to a \"moderately severe issue.\"",
+        "id": "CVE-2013-3211",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.00, when Opera Turbo is enabled, does not display a page's security indication, which makes it easier for remote attackers to spoof trusted content via a crafted web site.",
+        "id": "CVE-2010-4583",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Opera before 11.10 does not properly handle hidden animated GIF images, which allows remote attackers to cause a denial of service (CPU consumption) via an image file that triggers continual repaints.",
+        "id": "CVE-2011-2639",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "The default configuration of Opera before 11.00 enables WebSockets functionality, which has unspecified impact and remote attack vectors, possibly a related issue to CVE-2010-4508.",
+        "id": "CVE-2010-4586",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in Opera before 11.50 has unknown impact and attack vectors, related to a \"moderately severe issue.\"",
+        "id": "CVE-2011-2610",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "The Cascading Style Sheets (CSS) Extensions for XML implementation in Opera before 11.01 recognizes links to javascript: URLs in the -o-link property, which makes it easier for remote attackers to bypass CSS filtering via a crafted URL.",
+        "id": "CVE-2011-0681",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.22",
+        "description": "Opera, possibly before 9.25, uses the HTTP Host header to determine the context of a document provided in a (1) 4xx or (2) 5xx CONNECT response from a proxy server, which allows man-in-the-middle attackers to execute arbitrary web script by modifying this CONNECT response, aka an \"SSL tampering\" attack.",
+        "id": "CVE-2009-2059",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "The Delete Private Data feature in Opera before 11.01 does not properly implement the \"Clear all email account passwords\" option, which might allow physically proximate attackers to access an e-mail account via an unattended workstation.",
+        "id": "CVE-2011-0685",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 allows remote attackers to cause a denial of service (application crash) via a Flash movie with a transparent Window Mode (aka wmode) property, which is not properly handled during navigation away from the containing HTML document.",
+        "id": "CVE-2010-4049",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Unspecified vulnerability in Opera before 11.11 allows remote attackers to cause a denial of service (application crash) via vectors involving a Certificate Revocation List (CRL) file, as demonstrated by the multicert-ca-02.crl file.",
+        "id": "CVE-2011-2633",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.51",
+        "description": "Opera before 9.52, when rendering an http page that has loaded an https page into a frame, displays a padlock icon and offers a security information dialog reporting a secure connection, which might allow remote attackers to trick a user into performing unsafe actions on the http page.",
+        "id": "CVE-2008-4198",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.01 does not properly implement Wireless Application Protocol (WAP) dropdown lists, which allows user-assisted remote attackers to cause a denial of service (application crash) via a crafted WAP document.",
+        "id": "CVE-2011-0687",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.50 allows remote attackers to cause a denial of service (disk consumption) via invalid URLs that trigger creation of error pages.",
+        "id": "CVE-2011-1337",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.50 does not properly restrict data: URIs, which makes it easier for remote attackers to conduct cross-site scripting (XSS) attacks via a crafted web site.",
+        "id": "CVE-2011-2609",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 12.10",
+        "description": "Opera before 12.11 allows remote attackers to determine the existence of arbitrary local files via vectors involving web script in an error page.",
+        "id": "CVE-2012-6469",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.50 allows user-assisted remote attackers to cause a denial of service (application hang) via a large table, which is not properly handled during a print preview.",
+        "id": "CVE-2011-2624",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in the printing functionality in Opera before 11.50 allows user-assisted remote attackers to cause a denial of service (application crash) via a crafted web page.",
+        "id": "CVE-2011-2611",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Opera before 11.60 does not properly consider the number of . (dot) characters that conventionally exist in domain names of different top-level domains, which allows remote attackers to bypass the Same Origin Policy by leveraging access to a different domain name in the same top-level domain, as demonstrated by the .no or .uk domain.",
+        "id": "CVE-2011-4681",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via unknown content on a web page, as demonstrated by progorod.ru.",
+        "id": "CVE-2011-2612",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.24",
+        "description": "Opera before 9.25 allows remote attackers to obtain potentially sensitive memory contents via a crafted bitmap (BMP) file, as demonstrated using a CANVAS element and JavaScript in an HTML document for copying these contents from 9.50 beta, a related issue to CVE-2008-0420.",
+        "id": "CVE-2007-6524",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 7.8,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.00 does not clear WAP WML form fields after manual navigation to a new web site, which allows remote attackers to obtain sensitive information via an input field that has the same name as an input field on a previously visited web site.",
+        "id": "CVE-2010-4580",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "The Array.prototype.join method in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via a non-array object that contains initial holes.",
+        "id": "CVE-2011-2613",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.62",
+        "description": "Multiple buffer overflows in Opera before 9.63 might allow (1) remote attackers to execute arbitrary code via a crafted text area, or allow (2) user-assisted remote attackers to execute arbitrary code via a long host name in a file: URL.  NOTE: this might overlap CVE-2008-5178.",
+        "id": "CVE-2008-5680",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in Opera before 11.50 allows remote attackers to cause a denial of service (memory consumption) via unknown content on a web page, as demonstrated by test262.ecmascript.org.",
+        "id": "CVE-2011-2616",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "Opera before 10.61 does not properly suppress clicks on download dialogs that became visible after a recent tab change, which allows remote attackers to conduct clickjacking attacks, and consequently execute arbitrary code, via vectors involving (1) closing a tab or (2) hiding a tab, a related issue to CVE-2005-2407.",
+        "id": "CVE-2010-2576",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via vectors related to selecting a text node, and closed pop-up windows, removed pop-up windows, and IFRAME elements.",
+        "id": "CVE-2011-2617",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via web script that moves a (1) AUDIO element or (2) VIDEO element between windows.",
+        "id": "CVE-2011-2618",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "Opera before 10.60 does not properly restrict certain interaction between plug-ins, file inputs, and the clipboard, which allows user-assisted remote attackers to trigger the uploading of arbitrary files via a crafted web site.",
+        "id": "CVE-2010-2658",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.62",
+        "description": "Opera before 10.63 allows user-assisted remote web servers to cause a denial of service (application crash) by sending a redirect during the saving of a file.",
+        "id": "CVE-2010-4048",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via vectors involving SVG animation.",
+        "id": "CVE-2011-2620",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.51",
+        "description": "Opera before 9.52 does not check the CRL override upon encountering a certificate that lacks a CRL, which has unknown impact and attack vectors.  NOTE: it is not clear whether this is a vulnerability, but the vendor included it in a security section of the advisory.",
+        "id": "CVE-2008-4292",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Unspecified vulnerability in Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via vectors related to form layout.",
+        "id": "CVE-2011-2621",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.52",
+        "description": "Opera 9.52 and earlier does not block javascript: URIs in Refresh headers in HTTP responses, which allows remote attackers to conduct cross-site scripting (XSS) attacks via vectors related to (1) injecting a Refresh header or (2) specifying the content of a Refresh header, a related issue to CVE-2009-1312. NOTE: it was later reported that 10.00 Beta 3 Build 1699 is also affected.",
+        "id": "CVE-2009-2351",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.00",
+        "description": "Opera before 10.00, when a collapsed address bar is used, does not properly update the domain name from the previously visited site to the currently visited site, which might allow remote attackers to spoof URLs.",
+        "id": "CVE-2009-3047",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.50 allows remote attackers to cause a denial of service (application crash) via a SELECT element that contains many OPTION elements.",
+        "id": "CVE-2011-2625",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.00",
+        "description": "Opera before 11.01 does not properly restrict the use of opera: URLs, which makes it easier for remote attackers to conduct clickjacking attacks via a crafted web site.",
+        "id": "CVE-2011-0683",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.50",
+        "description": "Opera before 11.50 allows remote attackers to cause a denial of service (application crash) by using \"injected script\" to set the SRC attribute of an IFRAME element.",
+        "id": "CVE-2011-2626",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Opera before 11.11 allows user-assisted remote attackers to cause a denial of service (application crash) via a crafted web page that is not properly handled during a reload occurring after the opening of a popup of the Easy Sticky Note extension.",
+        "id": "CVE-2011-2630",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.24",
+        "description": "Opera, possibly before 9.25, processes a 3xx HTTP CONNECT response before a successful SSL handshake, which allows man-in-the-middle attackers to execute arbitrary web script, in an https site's context, by modifying this CONNECT response to specify a 302 redirect to an arbitrary https web site.",
+        "id": "CVE-2009-2063",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Unspecified vulnerability in Opera before 11.60 has unknown impact and attack vectors, related to a \"moderately severe issue.\"",
+        "id": "CVE-2011-4683",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.50",
+        "description": "Opera before 9.51 does not properly manage memory within functions supporting the CANVAS element, which allows remote attackers to read uninitialized memory contents by using JavaScript to read a canvas image.",
+        "id": "CVE-2008-3078",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 7.8,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Opera before 11.11 does not properly handle destruction of a Silverlight instance, which allows remote attackers to cause a denial of service (application crash) via a web page, as demonstrated by vod.onet.pl.",
+        "id": "CVE-2011-2632",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Unspecified vulnerability in Opera before 11.10 allows remote attackers to cause a denial of service (application crash) via unknown content on a web page, as demonstrated by a certain Tomato Firmware page.",
+        "id": "CVE-2011-2636",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Opera before 11.60 does not properly handle certificate revocation, which has unspecified impact and remote attack vectors related to \"corner cases.\"",
+        "id": "CVE-2011-4684",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Unspecified vulnerability in Opera before 11.10 allows remote attackers to cause a denial of service (application crash) via unknown content on a web page, as demonstrated by futura-sciences.com, seoptimise.com, and mitosyfraudes.org.",
+        "id": "CVE-2011-2637",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.63",
+        "description": "Opera before 9.64 allows remote attackers to execute arbitrary code via a crafted JPEG image that triggers memory corruption.",
+        "id": "CVE-2009-0914",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "The Cascading Style Sheets (CSS) implementation in Opera before 11.11 does not properly handle the column-count property, which allows remote attackers to cause a denial of service (infinite repaint loop and application hang) via a web page, as demonstrated by an unspecified Wikipedia page.",
+        "id": "CVE-2011-2631",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.10",
+        "description": "Opera before 11.10 allows remote attackers to cause a denial of service (application crash) via an HTML document that has an empty parameter value for an embedded Java applet.",
+        "id": "CVE-2011-2640",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.60",
+        "description": "Unspecified vulnerability in Opera before 9.60 allows remote attackers to cause a denial of service (application crash) or execute arbitrary code via a redirect that specifies a crafted URL.",
+        "id": "CVE-2008-4694",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 9.3,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 10.60",
+        "description": "The VEGAOpBitmap::AddLine function in Opera before 10.61 does not properly initialize memory during processing of the SIZE attribute of a SELECT element, which allows remote attackers to trigger an invalid memory write operation, and consequently cause a denial of service (application crash) or possibly execute arbitrary code, via a large integer attribute value.",
+        "id": "CVE-2011-1824",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "The JavaScript engine in Opera before 11.60 does not properly implement the in operator, which allows remote attackers to bypass the Same Origin Policy via vectors related to variables on different web sites.",
+        "id": "CVE-2011-4682",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 6.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 9.52",
+        "description": "Opera 9.52 and earlier allows remote attackers to cause a denial of service (CPU consumption) via a series of automatic submissions of a form containing a KEYGEN element, a related issue to CVE-2009-1828.",
+        "id": "CVE-2009-3269",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 10.00",
+        "description": "Opera before 10.00 does not check all intermediate X.509 certificates for revocation, which makes it easier for remote SSL servers to bypass validation of the certificate chain via a revoked certificate.",
+        "id": "CVE-2009-3046",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 11.60",
+        "description": "Opera before 11.60 allows remote attackers to cause a denial of service (CPU and memory consumption) via unspecified content on a web page, as demonstrated by a page under the cisco.com home page.",
+        "id": "CVE-2011-4687",
+        "item_id": "eff251a49a142accf85b170526462e13d3265f03",
+        "score": {
+            "base": 5.0,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

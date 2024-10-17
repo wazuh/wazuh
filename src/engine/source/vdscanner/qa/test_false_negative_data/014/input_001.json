@@ -1,39 +1,43 @@
 {
   "type": "packagelist",
   "agent": {
-    "id": "001"
+    "id": "002"
   },
   "packages": [
     {
-      "version": "1.24.5",
-      "vendor": " ",
-      "architecture": " ",
-      "name": "wget",
-      "size": 0,
-      "format": "pkg",
-      "checksum": "16f028c029a9d70dbf517739d642af4ce2e91cad",
-      "description": "Internet file retriever",
-      "install_time": "2024/04/03 22:53:13",
-      "item_id": "cf15b75fa23de290a28dce697d0455abe1d273f5",
-      "multiarch": null,
-      "priority": " ",
-      "scan_time": "2024/04/24 14:11:04",
-      "source": "homebrew"
+      "architecture": "amd64",
+      "checksum": "b800d14290607fe293713459d384464f75dc46d4",
+      "description": " ",
+      "format": "deb",
+      "groups": " ",
+      "install_time": " ",
+      "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+      "location": " ",
+      "multiarch": "same",
+      "name": "perl-modules",
+      "priority": "optional",
+      "scan_time": "2024/08/20 12:30:36",
+      "size": 5768,
+      "source": " ",
+      "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+      "version": "5.7.8-12ubuntu0.3"
     }
   ],
   "hotfixes": [],
   "os": {
     "architecture": "x86_64",
-    "checksum": "1691178971959743855",
-    "hostname": "fd9b83c25f30",
-    "major_version": "14",
-    "minor_version": "0",
-    "name": "macOS",
-    "platform": "darwin",
-    "version": "14.0",
-    "kernel_release": "5.4.0-155-generic",
-    "scan_time": "2023/08/04 19:56:11",
-    "kernel_name": "macOS",
-    "kernel_version": "darwin 23.0"
+    "checksum": "1708734360392506855",
+    "hostname": "qa_test",
+    "codename": "hardy",
+    "major_version": "22",
+    "minor_version": "04",
+    "name": "Ubuntu",
+    "patch": "3",
+    "platform": "ubuntu",
+    "version": "Ubuntu 8.04 LTS (The Hardy Heron)",
+    "kernel_release": "6.5.0-18-generic",
+    "scan_time": "2024/02/24 00:26:02",
+    "kernel_name": "Linux",
+    "kernel_version": "#18~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Wed Feb  7 11:40:03 UTC 2"
   }
 }

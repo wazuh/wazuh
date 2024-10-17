@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 6.8.0-40.40~22.04.3",
+        "description": "In the Linux kernel, the following vulnerability has been resolved:  netfs: Fix the pre-flush when appending to a file in writethrough mode  In netfs_perform_write(), when the file is marked NETFS_ICTX_WRITETHROUGH or O_*SYNC or RWF_*SYNC was specified, write-through caching is performed on a buffered file.  When setting up for write-through, we flush any conflicting writes in the region and wait for the write to complete, failing if there's a write error to return.  The issue arises if we're writing at or above the EOF position because we skip the flush and - more importantly - the wait.  This becomes a problem if there's a partial folio at the end of the file that is being written out and we want to make a write to it too.  Both the already-running write and the write we start both want to clear the writeback mark, but whoever is second causes a warning looking something like:      ------------[ cut here ]------------     R=00000012: folio 11 is not under writeback     WARNING: CPU: 34 PID: 654 at fs/netfs/write_collect.c:105     ...     CPU: 34 PID: 654 Comm: kworker/u386:27 Tainted: G S ...     ...     Workqueue: events_unbound netfs_write_collection_worker     ...     RIP: 0010:netfs_writeback_lookup_folio  Fix this by making the flush-and-wait unconditional.  It will do nothing if there are no folios in the pagecache and will return quickly if there are no folios in the region specified.  Further, move the WBC attachment above the flush call as the flush is going to attach a WBC and detach it again if it is not present - and since we need one anyway we might as well share it.",
+        "id": "CVE-2024-36001",
+        "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+        "score": {
+            "base": 0.0,
+            "version": ""
+        },
+        "severity": ""
+    }
+]

@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.4.16",
+        "description": "Grafana is an open-source platform for monitoring and observability. The vulnerability impacts Grafana instances with several organizations, and allows a user with Organization Admin permissions in one organization to change the permissions associated with Organization Viewer, Organization Editor and Organization Admin roles in all organizations.  It also allows an Organization Admin to assign or revoke any permissions that they have to any user globally.  This means that any Organization Admin can elevate their own permissions in any organization that they are already a member of, or elevate or restrict the permissions of any other user.  The vulnerability does not allow a user to become a member of an organization that they are not already a member of, or to add any other users to an organization that the current user is not a member of.",
+        "id": "CVE-2023-4822",
+        "item_id": "fe14be7973e211e281da6d754e1f2966bbf74449",
+        "score": {
+            "base": 7.2,
+            "version": "3.1"
+        },
+        "severity": "High"
+    }
+]

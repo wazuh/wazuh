@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 6.3.0",
+        "description": "An information-disclosure issue was discovered in Postman through 6.3.0. It validates a server's X.509 certificate and presents an error if the certificate is not valid. Unfortunately, the associated HTTPS request data is sent anyway. Only the response is not displayed. Thus, all contained information of the HTTPS request is disclosed to a man-in-the-middle attacker (for example, user credentials).",
+        "id": "CVE-2018-17215",
+        "item_id": "61e71c9fe4bab8cd4a5eb2a10ec16c99f8326c7b",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

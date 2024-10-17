@@ -1,0 +1,122 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 7.0.6-0",
+        "description": "The ReadSCREENSHOTImage function in coders/screenshot.c in ImageMagick before 7.0.6-1 has memory leaks, causing denial of service.",
+        "id": "CVE-2017-11447",
+        "item_id": "5920dfdf19c05a64efe4cd8bfe39a6d0451a7ef2",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 7.0.2-0",
+        "description": "Integer overflow in MagickCore/profile.c in ImageMagick before 7.0.2-1 allows remote attackers to cause a denial of service (segmentation fault) or possibly execute arbitrary code via vectors involving the offset variable.",
+        "id": "CVE-2016-5841",
+        "item_id": "5920dfdf19c05a64efe4cd8bfe39a6d0451a7ef2",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 7.0.8-8",
+        "description": "In ImageMagick before 7.0.8-8, a NULL pointer dereference exists in the GetMagickProperty function in MagickCore/property.c.",
+        "id": "CVE-2018-16329",
+        "item_id": "5920dfdf19c05a64efe4cd8bfe39a6d0451a7ef2",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 7.0.8-8",
+        "description": "In ImageMagick before 7.0.8-8, a NULL pointer dereference exists in the CheckEventLogging function in MagickCore/log.c.",
+        "id": "CVE-2018-16328",
+        "item_id": "5920dfdf19c05a64efe4cd8bfe39a6d0451a7ef2",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.424.2",
+        "description": "Hash collision attack vulnerability in Jenkins before 1.447, Jenkins LTS before 1.424.2, and Jenkins Enterprise by CloudBees 1.424.x before 1.424.2.1 and 1.400.x before 1.400.0.11 could allow remote attackers to cause a considerable CPU load, aka \"the Hash DoS attack.\"",
+        "id": "CVE-2012-0785",
+        "item_id": "ab24992589677e5cc902a7fb82dbbf097d4efdfe",
+        "score": {
+            "base": 7.8,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 1.437",
+        "description": "Cross-site scripting (XSS) vulnerability in Jenkins Core in Jenkins before 1.438, and 1.409 LTS before 1.409.3 LTS, when a stand-alone container is used, allows remote attackers to inject arbitrary web script or HTML via vectors related to error messages.",
+        "id": "CVE-2011-4344",
+        "item_id": "ab24992589677e5cc902a7fb82dbbf097d4efdfe",
+        "score": {
+            "base": 2.6,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.509.1",
+        "description": "Cross-site scripting (XSS) vulnerability in Jenkins before 1.514, LTS before 1.509.1, and Enterprise 1.466.x before 1.466.14.1 and 1.480.x before 1.480.4.1 allows remote authenticated users with write permission to inject arbitrary web script or HTML via unspecified vectors.",
+        "id": "CVE-2013-2033",
+        "item_id": "ab24992589677e5cc902a7fb82dbbf097d4efdfe",
+        "score": {
+            "base": 2.1,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 3.1.1",
+        "description": "The ssl.match_hostname function in CPython (aka Python) before 2.7.9 and 3.x before 3.3.3 does not properly handle wildcards in hostnames, which might allow man-in-the-middle attackers to spoof servers via a crafted certificate.",
+        "id": "CVE-2013-7440",
+        "item_id": "b1f26c61fa34a986ae51404e5b44c0d457ebe994",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 3.1.1",
+        "description": "Python 2.6 through 3.2 creates ~/.pypirc with world-readable permissions before changing them after data has been written, which introduces a race condition that allows local users to obtain a username and password by reading this file.",
+        "id": "CVE-2011-4944",
+        "item_id": "b1f26c61fa34a986ae51404e5b44c0d457ebe994",
+        "score": {
+            "base": 1.9,
+            "version": "2.0"
+        },
+        "severity": "Low"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package equal to 3.1.1",
+        "description": "The urllib and urllib2 modules in Python 2.x before 2.7.2 and 3.x before 3.2.1 process Location headers that specify redirection to file: URLs, which makes it easier for remote attackers to obtain sensitive information or cause a denial of service (resource consumption) via a crafted URL, as demonstrated by the file:///etc/passwd and file:///dev/zero URLs.",
+        "id": "CVE-2011-1521",
+        "item_id": "b1f26c61fa34a986ae51404e5b44c0d457ebe994",
+        "score": {
+            "base": 6.4,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

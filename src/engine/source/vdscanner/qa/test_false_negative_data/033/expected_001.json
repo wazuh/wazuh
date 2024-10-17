@@ -1,0 +1,218 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.27",
+        "description": "Grafana is validating Azure AD accounts based on the email claim.   On Azure AD, the profile email field is not unique and can be easily modified.   This leads to account takeover and authentication bypass when Azure AD OAuth is configured with a multi-tenant app.",
+        "id": "CVE-2023-3128",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 9.8,
+            "version": "3.1"
+        },
+        "severity": "Critical"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.26",
+        "description": "Grafana is an open-source platform for monitoring and observability.   The option to send a test alert is not available from the user panel UI for users having the Viewer role. It is still possible for a user with the Viewer role to send a test alert using the API as the API does not check access to this function.  This might enable malicious users to abuse the functionality by sending multiple alert messages to e-mail and Slack, spamming users, prepare Phishing attack or block SMTP server.  Users may upgrade to version 9.5.3, 9.4.12, 9.3.15, 9.2.19 and 8.5.26 to receive a fix.",
+        "id": "CVE-2023-2183",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.1,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.21",
+        "description": "Grafana is an open-source platform for monitoring and observability.   Starting with the 7.0 branch, Grafana had a stored XSS vulnerability in the trace view visualization.   The stored XSS vulnerability was possible due the value of a span's attributes/resources were not properly sanitized and this will be rendered when the span's attributes/resources are expanded.  An attacker needs to have the Editor role in order to change the value of a trace view visualization to contain JavaScript.   This means that vertical privilege escalation is possible, where a user with Editor role can change to a known password for a user having Admin role if the user with Admin role executes malicious JavaScript viewing a dashboard.   Users may upgrade to version 8.5.21, 9.2.13 and 9.3.8 to receive a fix.",
+        "id": "CVE-2023-0594",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.21",
+        "description": "Grafana is an open-source platform for monitoring and observability.   Starting with the 8.1 branch, Grafana had a stored XSS vulnerability affecting the core plugin GeoMap.   The stored XSS vulnerability was possible due to map attributions weren't properly sanitized and allowed arbitrary JavaScript to be executed in the context of the currently authorized user of the Grafana instance.   An attacker needs to have the Editor role in order to change a panel to include a map attribution containing JavaScript.   This means that vertical privilege escalation is possible, where a user with Editor role can change to a known password for a user having Admin role if the user with Admin role executes malicious JavaScript viewing a dashboard.   Users may upgrade to version 8.5.21, 9.2.13 and 9.3.8 to receive a fix.",
+        "id": "CVE-2023-0507",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.2.10",
+        "description": "Grafana is an open-source platform for monitoring and observability. When datasource query caching is enabled, Grafana caches all headers, including `grafana_session`. As a result, any user that queries a datasource where the caching is enabled can acquire another user’s session. To mitigate the vulnerability you can disable datasource query caching for all datasources. This issue has been patched in versions 9.2.10 and 9.3.4.",
+        "id": "CVE-2022-23498",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.9",
+        "description": "Grafana is an open-source platform for monitoring and observability. In versions 5.3 until 9.0.3, 8.5.9, 8.4.10, and 8.3.10, it is possible for a malicious user who has authorization to log into a Grafana instance via a configured OAuth IdP which provides a login name to take over the account of another user in that Grafana instance. This can occur when the malicious user is authorized to log in to Grafana via OAuth, the malicious user's external user id is not already associated with an account in Grafana, the malicious user's email address is not already associated with an account in Grafana, and the malicious user knows the Grafana username of the target user. If these conditions are met, the malicious user can set their username in the OAuth provider to that of the target user, then go through the OAuth flow to log in to Grafana. Due to the way that external and internal user accounts are linked together during login, if the conditions above are all met then the malicious user will be able to log in to the target user's Grafana account. Versions 9.0.3, 8.5.9, 8.4.10, and 8.3.10 contain a patch for this issue. As a workaround, concerned users can disable OAuth login to their Grafana instance, or ensure that all users authorized to log in via OAuth have a corresponding user account in Grafana linked to their email address.",
+        "id": "CVE-2022-31107",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.5,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.13",
+        "description": "Grafana is an open-source platform for monitoring and observability. In versions prior to 8.5.13, 9.0.9, and 9.1.6, Grafana is subject to Improper Preservation of Permissions resulting in privilege escalation on some folders where Admin is the only used permission. The vulnerability impacts Grafana instances where RBAC was disabled and enabled afterwards, as the migrations which are translating legacy folder permissions to RBAC permissions do not account for the scenario where the only user permission in the folder is Admin, as a result RBAC adds permissions for Editors and Viewers which allow them to edit and view folders accordingly. This issue has been patched in versions 8.5.13, 9.0.9, and 9.1.6. A workaround when the impacted folder/dashboard is known is to remove the additional permissions manually.",
+        "id": "CVE-2022-36062",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.6,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.15",
+        "description": "Grafana is an open-source platform for monitoring and observability. Versions prior to 9.2.4, or 8.5.15 on the 8.X branch, are subject to Improper Input Validation. Grafana admins can invite other members to the organization they are an admin for. When admins add members to the organization, non existing users get an email invite, existing members are added directly to the organization. When an invite link is sent, it allows users to sign up with whatever username/email address the user chooses and become a member of the organization. This introduces a vulnerability which can be used with malicious intent. This issue is patched in version 9.2.4, and has been backported to 8.5.15. There are no known workarounds.",
+        "id": "CVE-2022-39306",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.16",
+        "description": "Grafana is an open-source platform for monitoring and observability. Starting with the 8.1 branch and prior to versions 8.5.16, 9.2.10, and 9.3.4, Grafana had a stored XSS vulnerability affecting the core plugin GeoMap. The stored XSS vulnerability was possible because SVG files weren't properly sanitized and allowed arbitrary JavaScript to be executed in the context of the currently authorized user of the Grafana instance.   An attacker needs to have the Editor role in order to change a panel to include either an external URL to a SVG-file containing JavaScript, or use the `data:` scheme to load an inline SVG-file containing JavaScript. This means that vertical privilege escalation is possible, where a user with Editor role can change to a known password for a user having Admin role if the user with Admin role executes malicious JavaScript viewing a dashboard.     Users may upgrade to version 8.5.16, 9.2.10, or 9.3.4 to receive a fix.",
+        "id": "CVE-2022-23552",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 5.4,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.22",
+        "description": "Grafana is an open-source platform for monitoring and observability.   Grafana had a stored XSS vulnerability in the Graphite FunctionDescription tooltip.   The stored XSS vulnerability was possible due the value of the Function Description was not properly sanitized.  An attacker needs to have control over the Graphite data source in order to manipulate a function description and a Grafana admin needs to configure the data source, later a Grafana user needs to select a tampered function and hover over the description.     Users may upgrade to version 8.5.22, 9.2.15 and 9.3.11 to receive a fix.",
+        "id": "CVE-2023-1410",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.2,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.13",
+        "description": "Grafana is an open-source platform for monitoring and observability. Versions prior to 9.1.6 and 8.5.13 are vulnerable to an escalation from admin to server admin when auth proxy is used, allowing an admin to take over the server admin account and gain full control of the grafana instance. All installations should be upgraded as soon as possible. As a workaround deactivate auth proxy following the instructions at: https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/auth-proxy/",
+        "id": "CVE-2022-35957",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.6,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.9",
+        "description": "Grafana is an open-source platform for monitoring and observability. Versions on the 8.x and 9.x branch prior to 9.0.3, 8.5.9, 8.4.10, and 8.3.10 are vulnerable to stored cross-site scripting via the Unified Alerting feature of Grafana. An attacker can exploit this vulnerability to escalate privilege from editor to admin by tricking an authenticated admin to click on a link. Versions 9.0.3, 8.5.9, 8.4.10, and 8.3.10 contain a patch. As a workaround, it is possible to disable alerting or use legacy alerting.",
+        "id": "CVE-2022-31097",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.3,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.14",
+        "description": "Grafana is an open source observability and data visualization platform. Starting with version 5.0.0-beta1 and prior to versions 8.5.14 and 9.1.8, Grafana could leak the authentication cookie of users to plugins. The vulnerability impacts data source and plugin proxy endpoints under certain conditions. The destination plugin could receive a user's Grafana authentication cookie. Versions 9.1.8 and 8.5.14 contain a patch for this issue. There are no known workarounds.",
+        "id": "CVE-2022-39201",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.8,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.14",
+        "description": "Grafana is an open source observability and data visualization platform. Versions prior to 9.1.8 and 8.5.14 are vulnerable to a bypass in the plugin signature verification. An attacker can convince a server admin to download and successfully run a malicious plugin even though unsigned plugins are not allowed. Versions 9.1.8 and 8.5.14 contain a patch for this issue. As a workaround, do not install plugins downloaded from untrusted sources.",
+        "id": "CVE-2022-31123",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 7.8,
+            "version": "3.1"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.15",
+        "description": "Grafana is an open-source platform for monitoring and observability. When using the forget password on the login page, a POST request is made to the `/api/user/password/sent-reset-email` URL. When the username or email does not exist, a JSON response contains a “user not found” message. This leaks information to unauthenticated users and introduces a security risk. This issue has been patched in 9.2.4 and backported to 8.5.15. There are no known workarounds.",
+        "id": "CVE-2022-39307",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.14",
+        "description": "Grafana is an open source observability and data visualization platform. Versions of Grafana for endpoints prior to 9.1.8 and 8.5.14 could leak authentication tokens to some destination plugins under some conditions. The vulnerability impacts data source and plugin proxy endpoints with authentication tokens. The destination plugin could receive a user's Grafana authentication token. Versions 9.1.8 and 8.5.14 contain a patch for this issue. As a workaround, do not use API keys, JWT authentication, or any HTTP Header based authentication.",
+        "id": "CVE-2022-31130",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.14",
+        "description": "Grafana is an open source data visualization platform for metrics, logs, and traces. Versions prior to 9.1.8 and 8.5.14 allow one user to block another user's login attempt by registering someone else'e email address as a username. A Grafana user’s username and email address are unique fields, that means no other user can have the same username or email address as another user. A user can have an email address as a username. However, the login system allows users to log in with either username or email address. Since Grafana allows a user to log in with either their username or email address, this creates an usual behavior where `user_1` can register with one email address and `user_2` can register their username as `user_1`’s email address. This prevents `user_1` logging into the application since `user_1`'s password won’t match with `user_2`'s email address. Versions 9.1.8 and 8.5.14 contain a patch. There are no workarounds for this issue.",
+        "id": "CVE-2022-39229",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.3,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.16",
+        "description": "Grafana is an open-source platform for monitoring and observability. Prior to versions 8.5.16 and 9.2.8, malicious user can create a snapshot and arbitrarily choose the `originalUrl` parameter by editing the query, thanks to a web proxy. When another user opens the URL of the snapshot, they will be presented with the regular web interface delivered by the trusted Grafana server. The `Open original dashboard` button no longer points to the to the real original dashboard but to the attacker’s injected URL. This issue is fixed in versions 8.5.16 and 9.2.8.",
+        "id": "CVE-2022-39324",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

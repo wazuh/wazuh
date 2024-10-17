@@ -1,0 +1,74 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 1.8.0",
+        "description": "An issue was discovered in cloudflare-scrape 1.6.6 through 1.7.1. A malicious website owner could craft a page that executes arbitrary Python code against any cfscrape user who scrapes that website. This is fixed in 1.8.0.",
+        "id": "CVE-2017-7235",
+        "item_id": "0c465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 2.10.6",
+        "description": "pypdf is a pure-python PDF library capable of splitting, merging, cropping, and transforming the pages of PDF files. In version 2.10.5 an attacker who uses this vulnerability can craft a PDF which leads to an infinite loop. This infinite loop blocks the current process and can utilize a single core of the CPU by 100%. It does not affect memory usage. That is, for example, the case if the user extracted metadata from such a malformed PDF. Versions prior to 2.10.5 throw an error, but do not hang forever. This issue was fixed with https://github.com/py-pdf/pypdf/pull/1331 which has been included in release 2.10.6. Users are advised to upgrade. Users unable to upgrade should modify `PyPDF2/generic/_data_structures.py::read_object` to an an error throwing case. See GHSA-hm9v-vj3r-r55m for details.",
+        "id": "CVE-2023-36807",
+        "item_id": "2c465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.2,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 3.0.1",
+        "description": "pypdf is an open source, pure-python PDF library. In affected versions an attacker may craft a PDF which leads to an infinite loop if `__parse_content_stream` is executed. That is, for example, the case if the user extracted text from such a PDF. This issue was introduced in pull request #969 and resolved in pull request #1828. Users are advised to upgrade. Users unable to upgrade may modify the line `while peek not in (b\"\\r\", b\"\\n\")` in `pypdf/generic/_data_structures.py` to `while peek not in (b\"\\r\", b\"\\n\", b\"\")`.",
+        "id": "CVE-2023-36464",
+        "item_id": "2c465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 5.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 0.2.0a33",
+        "description": "Py-EVM v0.2.0-alpha.33 allows attackers to make a vm.execute_bytecode call that triggers computation._stack.values with '\"stack\": [100, 100, 0]' where b'\\x' was expected, resulting in an execution failure because of an invalid opcode. This is reportedly related to \"smart contracts can be executed indefinitely without gas being paid.\"",
+        "id": "CVE-2018-18920",
+        "item_id": "5c465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 0.2.0a33",
+        "description": "Py-EVM v0.2.0-alpha.33 allows attackers to make a vm.execute_bytecode call that triggers computation._stack.values with '\"stack\": [100, 100, 0]' where b'\\x' was expected, resulting in an execution failure because of an invalid opcode. This is reportedly related to \"smart contracts can be executed indefinitely without gas being paid.\"",
+        "id": "CVE-2018-18920",
+        "item_id": "5c465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.8,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 4.1.3.post1",
+        "description": "GeoNode is an open source platform that facilitates the creation, sharing, and collaborative use of geospatial data. A SSRF vulnerability exists starting in version 3.2.0, bypassing existing controls on the software. This can allow a user to request internal services for a full read SSRF, returning any data from the internal network. The application is using a whitelist, but the whitelist can be bypassed. The bypass will trick the application that the first host is a whitelisted address, but the browser will use `@` or `%40` as a credential to the host geoserver on port 8080, this will return the data to that host on the response. Version 4.1.3.post1 is the first available version that contains a patch.",
+        "id": "CVE-2023-42439",
+        "item_id": "5c465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 6.5,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

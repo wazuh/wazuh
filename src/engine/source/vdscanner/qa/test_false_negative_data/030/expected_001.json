@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package equal to 1.1.0.0",
+        "description": "The IofCallDriver function in USBPcap 1.1.0.0 allows local users to gain privileges via a crafted 0x00090028 IOCTL call, which triggers a NULL pointer dereference.",
+        "id": "CVE-2017-6178",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 4.6,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

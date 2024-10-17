@@ -1,0 +1,26 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.15",
+        "description": "Grafana is an open-source platform for monitoring and observability. When using the forget password on the login page, a POST request is made to the `/api/user/password/sent-reset-email` URL. When the username or email does not exist, a JSON response contains a “user not found” message. This leaks information to unauthenticated users and introduces a security risk. This issue has been patched in 9.2.4 and backported to 8.5.15. There are no known workarounds.",
+        "id": "CVE-2022-39307",
+        "item_id": "61e71c9fe4bab8cd4a5eb2a10ec16c99f8326c7b",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 8.5.16",
+        "description": "Grafana is an open-source platform for monitoring and observability. Prior to versions 8.5.16 and 9.2.8, malicious user can create a snapshot and arbitrarily choose the `originalUrl` parameter by editing the query, thanks to a web proxy. When another user opens the URL of the snapshot, they will be presented with the regular web interface delivered by the trusted Grafana server. The `Open original dashboard` button no longer points to the to the real original dashboard but to the attacker’s injected URL. This issue is fixed in versions 8.5.16 and 9.2.8.",
+        "id": "CVE-2022-39324",
+        "item_id": "61e71c9fe4bab8cd4a5eb2a10ec16c99f8326c7b",
+        "score": {
+            "base": 6.7,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    }
+]

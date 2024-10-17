@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package equal to 7.16.0.102",
+        "description": "Microsoft Skype 7.16.0.102 contains a vulnerability that could allow an unauthenticated, remote attacker to execute arbitrary code on the targeted system. This vulnerability exists due to the way .dll files are loaded by Skype. It allows an attacker to load a .dll of the attacker's choosing that could execute arbitrary code without the user's knowledge.The specific flaw exists within the handling of DLL (api-ms-win-core-winrt-string-l1-1-0.dll) loading by the Skype.exe process.",
+        "id": "CVE-2017-6517",
+        "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    }
+]

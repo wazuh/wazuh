@@ -1,0 +1,50 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 22.200.200",
+        "description": "Insufficiently Protected Credentials in the AD/LDAP server settings in 1C-Bitrix Bitrix24 through 22.200.200 allow remote administrators to discover an AD/LDAP administrative password by reading the source code of /bitrix/admin/ldap_server_edit.php.",
+        "id": "CVE-2022-43959",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 4.9,
+            "version": "3.1"
+        },
+        "severity": "Medium"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than 21.0.100",
+        "description": "In the vote (aka \"Polls, Votes\") module before 21.0.100 of Bitrix Site Manager, a remote unauthenticated attacker can execute arbitrary code.",
+        "id": "CVE-2022-27228",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 10.0,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 20.0.975",
+        "description": "Bitrix24 through 20.0.975 allows SSRF via an intranet IP address in the services/main/ajax.php?action=attachUrlPreview url parameter, if the destination URL hosts an HTML document containing '<meta name=\"og:image\" content=\"' followed by an intranet URL.",
+        "id": "CVE-2020-13484",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 7.5,
+            "version": "2.0"
+        },
+        "severity": "High"
+    },
+    {
+        "category": "Packages",
+        "condition": "Package less than or equal to 20.0.0",
+        "description": "The Web Application Firewall in Bitrix24 through 20.0.0 allows XSS via the items[ITEMS][ID] parameter to the components/bitrix/mobileapp.list/ajax.php/ URI.",
+        "id": "CVE-2020-13483",
+        "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+        "score": {
+            "base": 4.3,
+            "version": "2.0"
+        },
+        "severity": "Medium"
+    }
+]

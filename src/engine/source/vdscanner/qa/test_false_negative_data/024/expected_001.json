@@ -1,0 +1,14 @@
+[
+    {
+        "category": "Packages",
+        "condition": "Package less than 9.8p1-1",
+        "description": "A security regression (CVE-2006-5051) was discovered in OpenSSH's server (sshd). There is a race condition which can lead sshd to handle some signals in an unsafe manner. An unauthenticated, remote attacker may be able to trigger it by failing to authenticate within a set time period.",
+        "id": "CVE-2024-6387",
+        "item_id": "1e6915113339de57ade9c25886732793d3421785",
+        "score": {
+            "base": 8.1,
+            "version": "3.1"
+        },
+        "severity": "High"
+    }
+]
