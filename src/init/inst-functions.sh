@@ -73,36 +73,25 @@ InstallPythonDependencies()
     ${PYTHON_BIN_PATH} -m pip install -r ../framework/requirements.txt
 }
 
-#InstallAPI()
-#{
-    #if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
-    #    CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
-    #fi
+InstallAPI()
+{
+    PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
 
     # Install Task Manager files
-    #${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
 
-    ### Install Python
-    #${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
+    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=/var/lib/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../framework/
 
-    #${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR}
+    ## Install Server management API
+    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=/var/lib/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../api/
 
-    ### Backup old API
-    #if [ "X${update_only}" = "Xyes" ]; then
-    #  ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
-    #fi
+    ## Install Communications API
+    ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=/var/lib/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../apis/comms_api/
 
-    ### Install Server management API
-    #${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR}
-
-    ### Install Communications API
-    #${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=${INSTALLDIR}
-
-    ### Restore old API
-    #if [ "X${update_only}" = "Xyes" ]; then
-    #  ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
-    #fi
-#}
+}
 
 checkDownloadContent()
 {
@@ -180,7 +169,7 @@ InstallWazuh()
   InstallEngine
   InstallPython
   InstallPythonDependencies
-  #InstallAPI
+  InstallAPI
   #InstallCluster
 }
 

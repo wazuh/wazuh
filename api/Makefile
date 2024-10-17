@@ -5,7 +5,7 @@
 # Syntax: make [ all | backup | install | restore | service ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/lib/wazuh-server
 
 MV_FILE        = mv -f
 RM_FILE        = rm -f
@@ -38,9 +38,9 @@ install:
 	$(INSTALL_FILE) scripts/wazuh_apid.py ${INSTALLDIR}/api/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
-	
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_apid $(INSTALLDIR)/bin/wazuh-apid
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) api/wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
+
+	$(MV_FILE) /bin/wazuh_apid /bin/wazuh-apid
 
 restore:
     # Restore old API config

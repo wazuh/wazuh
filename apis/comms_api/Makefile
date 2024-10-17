@@ -5,7 +5,7 @@
 # Syntax: make [ all | install | service ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/lib/wazuh-server
 
 MV_FILE        = mv -f
 INSTALL_DIR    = install -o root -g ${WAZUH_GROUP} -m 0750 -d
@@ -25,7 +25,6 @@ install:
 	$(INSTALL_FILE) scripts/wazuh_comms_apid.py ${INSTALLDIR}/apis/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) ../wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
-	
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_comms_apid $(INSTALLDIR)/bin/wazuh-comms-apid
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) ../wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
 
+	$(MV_FILE) /bin/wazuh_comms_apid /bin/wazuh-comms-apid

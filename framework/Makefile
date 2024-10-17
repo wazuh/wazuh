@@ -5,7 +5,7 @@
 # Syntax: make [ all | build | install | examples | clean ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/lib/wazuh-server
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
@@ -43,14 +43,11 @@ install:
 	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/dapi
 	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
 
-#	Remove update_ruleset script when upgrading to >=4.2.0 (deprecated)
-	[ ! -e ${INSTALLDIR}/bin/update_ruleset ] || $(RM_FILE) ${INSTALLDIR}/bin/update_ruleset
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
 #   Provisional name change for wazuh-logtest and wazuh-clusterd
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_logtest $(INSTALLDIR)/bin/wazuh-logtest
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_clusterd $(INSTALLDIR)/bin/wazuh-clusterd
-	$(RM_FILE) $(INSTALLDIR)/bin/__init__
+	$(MV_FILE) /bin/wazuh_clusterd /bin/wazuh-clusterd
+	$(RM_FILE) /bin/__init__
 
 examples: install
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/examples
