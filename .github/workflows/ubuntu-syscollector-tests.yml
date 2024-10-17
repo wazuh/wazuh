@@ -1,6 +1,7 @@
 name: Syscollector test on Ubuntu
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
         - ".github/workflows/ubuntu-syscollector-tests.yml"

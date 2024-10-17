@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - Added support for multiple Certificate Authorities files in the indexer connector. ([#24620](https://github.com/wazuh/wazuh/pull/24620))
 - Removed hardcoded cipher text size from the RSA decryption method. ([#24529](https://github.com/wazuh/wazuh/pull/24529))
 - Avoid infinite loop while updating the vulnerability detector content. [#25094](https://github.com/wazuh/wazuh/pull/25094)
+- Fixed repeated OS vulnerability reports. [#26223](https://github.com/wazuh/wazuh/pull/26223)
+- Fixed inconsistencies between reported context and vulnerability data. [#25479](https://github.com/wazuh/wazuh/issues/25479)
+- Fixed concurrency issues in LRU caches [#26073](https://github.com/wazuh/wazuh/pull/26073)
 
 #### Changed
 - Added self-recovery mechanism for rocksDB databases. ([#24333](https://github.com/wazuh/wazuh/pull/24333))
@@ -17,9 +20,24 @@ All notable changes to this project will be documented in this file.
 
 ### Agent
 
+#### Fixed
+- Fixed macOS agent upgrade timeout. ([#25452](https://github.com/wazuh/wazuh/pull/25452))
+- Fixed macOS agent startup error by properly redirecting cat command errors in wazuh-control. ([#24531](https://github.com/wazuh/wazuh/pull/24531))
+- Fixed inconsistent package inventory size information in Syscollector across operating systems ([#24516](https://github.com/wazuh/wazuh/pull/24516))
+- Fixed missing Python path locations for macOS in Data Provider. ([#24125](https://github.com/wazuh/wazuh/pull/24125))
+- Fixed permission error on Windows 11 agents after remote upgrade. ([#25429](https://github.com/wazuh/wazuh/pull/25429))
+- Fixed increase of the variable containing file size in FIM for Windows. ([#24387](https://github.com/wazuh/wazuh/pull/24387))
+- Fixed timeout issue when upgrading Windows agent via WPK. ([#25699](https://github.com/wazuh/wazuh/pull/25699))
+
 #### Changed
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
 - Changed how the AWS module handles non-existent regions. ([#23998](https://github.com/wazuh/wazuh/pull/23998))
+- Changed macOS packages building tool. ([#2006](https://github.com/wazuh/wazuh-packages/issues/2006))
+- Enhance Wazuh macOS agent installation instructions ([#7498](https://github.com/wazuh/wazuh-documentation/pull/7498))
+- Enhance Windows agent signing procedure. ([#2826](https://github.com/wazuh/wazuh-packages/issues/2826))
+- Enhance security by implementing a mechanism to prevent unauthorized uninstallation of Wazuh agent on Linux endpoints. ([#23466](https://github.com/wazuh/wazuh/issues/23466))
+- Enhance integration with Microsoft Intune MDM to pull audit logs for security alert generation. ([#24498](https://github.com/wazuh/wazuh/issues/24498))
+- Updated rootcheck old signatures. ([#26137](https://github.com/wazuh/wazuh/issues/26137))
 
 ### RESTful API
 
@@ -31,6 +49,8 @@ All notable changes to this project will be documented in this file.
 #### Changed
 - Updated the embedded Python version up to 3.10.15. ([#25374](https://github.com/wazuh/wazuh/issues/25374))
 - Upgraded `certifi` and removed unused packages. ([#25324](https://github.com/wazuh/wazuh/pull/25324))
+- Upgraded external `cryptography` library dependency version to 43.0.1. [#25893](https://github.com/wazuh/wazuh/pull/25893)
+- Upgraded external `starlette` and `uvicorn` dependencies. [#26252](https://github.com/wazuh/wazuh/pull/26252)
 
 
 ## [v4.9.1]
@@ -42,6 +62,8 @@ All notable changes to this project will be documented in this file.
 - Fixed vulnerability detector issue where RPM upgrade wouldn't download new content. ([#24909](https://github.com/wazuh/wazuh/pull/24909))
 - Fixed uncaught exception at Keystore test tool. ([#25667](https://github.com/wazuh/wazuh/pull/25667))
 - Replaced `eval` calls with `ast.literal_eval`. ([#25705](https://github.com/wazuh/wazuh/pull/25705))
+- Fixed the cluster being disabled by default when loading configurations. ([#26277](https://github.com/wazuh/wazuh/pull/26277))
+- Added support ARM packages for wazuh-manager. ([#25945](https://github.com/wazuh/wazuh/pull/25945))
 
 #### Changed
 
@@ -64,6 +86,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Wazuh Agent crash at `syscollector`. ([#25469](https://github.com/wazuh/wazuh/pull/25469))
 - Fixed a bug in the processed dates in the AWS module related to the AWS Config type. ([#23528](https://github.com/wazuh/wazuh/pull/23528))
 - Fixed an error in Custom Logs Buckets when parsing a CSV file that exceeds a certain size. ([#24694](https://github.com/wazuh/wazuh/pull/24694))
+- Fixed macOS syslog and ULS not configured out-of-the-box. ([#26108](https://github.com/wazuh/wazuh/issues/26108))
 
 ### RESTful API
 
@@ -71,6 +94,10 @@ All notable changes to this project will be documented in this file.
 
 - Fixed requests logging to obtain the hash_auth_context from JWT tokens. ([#25764](https://github.com/wazuh/wazuh/pull/25764)) 
 - Enabled API to listen IPV4 and IPV6 stacks. ([#25216](https://github.com/wazuh/wazuh/pull/25216))
+
+#### Changed
+
+- Changed the error status code thrown when basic services are down to 500. ([#26103](https://github.com/wazuh/wazuh/pull/26103))
 
 
 ## [v4.9.0]

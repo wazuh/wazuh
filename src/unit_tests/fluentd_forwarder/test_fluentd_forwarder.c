@@ -181,6 +181,9 @@ void test_check_default_connection(void **state) {
     expect_any(__wrap__mtdebug2, tag);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
+    expect_any(__wrap_OS_GetHost, host);
+    will_return(__wrap_OS_GetHost, strdup("localhost"));
+
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
@@ -205,6 +208,9 @@ void test_check_default_handshake(void **state) {
 
     expect_any(__wrap__mtdebug2, tag);
     expect_any(__wrap__mtdebug2, formatted_msg);
+
+    expect_any(__wrap_OS_GetHost, host);
+    will_return(__wrap_OS_GetHost, strdup("localhost"));
 
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
@@ -233,6 +239,9 @@ void test_check_send(void **state) {
 
     expect_value(__wrap_time, time, 0);
     will_return(__wrap_time, 165884);
+
+    expect_any(__wrap_OS_GetHost, host);
+    will_return(__wrap_OS_GetHost, strdup("localhost"));
 
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);

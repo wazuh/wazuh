@@ -178,23 +178,35 @@ char *get_cluster_name(void) {
  */
 bool get_cluster_status(void) {
     OS_XML xml;
-    const char * xmlf[] = {"ossec_config", "cluster", "disabled", NULL};
     const char *cfgfile = OSSECCONF;
-    bool cluster_status = false;
+    bool status = false;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
     } else {
-        char *status = OS_GetOneContentforElement(&xml, xmlf);
-        if (status) {
-            if (strcmp(status, "no") == 0) {
-                cluster_status = true;
+        // Check if the cluster tag exists
+        const char * xmlfCluster[] = {"ossec_config", "cluster", NULL};
+        char *clusterTag = OS_GetOneContentforElement(&xml, xmlfCluster);
+        if (clusterTag)
+        {
+            free(clusterTag);
+
+            // Check if the cluster is disabled
+            const char * xmlfClusterDisabled[] = {"ossec_config", "cluster", "disabled", NULL};
+            char *disabledTag = OS_GetOneContentforElement(&xml, xmlfClusterDisabled);
+            if (disabledTag)
+            {
+                if (strcmp(disabledTag, "no") == 0) {
+                    status = true;
+                }
+                free(disabledTag);
+            } else {
+                status = true;
             }
-            free(status);
         }
     }
 
     OS_ClearXML(&xml);
 
-    return cluster_status;
+    return status;
 }
