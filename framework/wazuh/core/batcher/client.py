@@ -1,7 +1,9 @@
 import asyncio
+from dataclasses import asdict
 from typing import Optional
 
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item
+from wazuh.core.indexer.base import remove_empty_values
 from wazuh.core.indexer.models.events import StatefulEvent
 
 
@@ -11,7 +13,7 @@ class BatcherClient:
     Parameters
     ----------
     queue : MuxDemuxQueue
-        MuxDemuxQueue instance used to route messages.
+        MuxDemuxQueue instance used to route items.
     wait_frequency: float
         The frequency, in seconds, at which the client checks for responses in the queue.
         Defaults to 0.1 seconds.
@@ -34,16 +36,20 @@ class BatcherClient:
         int
             Unique identifier assigned to the event.
         """
-        assigned_uid = id(event)
-        self.queue.send_to_mux(assigned_uid, event)
-        return assigned_uid
+        item = Item(
+            id=id(event),
+            content=asdict(event, dict_factory=remove_empty_values),
+            index_name=event.get_index_name()
+        )
+        self.queue.send_to_mux(item)
+        return item.id
 
-    async def get_response(self, uid: int) -> Optional[dict]:
+    async def get_response(self, item_id: int) -> Optional[dict]:
         """Asynchronously wait for a response to become available and retrieve it.
 
         Parameters
         ----------
-        uid : int
+        item_id : int
             Unique identifier for the response.
 
         Returns
@@ -52,8 +58,7 @@ class BatcherClient:
             Indexer response if available, None otherwise.
         """
         while True:
-            if not self.queue.is_response_pending(uid):
-                result = self.queue.receive_from_demux(uid)
-                return result
+            if not self.queue.is_response_pending(item_id):
+                return self.queue.receive_from_demux(item_id)
             else:
                 await asyncio.sleep(self.wait_frequency)

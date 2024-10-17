@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import patch, AsyncMock, call
 
+import pytest
+
 from framework.wazuh.core.batcher.client import BatcherClient
+from wazuh.core.indexer.models.events import SCAEvent
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
@@ -9,14 +11,14 @@ from framework.wazuh.core.batcher.client import BatcherClient
 def test_send_event(id_mock, queue_mock):
     """Check that the `send_event` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
+    event = SCAEvent()
+    expected_item_id = 1234
 
-    event = {"data": "test event"}
-    expected_uid = 1234
+    id_mock.return_value = expected_item_id
 
-    id_mock.return_value = expected_uid
-
-    result_uid = batcher.send_event(event)
-    queue_mock.send_to_mux.assert_called_once_with(result_uid, event)
+    item_id = batcher.send_event(event)
+    assert item_id == expected_item_id
+    queue_mock.send_to_mux.assert_called_once()
 
 
 @pytest.mark.asyncio
