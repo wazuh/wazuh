@@ -4,6 +4,9 @@ from typing import List, Union
 
 from pydantic import BaseModel
 
+from wazuh.core.indexer.models.commands import Result
+from wazuh.core.indexer.commands import CommandsManager
+
 FIM_INDEX = 'stateful-fim'
 INVENTORY_INDEX = 'stateful-inventory'
 SCA_INDEX = 'stateful-sca'
@@ -207,5 +210,22 @@ class VulnerabilityEvent(BaseModel):
         return VULNERABILITY_INDEX
 
 
+@dataclass
+class CommandResult(BaseModel):
+    """Command result data model."""
+    document_id: str
+    result = Result
+
+    def get_index_name(self) -> str:
+        """Get the index name for the event type.
+        
+        Returns
+        -------
+        str
+            Index name.
+        """
+        return CommandsManager.INDEX
+
+
 # Stateful event type
-StatefulEvent = Union[FIMEvent, InventoryEvent, SCAEvent, VulnerabilityEvent]
+StatefulEvent = Union[FIMEvent, InventoryEvent, SCAEvent, VulnerabilityEvent, CommandResult]
