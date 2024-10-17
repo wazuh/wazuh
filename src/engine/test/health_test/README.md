@@ -320,6 +320,40 @@ engine-health-test dynamic -e health_test/environment validate_event_indexing --
 engine-health-test dynamic -e health_test/environment validate_event_indexing --target decoder --skip windows,wazuh-core
 ```
 
+### Validate custom field indexing
+Creates an opensearch instance along with an index. It ingests different events to the engine and extracts all the custom fields.
+It then verifies that each of the custom fields are present in the opensearch index.
+If you do not specify a specific argument, an error will be raised.
+However, if you specify the argument, only one is accepted.
+
+```bash
+usage: engine-health-test dynamic validate_custom_field_indexing [-h] [--integration INTEGRATION] [--rule_folder RULE_FOLDER] [--skip SKIP]
+                                                          [--target TARGET]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify the name of the integration to test.
+  --rule_folder RULE_FOLDER
+                        Specify the name of the rule folder to test
+  --skip SKIP           Skip the tests with the specified name
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the
+                        rules.
+```
+
+#### Usage
+```bash
+# To run a specific integration
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --integration windows
+# To run a specific rule folder
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --rule_folder windows
+# To run all tests in decoders
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --target decoder
+# To run all tests in rules
+engine-health-test dynamic -e health_test/environment vvalidate_custom_field_indexing --target rules
+# To skip specific tests in decoders
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --target decoder --skip windows,wazuh-core
+```
 
 ### Run
 This tool injects events into the engine and evaluates the output events with an expected event
