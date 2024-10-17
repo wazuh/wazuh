@@ -13,6 +13,8 @@ from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from google.protobuf.json_format import ParseDict
 import shared.resource_handler as rs
+import ipaddress
+from datetime import datetime
 
 
 class UnitOutput:
@@ -130,6 +132,103 @@ class Result:
         return out
 
 
+def is_valid_date(value):
+    try:
+        datetime.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_valid_ip(value):
+    """ Check if the value is a valid IP address. """
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_valid_date(value):
+    try:
+        datetime.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_valid_ip(value):
+    """ Check if the value is a valid IP address. """
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def get_validation_function(field_type):
+    if field_type == 'object':
+        return lambda value: isinstance(value, dict) and bool(value)
+
+    if field_type == 'nested':
+        return lambda value: isinstance(value, list) and bool(value)
+
+    if field_type == 'ip':
+        return is_valid_ip
+
+    if field_type == 'keyword' or field_type == 'text':
+        return lambda value: isinstance(value, str)
+
+    if field_type == 'long' or field_type == 'scaled_float':
+        return lambda value: isinstance(value, int)
+
+    if field_type == 'float':
+        return lambda value: isinstance(value, float)
+
+    if field_type == 'boolean':
+        return lambda value: isinstance(value, bool)
+
+    if field_type == 'date':
+        return is_valid_date
+
+    else:
+        return lambda value: False
+
+
+def load_custom_fields(custom_fields_path, allowed_custom_fields_type):
+    """
+    Load custom fields from 'custom_fields.yml' into a map of field -> (type, validation_function).
+    """
+    custom_fields_map = {}
+    try:
+        custom_fields_data = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
+        for item in custom_fields_data:
+            if item['field']:
+                if item['type'] not in allowed_custom_fields_type:
+                    continue
+
+                validation_fn = get_validation_function(item['type'])
+                custom_fields_map[item['field']] = (item['type'], validation_fn)
+
+        return custom_fields_map
+    except Exception as e:
+        sys.exit(f"Error loading custom fields from {custom_fields_path}: {e}")
+        return {}
+
+
+def get_value_from_hierarchy(data, field):
+    keys = field.split('.')
+    value = data
+
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return None
+
+    return value
+
+
 class OpensearchManagement:
     def __init__(self):
         self.offset = 0
@@ -199,52 +298,22 @@ class OpensearchManagement:
             self.stop()
 
     def check_custom_fields(self, custom_fields: dict, all_custom_fields: set, hits: list):
-        def get_nested_value(d: dict, keys: list):
-            for key in keys:
-                if isinstance(d, dict) and key in d:
-                    d = d[key]
-                elif isinstance(d, list):
-                    try:
-                        index = int(key)
-                        d = d[index]
-                    except (ValueError, IndexError):
-                        return None
-                else:
-                    return None
-            return d
-
-        def normalize_field(field):
-            return '.'.join(part.split('[')[0] for part in field.split('.'))
-
-        def matches_type(value, expected_type):
-            if expected_type == 'array':
-                return isinstance(value, list)
-            elif expected_type == 'object':
-                return isinstance(value, dict)
-            elif expected_type == 'keyword':
-                return isinstance(value, (str, int, float))
-            return False
-
-        found_fields = set()
-
+        filtered_invalid_fields = set(all_custom_fields)
         for hit in hits:
-            for field in custom_fields:
-                normalized_field = normalize_field(field)
-                field_keys = normalized_field.split('.')
-
-                value = get_nested_value(hit['_source'], field_keys)
-                if value is not None and matches_type(value, custom_fields[field]):
-                    found_fields.add(field)
-
-        for field in found_fields:
-            field_type = custom_fields.get(field)
-
-            if field_type in {'object', 'array'}:
-                prefix = field if field_type == 'object' else field + '.'
-                to_remove = {f for f in all_custom_fields if f == field or f.startswith(prefix)}
-                all_custom_fields.difference_update(to_remove)
-            else:
-                all_custom_fields.discard(field)
+            for field, (type, validate_function) in custom_fields.items():
+                expected_value = get_value_from_hierarchy(hit['_source'], field)
+                if expected_value == None:
+                    continue
+                if validate_function(expected_value):
+                    if type == 'object':
+                        for invalid_field in filtered_invalid_fields:
+                            if invalid_field.startswith(field + '.'):
+                                all_custom_fields.discard(invalid_field)
+                    elif type == 'nested':
+                        for invalid_field in filtered_invalid_fields:
+                            all_custom_fields.discard(invalid_field)
+                    else:
+                        all_custom_fields.discard(field)
 
     def read_index(self, result: Result, custom_fields: dict, all_custom_fields: set, outputs_number: int, retries=10, delay=4):
         url_search = 'http://localhost:9200/test-basic-index/_search'
@@ -253,7 +322,7 @@ class OpensearchManagement:
         for attempt in range(retries):
             try:
                 query = {
-                    "size": 1000,
+                    "size": outputs_number,
                     "query": {
                         "match_all": {}
                     }
@@ -280,18 +349,25 @@ class OpensearchManagement:
 opensearch_management = OpensearchManagement()
 
 
-def extract_fields(data, prefix=""):
-    fields = []
-    if isinstance(data, dict):
-        for key, value in data.items():
-            new_prefix = f"{prefix}.{key}" if prefix else key
-            fields.extend(extract_fields(value, new_prefix))
-    elif isinstance(data, list):
-        for item in data:
-            fields.extend(extract_fields(item, prefix))
-    else:
-        fields.append(prefix)
-    return fields
+def extract_fields(d):
+    def extract_keys(d, prefix=""):
+        result = []
+        if isinstance(d, dict):
+            for key, value in d.items():
+                new_prefix = f"{prefix}.{key}" if prefix else key
+                if isinstance(value, dict):
+                    result.extend(extract_keys(value, new_prefix))
+                elif isinstance(value, list):
+                    for i, item in enumerate(value):
+                        if isinstance(item, dict):
+                            result.extend(extract_keys(item, f"{new_prefix}[{i}]"))
+                        else:
+                            result.append(f"{new_prefix}")
+                else:
+                    result.append(new_prefix)
+        return result
+
+    return extract_keys(d)
 
 
 def add_custom_fields(custom_fields: set, data_list, schema_fields):
@@ -391,31 +467,17 @@ def validate_custom_fields(
     return result
 
 
-def load_custom_fields(custom_fields_path):
-    """
-    Load custom fields from 'custom_fields.yml' and return a dictionary
-    where keys are the field names and values are their types.
-    """
-    try:
-        custom_fields_data = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
-        return {item['field']: item['type'] for item in custom_fields_data}
-
-    except Exception as e:
-        sys.exit(f"Error loading custom fields from {custom_fields_path}: {e}")
-        return {}
-
-
 def run_test(test_parent_paths: List[Path], engine_api_socket: str, schema_fields) -> List[Result]:
     outputs, number_outputs, all_custom_fields = run_all_tests(test_parent_paths, engine_api_socket, schema_fields)
     results = []
-
+    allowed_custom_fields_type = {field_info["type"] for field_info in schema_fields["fields"].values()}
     for custom_field_container in test_parent_paths:
         if custom_field_container.name != 'wazuh-core':
             custom_fields_path = custom_field_container / 'test' / 'custom_fields.yml'
             if not custom_fields_path.exists():
                 sys.exit(custom_field_container.name, str(custom_fields_path),
                          "Error: custom_fields.yml file does not exist.")
-            custom_fields = load_custom_fields(custom_fields_path)
+            custom_fields = load_custom_fields(custom_fields_path, allowed_custom_fields_type)
             results.append(validate_custom_fields(custom_field_container.name,
                            custom_fields, all_custom_fields, number_outputs))
 

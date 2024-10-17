@@ -3,17 +3,75 @@ import json
 from pathlib import Path
 import shared.resource_handler as rs
 from health_test.error_managment import ErrorReporter
+import ipaddress
+from datetime import datetime
 
 
-def load_custom_fields(custom_fields_path, reporter):
+def is_valid_date(value):
+    try:
+        datetime.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_valid_ip(value):
+    """ Check if the value is a valid IP address. """
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def get_validation_function(field_type):
+    if field_type == 'object':
+        return lambda value: isinstance(value, dict) and bool(value)
+
+    if field_type == 'nested':
+        return lambda value: isinstance(value, list) and bool(value)
+
+    if field_type == 'ip':
+        return is_valid_ip
+
+    if field_type == 'keyword' or field_type == 'text':
+        return lambda value: isinstance(value, str)
+
+    if field_type == 'long' or field_type == 'scaled_float':
+        return lambda value: isinstance(value, int)
+
+    if field_type == 'float':
+        return lambda value: isinstance(value, float)
+
+    if field_type == 'boolean':
+        return lambda value: isinstance(value, bool)
+
+    if field_type == 'date':
+        return is_valid_date
+
+    else:
+        return lambda value: False
+
+
+def load_custom_fields(custom_fields_path, reporter: ErrorReporter, allowed_custom_fields_type):
     """
-    Load custom fields from 'custom_fields.yml' into a map of field -> type.
+    Load custom fields from 'custom_fields.yml' into a map of field -> (type, validation_function).
     """
     custom_fields_map = {}
     try:
         custom_fields_data = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
         for item in custom_fields_data:
-            custom_fields_map[item['field']] = item['type']
+            if item['field']:
+                if item['type'] not in allowed_custom_fields_type:
+                    reporter.add_error(
+                        "Custom Fields", custom_fields_path,
+                        f"Invalid type '{item['type']}' for field '{item['field']}'. Allowed types: {allowed_custom_fields_type}"
+                    )
+                    continue
+
+                validation_fn = get_validation_function(item['type'])
+                custom_fields_map[item['field']] = (item['type'], validation_fn)
+
         return custom_fields_map
     except Exception as e:
         reporter.add_error("Load Custom Fields", str(custom_fields_path), f"Error loading custom fields: {e}")
@@ -23,33 +81,35 @@ def load_custom_fields(custom_fields_path, reporter):
 def transform_dict_to_list(d):
     def extract_keys(d, prefix=""):
         result = []
-        for key, value in d.items():
-            new_prefix = f"{prefix}.{key}" if prefix else key
-            if isinstance(value, dict):
-                result.extend(extract_keys(value, new_prefix))
-            else:
-                result.append(new_prefix)
+        if isinstance(d, dict):
+            for key, value in d.items():
+                new_prefix = f"{prefix}.{key}" if prefix else key
+                if isinstance(value, dict):
+                    result.extend(extract_keys(value, new_prefix))
+                elif isinstance(value, list):
+                    for i, item in enumerate(value):
+                        if isinstance(item, dict):
+                            result.extend(extract_keys(item, f"{new_prefix}[{i}]"))
+                        else:
+                            result.append(f"{new_prefix}")
+                else:
+                    result.append(new_prefix)
         return result
 
     return extract_keys(d)
 
 
-def should_ignore_field(field, custom_fields_map):
-    """
-    Determine if a field should be ignored based on its type in custom_fields_map.
-    """
-    parts = field.split('.')
-    for i in range(len(parts)):
-        current_field = '.'.join(parts[:i + 1])
-        if current_field in custom_fields_map:
-            field_type = custom_fields_map[current_field]
-            if field_type == 'object':
-                return True
-            elif field_type == 'array':
-                return True
-            else:
-                return True
-    return False
+def get_value_from_hierarchy(data, field):
+    keys = field.split('.')
+    value = data
+
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return None
+
+    return value
 
 
 def verify_schema_types(schema, expected_json_files, custom_fields_map, integration_name, reporter):
@@ -64,24 +124,46 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
         reporter.add_error(integration_name, str(schema), f"Error reading the JSON schema file: {e}")
         return
 
+    invalid_fields = []
+
+    if reporter.has_errors():
+        return
+
     for json_file in expected_json_files:
         try:
             with open(json_file, 'r') as f:
                 expected_data = json.load(f)
+
                 for expected in expected_data:
                     extracted_fields = transform_dict_to_list(expected)
-
                     invalid_fields = [
                         field for field in extracted_fields
-                        if field not in schema_fields and not should_ignore_field(field, custom_fields_map)
+                        if field not in schema_fields
                     ]
 
-                    if invalid_fields:
+                    filtered_invalid_fields = set(invalid_fields)
+
+                    for field, (type, validate_function) in custom_fields_map.items():
+                        expected_value = get_value_from_hierarchy(expected, field)
+                        if expected == None:
+                            continue
+                        if validate_function(expected_value):
+                            if type == 'object':
+                                for invalid_field in invalid_fields:
+                                    if invalid_field.startswith(field + '.'):
+                                        filtered_invalid_fields.discard(invalid_field)
+                            elif type == 'nested':
+                                for invalid_field in invalid_fields:
+                                    filtered_invalid_fields.discard(invalid_field)
+                            else:
+                                filtered_invalid_fields.discard(field)
+
+                    if filtered_invalid_fields:
                         reporter.add_error(
                             integration_name,
                             json_file,
-                            f"{invalid_fields}"
-                        )
+                            f"{filtered_invalid_fields}")
+
         except Exception as e:
             reporter.add_error(integration_name, str(json_file), f"Error reading the file: {e}")
 
@@ -91,6 +173,14 @@ def find_expected_json_files(test_folder):
 
 
 def verify(schema, integration: Path, reporter):
+    try:
+        with open(schema, 'r') as schema_file:
+            schema_data = json.load(schema_file)
+    except Exception as e:
+        sys.exit(f"Error reading the JSON schema file: {e}")
+
+    allowed_custom_fields_type = {field_info["type"] for field_info in schema_data["fields"].values()}
+
     if integration.name != 'wazuh-core':
         custom_fields_path = integration / 'test' / 'custom_fields.yml'
         if not custom_fields_path.exists():
@@ -98,7 +188,7 @@ def verify(schema, integration: Path, reporter):
                                "Error: custom_fields.yml file does not exist.")
             return
 
-        custom_fields = load_custom_fields(custom_fields_path, reporter)
+        custom_fields = load_custom_fields(custom_fields_path, reporter, allowed_custom_fields_type)
         test_folder = integration / 'test'
         if not test_folder.exists() or not test_folder.is_dir():
             reporter.add_error(integration.name, str(test_folder), "Error: No 'test' folder found.")
