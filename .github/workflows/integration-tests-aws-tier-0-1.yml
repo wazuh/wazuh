@@ -25,11 +25,11 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: 'us-east-1'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version-file: ".github/workflows/.python-version-it"
