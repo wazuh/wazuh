@@ -241,7 +241,8 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
     assert result.total_affected_items == len(expected_items)
     if fail:
         error = str(list(result.failed_items.keys())[0])
-        assert error == f'Error 1762 - Error creating restart command: {ResponseResult.INTERNAL_ERROR.value}'
+        assert error == 'Error 1762 - Error sending command to the commands manager: ' \
+            f'{ResponseResult.INTERNAL_ERROR.value}'
         failed_ids = list(result.failed_items.values())[0]
         assert failed_ids == set(expected_items)
     else:
@@ -586,7 +587,8 @@ def test_create_group_exceptions(group_id, exception, exception_code):
 ])
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.Agent.delete_single_group')
-async def test_agent_delete_groups(mock_delete, mock_get_groups, group_list):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_delete_groups(create_indexer_mock, mock_delete, mock_get_groups, group_list):
     """Test `delete_groups` function from agent module.
 
     Parameters
@@ -641,6 +643,7 @@ async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list,
     assert len(result.failed_items.keys()) == len(expected_errors)
     assert set(result.failed_items.keys()).difference(set(expected_errors)) == set()
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('group_list, agent_list', [
     (['group-1'], ['0191c87f-a892-78b1-8452-8180e261075c'])
@@ -648,7 +651,9 @@ async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list,
 @patch('wazuh.core.agent.Agent.get')
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
-async def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agent, mock_unset, group_list, agent_list):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_remove_agent_from_groups(create_indexer_mock, mock_get_groups, mock_get_agent, mock_unset,
+                                              group_list, agent_list):
     """Test `remove_agent_from_groups` function from agent module.
 
     Parameters
@@ -658,11 +663,13 @@ async def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agent, m
     agent_list : List of str
         List of agent ID's.
     """
-    expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
-    mock_unset.return_value = expected_msg
+    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    commands_create_mock = AsyncMock(return_value=create_response)
+    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
+
     result = await remove_agent_from_groups(agent_list=agent_list, group_list=group_list)
     # Check typing
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert isinstance(result, AffectedItemsWazuhResult)
     assert isinstance(result.affected_items, list)
     # Check affected items
     assert result.total_affected_items == len(result.affected_items)
@@ -679,8 +686,10 @@ async def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agent, m
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.core.agent.Agent.get', return_value='0191c87f-a892-78b1-8452-8180e261075c')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
-async def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_agent, mock_unset, group_list,
-                                                         agent_list, expected_error, catch_exception):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_remove_agent_from_groups_exceptions(create_indexer_mock, mock_get_groups, mock_get_agent,
+                                                         mock_unset, group_list, agent_list, expected_error,
+                                                         catch_exception):
     """Test `remove_agent_from_groups` function from agent module raises the expected errors when using invalid group
     or agent lists.
 
@@ -696,8 +705,10 @@ async def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_g
         True if the exception will be raised by the function and must be caught. False if the function must return an
         `AffectedItemsWazuhResult` containing the exceptions in its 'failed_items'.
     """
-    expected_msg = f"Agent '{agent_list[0]}' removed from '{group_list[0]}'"
-    mock_unset.return_value = expected_msg
+    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    commands_create_mock = AsyncMock(return_value=create_response)
+    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
+
     try:
         with patch('wazuh.core.agent.Agent.get', 
             return_value='0191c87f-a892-78b1-8452-8180e261075c',
@@ -708,20 +719,12 @@ async def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_g
         assert not catch_exception, \
             'An "WazuhError" exception was expected but was not raised.'
         # Check Typing
-        assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-        assert isinstance(result.failed_items, dict), \
-            f'"failed_items" should be a dict object but was "{type(result.failed_items)}" instead.'
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert isinstance(result.failed_items, dict)
         # Check Failed Items
-        assert result.total_failed_items == len(group_list), \
-            f'The number of "failed_items" is "{result.total_failed_items}" but was expected to be ' \
-            f'"{len(group_list)}".'
-        assert result.total_failed_items == len(result.failed_items), \
-            '"total_failed_items" length does not match with "failed_items".'
-        assert set(result.failed_items.keys()).difference({expected_error}) == set(), \
-            f'The "failed_items" received does not match.\n' \
-            f' - The "failed_items" received is: "{set(result.failed_items.keys())}"\n' \
-            f' - The "failed_items" expected was "{ {expected_error} }"\n' \
-            f' - The difference between them is "{set(result.failed_items.keys()).difference({expected_error})}"\n'
+        assert result.total_failed_items == len(group_list)
+        assert result.total_failed_items == len(result.failed_items)
+        assert set(result.failed_items.keys()).difference({expected_error}) == set()
     except (WazuhError, WazuhResourceNotFound) as error:
         assert catch_exception, \
             'No exception should be raised at this point. An AffectedItemsWazuhResult object with at least one ' \
@@ -749,15 +752,17 @@ async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mo
     search_mock = AsyncMock(return_value=[IndexerAgent(id='0191c7fa-26d5-705f-bc3c-f54810d30d79')])
     create_indexer_mock.return_value.agents.search = search_mock
 
-    expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
-    mock_unset.return_value = expected_msg
+    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    commands_create_mock = AsyncMock(return_value=create_response)
+    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
+
     result = await remove_agents_from_group(agent_list=agent_list, group_list=group_list)
     # Check typing
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert isinstance(result, AffectedItemsWazuhResult)
     assert isinstance(result.affected_items, list)
     # Check affected items
     assert result.total_affected_items == len(result.affected_items)
-    assert set(result.affected_items).difference(set(agent_list)) == set(), f'received: {result.affected_items}'
+    assert set(result.affected_items).difference(set(agent_list)) == set()
     # Check failed items
     assert result.total_failed_items == 0
 

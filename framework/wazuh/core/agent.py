@@ -802,9 +802,6 @@ class Agent:
         dict
             Confirmation message.
         """
-        async with get_indexer_client() as indexer_client:
-            await indexer_client.agents.delete_group(group_name)
-
         # Delete group file
         group_path = get_group_file_path(group_name)
         if path.exists(group_path):
