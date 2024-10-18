@@ -94,7 +94,7 @@ def run_process_and_monitor_log(request, run_on_end):
     test_folder = request.param
 
     # We verify if the tests will use a compressed content or not
-    if Path("queue/vd/feed/").exists():
+    if Path("/var/lib/wazuh-server/vd/feed/").exists():
         if test_folder.name == '000':
             pytest.skip("The decompression test is skipped because there is a compressed content in queue folder")
         else:
@@ -104,12 +104,6 @@ def run_process_and_monitor_log(request, run_on_end):
             LOGGER.info("The content will be decompressed")
         else:
             pytest.fail("The test can't continue because there isn't a decompressed content in queue folder")
-
-    # Delete previous inventory directory if exists
-    if Path("queue/vd/inventory").exists():
-        for file in Path("queue/vd/inventory").glob("*"):
-            file.unlink()
-        Path("queue/vd/inventory").rmdir()
 
     # Set the path to the binary
     cmd = Path("engine/build/source/vdscanner/tool/", "vdscanner_testtool")
