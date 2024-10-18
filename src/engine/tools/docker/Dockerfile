@@ -15,7 +15,7 @@ ENV ENGINE_BUILD=$ENGINE_SRC/build
 # Force use the specific commit of master to aviod breaking changes like:
 # - Python packages
 # - Engine configuration and CLI
-ENV ENGINE_COMMIT_ID=657430ad8f034336234caf0a441b5b349dd307aa
+ENV ENGINE_COMMIT_ID=55d3d863e62bcc53666a2e42eb82097815096421
 ENV ENGINE_PRESET=release
 ENV ENGINE_ON_BACKGROUND=1
 ENV MM_LICENCE_KEY=
