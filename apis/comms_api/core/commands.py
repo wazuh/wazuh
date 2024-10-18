@@ -23,7 +23,7 @@ async def pull_commands(uuid: UUID) -> List[Command]:
     """
     async with get_indexer_client() as indexer_client:
         while True:
-            commands = await indexer_client.commands.get(uuid, Status.PENDING)
+            commands = await indexer_client.commands_manager.get(uuid, Status.PENDING)
             if commands is None:
                 # TODO(#25121): get sleep time from the configuration?
                 await asyncio.sleep(5)
@@ -32,7 +32,7 @@ async def pull_commands(uuid: UUID) -> List[Command]:
             for command in commands:
                 command.status = Status.SENT
 
-            await indexer_client.commands.update(commands)
+            await indexer_client.commands_manager.update(commands)
 
             return commands
 
@@ -46,4 +46,4 @@ async def post_results(results: List[Result]) -> None:
         Commands results.
     """
     async with get_indexer_client() as indexer_client:
-        await indexer_client.commands.update(results)
+        await indexer_client.commands_manager.update(results)

@@ -1,0 +1,40 @@
+#!/bin/sh
+# postrm script for Wazuh
+# Wazuh, Inc 2015
+set -e
+
+case "$1" in
+    remove|failed-upgrade|abort-install|abort-upgrade|disappear)
+
+    ;;
+
+    purge)
+        if getent passwd wazuh > /dev/null 2>&1 ; then
+            deluser wazuh  > /dev/null 2>&1
+        fi
+
+        if getent group wazuh > /dev/null 2>&1; then
+            delgroup wazuh  > /dev/null 2>&1
+        fi
+
+        if [ -d "/var/lib/wazuh-server/" ]; then
+            rm -rf /var/lib/wazuh-server/ || true
+        fi
+
+        if [ -d "/run/wazuh-server" ]; then
+            rm -rf /run/wazuh-server || true
+        fi
+    ;;
+
+    upgrade)
+    ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 0
+
+    ;;
+
+esac
+
+exit 0

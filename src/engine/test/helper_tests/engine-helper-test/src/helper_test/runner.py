@@ -189,8 +189,8 @@ class Evaluator:
             response: The response received from the API call.
         """
         if json.loads(MessageToJson(response)).get("result"):
-            json_response = json.loads(MessageToJson(response))[
-                "result"]["output"].get(self.field_mapping)
+            output = json.loads(MessageToJson(response))["result"]["output"]
+            json_response = json.loads(output).get(self.field_mapping)
         else:
             json_response = None
         failure_test = {
@@ -557,7 +557,7 @@ def extract_output_from_response(response: dict) -> dict:
         dict: The event output extracted from the response.
     """
     response = json.loads(MessageToJson(response))
-    return response["result"]["output"]
+    return json.loads(response["result"]["output"])
 
 
 def get_target_trace(traces: list, helper_name: str, count=1) -> Optional[str]:

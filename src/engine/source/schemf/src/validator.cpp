@@ -51,7 +51,8 @@ void Schema::Validator::registerCompatibles()
                                            {Type::DATE, false},
                                            {Type::DATE_NANOS, false},
                                            {Type::IP, false},
-                                           {Type::BINARY, false}}});
+                                           {Type::BINARY, false},
+                                           {Type::WILDCARD, false}}});
     m_compatibles.emplace(Type::TEXT,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),
@@ -59,23 +60,33 @@ void Schema::Validator::registerCompatibles()
                                            {Type::DATE, false},
                                            {Type::DATE_NANOS, false},
                                            {Type::IP, false},
+                                           {Type::BINARY, false},
+                                           {Type::WILDCARD, false}}});
+    m_compatibles.emplace(Type::WILDCARD,
+                          ValidationInfo {json::Json::Type::String,
+                                          validators::getStringValidator(),
+                                          {{Type::KEYWORD, false},
+                                           {Type::TEXT, false},
+                                           {Type::DATE, false},
+                                           {Type::DATE_NANOS, false},
+                                           {Type::IP, false},
                                            {Type::BINARY, false}}});
     m_compatibles.emplace(Type::DATE,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getDateValidator(),
-                                          {{Type::KEYWORD, true}, {Type::TEXT, true}}});
+                                          {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}}});
     m_compatibles.emplace(Type::DATE_NANOS,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getStringValidator(),
-                                          {{Type::KEYWORD, true}, {Type::TEXT, true}}});
+                                          {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}}});
     m_compatibles.emplace(Type::IP,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getIpValidator(),
-                                          {{Type::KEYWORD, true}, {Type::TEXT, true}}});
+                                          {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}}});
     m_compatibles.emplace(Type::BINARY,
                           ValidationInfo {json::Json::Type::String,
                                           validators::getBinaryValidator(),
-                                          {{Type::KEYWORD, true}, {Type::TEXT, true}}});
+                                          {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}}});
     m_compatibles.emplace(Type::OBJECT,
                           ValidationInfo {json::Json::Type::Object, validators::getObjectValidator(), {}});
     m_compatibles.emplace(Type::NESTED,

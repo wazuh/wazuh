@@ -21,6 +21,7 @@ class IndexerType(Enum):
     DATE = auto()
     FLOAT = auto()
     ARRAY = auto()
+    WILDCARD = auto()
 
     def __str__(self):
         return f'{self.name}'.lower()
@@ -51,6 +52,8 @@ class IndexerType(Enum):
             return cls.FLOAT
         elif name == str(cls.ARRAY):
             return cls.ARRAY
+        elif name == str(cls.WILDCARD):
+            return cls.WILDCARD
         else:
             raise Exception(f'"{name}" is not a valid IndexerType')
 
@@ -98,6 +101,8 @@ def indexer_to_json_type(indexer_type: IndexerType) -> JsonType:
     if indexer_type == IndexerType.GEO_POINT:
         return JsonType.STRING
     if indexer_type == IndexerType.KEYWORD:
+        return JsonType.STRING
+    if indexer_type == IndexerType.WILDCARD:
         return JsonType.STRING
 
     # Numeric types

@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-constexpr auto DATABASE_PATH {"queue/vd/feed"};
+constexpr auto DATABASE_PATH {"/var/lib/wazuh-server/vd/feed"};
 constexpr auto OFFSET_TRANSACTION_SIZE {1000};
 constexpr auto EMPTY_KEY {""};
 constexpr auto TRANSLATIONS_COLUMN {"translation"};

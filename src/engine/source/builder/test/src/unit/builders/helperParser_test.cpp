@@ -326,7 +326,11 @@ INSTANTIATE_TEST_SUITE_P(
                     RefArgT(R"($ref}invalid)", makeSuccess<OpArg>(ref("ref"), 4)),
                     RefArgT(R"($ref_extended.name$leftover)", makeSuccess<OpArg>(ref("ref_extended.name"), 18)),
                     RefArgT(R"(ref)", makeError<OpArg>("", 0)),
-                    RefArgT(R"(\$ref)", makeError<OpArg>("", 0))));
+                    RefArgT(R"(\$ref)", makeError<OpArg>("", 0)),
+                    RefArgT(R"($ref\.withdot)", makeSuccess<OpArg>(ref("ref\\.withdot"), 13)),
+                    RefArgT(R"($ref\invalidescape)", makeError<OpArg>("", 4))
+
+                        ));
 
 INSTANTIATE_TEST_SUITE_P(
     Builder,
