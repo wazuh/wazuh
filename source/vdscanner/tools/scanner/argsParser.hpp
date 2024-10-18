@@ -51,14 +51,14 @@ public:
      */
     static void showHelp()
     {
-        std::cout << "\nUsage: vd_scanner_testtool <option(s)>\n"
+        std::cout << "\nUsage: vdscanner_tool <option(s)>\n"
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-s SOCKET_FILE\t\tSpecifies the socket file.\n"
                   << "\t-l LOG_FILE\t\tSpecifies the log file to write.\n"
                   << "\nExample:"
-                  << "\n\t./vd_scanner_testtool -s test.sock\n"
-                  << "\n\t./vd_scanner_testtool -s test.sock -l log.txt\n"
+                  << "\n\t./vdscanner_tool -s test.sock\n"
+                  << "\n\t./vdscanner_tool -s test.sock -l log.txt\n"
                   << std::endl;
     }
 
