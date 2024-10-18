@@ -18,6 +18,7 @@ The `engine-suite` python package contains various scripts to help developing co
 ├── engine-suite/
 │   └── src
 │       └── engine_clear
+│       └── engine_catalog
 │       └── engine_decoder
 │       └── engine_diff
 │       └── engine_integration
@@ -38,6 +39,12 @@ The `engine-suite` python package contains various scripts to help developing co
 - **Deletion of Policies and Assets**:
     In addition to kvdbs, can handle the removal of policies and other assets within the Wazuh environment, ensuring that all elements related to rules and configurations are aligned with the desired changes.
 
+## Engine catalog
+- **Catalog Management**:
+    - **List and Get assets**: Provides the ability to list and get details of assets such as decoders, rules, integrations, etc.
+    - **Creation of Assets**: Allows you to create new assets, such as decoders, rules, integrations, etc.
+    - **Deletion and Update**: Provides the ability to delete or update existing assets, providing flexibility in configuration management.
+    - **Validation**: Validates the syntax of the asset files, ensuring that they are correctly formatted and can be used by the engine.
 
 ## Engine decoder
 
@@ -114,6 +121,7 @@ pip3 install -e tools/engine-suite[dev]
 Once installed the following scripts are available in the path:
 - [engine-schema](src/engine_schema/README.md)
 - [engine-decoder](src/engine_decoder/README.md)
+- [engine-catalog](src/engine_catalog/README.md)
 - [engine-integration](src/engine_integration/README.md)
 - [engine-diff](src/engine_diff/README.md)
 - [engine-clear](src/engine_clear/README.md)

@@ -1,4 +1,5 @@
 import sys
+import yaml
 import shared.resource_handler as rs
 import shared.executor as exec
 from pathlib import Path
@@ -12,6 +13,8 @@ def process_integration_entry(api_socket, entry, kvdbs, added_kvdbs_paths, execu
     """
     original = resource_handler.load_file(entry)
     name = original['name']
+    # Recover original content
+    content = yaml.dump(content, sort_keys=False)
 
     if entry.parent.as_posix() not in added_kvdbs_paths:
         added_kvdbs_paths.append(entry.parent.as_posix())
@@ -22,7 +25,7 @@ def process_integration_entry(api_socket, entry, kvdbs, added_kvdbs_paths, execu
                 executor.add(recoverable_task)
 
     task = resource_handler.get_validate_catalog_task(
-        api_socket, name.split('/')[0], name, original, namespace)
+        api_socket, name.split('/')[0], name, content, namespace)
     executor.add(task)
 
 def validate_integrations(integrations_to_process, api_socket, kvdbs, ruleset_path, executor, resource_handler):

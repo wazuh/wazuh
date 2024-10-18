@@ -19,6 +19,16 @@ class Format(Enum):
     YML = auto()
     TEXT = auto()
 
+def StringToFormat(string: str) -> Format:
+    if string == 'json':
+        return Format.JSON
+    elif string == 'yml' or string == 'yaml':
+        return Format.YML
+    elif string == 'text':
+        return Format.TEXT
+    else:
+        raise Exception(f'Format {string} not supported')
+
 class ResourceHandler:
     def __init__(self):
         self._files = files('engine-suite')
@@ -176,7 +186,7 @@ class ResourceHandler:
 
     def validate_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):
         self._base_catalog_command(
-            path, type, name, yaml.dump(content, sort_keys=False), namespace, format, 'validate')
+            path, type, name, content, namespace, format, 'validate')
 
     def update_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):
         self._base_catalog_command(
