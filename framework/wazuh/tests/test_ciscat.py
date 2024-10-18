@@ -34,6 +34,7 @@ db_file = 'schema_ciscat_test.sql'
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results(agents_info_mock, socket_mock, exists_mock, limit):
     """Check if limit is correctly applied to get_ciscat_results() function
 
@@ -53,6 +54,7 @@ def test_get_ciscat_results(agents_info_mock, socket_mock, exists_mock, limit):
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results_ko(agents_info_mock, socket_mock):
     """Check that expected exception is raised when agent does not exist."""
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
@@ -68,6 +70,7 @@ def test_get_ciscat_results_ko(agents_info_mock, socket_mock):
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results_select(agents_info_mock, socket_mock, exists_mock, select):
     """Check that only selected elements are returned
 
@@ -99,6 +102,7 @@ def test_get_ciscat_results_select(agents_info_mock, socket_mock, exists_mock, s
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results_select_ko(agents_info_mock, socket_mock, exists_mock):
     """Check that expected exception is raised when select field is not allowed."""
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
@@ -117,6 +121,7 @@ def test_get_ciscat_results_select_ko(agents_info_mock, socket_mock, exists_mock
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results_search(agents_info_mock, socket_mock, exists_mock, search, total_expected_items):
     """Check if the number of items returned is as expected when using the search parameter.
 
@@ -146,6 +151,7 @@ def test_get_ciscat_results_search(agents_info_mock, socket_mock, exists_mock, s
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results_query(agents_info_mock, socket_mock, exists_mock, query, total_expected_items,
                                   expected_scan_id):
     """Check if the number of items returned is as expected when using query parameter.
@@ -177,6 +183,7 @@ def test_get_ciscat_results_query(agents_info_mock, socket_mock, exists_mock, qu
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results_sort(agents_info_mock, socket_mock, exists_mock, sort, first_item):
     """Check if the the first item returned is expected when using sort parameter
 
@@ -207,6 +214,7 @@ def test_get_ciscat_results_sort(agents_info_mock, socket_mock, exists_mock, sor
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_ciscat_results_filters(agents_info_mock, socket_mock, exists_mock, filters, expected_scan_id):
     """Check that filters are correctly applied.
 

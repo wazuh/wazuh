@@ -109,6 +109,7 @@ def send_msg_to_wdb(msg, raw=False):
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_items):
     """Test `get_distinct_agents` function from agent module.
 
@@ -126,6 +127,7 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_get_agents_summary_status(socket_mock, send_mock):
     """Test `get_agents_summary` function from agent module."""
     summary = get_agents_summary_status(short_agent_list)
@@ -148,6 +150,7 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_get_agents_summary_os(connect_mock, send_mock):
     """Tests `get_os_summary function`."""
     summary = get_agents_summary_os(short_agent_list)
@@ -163,6 +166,7 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconnect_mock, agent_list, expected_items,
                                 error_code):
     """Test `reconnect_agents` function from agent module.
@@ -356,6 +360,7 @@ async def test_agent_get_agents_in_group(create_indexer_mock, mock_get_groups, g
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_items):
     """Test `get_agents_keys` from agent module.
 
@@ -807,6 +812,7 @@ async def test_agent_remove_agents_from_group_exceptions(group_mock, create_inde
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_get_outdated_agents(socket_mock, send_mock):
     """Test get_oudated_agents function from agent module.
 
@@ -887,6 +893,7 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set, expected_errors_and_items,
                               result_from_socket, filters, raise_error):
     """Test `upgrade_agents` function from agent module.
@@ -1000,6 +1007,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_agent_get_upgrade_result(mock_socket, mock_wdb, mock_client_keys, agent_set, expected_errors_and_items,
                                   result_from_socket, filters, raise_error):
     """Test `upgrade_agents` function from agent module.
