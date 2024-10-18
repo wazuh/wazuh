@@ -21,8 +21,7 @@ def run(args, resource_handler: rs.ResourceHandler):
         resource_handler.add_catalog_file(
             api_socket, type, '', content, namespace, inFormat)
     except Exception as e:
-        print(f'Error updating asset: {e}')
-        exit(1)
+        sys.exit(f'Error updating asset: {e}')
 
     return 0
 

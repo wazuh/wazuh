@@ -1,3 +1,4 @@
+import sys
 import shared.resource_handler as rs
 
 
@@ -12,8 +13,7 @@ def run(args, resource_handler: rs.ResourceHandler):
     try:
         resource_handler.delete_catalog_file(api_socket, '', asset, namespace)
     except Exception as e:
-        print(f'Error deleting asset or collection: {e}')
-        exit(1)
+        sys.exit(f'Error deleting asset or collection: {e}', 1)
 
     return 0
 
