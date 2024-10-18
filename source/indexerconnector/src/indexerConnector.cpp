@@ -41,7 +41,6 @@ constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
  * @param caRootCertificate The path to the merged CA root certificate.
  * @throws std::runtime_error If the CA root certificate file does not exist, could not be opened, written or the
  * ownership could not be changed.
- * @note The merged file will be created in the `tmp` directory of Wazuh installation.
  */
 static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
 {
