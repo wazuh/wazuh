@@ -682,7 +682,7 @@ async def test_get_list_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     mock_dapi.assert_called_once_with(f=agent.get_agent_groups,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -743,7 +743,7 @@ async def test_post_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
             mock_dapi.assert_called_once_with(f=agent.create_group,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='local_master',
-                                              is_async=False,
+                                              is_async=True,
                                               wait_for_complete=False,
                                               logger=ANY,
                                               rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -768,7 +768,7 @@ async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
     mock_dapi.assert_called_once_with(f=agent.get_group_conf,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -798,7 +798,7 @@ async def test_put_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
             mock_dapi.assert_called_once_with(f=agent.update_group_file,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='local_master',
-                                              is_async=False,
+                                              is_async=True,
                                               wait_for_complete=False,
                                               logger=ANY,
                                               rbac_permissions=mock_request.context['token_info']['rbac_policies']

@@ -543,7 +543,7 @@ async def add_agent(id: str, name: str, key: str, groups: str = None) -> WazuhRe
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
-def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort_by: list = None,
+async def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort_by: list = None,
                      sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
                      hash_algorithm: str = 'md5', q: str = None, select: str = None,
                      distinct: bool = False) -> AffectedItemsWazuhResult:
@@ -613,7 +613,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
 
 @expose_resources(actions=["group:create"], resources=["*:*:*"], post_proc_func=None)
-def create_group(group_id: str) -> WazuhResult:
+async def create_group(group_id: str) -> WazuhResult:
     """Creates a group.
 
     Parameters
@@ -1206,7 +1206,7 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_group_conf(group_list: list = None) -> WazuhResult:
+async def get_group_conf(group_list: list = None) -> WazuhResult:
     """Read the configuration of the specified group.
 
     Parameters
@@ -1227,7 +1227,7 @@ def get_group_conf(group_list: list = None) -> WazuhResult:
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
-def update_group_file(group_list: list = None, file_data: str = None) -> WazuhResult:
+async def update_group_file(group_list: list = None, file_data: str = None) -> WazuhResult:
     """Update a group file.
 
     Parameters

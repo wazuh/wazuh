@@ -17,7 +17,7 @@ node_id = get_node().get('node')
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
-def read_config_wrapper() -> AffectedItemsWazuhResult:
+async def read_config_wrapper() -> AffectedItemsWazuhResult:
     """Wrapper for read_config.
 
     Returns
@@ -38,7 +38,7 @@ def read_config_wrapper() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
-def get_node_wrapper() -> AffectedItemsWazuhResult:
+async def get_node_wrapper() -> AffectedItemsWazuhResult:
     """Wrapper for get_node.
 
     Returns
@@ -59,7 +59,7 @@ def get_node_wrapper() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:status'], resources=['*:*:*'], post_proc_func=None)
-def get_status_json() -> WazuhResult:
+async def get_status_json() -> WazuhResult:
     """Return the cluster status.
 
     Returns
