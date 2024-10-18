@@ -13,8 +13,10 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <grp.h>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <pwd.h>
 #include <regex>
 #include <stdexcept>
 #include <thread>
@@ -28,6 +30,8 @@
 #include <indexerConnector/indexerConnector.hpp>
 
 #include "fakeIndexer.hpp"
+
+#define BUFFER_SIZE 256
 
 class IndexerConnectorTest : public ::testing::Test
 {
@@ -164,6 +168,52 @@ void IndexerConnectorTest::waitUntil(const std::function<bool()>& stopCondition,
     } while (!stopCondition());
 }
 
+extern "C" struct passwd* __wrap_getpwnam(const char* name)
+{
+    static struct passwd dummy_passwd;
+    static char dummy_name[BUFFER_SIZE];
+    static char dummy_dir[BUFFER_SIZE];
+    static char dummy_shell[BUFFER_SIZE];
+
+    if (strcmp(name, "wazuh") == 0) // Simulate only "wazuh" user existing
+    {
+        dummy_passwd.pw_name = strcpy(dummy_name, "wazuh");
+        dummy_passwd.pw_uid = 1000;
+        dummy_passwd.pw_gid = 1000;
+        dummy_passwd.pw_dir = strcpy(dummy_dir, "/home/wazuh");
+        dummy_passwd.pw_shell = strcpy(dummy_shell, "/bin/bash");
+        return &dummy_passwd;
+    }
+
+    return nullptr; // Simulate failure for other users
+}
+
+extern "C" struct group* __wrap_getgrnam(const char* name)
+{
+    static struct group dummy_group;
+    static char dummy_name[BUFFER_SIZE];
+
+    if (strcmp(name, "wazuh") == 0) // Simulate only "wazuh" group existing
+    {
+        dummy_group.gr_name = strcpy(dummy_name, "wazuh");
+        dummy_group.gr_gid = 1000;
+        dummy_group.gr_mem = nullptr; // No additional group members in this mock
+        return &dummy_group;
+    }
+
+    return nullptr; // Simulate failure for other groups
+}
+
+extern "C" int __wrap_chown(const char* path, uid_t owner, gid_t group)
+{
+    // Simulate a successful chown operation for the "/tmp/success" file
+    if (strcmp(path, "tmp/root-ca-merged.pem") == 0)
+    {
+        return 0; // Return success
+    }
+    return -1; // Return failure
+}
+
 /**
  * @brief Test the connection to an available server with user and password data.
  *
@@ -211,6 +261,53 @@ TEST_F(IndexerConnectorTest, ConnectionWithSslCredentials)
  *
  */
 TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
+{
+    // Setup for the test
+    const std::string certFileOne = "./root-ca-one.pem";
+    const std::string certFileTwo = "./root-ca-two.pem";
+    const std::string mergedCertFile = "tmp/root-ca-merged.pem";
+
+    // Create the first certificate file
+    std::ofstream outputFile(certFileOne);
+    outputFile << "CERT-ONE\n";
+    outputFile.close();
+
+    // Create the second certificate file
+    std::ofstream outputFileSecond(certFileTwo);
+    outputFileSecond << "CERT-TWO\n";
+    outputFileSecond.close();
+
+    // Indexer configuration with SSL options
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
+                                           .hosts = {A_ADDRESS},
+                                           .sslOptions = {.cacert = {certFileOne, certFileTwo},
+                                                          .cert = "/etc/filebeat/certs/filebeat.pem",
+                                                          .key = "/etc/filebeat/certs/filebeat-key.pem"},
+                                           .timeout = INDEXER_TIMEOUT};
+
+    // Attempt to create the connector and expect no exceptions for valid certificates
+    ASSERT_NO_THROW({ IndexerConnector indexerConnector(indexerConfig); });
+
+    // Check that the content of the merged file is as expected
+    std::ifstream file(mergedCertFile);
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    ASSERT_EQ(content, "CERT-ONE\nCERT-TWO\n");
+
+    // Clean up files
+    std::filesystem::remove(certFileOne);
+    std::filesystem::remove(certFileTwo);
+}
+
+/**
+ * @brief Test the connection to an available server with SSL credentials.
+ *
+ * @note The SSL data is a dummy one and there are no functionality checks here. The target of this test is to increase
+ * the test coverage.
+ *
+ */
+TEST_F(IndexerConnectorTest, ConnectionWithCertsArrayNoFiles)
 {
     IndexerConnectorOptions indexerConfig {
         .name = INDEXER_NAME,
