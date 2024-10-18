@@ -13,7 +13,7 @@ Vulnerability detection validation for `firefox` on Windows.
 | -------- | -------- | ----- | -------------- | -------------- |
 | firefox  | 127.0.1  | NVD   | CVE-2016-7152  | Not Vulnerable |
 | firefox  | 127.0.1  | NVD   | CVE-2016-7153  | Not Vulnerable |
-| firefox  | 127.0.1  | NVD   | CVE-2014-6492  | Not Vulnerable | https://github.com/wazuh/wazuh/issues/25974
+| firefox  | 127.0.1  | NVD   | CVE-2014-6492  | Not Vulnerable |
 | firefox  | 127.0.1  | NVD   | CVE-2012-4930  | Not Vulnerable |
 | firefox  | 127.0.1  | NVD   | CVE-2009-4630  | Not Vulnerable |
 | firefox  | 127.0.1  | NVD   | CVE-2009-4130  | Not Vulnerable |
