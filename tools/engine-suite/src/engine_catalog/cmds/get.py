@@ -1,3 +1,4 @@
+import sys
 import shared.resource_handler as rs
 from shared.resource_handler import Format, StringToFormat
 
@@ -17,8 +18,8 @@ def run(args, resource_handler: rs.ResourceHandler):
         print(result)
 
     except Exception as e:
-        print(f'Error getting asset or collection: {e}')
-        exit(1)
+        sys.exit(f'Error getting asset or collection: {e}')
+
 
     return 0
 

@@ -1,5 +1,6 @@
 import sys
 import os
+import pathlib
 import shared.resource_handler as rs
 from shared.resource_handler import Format, StringToFormat
 
@@ -11,22 +12,22 @@ def run(args, resource_handler: rs.ResourceHandler):
     namespace: str = args['namespace']
     type: str = args['asset-type']
     inFormat: Format = StringToFormat(args['format'])
-    path: str = args['path']
+    path: pathlib.Path = pathlib.Path(args['path'])
     recursive: bool = args['recursive']
     abort_on_error: bool = args.get('abort_on_error', False)
 
     # Check if the path exists and is a directory
-    if not os.path.exists(path):
-        print(f'Error: Path {path} does not exist.')
+    if not path.exists():
+        sys.exit(f'Error: Path {path} does not exist.')
         exit(1)
 
-    if not os.path.isdir(path):
+    if not path.is_dir():
         print(f'Error: Path {path} is not a directory.')
         exit(1)
 
     # List all the files in the path
     files : list[str] = []
-    for root, _, filenames in os.walk(path):
+    for root, _, filenames in os.walk(path.absolute().as_posix()):
         for filename in filenames:
             if (inFormat == Format.JSON and filename.endswith('.json')) \
                or (inFormat == Format.YML and filename.endswith(('.yaml', '.yml'))):
