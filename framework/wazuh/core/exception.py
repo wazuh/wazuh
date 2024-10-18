@@ -362,7 +362,7 @@ class WazuhException(Exception):
                },
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
-        1761: {'message': 'Error sending request to opensearch',
+        1761: {'message': 'Error sending request to the indexer',
                'remediation': 'Please check the request body and try again'
                },
         1762: 'Error sending command to the commands manager',
