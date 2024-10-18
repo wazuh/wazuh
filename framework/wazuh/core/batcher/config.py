@@ -11,7 +11,7 @@ class BatcherConfig:
     Parameters
     ----------
     max_elements : int
-        Maximum number of messages in a batch.
+        Maximum number of items in a batch.
     max_size : int
         Maximum size of the batch in bytes.
     max_time_seconds : int
