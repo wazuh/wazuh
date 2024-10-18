@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+from health_test.health_test import run as test_run
+from health_test.validate_cutom_field_indexing import run as validate_cutom_field_indexing_run
+from health_test.validate_event_indexing import run as validate_event_indexing_run
 import sys
 from argparse import ArgumentParser, Namespace
 
@@ -12,8 +15,6 @@ from health_test.load_rules import run as load_rules_run
 from health_test.assets_validate import run as assets_validate_run
 from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
-from health_test.validate_event_indexing import run as validate_event_indexing_run
-from health_test.health_test import run as test_run
 
 
 def parse_args() -> Namespace:
@@ -136,7 +137,7 @@ def parse_args() -> Namespace:
         '--skip', help='Skip the tests with the specified name', default=None)
     validate_rule_mapping_parser.set_defaults(func=rule_mapping_validate_run)
 
-    # test subcommand
+    # validate event indexing subcommand
     validate_event_indexing_parser = dynamic_subparsers.add_parser(
         'validate_event_indexing', help=(
             'Creates an opensearch instance along with an index. Ingests different events to the engine and compares '
@@ -154,6 +155,25 @@ def parse_args() -> Namespace:
         help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
         required=False)
     validate_event_indexing_parser.set_defaults(func=validate_event_indexing_run)
+
+    # validate custom field indexing
+    validate_custom_field_indexing_parser = dynamic_subparsers.add_parser(
+        'validate_custom_field_indexing', help=(
+            'Creates an opensearch instance along with an index. It ingests different events to the engine and extracts all the custom fields. '
+            'It then verifies that each of the custom fields are present in the opensearch index.'
+            'If you do not specify a specific argument, an error will be raised. '
+            'However, if you specify the argument, only one is accepted.'))
+    validate_custom_field_indexing_parser.add_argument(
+        '--integration', help='Specify the name of the integration to test.', default=None)
+    validate_custom_field_indexing_parser.add_argument(
+        '--rule_folder', help='Specify the name of the rule folder to test', default=None)
+    validate_custom_field_indexing_parser.add_argument(
+        '--skip', help='Skip the tests with the specified name', required=False)
+    validate_custom_field_indexing_parser.add_argument(
+        '--target',
+        help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
+        required=False)
+    validate_custom_field_indexing_parser.set_defaults(func=validate_cutom_field_indexing_run)
 
     # test subcommand
     test_parser = dynamic_subparsers.add_parser(
