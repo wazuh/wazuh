@@ -54,10 +54,10 @@ def AsyncMock(*args, **kwargs):
     return mock_coro
 
 
-def raise_if_exc_routine(dapi_kwargs, expected_error=None):
+async def raise_if_exc_routine(dapi_kwargs, expected_error=None):
     dapi = DistributedAPI(**dapi_kwargs)
     try:
-        raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+        raise_if_exc(asyncio.get_event_loop().run_until_complete(dapi.distribute_function()))
         if expected_error:
             assert False, f'Expected exception not generated: {expected_error}'
     except ProblemException as e:
@@ -143,7 +143,7 @@ def test_DistributedAPI_debug_log():
     (cluster.get_node_wrapper, 'local_any', 'worker', 'local', 'token_nbf_time'),
     (ciscat.get_ciscat_results, 'distributed_master', 'worker', 'remote', None),
 ])
-def test_DistributedAPI_distribute_function(api_request, request_type, node, expected, f_kwargs):
+async def test_DistributedAPI_distribute_function(api_request, request_type, node, expected, f_kwargs):
     """Test distribute_function functionality with different test cases.
 
     Parameters
@@ -158,8 +158,8 @@ def test_DistributedAPI_distribute_function(api_request, request_type, node, exp
         Expected result.
     """
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': node}):
-        dapi = DistributedAPI(f=api_request, logger=logger, request_type=request_type, f_kwargs=f_kwargs)
-        data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+        dapi_kwargs = {'f': api_request, 'logger': logger, 'request_type': request_type, 'f_kwargs': f_kwargs}
+        data = await raise_if_exc_routine(dapi_kwargs)
         assert data.render()['result'] == expected
 
 
@@ -170,7 +170,7 @@ def test_DistributedAPI_distribute_function(api_request, request_type, node, exp
 @pytest.mark.parametrize('api_request, request_type, node, expected', [
     (agent.restart_agents, 'distributed_master', 'master', 'local')
 ])
-def test_DistributedAPI_distribute_function_mock_solver(api_request, request_type, node, expected):
+def test_DistributedAPI_distribute_function_mock_solver( api_request, request_type, node, expected):
     """Test distribute_function functionality with unknown node.
 
     Parameters
@@ -190,7 +190,7 @@ def test_DistributedAPI_distribute_function_mock_solver(api_request, request_typ
         assert data.render()['result'] == expected
 
 
-def test_DistributedAPI_distribute_function_exception():
+async def test_DistributedAPI_distribute_function_exception():
     """Test distribute_function when an exception is raised."""
 
     class NodeWrapper:
@@ -204,27 +204,28 @@ def test_DistributedAPI_distribute_function_exception():
     logger_ = logging.getLogger("wazuh")
     with patch("wazuh.core.cluster.dapi.dapi.get_node_wrapper", side_effect=WazuhError(4000)):
         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger_)
-        get_error_result = dapi.get_error_info(Exception("testing"))
+        get_error_result = await dapi.get_error_info(Exception("testing"))
         assert 'unknown-node' in get_error_result
         assert get_error_result['unknown-node']['error'] == 'Wazuh Internal Error. See log for more detail'
 
     with patch("wazuh.core.cluster.dapi.dapi.get_node_wrapper", side_effect=WazuhError(4001)):
         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger_)
         with pytest.raises(WazuhError, match='.* 4001 .*'):
-            dapi.get_error_info(Exception("testing"))
+            await dapi.get_error_info(Exception("testing"))
 
-    with patch("wazuh.core.cluster.dapi.dapi.get_node_wrapper", return_value=NodeWrapper()):
+    with patch("wazuh.core.cluster.dapi.dapi.get_node_wrapper", new=AsyncMock(return_value=NodeWrapper())):
         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger_)
         with pytest.raises(Exception, match='.*test_get_error_info.*'):
-            dapi.get_error_info(Exception("testing"))
+            await dapi.get_error_info(Exception("testing"))
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.execute_local_request',
        new=AsyncMock(return_value='{wrong\': json}'))
-def test_DistributedAPI_invalid_json():
+async def test_DistributedAPI_invalid_json():
     """Check the behaviour of DistributedAPI when an invalid JSON is received."""
+    asyncio.set_event_loop(asyncio.new_event_loop())
     dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': logger}
-    assert raise_if_exc_routine(dapi_kwargs=dapi_kwargs) is None
+    assert await raise_if_exc_routine(dapi_kwargs=dapi_kwargs) is None
 
 
 def test_DistributedAPI_local_request_errors():
@@ -261,7 +262,7 @@ def test_DistributedAPI_local_request_errors():
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
 @patch('asyncio.wait_for', new=AsyncMock(return_value='Testing'))
-def test_DistributedAPI_local_request(mock_local_request):
+async def test_DistributedAPI_local_request(mock_local_request):
     """Test `local_request` method from class DistributedAPI and check the behaviour when an error raises."""
     dapi_kwargs = {'f': manager.status, 'logger': logger}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
@@ -339,7 +340,7 @@ def test_DistributedAPI_local_request(mock_local_request):
             try:
                 raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
             except WazuhClusterError as e:
-                assert e.dapi_errors == dapi.get_error_info(e)
+                assert e.dapi_errors == await dapi.get_error_info(e)
 
             # Test the logger `error` method was called for both distribute_function calls
             logger_error_mock.assert_has_calls([call(f"{cluster_exc.message}", exc_info=False),

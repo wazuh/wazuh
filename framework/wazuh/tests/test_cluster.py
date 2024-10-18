@@ -28,37 +28,37 @@ default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'nod
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
-def test_read_config_wrapper(mock_read_config):
+async def test_read_config_wrapper(mock_read_config):
     """Verify that the read_config_wrapper returns the default configuration."""
-    result = cluster.read_config_wrapper()
+    result = await cluster.read_config_wrapper()
     assert result.affected_items == [default_config]
 
 
 @patch('wazuh.cluster.read_config', side_effect=WazuhError(1001))
-def test_read_config_wrapper_exception(mock_read_config):
+async def test_read_config_wrapper_exception(mock_read_config):
     """Verify the exceptions raised in read_config_wrapper."""
-    result = cluster.read_config_wrapper()
+    result = await cluster.read_config_wrapper()
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
-def test_node_wrapper(mock_read_config):
+async def test_node_wrapper(mock_read_config):
     """Verify that the node_wrapper returns the default node information."""
-    result = cluster.get_node_wrapper()
+    result = await cluster.get_node_wrapper()
     assert result.affected_items == [{'node': default_config["node_name"],
                                       'type': default_config["node_type"]}]
 
 
 @patch('wazuh.cluster.get_node', side_effect=WazuhError(1001))
-def test_node_wrapper_exception(mock_get_node):
+async def test_node_wrapper_exception(mock_get_node):
     """Verify the exceptions raised in get_node_wrapper."""
-    result = cluster.get_node_wrapper()
+    result = await cluster.get_node_wrapper()
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
 
 
-def test_get_status_json():
+async def test_get_status_json():
     """Verify that get_status_json returns the default status information."""
-    result = cluster.get_status_json()
+    result = await cluster.get_status_json()
     expected = WazuhResult({'data': {"running": "no"}})
     assert result == expected
 

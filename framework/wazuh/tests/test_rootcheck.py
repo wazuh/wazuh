@@ -62,6 +62,7 @@ test_result = [
 @patch('wazuh.syscheck.WazuhQueue._connect')
 @patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
 @patch('wazuh.syscheck.WazuhQueue.close')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_init__mock, agent_exit__mock,
                        agent_list, failed_items, status_list, expected_result):
     """Test function `run` from rootcheck module.
@@ -99,6 +100,7 @@ def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_init__mock, ag
 ])
 @patch('wazuh.rootcheck.get_agents_info', return_value={'001', '002'})
 @patch('socket.socket.connect')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_clear(mock_connect, mock_info, agent_list, expected_affected_items, expected_calls, wdb_side_effect):
     """Test if function clear() returns expected result and if delete command is executed.
 

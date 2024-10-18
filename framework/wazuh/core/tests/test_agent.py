@@ -7,7 +7,7 @@ import os
 import sqlite3
 import sys
 from copy import copy
-from unittest.mock import AsyncMock, patch, mock_open, call
+from unittest.mock import AsyncMock, patch, call
 
 import pytest
 from shutil import rmtree
@@ -1160,17 +1160,21 @@ def test_send_restart_command(wq_mock, wq_send_msg, agents_list, versions_list):
             wq_send_msg.assert_called_with(expected_msg, agent_id)
 
 
-def test_get_agents_info():
+@patch('wazuh.core.indexer.create_indexer')
+async def test_get_agents_info(create_indexer_mock):
     """Test that get_agents_info() returns expected agent IDs"""
     reset_context_cache()
-    with open(os.path.join(test_data_path, 'client.keys')) as f:
-        client_keys = ''.join(f.readlines())
+
+    agents = []
+    for i in range(1, 11):
+        agents.append(IndexerAgent(id=str(i).zfill(3)))
 
     expected_result = {'001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
+    agents_search_mock = AsyncMock(return_value=agents)
+    create_indexer_mock.return_value.agents.search = agents_search_mock
 
-    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys)) as m:
-        result = get_agents_info()
-        assert result == expected_result
+    result = await get_agents_info()
+    assert result == expected_result
 
 
 def test_get_groups():
@@ -1191,32 +1195,41 @@ def test_get_groups():
             rmtree(shared)
 
 
-@pytest.mark.parametrize('group, wdb_response, expected_agents', [
-    ('default', [('due', '[1,2]'), ('ok', '[3,4]')], {'001', '002', '003', '004'}),
-    ('test_group', [('ok', '[1,2,3,999]')], {'001', '002', '003'}),
-    ('*', [('due', '[{"data": [{"id": 1}, {"id": 2}]}]'), ('ok', '[{"data": [{"id": 3}, {"id": 4}]}]')],
-     {'001', '002', '003', '004'}),
-    ('*', [('ok', '[{"data": [{"id": 1}, {"id": 2}, {"id": 999}]}]')], {'001', '002'})
+@pytest.mark.parametrize('group, group_agents, expected_agents', [
+    ('default', [IndexerAgent(id='001'), IndexerAgent(id='002')], {'001', '002'}),
+    ('test_group', [IndexerAgent(id='005')], {'005'}),
+    ('*', [], {'001', '002', '003', '004', '005'}),
 ])
-@patch('socket.socket.connect')
-def test_expand_group(socket_mock, group, wdb_response, expected_agents):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_expand_group(create_indexer_mock, group, group_agents, expected_agents):
     """Test that expand_group() returns expected agent IDs.
 
     Parameters
     ----------
     group : str
         Name of the group to be expanded.
-    wdb_response: list
-        Mock return values for the `WazuhDBConnection.send` method.
+    group_agents: list
+        Mock return values for the `AgentsIndex.get_group_agents` method.
     expected_agents : set
         Expected agent IDs for the selected group.
     """
-    # Clear and set get_agents_info cache
+    # Clear get_agents_info cache
     reset_context_cache()
-    test_get_agents_info()
 
-    with patch('wazuh.core.wdb.WazuhDBConnection.send', side_effect=wdb_response):
-        assert expand_group(group) == expected_agents, 'Agent IDs do not match with the expected result'
+    agents = []
+    for i in range(1, 6):
+        agents.append(IndexerAgent(id=str(i).zfill(3)))
+
+    agents_search_mock = AsyncMock(return_value=agents)
+    create_indexer_mock.return_value.agents.search = agents_search_mock
+
+    if group == '*':
+        assert await expand_group(group) == await get_agents_info()
+
+    agents_in_group_mock = AsyncMock(return_value=group_agents)
+    create_indexer_mock.return_value.agents.get_group_agents = agents_in_group_mock
+
+    assert await expand_group(group) == expected_agents
 
 
 @pytest.mark.parametrize('system_resources, permitted_resources, filters, expected_result', [
