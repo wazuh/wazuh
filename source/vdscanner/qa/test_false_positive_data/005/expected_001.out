@@ -1,2 +1,11 @@
 [
+    "Translation for package 'Microsoft Exchange Server 2019 Cumulative Update 14' on platform 'windows' found in Level 2 cache.",
+    "Match found, the package 'exchange_server' is vulnerable to 'CVE-1999-1322' due to default status. - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'exchange_server', is vulnerable to 'CVE-2018-8581'. Current version: '2019' is equal to '2019'. - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'exchange_server', is vulnerable to 'CVE-2021-1730'. Current version: '2019' is equal to '2019'. - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'exchange_server', is vulnerable to 'CVE-2023-36035'. Current version: '2019' is equal to '2019'. - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'exchange_server', is vulnerable to 'CVE-2023-36039'. Current version: '2019' is equal to '2019'. - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'exchange_server', is vulnerable to 'CVE-2023-36050'. Current version: '2019' is equal to '2019'. - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'exchange_server', is vulnerable to 'CVE-2023-36439'. Current version: '2019' is equal to '2019'. - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'exchange_server', is vulnerable to 'CVE-2024-21410'. Current version: '2019' is equal to '2019'. - Agent '' (ID: '001', Version: '')."
 ]
