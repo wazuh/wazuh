@@ -63,9 +63,8 @@ build_environment(){
     cd ${CURRENT_PATH}
 
     # Download and install package manager
-    echo action=nocheck > /tmp/opencsw-response.txt
     if [ ! -f /opt/csw/bin/pkgutil ]; then
-        pkgadd -a /tmp/opencsw-response.txt -d http://get.opencsw.org/now -n all
+        pkgadd -a ${CURRENT_PATH}/noaskfile -d http://get.opencsw.org/now -n all
     fi
 
     #Download and install tools
@@ -76,15 +75,20 @@ build_environment(){
     pkgutil -y -i libtool
     pkgutil -y -i wget
     pkgutil -y -i curl
-    pkgutil -y -i gcc5core
-    pkgutil -y -i gcc5g++
     pkgutil -y -i gtar
-    /opt/csw/bin/curl -OL http://mirror.opencsw.org/opencsw/allpkgs/gmake-4.2.1%2cREV%3d2016.08.04-SunOS5.10-sparc-CSW.pkg.gz
+    pkgutil -y -i gsed
+    pkgutil -y -i libisl15
+    pkgutil -y -i libmpc3
+    pkgutil -y -i binutils
+    curl -OL http://mirror.opencsw.org/opencsw/allpkgs/gcc5g%2b%2b-5.5.0%2cREV%3d2017.10.23-SunOS5.10-sparc-CSW.pkg.gz
+    gunzip -f gcc5g%2b%2b-5.5.0%2cREV%3d2017.10.23-SunOS5.10-sparc-CSW.pkg.gz
+    pkgadd -a ${CURRENT_PATH}/noaskfile -d gcc5g%2b%2b-5.5.0%2cREV%3d2017.10.23-SunOS5.10-sparc-CSW.pkg -n all
+    curl -OL http://mirror.opencsw.org/opencsw/allpkgs/gcc5core-5.5.0%2cREV%3d2017.10.23-SunOS5.10-sparc-CSW.pkg.gz
+    gunzip -f gcc5core-5.5.0%2cREV%3d2017.10.23-SunOS5.10-sparc-CSW.pkg.gz
+    pkgadd -a ${CURRENT_PATH}/noaskfile -d gcc5core-5.5.0%2cREV%3d2017.10.23-SunOS5.10-sparc-CSW.pkg -n all
+    curl -OL http://mirror.opencsw.org/opencsw/allpkgs/gmake-4.2.1%2cREV%3d2016.08.04-SunOS5.10-sparc-CSW.pkg.gz
     gunzip -f gmake-4.2.1%2cREV%3d2016.08.04-SunOS5.10-sparc-CSW.pkg.gz
-    echo action=nocheck > /tmp/opencsw-response.txt
-    if [ ! -f /opt/csw/bin/gmake ]; then
-        pkgadd -a /tmp/opencsw-response.txt -d gmake-4.2.1%2cREV%3d2016.08.04-SunOS5.10-sparc-CSW.pkg -n all
-    fi
+    pkgadd -a ${CURRENT_PATH}/noaskfile -d gmake-4.2.1%2cREV%3d2016.08.04-SunOS5.10-sparc-CSW.pkg -n all
 
     # Install precompiled gcc-5.5
     curl -LO http://packages-dev.wazuh.com/deps/solaris/precompiled-solaris-gcc-5.5.0.tar.gz
@@ -111,13 +115,13 @@ build_environment(){
         echo " Perl 5.10.1 already installed"
     else
         wget http://www.cpan.org/src/5.0/perl-5.10.1.tar.gz
-        gunzip ./perl-5.10.1.tar.gz
-        tar xvf perl-5.10.1.tar
+        gunzip ./perl-5.10.1.tar.gz > /dev/null
+        tar xvf perl-5.10.1.tar > /dev/null
         cd perl-5.10.1
-        ./Configure -Dcc=gcc -d -e -s
-        gmake clean
-        gmake -d -s
-        gmake install -d -s
+        ./Configure -Dcc=gcc -d -e -s > /dev/null
+        gmake clean > /dev/null
+        gmake -d -s > /dev/null
+        gmake install -d -s > /dev/null
         cd ..
 
         # Remove old version of perl and replace it with perl5.10.1
@@ -207,9 +211,8 @@ compute_version_revision()
 
 clone(){
     cd ${CURRENT_PATH}
-    git clone $REPOSITORY ${SOURCE} || return 1
+    git clone --depth=1 $REPOSITORY -b $wazuh_branch ${SOURCE} || return 1
     cd $SOURCE
-    git checkout $wazuh_branch
     compute_version_revision
 
     return 0
