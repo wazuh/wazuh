@@ -272,7 +272,7 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
 
     async with get_indexer_client() as indexer_client:
         query = {IndexerKey.MATCH_ALL: {}}
-        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='id')
         
         available_agents = [agent.id for agent in agents]
 
@@ -764,7 +764,7 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
 
     async with get_indexer_client() as indexer_client:
         available_agents = [item.id for item in
-            await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+            await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='id')
         ]
 
         for not_found_id in set(agent_list) - set(available_agents):
@@ -890,7 +890,7 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
 
     async with get_indexer_client() as indexer_client:
         available_agents = [item.id for item in
-            await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+            await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='id')
         ]
 
         for not_found_id in set(agent_list) - set(available_agents):
