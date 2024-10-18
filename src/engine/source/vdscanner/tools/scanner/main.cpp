@@ -9,11 +9,14 @@
  * Foundation.
  */
 
-#include "argsParser.hpp"
+#include <exception>
+
+#include <httplib.h>
+
 #include "base/logging.hpp"
 #include "vdscanner/scanOrchestrator.hpp"
-#include <exception>
-#include <httplib.h>
+
+#include "argsParser.hpp"
 
 int main(const int argc, const char* argv[])
 {
