@@ -28,8 +28,9 @@ constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
 constexpr auto ELEMENTS_PER_BULK {1000};
-constexpr auto USER_GROUP {"wazuh"};
-constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
+constexpr auto WAZUH_OWNER {"wazuh"};
+constexpr auto WAZUH_GROUP {"wazuh"};
+constexpr auto MERGED_CA_PATH {"tmp/root-ca-merged.pem"};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
@@ -40,7 +41,7 @@ constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
  * @param caRootCertificate The path to the merged CA root certificate.
  * @throws std::runtime_error If the CA root certificate file does not exist, could not be opened, written or the
  * ownership could not be changed.
- * @note The merged file will be created in the same directory as the first file in the list.
+ * @note The merged file will be created in the `tmp` directory of Wazuh installation.
  */
 static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
 {
@@ -62,7 +63,7 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, s
         caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     }
 
-    caRootCertificate = DEFAULT_PATH;
+    caRootCertificate = MERGED_CA_PATH;
 
     if (std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
         !std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
@@ -79,10 +80,10 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, s
     outputFile << caRootCertificateContentMerged;
     outputFile.close();
 
-    struct passwd* pwd = getpwnam(USER_GROUP);
-    struct group* grp = getgrnam(USER_GROUP);
+    struct passwd* pwd = getpwnam(WAZUH_OWNER);
+    struct group* grp = getgrnam(WAZUH_GROUP);
 
-    if (pwd == nullptr || grp == nullptr)
+    if (pwd == nullptr && grp == nullptr)
     {
         throw std::runtime_error("Could not get the user and group information.");
     }
