@@ -14,4 +14,6 @@ target_link_libraries(${PROJECT_NAME}
         base
 )
 
+target_link_options(${PROJECT_NAME} PRIVATE -Wl,--wrap=getpwnam,--wrap=getgrnam,--wrap=chown)
+
 gtest_discover_tests(${PROJECT_NAME})
