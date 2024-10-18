@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 import shared.executor as exec
 
-DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
+DEFAULT_API_SOCK = '/run/wazuh-server/engine-api.socket'
 DEFAULT_NAMESPACE = 'user'
 
 
