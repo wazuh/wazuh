@@ -850,45 +850,8 @@ checks:
      condition:
      rules:
 
-  # 1.2.1.2 Ensure package manager repositories are configured. (Manual)
-   - id: 18536
-     title: "Ensure package manager repositories are configured."
-     description: "Systems need to have package manager repositories configured to ensure they receive the latest patches and updates."
-     rationale: "If a system's package repositories are misconfigured important patches may not be identified or a rogue repository could introduce compromised software."
-     remediation: "Configure your package manager repositories according to site policy."
-     compliance:
-       - cis: ["1.2.1.2"]
-       - cis_csc_v8: ["7.3", "7.4"]
-       - cis_csc_v7: ["3.4", "3.5"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - mitre_mitigations: ["M1051"]
-       - mitre_tactics: ["TA0001"]
-       - mitre_techniques: ["T1195", "T1195.001", "T1195.002"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
-
-  # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual)
-   - id: 18537
-     title: "Ensure updates, patches, and additional security software are installed."
-     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-     remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt update # apt upgrade - OR - # apt dist-upgrade."
-     compliance:
-       - cis: ["1.2.2.1"]
-       - cis_csc_v8: ["7.3", "7.4"]
-       - cis_csc_v7: ["3.4", "3.5"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - mitre_mitigations: ["M1051"]
-       - mitre_tactics: ["TA0005"]
-       - mitre_techniques: ["T1195", "T1195.001"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
+  # 1.2.1.2 Ensure package manager repositories are configured. (Manual) - Not Implented
+  # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
   # 1.3.1.1 Ensure AppArmor is installed. (Automated)
    - id: 18538
@@ -910,8 +873,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' apparmor -> r:install\\s+ok\\s+installed"
 
   # 1.3.1.2 Ensure AppArmor is enabled in the bootloader configuration. (Automated)
    - id: 18539
@@ -933,8 +897,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+       - "f:/etc/default/grub -> r:security=apparmor"
+       - "f:/etc/default/grub -> r:apparmor=1"
 
   # 1.3.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
    - id: 18540
@@ -955,8 +921,12 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+       - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+       - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
+       - "c:apparmor_status -> r:^0 processes are unconfined"
 
   # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
    - id: 18541
@@ -978,8 +948,14 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+       - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
+       - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+       - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
+       - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
+       - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
   # 1.4.1 Ensure bootloader password is set. (Automated)
    - id: 18542
@@ -1002,8 +978,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+       - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*set superusers="
+       - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*\\w+"
 
   # 1.4.2 Ensure access to bootloader config is configured. (Automated)
    - id: 18543
@@ -1025,8 +1003,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:stat /boot/grub/grub.cfg -> r:Access: \(0400/-r--------\) && r:Uid:\s+\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s+\t*\(\s*\t*0/\s*\t*root\)'
 
   # 1.5.1 Ensure address space layout randomization is enabled. (Automated)
    - id: 18544
@@ -1046,8 +1025,10 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:\s*\t*2$'
+       - 'c:sysctl kernel.randomize_va_space -> r:^kernel.randomize_va_space\s*\t*=\s*\t*2'
 
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated)
    - id: 18545
@@ -1084,8 +1065,12 @@ checks:
        - mitre_mitigations: ["M1057"]
        - mitre_tactics: ["TA0007"]
        - mitre_techniques: ["T1005"]
-     condition:
+     condition: all
      rules:
+       - "c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable = 0"
+       - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
+       - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
+       - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
 
   # 1.5.4 Ensure prelink is not installed. (Automated)
    - id: 18547
@@ -1107,8 +1092,10 @@ checks:
        - pci_dss_v3.2.1: ["10.2.1", "11.5"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: any
      rules:
+       - "c:dpkg-query -s prelink -> r:package 'prelink' is not installed"
+       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' prelink -> r:prelink\\s*\\t*unknown\\s*\\t*ok\\s*\\t*not-installed\\s*\\t*not-installed|no packages found matching prelink"
 
   # 1.5.5 Ensure Automatic Error Reporting is not enabled. (Automated)
    - id: 18548
