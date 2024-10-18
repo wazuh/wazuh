@@ -50,6 +50,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhRequest_test.cpp
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhResponse_test.cpp
     ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
+    ${UNIT_SRC_DIR}/utils/threadEventDispatcher_test.cpp
     ${UNIT_SRC_DIR}/parseEvent_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
     ${UNIT_SRC_DIR}/json_test.cpp
@@ -70,6 +71,7 @@ target_link_libraries(base_utest
     PRIVATE
     base
     GTest::gtest_main
+    RocksDB::rocksdb
 )
 gtest_discover_tests(base_utest)
 

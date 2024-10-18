@@ -101,7 +101,8 @@ class Integration(CrudIntegration):
         # Get the values to send
         response : api_tester.RunPost_Response()
         response = self.api_client.tester_run(event)
-        rawOutput = MessageToDict(response.result.output)
+        # Output string to json
+        rawOutput = json.loads(response.result.output)
 
         hasTrace : bool = len(response.result.asset_traces) > 0
         rawTraces = response.result.asset_traces if hasTrace else []

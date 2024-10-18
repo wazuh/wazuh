@@ -18,13 +18,10 @@
 #include <string>
 #include <vector>
 
-// Define the global spHTTPRequest
-std::shared_ptr<httprequest::mock::MockHTTPRequest> spHTTPRequest =
-    std::make_shared<httprequest::mock::MockHTTPRequest>();
-
 auto constexpr MONITORING_HEALTH_CHECK_INTERVAL {2u};
 const std::string GREEN_SERVER {"http://localhost:9200"};
-const std::string RED_SERVER {"http://localhost:9300"};
+const std::string YELLOW_SERVER {"http://localhost:9300"};
+const std::string RED_SERVER {"http://localhost:9400"};
 
 /**
  * @brief Runs unit tests for ServerSelector class
@@ -42,6 +39,8 @@ protected:
     {
         // Register the host and port of the green server
         m_servers.emplace_back(GREEN_SERVER);
+        // Register the host and port of the yellow server
+        m_servers.emplace_back(YELLOW_SERVER);
         // Register the host and port of the red server
         m_servers.emplace_back(RED_SERVER);
     }
@@ -52,7 +51,6 @@ protected:
     // cppcheck-suppress unusedFunction
     void TearDown()
     {
-
         // Clear the servers
         m_servers.clear();
     }

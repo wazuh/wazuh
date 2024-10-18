@@ -4,15 +4,13 @@ from pathlib import Path
 import shared.resource_handler as rs
 from health_test.error_managment import ErrorReporter
 
-reporter = ErrorReporter()
-
 def load_mandatory_mapping(mandatory_mapping_path: Path):
     """
     Load mandatory_mapping from 'mandatory_mapping.yml'.
     """
     try:
         mandatory_mapping = rs.ResourceHandler().load_file(mandatory_mapping_path.as_posix())
-        return mandatory_mapping.get('mandatory_mapping', [])
+        return mandatory_mapping
     except Exception as e:
         return f"Error loading mandatory mapping from '{mandatory_mapping_path}': {e}"
 
@@ -29,12 +27,13 @@ def transform_dict_to_list(d):
     
     return extract_keys(d)
 
-def verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration_name):
+def verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration_name, reporter, key):
     """
-    Compare the fields in the '_expected.json' files with the mandatory fields.
+    Compare the fields in the '_expected.json' files with the mandatory fields
+    under the specified key (either 'decoder' or 'rule').
     Report missing fields once per expected JSON file.
     """
-    mandatory_mapping_set = set(mandatory_mapping)
+    mandatory_mapping_set = set(mandatory_mapping.get(key, []))
     
     for json_file in expected_json_files:
         try:
@@ -54,7 +53,7 @@ def verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration
 def find_expected_json_files(test_folder):
     return list(test_folder.rglob('*_expected.json'))
 
-def verify(mandatory_mapping_path, integration: Path):
+def verify(mandatory_mapping_path, integration: Path, reporter, key):
     mandatory_mapping = load_mandatory_mapping(mandatory_mapping_path)    
     if integration.name != 'wazuh-core':
         test_folder = integration / 'test'
@@ -65,9 +64,10 @@ def verify(mandatory_mapping_path, integration: Path):
         if not expected_json_files:
             sys.exit(f"No '_expected.json' files found in '{test_folder}' or its subfolders.")
 
-        verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration.name)
+        # Verify mandatory mapping for decoders
+        verify_mandatory_mapping(expected_json_files, mandatory_mapping, integration.name, reporter, key)
 
-def validator(ruleset_path: Path, integration: str):
+def integration_validator(ruleset_path: Path, integration: str, reporter):
     """
     Validate the mandatory mapping for all integrations or a specific one.
     Accumulate and report errors at the end of the validation.
@@ -79,28 +79,70 @@ def validator(ruleset_path: Path, integration: str):
 
     mandatory_mapping_path = ruleset_path / 'base-rules' / 'mandatory_mapping.yml'
     if not mandatory_mapping_path.exists():
-        sys.exit(f'Error: {mandatory_mapping_path} file does not exist in the integration.')
+        sys.exit(f'Error: {mandatory_mapping_path} file does not exist.')
 
     if integration:
-        verify(mandatory_mapping_path, integration_path / integration)
+        folder = integration_path / integration
+        if not folder.exists():
+            sys.exit(f"Integration {integration} does not exist.")
+        verify(mandatory_mapping_path, integration_path / integration, reporter, 'decoder')
     else:
         for integration in integration_path.iterdir():
             if integration.is_dir():
-                verify(mandatory_mapping_path, integration)
-    
-    reporter.exit_with_errors("There are fields that should be mapped and are not present in the expected event", integration_path)
+                verify(mandatory_mapping_path, integration, reporter, 'decoder')
+
+def rules_validator(ruleset_path: Path, rule_folder: str, reporter):
+    rules_path = ruleset_path / 'rules'
+    if not rules_path.exists() or not rules_path.is_dir():
+        reporter.add_error("Rules Validator", str(rules_path), "Error: 'rules' directory does not exist.")
+        return
+
+    mandatory_mapping_path = ruleset_path / 'base-rules' / 'mandatory_mapping.yml'
+    if not mandatory_mapping_path.exists():
+        sys.exit(f'Error: {mandatory_mapping_path} file does not exist.')
+
+    if rule_folder:
+        rule = rules_path / rule_folder
+        if not rule.exists():
+            sys.exit(f"Rule folder {rule} does not exist.")
+        verify(mandatory_mapping_path, rules_path / rule_folder, reporter, 'rule')
+    else:
+        for rule_folder in rules_path.iterdir():
+            if rule_folder.is_dir():
+                verify(mandatory_mapping_path, rule_folder, reporter, 'rule')
 
 def run(args):
-    integration = args['integration']
     ruleset_path = Path(args['ruleset']).resolve()
+    integration = args['integration']
+    rule_folder = args['rule_folder']
+
     if not ruleset_path.is_dir():
-        print(f"Engine ruleset not found: {ruleset_path}")
-        sys.exit(1)
+        sys.exit(f"Engine ruleset not found: {ruleset_path}")
+
+    reporter = ErrorReporter("Validation")
+
+    if rule_folder and integration:
+        sys.exit("Error: Only one of 'integration' or 'rule_folder' can be specified at a time.")
 
     try:
-        print("Running mapping tests.")
-        validator(ruleset_path, integration)
+        print("Running mandatory mapping tests.")
+
+        if integration:
+            print("Validating integration only.")
+            integration_validator(ruleset_path, integration, reporter)
+
+        elif rule_folder:
+            print("Validating rules only.")
+            rules_validator(ruleset_path, rule_folder, reporter)
+
+        else:
+            print("Validating both integration and rules.")
+            integration_validator(ruleset_path, integration, reporter)
+            rules_validator(ruleset_path, rule_folder, reporter)
+
+        # After both validators have run, check if there are errors and exit if necessary
+        reporter.exit_with_errors("There are fields that should be mapped and are not present in the expected event", ruleset_path)
+        
         print("Success execution")
     except Exception as e:
-        print(f"Error running test: {e}")
-        sys.exit(1)
+        sys.exit(f"Error running test: {e}")
