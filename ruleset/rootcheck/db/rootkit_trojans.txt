@@ -40,7 +40,7 @@ sudo        !satori|vejeta|conf\.inv!
 crond       !/dev/[^nt]|bash!
 gpm         !bash|mingetty!
 ifconfig    !bash|^/bin/sh|/dev/tux|session.null|/dev/[^cludisopt]!
-diff        !bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh!
+diff        !bash|^/bin/sh|file\.h|proc\.h|/dev/[^nf]ull|^/bin/.*sh!
 md5sum      !bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
 hdparm      !bash|/dev/ida!
 ldd         !/dev/[^n]|proc\.h|libshow.so|libproc.a!
@@ -62,7 +62,7 @@ w           !uname -a|proc\.h|bash!
 sendmail    !bash|fuck!
 named       !bash|blah|/dev/[0-9]|^/bin/sh!
 inetd       !bash|^/bin/sh|file\.h|proc\.h|/dev/[^un%]|^/bin/.*sh!
-apachectl   !bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh!
+apachectl   !^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh!
 sshd        !check_global_passwd|panasonic|satori|vejeta|\.ark|/hash\.zk|bash|/dev[a-s]|/dev[A-Z]/!
 syslogd     !bash|/usr/lib/pt07|/dev/[^cln]]|syslogs\.h|proc\.h!
 xinetd      !bash|file\.h|proc\.h!
