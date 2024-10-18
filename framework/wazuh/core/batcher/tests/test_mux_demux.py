@@ -102,8 +102,8 @@ def test_receive_from_demux():
     assert example_uid not in dict_test
 
 
-def test_get_response_from_demux():
-    """Check that the `internal_response_from_demux` method works as expected."""
+def test_internal_get_response_from_demux():
+    """Check that the `internal_get_response_from_demux` method works as expected."""
     demux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
@@ -116,14 +116,14 @@ def test_get_response_from_demux():
 
     demux_queue.put(Item(expected_id, expected_content))
 
-    result = queue._get_response_from_demux()
+    result = queue.internal_get_response_from_demux()
 
     assert demux_queue.empty()
     assert result.id == expected_id
     assert result.content == expected_content
 
 
-def test_store_response():
+def test_internal_store_response():
     """Check that the `internal_store_response` method works as expected."""
     dict_test = dict()
     queue = MuxDemuxQueue(
@@ -135,7 +135,7 @@ def test_store_response():
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     example_value = "test"
 
-    queue._store_response(Item(example_uid, example_value))
+    queue.internal_store_response(Item(example_uid, example_value))
 
     assert example_uid in dict_test
     assert dict_test[example_uid] == example_value

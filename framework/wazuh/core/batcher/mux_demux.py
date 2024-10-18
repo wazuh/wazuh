@@ -107,7 +107,7 @@ class MuxDemuxQueue:
         del self.responses[item_id]
         return response
 
-    def _get_response_from_demux(self) -> Item:
+    def internal_get_response_from_demux(self) -> Item:
         """Retrieve an item from the demux queue.
 
         Returns
@@ -117,7 +117,7 @@ class MuxDemuxQueue:
         """
         return self.demux_queue.get()
 
-    def _store_response(self, item: Item):
+    def internal_store_response(self, item: Item):
         """Update the responses dictionary with the item content.
 
         Parameters
@@ -170,9 +170,9 @@ class MuxDemuxRunner(Process):
 
         while not self._shutdown_event.is_set():
             try:
-                item = self.queue._get_response_from_demux()
+                item = self.queue.internal_get_response_from_demux()
                 if isinstance(item, Item):
-                    self.queue._store_response(item)
+                    self.queue.internal_store_response(item)
             except Exception as e:
                 if self._shutdown_event.is_set():
                     return
