@@ -2,13 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import json
 import logging
 import os
 import sys
 from asyncio import TimeoutError
-from unittest.mock import call, MagicMock, patch
+from unittest.mock import call, MagicMock, patch, AsyncMock
 
 import pytest
 from connexion import ProblemException
@@ -38,26 +37,14 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.cluster import local_client
 
 logger = logging.getLogger('wazuh')
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
 
 DEFAULT_REQUEST_TIMEOUT = 10
-
-
-def AsyncMock(*args, **kwargs):
-    m = MagicMock(*args, **kwargs)
-
-    async def mock_coro(*args, **kwargs):
-        return m(*args, **kwargs)
-
-    mock_coro.mock = m
-    return mock_coro
 
 
 async def raise_if_exc_routine(dapi_kwargs, expected_error=None):
     dapi = DistributedAPI(**dapi_kwargs)
     try:
-        raise_if_exc(asyncio.get_event_loop().run_until_complete(dapi.distribute_function()))
+        raise_if_exc(await dapi.distribute_function())
         if expected_error:
             assert False, f'Expected exception not generated: {expected_error}'
     except ProblemException as e:
@@ -158,8 +145,8 @@ async def test_DistributedAPI_distribute_function(api_request, request_type, nod
         Expected result.
     """
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': node}):
-        dapi_kwargs = {'f': api_request, 'logger': logger, 'request_type': request_type, 'f_kwargs': f_kwargs}
-        data = await raise_if_exc_routine(dapi_kwargs)
+        dapi = DistributedAPI(f=api_request, logger=logger, request_type=request_type, f_kwargs=f_kwargs)
+        data = raise_if_exc(await dapi.distribute_function())
         assert data.render()['result'] == expected
 
 
@@ -170,7 +157,7 @@ async def test_DistributedAPI_distribute_function(api_request, request_type, nod
 @pytest.mark.parametrize('api_request, request_type, node, expected', [
     (agent.restart_agents, 'distributed_master', 'master', 'local')
 ])
-def test_DistributedAPI_distribute_function_mock_solver( api_request, request_type, node, expected):
+async def test_DistributedAPI_distribute_function_mock_solver(api_request, request_type, node, expected):
     """Test distribute_function functionality with unknown node.
 
     Parameters
@@ -186,7 +173,7 @@ def test_DistributedAPI_distribute_function_mock_solver( api_request, request_ty
     """
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': node, 'node': 'master'}):
         dapi = DistributedAPI(f=api_request, logger=logger, request_type=request_type, from_cluster=False)
-        data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+        data = raise_if_exc(await dapi.distribute_function())
         assert data.render()['result'] == expected
 
 
@@ -199,7 +186,7 @@ async def test_DistributedAPI_distribute_function_exception():
             self.failed_items = {Exception("test_get_error_info"): "abc"}
 
     dapi_kwargs = {'f': manager.restart, 'logger': logger}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1017)
+    await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1017)
 
     logger_ = logging.getLogger("wazuh")
     with patch("wazuh.core.cluster.dapi.dapi.get_node_wrapper", side_effect=WazuhError(4000)):
@@ -223,33 +210,32 @@ async def test_DistributedAPI_distribute_function_exception():
        new=AsyncMock(return_value='{wrong\': json}'))
 async def test_DistributedAPI_invalid_json():
     """Check the behaviour of DistributedAPI when an invalid JSON is received."""
-    asyncio.set_event_loop(asyncio.new_event_loop())
     dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': logger}
     assert await raise_if_exc_routine(dapi_kwargs=dapi_kwargs) is None
 
 
-def test_DistributedAPI_local_request_errors():
+async def test_DistributedAPI_local_request_errors():
     """Check the behaviour when the local_request function raised an error."""
     with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.execute_local_request',
                new=AsyncMock(side_effect=WazuhInternalError(1001))):
         dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
 
         dapi_kwargs['debug'] = True
         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger, debug=True)
         try:
-            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+            raise_if_exc(await dapi.distribute_function())
         except WazuhInternalError as e:
             assert e.code == 1001
 
     with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.execute_local_request',
                new=AsyncMock(side_effect=KeyError('Testing'))):
         dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)  # Specify KeyError
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)  # Specify KeyError
 
         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger, debug=True)
         try:
-            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+            raise_if_exc(await dapi.distribute_function())
         except KeyError as e:
             assert 'KeyError' in repr(e)
 
@@ -257,7 +243,7 @@ def test_DistributedAPI_local_request_errors():
     with patch('wazuh.cluster.get_nodes_info', side_effect=json.decoder.JSONDecodeError('test', 'test', 1)):
         with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status'):
             dapi_kwargs = {'f': cluster.get_nodes_info, 'logger': logger, 'is_async': True}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
@@ -265,18 +251,18 @@ def test_DistributedAPI_local_request_errors():
 async def test_DistributedAPI_local_request(mock_local_request):
     """Test `local_request` method from class DistributedAPI and check the behaviour when an error raises."""
     dapi_kwargs = {'f': manager.status, 'logger': logger}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+    await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
     dapi_kwargs = {'f': cluster.get_nodes_info, 'logger': logger, 'local_client_arg': 'lc'}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+    await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
     dapi_kwargs['is_async'] = True
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+    await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
     with patch('asyncio.wait_for', new=AsyncMock(side_effect=TimeoutError('Testing'))):
         dapi = DistributedAPI(f=manager.status, logger=logger, f_kwargs={'agent_list': '*'})
         try:
-            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+            raise_if_exc(await dapi.distribute_function())
         except ProblemException as e:
             assert 'agent_list' not in dapi.f_kwargs
             assert e.ext['dapi_errors'][list(e.ext['dapi_errors'].keys())[0]]['error'] == \
@@ -284,45 +270,45 @@ async def test_DistributedAPI_local_request(mock_local_request):
 
     with patch('asyncio.wait_for', new=AsyncMock(side_effect=WazuhError(1001))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
 
         dapi_kwargs['debug'] = True
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
 
-    with patch('asyncio.wait_for', new=AsyncMock(side_effect=asyncio.TimeoutError())):
+    with patch('asyncio.wait_for', new=AsyncMock(side_effect=TimeoutError())):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3021)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3021)
 
     orig_message = 'database or disk is full'
     orig = SQLiteOperationalError(DatabaseError(Error(Exception(orig_message))))
     with patch('asyncio.wait_for', new=AsyncMock(side_effect=OperationalError(statement=None, params=[], orig=orig))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=2008)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=2008)
 
         dapi = DistributedAPI(f=manager.status, logger=logger, debug=True)
         try:
-            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+            raise_if_exc(await dapi.distribute_function())
         except WazuhInternalError as e:
             assert e.code == 2008
             assert str(e).endswith(orig_message)
 
     with patch('asyncio.wait_for', new=AsyncMock(side_effect=WazuhInternalError(1001))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
 
         dapi = DistributedAPI(f=manager.status, logger=logger, debug=True)
         try:
-            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+            raise_if_exc(await dapi.distribute_function())
         except WazuhInternalError as e:
             assert e.code == 1001
 
     with patch('asyncio.wait_for', new=AsyncMock(side_effect=KeyError('Testing'))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
 
         dapi = DistributedAPI(f=manager.status, logger=logger, debug=True)
         try:
-            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+            raise_if_exc(await dapi.distribute_function())
         except Exception as e:
             assert type(e) == KeyError
 
@@ -333,12 +319,12 @@ async def test_DistributedAPI_local_request(mock_local_request):
         with patch.object(TestingLogger, "error") as logger_error_mock:
             # Test WazuhClusterError caught in execute_local_request and ProblemException raised
             dapi_kwargs = {'f': manager.status, 'logger': testing_logger}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=exc_code)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=exc_code)
 
             # Test WazuhClusterError is raised when using debug in execute_local_request and distribute_function
             dapi = DistributedAPI(f=manager.status, logger=testing_logger, debug=True)
             try:
-                raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+                raise_if_exc(await dapi.distribute_function())
             except WazuhClusterError as e:
                 assert e.dapi_errors == await dapi.get_error_info(e)
 
@@ -369,33 +355,33 @@ def test_DistributedAPI_get_client(loop_mock):
 
 @patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'worker'})
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='invalid_json')
-def test_DistributedAPI_remote_request_errors(mock_client_execute, mock_get_node):
+async def test_DistributedAPI_remote_request_errors(mock_client_execute, mock_get_node):
     """Check the behaviour when the execute_remote_request function raised an error"""
     # Test execute_remote_request when it raises a JSONDecodeError
     dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'local_master'}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
+    await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
 
 
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', new=AsyncMock(return_value='{"Testing": 1}'))
-def test_DistributedAPI_remote_request():
+async def test_DistributedAPI_remote_request():
     """Test `execute_remote_request` method from class DistributedAPI."""
     dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'remote'}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+    await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
 
 @patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'master-node'})
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node', return_value={'worker1': ['001', '002']})
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='invalid_json')
-def test_DistributedAPI_forward_request_errors(mock_client_execute, mock_get_solver_node, mock_get_node):
+async def test_DistributedAPI_forward_request_errors(mock_client_execute, mock_get_solver_node, mock_get_node):
     """Check the behaviour when the forward_request function raised an error"""
     # Test forward_request when it raises a JSONDecodeError
     dapi_kwargs = {'f': agent.reconnect_agents, 'logger': logger, 'request_type': 'distributed_master'}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
+    await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.execute_local_request',
        new=AsyncMock(side_effect=WazuhInternalError(1001)))
-def test_DistributedAPI_logger():
+async def test_DistributedAPI_logger():
     """Test custom logger inside DistributedAPI class."""
     log_file_path = '/tmp/dapi_test.log'
     try:
@@ -404,7 +390,7 @@ def test_DistributedAPI_logger():
         fh.setLevel(logging.DEBUG)
         new_logger.addHandler(fh)
         dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': new_logger}
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
     finally:
         os.remove(log_file_path)
 
@@ -413,7 +399,7 @@ def test_DistributedAPI_logger():
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', new=AsyncMock(return_value='{"Testing": 1}'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node',
        new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
-def test_DistributedAPI_tmp_file():
+async def test_DistributedAPI_tmp_file():
     """Test the behaviour when processing temporal files to be send. Master node and unknown node."""
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
@@ -421,34 +407,34 @@ def test_DistributedAPI_tmp_file():
                    return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}])):
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'unk', 'node': 'master'}):
-        raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+        await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
 
 @patch('wazuh.core.cluster.local_client.LocalClient.send_file', new=AsyncMock(return_value='{"Testing": 1}'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node',
        new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
-def test_DistributedAPI_tmp_file_cluster_error():
+async def test_DistributedAPI_tmp_file_cluster_error():
     """Test the behaviour when an error raises with temporal files function."""
     open('/tmp/dapi_file.txt', 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
-        with patch('wazuh.core.cluster.dapi.dapi.get_node_wrapper',
-                   return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}])):
+        with patch('wazuh.core.cluster.dapi.dapi.get_node_wrapper', new=AsyncMock(
+            return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}]))):
             with patch('wazuh.core.cluster.local_client.LocalClient.execute',
                        new=AsyncMock(side_effect=WazuhClusterError(3022))):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3022)
+                await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3022)
 
             open('/tmp/dapi_file.txt', 'a').close()
             with patch('wazuh.core.cluster.local_client.LocalClient.execute',
                        new=AsyncMock(side_effect=WazuhClusterError(1000))):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
+                await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
 
 
 @patch('wazuh.core.cluster.local_client.LocalClient.execute',
@@ -456,7 +442,7 @@ def test_DistributedAPI_tmp_file_cluster_error():
 @patch('wazuh.agent.Agent.get_agents_overview', return_value={'items': [{'id': '001', 'node_name': 'master'},
                                                                         {'id': '002', 'node_name': 'master'},
                                                                         {'id': '003', 'node_name': 'unknown'}]})
-def test_DistributedAPI_get_solver_node(mock_agents_overview):
+async def test_DistributedAPI_get_solver_node(mock_agents_overview):
     """Test `get_solver_node` function."""
     nodes_info_result = AffectedItemsWazuhResult()
     nodes_info_result.affected_items.append({'name': 'master'})
@@ -466,40 +452,40 @@ def test_DistributedAPI_get_solver_node(mock_agents_overview):
         with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'agent_list': ['001', '002']}, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'agent_list': ['003', '004']}, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'agent_list': ['003', '004'], 'node_id': 'worker1'}, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'agent_list': '*'}, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'node_id': 'master'}, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             expected = AffectedItemsWazuhResult()
             expected.affected_items = [{'id': '001', 'node_name': 'master'}]
             with patch('wazuh.agent.get_agents_in_group', return_value=expected):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'group_id': 'default'}, 'nodes': ['master']}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+                await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             expected.affected_items = []
             with patch('wazuh.agent.get_agents_in_group', return_value=expected):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'group_id': 'noexist'}, 'nodes': ['master']}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+                await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'node_list': '*'}, 'broadcasting': True, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
+            await raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
 
 @pytest.mark.parametrize('api_request', [
