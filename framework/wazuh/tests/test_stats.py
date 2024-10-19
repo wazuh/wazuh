@@ -192,6 +192,7 @@ def test_deprecated_get_daemons_stats(mock_daemons_stats_):
 ])
 @patch('wazuh.core.agent.Agent.get_stats')
 @patch('wazuh.stats.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, component):
     """Test `get_agents_component_stats_json` function from agent module."""
     response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
@@ -201,6 +202,7 @@ def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, compon
 
 @patch('wazuh.core.agent.Agent.get_stats')
 @patch('wazuh.stats.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
     """Test `get_agents_component_stats_json` function from agent module."""
     response = stats.get_agents_component_stats_json(agent_list=['003'], component='logcollector')

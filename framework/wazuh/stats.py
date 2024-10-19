@@ -112,7 +112,7 @@ async def get_daemons_stats_agents(daemons_list: list = None, agent_list: list =
 
     if agent_list:
         if 'all' not in agent_list:
-            system_agents = get_agents_info()
+            system_agents = await get_agents_info()
             rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
 
             with WazuhDBQueryAgents(limit=None, select=["id", "status"], **rbac_filters) as db_query:

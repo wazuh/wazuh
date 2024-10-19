@@ -175,19 +175,19 @@ class DistributedAPI:
 
         except json.decoder.JSONDecodeError:
             e = exception.WazuhInternalError(3036)
-            e.dapi_errors = self.get_error_info(e)
+            e.dapi_errors = await self.get_error_info(e)
             if self.debug:
                 raise
             self.logger.error(f"{e.message}")
             return e
         except exception.WazuhInternalError as e:
-            e.dapi_errors = self.get_error_info(e)
+            e.dapi_errors = await self.get_error_info(e)
             if self.debug:
                 raise
             self.logger.error(f"{e.message}", exc_info=not isinstance(e, exception.WazuhClusterError))
             return e
         except exception.WazuhError as e:
-            e.dapi_errors = self.get_error_info(e)
+            e.dapi_errors = await self.get_error_info(e)
             return e
         except Exception as e:
             if self.debug:
@@ -195,7 +195,7 @@ class DistributedAPI:
 
             self.logger.error(f'Unhandled exception: {str(e)}', exc_info=True)
             return exception.WazuhInternalError(1000,
-                                                dapi_errors=self.get_error_info(e))
+                                                dapi_errors=await self.get_error_info(e))
 
     def check_wazuh_status(self):
         """
@@ -294,7 +294,7 @@ class DistributedAPI:
             self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
         except exception.WazuhInternalError as e:
-            e.dapi_errors = self.get_error_info(e)
+            e.dapi_errors = await self.get_error_info(e)
             # Avoid exception info if it is an asyncio timeout error, JSONDecodeError, /proc availability error or
             # WazuhClusterError
             self.logger.error(f"{e.message}",
@@ -304,7 +304,7 @@ class DistributedAPI:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
-            e.dapi_errors = self.get_error_info(e)
+            e.dapi_errors = await self.get_error_info(e)
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
@@ -313,7 +313,7 @@ class DistributedAPI:
             if self.debug:
                 raise
             return json.dumps(exception.WazuhInternalError(1000,
-                                                           dapi_errors=self.get_error_info(e)),
+                                                           dapi_errors=await self.get_error_info(e)),
                               cls=c_common.WazuhJSONEncoder)
 
     def get_client(self) -> c_common.Handler:
@@ -346,7 +346,7 @@ class DistributedAPI:
                 "api_timeout": self.api_request_timeout
                 }
 
-    def get_error_info(self, e) -> Dict:
+    async def get_error_info(self, e) -> Dict:
         """Build a response given an Exception.
 
         Parameters
@@ -360,7 +360,7 @@ class DistributedAPI:
         """
         try:
             common.rbac.set(self.rbac_permissions)
-            node_wrapper = get_node_wrapper()
+            node_wrapper = await get_node_wrapper()
             node = node_wrapper.affected_items[0]['node']
         except exception.WazuhException as rbac_exception:
             if rbac_exception.code == 4000:

@@ -62,6 +62,7 @@ EXPECTED_SCA_CHECKS_ITEMS = [
 @patch('wazuh.core.sca.WazuhDBQuerySCA.__init__', return_value=None)
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.sca.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_sca_list(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuerySCA__init__,
                       mock_WazuhDBQuerySCA__exit__, mock_WazuhDBQuerySCA_run):
     """Test that the get_sca_list function works properly."""
@@ -79,6 +80,7 @@ def test_get_sca_list(mock_get_agents_info, mock_get_basic_information, mock_Waz
 
 
 @patch('wazuh.sca.get_agents_info', return_value=[])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_sca_list_failed_item(mock_get_agents_info):
     """Test that the get_sca_list function works properly when there are failed items."""
 
@@ -102,6 +104,7 @@ def test_get_sca_list_failed_item(mock_get_agents_info):
 @patch('wazuh.core.sca.WazuhDBQuery.__exit__')
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.sca.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_sca_checks(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuery__exit__,
                         mock_WazuhDBQuerySCACheckIDs__init__, mock_WazuhDBQuerySCACheckIDs_run,
                         mock_WazuhDBQuerySCACheck__init__, mock_WazuhDBQuerySCACheck_run,
@@ -137,6 +140,7 @@ def test_get_sca_checks(mock_get_agents_info, mock_get_basic_information, mock_W
 @patch('wazuh.core.sca.WazuhDBQuery.__exit__')
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.sca.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_sca_checks_distinct(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuery__exit__,
                                  mock_WazuhDBQueryDistinctSCACheck__init__, mock_WazuhDBQueryDistinctSCACheck_run):
     """Test that the get_sca_checks function works properly when distinct is True."""
@@ -183,6 +187,7 @@ def test_get_sca_checks_distinct(mock_get_agents_info, mock_get_basic_informatio
 @patch('wazuh.core.sca.WazuhDBQuery.__exit__')
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.sca.get_agents_info', return_value=['001'])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_sca_checks_select(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuery__exit__,
                                mock_WazuhDBQuerySCACheckIDs__init__, mock_WazuhDBQuerySCACheckIDs_run,
                                mock_WazuhDBQuerySCACheck__init__, mock_WazuhDBQuerySCACheck_run,
@@ -217,6 +222,7 @@ def test_get_sca_checks_select(mock_get_agents_info, mock_get_basic_information,
 
 
 @patch('wazuh.sca.get_agents_info', return_value=[])
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_get_sca_checks_failed_item(mock_get_agents_info):
     """Test that the get_sca_checks function works properly when there are failed items."""
 

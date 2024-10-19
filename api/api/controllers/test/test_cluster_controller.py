@@ -166,7 +166,7 @@ async def test_get_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
     mock_dapi.assert_called_once_with(f=cluster.get_status_json,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -189,7 +189,7 @@ async def test_get_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
         mock_dapi.assert_called_once_with(f=cluster.read_config_wrapper,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='local_any',
-                                          is_async=False,
+                                          is_async=True,
                                           wait_for_complete=False,
                                           logger=ANY,
                                           rbac_permissions=mock_request.context['token_info']['rbac_policies'],

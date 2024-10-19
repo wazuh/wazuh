@@ -20,6 +20,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Agent as IndexerAgent
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
@@ -1170,8 +1171,8 @@ def send_restart_command(agent_id: str = '', agent_version: str = '', wq: WazuhQ
     return ret_msg
 
 
-@common.context_cached('system_agents')
-def get_agents_info() -> set:
+@common.async_context_cached('system_agents')
+async def get_agents_info() -> set:
     """Get all agent IDs in the system.
 
     Returns
@@ -1179,12 +1180,10 @@ def get_agents_info() -> set:
     set
         IDs of all agents in the system.
     """
-    with open(common.CLIENT_KEYS, 'r') as f:
-        file_content = f.read()
-
-    result = set(agent_regex.findall(file_content))
-
-    return result
+    async with get_indexer_client() as indexer_client:
+        query = {IndexerKey.MATCH_ALL: {}}
+        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='id')
+        return set([agent.id for agent in agents])
 
 
 @common.context_cached('system_groups')
@@ -1206,8 +1205,8 @@ def get_groups() -> set:
     return groups
 
 
-@common.context_cached('system_expanded_groups')
-def expand_group(group_name: str) -> set:
+@common.async_context_cached('system_expanded_groups')
+async def expand_group(group_name: str) -> set:
     """Expand a certain group or all (*) of them.
 
     Parameters
@@ -1220,32 +1219,12 @@ def expand_group(group_name: str) -> set:
     set
         Set of agent IDs.
     """
-    agents_ids = []
-    wdb_conn = WazuhDBConnection()
-    try:
-        last_id = 0
-        while True:
-            if group_name == '*':
-                command = 'global sync-agent-groups-get {"last_id":' f'{last_id}' ', "condition":"all"}'
-            else:
-                command = f'global get-group-agents {group_name} last_id {last_id}'
+    if group_name == '*':
+        return await get_agents_info()
 
-            status, payload = wdb_conn.send(command, raw=True)
-            agents = json.loads(payload)
-
-            for agent in agents[0]['data'] if group_name == '*' else agents:
-                agent_id = str(agent['id'] if isinstance(agent, dict) else agent).zfill(3)
-                agents_ids.append(agent_id)
-
-            if status == 'ok':
-                break
-            else:
-                last_id = int(agents_ids[-1])
-
-    finally:
-        wdb_conn.close()
-
-    return set(agents_ids) & get_agents_info()
+    async with get_indexer_client() as indexer_client:
+        agents = await indexer_client.agents.get_group_agents(group_name=group_name)
+        return set([agent.id for agent in agents])
 
 
 @lru_cache()

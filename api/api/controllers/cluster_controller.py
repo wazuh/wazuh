@@ -223,7 +223,7 @@ async def get_status(pretty: bool = False, wait_for_complete: bool = False) -> C
     dapi = DistributedAPI(f=cluster.get_status_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -254,7 +254,7 @@ async def get_config(pretty: bool = False, wait_for_complete: bool = False) -> C
     dapi = DistributedAPI(f=cluster.read_config_wrapper,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
