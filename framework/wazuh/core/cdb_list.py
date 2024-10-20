@@ -9,14 +9,12 @@ from typing import Union
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
-from wazuh.core.utils import find_nth, delete_wazuh_file, to_relative_path
+from wazuh.core.utils import delete_wazuh_file, to_relative_path
 
 REQUIRED_FIELDS = ['relative_dirname', 'filename']
 SORT_FIELDS = ['relative_dirname', 'filename']
 LIST_FIELDS = ['items', 'filename', 'relative_dirname']
-
-_regex_path = r'^(etc/lists/)[\w\.\-/]+$'
-_pattern_path = re.compile(_regex_path)
+REGEX_CDB = re.compile(r'(?:^\"(.+?)\"|^([^:]+)):(?:\"(.*?)\"$|([^:]*)$)')
 
 
 def check_path(path: str):
@@ -32,7 +30,8 @@ def check_path(path: str):
     WazuhError(1801)
         If the path is not valid.
     """
-    if './' in path or '../' in path or not _pattern_path.match(path):
+    regex_path = re.compile(r'^(etc/lists/)[\w\.\-/]+$')
+    if './' in path or '../' in path or not regex_path.match(path):
         raise WazuhError(1801)
 
 
@@ -55,14 +54,14 @@ def iterate_lists(absolute_path: str = common.USER_LISTS_PATH, only_names: bool 
     output = list()
 
     # For skipping .swp files
-    regex_swp = r'^\.{1}[\w\-/]+(.swp){1}$'
-    pattern = re.compile(regex_swp)
+    regex_swp = re.compile(r'^\.{1}[\w\-/]+(.swp){1}$')
 
     for name in dir_content:
         new_absolute_path = path.join(absolute_path, name)
         new_relative_path = to_relative_path(new_absolute_path)
         # '.cdb' and '.swp' files are skipped
-        if (path.isfile(new_absolute_path)) and ('.cdb' not in name) and ('~' not in name) and not pattern.search(name):
+        if (path.isfile(new_absolute_path)) and ('.cdb' not in name) \
+                and ('~' not in name) and not regex_swp.search(name):
             if only_names:
                 relative_path = to_relative_path(absolute_path)
                 output.append({'relative_dirname': relative_path, 'filename': name})
@@ -73,73 +72,6 @@ def iterate_lists(absolute_path: str = common.USER_LISTS_PATH, only_names: bool 
             output += iterate_lists(new_absolute_path, only_names=only_names)
 
     return output
-
-
-def split_key_value_with_quotes(line: str, file_path: str = '/CDB_LISTS_PATH') -> tuple:
-    """Return the key and value of a cdb list line when they are surrounded by quotes.
-
-    Parameters
-    ----------
-    line : str
-        String to split in key and value.
-    file_path : str
-        Relative path of list file which contains "line". Default: '/CDB_LISTS_PATH'
-
-    Raises
-    ------
-    WazuhError(1800)
-        If the input line has a wrong format.
-
-    Returns
-    -------
-    tupe
-        Key of the CDB list line and value of the CDB list line.
-    """
-    first_quote = find_nth(line, '"', 1)
-    second_quote = find_nth(line, '"', 2)
-
-    # Check if key AND value are surrounded by double quotes
-    if line.count('"') == 4:
-        third_quote = find_nth(line, '"', 3)
-        fourth_quote = find_nth(line, '"', 4)
-
-        key = line[first_quote + 1: second_quote]
-        value = line[third_quote + 1: fourth_quote]
-
-        # Check that the line starts with "...
-        # Check that the line has the structure ...":"...
-        # Check that the line finishes with ..."
-        if first_quote != 0 or line[second_quote: third_quote + 1] != '":"' or fourth_quote != len(
-                line) - 1:
-            raise WazuhError(1800, extra_message={'path': path.join('WAZUH_HOME', file_path)})
-
-    # Check whether the string surrounded by quotes is the key or the value
-    elif line.count('"') == 2:
-        # Check if the key is surrounded by quotes
-        if line.find(":") > first_quote:
-            key = line[first_quote + 1: second_quote]
-            value = line[second_quote + 2:]
-
-            # Check that the line starts with "...
-            # Check that the line has the structure ...":...
-            if first_quote != 0 or line[second_quote: second_quote + 2] != '":':
-                raise WazuhError(1800, extra_message={'path': path.join('WAZUH_HOME', file_path)})
-
-        # Check if the value is surrounded by quotes
-        if line.find(":") < first_quote:
-            key = line[: line.find(":")]
-            value = line[first_quote + 1: second_quote]
-
-            # Check that the line finishes with ..."
-            # Check that the line has the structure ...:"...
-            if second_quote != len(line) - 1 or line[first_quote - 1: first_quote + 1] != ':"':
-                raise WazuhError(1800, extra_message={'path': path.join('WAZUH_HOME', file_path)})
-
-    # There is an odd number of quotes (or more than 4)
-    else:
-        raise WazuhError(1800, extra_message={'path': path.join('WAZUH_HOME', file_path)})
-
-    return key, value
 
 
 def get_list_from_file(path: str, raw: bool = False) -> Union[dict, str]:
@@ -181,13 +113,15 @@ def get_list_from_file(path: str, raw: bool = False) -> Union[dict, str]:
         else:
             for match in re.finditer(regex_without_template, output.strip(), re.MULTILINE):
                 line = match.group(1)
-                if '"' not in line:
-                    # Check if key and value are not surrounded by double quotes
-                    key, value = line.split(':')
+                matches = re.match(REGEX_CDB, line)
+                # First or second group (with or without double quotes)
+                key = matches.group(1) or matches.group(2)
+                # Third or fourth group (with or without double quotes)
+                value = matches.group(3) or matches.group(4)
+                if key not in result:
+                    result[key] = value
                 else:
-                    # Check if key and/or value are surrounded by double quotes
-                    key, value = split_key_value_with_quotes(line, path)
-                result[key] = value
+                    raise WazuhError(1800, extra_message={'path': path})
 
     except OSError as e:
         if e.errno == 2:
@@ -198,7 +132,7 @@ def get_list_from_file(path: str, raw: bool = False) -> Union[dict, str]:
             raise WazuhError(1804, extra_message="{0} {1}".format(path, "is a directory"))
         else:
             raise e
-    except ValueError:
+    except (ValueError, AttributeError):
         raise WazuhError(1800, extra_message={'path': path})
 
     return result
@@ -227,13 +161,20 @@ def validate_cdb_list(content: str):
     WazuhError(1112)
         Empty CDB list.
     """
-    regex_cdb = re.compile(r'(?:^"([\w\-: ]+?)"|^[^:"\s]+):(?:"([\w\-: ]*?)"$|[^:\"]*$)')
-
     if len(content) == 0:
         raise WazuhError(1112)
 
+    list_keys = set()
     for line in content.splitlines():
-        if not re.match(regex_cdb, line):
+        matches = re.match(REGEX_CDB, line.strip())
+        if matches:
+            # First or second group (with or without double quotes)
+            key = matches.group(1) or matches.group(2)
+            if key not in list_keys:
+                list_keys.add(key)
+            else:
+                raise WazuhError(1800)
+        else:
             raise WazuhError(1800)
 
 
