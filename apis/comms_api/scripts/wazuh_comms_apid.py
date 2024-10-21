@@ -167,8 +167,8 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         Gunicorn configuration options.
     """
     # TODO(#25121): get values from the configuration
-    keyfile = '/var/ossec/api/configuration/ssl/server.key'
-    certfile = '/var/ossec/api/configuration/ssl/server.crt'
+    keyfile = '/var/lib/wazuh-server/etc/sslmanager.key'
+    certfile = '/var/lib/wazuh-server/etc/sslmanager.cert'
     configure_ssl(keyfile, certfile)
 
     pidfile = os.path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{MAIN_PROCESS}-{pid}.pid')
@@ -183,7 +183,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'preload_app': True,
         'keyfile': keyfile,
         'certfile': certfile,
-        'ca_certs': '/etc/ssl/certs/ca-certificates.crt',
+        'ca_certs': '/var/lib/wazuh-server/etc/rootCA.cert',
         'ssl_context': ssl_context,
         'ciphers': '',
         'logconfig_dict': log_config_dict,
