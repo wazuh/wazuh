@@ -18290,7 +18290,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "All orders were forwarded to the server"
+                message: "All orders were sent to the server"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
