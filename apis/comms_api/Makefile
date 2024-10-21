@@ -25,6 +25,6 @@ install:
 	$(INSTALL_FILE) scripts/wazuh_comms_apid.py ${INSTALLDIR}/apis/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) ../wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
 
 	$(MV_FILE) /bin/wazuh_comms_apid /bin/wazuh-comms-apid
