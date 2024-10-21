@@ -51,7 +51,7 @@ install:
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
 #   Provisional name change for wazuh-logtest and wazuh-clusterd
-	$(MV_FILE) /bin/wazuh_clusterd /bin/wazuh-clusterd
+	$(MV_FILE) /bin/wazuh_server /bin/wazuh-server
 	$(RM_FILE) /bin/__init__
 
 examples: install
