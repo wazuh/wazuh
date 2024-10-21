@@ -89,9 +89,7 @@ def setup_logging(foreground_mode: bool) -> dict:
     dict
         Logging configuration dictionary.
     """
-    log_config_dict = set_logging(log_filepath=COMMS_API_LOG_PATH,
-                                  log_level='INFO',
-                                  foreground_mode=foreground_mode)
+    log_config_dict = set_logging(log_filepath=COMMS_API_LOG_PATH, log_level='INFO', foreground_mode=foreground_mode)
 
     for handler in log_config_dict['handlers'].values():
         if 'filename' in handler:
@@ -116,10 +114,10 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
     try:
         if not os.path.exists(keyfile) or not os.path.exists(certfile):
             private_key = generate_private_key(keyfile)
-            logger.info(f"Generated private key file in {keyfile}")
-            
+            logger.info(f'Generated private key file in {keyfile}')
+
             generate_self_signed_certificate(private_key, certfile)
-            logger.info(f"Generated certificate file in {certfile}")
+            logger.info(f'Generated certificate file in {certfile}')
     except ssl.SSLError as exc:
         raise WazuhCommsAPIError(2700, extra_message=str(exc))
     except IOError as exc:
@@ -167,8 +165,8 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         Gunicorn configuration options.
     """
     # TODO(#25121): get values from the configuration
-    keyfile = '/var/lib/wazuh-server/etc/sslmanager.key'
-    certfile = '/var/lib/wazuh-server/etc/sslmanager.cert'
+    keyfile = '/var/lib/wazuh-server/api/configuration/ssl/server.key'
+    certfile = '/var/lib/wazuh-server/api/configuration/ssl/server.crt'
     configure_ssl(keyfile, certfile)
 
     pidfile = os.path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{MAIN_PROCESS}-{pid}.pid')
@@ -183,7 +181,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'preload_app': True,
         'keyfile': keyfile,
         'certfile': certfile,
-        'ca_certs': '/var/lib/wazuh-server/etc/rootCA.cert',
+        'ca_certs': None,
         'ssl_context': ssl_context,
         'ciphers': '',
         'logconfig_dict': log_config_dict,
@@ -218,11 +216,7 @@ class StandaloneApplication(BaseApplication):
         super().__init__()
 
     def load_config(self):
-        config = {
-            key: value
-            for key, value in self.options.items()
-            if key in self.cfg.settings and value is not None
-        }
+        config = {key: value for key, value in self.options.items() if key in self.cfg.settings and value is not None}
         for key, value in config.items():
             self.cfg.set(key.lower(), value)
 
@@ -262,7 +256,7 @@ def signal_handler(
 def terminate_processes(
     parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process, commands_manager: CommandsManager
 ) -> None:
-    """Terminate all related resources, and delete child and main processes 
+    """Terminate all related resources, and delete child and main processes
     if the current process ID matches the parent process ID.
 
     Parameters
@@ -296,7 +290,7 @@ if __name__ == '__main__':
         exit(0)
 
     utils.clean_pid_files(MAIN_PROCESS)
-    
+
     log_config_dict = setup_logging(args.foreground)
     logger = logging.getLogger('wazuh-comms-api')
 
@@ -313,9 +307,7 @@ if __name__ == '__main__':
         logger.info('Starting API as root')
 
     batcher_config = BatcherConfig(
-        max_elements=BATCHER_MAX_ELEMENTS,
-        max_size=BATCHER_MAX_SIZE,
-        max_time_seconds=BATCHER_MAX_TIME_SECONDS
+        max_elements=BATCHER_MAX_ELEMENTS, max_size=BATCHER_MAX_SIZE, max_time_seconds=BATCHER_MAX_TIME_SECONDS
     )
     mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
 
@@ -334,7 +326,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     logger.info(f'Listening on {args.host}:{args.port}')
-    
+
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
