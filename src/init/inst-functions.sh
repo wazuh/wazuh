@@ -89,7 +89,7 @@ InstallAPI()
 
     ## Install Communications API
     ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=/var/lib/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../apis/comms_api/
+    ${PYTHON_BIN_PATH} -m pip install ../apis/
 
 }
 
