@@ -17,11 +17,12 @@ from wazuh.core.common import WAZUH_PATH
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 
+BIN_PATH = '/bin'
 CLUSTER_DAEMON_NAME = 'wazuh-clusterd'
 COMMS_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'apis', 'scripts', 'wazuh_comms_apid.py')
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
 EMBEDDED_PYTHON_PATH = os.path.join(WAZUH_PATH, 'framework', 'python', 'bin', 'python3')
-ENGINE_BINARY_PATH = os.path.join(WAZUH_PATH, 'bin', 'wazuh-engine')
+ENGINE_BINARY_PATH = os.path.join(BIN_PATH, 'wazuh-engine')
 ENGINE_DAEMON_NAME = 'wazuh-engined'
 MANAGEMENT_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'api', 'scripts', 'wazuh_apid.py')
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
@@ -74,7 +75,7 @@ def exit_handler(signum, frame):
 
 def start_daemon(foreground: bool, name: str, args: List[str]):
     """Start a daemon in a subprocess and validate that there were no errors during its execution.
-    
+
     Parameters
     ----------
     foreground : bool
@@ -91,14 +92,14 @@ def start_daemon(foreground: bool, name: str, args: List[str]):
             returncode = p.poll()
             if returncode not in (0, None):
                 raise Exception(f'return code {returncode}')
-        
+
             if name == ENGINE_DAEMON_NAME:
                 pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         else:
             returncode = p.wait()
             if returncode != 0:
                 raise Exception(f'return code {returncode}')
-            
+
             pid = pyDaemonModule.get_parent_pid(name)
 
         main_logger.info(f'Started {name} (pid: {pid})')
@@ -108,7 +109,7 @@ def start_daemon(foreground: bool, name: str, args: List[str]):
 
 def start_daemons(foreground: bool, root: bool):
     """Start the engine and the management and communications APIs daemons in subprocesses.
-    
+
     Parameters
     ----------
     foreground : bool
@@ -129,7 +130,7 @@ def start_daemons(foreground: bool, root: bool):
 
 def shutdown_daemon(name: str):
     """Send a SIGTERM signal to the daemon process.
-    
+
     Parameters
     ----------
     name : str
@@ -336,7 +337,7 @@ def main():
     if cluster_configuration['node_type'] == 'master':
         main_function = master_main
 
-        # Generate JWT signing key pair if it doesn't exist 
+        # Generate JWT signing key pair if it doesn't exist
         if not keypair_exists():
             main_logger.info('Generating JWT signing key pair')
             generate_keypair()
