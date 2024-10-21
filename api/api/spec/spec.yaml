@@ -497,6 +497,14 @@ x-rbac-catalog:
         actions: ['event:ingest']
         resources: ['*:*:*']
         effect: "allow"
+    'order:send':
+      description: Send orders to the server
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['order:send']
+        resources: ['*:*:*']
+        effect: "allow"
 
 components:
   responses:
@@ -18237,6 +18245,8 @@ paths:
       description: |-
         Send orders to the server and distribute them to other nodes and components.
       operationId: api.controllers.order_controller.post_orders
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/order:send'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
