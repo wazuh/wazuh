@@ -1,9 +1,13 @@
 [
     "Translation for package 'Mozilla Thunderbird (x64 es-ES)' on platform 'windows' found in Level 2 cache.",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3984",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-1306",
     "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2008-3835",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-1307",
     "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3980",
     "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-1308",
     "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2008-4060",
+    "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-1840",
     "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3982",
     "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-1309",
     "No match due to default status for Package: thunderbird, Version: 115.11.1 while scanning for Vulnerability: CVE-2009-3981",
