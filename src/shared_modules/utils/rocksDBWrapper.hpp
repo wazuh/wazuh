@@ -513,42 +513,26 @@ namespace Utils
          */
         void deleteAll() override
         {
-            std::vector<std::string> columnsNames;
             auto it = m_columnsInstances.begin();
 
             while (it != m_columnsInstances.end())
             {
-                if ((*it)->GetName() != rocksdb::kDefaultColumnFamilyName)
+                rocksdb::WriteBatch batch;
+                std::unique_ptr<rocksdb::Iterator> itColumn(m_db->NewIterator(rocksdb::ReadOptions(), it->handle()));
+
+                itColumn->SeekToFirst();
+                while (itColumn->Valid())
                 {
-                    it->drop();
-                    columnsNames.push_back((*it)->GetName());
-                    it = m_columnsInstances.erase(it);
+                    batch.Delete(it->handle(), itColumn->key());
+                    itColumn->Next();
                 }
-                else
+
+                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
                 {
-                    rocksdb::WriteBatch batch;
-                    std::unique_ptr<rocksdb::Iterator> itDefault(
-                        m_db->NewIterator(rocksdb::ReadOptions(), it->handle()));
-
-                    itDefault->SeekToFirst();
-                    while (itDefault->Valid())
-                    {
-                        batch.Delete(it->handle(), itDefault->key());
-                        itDefault->Next();
-                    }
-
-                    if (const auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
-                    {
-                        throw std::runtime_error("Error deleting data: " + status.ToString());
-                    }
-
-                    ++it;
+                    throw std::runtime_error("Error deleting data: " + status.ToString());
                 }
-            }
 
-            for (const auto& columnName : columnsNames)
-            {
-                createColumn(columnName);
+                ++it;
             }
         }
 
@@ -558,41 +542,21 @@ namespace Utils
          */
         void deleteAll(const std::string& columnName)
         {
-            // Delete all data from the specified column
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
-            if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
-            {
-                // Create an iterator for the current column family
-                std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
 
-                it->SeekToFirst();
-                while (it->Valid())
-                {
-                    if (auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle.handle(), it->key());
-                        !status.ok())
-                    {
-                        throw std::runtime_error("Error deleting data: " + status.ToString());
-                    }
-                    it->Next();
-                }
+            rocksdb::WriteBatch batch;
+            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
+
+            it->SeekToFirst();
+            while (it->Valid())
+            {
+                batch.Delete(columnHandle.handle(), it->key());
+                it->Next();
             }
-            else
+
+            if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
             {
-                rocksdb::WriteBatch batch;
-                std::unique_ptr<rocksdb::Iterator> itDefault(
-                    m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
-
-                itDefault->SeekToFirst();
-                while (itDefault->Valid())
-                {
-                    batch.Delete(columnHandle.handle(), itDefault->key());
-                    itDefault->Next();
-                }
-
-                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
-                {
-                    throw std::runtime_error("Error deleting data: " + status.ToString());
-                }
+                throw std::runtime_error("Error deleting data: " + status.ToString());
             }
         }
 
