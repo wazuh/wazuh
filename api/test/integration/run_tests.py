@@ -10,12 +10,6 @@ import re
 import subprocess
 
 PYTEST_COMMAND = 'pytest -vv'
-
-PYTEST_MARK_STANDALONE = '-m standalone'
-PYTEST_MARK_CLUSTER = '-m cluster'
-STANDALONE_SUFFIX = '_standalone'
-CLUSTER_SUFFIX = '_cluster'
-
 RESULTS_FOLDER = '_test_results'
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -108,8 +102,6 @@ def collect_non_excluded_tests() -> list:
     done_tests = glob.glob(f'test_*')
     os.chdir(TESTS_PATH)
     collected_tests = sorted([test for test in glob.glob('test_*') if
-                              f"{test.rstrip('.tavern.yaml')}{STANDALONE_SUFFIX}" not in done_tests or
-                              f"{test.rstrip('.tavern.yaml')}{CLUSTER_SUFFIX}" not in done_tests or
                               f"{test.rstrip('.tavern.yaml')}" not in done_tests])
     print(f'Collected tests [{len(collected_tests)}]:')
     print('{}\n\n'.format(", ".join(collected_tests)))
@@ -117,7 +109,7 @@ def collect_non_excluded_tests() -> list:
     return collected_tests
 
 
-def run_tests(collected_tests: list, n_iterations: int = 1, mode: str = 'both'):
+def run_tests(collected_tests: list, n_iterations: int = 1):
     """Run a certain number of iterations of API integration tests.
 
     Parameters
@@ -126,12 +118,9 @@ def run_tests(collected_tests: list, n_iterations: int = 1, mode: str = 'both'):
         Collected API integration tests that are going to be run.
     n_iterations : int
         Number of iterations for the API integration tests to be run.
-    mode : str
-        Indicates the environment where the tests are going to be passed. The possible values are `both`, `standalone`,
-        and `cluster`.
     """
 
-    def run_test(test: str, iteration: int, pytest_mark: str = None):
+    def run_test(test: str, iteration: int):
         """Run a single API integration test once.
 
         Parameters
@@ -140,18 +129,13 @@ def run_tests(collected_tests: list, n_iterations: int = 1, mode: str = 'both'):
             API integration test to be run.
         iteration : int
             Number indicating the iteration to be run.
-        pytest_mark : str
-            Extra mark used to pass the API integration test in a cluster or standalone environment.
         """
         test_name = \
             f'{test.rsplit(".")[0]}' \
-            f'{STANDALONE_SUFFIX if pytest_mark == PYTEST_MARK_STANDALONE else CLUSTER_SUFFIX if pytest_mark == PYTEST_MARK_CLUSTER else ""}' \
             f'{iteration if iteration != 1 else ""}'
         html_params = [f"--html={RESULTS_FOLDER}/html_reports/{test_name}.html", '--self-contained-html']
         with open(os.path.join(RESULTS_FOLDER, test_name), 'w') as f:
             command = PYTEST_COMMAND.split(' ') + html_params + [test]
-            if pytest_mark:
-                command += pytest_mark.split(' ')
             subprocess.call(command, stdout=f)
         get_results(filename=os.path.join(RESULTS_FOLDER, test_name))
 
@@ -159,25 +143,9 @@ def run_tests(collected_tests: list, n_iterations: int = 1, mode: str = 'both'):
     for test in collected_tests:
         for i in range(1, n_iterations + 1):
             iteration_info = f'[{i}/{n_iterations}]' if n_iterations > 1 else ''
-            if 'rbac' not in test:
-                if mode == 'standalone':
-                    # Run test with a standalone environment
-                    print(f'{test} - Standalone environment {iteration_info}')
-                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_STANDALONE)
-                elif mode == 'cluster':
-                    # Run test with a cluster environment
-                    print(f'{test} - Cluster environment {iteration_info}')
-                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_CLUSTER)
-                else:  # mode == 'both'
-                    # Run test with both environments
-                    print(f'{test} - Standalone environment {iteration_info}')
-                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_STANDALONE)
-                    print(f'{test} - Cluster environment {iteration_info}')
-                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_CLUSTER)
-            else:
-                # Run test with the default environment
-                print(f'{test} {iteration_info}')
-                run_test(test=test, iteration=i)
+            # Run test with the default environment
+            print(f'Running {test} {iteration_info}')
+            run_test(test=test, iteration=i)
 
 
 def get_results(filename: str = None):
@@ -192,21 +160,14 @@ def get_results(filename: str = None):
         calculate_result(filename)
     else:
         os.chdir(RESULTS_FOLDER)
-        for file in sorted(glob.glob('test_*_standalone*')):
-            print(f"{file} - Standalone environment")
-            calculate_result(file)
-        for file in sorted(glob.glob('test_*_cluster*')):
-            print(f"{file} - Cluster environment")
-            calculate_result(file)
-        for file in sorted(glob.glob('test_rbac*')):
-            print(file)
+        for file in sorted(glob.glob('test_*')):
+            print(f"Calculating result for {file}")
             calculate_result(file)
 
 
 def get_script_arguments():
     """Get command line arguments given to the script."""
     rbac_choices = ['both', 'yes', 'no']
-    mode_choices = ['both', 'standalone', 'cluster']
     parser = argparse.ArgumentParser(usage="%(prog)s [options]",
                                      description="API integration tests",
                                      formatter_class=argparse.RawTextHelpFormatter)
@@ -222,9 +183,6 @@ def get_script_arguments():
     parser.add_argument('-R', '--rbac', dest='rbac', default='both', choices=rbac_choices,
                         help='Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default '
                              '"both".', action='store')
-    parser.add_argument('-m', '--mode', dest='mode', default='both', choices=mode_choices,
-                        help='Specify where to pass API integration tests. Run tests in both environments, standalone '
-                             'environment or Wazuh cluster environment. Default "both".', action='store')
     parser.add_argument('-i', '--iterations', dest='iterations', default=1, type=int,
                         help='Specify how many times will every test be run. Default 1.', action='store')
 
@@ -246,4 +204,4 @@ if __name__ == '__main__':
         get_results()
     else:
         tests = collect_non_excluded_tests() if exclude else collect_tests(test_list=tl, keyword=key, rbac=rbac_arg)
-        run_tests(collected_tests=tests, n_iterations=iterations, mode=mode_arg)
+        run_tests(collected_tests=tests, n_iterations=iterations)

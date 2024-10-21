@@ -21,9 +21,8 @@ class AbstractClientManager:
     Define an abstract client. Manage connection with server.
     """
 
-    def __init__(self, configuration: Dict, cluster_items: Dict, enable_ssl: bool, performance_test: int,
-                 concurrency_test: int, file: str, string: int, logger: logging.Logger = None,
-                 tag: str = "Client Manager"):
+    def __init__(self, configuration: Dict, cluster_items: Dict, performance_test: int, concurrency_test: int,
+                 file: str, string: int, logger: logging.Logger = None, tag: str = "Client Manager"):
         """Class constructor.
 
         Parameters
@@ -32,8 +31,6 @@ class AbstractClientManager:
             Client configuration.
         cluster_items : dict
             Cluster.json object containing cluster internal variables.
-        enable_ssl : bool
-            Whether to use SSL encryption or not.
         performance_test : int
             Value for the performance test function.
         concurrency_test : int
@@ -50,7 +47,6 @@ class AbstractClientManager:
         self.name = configuration['node_name']
         self.configuration = configuration
         self.cluster_items = cluster_items
-        self.ssl = enable_ssl
         self.performance_test = performance_test
         self.concurrency_test = concurrency_test
         self.file = file
@@ -94,18 +90,24 @@ class AbstractClientManager:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(common.asyncio_exception_handler)
         on_con_lost = self.loop.create_future()
-        ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH) if self.ssl else None
+
+        ssl_context = common.create_ssl_context(
+            self.logger,
+            ssl.Purpose.SERVER_AUTH,
+            self.configuration['cafile'],
+            self.configuration['certfile'],
+            self.configuration['keyfile'],
+            self.configuration['keyfile_password']
+        )
 
         while True:
             try:
                 transport, protocol = await self.loop.create_connection(
-                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
-                                                                name=self.name, logger=self.logger,
-                                                                fernet_key=self.configuration['key'],
-                                                                cluster_items=self.cluster_items,
-                                                                manager=self, **self.extra_args),
-                    host=self.configuration['nodes'][0], port=self.configuration['port'],
-                    ssl=ssl_context)
+                    protocol_factory=lambda: self.handler_class(
+                        loop=self.loop, on_con_lost=on_con_lost, name=self.name, logger=self.logger, 
+                        cluster_items=self.cluster_items, manager=self, **self.extra_args
+                        ),
+                        host=self.configuration['nodes'][0], port=self.configuration['port'], ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to master. Trying again in 10 seconds.")
@@ -133,7 +135,7 @@ class AbstractClient(common.Handler):
     Define a client protocol. Handle connection with server.
     """
 
-    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
+    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str,
                  logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client"):
         """Class constructor.
 
@@ -143,8 +145,6 @@ class AbstractClient(common.Handler):
             Low-level callback to notify when the connection has ended.
         name : str
             Client's name.
-        fernet_key : str
-            32 length string used as key to initialize cryptography's Fernet.
         logger : Logger object
             Logger to use.
         manager : AbstractClientManager
@@ -154,7 +154,7 @@ class AbstractClient(common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
+        super().__init__(logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
         self.loop = loop
         self.server = manager
         self.name = name

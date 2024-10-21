@@ -5,14 +5,15 @@ from typing import AsyncIterator
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
 
 from wazuh.core.engine.events import EventsModule
+from wazuh.core.engine.vulnerability import VulnerabilityModule
 from wazuh.core.exception import WazuhEngineError
 
 logger = getLogger('wazuh')
 
-# TODO: use actual default path
-ENGINE_API_SOCKET_PATH = '/var/wazuh/queue/engine.sock'
+# TODO(#25121): Change the socket path once the Cpp team does it
+ENGINE_API_SOCKET_PATH = '/sockets/engine.sock'
 DEFAULT_RETRIES = 3
-DEFAULT_TIMEOUT = 0.5
+DEFAULT_TIMEOUT = 10.0
 
 
 class Engine:
@@ -27,8 +28,9 @@ class Engine:
         transport = AsyncHTTPTransport(uds=socket_path, retries=retries)
         self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
 
-        # Register Engine modules here
+        # Engine modules
         self.events = EventsModule(client=self._client)
+        self.vulnerability = VulnerabilityModule(client=self._client)
 
     async def close(self) -> None:
         """Close the Engine client."""

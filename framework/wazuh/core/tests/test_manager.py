@@ -5,7 +5,7 @@
 
 import os
 from datetime import timezone, datetime
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 from uuid import uuid4
 
 import httpx
@@ -256,6 +256,15 @@ def test_get_update_information_template(last_check_date, update_check, installa
 
 
 @pytest.mark.asyncio
+async def test_query_update_check_service_timeout(installation_uid):
+    """Test that the query_update_check_service function calls httpx.AsyncClient with a timeout."""
+    with patch('httpx.AsyncClient') as client:
+        await query_update_check_service(installation_uid)
+
+        client.assert_called_with(verify=ANY, timeout=httpx.Timeout(DEFAULT_TIMEOUT))
+
+
+@pytest.mark.asyncio
 async def test_query_update_check_service_catch_exceptions_and_dont_raise(
     installation_uid, client_session_get_mock
 ):
@@ -353,6 +362,7 @@ async def test_query_update_check_service_returns_correct_data_when_status_200(
         assert update_information['last_available_patch'] == {}
 
 
+@pytest.mark.asyncio
 async def test_query_update_check_service_returns_correct_data_on_error(
     installation_uid, client_session_get_mock
 ):

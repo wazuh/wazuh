@@ -119,6 +119,10 @@ TEST_F(JsonStatic, FormatJsonPath)
     dotPath = "field.~tmp./field./tmp";
     ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
     ASSERT_EQ(pointerPath, "/field/~0tmp/~1field/~1tmp");
+
+    dotPath = "field\\.with.dot";
+    ASSERT_NO_THROW(pointerPath = Json::formatJsonPath(dotPath););
+    ASSERT_EQ(pointerPath, "/field.with/dot");
 }
 
 TEST_F(JsonBuildtime, Size)

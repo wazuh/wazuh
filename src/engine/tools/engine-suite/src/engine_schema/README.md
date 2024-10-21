@@ -108,7 +108,7 @@ options:
   -h, --help            show this help message and exit
   --ecs-version ECS_VERSION
                         [default="v8.8.0"] ECS version to use for the schema generation
-  --api-sock API_SOCK   [default="/var/ossec/queue/sockets/engine-api"] Engine instance API socket path
+  --api-sock API_SOCK   [default="/run/wazuh-server/engine-api.socket"] Engine instance API socket path
   --indexer-dir INDEXER_DIR
                         [default="/etc/filebeat/"] Path to directory where the wazuh-template.json indexer
                         file is located

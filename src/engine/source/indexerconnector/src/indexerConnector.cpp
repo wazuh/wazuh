@@ -25,9 +25,8 @@ constexpr auto ELEMENTS_PER_BULK {1000};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
-constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
-static void initConfiguration(SecureCommunication& secureCommunication, const nlohmann::json& config)
+static void initConfiguration(SecureCommunication& secureCommunication, const IndexerConnectorOptions& config)
 {
     std::string caRootCertificate;
     std::string sslCertificate;
@@ -35,46 +34,26 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
     std::string username;
     std::string password;
 
-    if (config.contains("ssl"))
+    if (!config.sslOptions.cacert.empty())
     {
-        if (config.at("ssl").contains("certificate_authorities")
-            && !config.at("ssl").at("certificate_authorities").empty())
-        {
-            caRootCertificate = config.at("ssl").at("certificate_authorities").front().get_ref<const std::string&>();
-        }
-
-        if (config.at("ssl").contains("certificate"))
-        {
-            sslCertificate = config.at("ssl").at("certificate").get_ref<const std::string&>();
-        }
-
-        if (config.at("ssl").contains("key"))
-        {
-            sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
-        }
+        caRootCertificate = config.sslOptions.cacert.front();
     }
 
-    if (config.contains("username"))
-    {
-        username = config.at("username");
-    }
+    sslCertificate = config.sslOptions.cert;
+    sslKey = config.sslOptions.key;
+    username = config.username;
+    password = config.password;
 
-    if (config.contains("password"))
-    {
-        password = config.at("password");
-    }
-
-    if (username.empty() && password.empty())
-    {
-        username = "admin";
-        password = "admin";
-        LOG_WARNING("No username and password found in the configuration, using default values.");
-    }
-
-    if (username.empty())
+    if (config.username.empty())
     {
         username = "admin";
         LOG_WARNING("No username found in the configuration, using default value.");
+    }
+
+    if (config.password.empty())
+    {
+        password = "admin";
+        LOG_WARNING("No password found in the configuration, using default value.");
     }
 
     secureCommunication.basicAuth(username + ":" + password)
@@ -110,10 +89,11 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
-IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t& timeout, const uint8_t workingThreads)
+IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnectorOptions)
 {
     // Get index name.
-    m_indexName = config.at("name").get_ref<const std::string&>();
+    m_indexName = indexerConnectorOptions.name;
+
     base::utils::string::replaceAll(m_indexName, "$(date)", base::utils::time::getCurrentDate("."));
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
@@ -122,13 +102,14 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
     }
 
     auto secureCommunication = SecureCommunication::builder();
-    initConfiguration(secureCommunication, config);
+    initConfiguration(secureCommunication, indexerConnectorOptions);
 
     // Initialize publisher.
-    auto selector {std::make_shared<TServerSelector<Monitoring>>(config.at("hosts"), timeout, secureCommunication)};
+    auto selector {std::make_shared<TServerSelector<Monitoring>>(
+        indexerConnectorOptions.hosts, indexerConnectorOptions.timeout, secureCommunication)};
 
     // Validate threads number
-    if (workingThreads <= 0)
+    if (indexerConnectorOptions.workingThreads <= 0)
     {
         LOG_DEBUG("Invalid number of working threads, using default value.");
     }
@@ -153,7 +134,12 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
             {
                 auto data = dataQueue.front();
                 dataQueue.pop();
-                auto parsedData = nlohmann::json::parse(data);
+                auto parsedData = nlohmann::json::parse(data, nullptr, false);
+
+                if (parsedData.is_discarded())
+                {
+                    continue;
+                }
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
@@ -172,21 +158,25 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
             {
                 // Process data.
                 HTTPRequest::instance().post(
-                    {HttpURL(url), bulkData, secureCommunication},
-                    {[functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
-                         const std::string& response)
-                     { LOG_DEBUG_L(functionName.c_str(), "Response: %s", response.c_str()); },
-                     [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
-                         const std::string& error, const long statusCode)
+                    {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
+                    {.onSuccess = [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
+                                      const std::string& response)
+                     { LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str()); },
+                     .onError =
+                         [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
+                             const std::string& error, const long statusCode)
                      {
-                         LOG_ERROR_L(functionName.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                         LOG_ERROR_L(functionName.c_str(), "{}, status code: {}.", error.c_str(), statusCode);
                          throw std::runtime_error(error);
                      }});
             }
         },
-        DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK,
-        workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING : workingThreads);
+        ThreadEventDispatcherParams {.dbPath = indexerConnectorOptions.databasePath + m_indexName,
+                                     .bulkSize = ELEMENTS_PER_BULK,
+                                     .dispatcherType =
+                                         (indexerConnectorOptions.workingThreads <= SINGLE_ORDERED_DISPATCHING
+                                              ? ThreadEventDispatcherType::SINGLE_THREADED_ORDERED
+                                              : ThreadEventDispatcherType::MULTI_THREADED_UNORDERED)});
 }
 
 IndexerConnector::~IndexerConnector()

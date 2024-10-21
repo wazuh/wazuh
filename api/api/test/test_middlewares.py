@@ -20,6 +20,8 @@ from api.middlewares import check_rate_limit, check_blocked_ip, MAX_REQUESTS_EVE
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
     SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
 from api.api_exception import ExpectFailedException
+from wazuh.core.authentication import JWT_ALGORITHM
+
 
 @pytest.fixture
 def request_info(request):
@@ -168,7 +170,6 @@ async def test_check_rate_limits_middleware_ko(
 async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                           hash, sec_header, endpoint, method, status_code, mock_req):
     """Test access_log function."""
-    JWT_ALGORITHM = 'ES512'
     response = MagicMock()
     response.status_code = status_code
 

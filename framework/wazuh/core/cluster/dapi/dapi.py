@@ -28,9 +28,7 @@ from wazuh import agent
 from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
-from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
-from wazuh.core.wazuh_socket import wazuh_sendasync
 
 pools = common.mp_pools.get()
 
@@ -102,7 +100,7 @@ class DistributedAPI:
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
-            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db', 'wazuh-remoted')
+            self.basic_services = ('wazuh-clusterd',)
         else:
             self.basic_services = basic_services
 
@@ -143,14 +141,13 @@ class DistributedAPI:
                 self.debug_log(f"Receiving parameters {self.f_kwargs}")
 
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
-            is_cluster_disabled = self.node == local_client and not check_cluster_status()
 
             # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
+            if not is_dapi_enabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
 
@@ -209,8 +206,7 @@ class DistributedAPI:
               in failed status.
             * Wazuh must be started before using the API is the services are stopped.
 
-        The basic services wazuh needs to be running are: wazuh-modulesd, wazuh-remoted, wazuh-analysisd, wazuh-execd
-        and wazuh-db
+        The basic service wazuh needs to be running is: wazuh-clusterd.
         """
         if self.f == wazuh.core.manager.status:
             return
@@ -696,47 +692,5 @@ class APIRequestQueue(WazuhRequestQueue):
             else:
                 try:
                     await node.send_request(b"dapi_res", name_2.encode() + task_id)
-                except WazuhException as e:
-                    self.logger.error(e.message, exc_info=False)
-
-
-class SendSyncRequestQueue(WazuhRequestQueue):
-    """
-    Represents a queue of SSync requests. This thread will be always in background, it will remain blocked until a
-    request is pushed into its request_queue. Then, it will answer the request and get blocked again.
-    """
-
-    def __init__(self, server):
-        super().__init__(server)
-        self.logger = logging.getLogger('wazuh').getChild('sendsync')
-        self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='SendSync'))
-
-    async def run(self):
-        while True:
-            names, request = (await self.request_queue.get()).split(' ', 1)
-            names = names.split('*', 1)
-            # name    -> node name the request must be sent to. None if called from a worker node.
-            # id      -> id of the request.
-            # request -> JSON containing request's necessary information
-            name_2 = '' if len(names) == 1 else names[1] + ' '
-
-            try:
-                node = self.server.clients[names[0]]
-            except KeyError as e:
-                self.logger.error(f"Error in Sendsync. The destination node is not connected or does not exist: {e}.")
-                continue
-
-            try:
-                request = json.loads(request, object_hook=c_common.as_wazuh_object)
-                self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
-                result = await wazuh_sendasync(**request)
-                task_id = await node.send_string(result)
-            except Exception as e:
-                self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
-                with contextlib.suppress(Exception):
-                    await node.send_request(b"sendsyn_err", f"{name_2}{str(e)}".encode())
-            else:
-                try:
-                    await node.send_request(b"sendsyn_res", name_2.encode() + task_id)
                 except WazuhException as e:
                     self.logger.error(e.message, exc_info=False)

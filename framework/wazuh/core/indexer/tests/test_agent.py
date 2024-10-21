@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from unittest import mock
 
 import pytest
@@ -7,7 +6,7 @@ from opensearchpy.helpers.response import Hit
 
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.agent import AgentsIndex
-from wazuh.core.indexer.base import IndexerKey, remove_empty_values
+from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Agent
 
 

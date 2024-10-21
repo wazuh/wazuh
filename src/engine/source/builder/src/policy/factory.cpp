@@ -343,7 +343,7 @@ BuiltAssets buildAssets(const PolicyData& data,
                 if (asset.parents().empty())
                 {
                     auto defParentIt = subgraphData.defaultParents.find(assetNs);
-                    if (defParentIt != subgraphData.defaultParents.end())
+                    if (defParentIt != subgraphData.defaultParents.end() && defParentIt->second != assetName)
                     {
                         asset.parents().emplace_back(defParentIt->second);
                     }
@@ -460,6 +460,13 @@ PolicyGraph buildGraph(const BuiltAssets& assets, const PolicyData& data)
         {
             continue;
         }
+
+        // If no assets of this type, skip
+        if (assets.find(assetType) == assets.end())
+        {
+            continue;
+        }
+
         auto subgraphName = base::Name(PolicyData::assetTypeStr(assetType)) + GRAPH_INPUT_SUFFIX;
         auto subgraph = buildSubgraph(subgraphName, subgraphData, filtersData, assets.at(assetType), filtersAssets);
         graph.subgraphs.emplace(assetType, std::move(subgraph));

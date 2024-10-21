@@ -206,23 +206,20 @@ async def test_reconnect_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-@pytest.mark.skip('To be implemented')
 async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'restart_agents' endpoint is working as expected."""
     result = await restart_agents()
-    f_kwargs = {'agent_list': '*'
-                }
+    f_kwargs = {'agent_list': '*'}
     mock_dapi.assert_called_once_with(f=agent.restart_agents,
                                       f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
+                                      request_type='local_any',
+                                      is_async=True,
                                       wait_for_complete=False,
-                                      broadcasting=True,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
+    mock_remove.assert_called_once_with({'agent_list': []})
     assert isinstance(result, ConnexionResponse)
 
 

@@ -56,6 +56,19 @@ def test_create_pid_ko(mock_chmod):
                 create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 
+@pytest.mark.parametrize('process_name, expected_pid', [
+   ('foo', 123),
+   ('bar', 456),
+   ('wazuh-apid', 789),
+   ('wazuh-clusterd', None)
+])
+@patch('os.listdir', return_value=['foo-123.pid', 'bar-456.pid', 'wazuh-apid-789.pid'])
+def test_get_parent_pid(os_listdir_mock, expected_pid, process_name):
+    """Validates that the get_parent_pid function works as expected."""
+    actual_pid = get_parent_pid(process_name)
+    assert expected_pid == actual_pid
+
+
 @patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new='/tmp')
 def test_delete_pid():
     """Tests delete_pid function works"""

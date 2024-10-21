@@ -4,8 +4,7 @@ name: date_from_epoch
 metadata:
   description: |
     Date from epoch will convert the input value, can be a reference or a value representing the epoch time to a human readable date time.
-    Remember epoch, understood as UNIX epoch, is the seconds passed since january first of 1970, so it will fail on negative values.
-    Floating points numbers will be converted to integers.
+    Transforms UNIX epoch time to a human readable date time in the format of 'YYYY-MM-DDTHH:MM:SSZ'.
   keywords:
     - undefined
 
@@ -29,10 +28,10 @@ test:
   - arguments:
       epoch: 0
     should_pass: true
-    expected: '1970-01-01T00:00:00Z'
+    expected: '1970-01-01T00:00:00.000000Z'
     description: Get date using initial epoch
   - arguments:
       epoch: 1715958658
     should_pass: true
-    expected: '2024-05-17T15:10:58Z'
+    expected: '2024-05-17T15:10:58.000000Z'
     description: Get date using any epoch

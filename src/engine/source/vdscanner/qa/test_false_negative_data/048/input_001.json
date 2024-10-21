@@ -1,0 +1,36 @@
+{
+  "type": "packagelist",
+  "agent": {
+    "id": "002"
+  },
+  "packages": [
+    {
+      "architecture": "amd64",
+      "checksum": "b800d14290607fe293713459d384464f75dc46d4",
+      "description": " ",
+      "format": "deb",
+      "groups": " ",
+      "install_time": " ",
+      "item_id": "bde447c43d09d5967fe308dbf7688d645f1e1d9c",
+      "location": " ",
+      "multiarch": "same",
+      "name": "Docker",
+      "priority": "optional",
+      "scan_time": "2024/08/20 12:30:36",
+      "size": 5768,
+      "source": " ",
+      "vendor": "docker",
+      "version": "4.19.0"
+    }
+  ],
+  "hotfixes": [],
+  "os": {
+    "build": "23G93",
+    "codename": "Sonoma",
+    "major": "14",
+    "minor": "6",
+    "name": "macOS",
+    "platform": "darwin",
+    "version": "14.6.1"
+  }
+}

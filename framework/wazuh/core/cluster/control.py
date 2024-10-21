@@ -9,7 +9,6 @@ from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
-from wazuh.core.exception import WazuhError
 from wazuh.core.utils import filter_array_by_query
 
 
@@ -181,8 +180,6 @@ async def get_system_nodes():
         result = await get_nodes(lc)
         return [node['name'] for node in result['items']]
     except WazuhInternalError as e:
-        if e.code == 3012:
-            return WazuhError(3013)
         raise e
 
 

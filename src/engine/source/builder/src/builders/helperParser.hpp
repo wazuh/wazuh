@@ -110,9 +110,10 @@ inline parsec::Parser<builders::OpArg> getHelperQuotedArgParser()
  */
 inline parsec::Parser<builders::OpArg> getHelperRefArgParser()
 {
+    std::string escapedChars(syntax::field::ESCAPED_CHARS);
     std::string extendedChars(syntax::field::NAME_EXTENDED);
     extendedChars += syntax::field::SEPARATOR;
-    return [extendedChars](auto sv, auto pos) -> parsec::Result<builders::OpArg>
+    return [extendedChars, escapedChars](auto sv, auto pos) -> parsec::Result<builders::OpArg>
     {
         if (pos >= sv.size() || sv[pos] != syntax::field::REF_ANCHOR)
         {
@@ -121,8 +122,22 @@ inline parsec::Parser<builders::OpArg> getHelperRefArgParser()
 
         auto begin = pos + 1;
         auto next = begin;
-        while (next < sv.size() && (std::isalnum(sv[next]) || extendedChars.find(sv[next]) != std::string::npos))
+        while (next < sv.size()
+               && (std::isalnum(sv[next]) || extendedChars.find(sv[next]) != std::string::npos
+                   || sv[next] == syntax::field::DEFAULT_ESCAPE))
         {
+            if (sv[next] == syntax::field::DEFAULT_ESCAPE)
+            {
+                if (next + 1 < sv.size() && escapedChars.find(sv[next + 1]) != std::string::npos)
+                {
+                    // Normal escape sequence
+                    ++next;
+                }
+                else
+                {
+                    return parsec::makeError<builders::OpArg>("Invalid escape sequence", next);
+                }
+            }
             ++next;
         }
 

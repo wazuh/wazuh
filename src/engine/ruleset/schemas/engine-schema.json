@@ -6661,6 +6661,10 @@
       "type": "keyword",
       "array": true
     },
+    "wazuh.rules": {
+      "type": "keyword",
+      "array": true
+    },
     "wazuh.source": {
       "type": "keyword",
       "array": false

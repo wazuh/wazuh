@@ -29,6 +29,7 @@ concurrency:
 env:
   BUILD_PRESET: ${{ github.event.inputs.build_preset || 'release' }}
   ENGINE_DIR: ${{github.workspace}}/src/engine
+  DATABASE_PATH: /var/lib/wazuh-server/
 
 jobs:
   build:
@@ -86,6 +87,10 @@ jobs:
 
           curl -LO https://packages.wazuh.com/deps/vulnerability_model_database/${vd_filename}
           tar -xf ${vd_filename}
+
+          sudo mkdir -p ${{ env.DATABASE_PATH }}
+          sudo mv queue/* ${{ env.DATABASE_PATH }}
+          rm -f ${vd_filename}
 
       - name: Install dependencies
         run: |

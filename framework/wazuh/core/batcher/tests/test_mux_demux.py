@@ -1,7 +1,5 @@
-import pytest
 from queue import Queue
-from multiprocessing import Process
-from multiprocessing.managers import SyncManager
+from unittest.mock import call, patch, Mock
 
 from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message, MuxDemuxManager
 
@@ -143,22 +141,52 @@ def test_store_response():
     assert dict_test[example_uid] == example_value
 
 
-def test_mux_demux_manager_initialization():
+@patch('framework.wazuh.core.batcher.mux_demux.SyncManager')
+@patch('framework.wazuh.core.batcher.mux_demux.MuxDemuxRunner')
+def test_mux_demux_manager_initialization(mux_demux_runner_mock, sync_manager_mock):
     """Check that the `MuxDemuxManager.__init___` method works as expected."""
-    manager = MuxDemuxManager()
-    assert isinstance(manager.get_manager(), SyncManager)
-    assert isinstance(manager.get_queue_process(), Process)
+    manager_mock = Mock()
+    sync_manager_mock.return_value = manager_mock
 
-    assert manager.get_queue_process().is_alive()
-    manager.shutdown()
+    runner_mock = Mock()
+    mux_demux_runner_mock.return_value = runner_mock
+
+    MuxDemuxManager()
+
+    manager_mock.assert_has_calls([
+        call.start(),
+        call.dict(),
+        call.Queue(),
+        call.Queue(),
+        call.MuxDemuxQueue(manager_mock.dict(), manager_mock.Queue(), manager_mock.Queue()),
+    ])
+    runner_mock.assert_has_calls([
+        call.start(),
+    ])
 
 
-def test_mux_demux_manager_shutdown():
+@patch('framework.wazuh.core.batcher.mux_demux.SyncManager')
+@patch('framework.wazuh.core.batcher.mux_demux.MuxDemuxRunner')
+def test_mux_demux_manager_shutdown(mux_demux_runner_mock, sync_manager_mock):
     """Check that the `shutdown` method works as expected."""
+    manager_mock = Mock()
+    sync_manager_mock.return_value = manager_mock
+
+    runner_mock = Mock()
+    mux_demux_runner_mock.return_value = runner_mock
+
     manager = MuxDemuxManager()
     manager.shutdown()
 
-    assert not manager.get_queue_process().is_alive()
-    with pytest.raises(AssertionError) as err:
-        manager.get_manager().list()
-    assert str(err.value) == "server not yet started"
+    manager_mock.assert_has_calls([
+        call.start(),
+        call.dict(),
+        call.Queue(),
+        call.Queue(),
+        call.MuxDemuxQueue(manager_mock.dict(), manager_mock.Queue(), manager_mock.Queue()),
+        call.shutdown()
+    ])
+    runner_mock.assert_has_calls([
+        call.start(),
+        call.terminate()
+    ])

@@ -9,6 +9,7 @@ import os
 import signal
 import sys
 import warnings
+from functools import partial
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
@@ -254,13 +255,6 @@ def version():
     sys.exit(0)
 
 
-def exit_handler(signum, frame):
-    """Try to kill API child processes and remove their PID files."""
-    api_pid = os.getpid()
-    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, api_pid, logger)
-    pyDaemonModule.delete_pid(API_MAIN_PROCESS, api_pid)
-
-
 def add_debug2_log_level_and_error():
     """Add a new debug level used by wazuh api and framework."""
 
@@ -414,7 +408,7 @@ if __name__ == '__main__':
     pid = os.getpid()
     pyDaemonModule.create_pid(API_MAIN_PROCESS, pid)
 
-    signal.signal(signal.SIGTERM, exit_handler)
+    signal.signal(signal.SIGTERM, partial(pyDaemonModule.exit_handler, process_name=API_MAIN_PROCESS, logger=logger))
     try:
         start(uvicorn_params)
     except APIError as e:

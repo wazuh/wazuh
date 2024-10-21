@@ -40,6 +40,8 @@ protected:
         m_servers.emplace_back(GREEN_SERVER);
         // Register the host and port of the red server
         m_servers.emplace_back(RED_SERVER);
+        // Register the host and port of the yellow server
+        m_servers.emplace_back(YELLOW_SERVER);
     }
 
     /**

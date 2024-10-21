@@ -73,8 +73,8 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
     # Get index mappings
     print('Generating indexer mappings...')
     jmappings = field_tree.get_jmapping()
-    mappings_template['mappings']['properties'] = {
-        **mappings_template['mappings']['properties'], **jmappings}
+    mappings_template['template']['mappings'] = {
+        **mappings_template['template']['mappings'], **jmappings}
     print('Success.')
 
     # Get the logpar configuration file

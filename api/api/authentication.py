@@ -7,24 +7,19 @@ import hashlib
 import json
 import jwt
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Tuple, Union
+from typing import Union
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 from connexion.exceptions import Unauthorized
 
 import api.configuration as conf
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
 from api.constants import SECURITY_CONFIG_PATH
-from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
-from wazuh import WazuhInternalError
+from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.cluster.utils import read_config
-from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
 
@@ -87,87 +82,6 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
         return {'sub': user, 'active': True }
 
 
-# Set JWT settings
-JWT_ISSUER = 'wazuh'
-JWT_ALGORITHM = 'ES512'
-_private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
-_public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
-
-
-def get_keypair(curve: ec.EllipticCurve) -> Tuple[str, str]:
-    """Generate key files to keep safe or load existing public and private keys.
-
-    Parameters
-    ----------
-    curve : ec.EllipticCurve
-        Elliptic curve type.
-
-    Returns
-    -------
-    private_key : str
-        Private key.
-    public_key : str
-        Public key.
-
-    Raises
-    ------
-    WazuhInternalError(6003)
-        If there was an error trying to load the JWT secret.
-    """
-    try:
-        if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
-            private_key, public_key = change_keypair(curve)
-            try:
-                os.chown(_private_key_path, wazuh_uid(), wazuh_gid())
-                os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
-            except PermissionError:
-                pass
-            os.chmod(_private_key_path, 0o640)
-            os.chmod(_public_key_path, 0o640)
-        else:
-            with open(_private_key_path, mode='r') as key_file:
-                private_key = key_file.read()
-            with open(_public_key_path, mode='r') as key_file:
-                public_key = key_file.read()
-    except IOError:
-        raise WazuhInternalError(6003)
-
-    return private_key, public_key
-
-
-def change_keypair(curve: ec.EllipticCurve) -> Tuple[str, str]:
-    """Generate key files to keep safe.
-    
-    Parameters
-    ----------
-    curve : ec.EllipticCurve
-        Elliptic curve type.
-    
-    Returns
-    -------
-    private_key : str
-        Private key.
-    public_key : str
-        Public key.
-    """
-    key_obj = ec.generate_private_key(curve)
-    private_key = key_obj.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
-    ).decode('utf-8')
-    public_key = key_obj.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode('utf-8')
-    with open(_private_key_path, mode='w') as key_file:
-        key_file.write(private_key)
-    with open(_public_key_path, mode='w') as key_file:
-        key_file.write(public_key)
-
-    return private_key, public_key
-
-
 def get_security_conf() -> dict:
     """Read the security configuration file.
 
@@ -219,7 +133,7 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
               } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(),
                                                          digest_size=16).hexdigest()}
                    if auth_context is not None else {})
-    private_key, _ = get_keypair(ec.SECP521R1())
+    private_key, _ = get_keypair()
 
     return jwt.encode(payload, private_key, algorithm=JWT_ALGORITHM)
 
@@ -287,7 +201,7 @@ def decode_token(token: str) -> dict:
     """
     try:
         # Decode JWT token with local secret
-        _, public_key = get_keypair(ec.SECP521R1())
+        _, public_key = get_keypair()
         payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node

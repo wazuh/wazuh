@@ -24,17 +24,19 @@ class ResourceHandler:
         self._files = files('engine-suite')
 
     def _read_json(self, content: str) -> dict:
+        read = {}
         try:
             read = json.loads(content)
-        except ValueError:  # includes simplejson.decoder.JSONDecodeError
-            print('Error while reading JSON file')
+        except ValueError as e:  # includes simplejson.decoder.JSONDecodeError
+            print(f'Error while reading JSON file: {e}')
         return read
 
     def _read_yml(self, content: str) -> dict:
+        read = {}
         try:
             read = yaml.load(content, Loader=Loader)  # yaml.SafeLoader
-        except yaml.YAMLError:
-            print("Error while reading YAML file")
+        except yaml.YAMLError as e:
+            print(f"Error while reading YAML file:{e}")
         return read
 
     def _read(self, content: str, format: Format) -> dict:
@@ -172,7 +174,7 @@ class ResourceHandler:
             raise Exception(
                 f'{response["data"]["error"]}')
 
-    def validate_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):                
+    def validate_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):
         self._base_catalog_command(
             path, type, name, yaml.dump(content, sort_keys=False), namespace, format, 'validate')
 

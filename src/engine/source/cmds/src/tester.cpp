@@ -106,14 +106,10 @@ void processEvent(const std::string& eventStr,
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print results
-    // TODO Check if eResponse.run().output() is empty and errroe in message to json string
-    std::string jsonOutputAndTrace;
-    google::protobuf::util::MessageToJsonString(eResponse.result().output(), &jsonOutputAndTrace);
-
     if (parameters.jsonFormat)
     {
         json::Json jPrint {};
-        auto jOutput = json::Json {jsonOutputAndTrace.c_str()};
+        auto jOutput = json::Json {eResponse.result().output().c_str()};
         jPrint.set("/output", jOutput);
         for (const auto& data : eResponse.result().asset_traces())
         {
@@ -143,7 +139,7 @@ void processEvent(const std::string& eventStr,
             }
         }
 
-        std::cout << "\n" << yml::utils::ymlToPrettyYaml(jsonOutputAndTrace, true) << "\n\n";
+        std::cout << "\n" << yml::utils::ymlToPrettyYaml(eResponse.result().output(), true) << "\n\n";
     }
 }
 

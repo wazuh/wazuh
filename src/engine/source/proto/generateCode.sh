@@ -3,7 +3,8 @@
 set_proto_config() {
     if [ -z "$VCPKG_INSTALLED_DIR" ]; then
         echo "Error: VCPKG_INSTALLED_DIR is not set, build the code using cmake." >&2
-        echo "i.e: cd $ENGINE_DIR && cmake --preset debug && cmake --build ./build --target generate_protobuf_code" >&2
+        ENGINE_DIR=$(readlink -f "${ENGINE_DIR}")
+        echo "i.e: cd ${ENGINE_DIR} && cmake --preset debug -DENGINE_GENERATE_PROTO=ON && cmake --build ./build --target generate_protobuf_code" >&2
         exit 1
     fi
 
@@ -41,8 +42,8 @@ select_clang_format_version() {
     elif [ -x "$(command -v clang-format)" ]; then
         CLANG_FORMAT=clang-format
     else
-        echo 'Error: clang-format is not installed.' >&2
-        exit 1
+        CLANG_FORMAT=true
+        echo 'Warning: clang-format not found, skipping code formatting.'
     fi
 }
 

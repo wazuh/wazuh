@@ -8,7 +8,7 @@ from os.path import exists
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import manager_restart, read_cluster_config
+from wazuh.core.cluster.utils import manager_restart
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
@@ -17,12 +17,11 @@ from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else 'manager'
+node_id = get_node().get('node')
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
     """Wrapper for status().
 
@@ -44,8 +43,8 @@ def get_status() -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'])
 def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
               sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
@@ -108,8 +107,8 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'])
 def ossec_log_summary() -> AffectedItemsWazuhResult:
     """Summary of ossec.log.
 
@@ -143,8 +142,8 @@ _get_config_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_api_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+@expose_resources(actions=['cluster:read_api_config'],
+                  resources=[f'node:id:{node_id}'],
                   post_proc_kwargs={'default_result_kwargs': _get_config_default_result_kwargs})
 def get_api_config() -> AffectedItemsWazuhResult:
     """Return current API configuration.
@@ -183,10 +182,10 @@ _restart_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'])
+@expose_resources(actions=['cluster:restart'],
+                  resources=[f'node:id:{node_id}'],
                   post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs})
 def restart() -> AffectedItemsWazuhResult:
     """Wrapper for 'restart_manager' function due to interdependence with cluster module and permission access.
@@ -216,8 +215,8 @@ _validation_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'],
                   post_proc_kwargs={'default_result_kwargs': _validation_default_result_kwargs})
 def validation() -> AffectedItemsWazuhResult:
     """Check if Wazuh configuration is OK.
@@ -239,8 +238,8 @@ def validation() -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'])
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
@@ -273,8 +272,8 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'])
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.
@@ -314,8 +313,8 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'],
+                  resources=[f'node:id:{node_id}'])
 def get_basic_info() -> AffectedItemsWazuhResult:
     """Wrapper for Wazuh().to_dict
 
@@ -340,8 +339,8 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:update_config'],
+                  resources=[f'node:id:{node_id}'])
 def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     """Replace wazuh configuration (ossec.conf) with the provided configuration.
 

@@ -18,11 +18,11 @@ setup_build(){
     package_name="$4"
     debug="$5"
 
-    cp -pr ${specs_path}/wazuh-${BUILD_TARGET}/debian ${sources_dir}/debian
+    cp -pr ${specs_path}/debian ${sources_dir}/debian
     cp -p /tmp/gen_permissions.sh ${sources_dir}
 
     # Generating directory structure to build the .deb package
-    cd ${build_dir}/${BUILD_TARGET} && tar -czf ${package_name}.orig.tar.gz "${package_name}"
+    cd ${build_dir}/server && tar -czf ${package_name}.orig.tar.gz "${package_name}"
 
     # Configure the package with the different parameters
     sed -i "s:RELEASE:${REVISION}:g" ${sources_dir}/debian/changelog
@@ -31,7 +31,7 @@ setup_build(){
     sed -i "s#export PATH=.*#export PATH=/usr/local/gcc-5.5.0/bin:${PATH}#g" ${sources_dir}/debian/rules
     sed -i "s#export LD_LIBRARY_PATH=.*#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}#g" ${sources_dir}/debian/rules
     sed -i "s:export INSTALLATION_DIR=.*:export INSTALLATION_DIR=${INSTALLATION_PATH}:g" ${sources_dir}/debian/rules
-    sed -i "s:DIR=\"/var/ossec\":DIR=\"${INSTALLATION_PATH}\":g" ${sources_dir}/debian/{preinst,postinst,prerm,postrm}
+    sed -i "s:DIR=\"/\":DIR=\"${INSTALLATION_PATH}\":g" ${sources_dir}/debian/{preinst,postinst,prerm,postrm}
 }
 
 set_debug(){
@@ -47,37 +47,30 @@ build_deps(){
 }
 
 build_package(){
-
-    if [[ "${ARCHITECTURE_TARGET}" == "amd64" ]] ||  [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]] || \
-        [[ "${ARCHITECTURE_TARGET}" == "arm64" ]]; then
-        debuild --rootcmd=sudo -b -uc -us -nc
-    elif [[ "${ARCHITECTURE_TARGET}" == "armhf" ]]; then
-        linux32 debuild --rootcmd=sudo -b -uc -us -nc
-    else
-        linux32 debuild --rootcmd=sudo -ai386 -b -uc -us -nc
-    fi
+    debuild --rootcmd=sudo -b -uc -us -nc
     return $?
 }
 
 get_package_and_checksum(){
     wazuh_version="$1"
     short_commit_hash="$2"
-    base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${REVISION}"
+    base_name="wazuh-server_${wazuh_version}-${REVISION}"
+    symbols_base_name="wazuh-server-dbg_${wazuh_version}-${REVISION}"
 
-    if [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
-        deb_file="${base_name}_ppc64el.deb"
-    else
-        deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
-    fi
+    deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
+    symbols_deb_file="${symbols_base_name}_${ARCHITECTURE_TARGET}.deb"
 
     if [[ "${IS_STAGE}" == "no" ]]; then
         deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$deb_file")"
+        symbols_deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$symbols_deb_file")"
     fi
 
-    pkg_path="${build_dir}/${BUILD_TARGET}"
+    pkg_path="${build_dir}/server"
     if [[ "${checksum}" == "yes" ]]; then
-        cd ${pkg_path} && sha512sum wazuh-${BUILD_TARGET}*deb > /var/local/wazuh/${deb_file}.sha512
+        cd ${pkg_path} && sha512sum wazuh-server_*deb > /var/local/wazuh/${deb_file}.sha512
+        sha512sum wazuh-server-dbg_*deb > /var/local/wazuh/${symbols_deb_file}.sha512
     fi
-
-    find ${pkg_path} -type f -name "wazuh-${BUILD_TARGET}*deb" -exec mv {} /var/local/wazuh/${deb_file} \;
+    ls -lh ${pkg_path}
+    find ${pkg_path} -type f -name "wazuh-server_*deb" -exec mv {} /var/local/wazuh/${deb_file} \;
+    find ${pkg_path} -type f -name "wazuh-server-dbg_*deb" -exec mv {} /var/local/wazuh/${symbols_deb_file} \;
 }

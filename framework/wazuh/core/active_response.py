@@ -7,7 +7,6 @@ import json
 from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_queue import WazuhQueue
@@ -235,11 +234,8 @@ class ARJsonMessage(ARMessageBuilder):
         """
         self.validate_command(command)
 
-        cluster_enabled = not read_cluster_config()['disabled']
-        node_name = get_node().get('node') if cluster_enabled else None
-
         msg_queue = json.dumps(
-            create_wazuh_socket_message(origin={'name': node_name, 'module': common.origin_module.get()},
+            create_wazuh_socket_message(origin={'name': get_node().get('node'), 'module': common.origin_module.get()},
                                         command=command,
                                         parameters={'extra_args': arguments if arguments else [],
                                                     'alert': alert if alert else {}}))

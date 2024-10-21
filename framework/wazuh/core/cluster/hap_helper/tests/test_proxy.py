@@ -11,6 +11,7 @@ from wazuh.core.cluster.hap_helper.proxy import (
     ProxyAPIMethod,
     ProxyBalanceAlgorithm,
     ProxyServerState,
+    DEFAULT_TIMEOUT,
 )
 from wazuh.core.exception import WazuhHAPHelperError
 
@@ -66,6 +67,14 @@ class TestProxyAPI:
             f'{proxy_api.protocol}://{proxy_api.address}:{proxy_api.port}/v2/health',
             auth=(proxy_api.username, proxy_api.password),
         )
+
+    async def test_initialize_timeout(self, proxy_api: mock.MagicMock):
+        """Check that the `initialize` method calls httpx.AsyncClient with a timeout."""
+
+        with mock.patch('httpx.AsyncClient') as client:
+            await proxy_api.initialize()
+
+            client.assert_called_with(verify=mock.ANY, cert=mock.ANY, timeout=httpx.Timeout(DEFAULT_TIMEOUT))
 
     @pytest.mark.parametrize(
         'status_code,side_effect,expected',

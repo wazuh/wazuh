@@ -5,7 +5,7 @@ from ._modules import get_args as modules_get_args
 
 
 DEFAULT_ECS_VERSION = 'v8.8.0'
-DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
+DEFAULT_API_SOCK = '/run/wazuh-server/engine-api.socket'
 DEFAULT_INDEXER_DIR = '/etc/filebeat/'
 DEFAULT_FIELDS_DIR = '/home/vagrant/engine/wazuh/src/engine/ruleset/schemas/'
 

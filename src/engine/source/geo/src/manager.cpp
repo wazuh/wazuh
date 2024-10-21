@@ -79,7 +79,7 @@ base::OptError Manager::upsertStoreEntry(const std::string& path)
     file.close();
 
     // Create and upsert the internal document
-    auto internalName = base::Name({INTERNAL_NAME, dbPath.filename().string()});
+    auto internalName = base::Name(std::vector<std::string>({INTERNAL_NAME, dbPath.filename().string()}));
     auto doc = store::Doc();
     doc.setString(path, PATH_PATH);
     doc.setString(hash, HASH_PATH);

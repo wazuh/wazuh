@@ -16,15 +16,15 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - name: !anystr
-              node_name: !anystr
+            - node_name: !anystr
               node_type: !anystr
-              key: !anystr
               port: !anyint
               bind_addr: !anystr
               nodes: !anything
               hidden: !anystr
-              disabled: false
+              certfile: !anystr
+              keyfile: !anystr
+              keyfile_password: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

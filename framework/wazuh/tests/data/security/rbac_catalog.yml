@@ -275,6 +275,20 @@ get_rbac_actions:
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
+          - GET /manager/status
+          - GET /manager/info
+          - GET /manager/configuration
+          - GET /manager/daemons/stats
+          - GET /manager/stats
+          - GET /manager/stats/hourly
+          - GET /manager/stats/weekly
+          - GET /manager/stats/analysisd
+          - GET /manager/stats/remoted
+          - GET /manager/logs
+          - GET /manager/logs/summary
+          - PUT /manager/restart
+          - GET /manager/configuration/validation
+          - GET /manager/configuration/{component}/{configuration}
       ciscat:read:
         description: Access CIS-CAT results for agents
         resources:
@@ -316,6 +330,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/api/config
+          - GET /manager/api/config
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:
@@ -328,6 +343,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/{node_id}/configuration
+          - PUT /manager/configuration
       cluster:restart:
         description: Restart Wazuh's cluster nodes
         resources:
@@ -340,6 +356,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
+          - PUT /manager/restart
       lists:read:
         description: Read CDB lists files
         resources:
@@ -392,67 +409,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /logtest
           - DELETE /logtest/sessions/{token}
-      manager:read:
-        description: Read Wazuh manager configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:read
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - GET /manager/status
-          - GET /manager/info
-          - GET /manager/configuration
-          - GET /manager/daemons/stats
-          - GET /manager/stats
-          - GET /manager/stats/hourly
-          - GET /manager/stats/weekly
-          - GET /manager/stats/analysisd
-          - GET /manager/stats/remoted
-          - GET /manager/logs
-          - GET /manager/logs/summary
-          - PUT /manager/restart
-          - GET /manager/configuration/validation
-          - GET /manager/configuration/{component}/{configuration}
-      manager:update_config:
-        description: Update current Wazuh manager configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:update_config
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /manager/configuration
-      manager:read_api_config:
-        description: Read Wazuh manager API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:read_api_config
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - GET /manager/api/config
-      manager:restart:
-        description: Restart Wazuh managers
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:restart
-          resources:
-            - "*:*:*"
-          effect: deny
-        related_endpoints:
-          - PUT /manager/restart
       mitre:read:
         description: Access information from MITRE database
         resources:

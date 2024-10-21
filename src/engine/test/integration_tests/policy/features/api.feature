@@ -87,12 +87,17 @@ Feature: Policy API Management
     When I send a request to set the default parent called "default" in the namespace "wazuh"
     Then I should receive a success response with a validation warning indicating "Saved invalid policy: Default parent 'default' in namespace 'wazuh' is neither a decoder or a rule"
 
-  @exclude
   Scenario: Set the default parent of a namespace
     Given I have a policy called "policy/wazuh/0"
     Given I load an integration called "parent-wazuh-core-test" in the namespace "wazuh"
     When I send a request to set the default parent called "decoder/parent-message/0" in the namespace "wazuh"
-    Then I should receive a failed response indicating "Engine base graph: Node "decoder/Input" has no children."
+    Then I should receive a success response
+
+  Scenario: Set the default parent of a namespace
+    Given I have a policy called "policy/wazuh/0"
+    Given I load an integration called "parent-wazuh-core-test" in the namespace "wazuh"
+    When I send a request to set the default parent called "rule/parent-message/0" in the namespace "wazuh"
+    Then I should receive a success response
 
   Scenario: Get the non-exist default parent of a namespace
     Given I have a policy called "policy/wazuh/0"

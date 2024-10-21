@@ -16,16 +16,14 @@ SYSTEM="deb"
 OUTDIR="${CURRENT_PATH}/output/"
 BRANCH=""
 REVISION="0"
-TARGET="agent"
 JOBS="2"
 DEBUG="no"
 SRC="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
-INSTALLATION_PATH="/var/ossec"
+INSTALLATION_PATH="/"
 CHECKSUM="no"
 FUTURE="no"
-LEGACY="no"
 IS_STAGE="no"
 
 
@@ -55,31 +53,15 @@ download_file() {
 }
 
 build_pkg() {
-    if [ "$LEGACY" = "yes" ]; then
-        REVISION="${REVISION}.el5"
-        TAR_URL="https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
-        TAR_FILE="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy/centos-5-i386.tar.gz"
-        if [ ! -f "$TAR_FILE" ]; then
-            download_file ${TAR_URL} "${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
-        fi
-        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
-        CONTAINER_NAME="pkg_${SYSTEM}_legacy_builder_${ARCHITECTURE}"
-        if [ "$SYSTEM" != "rpm" ]; then
-            echo "Legacy mode is only available for RPM packages."
-            clean 1
-        fi
-    else
-        CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
-        if [ "${ARCHITECTURE}" = "arm64" ] || [ "${ARCHITECTURE}" = "ppc64le" ]; then
-            DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}"
-        else
-            DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
-        fi
-    fi
+
+    CONTAINER_NAME="pkg_${SYSTEM}_server_builder_${ARCHITECTURE}"
+    DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}"
 
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
     cp ${CURRENT_PATH}/${SYSTEM}s/utils/* ${DOCKERFILE_PATH}
+    cp ${CURRENT_PATH}/../src/engine/vcpkg.json ${DOCKERFILE_PATH}
+    cp ${CURRENT_PATH}/../src/engine/vcpkg-configuration.json ${DOCKERFILE_PATH}
 
     # Build the Docker image
     if [[ ${BUILD_DOCKER} == "yes" ]]; then
@@ -89,7 +71,6 @@ build_pkg() {
     # Build the Debian package with a Docker container
     docker run -t --rm -v ${OUTDIR}:/var/local/wazuh:Z \
         -e SYSTEM="$SYSTEM" \
-        -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
         -e INSTALLATION_PATH="${INSTALLATION_PATH}" \
         -e IS_STAGE="${IS_STAGE}" \
@@ -97,7 +78,7 @@ build_pkg() {
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} \
         ${REVISION} ${JOBS} ${DEBUG} \
-        ${CHECKSUM} ${FUTURE} ${LEGACY} ${SRC}|| return 1
+        ${CHECKSUM} ${FUTURE} ${SRC}|| return 1
 
     echo "Package $(ls -Art ${OUTDIR} | tail -n 1) added to ${OUTDIR}."
 
@@ -115,15 +96,13 @@ help() {
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "    -b, --branch <branch>      [Optional] Select Git branch."
-    echo "    -t, --target <target>      [Required] Target package to build: manager or agent."
-    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/ppc64le/arm64/armhf]."
+    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/arm64]."
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
-    echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
+    echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/wazuh-server."
     echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package. By default: no."
-    echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default use the script path."
@@ -152,14 +131,6 @@ main() {
         "-h"|"--help")
             help 0
             ;;
-        "-t"|"--target")
-            if [ -n "$2" ]; then
-                TARGET="$2"
-                shift 2
-            else
-                help 1
-            fi
-            ;;
         "-a"|"--architecture")
             if [ -n "$2" ]; then
                 ARCHITECTURE="$2"
@@ -167,10 +138,6 @@ main() {
             else
                 help 1
             fi
-            ;;
-        "-l"|"--legacy")
-            LEGACY="yes"
-            shift 1
             ;;
         "-j"|"--jobs")
             if [ -n "$2" ]; then
