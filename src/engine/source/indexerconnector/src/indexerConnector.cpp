@@ -30,7 +30,7 @@ constexpr auto PASSWORD_KEY {"password"};
 constexpr auto ELEMENTS_PER_BULK {1000};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
-constexpr auto MERGED_CA_PATH {"tmp/root-ca-merged.pem"};
+constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
@@ -110,6 +110,10 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
     else if (!config.sslOptions.cacert.empty())
     {
         caRootCertificate = config.sslOptions.cacert.front();
+    }
+    else
+    {
+        LOG_DEBUG("No CA root certificate found in the configuration.");
     }
 
     sslCertificate = config.sslOptions.cert;
