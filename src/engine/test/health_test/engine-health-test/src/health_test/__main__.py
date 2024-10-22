@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from health_test.health_test import run as test_run
-from health_test.validate_cutom_field_indexing import run as validate_cutom_field_indexing_run
+from health_test.validate_custom_field_indexing import run as validate_custom_field_indexing_run
 from health_test.validate_event_indexing import run as validate_event_indexing_run
 import sys
 from argparse import ArgumentParser, Namespace
@@ -173,7 +173,7 @@ def parse_args() -> Namespace:
         '--target',
         help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
         required=False)
-    validate_custom_field_indexing_parser.set_defaults(func=validate_cutom_field_indexing_run)
+    validate_custom_field_indexing_parser.set_defaults(func=validate_custom_field_indexing_run)
 
     # test subcommand
     test_parser = dynamic_subparsers.add_parser(
