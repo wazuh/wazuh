@@ -89,9 +89,11 @@ jobs:
             exit 1
           fi
 
-      # Only uploads the vdscanner tools if the PR is merged or it was manually triggered.
+      # Only uploads the vdscanner tools if:
+      # - The PR is merged into master
+      # - The workflow is manually triggered
       - name: Upload vdscanner tools
-        if: ${{ success() && github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'}}
+        if: ${{ success() && ((github.event_name == 'push' && github.base_ref == 'master') || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{env.TOOLS_FILE_NAME}}
