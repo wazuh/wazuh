@@ -195,25 +195,29 @@ def get_validation_function(field_type):
         return lambda value: False
 
 
-def load_custom_fields(custom_fields_path, allowed_custom_fields_type):
+def load_custom_fields(integration, custom_fields_path, allowed_custom_fields_type):
     """
     Load custom fields from 'custom_fields.yml' into a map of field -> (type, validation_function).
     """
     custom_fields_map = {}
+    failure_load_custom_fields = []
     try:
         custom_fields_data = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
         for item in custom_fields_data:
             if item['field']:
                 if item['type'] not in allowed_custom_fields_type:
+                    message = f"\nIntegration: {integration}\n"
+                    message += f"Invalid type '{item['type']}' for field '{item['field']}'. Allowed types: {allowed_custom_fields_type}\n"
+                    failure_load_custom_fields.append(message)
                     continue
 
                 validation_fn = get_validation_function(item['type'])
                 custom_fields_map[item['field']] = (item['type'], validation_fn)
 
-        return custom_fields_map
+        return custom_fields_map, failure_load_custom_fields
     except Exception as e:
         sys.exit(f"Error loading custom fields from {custom_fields_path}: {e}")
-        return {}
+        return {}, failure_load_custom_fields
 
 
 def get_value_from_hierarchy(data, field):
@@ -477,9 +481,19 @@ def run_test(test_parent_paths: List[Path], engine_api_socket: str, schema_field
             if not custom_fields_path.exists():
                 sys.exit(custom_field_container.name, str(custom_fields_path),
                          "Error: custom_fields.yml file does not exist.")
-            custom_fields = load_custom_fields(custom_fields_path, allowed_custom_fields_type)
-            results.append(validate_custom_fields(custom_field_container.name,
-                           custom_fields, all_custom_fields, number_outputs))
+            custom_fields, failure_load_custom_fields = load_custom_fields(
+                custom_field_container.name, custom_fields_path, allowed_custom_fields_type)
+            if not failure_load_custom_fields:
+                results.append(validate_custom_fields(custom_field_container.name,
+                                                      custom_fields, all_custom_fields, number_outputs))
+
+    if failure_load_custom_fields or all_custom_fields:
+        print("The test did not end correctly:")
+
+    if failure_load_custom_fields:
+        for failure in failure_load_custom_fields:
+            print(failure)
+        sys.exit(1)
 
     if all_custom_fields:
         sys.exit(f"The following fields were not found or matched incorrectly: {all_custom_fields}")
@@ -612,7 +626,6 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
     try:
         with open(schema, 'r') as schema_file:
             schema_data = json.load(schema_file)
-            schema_fields = set(schema_data.get("fields", {}).keys())
     except Exception as e:
         sys.exit(f"Error reading the JSON schema file: {e}")
 
@@ -649,7 +662,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
             load_indexer_output_in_policy(engine_handler)
 
         print("\n\nRunning tests...")
-        results = run_test(integrations, engine_handler.api_socket_path, schema_fields)
+        results = run_test(integrations, engine_handler.api_socket_path, schema_data)
 
     finally:
         if exist_index_output(engine_handler):
