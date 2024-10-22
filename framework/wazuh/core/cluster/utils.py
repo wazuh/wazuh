@@ -227,7 +227,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
 
     if config_cluster.get(HAPROXY_HELPER):
         config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
-    
+
     for key in ('cafile', 'certfile', 'keyfile'):
         if not config_cluster[key].startswith(common.WAZUH_PATH):
             config_cluster[key] = os.path.join(common.WAZUH_PATH, config_cluster[key])
@@ -477,7 +477,8 @@ def process_spawn_sleep(child):
         Process child number.
     """
     pid = os.getpid()
-    pyDaemonModule.create_pid(f'wazuh-clusterd_child_{child}', pid)
+    # TODO: Use a parameter to set the child name.
+    pyDaemonModule.create_pid(f'wazuh-server_child_{child}', pid)
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
