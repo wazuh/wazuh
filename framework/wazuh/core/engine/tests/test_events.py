@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 from wazuh.core.engine.events import EventsModule
-from wazuh.core.engine.models.events import StatelessEvent
+from wazuh.core.engine.models.events import StatelessEvent, WazuhLocation, Event
 
 
 class TestEventsModule:
@@ -17,7 +17,12 @@ class TestEventsModule:
     def module_instance(self, client_mock) -> EventsModule:
         return self.module_class(client=client_mock)
 
-    async def test_send(self, module_instance: EventsModule):
+    async def test_send(self, client_mock, module_instance: EventsModule):
         """Check that the EventsModule `send` method works as expected."""
-        events = [StatelessEvent(data='data')]
+        response = mock.MagicMock()
+        response.status_code = 200
+        client_mock.post.return_value = response
+
+        events = [StatelessEvent(wazuh=WazuhLocation(queue=50, location="[003] (agent-name) any->/tmp/syslog.log"),
+                                 event=Event(original="original message, recollected from the agent"))]
         await module_instance.send(events)
