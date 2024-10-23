@@ -31,6 +31,7 @@ def run(args):
 
     return 0
 
+
 def configure(subparsers):
     parser = subparsers.add_parser('ingest', help='Ingest an event')
     parser.add_argument('event', type=str, help='Event to ingest')
