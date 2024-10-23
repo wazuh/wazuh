@@ -7,11 +7,8 @@ package com.wazuh.api.engine.policy;
 // Store of policy handlers
 
 /***************************************************
- * Create a new policy in the store.
+ * Create a new empty policy in the store.
  *
- * Create a new policy in the store.
- * If forceEmpty is true, the policy will be created without default integrations
- * (Wazuh-Core)
  * command: policy.store/post
  **************************************************/
 message StorePost_Request

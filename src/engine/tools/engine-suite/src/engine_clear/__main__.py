@@ -70,13 +70,13 @@ def main():
         if asset == "policy":
             policies = []
             try:
-                policies = resource_handler._get_policies_command(args.api_sock)['data']['data']
+                policies = resource_handler.get_policies_command(args.api_sock)['data']['data']
             except Exception as e:
                 pass
             for policy in policies:
                 try:
                     print(f'Deleting policy {policy}')
-                    resource_handler._delete_asset(args.api_sock, policy)
+                    resource_handler.policy_store_delete(args.api_sock, policy)
                 except Exception as e:
                     print(f'Error deleting {policy}: {e}')
         else:
