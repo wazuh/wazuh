@@ -29,6 +29,8 @@ def run(args):
 
     return 0
 
+
 def configure(subparsers):
-    parser = subparsers.add_parser('eps-disable', help='Disable EPS on the engine')
+    parser = subparsers.add_parser(
+        'eps-disable', help='Disable EPS on the engine')
     parser.set_defaults(func=run)

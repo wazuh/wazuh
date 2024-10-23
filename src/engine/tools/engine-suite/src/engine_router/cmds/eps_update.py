@@ -39,8 +39,11 @@ def run(args):
 
     return 0
 
+
 def configure(subparsers):
     parser = subparsers.add_parser('eps-update', help='Change EPS settings.')
-    parser.add_argument('refresh-interval', type=int, help='Interval windows size in seconds.')
-    parser.add_argument('events-per-second', type=int, help='Number of events per second allowed to be processed.')
+    parser.add_argument('refresh-interval', type=int,
+                        help='Interval windows size in seconds.')
+    parser.add_argument('events-per-second', type=int,
+                        help='Number of events per second allowed to be processed.')
     parser.set_defaults(func=run)
