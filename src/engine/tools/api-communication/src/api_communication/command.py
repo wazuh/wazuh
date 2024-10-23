@@ -112,6 +112,14 @@ def get_command(message: Message) -> Tuple[Optional[str], str]:
         return None, 'router.table/get'
     elif isinstance(message, router.QueuePost_Request):
         return None, 'router.queue/post'
+    elif isinstance(message, router.EpsGet_Request):
+        return None, 'router.eps/get'
+    elif isinstance(message, router.EpsEnable_Request):
+        return None, 'router.eps/activate'
+    elif isinstance(message, router.EpsDisable_Request):
+        return None, 'router.eps/deactivate'
+    elif isinstance(message, router.EpsUpdate_Request):
+        return None, 'router.eps/update'
 
     # Tester
     elif isinstance(message, tester.SessionPost_Request):
