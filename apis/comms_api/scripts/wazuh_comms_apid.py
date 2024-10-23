@@ -27,11 +27,13 @@ from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
 from api.constants import COMMS_API_LOG_PATH
 from api.middlewares import SecureHeadersMiddleware
+from comms_api.core.batcher import create_batcher_process
+from comms_api.core.commands import CommandsManager
+from comms_api.core.unix_server.server import start_unix_server
+from comms_api.middlewares.logging import LoggingMiddleware
 from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler, \
     exception_handler, starlette_http_exception_handler
 from comms_api.routers.router import router
-from comms_api.middlewares.logging import LoggingMiddleware
-from comms_api.core.batcher import create_batcher_process
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
 from wazuh.core.batcher.config import BatcherConfig
@@ -43,13 +45,15 @@ from wazuh.core.batcher.config import BATCHER_MAX_ELEMENTS, BATCHER_MAX_SIZE, BA
 MAIN_PROCESS = 'wazuh-comms-apid'
 
 
-def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
+def create_app(batcher_queue: MuxDemuxQueue, commands_manager: CommandsManager) -> FastAPI:
     """Create a FastAPI application instance and add middlewares, exception handlers, and routers to it.
 
     Parameters
     ----------
     batcher_queue : MuxDemuxQueue
         Queue instance used for managing batcher processes.
+    commands_manager : CommandsManager
+        Commands manager.
 
     Returns
     -------
@@ -67,6 +71,7 @@ def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
     app.include_router(router)
 
     app.state.batcher_queue = batcher_queue
+    app.state.commands_manager = commands_manager
 
     return app
 
@@ -183,7 +188,8 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'ciphers': '',
         'logconfig_dict': log_config_dict,
         'user': os.getuid(),
-        'post_worker_init': post_worker_init
+        'post_worker_init': post_worker_init,
+        'timeout': 300,
     }
 
 
@@ -229,13 +235,10 @@ def signal_handler(
     frame: Any,
     parent_pid: int,
     mux_demux_manager: MuxDemuxManager,
-    batcher_process: Process
+    batcher_process: Process,
+    commands_manager: CommandsManager
 ) -> None:
-    """Handle incoming signals for graceful shutdown of the API.
-
-    This function is triggered when a termination signal (SIGTERM) is received. It handles the cleanup
-    of resources by terminating the batcher process, shutting down the mux/demux manager, and deleting
-    any child and main process IDs.
+    """Handle incoming signals to gracefully shutdown the API.
 
     Parameters
     ----------
@@ -249,23 +252,18 @@ def signal_handler(
         The MuxDemux manager instance to be shut down.
     batcher_process : Process
         The batcher process to be terminated.
-
-    Notes
-    -----
-    This function is designed to be used with the `signal` module to handle termination and
-    interruption signals (e.g., SIGTERM).
+    commands_manager : CommandsManager
+        Commands manager.
     """
     logger.info(f"Received signal {signal.Signals(signum).name}, shutting down")
-    terminate_processes(parent_pid, mux_demux_manager, batcher_process)
+    terminate_processes(parent_pid, mux_demux_manager, batcher_process, commands_manager)
 
 
-def terminate_processes(parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process):
-    """Terminate the batcher process, shut down the MuxDemux manager, and delete
-    any child and main process IDs.
-
-    This function checks if the current process ID matches the parent process ID.
-    If they match, it proceeds to terminate the batcher process, shuts down the
-    MuxDemux manager, and removes the corresponding process IDs from the system.
+def terminate_processes(
+    parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process, commands_manager: CommandsManager
+) -> None:
+    """Terminate all related resources, and delete child and main processes 
+    if the current process ID matches the parent process ID.
 
     Parameters
     ----------
@@ -275,11 +273,14 @@ def terminate_processes(parent_pid: int, mux_demux_manager: MuxDemuxManager, bat
         The MuxDemux manager instance to be shut down.
     batcher_process : Process
         The batcher process to be terminated.
+    commands_manager : CommandsManager
+        Commands manager.
     """
     if parent_pid == os.getpid():
         logger.info('Shutting down')
         batcher_process.terminate()
         mux_demux_manager.shutdown()
+        commands_manager.shutdown()
         pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
         pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
 
@@ -318,15 +319,24 @@ if __name__ == '__main__':
     )
     mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
 
+    # Start HTTP over unix socket server
+    commands_manager = CommandsManager()
+    start_unix_server(commands_manager)
+
     pid = os.getpid()
-    signal.signal(signal.SIGTERM, partial(
-        signal_handler, parent_pid=pid, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process))
+    signal.signal(
+        signal.SIGTERM,
+        partial(
+            signal_handler, parent_pid=pid, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process,
+            commands_manager=commands_manager
+        )
+    )
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     logger.info(f'Listening on {args.host}:{args.port}')
     
     try:
-        app = create_app(mux_demux_manager.get_queue())
+        app = create_app(mux_demux_manager.get_queue(), commands_manager)
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
@@ -336,4 +346,4 @@ if __name__ == '__main__':
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     finally:
-        terminate_processes(pid, mux_demux_manager, batcher_process)
+        terminate_processes(pid, mux_demux_manager, batcher_process, commands_manager)
