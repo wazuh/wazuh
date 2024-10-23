@@ -7,11 +7,12 @@
 
 set -x
 
+current_path="$( cd $(dirname $0) ; pwd -P )"
 install_path="/var/ossec"
 build_tools_path="/home/okkam"
 source_directory=/wazuh-sources
 configuration_file="${source_directory}/etc/preloaded-vars.conf"
-target_dir="/output"
+target_dir="${current_path}/output/"
 wazuh_version=""
 wazuh_revision="1"
 depot_path=""
@@ -44,7 +45,7 @@ build_environment() {
     depot=""
     if [ -z "${depot_path}" ]
     then
-        depot=/depothelper-2.20-ia64_64-11.31.depot
+        depot=${current_path}/depothelper-2.20-ia64_64-11.31.depot
     else
         depot=$depot_path
     fi

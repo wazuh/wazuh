@@ -205,12 +205,7 @@ fi
 if [ $1 = 0 ]; then
 
   /etc/rc.d/init.d/wazuh-agent stop > /dev/null 2>&1 || :
-  rm -f %{_localstatedir}/queue/sockets/*
-  rm -f %{_localstatedir}/queue/sockets/.agent_info || :
-  rm -f %{_localstatedir}/queue/sockets/.wait || :
-  rm -f %{_localstatedir}/queue/diff/*
-  rm -f %{_localstatedir}/queue/alerts/*
-  rm -f %{_localstatedir}/queue/rids/*
+  find %{_localstatedir}/queue \( -type f -o -type s \) -exec rm -f {} \; || :
 
 fi
 
@@ -255,9 +250,9 @@ rm -fr %{buildroot}
 %dir %attr(750, root, system) %{_localstatedir}/lib
 %attr(750, root, wazuh) %{_localstatedir}/lib/*
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs
-%attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/active-responses.log
-%attr(660, root, wazuh) %ghost %{_localstatedir}/logs/ossec.log
-%attr(660, root, wazuh) %ghost %{_localstatedir}/logs/ossec.json
+%attr(660, wazuh, wazuh) %ghost %config(missingok) %{_localstatedir}/logs/active-responses.log
+%attr(660, root, wazuh) %ghost %config(missingok) %{_localstatedir}/logs/ossec.log
+%attr(660, root, wazuh) %ghost %config(missingok) %{_localstatedir}/logs/ossec.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/wazuh
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
@@ -266,22 +261,20 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fim/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector/db
-%attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
+%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/queue/syscollector/norm_config.json
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/ruleset/sca
 %attr(640, root, wazuh) %{_localstatedir}/ruleset/sca/*
-%dir %attr(1750, root, wazuh) %{_localstatedir}/tmp
+%dir %attr(1750, root, wazuh) %config(missingok) %{_localstatedir}/tmp
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/add_localfiles.sh
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/gen_ossec.sh
-%dir %attr(1750, root, wazuh) %config(missingok) %{_localstatedir}/tmp/etc/templates
-%dir %attr(1750, root, wazuh) %config(missingok) %{_localstatedir}/tmp/etc/templates/config
-%dir %attr(1750, root, wazuh) %config(missingok) %{_localstatedir}/tmp/etc/templates/config/generic
 %attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/etc/templates/config/generic/*.template
-%dir %attr(1750, root, wazuh) %config(missingok) /var/ossec/tmp/etc/templates/config/generic/localfile-logs
-%attr(750, root,system) %config(missingok) /var/ossec/tmp/etc/templates/config/generic/localfile-logs/*.template
-%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/*
+%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/etc/templates/config/generic/localfile-logs/*.template
+%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/init/*.sh
+%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/VERSION
+%attr(750, root,system) %config(missingok) %{_localstatedir}/tmp/src/REVISION
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/incoming
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
