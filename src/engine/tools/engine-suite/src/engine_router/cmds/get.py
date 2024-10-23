@@ -36,6 +36,7 @@ def run(args):
 
     return 0
 
+
 def configure(subparsers):
     parser = subparsers.add_parser('get', help='Get a route details')
     parser.add_argument('route', type=str, help='Route to get')

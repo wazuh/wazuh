@@ -17,6 +17,7 @@ from engine_router.cmds.eps_activate import configure as configure_eps_activate
 from engine_router.cmds.eps_deactivate import configure as configure_eps_deactivate
 from engine_router.cmds.eps_update import configure as configure_eps_update
 
+
 def parse_args():
     meta = metadata('engine-suite')
     parser = argparse.ArgumentParser(prog='engine-router')
@@ -49,8 +50,6 @@ def parse_args():
     configure_eps_activate(subparsers)
     configure_eps_deactivate(subparsers)
     configure_eps_update(subparsers)
-
-
 
     return parser.parse_args()
 
