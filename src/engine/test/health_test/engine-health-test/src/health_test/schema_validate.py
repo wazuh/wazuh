@@ -34,7 +34,7 @@ def get_validation_function(field_type):
     if field_type == 'ip':
         return is_valid_ip
 
-    if field_type == 'keyword' or field_type == 'text':
+    if field_type == 'keyword' or field_type == 'text' or field_type == 'wildcard':
         return lambda value: isinstance(value, str)
 
     if field_type == 'long' or field_type == 'scaled_float':

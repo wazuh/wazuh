@@ -531,7 +531,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
                     continue
                 integrations.append(integration_path)
 
-        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'template.json')
+        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
         log = (env_path / "logs/engine.log").as_posix()
         engine_handler.start(log)
         print("Engine started.")
@@ -611,7 +611,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
                     continue
                 rules.append(ruleset_path)
 
-        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'template.json')
+        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
         log = (env_path / "logs/engine.log").as_posix()
         engine_handler.start(log)
         print("Engine started.")
