@@ -350,3 +350,13 @@ default_policies:
         resources:
           - '*:*:*'
         effect: allow
+
+  orders_send:
+    description: Allow sending orders to the server.
+    policies:
+      resourceless:
+        actions:
+          - order:send
+        resources:
+          - '*:*:*'
+        effect: allow

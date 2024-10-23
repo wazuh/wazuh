@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, Response
-from fastapi import status, Request
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from comms_api.authentication.authentication import JWTBearer
 from comms_api.core.events import create_stateful_events, send_stateless_events

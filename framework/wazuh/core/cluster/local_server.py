@@ -10,6 +10,7 @@ import random
 from typing import Tuple, Union
 
 import uvloop
+
 from wazuh.core import common
 from wazuh.core.cluster import client, cluster, server
 from wazuh.core.cluster import common as c_common
@@ -67,6 +68,8 @@ class LocalServerHandler(server.AbstractServerHandler):
         elif command == b'send_file':
             path, node_name = data.decode().split(' ')
             return self.send_file_request(path, node_name)
+        elif command == b'dist_orders':
+            return self.distribute_orders(data)
         else:
             return super().process_request(command, data)
 
@@ -179,6 +182,21 @@ class LocalServerHandler(server.AbstractServerHandler):
             exc = future.exception()
             if exc:
                 self.logger.error(exc, exc_info=False)
+    
+    def distribute_orders(self, orders: bytes):
+        """Send orders to the communications API unix server and to other nodes.
+
+        Parameters
+        ----------
+        orders : bytes
+            Orders encoded to bytes.
+
+        Returns
+        -------
+        NotImplementedError
+            Error indicating the method is not implemented.
+        """
+        raise NotImplementedError
 
 
 class LocalServer(server.AbstractServer):
@@ -328,6 +346,33 @@ class LocalServerHandlerMaster(LocalServerHandler):
             req = asyncio.create_task(self.server.node.clients[node_name].send_file(path))
             req.add_done_callback(self.get_send_file_response)
             return b'ok', b'Forwarding file to master node'
+
+    def distribute_orders(self, orders: bytes):
+        """Send orders to the communications API unix server and to other nodes.
+
+        Parameters
+        ----------
+        orders : bytes
+            Orders encoded to bytes.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            JSON containing local file paths and their hash.
+        """
+        # Send orders to the local Comms API unix server
+        asyncio.create_task(self.log_exceptions(self.send_orders(orders)))
+
+        # Distribute orders to other nodes
+        self.logger.info('Sending orders to the other nodes')
+        for client in self.server.node.clients:
+            asyncio.create_task(self.log_exceptions(
+                self.server.node.clients[client].send_request(b'dist_orders', orders)
+            ))
+
+        return b'ok', b'Orders forwarded to other nodes'
 
 
 class LocalServerMaster(LocalServer):
@@ -484,6 +529,36 @@ class LocalServerHandlerWorker(LocalServerHandler):
             req = asyncio.create_task(self.server.node.client.send_file(path))
             req.add_done_callback(self.get_send_file_response)
             return b'ok', b'Forwarding file to master node'
+
+    def distribute_orders(self, orders: bytes):
+        """Send orders to the communications API unix server and to other nodes.
+
+        Parameters
+        ----------
+        orders : bytes
+            Orders encoded to bytes.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            JSON containing local file paths and their hash.
+        """
+        # Send orders to the local Comms API unix server
+        asyncio.create_task(self.log_exceptions(self.send_orders(orders)))
+
+        if self.server.node.client is None:
+            raise WazuhClusterError(3023)
+
+        # Distribute orders to the master node
+        self.logger.info('Sending orders to the master node')
+        asyncio.create_task(self.log_exceptions(
+            # Include the worker node name in the request so the server know who not to send the orders
+            self.server.node.client.send_request(b'dist_orders', self.name.encode() + b' ' + orders)
+        ))
+
+        return b'ok', b'Orders forwarded to other nodes'
 
 
 class LocalServerWorker(LocalServer):

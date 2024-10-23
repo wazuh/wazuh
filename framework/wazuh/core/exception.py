@@ -493,6 +493,7 @@ class WazuhException(Exception):
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
+        3041: 'Error while sending orders to the Communications API unix server',
 
         # HAProxy Helper exceptions
         3041: "Server status check timed out after adding new servers",

@@ -514,7 +514,7 @@ def test_DistributedAPI_check_wazuh_status_exception(node_info_mock, status_valu
         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
         try:
             dapi.check_wazuh_status()
-        except WazuhError as e:
+        except WazuhInternalError as e:
             assert e.code == 1017
             assert statuses
             assert e._extra_message['node_name'] == 'random_node'

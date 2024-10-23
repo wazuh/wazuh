@@ -73,6 +73,11 @@ async def test_LocalServerHandler_process_request(process_request_mock, event_lo
     with patch.object(lsh, "send_file_request") as send_file_mock:
         lsh.process_request(command=b"send_file", data=b"test send_file")
         send_file_mock.assert_called_with("test", "send_file")
+    
+    with patch.object(lsh, 'distribute_orders') as distribute_orders_mock:
+        data = b'orders'
+        lsh.process_request(command=b'dist_orders', data=data)
+        distribute_orders_mock.assert_called_with(data)
 
     lsh.process_request(command=b"process_request", data=b"test process_request")
     process_request_mock.assert_called_with(b"process_request", b"test process_request")
@@ -368,7 +373,37 @@ async def test_LocalServerHandlerMaster_send_file_request(event_loop):
             await wait_callback_called(get_send_file_response_callback_mock)
             await wait_callback_called(send_file_mock)
             send_file_mock.assert_awaited_with("/tmp")
-            
+
+
+@pytest.mark.asyncio
+async def test_LocalServerHandlerMaster_distribute_orders(event_loop):
+    """Check that the `distribute_orders` method works as expected."""
+    class ClientMock:
+        async def send_request(self, data):
+            pass
+
+    class NodeMock:
+        def __init__(self):
+            self.clients = {'worker1': ClientMock}
+
+    class ServerMock:
+        def __init__(self):
+            self.node = NodeMock()
+
+    def callback_mock(future: asyncio.Future):
+        assert future.result() == 'ok'
+
+    server_mock = ServerMock()
+    lshm = LocalServerHandlerMaster(server=server_mock, loop=event_loop, cluster_items={})
+    orders = b'orders'
+
+    with patch.object(server_mock.node.clients['worker1'], 'send_request') as send_request_mock:
+        with patch.object(lshm, 'send_orders', side_effect=callback_mock) as send_orders_mock:
+            result = lshm.distribute_orders(orders=orders)
+            assert result == (b'ok', b'Orders forwarded to other nodes')
+            send_orders_mock.assert_called_once()
+            send_request_mock.assert_called_with(b'dist_orders', orders)
+
 
 @pytest.mark.asyncio
 async def test_LocalServerMaster_init(event_loop):
@@ -530,6 +565,42 @@ async def test_LocalServerHandlerWorker_send_file_request(create_task_mock, even
         assert lshw.send_file_request(path="/tmp", node_name="worker1") == (b"ok", b"Forwarding file to master node")
         send_file_mock.assert_called_once_with("/tmp")
         create_task_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_LocalServerHandlerWorker_distribute_orders(event_loop):
+    """Check that the `distribute_orders` method works as expected."""
+    class ClientMock:
+        def send_request(self, data):
+            pass
+
+    class NodeMock:
+        def __init__(self):
+            self.client = None
+
+    class ServerMock:
+        def __init__(self):
+            self.node = NodeMock()
+    
+    def callback_mock(future: asyncio.Future):
+        assert future.result() == 'ok'
+
+    server_mock = ServerMock()
+    name = 'worker1'
+    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, cluster_items={})
+    lshw.name = name
+    orders = b'orders'
+
+    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
+        lshw.distribute_orders(orders)
+
+    server_mock.node.client = ClientMock()
+    with patch.object(server_mock.node.client, 'send_request', return_value='ok') as send_request_mock:
+        with patch.object(lshw, 'send_orders', side_effect=callback_mock) as send_orders_mock:
+            result = lshw.distribute_orders(orders=orders)
+            assert result == (b'ok', b'Orders forwarded to other nodes')
+            send_orders_mock.assert_called_once()
+            send_request_mock.assert_called_with(b'dist_orders', name.encode() + b' ' + orders)
 
 
 @pytest.mark.asyncio

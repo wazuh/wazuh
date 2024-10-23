@@ -222,7 +222,7 @@ class DistributedAPI:
                 'node_name': self.node_info.get('node', 'UNKNOWN NODE'),
                 'not_ready_daemons': ', '.join([f'{key}->{value}' for key, value in not_ready_daemons.items()])
             }
-            raise exception.WazuhError(1017, extra_message=extra_info)
+            raise exception.WazuhInternalError(1017, extra_message=extra_info)
 
     @staticmethod
     def run_local(f, f_kwargs, rbac_permissions, broadcasting, nodes, current_user, origin_module):
@@ -298,7 +298,7 @@ class DistributedAPI:
             # Avoid exception info if it is an asyncio timeout error, JSONDecodeError, /proc availability error or
             # WazuhClusterError
             self.logger.error(f"{e.message}",
-                              exc_info=e.code not in {3021, 3036, 1913} and not isinstance(e,
+                              exc_info=e.code not in {3021, 3036, 1913, 1017} and not isinstance(e,
                                                                                            exception.WazuhClusterError))
             if self.debug:
                 raise
