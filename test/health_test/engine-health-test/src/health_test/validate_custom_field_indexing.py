@@ -176,7 +176,7 @@ def get_validation_function(field_type):
     if field_type == 'ip':
         return is_valid_ip
 
-    if field_type == 'keyword' or field_type == 'text':
+    if field_type == 'keyword' or field_type == 'text' or field_type == 'wildcard':
         return lambda value: isinstance(value, str)
 
     if field_type == 'long' or field_type == 'scaled_float':
@@ -195,7 +195,7 @@ def get_validation_function(field_type):
         return lambda value: False
 
 
-def load_custom_fields(integration, custom_fields_path, allowed_custom_fields_type):
+def load_custom_fields(integration, custom_fields_path, allowed_types):
     """
     Load custom fields from 'custom_fields.yml' into a map of field -> (type, validation_function).
     """
@@ -205,9 +205,9 @@ def load_custom_fields(integration, custom_fields_path, allowed_custom_fields_ty
         custom_fields_data = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
         for item in custom_fields_data:
             if item['field']:
-                if item['type'] not in allowed_custom_fields_type:
+                if item['type'] not in allowed_types:
                     message = f"\nIntegration: {integration}\n"
-                    message += f"Invalid type '{item['type']}' for field '{item['field']}'. Allowed types: {allowed_custom_fields_type}\n"
+                    message += f"Invalid type '{item['type']}' for field '{item['field']}'. Allowed types: {allowed_types}\n"
                     failure_load_custom_fields.append(message)
                     continue
 
@@ -471,10 +471,12 @@ def validate_custom_fields(
     return result
 
 
-def run_test(test_parent_paths: List[Path], engine_api_socket: str, schema_fields) -> List[Result]:
+def run_test(test_parent_paths: List[Path], engine_api_socket: str, schema_data) -> List[Result]:
+    schema_fields = set(schema_data.get("fields", {}).keys())
     outputs, number_outputs, all_custom_fields = run_all_tests(test_parent_paths, engine_api_socket, schema_fields)
     results = []
-    allowed_custom_fields_type = {field_info["type"] for field_info in schema_fields["fields"].values()}
+    failures = []
+    allowed_types = {field_info["type"] for field_info in schema_data["fields"].values()}
     for custom_field_container in test_parent_paths:
         if custom_field_container.name != 'wazuh-core':
             custom_fields_path = custom_field_container / 'test' / 'custom_fields.yml'
@@ -482,16 +484,18 @@ def run_test(test_parent_paths: List[Path], engine_api_socket: str, schema_field
                 sys.exit(custom_field_container.name, str(custom_fields_path),
                          "Error: custom_fields.yml file does not exist.")
             custom_fields, failure_load_custom_fields = load_custom_fields(
-                custom_field_container.name, custom_fields_path, allowed_custom_fields_type)
+                custom_field_container.name, custom_fields_path, allowed_types)
             if not failure_load_custom_fields:
                 results.append(validate_custom_fields(custom_field_container.name,
                                                       custom_fields, all_custom_fields, number_outputs))
+            else:
+                failures.append(failure_load_custom_fields)
 
-    if failure_load_custom_fields or all_custom_fields:
+    if failures or all_custom_fields:
         print("The test did not end correctly:")
 
-    if failure_load_custom_fields:
-        for failure in failure_load_custom_fields:
+    if failures:
+        for failure in failures:
             print(failure)
         sys.exit(1)
 
@@ -653,7 +657,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
                     continue
                 integrations.append(integration_path)
 
-        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'template.json')
+        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
         engine_handler.start()
         print("Engine started.")
         print("Update wazuh-core-message decoder")
@@ -708,7 +712,6 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     try:
         with open(schema, 'r') as schema_file:
             schema_data = json.load(schema_file)
-            schema_fields = set(schema_data.get("fields", {}).keys())
     except Exception as e:
         sys.exit(f"Error reading the JSON schema file: {e}")
 
@@ -736,7 +739,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
                     continue
                 rules.append(ruleset_path)
 
-        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'template.json')
+        opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
         engine_handler.start()
         print("Engine started.")
         if not exist_index_output(engine_handler):
@@ -745,7 +748,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
         print("Update wazuh-core-message decoder")
 
         print("\n\nRunning tests...")
-        results = run_test(rules, engine_handler.api_socket_path, schema_fields)
+        results = run_test(rules, engine_handler.api_socket_path, schema_data)
 
     finally:
         if exist_index_output(engine_handler):
