@@ -33,7 +33,7 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())], request: Req
     """
     try:
         uuid = decode_token(token)["uuid"]
-        commands = pull_commands(request.app.state.commands_manager, uuid)
+        commands = await pull_commands(request.app.state.commands_manager, uuid)
         return Commands(commands=commands)
     except WazuhCommsAPIError as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_403_FORBIDDEN)
