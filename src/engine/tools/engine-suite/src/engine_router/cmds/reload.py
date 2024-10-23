@@ -31,8 +31,8 @@ def run(args):
     if parsed_response.status == engine.ERROR:
         os.sys.exit(f'Error reloading route: {parsed_response.error}')
 
-
     return 0
+
 
 def configure(subparsers):
     parser = subparsers.add_parser('reload', help='Reload/rebuild a route')

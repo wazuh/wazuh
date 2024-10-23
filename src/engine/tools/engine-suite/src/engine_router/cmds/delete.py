@@ -33,6 +33,7 @@ def run(args):
 
     return 0
 
+
 def configure(subparsers):
     parser = subparsers.add_parser('delete', help='Delete a route')
     parser.add_argument('route', type=str, help='Route to delete')

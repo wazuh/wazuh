@@ -35,6 +35,7 @@ def run(args):
 
     return 0
 
+
 def configure(subparsers):
     parser = subparsers.add_parser('list', help='Get routes table')
     parser.set_defaults(func=run)
