@@ -18,8 +18,8 @@ import time
 import traceback
 from importlib import import_module
 from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
-from uuid import uuid4
 
+from uuid import uuid4
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
