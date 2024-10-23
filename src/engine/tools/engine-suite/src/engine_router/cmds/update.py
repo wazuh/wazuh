@@ -24,7 +24,7 @@ def run(args):
 
     # Check if the priority must be updated and if it is valid
     if args['priority'] is not None:
-        prior : int = args['priority']
+        prior: int = args['priority']
         if prior < 0:
             os.sys.exit(f'Priority must be a positive integer')
         valid_update = True

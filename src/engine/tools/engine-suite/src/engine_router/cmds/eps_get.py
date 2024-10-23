@@ -33,6 +33,8 @@ def run(args):
 
     return 0
 
+
 def configure(subparsers):
-    parser = subparsers.add_parser('eps-get', help='Get EPS status on the engine')
+    parser = subparsers.add_parser(
+        'eps-get', help='Get EPS status on the engine')
     parser.set_defaults(func=run)
