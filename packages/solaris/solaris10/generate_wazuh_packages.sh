@@ -170,7 +170,6 @@ installation(){
     export CPLUS_INCLUDE_PATH=/usr/local/gcc-5.5.0/include/c++/5.5.0
     export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib
 
-    cd ${CURRENT_PATH}
     cd $SOURCE/src
     gmake clean
     check_version

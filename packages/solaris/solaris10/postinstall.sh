@@ -39,5 +39,3 @@ fi
 if [ -d ${OSSEC_HIDS_TMP_DIR} ]; then
     rm -r ${OSSEC_HIDS_TMP_DIR}
 fi
-#
-#exit 0
