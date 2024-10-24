@@ -19,7 +19,6 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <string_view>
 #include <sys/epoll.h>
 #include <thread>
 #include <unordered_map>
@@ -32,29 +31,37 @@ class SocketServer final
 {
 private:
     const std::string m_socketPath;
-    std::atomic<bool> m_shouldStop;
-    int m_stopFD[2] = {-1, -1};
-    std::unique_ptr<TEpoll> m_epoll;
-    std::unique_ptr<TSocket> m_listenSocket;
+    std::atomic<bool> m_shouldStop {false};
+    std::array<int, 2> m_stopFD = {-1, -1};
+    std::unique_ptr<TEpoll> m_epoll {std::make_unique<TEpoll>()};
+    std::unique_ptr<TSocket> m_listenSocket {std::make_unique<TSocket>()};
     std::unordered_map<int, std::shared_ptr<TSocket>> m_clients {};
     std::thread m_listenThread;
     std::mutex m_mutex;
 
     std::shared_ptr<TSocket> getClient(const int fd)
     {
-        std::lock_guard<std::mutex> lock {m_mutex};
+        std::lock_guard lock {m_mutex};
+        if (m_clients.find(fd) == m_clients.end())
+        {
+            return nullptr;
+        }
         return m_clients.at(fd);
     }
 
     void removeClient(const int fd)
     {
-        std::lock_guard<std::mutex> lock {m_mutex};
+        std::lock_guard lock {m_mutex};
+        if (m_clients.find(fd) == m_clients.end())
+        {
+            return;
+        }
         m_clients.erase(fd);
     }
 
     void addClient(const int fd, std::shared_ptr<TSocket> client)
     {
-        std::lock_guard<std::mutex> lock {m_mutex};
+        std::lock_guard lock {m_mutex};
         m_clients[fd] = std::move(client);
     }
 
@@ -65,29 +72,64 @@ private:
             client->sendUnsentMessages();
             m_epoll->modifyDescriptor(client->fileDescriptor(), EPOLLIN);
         }
-        catch (const std::exception& e)
+        catch (const std::exception&)
         {
             // Error sending pending messages
+        }
+    }
+
+    void processRead(std::shared_ptr<TSocket> client,
+                     const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)>& onRead) const
+    {
+        try
+        {
+            client->read(onRead);
+        }
+        catch (const std::exception&)
+        {
+            // Error reading from client
+        }
+    }
+
+    void processEvent(const uint32_t event,
+                      const int eventFD,
+                      const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)>& onRead)
+    {
+        if (auto client {getClient(eventFD)}; client)
+        {
+            // If EPOLLOUT is set, then we can send data, so send pending messages.
+            if (event & EPOLLOUT)
+            {
+                sendPendingMessages(client);
+            }
+
+            // If EPOLLIN is set, then we can read data, so process the read.
+            if (event & EPOLLIN)
+            {
+                processRead(client, onRead);
+            }
+
+            // If EPOLLERR or EPOLLHUP is set, then remove the client(Close the connection). This removes is in the end
+            // to process the max number of events.
+            if (event & EPOLLERR || event & EPOLLHUP)
+            {
+                removeClient(eventFD);
+            }
         }
     }
 
 public:
     explicit SocketServer(std::string socketPath)
         : m_socketPath {std::move(socketPath)}
-        , m_shouldStop {false}
-        , m_epoll {std::make_unique<TEpoll>()}
-        , m_listenSocket {std::make_unique<TSocket>()}
-        , m_clients {}
     {
-        int result = pipe(m_stopFD);
-        if (result == -1)
+        if (int result = pipe(m_stopFD.data()); result == -1)
         {
-            throw std::runtime_error("Failed to create stop pipe");
+            throw std::system_error(errno, std::system_category(), "Failed to create stop pipe");
         }
 
         if (::fcntl(m_stopFD[0], F_SETFL, O_NONBLOCK) == -1)
         {
-            throw std::runtime_error("Failed to set stop pipe to non-blocking");
+            throw std::system_error(errno, std::system_category(), "Failed to set stop pipe to non-blocking");
         }
 
         // Add pipe to stop epoll
@@ -135,7 +177,7 @@ public:
         m_epoll->addDescriptor(m_listenSocket->fileDescriptor(), EPOLLIN);
 
         m_listenThread = std::thread(
-            [&, onRead]()
+            [this, onRead]()
             {
                 std::vector<struct epoll_event> events(EVENTS);
                 while (!m_shouldStop)
@@ -170,40 +212,14 @@ public:
                         }
                         else
                         {
-                            auto event = events.at(i).events;
-                            auto client {getClient(eventFD)};
-
-                            if (event & EPOLLOUT)
-                            {
-                                sendPendingMessages(client);
-                            }
-
-                            if (event & EPOLLIN)
-                            {
-                                try
-                                {
-                                    client->read(onRead);
-                                }
-                                catch (const std::exception&)
-                                {
-                                    // std::cerr << "Failed to read from client socket: " << e.what() << std::endl;
-                                }
-                            }
-
-                            if (event & EPOLLERR || event & EPOLLHUP)
-                            {
-                                removeClient(eventFD);
-                            }
+                            processEvent(events.at(i).events, eventFD, onRead);
                         }
                     }
 
                     // If we ran out of room in our events vector, double its size
-                    if (numFDsReady == static_cast<int>(events.size()))
+                    if (numFDsReady == static_cast<int>(events.size()) && numFDsReady >= EVENTS_LIMIT)
                     {
-                        if (numFDsReady >= EVENTS_LIMIT)
-                        {
-                            events.resize(events.size() * 2);
-                        }
+                        events.resize(events.size() * 2);
                     }
                 }
             });
@@ -211,14 +227,20 @@ public:
 
     void send(int fd, const char* dataBody, size_t sizeBody, const char* dataHeader = nullptr, size_t sizeHeader = 0)
     {
-        auto client {getClient(fd)};
-        try
+        if (auto client {getClient(fd)}; !client)
         {
-            client->send(dataBody, sizeBody, dataHeader, sizeHeader);
+            throw std::out_of_range("Client not found");
         }
-        catch (const std::exception& e)
+        else
         {
-            m_epoll->modifyDescriptor(fd, EPOLLIN | EPOLLOUT);
+            try
+            {
+                client->send(dataBody, sizeBody, dataHeader, sizeHeader);
+            }
+            catch (const std::exception&)
+            {
+                m_epoll->modifyDescriptor(fd, EPOLLIN | EPOLLOUT);
+            }
         }
     }
 };
