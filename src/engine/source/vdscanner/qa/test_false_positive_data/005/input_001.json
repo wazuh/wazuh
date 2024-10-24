@@ -1,0 +1,39 @@
+{
+  "type": "packagelist",
+  "agent": {
+    "id": "001"
+  },
+  "packages": [
+    {
+      "scan_time": "2024/10/10 15:00:00",
+      "format": "win",
+      "name": "Microsoft Exchange Server 2019 Cumulative Update 14",
+      "priority": "extra",
+      "size": 255701,
+      "vendor": "Microsoft Corporation",
+      "install_time": " ",
+      "version": "15.2.1544.11",
+      "architecture": "x86_64",
+      "multiarch": null,
+      "source": " ",
+      "description": "Microsoft Exchange Server 2019",
+      "location": "C:\\Program Files\\Microsoft\\Exchange Server\\",
+      "checksum": "c4b71764ef99e7002f3132852a84a5c1e1b25fcc",
+      "item_id": "c8183361f75b00842eee4088f81802023cc5f571"
+    }
+  ],
+  "hotfixes": [],
+  "os": {
+    "architecture": "x86_64",
+    "checksum": "1713967856394802400",
+    "hostname": "DESKTOP-EQ4F57D",
+    "major_version": "10",
+    "minor_version": "0",
+    "build": "19045.4291",
+    "name": "Microsoft Windows 10 Pro",
+    "display_version": "22H2",
+    "platform": "windows",
+    "version": "10.0.19045.4291",
+    "scan_time": "2024/04/24 14:00:00"
+  }
+}
