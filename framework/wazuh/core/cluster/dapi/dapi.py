@@ -100,7 +100,7 @@ class DistributedAPI:
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
-            self.basic_services = ('wazuh-clusterd',)
+            self.basic_services = ('wazuh-server',)
         else:
             self.basic_services = basic_services
 

@@ -256,7 +256,7 @@ def get_manager_status(cache=False) -> typing.Dict:
     except (PermissionError, FileNotFoundError) as e:
         raise WazuhInternalError(1913, extra_message=str(e))
 
-    processes = ['wazuh-clusterd', 'wazuh-engined', 'wazuh-apid', 'wazuh-comms-apid']
+    processes = ['wazuh-server', 'wazuh-engined', 'wazuh-apid', 'wazuh-comms-apid']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
     for process in processes:
@@ -292,7 +292,7 @@ def get_cluster_status() -> typing.Dict:
         Cluster status.
     """
     try:
-        cluster_status = {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
+        cluster_status = {"running": "yes" if get_manager_status()['wazuh-server'] == 'running' else "no"}
     except WazuhInternalError:
         cluster_status = {"running": "no"}
 
