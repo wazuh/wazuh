@@ -26,7 +26,9 @@
 #include <string>
 #include <vector>
 
-constexpr auto DATABASE_PATH {"/var/lib/wazuh-server/vd/feed"};
+const std::string DATABASE_BASE_PATH {"/var/lib/wazuh-server/"};
+const std::string DATABASE_PATH {DATABASE_BASE_PATH + "vd/feed"};
+
 constexpr auto OFFSET_TRANSACTION_SIZE {1000};
 constexpr auto EMPTY_KEY {""};
 constexpr auto TRANSLATIONS_COLUMN {"translation"};
