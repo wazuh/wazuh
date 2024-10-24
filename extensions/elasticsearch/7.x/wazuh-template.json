@@ -2740,9 +2740,6 @@
               "rule_description": {
                 "type": "keyword"
               },
-              "published_date": {
-                "type": "date"
-              },
               "tags": {
                 "type": "keyword"
               }
