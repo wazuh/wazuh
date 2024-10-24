@@ -454,7 +454,7 @@ function main() {
     done
 
     if [ ${VERBOSE} = "yes" ]; then
-        set -exf
+        set -ex
     fi
 
     testdep
