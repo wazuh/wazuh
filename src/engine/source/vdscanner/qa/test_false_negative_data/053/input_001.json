@@ -1,0 +1,40 @@
+{
+  "type": "packagelist",
+  "agent": {
+    "id": "053"
+  },
+  "packages": [
+    {
+      "source": "linux-signed-hwe-5.04",
+      "name": "linux-image-5.04.0-124-generic",
+      "vendor": "Canonical Kernel Team <kernel-team@lists.ubuntu.com>",
+      "description": "Signed kernel image generic",
+      "size": 11334,
+      "location": " ",
+      "format": "deb",
+      "priority": "optional",
+      "architecture": "amd64",
+      "section": "kernel",
+      "install_time": " ",
+      "version": "5.4.0-170.193",
+      "agent_id": "003"
+    }
+  ],
+  "hotfixes": [],
+  "os": {
+    "architecture": "x86_64",
+    "checksum": "1691178971959743855",
+    "hostname": "Ubuntu",
+    "codename": "focal",
+    "major_version": "20",
+    "minor_version": "04",
+    "name": "Ubuntu",
+    "patch": "1",
+    "platform": "ubuntu",
+    "version": "20.04.1",
+    "kernel_release": "5.4.0-155-generic",
+    "scan_time": "2023/08/04 19:56:11",
+    "kernel_name": "Linux",
+    "kernel_version": "#172-Ubuntu SMP Fri Jul 7 16:10:02 UTC 2023"
+  }
+}
