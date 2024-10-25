@@ -32,7 +32,7 @@ constexpr auto ENGINE_SRV_API_TIMEOUT_ENV = "WZE_API_TIMEOUT";
 
 constexpr auto ENGINE_SRV_SOCK = "/run/wazuh-server/engine.socket";
 
-constexpr auto ENGINE_INDEXER_CONNECTOR_QUEUE = "/var/lib/wazuh-server/indexer-connector";
+constexpr auto ENGINE_INDEXER_CONNECTOR_QUEUE = "/var/lib/wazuh-server/indexer-connector/";
 
 // Store module
 constexpr auto ENGINE_DEFAULT_POLICY = "policy/wazuh/0";
