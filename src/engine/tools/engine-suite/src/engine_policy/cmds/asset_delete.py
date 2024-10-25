@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 from shared.default_settings import Constants
 
@@ -27,12 +27,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error removing asset: {error}')
+        sys.exit(f'Error removing asset: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, epolicy.AssetDelete_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error removing asset: {parsed_response.error}')
+        sys.exit(f'Error removing asset: {parsed_response.error}')
 
     if parsed_response.warning != '':
         print(f'Warning: {parsed_response.warning}')
