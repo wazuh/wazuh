@@ -146,6 +146,14 @@ DWORD WINAPI wm_sys_main(void *arg) {
 #else
 void* wm_sys_main(wm_sys_t *sys) {
 #endif
+
+    if (sys->flags.running) {
+        // Already running
+        return 0;
+    }
+
+    sys->flags.running = true;
+
     w_cond_init(&sys_stop_condition, NULL);
     w_mutex_init(&sys_stop_mutex, NULL);
     w_mutex_init(&sys_reconnect_mutex, NULL);
@@ -270,10 +278,21 @@ void* wm_sys_main(wm_sys_t *sys) {
 }
 
 void wm_sys_destroy(wm_sys_t *data) {
+    w_cond_destroy(&sys_stop_condition);
+    w_mutex_destroy(&sys_stop_mutex);
+    w_mutex_destroy(&sys_reconnect_mutex);
+    
     free(data);
 }
 
 void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
+    if (!data->flags.running) {
+        // Already stopped
+        return;
+    }
+
+    data->flags.running = false;
+
     mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
     syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
@@ -285,10 +304,6 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
         w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
     }
     w_mutex_unlock(&sys_stop_mutex);
-
-    w_cond_destroy(&sys_stop_condition);
-    w_mutex_destroy(&sys_stop_mutex);
-    w_mutex_destroy(&sys_reconnect_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
