@@ -61,12 +61,13 @@ override_dh_install:
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/bin
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/run
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/log
 
 	cp -p $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)bin/
-
 	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)tmp/
 	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
 	cp -pr $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/
+	cp -pr $(INSTALLATION_DIR)var/log/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/log/
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
@@ -82,16 +83,13 @@ override_dh_fixperms:
 	dh_fixperms
 	# Folders
 	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server
-	chmod -R 750 $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
-	chmod -R 750 $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
-	chmod -R 750 $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
-
-	chmod 640 $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types/0
-	chmod 640 $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server/engine/store/schema/wazuh-asset/0
-	chmod 640 $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server/engine/store/schema/wazuh-policy/0
-	chmod 640 $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server/engine/store/schema/engine-schema/0
+	find $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 
 	# Binaries
 	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-engine

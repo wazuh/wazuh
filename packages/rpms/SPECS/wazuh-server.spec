@@ -78,12 +78,14 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}run/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/log
 
 cp -p %{_localstatedir}usr/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
 
 cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/
 cp -pr %{_localstatedir}var/lib/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/
+cp -pr %{_localstatedir}var/log/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/log/
 
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-server-rh.init
 install -m 0755 src/init/templates/wazuh-server-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-server
@@ -185,6 +187,11 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   fi
 fi
 
+chown -R root:wazuh %{_localstatedir}var/lib/wazuh-server
+find %{_localstatedir}var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+chown -R root:wazuh %{_localstatedir}var/log/wazuh-server
+find %{_localstatedir}var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
+
 %triggerin -- glibc
 
 %clean
@@ -197,22 +204,17 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/vd
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/tzdb
+%dir %attr(750, root, wazuh) %{_localstatedir}var/log/wazuh-server
 %{_localstatedir}var/lib/wazuh-server/engine/tzdb/*
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store
-%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema
-%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types
-%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-asset
-%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-policy
-%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/engine-schema
+%{_localstatedir}var/lib/wazuh-server/engine/store/*
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/kvdb
+%{_localstatedir}var/lib/wazuh-server/engine/kvdb/*
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/indexer-connector
 
 %attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-engine
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
-%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-logpar-types/0
-%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-asset/0
-%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/wazuh-policy/0
-%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store/schema/engine-schema/0
+%attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/engine_store_0.0.2_5.0.0.tar.gz
 
 %config(missingok) %{_initrddir}/wazuh-server
 /usr/lib/systemd/system/wazuh-server.service
