@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 from google.protobuf.json_format import MessageToDict
 
@@ -22,12 +22,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error getting policies: {error}')
+        sys.exit(f'Error getting policies: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, epolicy.PoliciesGet_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error getting policies: {parsed_response.error}')
+        sys.exit(f'Error getting policies: {parsed_response.error}')
 
     # Message to dic
     data : str = dict_to_yml(response['data'])
