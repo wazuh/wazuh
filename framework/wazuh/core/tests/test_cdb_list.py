@@ -13,7 +13,7 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import common
         from wazuh.core.cdb_list import check_path, get_list_from_file, iterate_lists, \
-            split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths
+            validate_cdb_list, create_list_file, delete_list, get_filenames_paths
         from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
 
@@ -98,40 +98,6 @@ def test_iterate_lists(only_names, path):
     for entry in result:
         for field in required_fields:
             assert field in entry
-
-
-@pytest.mark.parametrize('line, expected_key, expected_value', [
-    ('"example:0":value0', 'example:0', 'value0'),
-    ('"example:1":value:1', 'example:1', 'value:1'),
-    ('"example:2":"value:2"', 'example:2', 'value:2'),
-    ('example3:"value:3"', 'example3', 'value:3'),
-    ('"example:4":a"value:4"', None, None),
-    ('"example:5":"value:5"a', None, None),
-    ('a"example:6":"value:6"', None, None),
-    ('a"example:7":value7', None, None),
-    ('"example:8"a:value8', None, None),
-    ('example9:a"value:9"', None, None),
-    ('example10:"value:10"a', None, None)
-])
-def test_split_key_value_with_quotes(line, expected_key, expected_value):
-    """Test `split_key_value_with_quotes` functionality.
-
-    Parameters
-    ----------
-    line : str
-        Line to be split.
-    expected_key : str
-        Expected key of the CDB list line.
-    expected_value : str
-        Expected value of the CDB list line.
-    """
-    if expected_key and expected_value:
-        key, value = split_key_value_with_quotes(line)
-        assert key == expected_key and value == expected_value
-    else:
-        with pytest.raises(WazuhError) as e:
-            split_key_value_with_quotes(line)
-        assert e.value.code == 1800
 
 
 @pytest.mark.parametrize('raw', [
