@@ -1,42 +1,42 @@
 import sys
 from typing import List
 
-from wazuh.core.batcher.mux_demux import Message
+from wazuh.core.batcher.mux_demux import Item
 
 
 class Buffer:
-    """Manage the buffer for batching messages.
+    """Manage the buffer for batching items.
 
     Parameters
     ----------
     max_elements : int
-        Maximum number of messages in the buffer.
+        Maximum number of items in the buffer.
     max_size : int
         Maximum size of the buffer in bytes.
     """
     def __init__(self, max_elements: int, max_size: int):
         self.max_elements = max_elements
         self.max_size = max_size
-        self._buffer: List[Message] = []
+        self._buffer: List[Item] = []
 
-    def add_message(self, msg: Message):
-        """Add a message to the buffer.
+    def add_item(self, item: Item):
+        """Add an item to the buffer.
 
         Parameters
         ----------
-        msg : Message
-            Message to add to buffer.
+        item : Item
+            Item to add to buffer.
 
         Returns
         -------
         bool
-            `True` if the message was successfully added to the buffer, `False` if adding
-            the message would exceed the buffer's limits.
+            `True` if the item was successfully added to the buffer, `False` if adding
+            the item would exceed the buffer's limits.
         """
         if self.check_count_limit() or self.check_size_limit():
             return False
 
-        self._buffer.append(msg)
+        self._buffer.append(item)
         return True
 
     def get_length(self) -> int:
@@ -45,17 +45,17 @@ class Buffer:
         Returns
         -------
         int
-            Number of messages currently in the buffer.
+            Number of items currently in the buffer.
         """
         return len(self._buffer)
 
     def check_count_limit(self) -> bool:
-        """Check if the buffer has reached the maximum number of messages.
+        """Check if the buffer has reached the maximum number of items.
 
         Returns
         -------
         bool
-            True if the buffer has reached the maximum number of messages, False otherwise.
+            True if the buffer has reached the maximum number of items, False otherwise.
         """
         return self.get_length() >= self.max_elements
 
@@ -67,16 +67,16 @@ class Buffer:
         bool
             True if the buffer has reached the maximum size, False otherwise.
         """
-        total_size = sum(sys.getsizeof(msg.msg) for msg in self._buffer)
+        total_size = sum(sys.getsizeof(item.content) for item in self._buffer)
         return total_size >= self.max_size
 
-    def copy(self) -> List[Message]:
+    def copy(self) -> List[Item]:
         """Return a copy of the buffer.
 
         Returns
         -------
-        List[Message]
-            Copy of the list of messages in buffer.
+        List[Item]
+            Copy of the list of items in buffer.
         """
         return self._buffer.copy()
 
