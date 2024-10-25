@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 from shared.dumpers import dict_to_yml
 
@@ -21,12 +21,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error getting EPS status: {error}')
+        sys.exit(f'Error getting EPS status: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, erouter.EpsGet_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error getting EPS status: {parsed_response.error}')
+        sys.exit(f'Error getting EPS status: {parsed_response.error}')
 
     data = dict_to_yml(response)
     print(data)
