@@ -1,7 +1,11 @@
+from dataclasses import asdict
+from httpx import RequestError
 from typing import List
 
-from wazuh.core.engine.base import BaseModule
+from wazuh.core.engine.base import APPLICATION_JSON, BaseModule
+from wazuh.core.engine.models.base import ErrorResponse
 from wazuh.core.engine.models.events import StatelessEvent
+from wazuh.core.exception import WazuhEngineError
 
 
 class EventsModule(BaseModule):
@@ -17,4 +21,19 @@ class EventsModule(BaseModule):
         events : List[StatelessEvent]
             Events list.
         """
-        # TODO(25121): Send events to the engine once the API endpoint is available.
+        try:
+            for event in events:
+                response = await self._client.post(
+                    url=f'{self.API_URL}/{self.MODULE}/stateless',
+                    json=asdict(event),
+                    headers={
+                        'Accept': APPLICATION_JSON,
+                        'Content-Type': APPLICATION_JSON,
+                    }
+                )
+
+                if response.status_code != 200:
+                    return ErrorResponse(**response.json())
+
+        except RequestError as exc:
+            raise WazuhEngineError(2803, extra_message=str(exc))
