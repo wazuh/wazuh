@@ -222,6 +222,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 
 #TODO isolate rxcpp
 target_link_libraries(main base cmds api CLI11::CLI11)
+target_link_options(main PRIVATE -static-libgcc -static-libstdc++)
 
 # Build benchmark
 if(ENGINE_BUILD_BENCHMARK)
