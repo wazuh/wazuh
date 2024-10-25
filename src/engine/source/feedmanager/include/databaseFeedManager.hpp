@@ -12,21 +12,31 @@
 #ifndef _DATABASE_FEED_MANAGER_HPP
 #define _DATABASE_FEED_MANAGER_HPP
 
+#include <functional>
+#include <memory>
+#include <regex>
+#include <shared_mutex>
+#include <string>
+#include <vector>
+
+#include <nlohmann/json.hpp>
+
 #include "base/lruCache.hpp"
 #include "base/utils/rocksDBWrapper.hpp"
 #include "packageTranslation_generated.h"
 #include "vulnerabilityCandidate_generated.h"
 #include "vulnerabilityDescription_generated.h"
 #include "vulnerabilityRemediations_generated.h"
-#include <functional>
-#include <memory>
-#include <nlohmann/json.hpp>
-#include <regex>
-#include <shared_mutex>
-#include <string>
-#include <vector>
+
+constexpr auto COMPRESSED_DB_PATH {"/tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz"};
+constexpr auto TAR_DB_FILE {"/tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar"};
 
 constexpr auto DATABASE_PATH {"/var/lib/wazuh-server/vd/feed"};
+constexpr auto VD_DATABASE_PATH {"/var/lib/queue/vd"};
+constexpr auto DECOMPRESSED_DB_PATH {"/var/lib"};
+constexpr auto LEGACY_DB_PATH {"/var/lib/queue"};
+constexpr auto CURRENT_DB_PATH {"/var/lib/wazuh-server"};
+
 constexpr auto OFFSET_TRANSACTION_SIZE {1000};
 constexpr auto EMPTY_KEY {""};
 constexpr auto TRANSLATIONS_COLUMN {"translation"};
