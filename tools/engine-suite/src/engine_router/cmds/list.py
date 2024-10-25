@@ -1,6 +1,5 @@
 import sys
 from google.protobuf.json_format import ParseDict
-from shared.default_settings import Constants
 from shared.dumpers import dict_to_yml
 
 from api_communication.client import APIClient
