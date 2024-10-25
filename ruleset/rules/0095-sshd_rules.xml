@@ -147,7 +147,7 @@
 
   <rule id="5716" level="5">
     <if_sid>5700</if_sid>
-    <match>^Failed|^error: PAM: Authentication</match>
+    <match>^Failed|^error: PAM: Authentication|Connection closed by authenticating user</match>
     <description>sshd: authentication failed.</description>
     <mitre>
       <id>T1110</id>
@@ -198,7 +198,7 @@
 
   <rule id="5722" level="0">
     <if_sid>5700</if_sid>
-    <match>Connection closed</match>
+    <match>Connection closed by \d+.\d+.\d+.\d+</match>
     <description>sshd: ssh connection closed.</description>
     <group>gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
