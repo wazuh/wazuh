@@ -1434,7 +1434,7 @@ components:
         id:
           description: "Agent id"
           type: string
-          format: uuid7
+          format: uuid4
         name:
           description: "Agent name"
           type: string
@@ -1551,7 +1551,7 @@ components:
     AgentID:
       type: string
       description: "Agent ID"
-      format: uuid7
+      format: uuid4
 
     AgentIDListAll:
       type: string
