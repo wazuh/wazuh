@@ -29,6 +29,8 @@
 #include <utility>
 #include <vector>
 
+constexpr auto BATCH_SIZE = 10000;
+
 namespace Utils
 {
     class RocksDBTransaction;
@@ -517,19 +519,39 @@ namespace Utils
 
             while (it != m_columnsInstances.end())
             {
+                rocksdb::WriteOptions writeOptions;
                 rocksdb::WriteBatch batch;
                 std::unique_ptr<rocksdb::Iterator> itColumn(m_db->NewIterator(rocksdb::ReadOptions(), it->handle()));
+                size_t currentBatchSize = 0;
 
                 itColumn->SeekToFirst();
                 while (itColumn->Valid())
                 {
                     batch.Delete(it->handle(), itColumn->key());
+                    currentBatchSize++;
+
+                    if (currentBatchSize >= BATCH_SIZE)
+                    {
+                        auto status = m_db->Write(writeOptions, &batch);
+                        if (!status.ok())
+                        {
+                            throw std::runtime_error("Error writing batch: " + status.ToString());
+                        }
+
+                        batch.Clear();
+                        currentBatchSize = 0;
+                    }
+
                     itColumn->Next();
                 }
 
-                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+                if (currentBatchSize > 0)
                 {
-                    throw std::runtime_error("Error deleting data: " + status.ToString());
+                    auto status = m_db->Write(writeOptions, &batch);
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Error writing batch: " + status.ToString());
+                    }
                 }
 
                 ++it;
