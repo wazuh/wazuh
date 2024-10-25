@@ -55,7 +55,7 @@ checks:
       - mitre_mitigations: ["M1050"]
     condition: all
     rules:
-      - "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found"
+      - "c:modprobe -n -v squashfs -> r:install /bin/false|install /bin/true|Module squashfs not found"
       - "not c:lsmod -> r:squashfs"
       - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*squashfs'
 
@@ -81,7 +81,7 @@ checks:
       - mitre_mitigations: ["M1050"]
     condition: all
     rules:
-      - "c:modprobe -n -v udf -> r:install /bin/false|Module udf not found"
+      - "c:modprobe -n -v udf -> r:install /bin/false|install /bin/true|Module udf not found"
       - "not c:lsmod -> r:udf"
       - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*udf'
 
