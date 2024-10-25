@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 from shared.default_settings import Constants
 from shared.dumpers import dict_to_yml
@@ -26,23 +26,23 @@ def run(args):
     if args['priority'] is not None:
         prior: int = args['priority']
         if prior < 0:
-            os.sys.exit(f'Priority must be a positive integer')
+            sys.exit(f'Priority must be a positive integer')
         valid_update = True
         request.priority = prior
 
     # Check if a valid update was provided
     if not valid_update:
-        os.sys.exit(f'No data was provided to update the route')
+        sys.exit(f'No data was provided to update the route')
 
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error updating route: {error}')
+        sys.exit(f'Error updating route: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, engine.GenericStatus_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error updating route: {parsed_response.error}')
+        sys.exit(f'Error updating route: {parsed_response.error}')
 
     return 0
 

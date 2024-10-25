@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 from shared.default_settings import Constants
 from shared.dumpers import dict_to_yml
@@ -24,12 +24,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error reloading route: {error}')
+        sys.exit(f'Error reloading route: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, engine.GenericStatus_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error reloading route: {parsed_response.error}')
+        sys.exit(f'Error reloading route: {parsed_response.error}')
 
     return 0
 

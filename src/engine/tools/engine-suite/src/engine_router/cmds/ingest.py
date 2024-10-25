@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 
 from api_communication.client import APIClient
@@ -22,12 +22,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error queueing event: {error}')
+        sys.exit(f'Error queueing event: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, engine.GenericStatus_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error queueing event: {error}')
+        sys.exit(f'Error queueing event: {error}')
 
     return 0
 
