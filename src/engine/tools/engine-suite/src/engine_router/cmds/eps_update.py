@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 
 from api_communication.client import APIClient
@@ -10,10 +10,10 @@ def run(args):
 
     # Get the params
     if args['refresh-interval'] < 0:
-        os.sys.exit('The refresh interval must be greater than 0.')
+        sys.exit('The refresh interval must be greater than 0.')
 
     if args['events-per-second'] < 0:
-        os.sys.exit('The events per second must be greater than 0.')
+        sys.exit('The events per second must be greater than 0.')
 
     api_socket: str = args['api_socket']
     eps: int = args['events-per-second']
@@ -30,12 +30,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error updating EPS: {error}')
+        sys.exit(f'Error updating EPS: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, engine.GenericStatus_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error updating EPS: {parsed_response.error}')
+        sys.exit(f'Error updating EPS: {parsed_response.error}')
 
     return 0
 
