@@ -9,8 +9,12 @@
  * Foundation.
  */
 
-#include "databaseFeedManager.hpp"
+#include <filesystem>
+
 #include "base/logging.hpp"
+#include "base/utils/archiveHelper.hpp"
+#include "base/utils/xzHelper.hpp"
+#include "databaseFeedManager.hpp"
 #include "eventDecoder.hpp"
 #include "storeModel.hpp"
 
@@ -19,7 +23,48 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
 {
     try
     {
-        LOG_INFO("Starting database file decompression.");
+        if (std::filesystem::exists(COMPRESSED_DB_PATH))
+        {
+            LOG_INFO("Starting database file decompression.");
+
+            if (std::filesystem::exists(TAR_DB_FILE))
+            {
+                LOG_DEBUG("Removing {} file before decompression.", TAR_DB_FILE);
+                std::filesystem::remove(TAR_DB_FILE);
+            }
+
+            if (std::filesystem::exists(LEGACY_DB_PATH))
+            {
+                LOG_DEBUG("Removing existent {} folder.", LEGACY_DB_PATH);
+                std::filesystem::remove_all(LEGACY_DB_PATH);
+            }
+
+            if (std::filesystem::exists(CURRENT_DB_PATH))
+            {
+                LOG_DEBUG("Removing existent {} folder.", CURRENT_DB_PATH);
+                std::filesystem::remove_all(CURRENT_DB_PATH);
+            }
+
+            LOG_DEBUG("Starting XZ file decompression");
+            base::utils::XzHelper(std::filesystem::path(COMPRESSED_DB_PATH), std::filesystem::path(TAR_DB_FILE))
+                .decompress();
+
+            LOG_DEBUG("Finishing XZ file decompression. Removing {}.", COMPRESSED_DB_PATH);
+            std::filesystem::remove(COMPRESSED_DB_PATH);
+
+            // Define folders to extract
+            std::vector<std::string> extractOnly;
+            extractOnly.emplace_back(VD_DATABASE_PATH);
+
+            LOG_DEBUG("Starting TAR file decompression.");
+            base::utils::ArchiveHelper::decompress(TAR_DB_FILE, false, DECOMPRESSED_DB_PATH, extractOnly);
+
+            LOG_DEBUG("Finishing TAR file decompression. Removing {}.", TAR_DB_FILE);
+            std::filesystem::remove(TAR_DB_FILE);
+
+            std::filesystem::rename(LEGACY_DB_PATH, CURRENT_DB_PATH);
+        }
+
         m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(DATABASE_PATH, false);
 
         // Try to load global maps from the database, if it fails we throw an exception to force the download of

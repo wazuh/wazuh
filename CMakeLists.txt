@@ -127,7 +127,11 @@ configure_tzdb()
 # Dependencies
 ####################################################################################################
 function(find_and_create_imported_target package_name target_name)
-    find_package(${package_name} CONFIG REQUIRED)
+    if (${package_name} STREQUAL "LibArchive" )
+        find_package(${package_name} REQUIRED)
+    else()
+        find_package(${package_name} CONFIG REQUIRED)
+    endif()
     if (${package_name}_FOUND)
         if (NOT TARGET ${target_name})
             add_library(${target_name} INTERFACE IMPORTED)
@@ -183,6 +187,9 @@ find_and_create_imported_target("httplib" "httplib::httplib")
 
 find_and_create_imported_target("date" "date::date")
 find_and_create_imported_target("date" "date::date-tz")
+
+find_and_create_imported_target("liblzma" "liblzma::liblzma")
+find_and_create_imported_target("LibArchive" "LibArchive::LibArchive")
 
 ####################################################################################################
 # Targets
