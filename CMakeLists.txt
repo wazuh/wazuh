@@ -222,6 +222,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 
 #TODO isolate rxcpp
 target_link_libraries(main base cmds api CLI11::CLI11)
+# If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
+if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
+    target_link_libraries(main -static-libgcc -static-libstdc++)
+endif()
 
 # Build benchmark
 if(ENGINE_BUILD_BENCHMARK)
