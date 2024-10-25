@@ -139,6 +139,12 @@ public:
      *
      */
     MOCK_METHOD(const nlohmann::json&, cnaMappings, (), ());
+
+    /**
+     * @brief Mock method for vendorsMap.
+     *
+     */
+    MOCK_METHOD(const nlohmann::json&, vendorsMap, (), ());
 };
 
 #endif // _MOCK_DATABASEFEEDMANAGER_HPP

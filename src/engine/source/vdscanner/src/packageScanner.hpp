@@ -22,7 +22,6 @@
 #include <memory>
 #include <variant>
 
-auto constexpr DEFAULT_CNA {"nvd"};
 auto constexpr L1_CACHE_SIZE {2048};
 
 /**
@@ -126,9 +125,10 @@ private:
      * @brief Define what CNA will be used to read the data.
      *
      * @param ctx Scan context.
-     * @return std::string CNA name.
+     * @return std::pair<std::string, std::string> CNA pair.
+     *
      */
-    std::string getCNA(std::shared_ptr<TScanContext> ctx)
+    std::pair<std::string, std::string> getCNA(std::shared_ptr<TScanContext> ctx)
     {
         auto cnaName {m_databaseFeedManager->getCnaNameByFormat(ctx->packageFormat().data())};
 
@@ -145,7 +145,7 @@ private:
                                                                           ctx->osPlatform().data());
                     if (cnaName.empty())
                     {
-                        return DEFAULT_CNA;
+                        return {DEFAULT_CNA, DEFAULT_CNA};
                     }
                 }
             }
@@ -190,7 +190,7 @@ private:
 
         if (const auto it = cnaMapping.find(cnaName); it == cnaMapping.end())
         {
-            return cnaName;
+            return {cnaName, cnaName};
         }
         else
         {
@@ -200,7 +200,7 @@ private:
                 base,
                 "$(MAJOR_VERSION)",
                 majorVersionEquivalence(ctx->osPlatform().data(), ctx->osMajorVersion().data()));
-            return base;
+            return {cnaName, base};
         }
     }
 
@@ -609,7 +609,8 @@ public:
             }
         };
 
-        const auto CNAValue = getCNA(data);
+        data->m_vulnerabilitySource = getCNA(data);
+        const auto& CNAValue = data->m_vulnerabilitySource.second;
 
         try
         {
