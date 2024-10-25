@@ -1,6 +1,0 @@
-[
-    "No translation exists for package 'wget' on platform 'darwin'. Using provided package data.",
-    "Initiating a vulnerability scan for package 'wget' (pkg) ( ) with CVE Numbering Authorities (CNA) 'homebrew' on Agent '' (ID: '001', Version: '').",
-    "Failed to scan package: 'wget', CVE Numbering Authorities (CNA): 'homebrew', Error: 'Couldn't find column family: 'homebrew''.",
-    "Vulnerability scan for package 'wget' on Agent '001' has completed."
-]

@@ -1,8 +1,0 @@
-[
-    "Translation for package 'Bitrix24 for Windows' on platform 'windows' found in Level 2 cache.",
-    "Initiating a vulnerability scan for package 'bitrix24' (win) (bitrix24) with CVE Numbering Authorities (CNA) 'nvd' on Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'bitrix24', is vulnerable to 'CVE-2020-13483'. Current version: '15.1.21.78' (less than '' or equal to '20.0.0'). - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'bitrix24', is vulnerable to 'CVE-2020-13484'. Current version: '15.1.21.78' (less than '' or equal to '20.0.975'). - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'bitrix24', is vulnerable to 'CVE-2022-27228'. Current version: '15.1.21.78' (less than '21.0.100' or equal to ''). - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'bitrix24', is vulnerable to 'CVE-2022-43959'. Current version: '15.1.21.78' (less than '' or equal to '22.200.200'). - Agent '' (ID: '001', Version: '')."
-]

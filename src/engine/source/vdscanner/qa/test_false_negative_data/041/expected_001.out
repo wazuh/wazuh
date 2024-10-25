@@ -1,5 +1,0 @@
-[
-    "Translation for package 'Postman x86_64 6.3.0' on platform 'windows' found in Level 2 cache.",
-    "Match found, the package 'postman', is vulnerable to 'CVE-2018-17215'. Current version: '6.3.0' (less than '' or equal to '6.3.0'). - Agent '' (ID: '041', Version: '').",
-    "The platform is not in the list for Package: postman, Version: 6.3.0, CVE: CVE-2024-23738, OS CPE: cpe:/o:microsoft:windows_10_22h2:10.0.19045:::::, OS code name:"
-]
