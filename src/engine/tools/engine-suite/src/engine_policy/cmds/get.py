@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 from shared.default_settings import Constants
 
@@ -25,12 +25,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error getting policy: {error}')
+        sys.exit(f'Error getting policy: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, epolicy.StoreGet_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error getting policy: {parsed_response.error}')
+        sys.exit(f'Error getting policy: {parsed_response.error}')
 
     print(parsed_response.data)
 
