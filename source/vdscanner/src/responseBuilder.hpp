@@ -126,7 +126,7 @@ public:
      * @param data Scan context.
      * @return std::shared_ptr<ScanContext> Abstract handler.
      */
-    std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> data) override
+    std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<ScanContext> data) override
     {
         LOG_DEBUG("Building event details for component type: {}", static_cast<int>(data->scannerType()));
 
@@ -144,6 +144,11 @@ public:
         }
 
         nlohmann::json dataElements = nlohmann::json::array();
+
+        const auto vulnerabilitySource = m_databaseFeedManager->vendorsMap()
+                                             .at("adp_descriptions")
+                                             .at(std::get<VulnerabilitySource::ADP_BASE>(data->m_vulnerabilitySource))
+                                             .at("adp");
 
         // For each element, we get the vulnerability descriptive information and build the event details.
         for (auto& [cve, json] : data->m_elements)
@@ -175,6 +180,7 @@ public:
                 json["score"]["base"] = base::utils::numeric::floatToDoubleRound(returnData.data->scoreBase(), 2);
                 json["score"]["version"] = returnData.data->scoreVersion()->str();
                 json["severity"] = base::utils::string::toSentenceCase(returnData.data->severity()->str());
+                json["source"] = vulnerabilitySource;
 
                 // Alert data
                 json["assigner"] = returnData.data->assignerShortName()->str();
