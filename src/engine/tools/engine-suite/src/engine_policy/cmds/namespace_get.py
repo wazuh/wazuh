@@ -1,4 +1,4 @@
-import os
+import sys
 from shared.dumpers import dict_to_yml
 from shared.default_settings import Constants
 from api_communication.client import APIClient
@@ -23,12 +23,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error creating policy: {error}')
+        sys.exit(f'Error creating policy: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, epolicy.NamespacesGet_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error creating policy: {parsed_response.error}')
+        sys.exit(f'Error creating policy: {parsed_response.error}')
 
     if len(response['data']):
         print(dict_to_yml(response['data']))
