@@ -1,4 +1,4 @@
-import os
+import sys
 from google.protobuf.json_format import ParseDict
 from shared.default_settings import Constants
 from shared.dumpers import dict_to_yml
@@ -22,12 +22,12 @@ def run(args):
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        os.sys.exit(f'Error getting route: {error}')
+        sys.exit(f'Error getting route: {error}')
 
     # Parse the response
     parsed_response = ParseDict(response, erouter.TableGet_Response())
     if parsed_response.status == engine.ERROR:
-        os.sys.exit(f'Error getting route: {parsed_response.error}')
+        sys.exit(f'Error getting route: {parsed_response.error}')
 
     # Print the response
     data: str = dict_to_yml(response['table'])
