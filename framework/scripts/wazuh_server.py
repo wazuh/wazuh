@@ -32,6 +32,7 @@ MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
 # Aux functions
 #
 
+
 def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
     """Set cluster logger.
 
@@ -47,9 +48,12 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
     WazuhLogger
         Cluster logger.
     """
-    cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
-                                                 debug_level=debug_mode,
-                                                 tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
+    cluster_logger = cluster_utils.ClusterLogger(
+        foreground_mode=foreground_mode,
+        log_path='logs/cluster.log',
+        debug_level=debug_mode,
+        tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
+    )
     cluster_logger.setup_logger()
     return cluster_logger
 
@@ -57,7 +61,8 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
 def print_version():
     """Print Wazuh metadata."""
     from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
-    print(f"\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}")
+
+    print(f'\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}')
 
 
 def exit_handler(signum, frame):
@@ -120,10 +125,12 @@ def start_daemons(foreground: bool, root: bool):
     """
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', 'start'],
-        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH] + \
-              (['-r'] if root else []) + (['-f'] if foreground else []),
-        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH] + \
-              (['-r'] if root else []) + (['-f'] if foreground else []),
+        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
+        + (['-r'] if root else [])
+        + (['-f'] if foreground else []),
+        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
+        + (['-r'] if root else [])
+        + (['-f'] if foreground else []),
     }
     for name, args in daemons.items():
         start_daemon(foreground, name, args)
@@ -185,15 +192,25 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
 
     cluster_utils.context_tag.set('Master')
 
-    my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
-                              configuration=cluster_config, logger=logger, cluster_items=cluster_items)
+    my_server = master.Master(
+        performance_test=args.performance_test,
+        concurrency_test=args.concurrency_test,
+        configuration=cluster_config,
+        logger=logger,
+        cluster_items=cluster_items,
+    )
     # Spawn pool processes
     if my_server.task_pool is not None:
         my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
 
-    my_local_server = local_server.LocalServerMaster(performance_test=args.performance_test, logger=logger,
-                                                     concurrency_test=args.concurrency_test, node=my_server,
-                                                     configuration=cluster_config, cluster_items=cluster_items)
+    my_local_server = local_server.LocalServerMaster(
+        performance_test=args.performance_test,
+        logger=logger,
+        concurrency_test=args.concurrency_test,
+        node=my_server,
+        configuration=cluster_config,
+        cluster_items=cluster_items,
+    )
     tasks = [my_server, my_local_server]
     if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
         tasks.append(HAPHelper)
@@ -220,6 +237,7 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     from concurrent.futures import ProcessPoolExecutor
 
     from wazuh.core.cluster import local_server, worker
+
     cluster_utils.context_tag.set('Worker')
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
@@ -230,25 +248,39 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
         main_logger.warning(
             "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
             "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
-            "Changing the file permissions to 777 will solve this issue.")
+            'Changing the file permissions to 777 will solve this issue.'
+        )
         main_logger.warning(
-            "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
+            'The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.'
+        )
         task_pool = None
 
     while True:
-        my_client = worker.Worker(configuration=cluster_config, performance_test=args.performance_test,
-                                  concurrency_test=args.concurrency_test, file=args.send_file, string=args.send_string,
-                                  logger=logger, cluster_items=cluster_items, task_pool=task_pool)
-        my_local_server = local_server.LocalServerWorker(performance_test=args.performance_test, logger=logger,
-                                                         concurrency_test=args.concurrency_test, node=my_client,
-                                                         configuration=cluster_config, cluster_items=cluster_items)
+        my_client = worker.Worker(
+            configuration=cluster_config,
+            performance_test=args.performance_test,
+            concurrency_test=args.concurrency_test,
+            file=args.send_file,
+            string=args.send_string,
+            logger=logger,
+            cluster_items=cluster_items,
+            task_pool=task_pool,
+        )
+        my_local_server = local_server.LocalServerWorker(
+            performance_test=args.performance_test,
+            logger=logger,
+            concurrency_test=args.concurrency_test,
+            node=my_client,
+            configuration=cluster_config,
+            cluster_items=cluster_items,
+        )
         # Spawn pool processes
         if my_client.task_pool is not None:
             my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
-            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
+            logging.info('Connection with server has been lost. Reconnecting in 10 seconds.')
             await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
 
 
@@ -262,9 +294,9 @@ def get_script_arguments() -> argparse.Namespace:
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-V', help="Print version", action='store_true', dest="version")
+    parser.add_argument('-V', help='Print version', action='store_true', dest='version')
     parser.add_argument(
-        '-d', help="Enable debug messages. Use twice to increase verbosity.", action='count', dest='debug_level'
+        '-d', help='Enable debug messages. Use twice to increase verbosity.', action='count', dest='debug_level'
     )
 
     subparsers = parser.add_subparsers(title='subcommands', help='Management operations.')
@@ -286,17 +318,17 @@ def get_script_arguments() -> argparse.Namespace:
     # implemented in worker nodes.
     start_parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
     ####################################################################################################################
-    start_parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
-    start_parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
+    start_parser.add_argument('-f', help='Run in foreground', action='store_true', dest='foreground')
+    start_parser.add_argument('-r', help='Run as root', action='store_true', dest='root')
     start_parser.add_argument(
         '-c',
-        help="Configuration file to use",
+        help='Configuration file to use',
         type=str,
         metavar='config',
         dest='config_file',
-        default=common.OSSEC_CONF
+        default=common.OSSEC_CONF,
     )
-    start_parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
+    start_parser.add_argument('-t', help='Test configuration', action='store_true', dest='test_config')
 
     start_parser.set_defaults(func=main)
 
@@ -352,7 +384,7 @@ def main():
     cluster_pid = os.getpid()
     pyDaemonModule.create_pid(SERVER_DAEMON_NAME, cluster_pid)
     if args.foreground:
-        print(f"Starting cluster in foreground (pid: {cluster_pid})")
+        print(f'Starting cluster in foreground (pid: {cluster_pid})')
 
     if cluster_configuration['node_type'] == 'master':
         main_function = master_main
@@ -369,12 +401,11 @@ def main():
 
         asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
     except KeyboardInterrupt:
-        main_logger.info("SIGINT received. Shutting down...")
+        main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:
-        main_logger.error("Directory '/tmp' needs read, write & execution "
-                          "permission for 'wazuh' user")
+        main_logger.error("Directory '/tmp' needs read, write & execution " "permission for 'wazuh' user")
     except Exception as e:
-        main_logger.error(f"Unhandled exception: {e}")
+        main_logger.error(f'Unhandled exception: {e}')
     finally:
         shutdown_cluster(cluster_pid)
 
@@ -416,7 +447,8 @@ if __name__ == '__main__':
     cluster_items = cluster_utils.get_cluster_items()
     original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)
 
-    args = get_script_arguments().parse_args()
+    parser = get_script_arguments()
+    args = parser.parse_args()
     if args.version:
         print_version()
         sys.exit(0)
@@ -429,4 +461,7 @@ if __name__ == '__main__':
 
     main_logger = set_logging(foreground_mode=getattr(args, 'foreground', False), debug_mode=debug_mode_)
 
-    args.func()
+    if hasattr(args, 'func'):
+        args.func()
+    else:
+        parser.print_help()
