@@ -37,6 +37,12 @@ class TResponseBuilder final : public utils::patterns::AbstractHandler<std::shar
 private:
     std::shared_ptr<TDatabaseFeedManager> m_databaseFeedManager;
 
+    void buildUnderEvaluation(nlohmann::json& json, const NSVulnerabilityScanner::VulnerabilityDescription* data)
+    {
+        json["under_evaluation"] = base::utils::numeric::floatToDoubleRound(data->scoreBase(), 2) == 0
+                                   || data->classification()->str().empty() || data->severity()->str().empty();
+    }
+
     void buildScore(const std::string& cveId,
                     nlohmann::json& json,
                     const NSVulnerabilityScanner::VulnerabilityDescription* data)
@@ -198,6 +204,7 @@ public:
                 }
 
                 buildScore(cve, json, returnData.data);
+                buildUnderEvaluation(json, returnData.data);
 
                 data->moveResponseData(json);
             }
