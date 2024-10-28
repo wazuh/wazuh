@@ -9,6 +9,7 @@ from wazuh.core.indexer.commands import CommandsManager
 
 FIM_INDEX = 'wazuh-states-fim'
 INVENTORY_INDEX = 'stateful-inventory'
+INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
 SCA_INDEX = 'stateful-sca'
 VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
 
@@ -124,6 +125,24 @@ class InventoryEvent(BaseModel):
             Index name.
         """
         return INVENTORY_INDEX
+
+
+@dataclass
+class InventorySystemEvent(BaseModel):
+    """Inventory system events data model."""
+    agent: EventAgent
+    scan_time: datetime
+    host: Host
+
+    def get_index_name(self) -> str:
+        """Get the index name for the event type.
+        
+        Returns
+        -------
+        str
+            Index name.
+        """
+        return INVENTORY_SYSTEM_INDEX
 
 
 @dataclass
