@@ -1435,8 +1435,6 @@ components:
           description: "Agent authentication key"
           type: string
           format: alphanumeric_symbols
-          minLength: 32
-          maxLength: 32
         groups:
           description: "Agent groups"
           type: string

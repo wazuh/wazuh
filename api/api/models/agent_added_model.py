@@ -5,11 +5,14 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from __future__ import absolute_import
-
 from datetime import date, datetime  # noqa: F401
 from typing import Dict, List  # noqa: F401
 
+from connexion import ProblemException
+
 from api.models.base_model_ import Body, Model
+
+KEY_LENGTH = 32
 
 
 class DisconnectedTime(Model):
@@ -152,6 +155,8 @@ class AgentAddedModel(Body):
         """
         :param key: Agent key
         """
+        if len(key) != 32:
+            raise ProblemException(status=400, title='Invalid key length', detail='The key must be 32 characters long')
         self._key = key
     
     @property
