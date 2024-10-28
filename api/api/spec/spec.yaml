@@ -1439,6 +1439,14 @@ components:
           description: "Agent groups"
           type: string
           format: group_names
+        ips:
+          description: "Agent IP addresses"
+          type: array
+          items:
+            type: string
+        os:
+          description: "Agent operating system"
+          type: string
       required:
       - id
       - name
@@ -7430,6 +7438,9 @@ paths:
               name: NewHost_2
               key: 7b8276c3bf96aff5709346d368f04fed
               groups: group1
+              ips:
+                - 127.0.0.1
+              os: Debian 12 "Bookworm"
       responses:
         '200':
           description: "Add an agent"

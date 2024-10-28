@@ -92,25 +92,39 @@ class AgentForce(Model):
 
 class AgentAddedModel(Body):
 
-    def __init__(self, id: str = None, name: str = None, key: str = None, groups: str = None):
+    def __init__(
+        self,
+        id: str = None,
+        name: str = None,
+        key: str = None,
+        groups: str = None,
+        ips: str = None,
+        os: str = None,
+    ):
         self.swagger_types = {
             'id': str,
             'name': str,
             'key': str,
-            'groups': str
+            'groups': str,
+            'ips': str,
+            'os': str,
         }
 
         self.attribute_map = {
             'id': 'id',
             'name': 'name',
             'key': 'key',
-            'groups': 'groups'
+            'groups': 'groups',
+            'ips': 'ips',
+            'os': 'os'
         }
 
         self._name = name
         self._id = id
         self._key = key
         self._groups = groups
+        self._ips = ips
+        self._os = os
 
     @property
     def id(self) -> str:
@@ -173,3 +187,33 @@ class AgentAddedModel(Body):
         :param groups: Agent groups
         """
         self._groups = groups
+
+    @property
+    def ips(self):
+        """
+        :return: Agent IP addresses
+        :rtype: str
+        """
+        return self._ips
+
+    @ips.setter
+    def ips(self, ips):
+        """
+        :param ip: Agent IP addresses
+        """
+        self._ips = ips
+
+    @property
+    def os(self):
+        """
+        :return: Agent operating system
+        :rtype: str
+        """
+        return self._os
+
+    @os.setter
+    def os(self, os):
+        """
+        :param os: Agent operating system
+        """
+        self._os = os
