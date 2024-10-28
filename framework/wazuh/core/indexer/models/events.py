@@ -11,7 +11,7 @@ FIM_INDEX = 'wazuh-states-fim'
 INVENTORY_PACKAGES_INDEX = 'wazuh-states-inventory-packages'
 INVENTORY_PROCESSES_INDEX = 'wazuh-states-inventory-processes'
 INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
-SCA_INDEX = 'stateful-sca'
+SCA_INDEX = 'wazuh-states-sca'
 VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
 
 
@@ -200,7 +200,7 @@ class InventorySystemEvent(BaseModel):
 @dataclass
 class SCAEvent(BaseModel):
     """SCA events data model."""
-    # TODO(25121): Update SCA event fields
+    # TODO(25121): Add SCA event fields once they are defined
 
     def get_index_name(self) -> str:
         """Get the index name for the event type.
