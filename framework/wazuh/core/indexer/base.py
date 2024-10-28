@@ -40,6 +40,7 @@ class IndexerKey(str, Enum):
     NOW = 'now'
     FILTER = 'filter'
     RESULT = 'result'
+    STATUS = 'status'
 
 
 class BaseIndex:
