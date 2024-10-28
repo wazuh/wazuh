@@ -7,6 +7,7 @@
     1. [Engine diff](#engine-diff)
     1. [Engine integration](#engine-integration)
     1. [Engine policy](#engine-policy)
+    1. [Engine router](#engine-router)
     1. [Engine test](#engine-test)
 3. [Installation](#installation)
 
@@ -24,6 +25,7 @@ The `engine-suite` python package contains various scripts to help developing co
 │       └── engine_diff
 │       └── engine_integration
 │       └── engine_policy
+│       └── engine_router
 │       └── engine_schema
 │       └── engine_test
 │       └── shared
@@ -78,6 +80,16 @@ The `engine-suite` python package contains various scripts to help developing co
     - **List and Get Policies**: Provides the ability to list and get details of policies.
     - **Creation of Policies**: Allows you to create new policies, specifying assets such as decoders, rules, integrations, etc.
     - **Deletion and Update**: Provides the ability to delete or update existing policies, providing flexibility in configuration management.
+
+## Engine router
+- **Route management**:
+    - **List and Get Routes**: Provides the ability to list and get details of routes.
+    - **Creation of Routes**: Allows you to create new routes, specifying assets such as decoders, rules, integrations, etc.
+    - **Deletion and Update**: Provides the ability to delete or update existing routes, providing flexibility in configuration management.
+- **EPS management**:
+    - **Set EPS Limit**: Allows you to set the EPS limit for routes, ensuring that the system does not exceed the specified limit.
+    - **Get EPS Limit**: Provides the ability to get the EPS limit for routes.
+    - **Enable/Disable EPS Limit**: Allows you to enable or disable the EPS limit for routes.
 
 ## Engine test
 
