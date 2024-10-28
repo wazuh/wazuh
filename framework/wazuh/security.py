@@ -66,7 +66,7 @@ def get_user_me(token: dict) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['security:read'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001]})
-def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+async def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
               sort_ascending: bool = True, search_text: str = None, select: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
               q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
@@ -123,7 +123,7 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABA
 
 
 @expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
-def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItemsWazuhResult:
+async def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItemsWazuhResult:
     """Enable/Disable the user's allow_run_as flag.
 
     Parameters
@@ -158,7 +158,7 @@ def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItem
 
 
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
-def create_user(username: str = None, password: str = None) -> AffectedItemsWazuhResult:
+async def create_user(username: str = None, password: str = None) -> AffectedItemsWazuhResult:
     """Create a new user.
 
     Parameters
@@ -195,7 +195,7 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None, current_user: str = None) -> AffectedItemsWazuhResult:
+async def update_user(user_id: str = None, password: str = None, current_user: str = None) -> AffectedItemsWazuhResult:
     """Update a specified user
 
     Parameters
@@ -251,7 +251,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
 
 @expose_resources(actions=['security:delete'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001, 5004, 5008]})
-def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
+async def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
     """Remove a specified list of users.
 
     Parameters
@@ -293,7 +293,7 @@ def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002]})
-def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+async def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
               select: str = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
               q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
@@ -354,7 +354,7 @@ def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABA
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008]})
-def remove_roles(role_ids: list) -> AffectedItemsWazuhResult:
+async def remove_roles(role_ids: list) -> AffectedItemsWazuhResult:
     """Remove a certain role from the system.
 
     Parameters
@@ -391,7 +391,7 @@ def remove_roles(role_ids: list) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_role(name: str = None) -> AffectedItemsWazuhResult:
+async def add_role(name: str = None) -> AffectedItemsWazuhResult:
     """Create a role in the system.
 
     Parameters
@@ -420,7 +420,7 @@ def add_role(name: str = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
-def update_role(role_id: str = None, name: str = None) -> AffectedItemsWazuhResult:
+async def update_role(role_id: str = None, name: str = None) -> AffectedItemsWazuhResult:
     """Update a role in the system.
 
     Parameters
@@ -465,7 +465,7 @@ def update_role(role_id: str = None, name: str = None) -> AffectedItemsWazuhResu
 
 @expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007]})
-def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+async def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
                  select: str = None, sort_ascending: bool = True, search_text: str = None,
                  complementary_search: bool = False, search_in_fields: list = None,
                  q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
@@ -526,7 +526,7 @@ def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE
 
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007, 4008]})
-def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
+async def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     """Remove policies from the system.
 
     Parameters
@@ -564,7 +564,7 @@ def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'],
                   post_proc_kwargs={'exclude_codes': [4006, 4009]})
-def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
+async def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
     """Create a policy in the system.
 
     Parameters
@@ -596,7 +596,7 @@ def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazuhResul
 
 
 @expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'])
-def update_policy(policy_id: str = None, name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
+async def update_policy(policy_id: str = None, name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
     """Update a policy in the system
 
     Parameters
@@ -644,7 +644,7 @@ def update_policy(policy_id: str = None, name: str = None, policy: dict = None) 
 
 @expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022]})
-def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+async def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
               select: str = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
               q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
@@ -705,7 +705,7 @@ def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABA
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_rule(name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
+async def add_rule(name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
     """Create a rule in the system.
 
     Parameters
@@ -737,7 +737,7 @@ def add_rule(name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022, 4008]})
-def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
+async def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
     """Remove a rule from the system.
 
     Parameters
@@ -774,7 +774,7 @@ def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['security:update'], resources=['rule:id:{rule_id}'])
-def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
+async def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
     """Update a rule from the system.
 
     Parameters
@@ -841,7 +841,7 @@ def get_username(user_id: str) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]})
-def set_user_role(user_id: list, role_ids: list, position: int = None) -> AffectedItemsWazuhResult:
+async def set_user_role(user_id: list, role_ids: list, position: int = None) -> AffectedItemsWazuhResult:
     """Create a relationship between a user and a role.
 
     Parameters
@@ -901,7 +901,7 @@ def set_user_role(user_id: list, role_ids: list, position: int = None) -> Affect
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4016, 4008]})
-def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhResult:
+async def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a user and a role.
 
     Parameters
@@ -952,7 +952,7 @@ def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]})
-def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> AffectedItemsWazuhResult:
+async def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> AffectedItemsWazuhResult:
     """Create a relationship between a role and one or more rules.
 
     Parameters
@@ -1002,7 +1002,7 @@ def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> Affecte
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4008, 4022, 4024]})
-def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhResult:
+async def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a role and one or more rules.
 
     Parameters
@@ -1056,7 +1056,7 @@ def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]})
-def set_role_policy(role_id: str, policy_ids: list, position: int = None) -> AffectedItemsWazuhResult:
+async def set_role_policy(role_id: str, policy_ids: list, position: int = None) -> AffectedItemsWazuhResult:
     """Create a relationship between a role and a policy.
 
     Parameters
@@ -1132,7 +1132,7 @@ def get_role(role_id: str) -> bool:
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007, 4008, 4010]})
-def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResult:
+async def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a role and a policy
 
     Parameters
@@ -1202,7 +1202,7 @@ def revoke_current_user_tokens() -> WazuhResult:
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': {
                       'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}})
-def wrapper_revoke_tokens() -> WazuhResult:
+async def wrapper_revoke_tokens() -> WazuhResult:
     """Revoke all tokens.
 
     Returns
@@ -1306,7 +1306,7 @@ def get_rbac_actions(endpoint: str = None) -> WazuhResult:
 
 
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
-def get_security_config() -> WazuhResult:
+async def get_security_config() -> WazuhResult:
     """Return current security configuration.
 
     Returns
@@ -1318,7 +1318,7 @@ def get_security_config() -> WazuhResult:
 
 
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
-def update_security_config(updated_config: dict = None) -> str:
+async def update_security_config(updated_config: dict = None) -> str:
     """Update or restore current security configuration.
 
     Update the shared configuration object "security_conf" with
