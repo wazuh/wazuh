@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from wazuh.core.indexer.models.commands import Result
 from wazuh.core.indexer.commands import CommandsManager
 
-FIM_INDEX = 'stateful-fim'
+FIM_INDEX = 'wazuh-states-fim'
 INVENTORY_INDEX = 'stateful-inventory'
 SCA_INDEX = 'stateful-sca'
 VULNERABILITY_INDEX = 'stateful-vulnerability'
@@ -19,6 +19,12 @@ class TaskResult:
     id: str
     result: str
     status: int
+
+
+class EventAgent:
+    """Agent data model in relation to events."""
+    id: str
+    groups: str
 
 
 @dataclass
@@ -58,6 +64,7 @@ class Registry:
 @dataclass
 class FIMEvent(BaseModel):
     """FIM events data model."""
+    agent: EventAgent
     file: File
     registry: Registry
 
@@ -143,8 +150,8 @@ class BuildInfo:
 
 
 @dataclass
-class EventAgent:
-    """Agent data model in relation to events."""
+class VulnerabilityEventAgent:
+    """Agent data model in relation to vulnerability events."""
     build: BuildInfo
     ephemeral_id: str
     id: str
@@ -201,7 +208,7 @@ class Wazuh:
 @dataclass
 class VulnerabilityEvent(BaseModel):
     """Vulnerability events data model."""
-    agent: EventAgent
+    agent: VulnerabilityEventAgent
     host: Host
     message: str
     package: Package
