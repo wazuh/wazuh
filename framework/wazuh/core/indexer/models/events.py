@@ -10,7 +10,7 @@ from wazuh.core.indexer.commands import CommandsManager
 FIM_INDEX = 'wazuh-states-fim'
 INVENTORY_INDEX = 'stateful-inventory'
 SCA_INDEX = 'stateful-sca'
-VULNERABILITY_INDEX = 'stateful-vulnerability'
+VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
 
 
 @dataclass
@@ -88,7 +88,6 @@ class OS:
     platform: str
     version: str
     type: str
-    family: str
 
 
 @dataclass
@@ -144,20 +143,19 @@ class SCAEvent(BaseModel):
 
 
 @dataclass
-class BuildInfo:
-    """Agent build information data model."""
-    original: str
-
-
-@dataclass
 class VulnerabilityEventAgent:
     """Agent data model in relation to vulnerability events."""
-    build: BuildInfo
-    ephemeral_id: str
     id: str
+    groups: str
     name: str
     type: str
     version: str
+
+
+@dataclass
+class VulnerabilityEventHost:
+    """Host data model in relation to vulnerability events."""
+    os: OS
 
 
 @dataclass
@@ -186,12 +184,6 @@ class Cluster:
 
 
 @dataclass
-class Manager:
-    """Wazuh manager data model."""
-    name: str
-
-
-@dataclass
 class Schema:
     """Wazuh schema data model."""
     version: str
@@ -201,18 +193,44 @@ class Schema:
 class Wazuh:
     """Wazuh instance information data model."""
     cluster: Cluster
-    manager: Manager
     schema: Schema
+
+
+@dataclass
+class Scanner:
+    """Scanner data model."""
+    source: str
+    vendor: str
+
+
+@dataclass
+class Score:
+    """Score data model."""
+    base: float
+    environmental: float
+    temporal: float
+    version: str
 
 
 @dataclass
 class VulnerabilityEvent(BaseModel):
     """Vulnerability events data model."""
     agent: VulnerabilityEventAgent
-    host: Host
-    message: str
+    host: VulnerabilityEventHost
     package: Package
-    tags: List[str]
+    scanner: Scanner
+    score: Score
+    category: str
+    classification: str
+    description: str
+    detected_at: datetime
+    enumeration: str
+    id: str
+    published_at: datetime
+    reference: str
+    report_id: str
+    severity: str
+    under_evaluation: bool
 
     def get_index_name(self) -> str:
         """Get the index name for the event type.
