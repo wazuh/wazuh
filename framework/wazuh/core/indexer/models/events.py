@@ -9,6 +9,7 @@ from wazuh.core.indexer.commands import CommandsManager
 
 FIM_INDEX = 'wazuh-states-fim'
 INVENTORY_PACKAGES_INDEX = 'wazuh-states-inventory-packages'
+INVENTORY_PROCESSES_INDEX = 'wazuh-states-inventory-processes'
 INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
 SCA_INDEX = 'stateful-sca'
 VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
@@ -100,17 +101,6 @@ class Host:
 
 
 @dataclass
-class ProcessHash:
-    md5: str
-
-
-@dataclass
-class Process:
-    """Process data model."""
-    hash: ProcessHash
-
-
-@dataclass
 class Package:
     """Package data model."""
     architecture: str
@@ -139,6 +129,54 @@ class InventoryPackageEvent(BaseModel):
             Index name.
         """
         return INVENTORY_PACKAGES_INDEX
+
+
+@dataclass
+class Parent:
+    """Process parent data model."""
+    pid: float
+
+
+@dataclass
+class ID:
+    """Process users and groups ID data model."""
+    id: str
+
+
+@dataclass
+class Process:
+    """Process data model."""
+    pid: float
+    name: str
+    parent: Parent
+    command_line: str
+    args: List[str]
+    user: ID
+    real_user: ID
+    saved_user: ID
+    group: ID
+    real_group: ID
+    saved_group: ID
+    start: datetime
+    thread: ID
+
+
+@dataclass
+class InventoryProcessEvent(BaseModel):
+    """Inventory process events data model."""
+    agent: EventAgent
+    scan_time: datetime
+    process: Process
+
+    def get_index_name(self) -> str:
+        """Get the index name for the event type.
+        
+        Returns
+        -------
+        str
+            Index name.
+        """
+        return INVENTORY_PROCESSES_INDEX
 
 
 @dataclass
@@ -294,4 +332,11 @@ class CommandResult(BaseModel):
 
 
 # Stateful event type
-StatefulEvent = Union[FIMEvent, InventoryPackageEvent, InventorySystemEvent, SCAEvent, VulnerabilityEvent]
+StatefulEvent = Union[
+    FIMEvent,
+    InventoryPackageEvent,
+    InventoryProcessEvent,
+    InventorySystemEvent,
+    SCAEvent,
+    VulnerabilityEvent
+]
