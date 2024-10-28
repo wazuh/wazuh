@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.9.2]
 
+### Manager
+
+#### Fixed
+
+- Fixed an unhandled exception during IPC event parsing. ([#26453](https://github.com/wazuh/wazuh/pull/26453))
+
 
 ## [v4.9.1]
 
