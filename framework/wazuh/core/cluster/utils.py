@@ -477,7 +477,7 @@ def process_spawn_sleep(child):
         Process child number.
     """
     pid = os.getpid()
-    # TODO: Use a parameter to set the child name.
+    # TODO: 26590 - Use a parameter to set the child name.
     pyDaemonModule.create_pid(f'wazuh-server_child_{child}', pid)
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
