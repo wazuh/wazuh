@@ -8,7 +8,7 @@ from wazuh.core.indexer.models.commands import Result
 from wazuh.core.indexer.commands import CommandsManager
 
 FIM_INDEX = 'wazuh-states-fim'
-INVENTORY_INDEX = 'stateful-inventory'
+INVENTORY_PACKAGES_INDEX = 'wazuh-states-inventory-packages'
 INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
 SCA_INDEX = 'stateful-sca'
 VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
@@ -111,10 +111,24 @@ class Process:
 
 
 @dataclass
-class InventoryEvent(BaseModel):
-    """Inventory events data model."""
-    host: Host
-    process: Process
+class Package:
+    """Package data model."""
+    architecture: str
+    description: str
+    installed: datetime
+    name: str
+    path: str
+    size: float
+    type: str
+    version: str
+
+
+@dataclass
+class InventoryPackageEvent(BaseModel):
+    """Inventory packages events data model."""
+    agent: EventAgent
+    scan_time: datetime
+    package: Package
 
     def get_index_name(self) -> str:
         """Get the index name for the event type.
@@ -124,7 +138,7 @@ class InventoryEvent(BaseModel):
         str
             Index name.
         """
-        return INVENTORY_INDEX
+        return INVENTORY_PACKAGES_INDEX
 
 
 @dataclass
@@ -178,8 +192,8 @@ class VulnerabilityEventHost:
 
 
 @dataclass
-class Package:
-    """Package data model."""
+class VulnerabilityEventPackage:
+    """Package data model in relation to vulnerability events."""
     architecture: str
     build_version: str
     checksum: str
@@ -236,7 +250,7 @@ class VulnerabilityEvent(BaseModel):
     """Vulnerability events data model."""
     agent: VulnerabilityEventAgent
     host: VulnerabilityEventHost
-    package: Package
+    package: VulnerabilityEventPackage
     scanner: Scanner
     score: Score
     category: str
@@ -280,4 +294,4 @@ class CommandResult(BaseModel):
 
 
 # Stateful event type
-StatefulEvent = Union[FIMEvent, InventoryEvent, SCAEvent, VulnerabilityEvent, CommandResult]
+StatefulEvent = Union[FIMEvent, InventoryPackageEvent, InventorySystemEvent, SCAEvent, VulnerabilityEvent]
