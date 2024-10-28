@@ -1,3 +1,4 @@
+import base64
 from unittest import mock
 
 import pytest
@@ -26,7 +27,7 @@ class TestAgent:
         urandom_mock.return_value = salt
         pbkdf2_hmac_mock.return_value = hash_value
 
-        assert Agent.hash_key(self.key) == salt + hash_value
+        assert Agent.hash_key(self.key) == base64.b64encode(salt + hash_value)
 
         urandom_mock.assert_called_once_with(16)
         pbkdf2_hmac_mock.assert_called_once_with(HASH_ALGO, self.key.encode('utf-8'), salt, ITERATIONS)
@@ -35,7 +36,6 @@ class TestAgent:
     def test_check_key(self, key, expected):
         """Check the correct function of `check_key` method."""
         agent = self.model(id=self.id, name=self.name, raw_key=self.key)
-
         assert agent.check_key(key) == expected
 
     @pytest.mark.parametrize(
