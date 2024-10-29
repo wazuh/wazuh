@@ -437,9 +437,9 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
     auto findInode = [](const std::string & filePath) -> int64_t
     {
         constexpr size_t MAX_LENGTH {256};
-        char buffer[MAX_LENGTH];
+        char buffer[MAX_LENGTH] = "";
 
-        if (-1 == readlink(filePath.c_str(), buffer, MAX_LENGTH))
+        if (-1 == readlink(filePath.c_str(), buffer, MAX_LENGTH - 1))
         {
             throw std::system_error(errno, std::system_category(), "readlink");
         }
