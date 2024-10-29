@@ -70,7 +70,8 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
+from wazuh_testing.modules.agentd.configuration import (AGENTD_DEBUG,
+                                                        AGENTD_WINDOWS_DEBUG)
 from wazuh_testing.modules.fim import configuration
 from wazuh_testing.modules.fim.patterns import (IGNORING_DUE_TO_INVALID_NAME,
                                                 SYNC_INTEGRITY_MESSAGE)
@@ -102,7 +103,7 @@ if sys.platform == WINDOWS:
 
 
 # Invalid UTF-8 byte sequences (these should trigger warnings in logs)
-invalid_byte_sequences = [
+invalid_byte_sequences: list[bytes] = [
     b"\xC0\xAF",           # Overlong encoding of '/'
     b"\xE0\x80\xAF",       # Overlong encoding (null character U+002F)
     b"\xED\xA0\x80",       # UTF-16 surrogate half (invalid in UTF-8)
@@ -113,21 +114,21 @@ invalid_byte_sequences = [
 ]
 
 # Incomplete UTF-8 sequences
-incomplete_sequences = [
+incomplete_sequences: list[bytes] = [
     b"\xC2",             # Missing second byte for 2-byte sequence
     b"\xE2\x98",         # Missing third byte for 3-byte sequence
     b"\xF0\x9F\x98",     # Missing fourth byte for 4-byte sequence
 ]
 
 # Overlong encodings
-overlong_sequences = [
+overlong_sequences: list[bytes] = [
     b"\xC0\x80",         # Overlong encoding for null character (U+0000)
     b"\xE0\x80\x80",     # Overlong encoding for null character (U+0000)
     b"\xF0\x80\x80\x80",  # Overlong encoding for null character (U+0000)
 ]
 
 # Maximal valid UTF-8 cases (1-byte, 2-byte, 3-byte, and 4-byte sequences)
-maximal_cases = [
+maximal_cases: list[bytes] = [
     b"\x7F",             # U+007F (1 byte)
     b"\xDF\xBF",         # U+07FF (2 bytes)
     b"\xEF\xBF\xBF",     # U+FFFF (3 bytes)
@@ -135,13 +136,13 @@ maximal_cases = [
 ]
 
 # Surrogate boundary cases
-surrogate_boundary_sequences = [
+surrogate_boundary_sequences: list[bytes] = [
     b"\xED\x9F\xBF",     # U+D7FF (valid)
     b"\xED\xA0\x80",     # U+D800 (invalid)
 ]
 
 # Mixed valid/invalid UTF-8 sequences
-mixed_valid_invalid = [
+mixed_valid_invalid: list[bytes] = [
     b"valid_utf8_\xC0\xAF_invalid",  # Mixed valid/invalid sequence
     b"A\xE0\x80\xAFB",              # Valid ASCII, invalid overlong, valid ASCII
 ]
@@ -159,9 +160,10 @@ def test_invalid_utf8_sequences(test_configuration, test_metadata, set_wazuh_con
 
     # iterate over invalid UTF-8 sequences
     for invalid_sequence in invalid_byte_sequences:
-        # No UTF-8 conversion here, just direct file name creation with invalid sequences
-        test_path_bytes = os.path.join(
-            test_metadata['folder_to_monitor'], invalid_sequence)
+        # Byte conversion here to concatenate with invalid sequences
+        folder_to_monitor_bytes = test_metadata['folder_to_monitor'].encode(
+            'utf-8')
+        test_path_bytes = os.path.join(folder_to_monitor_bytes, invalid_sequence)
         file.truncate_file(WAZUH_LOG_PATH)
 
         try:
@@ -169,7 +171,7 @@ def test_invalid_utf8_sequences(test_configuration, test_metadata, set_wazuh_con
             open(test_path_bytes, 'wb').close()
         except Exception as e:
             print(
-                f"Error creating file with invalid byte sequence {invalid_sequence}: {e}")
+                f"Error creating file with invalid byte sequence {invalid_sequence!r}: {e}")
 
         monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
         assert monitor.callback_result
@@ -185,9 +187,11 @@ def test_incomplete_utf8_sequences(test_configuration, test_metadata, set_wazuh_
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
     for sequence in incomplete_sequences:
-        # Direct path with no UTF-8 conversion
+        # Byte conversion here to concatenate with invalid sequences
+        folder_to_monitor_bytes = test_metadata['folder_to_monitor'].encode(
+            'utf-8')
         test_path_bytes = os.path.join(
-            test_metadata['folder_to_monitor'], sequence)
+            folder_to_monitor_bytes, sequence)
         file.truncate_file(WAZUH_LOG_PATH)
 
         try:
@@ -195,7 +199,7 @@ def test_incomplete_utf8_sequences(test_configuration, test_metadata, set_wazuh_
             open(test_path_bytes, 'wb').close()
         except Exception as e:
             print(
-                f"Error creating file with incomplete UTF-8 sequence {sequence}: {e}")
+                f"Error creating file with incomplete UTF-8 sequence {sequence!r}: {e}")
 
         monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
         assert monitor.callback_result
@@ -211,9 +215,11 @@ def test_overlong_utf8_encodings(test_configuration, test_metadata, set_wazuh_co
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
     for sequence in overlong_sequences:
-        # Direct path with no UTF-8 conversion
+        # Byte conversion here to concatenate with invalid sequences
+        folder_to_monitor_bytes = test_metadata['folder_to_monitor'].encode(
+            'utf-8')
         test_path_bytes = os.path.join(
-            test_metadata['folder_to_monitor'], sequence)
+            folder_to_monitor_bytes, sequence)
         file.truncate_file(WAZUH_LOG_PATH)
 
         try:
@@ -221,7 +227,7 @@ def test_overlong_utf8_encodings(test_configuration, test_metadata, set_wazuh_co
             open(test_path_bytes, 'wb').close()
         except Exception as e:
             print(
-                f"Error creating file with overlong UTF-8 sequence {sequence}: {e}")
+                f"Error creating file with overlong UTF-8 sequence {sequence!r}: {e}")
 
         monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
         assert monitor.callback_result
@@ -237,9 +243,11 @@ def test_maximal_valid_utf8_cases(test_configuration, test_metadata, set_wazuh_c
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
     for sequence in maximal_cases:
-        # Direct path with no UTF-8 conversion
+        # Byte conversion here to concatenate with invalid sequences
+        folder_to_monitor_bytes = test_metadata['folder_to_monitor'].encode(
+            'utf-8')
         test_path_bytes = os.path.join(
-            test_metadata['folder_to_monitor'], sequence)
+            folder_to_monitor_bytes, sequence)
         file.truncate_file(WAZUH_LOG_PATH)
 
         try:
@@ -247,7 +255,7 @@ def test_maximal_valid_utf8_cases(test_configuration, test_metadata, set_wazuh_c
             open(test_path_bytes, 'wb').close()
         except Exception as e:
             print(
-                f"Error creating file with maximal valid UTF-8 sequence {sequence}: {e}")
+                f"Error creating file with maximal valid UTF-8 sequence {sequence!r}: {e}")
 
         monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
         assert monitor.callback_result
@@ -263,9 +271,11 @@ def test_surrogate_pair_boundary(test_configuration, test_metadata, set_wazuh_co
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
     for sequence in surrogate_boundary_sequences:
-        # Direct path with no UTF-8 conversion
+       # Byte conversion here to concatenate with invalid sequences
+        folder_to_monitor_bytes = test_metadata['folder_to_monitor'].encode(
+            'utf-8')
         test_path_bytes = os.path.join(
-            test_metadata['folder_to_monitor'], sequence)
+            folder_to_monitor_bytes, sequence)
         file.truncate_file(WAZUH_LOG_PATH)
 
         try:
@@ -273,7 +283,7 @@ def test_surrogate_pair_boundary(test_configuration, test_metadata, set_wazuh_co
             open(test_path_bytes, 'wb').close()
         except Exception as e:
             print(
-                f"Error creating file with surrogate boundary sequence {sequence}: {e}")
+                f"Error creating file with surrogate boundary sequence {sequence!r}: {e}")
 
         monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
         assert monitor.callback_result
@@ -289,9 +299,11 @@ def test_mixed_valid_invalid_utf8(test_configuration, test_metadata, set_wazuh_c
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
     for sequence in mixed_valid_invalid:
-        # Direct path with no UTF-8 conversion
+       # Byte conversion here to concatenate with invalid sequences
+        folder_to_monitor_bytes = test_metadata['folder_to_monitor'].encode(
+            'utf-8')
         test_path_bytes = os.path.join(
-            test_metadata['folder_to_monitor'], sequence)
+            folder_to_monitor_bytes, sequence)
         file.truncate_file(WAZUH_LOG_PATH)
 
         try:
@@ -299,7 +311,7 @@ def test_mixed_valid_invalid_utf8(test_configuration, test_metadata, set_wazuh_c
             open(test_path_bytes, 'wb').close()
         except Exception as e:
             print(
-                f"Error creating file with mixed valid/invalid UTF-8 sequence {sequence}: {e}")
+                f"Error creating file with mixed valid/invalid UTF-8 sequence {sequence!r}: {e}")
 
         monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
         assert monitor.callback_result
