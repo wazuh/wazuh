@@ -22,8 +22,19 @@ else
     exit 1
 fi
 
-if [ "${ARCH}" = "i386" ] || [ "${ARCH}" = "armv7hl" ]; then
+if [ "${ARCH}" = "i386" ] || [ "${ARCH}" = "armhf" ]; then
     linux="linux32"
+    if [ "${ARCH}" = "armhf" ] && [ "${SYSTEM}" = "rpm" ]; then
+        install="rpm -ivh --force --ignorearch"
+        WAZUH_MANAGER="10.0.0.2" $linux $install "/packages/$package_name"| tee /packages/status.log
+        if [ "$(rpm -qa | grep wazuh-agent)" ]; then
+            echo " installed wazuh-agent" >> /packages/status.log
+            exit 0
+        else
+            echo "Package could not be installed."
+            exit 1
+        fi
+    fi
 fi
 
 WAZUH_MANAGER="10.0.0.2" $linux $install "/packages/$package_name"| tee /packages/status.log
