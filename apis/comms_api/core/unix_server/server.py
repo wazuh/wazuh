@@ -6,7 +6,7 @@ from fastapi import APIRouter, FastAPI
 from comms_api.core.unix_server.commands import post_commands
 from comms_api.core.commands import CommandsManager
 
-# TODO(#26250): move to new structure 
+# TODO(#26590): move to new structure 
 UNIX_SOCKET_PATH = '/var/ossec/queue/sockets/comms-api.sock'
 
 
