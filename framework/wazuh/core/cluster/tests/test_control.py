@@ -8,6 +8,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+from api.models.order_model import Order
 from wazuh.core.exception import WazuhClusterError
 
 with patch('wazuh.common.getgrnam'):
@@ -159,3 +160,24 @@ async def test_get_node_ruleset_integrity():
 
         with pytest.raises(json.JSONDecodeError):
             await control.get_health(lc=local_client)
+
+
+@pytest.mark.asyncio
+async def test_distribute_orders():
+    """Verify that the `distribute_orders` function works as expected."""
+    local_client = LocalClient()
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client) as execute_mock:
+        with patch('json.loads'):
+            await control.distribute_orders(lc=local_client, orders=[Order(status='pending').to_dict()])
+        
+        data = b'[{"source": null, "user": null, "target": null, "action": null, "timeout": null, ' \
+            b'"status": "pending", "order_id": null, "request_id": null}]'
+        execute_mock.assert_called_once_with(command=b'dist_orders', data=data)
+
+        with patch('json.loads', return_value=KeyError(1)):
+            with pytest.raises(KeyError):
+                await control.distribute_orders(lc=local_client, orders=[])
+
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
+        with pytest.raises(WazuhClusterError):
+            await control.distribute_orders(lc=local_client, orders=[])

@@ -3,7 +3,7 @@ from unittest.mock import patch, AsyncMock
 
 from comms_api.core.events import create_stateful_events, send_stateless_events
 from comms_api.models.events import StatefulEvents, StatelessEvents
-from wazuh.core.engine.models.events import StatelessEvent
+from wazuh.core.engine.models.events import StatelessEvent, Event, WazuhLocation
 from wazuh.core.indexer import Indexer
 from wazuh.core.indexer.models.events import SCAEvent, TaskResult
 
@@ -14,10 +14,15 @@ INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
 async def test_send_stateless_events(events_send_mock):
     """Check that the `send_stateless_events` function works as expected."""
-    events = StatelessEvents(events=[StatelessEvent(data='data')])
-    await send_stateless_events(events)
+    events = [
+        StatelessEvent(
+            wazuh=WazuhLocation(queue=50, location="[003] (agent-name) any->/tmp/syslog.log"),
+            event=Event(original="original message, recollected from the agent")
+        )
+    ]
+    await send_stateless_events(StatelessEvents(events=events))
 
-    events_send_mock.assert_called_once_with(events.events)
+    events_send_mock.assert_called_once_with(events)
 
 
 @pytest.mark.asyncio

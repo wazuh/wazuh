@@ -791,6 +791,18 @@ get_rbac_actions:
           effect: "allow"
         related_endpoints:
           - POST /events
+      order:send:
+        description: "Send orders to the server"
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - order:send
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - POST /orders
 
 get_rbac_resources:
   - params:
