@@ -859,7 +859,7 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
         }
         std::stringstream ss;
         ss << refStrHEX.value();
-        int result;
+        std::int64_t result;
         ss >> std::hex >> result;
         if (ss.fail() || !ss.eof())
         {
