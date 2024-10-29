@@ -106,7 +106,6 @@ if sys.platform == WINDOWS:
 invalid_byte_sequences: list[bytes] = [
     b"\xC0\xAF",           # Overlong encoding of '/'
     b"\xE0\x80\xAF",       # Overlong encoding (null character U+002F)
-    b"\xED\xA0\x80",       # UTF-16 surrogate half (invalid in UTF-8)
     b"\xF8\x88\x80\x80\x80",  # 5-byte sequence (invalid in UTF-8)
     b"\xFF",               # Invalid single byte (not valid in UTF-8)
     b"\x80",               # Continuation byte without a start
@@ -138,7 +137,7 @@ maximal_cases: list[bytes] = [
 # Surrogate boundary cases
 surrogate_boundary_sequences: list[bytes] = [
     b"\xED\x9F\xBF",     # U+D7FF (valid)
-    b"\xED\xA0\x80",     # U+D800 (invalid)
+    b"\xED\xA0\x80",     # UTF-16 surrogate half (invalid in UTF-8)
 ]
 
 # Mixed valid/invalid UTF-8 sequences
