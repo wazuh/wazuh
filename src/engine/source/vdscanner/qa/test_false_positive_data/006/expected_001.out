@@ -1,0 +1,4 @@
+[
+    "Match found, the package 'zabbix-agent2', is vulnerable to 'CVE-2023-32728'. Current version: '7.0.0' is equal to '7.0.0'. - Agent '' (ID: '006', Version: '').",
+    "Match found, the package 'zabbix-agent', is vulnerable to 'CVE-2023-32726'. Current version: '7.0.0' is equal to '7.0.0'. - Agent '' (ID: '006', Version: '')."
+]
