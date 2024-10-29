@@ -11,5 +11,6 @@ Vulnerability detection validation for **_windows_server_2008_** operating syste
 
 | CVE IDs        | Hotfix    | Expected       |
 |----------------|-----------|----------------|
-| CVE-2022-26904 | N/A       | Vulnerable     |
-| CVE-2022-26904 | KB5012649 | Not Vulnerable |
+| CVE-2022-21981 | N/A       | Not Vulnerable |
+| CVE-2022-21983 | N/A       | Not Vulnerable |
+| CVE-2016-0133  | N/A       | Not Vulnerable |
