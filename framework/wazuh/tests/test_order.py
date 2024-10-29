@@ -29,6 +29,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 ])
 @patch('wazuh.order.distribute_orders')
 async def test_send_orders(distribute_orders_mock, side_effect, message):
+    """Validate that the `send_orders` function is working as expected."""
     distribute_orders_mock.side_effect = side_effect
     orders = [Order().to_dict()]
     result = await send_orders(orders=orders)

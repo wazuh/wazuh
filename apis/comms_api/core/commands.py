@@ -20,7 +20,7 @@ class CommandsManager():
         self._subscriptions: Dict[str, Event] = self._manager.dict()
 
     def add_commands(self, commands: List[Command]) -> None:
-        """Add a command to the dictionry and call the corresponding subcribers callbacks.
+        """Add a command to the dictionary and call the corresponding subscribers callbacks.
         
         Parameters
         ----------
@@ -47,7 +47,7 @@ class CommandsManager():
             if agent_id in self._subscriptions:
                 self._subscriptions[agent_id].set()
 
-    def get_commands(self, agent_id: str, timeout: float = 30) -> Optional[List[Command]]:
+    def get_commands(self, agent_id: UUID, timeout: float = 30) -> Optional[List[Command]]:
         """Get commands from the manager. 
 
         It returns immediately if there are commands for the agent specified, otherwise it waits for new commands until 
@@ -55,7 +55,7 @@ class CommandsManager():
         
         Parameters
         ----------
-        agent_id : str
+        agent_id : UUID
             Agent ID.
         timeout : float
             Timeout in seconds.

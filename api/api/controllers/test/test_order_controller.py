@@ -30,8 +30,8 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.order_controller.remove_nones_to_dict')
 @patch('api.controllers.order_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.order_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_send_orders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
-    """Verify 'send_orders' endpoint is working as expected."""
+async def test_post_orders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'post_orders' endpoint is working as expected."""
     with patch('api.controllers.order_controller.Body.validate_content_type'):
         with patch(
             'api.controllers.order_controller.Orders.get_kwargs', return_value=AsyncMock()
