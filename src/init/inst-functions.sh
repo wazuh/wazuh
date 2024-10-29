@@ -73,7 +73,7 @@ InstallPythonDependencies()
     ${PYTHON_BIN_PATH} -m pip install -r ../framework/requirements.txt
 }
 
-InstallAPI()
+InstallServer()
 {
     PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
 
@@ -157,20 +157,13 @@ InstallEngine()
   installEngineStore
 }
 
-#InstallCluster()
-#{
-  # Install cluster files
-  #${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-cluster
-#}
-
 InstallWazuh()
 {
   InstallCommon
   InstallEngine
   InstallPython
   InstallPythonDependencies
-  InstallAPI
-  #InstallCluster
+  InstallServer
 }
 
 BuildEngine()
