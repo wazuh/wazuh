@@ -6,10 +6,10 @@
 # Modified for slackware by Jack S. Lai
 
 WAZUH_HOME=WAZUH_HOME_TMP
-WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
+WAZUH_CONTROL="${WAZUH_HOME}/bin/wazuh-server"
 
 start() {
-    ${WAZUH_CONTROL} start
+    ${WAZUH_CONTROL} start -r
 }
 
 stop() {

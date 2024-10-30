@@ -9,7 +9,6 @@ LimitNOFILE=65536
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-server start -r
 ExecStop=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-server stop
-ExecReload=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-server reload
 
 KillMode=process
 RemainAfterExit=yes

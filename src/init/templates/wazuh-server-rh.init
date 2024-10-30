@@ -16,11 +16,11 @@ export LANG=C
 . /etc/init.d/functions
 
 WAZUH_HOME=WAZUH_HOME_TMP
-WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
+WAZUH_CONTROL="${WAZUH_HOME}/bin/wazuh-server"
 
 start() {
     echo -n "Starting Wazuh: "
-    ${WAZUH_CONTROL} start > /dev/null
+    ${WAZUH_CONTROL} start -r > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success
