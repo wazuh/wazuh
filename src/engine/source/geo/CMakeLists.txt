@@ -81,6 +81,7 @@ target_link_libraries(geo_utest
     GTest::gtest_main
     store::mocks
 )
+gtest_discover_tests(geo_utest)
 target_compile_definitions(geo_utest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
 
 add_executable(geo_ctest

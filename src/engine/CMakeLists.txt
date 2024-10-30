@@ -235,6 +235,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
 add_subdirectory(${ENGINE_SOURCE_DIR}/keystore)
+add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 
 target_link_libraries(main
     base
