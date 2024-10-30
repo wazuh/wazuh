@@ -1,7 +1,7 @@
-from pydantic import BaseModel, FilePath
+from pydantic import BaseModel, PositiveInt
 from typing import List
 
-from wazuh.core.config.models.ssl_config import SSLConfig
+from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 
 class IndexesConfig(BaseModel):
@@ -12,12 +12,10 @@ class IndexesConfig(BaseModel):
 
 
 class IndexerConfig(BaseModel):
-    host: List[str] = ["localhost:9200"]
+    #host: List[str] = ["localhost:9200"] #TODO(26356) - How to handle multiples Indexers
+    host: str = "wazuh-indexer"
+    port: PositiveInt = 9200
     user: str = "admin"
-    password: str = "admin"
+    password: str = "SecretPassword1%"
     indexes: IndexesConfig = IndexesConfig()
-    ssl: SSLConfig = SSLConfig(
-        key="/etc/ssl/certs/key.pem",
-        cert="/etc/ssl/certs/cert.pem",
-        ca="/etc/ssl/certs/ca.pem"
-    )
+    ssl: IndexerSSLConfig = IndexerSSLConfig()

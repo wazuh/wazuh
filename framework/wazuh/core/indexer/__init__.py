@@ -10,6 +10,7 @@ from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.commands import CommandsManager
 from wazuh.core.indexer.events import EventsIndex
+from wazuh.core.config.client import CentralizedConfig
 
 logger = getLogger('wazuh')
 
@@ -166,14 +167,16 @@ async def create_indexer(
 async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
 
+    indexer_config = CentralizedConfig.get_indexer_config()
+
     client = await create_indexer(
-        host=INDEXER_HOST,
-        user=INDEXER_USER,
-        password=INDEXER_PASSWORD,
-        use_ssl=INDEXER_USE_SSL,
-        client_cert_path=INDEXER_CLIENT_CERT_PATH,
-        client_key_path=INDEXER_CLIENT_KEY_PATH,
-        ca_certs_path=INDEXER_CA_CERTS_PATH,
+        host=indexer_config.host,
+        user=indexer_config.user,
+        password=indexer_config.password,
+        use_ssl=indexer_config.ssl.use_ssl,
+        client_cert_path=indexer_config.ssl.cert,
+        client_key_path=indexer_config.ssl.key,
+        ca_certs_path=indexer_config.ssl.ca,
         retries=1
     )
 
