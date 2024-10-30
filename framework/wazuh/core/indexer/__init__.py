@@ -17,16 +17,6 @@ logger = getLogger('wazuh')
 HOST_KEY = 'host'
 PORT_KEY = 'port'
 
-# This constants are temporary until we have a centralized configration
-
-INDEXER_HOST = os.getenv('INDEXER_HOST', '')
-INDEXER_USER = os.getenv('INDEXER_USER', '')
-INDEXER_PASSWORD = os.getenv('INDEXER_PASSWORD', '')
-INDEXER_USE_SSL = os.getenv('INDEXER_USE_SSL', 'True') == 'True'
-INDEXER_CLIENT_CERT_PATH = os.getenv('INDEXER_CLIENT_CERT_PATH', '')
-INDEXER_CLIENT_KEY_PATH = os.getenv('INDEXER_CLIENT_KEY_PATH', '')
-INDEXER_CA_CERTS_PATH = os.getenv('INDEXER_CA_CERTS_PATH', '')
-
 
 class Indexer:
     """Interface to connect with Wazuh Indexer."""
