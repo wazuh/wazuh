@@ -40,7 +40,7 @@ async def post_stateful_events(request: Request) -> StatefulEventsResponse:
     except ValidationError as exc:
         return await validation_exception_handler(request, RequestValidationError(exc.errors()))
 
-
+# TODO(26356) - Timeout difference between some endpoints - WHY and should be added to the config?
 @timeout(10)
 async def post_stateless_events(request: Request) -> Response:
     """Post stateless events handler.

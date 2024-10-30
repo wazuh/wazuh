@@ -9,7 +9,7 @@ class SSLConfig(BaseModel):
     keyfile_password: str = ""
 
 
-class ManagementAPISSLConfig(BaseModel):
+class APISSLConfig(BaseModel):
     key: str = "server.key"
     cert: str = "server.crt"
     use_ca: bool = False

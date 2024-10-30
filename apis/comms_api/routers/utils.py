@@ -8,6 +8,7 @@ from comms_api.routers.exceptions import HTTPError
 
 logger = logging.getLogger('wazuh-comms-api')
 
+#TODO(26356) - Timeout of endpoints - Add to config - CAPI
 DEFAULT_TIMEOUT = 10
 
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, PositiveInt
 
-from wazuh.core.config.models.ssl_config import ManagementAPISSLConfig
+from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.core.config.models.logging import LogFileMaxSizeConfig
 
 
@@ -29,7 +29,7 @@ class ManagementAPIConfig(BaseModel):
     max_upload_size: PositiveInt = 10485760
 
     intervals: ManagementAPIIntervals = ManagementAPIIntervals()
-    ssl: ManagementAPISSLConfig = ManagementAPISSLConfig()
+    ssl: APISSLConfig = APISSLConfig()
     logging: LogFileMaxSizeConfig = LogFileMaxSizeConfig()
     cors: CorsConfig = CorsConfig()
     access: AccessConfig = AccessConfig()

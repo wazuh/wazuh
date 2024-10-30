@@ -1,7 +1,7 @@
 from pydantic import BaseModel, PositiveInt, PositiveFloat, FilePath
 
-from wazuh.core.config.models.ssl_config import SSLConfig
-from wazuh.core.config.models.logging import LoggingConfig
+from wazuh.core.config.models.ssl_config import APISSLConfig
+from wazuh.core.config.models.logging import LoggingWithRotationConfig
 
 
 class BatcherConfig(BaseModel):
@@ -17,13 +17,14 @@ class CommsAPIFilesConfig(BaseModel):
 class CommsAPIConfig(BaseModel):
     host: str = "localhost"
     port: PositiveInt = 27000
-    workers: PositiveInt = 2
+    workers: PositiveInt = 4
 
-    logging: LoggingConfig = LoggingConfig()
+    logging: LoggingWithRotationConfig = LoggingWithRotationConfig()
     batcher: BatcherConfig = BatcherConfig()
-    ssl: SSLConfig = SSLConfig(
-        key="/var/ossec/etc/server.key",
-        cert="/var/ossec/etc/server.crt",
-        ca="/var/ossec/etc/sslmanager.ca",
+    ssl: APISSLConfig = APISSLConfig(
+        key="/var/ossec/api/configuration/ssl/server.key",
+        cert="/var/ossec/api/configuration/ssl/server.crt",
+        ca="/etc/ssl/certs/ca-certificates.crt",
+        ssl_ciphers=""
     )
     files: CommsAPIFilesConfig = CommsAPIFilesConfig()

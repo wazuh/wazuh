@@ -1,18 +1,17 @@
-from pydantic import BaseModel, PositiveInt
-from typing import Literal
+from pydantic import BaseModel
+from typing import Literal, List
 
 
 class LoggingConfig(BaseModel):
-    logging: Literal["info", "warning", "error", "debug", "debug2"] = "debug"
+    level: Literal["info", "warning", "error", "debug", "debug2"] = "debug"
 
 
 class LogFileMaxSizeConfig(BaseModel):
     enabled: bool = False
-    size: PositiveInt = 1 #TODO(26356) - Handle M and K
+    size: str = "1M" #TODO(26356) - Handle M and K pattern
 
 
 class LoggingWithRotationConfig(BaseModel):
-    logging: Literal["info", "warning", "error", "debug", "debug2"] = "debug"
-    format: Literal["plain", "json", "both"] = "plain"
+    level: Literal["info", "warning", "error", "debug", "debug2"] = "debug"
+    format: List[Literal["plain", "json"]] = ["plain"]
     max_size: LogFileMaxSizeConfig = LogFileMaxSizeConfig()
-
