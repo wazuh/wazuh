@@ -1,18 +1,33 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Union
+from enum import Enum
+from typing import Dict, List, Union
 
-from pydantic import BaseModel
-
+from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.models.commands import Result
 from wazuh.core.indexer.commands import CommandsManager
 
 FIM_INDEX = 'wazuh-states-fim'
+INVENTORY_NETWORK_INDEX = 'wazuh-states-inventory-network'
 INVENTORY_PACKAGES_INDEX = 'wazuh-states-inventory-packages'
 INVENTORY_PROCESSES_INDEX = 'wazuh-states-inventory-processes'
 INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
 SCA_INDEX = 'wazuh-states-sca'
 VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
+INVENTORY_NETWORK_TYPE = 'network'
+INVENTORY_PACKAGES_TYPE = 'package'
+INVENTORY_PROCESSES_TYPE = 'process'
+INVENTORY_SYSTEM_TYPE = 'system'
+
+
+@dataclass
+class AgentMetadata:
+    """Agent metadata."""
+    id: str
+    groups: List[str]
+    name: str
+    type: str
+    version: str
 
 
 @dataclass
@@ -21,12 +36,6 @@ class TaskResult:
     id: str
     result: str
     status: int
-
-
-class EventAgent:
-    """Agent data model in relation to events."""
-    id: str
-    groups: str
 
 
 @dataclass
@@ -64,21 +73,16 @@ class Registry:
 
 
 @dataclass
-class FIMEvent(BaseModel):
+class FIMEvent:
     """FIM events data model."""
-    agent: EventAgent
     file: File
     registry: Registry
 
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return FIM_INDEX
+
+@dataclass
+class InventoryNetworkEvent:
+    """Inventory network events data model."""
+    # TODO(25121): Add inventory network fields once they are defined
 
 
 @dataclass
@@ -114,21 +118,10 @@ class Package:
 
 
 @dataclass
-class InventoryPackageEvent(BaseModel):
+class InventoryPackageEvent:
     """Inventory packages events data model."""
-    agent: EventAgent
     scan_time: datetime
     package: Package
-
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return INVENTORY_PACKAGES_INDEX
 
 
 @dataclass
@@ -162,65 +155,23 @@ class Process:
 
 
 @dataclass
-class InventoryProcessEvent(BaseModel):
+class InventoryProcessEvent:
     """Inventory process events data model."""
-    agent: EventAgent
     scan_time: datetime
     process: Process
 
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return INVENTORY_PROCESSES_INDEX
-
 
 @dataclass
-class InventorySystemEvent(BaseModel):
+class InventorySystemEvent:
     """Inventory system events data model."""
-    agent: EventAgent
     scan_time: datetime
     host: Host
 
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return INVENTORY_SYSTEM_INDEX
-
 
 @dataclass
-class SCAEvent(BaseModel):
+class SCAEvent:
     """SCA events data model."""
     # TODO(25121): Add SCA event fields once they are defined
-
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return SCA_INDEX
-
-
-@dataclass
-class VulnerabilityEventAgent:
-    """Agent data model in relation to vulnerability events."""
-    id: str
-    groups: str
-    name: str
-    type: str
-    version: str
 
 
 @dataclass
@@ -284,9 +235,8 @@ class Score:
 
 
 @dataclass
-class VulnerabilityEvent(BaseModel):
+class VulnerabilityEvent:
     """Vulnerability events data model."""
-    agent: VulnerabilityEventAgent
     host: VulnerabilityEventHost
     package: VulnerabilityEventPackage
     scanner: Scanner
@@ -303,40 +253,87 @@ class VulnerabilityEvent(BaseModel):
     severity: str
     under_evaluation: bool
 
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return VULNERABILITY_INDEX
-
 
 @dataclass
-class CommandResult(BaseModel):
+class CommandResult:
     """Command result data model."""
     document_id: str
     result: Result
 
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return CommandsManager.INDEX
+
+class ModuleName(str, Enum):
+    """Stateful event module name."""
+    FIM = 'fim'
+    INVENTORY = 'inventory'
+    SCA = 'sca'
+    VULNERABILITY = 'vulnerability'
+    COMMAND = 'command'
 
 
-# Stateful event type
-StatefulEvent = Union[
-    FIMEvent,
-    InventoryPackageEvent,
-    InventoryProcessEvent,
-    InventorySystemEvent,
-    SCAEvent,
-    VulnerabilityEvent
-]
+@dataclass
+class Module:
+    """Stateful event module."""
+    name: ModuleName
+    type: str = None
+
+
+@dataclass
+class StatefulEvent:
+    """Stateful event data model."""
+    data: Union[
+        FIMEvent,
+        InventoryNetworkEvent,
+        InventoryPackageEvent,
+        InventoryProcessEvent,
+        InventorySystemEvent,
+        SCAEvent,
+        VulnerabilityEvent,
+        CommandResult
+    ]
+    module: Module
+
+
+STATEFUL_EVENTS_INDICES: Dict[ModuleName, str] = {
+    ModuleName.FIM: FIM_INDEX,
+    ModuleName.SCA: SCA_INDEX,
+    ModuleName.VULNERABILITY: VULNERABILITY_INDEX,
+    ModuleName.COMMAND: CommandsManager.INDEX
+}
+
+
+def get_module_index_name(module: Module) -> str:
+    """Get the index name corresponding to the specified module.
+
+    Parameters
+    ----------
+    module : Module
+        Event module.
+    
+    Raises
+    ------
+    WazuhError(1763)
+        Invalid inventory module type error.
+    WazuhError(1765)
+        Invalid module name.
+    
+    Returns
+    -------
+    str
+        Index name.
+    """
+    if module.name == ModuleName.INVENTORY:
+        if module.type == INVENTORY_PACKAGES_TYPE:
+            return INVENTORY_PACKAGES_INDEX
+        if module.type == INVENTORY_PROCESSES_TYPE:
+            return INVENTORY_PROCESSES_INDEX
+        if module.type == INVENTORY_NETWORK_TYPE:
+            return INVENTORY_NETWORK_INDEX
+        if module.type == INVENTORY_SYSTEM_TYPE:
+            return INVENTORY_SYSTEM_INDEX
+
+        raise WazuhError(1763)
+
+    try:
+        return STATEFUL_EVENTS_INDICES[module.name]
+    except KeyError:
+        raise WazuhError(1765)

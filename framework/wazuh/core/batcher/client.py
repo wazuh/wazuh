@@ -4,7 +4,7 @@ from typing import Optional
 
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item
 from wazuh.core.indexer.base import remove_empty_values
-from wazuh.core.indexer.models.events import StatefulEvent
+from wazuh.core.indexer.models.events import StatefulEvent, get_module_index_name
 
 
 class BatcherClient:
@@ -38,8 +38,8 @@ class BatcherClient:
         """
         item = Item(
             id=id(event),
-            content=asdict(event, dict_factory=remove_empty_values),
-            index_name=event.get_index_name()
+            content=asdict(event.data, dict_factory=remove_empty_values),
+            index_name=get_module_index_name(event.module)
         )
         self.queue.send_to_mux(item)
         return item.id

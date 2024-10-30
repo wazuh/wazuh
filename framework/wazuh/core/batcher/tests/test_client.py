@@ -3,7 +3,7 @@ from unittest.mock import patch, AsyncMock, call
 import pytest
 
 from framework.wazuh.core.batcher.client import BatcherClient
-from wazuh.core.indexer.models.events import SCAEvent
+from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, StatefulEvent, Module, ModuleName
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
@@ -11,7 +11,14 @@ from wazuh.core.indexer.models.events import SCAEvent
 def test_send_event(id_mock, queue_mock):
     """Check that the `send_event` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
-    event = SCAEvent()
+    agent_metadata = AgentMetadata(
+        id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
+        groups=[],
+        name='test',
+        type='endpoint',
+        version='v5.0.0'
+    )
+    event = StatefulEvent(data=SCAEvent(), module=Module(name=ModuleName.SCA))
     expected_item_id = 1234
 
     id_mock.return_value = expected_item_id
