@@ -198,6 +198,9 @@ find %{_localstatedir}var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -typ
 chown -R root:wazuh %{_localstatedir}var/log/wazuh-server
 find %{_localstatedir}var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 
+# Fix Python permissions
+chmod -R 0750 %{_localstatedir}var/lib/wazuh-server/framework/python/bin
+
 %triggerin -- glibc
 
 %clean
