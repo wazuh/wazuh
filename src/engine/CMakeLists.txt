@@ -232,6 +232,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
+add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 
 #TODO isolate rxcpp
 target_link_libraries(main base cmds api CLI11::CLI11)
