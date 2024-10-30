@@ -41,6 +41,8 @@ class IndexerKey(str, Enum):
     FILTER = 'filter'
     RESULT = 'result'
     STATUS = 'status'
+    ERROR = 'error'
+    REASON = 'reason'
 
 
 class BaseIndex:

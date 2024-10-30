@@ -52,10 +52,20 @@ class EventsIndex(BaseIndex, MixinBulk):
 
         results: List[TaskResult] = []
         for result in tasks_results:
-            results.append(TaskResult(
-                id=result[IndexerKey._ID],
-                result=result[IndexerKey.RESULT],
-                status=result[IndexerKey.STATUS]
-            ))
+            status = result[IndexerKey.STATUS]
+            if status < 300:
+                task_result = TaskResult(
+                    id=result[IndexerKey._ID],
+                    result=result[IndexerKey.RESULT],
+                    status=status
+                )
+            else:
+                task_result = TaskResult(
+                    id='',
+                    result=result[IndexerKey.ERROR][IndexerKey.REASON],
+                    status=status
+                )
+
+            results.append(task_result)
 
         return results
