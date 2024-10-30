@@ -101,25 +101,42 @@ if sys.platform == WINDOWS:
     local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
 # Valid UTF-8 filename test cases with actual symbols, diacritics, and multi-language characters
-valid_utf8_sequences: list[bytes] = [
-    b"Hello_World.txt",          # Basic ASCII
-    b"\xC3\x9Cber.txt",          # Ü (U+00DC, 2-byte UTF-8)
-    b"\xC3\xBCber.txt",          # ü (U+00FC, 2-byte UTF-8)
-    b"\xE2\x98\x83_snowman.txt",  # ☃ (U+2603, 3-byte UTF-8)
-    b"\xF0\x9F\x98\x81_smile.txt",  # 😁 (U+1F601, 4-byte UTF-8)
-    b"Greek_Σὲ_γνωρίζω.txt",     # Greek text with multi-byte sequences
-    b"Chinese_中文字符.txt",       # Chinese characters (3-byte UTF-8)
-    b"Russian_Привет.txt",       # Cyrillic characters (multi-byte)
-    b"Hebrew_שלום.txt",          # Hebrew text (multi-byte)
-    b"Arabic_مرحبا.txt",         # Arabic text (multi-byte)
-    b"Hindi_नमस्ते.txt",         # Hindi (Devanagari script, multi-byte)
-    b"Math_∑_√_π.txt",           # Mathematical symbols (sum, square root, pi)
-    b"Technical_±_Ω.txt",        # Technical symbols (plus-minus, ohm)
-    b"French_La_Réunion.txt",    # French text with diacritic (é)
-    b"Emoji_🎉_🚀.txt",           # Emoji characters
-    b"Currency_€_¥_£.txt",       # Currency symbols (Euro, Yen, Pound)
-    b"Punctuation_@_#_%_&.txt",  # Various punctuation characters
-    b"File_with_parentheses_(example).txt",  # Parentheses in filename
+valid_utf8_sequences= [
+    "Hello_World.txt",          # Basic ASCII
+    "Über.txt",          # Ü (U+00DC, 2-byte UTF-8)
+    "über.txt",          # ü (U+00FC, 2-byte UTF-8)
+    "☃_snowman.txt",  # ☃ (U+2603, 3-byte UTF-8)
+    "😁_smile.txt",  # 😁 (U+1F601, 4-byte UTF-8)
+    "Japanese_こんにちは.txt",   # Japanese text (multi-byte)
+    "Korean_안녕하세요.txt",     # Korean text (multi-byte)
+    "Spanish_¡Hola!.txt",       # Spanish text with diacritic (¡)
+    "French_Ça_va.txt",         # French text with diacritic (Ç)
+    "German_Äpfel.txt",         # German text with diacritic (Ä)
+    "Portuguese_É_bom.txt",     # Portuguese text with diacritic (É)
+    "Turkish_İyi_günler.txt",   # Turkish text with diacritic (İ)
+    "Estonian_Õnnelik.txt",     # Estonian text with diacritic (Õ)
+    "Polish_Łódź.txt",          # Polish text with diacritic (Ł)
+    "Czech_Škoda.txt",          # Czech text with diacritic (Š)
+    "Hungarian_Öröm.txt",       # Hungarian text with diacritic (Ö)
+    "Romanian_Și.txt",          # Romanian text with diacritic (Ș)
+    "Vietnamese_Đồng.txt",      # Vietnamese text with diacritic (Đ)
+    "Thai_สวัสดี.txt",         # Thai text (multi-byte)
+    "Tamil_வணக்கம்.txt",      # Tamil text (multi-byte)
+    "Telugu_నమస్కారం.txt",   # Telugu text (multi-byte)
+    "Finnish_Ääkköset.txt",     # Finnish text with diacritic (Ää)
+    "Norwegian_Ålesund.txt",    # Norwegian text with diacritic (Å)
+    "Greek_Σὲ_γνωρίζω.txt",     # Greek text with multi-byte sequences
+    "Chinese_中文字符.txt",       # Chinese characters (3-byte UTF-8)
+    "Russian_Привет.txt",       # Cyrillic characters (multi-byte)
+    "Hebrew_שלום.txt",          # Hebrew text (multi-byte)
+    "Arabic_مرحبا.txt",         # Arabic text (multi-byte)
+    "Hindi_नमस्ते.txt",         # Hindi (Devanagari script, multi-byte)
+    "Math_∑_√_π.txt",           # Mathematical symbols (sum, square root, pi)
+    "Technical_±_Ω.txt",        # Technical symbols (plus-minus, ohm)
+    "Emoji_🎉_🚀.txt",           # Emoji characters
+    "Currency_€_¥_£.txt",       # Currency symbols (Euro, Yen, Pound)
+    "Punctuation_@_#_%_&.txt",  # Various punctuation characters
+    "File_with_parentheses_(example).txt",  # Parentheses in filename
 ]
 
 # Invalid UTF-8 byte sequences (these should trigger warnings in logs)
@@ -175,8 +192,11 @@ def test_non_utf8_sequences_should_trigger_warning(test_configuration, test_meta
     # iterate over invalid UTF-8 sequences
     for invalid_sequence in maximal_cases + surrogate_boundary_sequences:
         # No UTF-8 conversion here, just direct file name creation with invalid sequences
+        # Byte conversion here to concatenate with invalid sequences
+        folder_to_monitor_bytes: bytes = test_metadata['folder_to_monitor'].encode(
+            'utf-8')
         test_path_bytes = os.path.join(
-            test_metadata['folder_to_monitor'], invalid_sequence)
+            folder_to_monitor_bytes, invalid_sequence)
         file.truncate_file(WAZUH_LOG_PATH)
 
         try:
@@ -184,7 +204,7 @@ def test_non_utf8_sequences_should_trigger_warning(test_configuration, test_meta
             open(test_path_bytes, 'wb').close()
         except Exception as e:
             print(
-                f"Error creating file with invalid byte sequence {invalid_sequence}: {e}")
+                f"Error creating file with invalid byte sequence {invalid_sequence!r}: {e}")
 
         monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
         assert monitor.callback_result
