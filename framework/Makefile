@@ -39,6 +39,7 @@ install:
 	$(INSTALL_DIR) $(INSTALLDIR)/etc
 	$(INSTALL_DIR) $(INSTALLDIR)/var/run
 	$(INSTALL_DIR) $(INSTALLDIR)/queue/cluster
+	$(INSTALL_DIR) $(INSTALLDIR)/queue/sockets
 
 	$(INSTALL_FILE) scripts/*.py ${INSTALLDIR}/framework/scripts
 	$(INSTALL_FILE) wazuh/*.py ${INSTALLDIR}/framework/wazuh

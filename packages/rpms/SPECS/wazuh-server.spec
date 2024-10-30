@@ -220,6 +220,7 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/var/run
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/queue
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/queue/cluster
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/queue/sockets
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/framework
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/api
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/apis
