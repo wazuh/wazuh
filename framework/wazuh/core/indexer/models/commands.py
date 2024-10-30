@@ -14,7 +14,6 @@ class Action:
 @dataclass
 class Result:
     """Command result data model."""
-    info: str = None
     code: int = None
     message: str = None
     data: str = None
