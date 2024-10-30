@@ -7442,23 +7442,8 @@ paths:
                 - 127.0.0.1
               os: Debian 12 "Bookworm"
       responses:
-        '200':
-          description: "Add an agent"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AgentIdKey'
-              example:
-                data:
-                  id: "019008da-1575-7375-b54f-ef43e393517ef"
-                  key: "\u00d6v\u0086\u00a8v\r\u008c\u00f5V\b\u00ba^\u00d4n\u00b1\u0090\u00a4<)\u00ef\u00f4\u00c7\u0016\u0005\u00b3mY\u0093YR5\u00f1L\u00d6wj\u0015\u00d7\u0006'\f@\u00c3a\u0094>g\u001e"
-                  groups: group1
-                error: 0
+        '201':
+          description: "Empty response indicating the agent was registered successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

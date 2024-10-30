@@ -171,6 +171,7 @@ async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             mock_remove.assert_called_once_with(mock_getkwargs.return_value)
             assert isinstance(result, ConnexionResponse)
+            assert result.status_code == 201
 
 
 @pytest.mark.asyncio

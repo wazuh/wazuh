@@ -211,9 +211,9 @@ async def add_agent(pretty: bool = False, wait_for_complete: bool = False) -> Co
         rbac_permissions=request.context['token_info']['rbac_policies']
     )
 
-    data = raise_if_exc(await dapi.distribute_function())
+    raise_if_exc(await dapi.distribute_function())
 
-    return json_response(data, pretty=pretty)
+    return ConnexionResponse(status_code=201)
 
 
 async def reconnect_agents(pretty: bool = False, wait_for_complete: bool = False,
