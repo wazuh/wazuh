@@ -8,12 +8,7 @@ DIR="/var/ossec"
 WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
 
 # environment configuration
-if [ ! -d ${WAZUH_TMP_DIR} ]; then
-    mkdir -p ${WAZUH_TMP_DIR}
-else
-    rm -rf ${WAZUH_TMP_DIR}
-    mkdir -p ${WAZUH_TMP_DIR}
-fi
+mkdir -p ${WAZUH_TMP_DIR}
 
 case "$1" in
     install|upgrade)
@@ -37,11 +32,11 @@ case "$1" in
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
             fi
             ${DIR}/bin/ossec-control stop > /dev/null 2>&1 || ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
-            
+
             if [ -d ${DIR}/logs/ossec ]; then
                 mv ${DIR}/logs/ossec ${DIR}/logs/wazuh
             fi
-            
+
             if [ -d ${DIR}/queue/ossec ]; then
                 mv ${DIR}/queue/ossec ${DIR}/queue/sockets
             fi
