@@ -197,6 +197,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict,
     }
 
 
+#TODO(26356) - Delete --host -p and -t CLI arguments
 def get_script_arguments() -> Namespace:
     """Get script arguments.
 

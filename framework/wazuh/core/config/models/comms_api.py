@@ -10,10 +10,6 @@ class BatcherConfig(BaseModel):
     wait_time: PositiveFloat = 0.15
 
 
-class CommsAPIFilesConfig(BaseModel):
-    path: FilePath = "/files"
-
-
 class CommsAPIConfig(BaseModel):
     host: str = "localhost"
     port: PositiveInt = 27000
@@ -27,4 +23,3 @@ class CommsAPIConfig(BaseModel):
         ca="/etc/ssl/certs/ca-certificates.crt",
         ssl_ciphers=""
     )
-    files: CommsAPIFilesConfig = CommsAPIFilesConfig()
