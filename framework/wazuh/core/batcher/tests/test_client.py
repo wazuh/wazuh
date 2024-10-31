@@ -23,7 +23,7 @@ def test_send_event(id_mock, queue_mock):
 
     id_mock.return_value = expected_item_id
 
-    item_id = batcher.send_event(event)
+    item_id = batcher.send_event(agent_metadata, event)
     assert item_id == expected_item_id
     queue_mock.send_to_mux.assert_called_once()
 

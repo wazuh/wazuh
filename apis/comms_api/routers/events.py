@@ -1,19 +1,33 @@
-from fastapi import APIRouter, Depends, Request, Response, status
+from typing import Annotated
 
-from comms_api.authentication.authentication import JWTBearer
-from comms_api.core.events import create_stateful_events, send_stateless_events
+from fastapi import APIRouter, Depends, Header, Request, Response, status
+
+from comms_api.authentication.authentication import decode_token, JWTBearer
+from comms_api.core.events import create_stateful_events, send_stateless_events, parse_agent_metadata
 from comms_api.models.events import StatefulEvents, StatefulEventsResponse, StatelessEvents
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhEngineError, WazuhError
+from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhCommsAPIError
 
 
 @timeout(30)
-async def post_stateful_events(request: Request, events: StatefulEvents) -> StatefulEventsResponse:
+async def post_stateful_events(
+    token: Annotated[str, Depends(JWTBearer())],
+    user_agent: Annotated[str, Header()],
+    agent_groups: Annotated[str, Header()],
+    request: Request,
+    events: StatefulEvents,
+) -> StatefulEventsResponse:
     """Handle posting stateful events.
 
     Parameters
     ----------
+    token : str
+        JWT token.
+    user_agent : str
+        User-Agent header value.
+    agent_groups : str
+        Agent-Groups header value.
     request : Request
         Incoming HTTP request.
     events : StatefulEvents
@@ -30,10 +44,16 @@ async def post_stateful_events(request: Request, events: StatefulEvents) -> Stat
         Response from the Indexer.
     """
     try:
-        results = await create_stateful_events(events, request.app.state.batcher_queue)
+        agent_id = decode_token(token)["uuid"]
+        agent_metadata = parse_agent_metadata(agent_id, user_agent, agent_groups)
+
+        results = await create_stateful_events(agent_metadata, events, request.app.state.batcher_queue)
         return StatefulEventsResponse(results=results)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)
+    except WazuhCommsAPIError as exc:
+        raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_403_FORBIDDEN)
+
 
 
 @timeout(10)

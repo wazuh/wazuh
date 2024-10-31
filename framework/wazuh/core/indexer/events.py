@@ -3,7 +3,7 @@ from typing import List
 from uuid import UUID
 
 from .base import BaseIndex
-from wazuh.core.indexer.models.events import StatefulEvent, TaskResult
+from wazuh.core.indexer.models.events import AgentMetadata, StatefulEvent, TaskResult
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.batcher.client import BatcherClient
@@ -17,11 +17,18 @@ class EventsIndex(BaseIndex, MixinBulk):
     def __init__(self, client: AsyncOpenSearch):
         super().__init__(client)
 
-    async def create(self, events: List[StatefulEvent], batcher_client: BatcherClient) -> List[TaskResult]:
+    async def create(
+        self,
+        agent_metadata: AgentMetadata,
+        events: List[StatefulEvent],
+        batcher_client: BatcherClient
+    ) -> List[TaskResult]:
         """Post new events to the indexer.
 
         Parameters
         ----------
+        agent_metadata : AgentMetadata
+            Agent metadata.
         events : List[StatefulEvent]
             List of events.
         batcher_client : BatcherClient
@@ -36,7 +43,7 @@ class EventsIndex(BaseIndex, MixinBulk):
 
         # Sends the events to the batcher
         for event in events:
-            item_id = batcher_client.send_event(event)
+            item_id = batcher_client.send_event(agent_metadata, event)
             item_ids.append(item_id)
 
         # Create tasks using a lambda function to obtain the result of each one
