@@ -232,8 +232,8 @@ public:
                             uint32_t& bufferSize,
                             const char* dataBody,
                             uint32_t sizeBody,
-                            const char* dataHeader = nullptr,
-                            uint32_t sizeHeader = 0)
+                            [[maybe_unused]] const char* dataHeader = nullptr,
+                            [[maybe_unused]] uint32_t sizeHeader = 0)
     {
         if (sizeof(Header) + sizeBody > BUFFER_MAX_SIZE)
         {
@@ -255,7 +255,7 @@ public:
      * @param buffer Buffer to obtain the header size from.
      * @return auto Header size.
      */
-    auto static getHeaderSize(const std::vector<char>& buffer)
+    auto static getHeaderSize([[maybe_unused]] const std::vector<char>& buffer)
     {
         return 0;
     }
@@ -266,7 +266,7 @@ public:
      * @param headerSize The size of the header.
      * @return auto Data offset.
      */
-    auto static getDataOffset(uint32_t headerSize)
+    auto static getDataOffset([[maybe_unused]] uint32_t headerSize)
     {
         return 0;
     }
@@ -312,8 +312,8 @@ public:
                             uint32_t& bufferSize,
                             const char* dataBody,
                             uint32_t sizeBody,
-                            const char* dataHeader = nullptr,
-                            uint32_t sizeHeader = 0)
+                            [[maybe_unused]] const char* dataHeader = nullptr,
+                            [[maybe_unused]] uint32_t sizeHeader = 0)
     {
         if (sizeBody > BUFFER_MAX_SIZE)
         {
@@ -331,7 +331,7 @@ public:
      * @param buffer Buffer to obtain the header size from.
      * @return auto Header size.
      */
-    auto static getHeaderSize(const std::vector<char>& buffer)
+    auto static getHeaderSize([[maybe_unused]] const std::vector<char>& buffer)
     {
         return 0;
     }
@@ -342,7 +342,7 @@ public:
      * @param headerSize The size of the header.
      * @return auto Data offset.
      */
-    auto static getDataOffset(uint32_t headerSize)
+    auto static getDataOffset([[maybe_unused]] uint32_t headerSize)
     {
         return 0;
     }
