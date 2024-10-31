@@ -44,6 +44,12 @@ public:
      * @param data Data to be sent
      */
     virtual void send(const std::vector<char>& data) = 0;
+
+    /**
+     * @brief Destroy the IRouterProvider object
+     *
+     */
+    virtual ~IRouterProvider() = default;
 };
 
 #endif //_IROUTER_PROVIDER_HPP
