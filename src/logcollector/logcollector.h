@@ -128,6 +128,11 @@ void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_macos(logreader *lf, int *rc, int drop_it);
+
+/**
+ * @brief Event driven Endpoint Security Framework
+ */
+void * efs_reader_thread(void * args);
 #endif
 
 #ifdef __linux__

@@ -482,6 +482,10 @@ void LogCollectorStart()
     /* Create the input threads */
     w_create_input_threads();
 
+#ifdef Darwin
+    w_create_thread(efs_reader_thread, &default_target);
+#endif
+
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
     mdebug1(CURRENT_FILES, current_files, maximum_files);

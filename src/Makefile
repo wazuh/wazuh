@@ -2041,8 +2041,14 @@ logcollector/%.o: logcollector/%.c
 logcollector/%-event.o: logcollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
 
+# Endpoint Security Framework (EFS) POV
+EFS_LIBS :=
+ifeq (${uname_S},Darwin)
+EFS_LIBS += -lbsm -lEndpointSecurity
+endif
+
 wazuh-logcollector: ${os_logcollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${EFS_LIBS} -o $@
 
 #### remoted #########
 
