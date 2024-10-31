@@ -14,9 +14,9 @@ from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhCommsAPIErro
 async def post_stateful_events(
     token: Annotated[str, Depends(JWTBearer())],
     user_agent: Annotated[str, Header()],
-    agent_groups: Annotated[str, Header()],
     request: Request,
     events: StatefulEvents,
+    agent_groups: Annotated[str, Header()] = '',
 ) -> StatefulEventsResponse:
     """Handle posting stateful events.
 
@@ -26,12 +26,12 @@ async def post_stateful_events(
         JWT token.
     user_agent : str
         User-Agent header value.
-    agent_groups : str
-        Agent-Groups header value.
     request : Request
         Incoming HTTP request.
     events : StatefulEvents
         Events to post.
+    agent_groups : str
+        Agent-Groups header value. Default value is an emtpy string.
 
     Raises
     ------
