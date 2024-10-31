@@ -226,20 +226,6 @@ def test_get_group_conf():
         assert configuration.get_group_conf(group_id='default')['total_affected_items'] == 1
 
 
-def test_parse_internal_options():
-    with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
-               new=os.path.join(parent_directory, tmp_path, 'configuration/noexists.conf')):
-        with pytest.raises(WazuhInternalError, match=".* 1107 .*"):
-            configuration.parse_internal_options('ossec', 'python')
-
-    with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
-               new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-        with patch('wazuh.core.common.LOCAL_INTERNAL_OPTIONS_CONF',
-                   new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-            with pytest.raises(WazuhInternalError, match=".* 1108 .*"):
-                configuration.parse_internal_options('ossec', 'python')
-
-
 def test_get_internal_options_value():
     with patch('wazuh.core.configuration.parse_internal_options', return_value='str'):
         with pytest.raises(WazuhError, match=".* 1109 .*"):
@@ -259,7 +245,7 @@ def test_get_internal_options_value():
 def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.update_group_configuration('noexists', 'noexists')
-    
+
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.open', return_value=Exception):
             with pytest.raises(WazuhError, match=".* 1006 .*"):
@@ -276,7 +262,7 @@ def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 def test_update_group_file(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.update_group_file('noexists', 'given')
-    
+
     with pytest.raises(WazuhError, match=".* 1722 .*"):
         configuration.update_group_file('.invalid', '')
 

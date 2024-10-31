@@ -296,7 +296,11 @@ def get_script_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('-V', help='Print version', action='store_true', dest='version')
     parser.add_argument(
-        '-d', help='Enable debug messages. Use twice to increase verbosity.', action='count', dest='debug_level'
+        '-d',
+        help='Enable debug messages. Use twice to increase verbosity.',
+        action='count',
+        dest='debug_level',
+        default=0
     )
 
     subparsers = parser.add_subparsers(title='subcommands', help='Management operations.')
@@ -450,10 +454,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # Set logger
-    try:
-        debug_mode_ = configuration.get_internal_options_value('wazuh_clusterd', 'debug', 2, 0) or args.debug_level
-    except Exception:
-        debug_mode_ = 0
+    debug_mode_ = args.debug_level
 
     main_logger = set_logging(foreground_mode=getattr(args, 'foreground', False), debug_mode=debug_mode_)
 
