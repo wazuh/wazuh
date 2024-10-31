@@ -134,8 +134,8 @@ namespace Utils
     private:
         mutable std::mutex m_mutex;
         std::condition_variable m_cv;
-        std::atomic<bool> m_canceled {};
         Tq m_queue;
+        std::atomic<bool> m_canceled {};
     };
 } // namespace Utils
 
