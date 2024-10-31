@@ -267,7 +267,7 @@ def get_api_conf() -> dict:
     dict
         API configuration.
     """
-    return copy.deepcopy(configuration.api_conf)
+    return copy.deepcopy(configuration.hardcoded_api_config)
 
 
 def _get_ssl_context() -> ssl.SSLContext:

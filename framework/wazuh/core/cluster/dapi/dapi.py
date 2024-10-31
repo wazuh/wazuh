@@ -19,7 +19,6 @@ from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
-import api.configuration as aconf
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -29,6 +28,7 @@ from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
+from wazuh.core.config.client import CentralizedConfig
 
 pools = common.mp_pools.get()
 
@@ -106,8 +106,8 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
-        self.api_request_timeout = max(api_timeout, aconf.api_conf['intervals']['request_timeout']) \
-            if api_timeout else aconf.api_conf['intervals']['request_timeout']
+        api_request_timeout = CentralizedConfig.get_management_api_config().intervals.request_timeout
+        self.api_request_timeout = max(api_timeout, api_request_timeout) if api_timeout else api_request_timeout
         self.remove_denied_nodes = remove_denied_nodes
 
     def debug_log(self, message):

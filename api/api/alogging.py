@@ -8,7 +8,6 @@ import json
 import re
 from pythonjsonlogger import jsonlogger
 
-from api.configuration import api_conf
 from api.api_exception import APIError
 
 from wazuh.core.config.models.logging import LoggingWithRotationConfig
@@ -196,8 +195,8 @@ def set_logging(log_filepath, logging_config: LoggingWithRotationConfig, foregro
     # configure file handlers
     for handler, d in handlers.items():
         if d and 'filename' in d:
-            if api_conf['logs']['max_size']['enabled']:
-                max_size = APILoggerSize(api_conf['logs']['max_size']['size']).size
+            if logging_config.max_size.enabled:
+                max_size = APILoggerSize(logging_config.max_size.size).size
                 d.update({
                     'class':'wazuh.core.wlogging.SizeBasedFileRotatingHandler',
                     'maxBytes': max_size,

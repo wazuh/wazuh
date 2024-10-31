@@ -25,11 +25,11 @@ from sqlalchemy.sql.expression import select, delete
 from sqlalchemy.sql import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES, WAZUH_LIB
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_cache
+from wazuh.core.config.client import CentralizedConfig
 
 logger = logging.getLogger("wazuh-api")
 
@@ -165,7 +165,8 @@ class RunAsTokenBlacklist(_Base):
 
     def __init__(self):
         self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.is_valid_until = (self.nbf_invalid_until +
+                               CentralizedConfig.get_management_api_config().jwt_expiration_timeout)
 
     def to_dict(self) -> dict:
         """Return the information of the RunAsTokenBlacklist object.
@@ -196,7 +197,7 @@ class UsersTokenBlacklist(_Base):
     def __init__(self, user_id):
         self.user_id = user_id
         self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.is_valid_until = self.nbf_invalid_until + CentralizedConfig.get_management_api_config().jwt_expiration_timeout
 
     def to_dict(self):
         """Return the information of the token rule
@@ -227,7 +228,8 @@ class RolesTokenBlacklist(_Base):
     def __init__(self, role_id):
         self.role_id = role_id
         self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.is_valid_until = (self.nbf_invalid_until +
+                               CentralizedConfig.get_management_api_config().jwt_expiration_timeout)
 
     def to_dict(self):
         """Return the information of the token rule

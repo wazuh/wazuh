@@ -15,7 +15,6 @@ from connexion.exceptions import Unauthorized
 import api.configuration as conf
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
-from api.constants import SECURITY_CONFIG_PATH
 from api.util import raise_if_exc
 from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -90,9 +89,7 @@ def get_security_conf() -> dict:
     dict
         Dictionary with the content of the security.yaml file.
     """
-    conf.security_conf.update(conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
-                                                    default_conf=conf.default_security_configuration))
-    return conf.security_conf
+    return conf.hardcoded_security_conf
 
 
 def generate_token(user_id: str = None, data: dict = None, auth_context: dict = None) -> str:

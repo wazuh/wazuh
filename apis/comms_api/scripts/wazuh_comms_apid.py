@@ -9,6 +9,7 @@ import logging.config
 import os
 import signal
 import ssl
+import sys
 import atexit
 from argparse import ArgumentParser, Namespace
 from functools import partial
@@ -296,10 +297,12 @@ if __name__ == '__main__':
     # The bash script that starts all services first executes them using the `-t` flag to check the configuration.
     # We don't have a configuration yet, but it will be added in the future, so we just exit successfully for now.
     #
-    # TODO(#25121): check configuration - handle error - handle master/worker case (only master now)
-    CentralizedConfig.load()
-    if args.test_config:
-        exit(0)
+    # TODO(#25121): handle master/worker case (only master now)
+    try:
+        CentralizedConfig.load()
+    except Exception as e:
+        print(f"Error when trying to start the Management Wazuh API. {e}")
+        sys.exit(1)
     comms_api_config = CentralizedConfig.get_comms_api_config()
 
     utils.clean_pid_files(MAIN_PROCESS)

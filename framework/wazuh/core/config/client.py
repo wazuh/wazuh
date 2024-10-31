@@ -29,7 +29,7 @@ class CentralizedConfig:
         return cls._config.communications_api
 
     @classmethod
-    def get_management_api_config(cls) ->  ManagementAPIConfig:
+    def get_management_api_config(cls) -> ManagementAPIConfig:
         if cls._config is None:
             cls.load()
 

@@ -340,5 +340,6 @@ except ValidationError as e:
     raise APIError(2000, details=e.message) from None
 
 # Configuration - global object
-api_conf = read_yaml_config()
-security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
+#TODO(26356) - This is only used as a placeholder for no longer used endpoints
+hardcoded_api_config = default_api_configuration
+hardcoded_security_conf = default_security_configuration
