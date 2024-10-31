@@ -142,6 +142,33 @@ cJSON * json_base_event(const char * event_type) {
     return json;
 }
 
+char * make_string_from_token(const es_string_token_t str_token) {
+    char * str = NULL;
+    if (str_token.length > 0)
+    {
+        str = malloc(str_token.length + 1);
+        if (str == NULL)
+        {
+            perror("Failed to allocate memory for string token");
+            return NULL;
+        }
+        memcpy(str, str_token.data, str_token.length);
+        str[str_token.length] = '\0';
+
+    }
+    return str;
+}
+
+void add_string_to_json(cJSON *json, const char* key, const es_string_token_t str_token)
+{
+    char *str = make_string_from_token(str_token);
+    if (str != NULL && str[0] != '\0')
+    {
+        cJSON_AddStringToObject(json, key, str);
+        free(str);
+    }
+}
+
 void send_message_to_queue(cJSON *json) {
     char *message = cJSON_PrintUnformatted(json);
     w_msg_hash_queues_push(message, "MacOS ESF", strlen(message) + 1, g_target, LOCALFILE_MQ);
@@ -160,17 +187,12 @@ void handle_exec(const es_message_t *msg)
 
     cJSON *json = json_base_event("exec");
 
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Parent process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Parent process path
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Parent process PID
-    cJSON_AddStringToObject(json, "image", msg->event.exec.target->executable->path.data); // New image path
+    add_string_to_json(json, "image", msg->event.exec.target->executable->path); // New image path
 
     // Send the message to the queue
     send_message_to_queue(json);
-
-    // printf("%s (pid: %d) | EXEC: New image: %s\n",
-    //          msg->process->executable->path.data,            // Parent process path (Who executed the new image)
-    //          audit_token_to_pid(msg->process->audit_token),  // Parent process PID (Who executed the new image)
-    //          msg->event.exec.target->executable->path.data); // New image path (The new image that was executed)    
 }
 
 // event: ES_EVENT_TYPE_NOTIFY_FORK
@@ -178,17 +200,13 @@ void handle_fork(const es_message_t *msg)
 {
     cJSON *json = json_base_event("fork");
 
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Parent process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Parent process path
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Parent process PID
+    add_string_to_json(json, "child_image", msg->event.fork.child->executable->path); // forked child path
     cJSON_AddNumberToObject(json, "child_pid", audit_token_to_pid(msg->event.fork.child->audit_token)); // forked child PID
 
     // Send the message to the queue
     send_message_to_queue(json);
-
-    // printf("%s (pid: %d) | FORK: Child pid: %d\n",
-    //        msg->process->executable->path.data,                     // Parent process path
-    //        audit_token_to_pid(msg->process->audit_token),           // Parent process PID
-    //        audit_token_to_pid(msg->event.fork.child->audit_token)); // forked child PID
 }
 
 // event: ES_EVENT_TYPE_NOTIFY_EXIT
@@ -196,183 +214,96 @@ void handle_exit(const es_message_t *msg)
 {
     cJSON *json = json_base_event("exit");
 
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Process path
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Process PID
     cJSON_AddNumberToObject(json, "status", msg->event.exit.stat); // Exit status
 
     // Send the message to the queue
     send_message_to_queue(json);
-
-
-    // printf("%s (pid: %d) | EXIT: status: %d\n",
-    //        msg->process->executable->path.data,           // Process path
-    //        audit_token_to_pid(msg->process->audit_token), // Process PID
-    //        msg->event.exit.stat);                         // Exit status
 }
 
 // event: ES_EVENT_TYPE_NOTIFY_CLOSE
 void handler_close(const es_message_t *msg)
 {
-    char *path = NULL;
-    if (msg->event.close.target->path.length > 0)
-    {
-        path = malloc(msg->event.close.target->path.length + 1);
-        if (path == NULL)
-        {
-            perror("Failed to allocate memory for path");
-            return;
-        }
-        memcpy(path, msg->event.close.target->path.data, msg->event.close.target->path.length);
-        path[msg->event.close.target->path.length] = '\0';
-    }
-    else
-    {
-        path = strdup("Unknown");
-    }
-    const char *modify = msg->event.close.modified ? "MODIFIED" : "NOT MODIFIED";
-
     cJSON *json = json_base_event("close");
 
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Process path
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Process PID
-    cJSON_AddStringToObject(json, "file", path); // Path of the file that was closed
+    add_string_to_json(json, "file", msg->event.close.target->path); // Path of the file that was closed
+    const char *modify = msg->event.close.modified ? "MODIFIED" : "NOT MODIFIED";
     cJSON_AddStringToObject(json, "modify", modify); // File was modified or not
 
     // Send the message to the queue
     send_message_to_queue(json);
 
-    // printf("%s (pid: %d) | CLOSE: File descriptor: %s, modify: %s\n",
-    //        msg->process->executable->path.data,           // Process path
-    //        audit_token_to_pid(msg->process->audit_token), // Process PID
-    //        path,                                          //  Path of the file that was closed
-    //        modify);                                       // File was modified or not
-
-    free(path);
 }
 
 // Event: ES_EVENT_TYPE_NOTIFY_CREATE
 void handler_create(const es_message_t *msg)
 {
-    char *path = NULL;
+    cJSON *json = json_base_event("create");
+
     // save the st_mode
     struct stat fstat = {0};
+    char *st_mode_str = NULL;
 
     if (msg->event.create.destination_type == ES_DESTINATION_TYPE_EXISTING_FILE && msg->event.create.destination.existing_file->path.length > 0)
     {
         // If the file doesn’t exist
-        path = malloc(msg->event.create.destination.existing_file->path.length + 1);
-        memcpy(path, msg->event.create.destination.existing_file->path.data, msg->event.create.destination.existing_file->path.length);
+        add_string_to_json(json, "file", msg->event.create.destination.existing_file->path); // Path of the file that was created
         fstat.st_mode = msg->event.create.destination.existing_file->stat.st_mode;
     }
     else if (msg->event.create.destination_type == ES_DESTINATION_TYPE_NEW_PATH && msg->event.create.destination.new_path.filename.length > 0)
     {
-        // If the file exists (I don't know how get this event)
-        path = malloc(msg->event.create.destination.new_path.filename.length + 1);
-        memcpy(path, msg->event.create.destination.new_path.filename.data, msg->event.create.destination.new_path.filename.length);
+        // If the file exists
+        add_string_to_json(json, "file", msg->event.create.destination.new_path.filename); // Path of the file that was created
         fstat.st_mode = msg->event.create.destination.new_path.mode;
     }
-    else
-    {
-        path = strdup("Unknown");
-    }
 
-    cJSON *json = json_base_event("create");
-
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Process path    
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Process PID
-    cJSON_AddStringToObject(json, "file", path); // Path of the file that was created
-    cJSON_AddNumberToObject(json, "mode", fstat.st_mode); // File mode
+
+    // Convert the mode to a string
+    st_mode_str = calloc(32, sizeof(char));
+    snprintf(st_mode_str, 8, "%07o", fstat.st_mode);
+    cJSON_AddStringToObject(json, "mode", st_mode_str); // File mode
 
     // Send the message to the queue
     send_message_to_queue(json);
 
-
-    // printf("%s (pid: %d) | CREATE: File: %s, mode: %07o\n",
-    //        msg->process->executable->path.data,           // Process path
-    //        audit_token_to_pid(msg->process->audit_token), // Process PID
-    //        path,                                          // Path of the file that was created
-    //        fstat.st_mode);                                // File mode
-
-    free(path);
+    free(st_mode_str);
 }
 
 // Event: ES_EVENT_TYPE_NOTIFY_SETMODE
 void handler_setmode(const es_message_t *msg)
 {
-    char *path = NULL;
-    if (msg->event.setmode.target->path.length > 0)
-    {
-        path = malloc(msg->event.setmode.target->path.length + 1);
-        if (path == NULL)
-        {
-            perror("Failed to allocate memory for path");
-            return;
-        }
-        memcpy(path, msg->event.setmode.target->path.data, msg->event.setmode.target->path.length);
-        path[msg->event.setmode.target->path.length] = '\0';
-    }
-    else
-    {
-        path = strdup("Unknown");
-    }
 
     cJSON *json = json_base_event("setmode");
 
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Process path
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Process PID
-    cJSON_AddStringToObject(json, "file", path); // Path of the file that was modified
+    add_string_to_json(json, "file", msg->event.setmode.target->path); // Path of the file that was modified
+
     char *mode = calloc(32, sizeof(char));
     snprintf(mode, 8, "%07o", msg->event.setmode.mode);
     cJSON_AddStringToObject(json, "mode", mode); // New file mode
 
     // Send the message to the queue
     send_message_to_queue(json);
-
-    // printf("%s (pid: %d) | SETMODE: File: %s, mode: %07o\n",
-    //        msg->process->executable->path.data,           // Process path
-    //        audit_token_to_pid(msg->process->audit_token), // Process PID
-    //        path,                                          // Path of the file that was modified
-    //        msg->event.setmode.mode);                      // New file mode
-
-    free(path);
     free(mode);
 }
 
 // event: ES_EVENT_TYPE_NOTIFY_UNLINK
 void handler_unlink(const es_message_t *msg)
 {
-    char *path = NULL;
-    if (msg->event.unlink.target->path.length > 0)
-    {
-        path = malloc(msg->event.unlink.target->path.length + 1);
-        if (path == NULL)
-        {
-            perror("Failed to allocate memory for path");
-            return;
-        }
-        memcpy(path, msg->event.unlink.target->path.data, msg->event.unlink.target->path.length);
-        path[msg->event.unlink.target->path.length] = '\0';
-    }
-    else
-    {
-        path = strdup("Unknown");
-    }
-
     cJSON *json = json_base_event("unlink");
 
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Process path
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Process PID
-    cJSON_AddStringToObject(json, "file", path); // Path of the file that was unlinked
-
+    add_string_to_json(json, "file", msg->event.unlink.target->path); // Path of the file that was unlinked
+    
     // Send the message to the queue
     send_message_to_queue(json);
-
-    //printf("%s (pid: %d) | UNLINK: File: %s\n",
-    //       msg->process->executable->path.data,           // Process path
-    //       audit_token_to_pid(msg->process->audit_token), // Process PID
-    //       path);                                         // Path of the file that was unlinked
-
-    free(path);
 }
 
 // event: ES_EVENT_TYPE_NOTIFY_MOUNT
@@ -429,7 +360,7 @@ void handler_mount(const es_message_t *msg)
 
     cJSON *json = json_base_event("mount");
 
-    cJSON_AddStringToObject(json, "process_image", msg->process->executable->path.data); // Process path
+    add_string_to_json(json, "process_image", msg->process->executable->path); // Process path
     cJSON_AddNumberToObject(json, "pid", audit_token_to_pid(msg->process->audit_token)); // Process PID
     cJSON_AddStringToObject(json, "owner", user); // Owner of the mounted filesystem
     cJSON_AddNumberToObject(json, "owner_id", owner); // Owner of the mounted filesystem
@@ -440,17 +371,6 @@ void handler_mount(const es_message_t *msg)
 
     // Send the message to the queue
     send_message_to_queue(json);
-
-
-    // printf("%s (pid: %d) | MOUNT: File system mounted by: %s, id: %d, type: %s, from: %s, on: %s Flags: %s\n",
-    //        msg->process->executable->path.data,           // Process path
-    //        audit_token_to_pid(msg->process->audit_token), // Process PID
-    //        user,                                          // Owner of the mounted filesystem
-    //        owner,                                         // Owner of the mounted filesystem
-    //        fstypename,                                    // Type of the file system
-    //        mntfromname,                                   // The directory providing the mounted file system
-    //        mntonname,                                     // The directory on which the file system is mounted
-    //        flags);                                        // Flags
 
     free(user);
     free(mntfromname);
@@ -506,13 +426,6 @@ void handler_unmount(const es_message_t *msg)
 
     // Send the message to the queue
     send_message_to_queue(json);
-
-    // printf("%s (pid: %d) | UNMOUNT: File system unmounted, type: %s, from: %s, on: %s\n",
-    //        msg->process->executable->path.data,           // Process path
-    //        audit_token_to_pid(msg->process->audit_token), // Process PID
-    //        fstypename,                                    // Type of the file system
-    //        mntfromname,                                   // The directory providing the mounted file system
-    //        mntonname);                                    // The directory on which the file system is mounted
 
     free(mntfromname);
     free(mntonname);
