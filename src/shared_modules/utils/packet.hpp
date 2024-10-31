@@ -18,16 +18,16 @@ class Packet final
 {
 public:
     Packet(char* data, uint32_t size)
-        : data {std::make_unique<char[]>(size + 1)}
-        , size(size)
-        , offset(0)
+        : m_data {std::make_unique<char[]>(size + 1)}
+        , m_size(size)
+        , m_offset(0)
     {
-        std::copy(data, data + size, this->data.get());
+        std::copy(data, data + size, this->m_data.get());
     }
     virtual ~Packet() = default;
-    std::unique_ptr<char[]> data;
-    uint32_t size;
-    uint32_t offset;
+    std::unique_ptr<char[]> m_data;
+    uint32_t m_size;
+    uint32_t m_offset;
 };
 
 #endif // _PACKET_HPP

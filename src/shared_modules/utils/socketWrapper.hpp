@@ -633,7 +633,8 @@ public:
         while (!m_unsentPacketList.empty())
         {
             auto& packet = m_unsentPacketList.front();
-            auto ret = T::send(m_sock, packet.data.get() + packet.offset, packet.size - packet.offset, MSG_NOSIGNAL);
+            auto ret =
+                T::send(m_sock, packet.m_data.get() + packet.m_offset, packet.m_size - packet.m_offset, MSG_NOSIGNAL);
             if (ret <= 0)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -647,10 +648,10 @@ public:
             }
             else
             {
-                if (ret != packet.size)
+                if (ret != packet.m_size)
                 {
                     // In this case we need to send the rest of the data, when the next send is called.
-                    packet.offset += ret;
+                    packet.m_offset += ret;
                 }
                 else
                 {
