@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 
 from comms_api.authentication.authentication import decode_token, JWTBearer
-from comms_api.core.events import create_stateful_events, send_stateless_events, parse_agent_metadata
+from comms_api.core.events import create_stateful_events, send_stateless_events
+from comms_api.core.utils import parse_agent_metadata
 from comms_api.models.events import StatefulEvents, StatefulEventsResponse, StatelessEvents
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
