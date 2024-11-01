@@ -9,7 +9,7 @@ def test_command_from_dict():
     data = {
         'target': {'id': 'agent_id', 'type': TargetType.AGENT.value},
         'action': {'name': 'restart', 'args': ['/bin/bash', '-c'], 'version': 'v5.0.0'},
-        'result': {'info': 'info'},
+        'result': {'message': 'message'},
         'status': status,
         'timeout': timeout,
         'source': Source.SERVICES.value,
