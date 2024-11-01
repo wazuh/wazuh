@@ -413,14 +413,12 @@ def main():
 def stop():
     """Stop the Wazuh server running in background."""
 
-    pids_path = Path(common.OSSEC_PIDFILE_PATH)
     try:
-        server_pid = next(pids_path.glob(f'{SERVER_DAEMON_NAME}-*.pid')).stem
+        server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
     except StopIteration:
         main_logger.error('Wazuh server is not running.')
         sys.exit(1)
 
-    server_pid = int(server_pid.split('-')[-1])
     shutdown_cluster(server_pid)
     os.kill(server_pid, signal.SIGKILL)
 
@@ -429,9 +427,7 @@ def status():
     """Show the status of the Wazuh server."""
 
     daemons = [SERVER_DAEMON_NAME, COMMS_API_DAEMON_NAME, MANAGEMENT_API_DAEMON_NAME, ENGINE_DAEMON_NAME]
-    pids_path = Path(common.OSSEC_PIDFILE_PATH)
-    running_processes = [i.stem for i in pids_path.glob('wazuh-*-*') if '_' not in i.stem]
-    running_processes = ['-'.join(p.split('-')[:-1]) for p in running_processes]
+    running_processes = pyDaemonModule.get_running_processes()
 
     for daemon in daemons:
         status = 'running'

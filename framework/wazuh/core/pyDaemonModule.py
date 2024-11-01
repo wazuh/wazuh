@@ -9,6 +9,7 @@ import os
 import re
 import sys
 from os import path
+from pathlib import Path
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
@@ -80,16 +81,16 @@ def create_pid(name: str, pid: int):
             os.chmod(filename, 0o640)
         except OSError as e:
             raise WazuhInternalError(3002, str(e))
-    
+
 
 def get_parent_pid(name: str) -> int:
     """Given the name of a daemon, return its parent ID.
-    
+
     Parameters
     ----------
     name : str
         Daemon name.
-    
+
     Returns
     -------
     pids : int
@@ -155,3 +156,49 @@ def exit_handler(signum, frame, process_name: str, logger: logging.Logger) -> No
     pid = os.getpid()
     delete_child_pids(process_name, pid, logger)
     delete_pid(process_name, pid)
+
+def get_wazuh_server_pid(server_daemon_name: str, pids_path: str = common.OSSEC_PIDFILE_PATH) -> int:
+    """Get the PID of the running wazuh server process contained in the given path.
+
+    Parameters
+    ----------
+    server_daemon_name : str
+        Daemon name to search.
+    pids_path : str, optional
+        Path to search the PID, by default common.OSSEC_PIDFILE_PATH
+
+    Returns
+    -------
+    int
+        The PID of the wazuh server.
+
+    Raises
+    ------
+    StopIteration
+        When the server is not running.
+    """
+    pids_path = Path(pids_path)
+
+    try:
+        server_pid = next(pids_path.glob(f'{server_daemon_name}-*.pid')).stem
+        return int(server_pid.split('-')[-1])
+    except StopIteration:
+        raise
+
+
+def get_running_processes(pids_path: str = common.OSSEC_PIDFILE_PATH) -> list:
+    """Get the running processes based on the PID files contained in the give path.
+
+    Parameters
+    ----------
+    pids_path : str, optional
+        Path to search the PID's, by default common.OSSEC_PIDFILE_PATH.
+
+    Returns
+    -------
+    list
+        The running processes name.
+    """
+    pids_path = Path(pids_path)
+    running_processes = [i.stem for i in pids_path.glob('wazuh-*-*') if '_' not in i.stem]
+    return ['-'.join(p.split('-')[:-1]) for p in running_processes]

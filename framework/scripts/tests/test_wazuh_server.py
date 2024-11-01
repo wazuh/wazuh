@@ -539,36 +539,32 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                         "permission for 'wazuh' user")
 
 
-@patch('scripts.wazuh_server.next')
 @patch('scripts.wazuh_server.shutdown_cluster')
 @patch('scripts.wazuh_server.os.kill')
-@patch('scripts.wazuh_server.Path')
-def test_stop(path_mock, os_mock, shutdown_mock, next_mock):
+def test_stop(os_mock, shutdown_mock):
     """Check and set the behavior of wazuh_server stop function."""
     from wazuh.core import common
 
     wazuh_server.common = common
     pid = 123
-    wazuh_server_pid = f'wazuh-server-{pid}'
-    next_mock.return_value = Mock(stem=wazuh_server_pid)
 
-    wazuh_server.stop()
+    with patch.object(pyDaemonModule, 'get_wazuh_server_pid', return_value=pid):
+        wazuh_server.stop()
 
     shutdown_mock.assert_called_once_with(pid)
     os_mock.assert_called_once_with(pid, signal.SIGKILL)
 
 
-@patch('scripts.wazuh_server.next', side_effect=StopIteration)
-@patch('scripts.wazuh_server.Path')
-def test_stop_ko(path_mock, next_mock):
+def test_stop_ko():
     """Validate that `stop` works as expected when the server is not running."""
     from wazuh.core import common
 
     wazuh_server.common = common
     wazuh_server.main_logger = Mock()
 
-    with pytest.raises(SystemExit, match='1'):
-        wazuh_server.stop()
+    with patch.object(pyDaemonModule, 'get_wazuh_server_pid', side_effect=StopIteration):
+        with pytest.raises(SystemExit, match='1'):
+            wazuh_server.stop()
 
     wazuh_server.main_logger.error.assert_called_once_with('Wazuh server is not running.')
 
@@ -617,16 +613,14 @@ def test_stop_ko(path_mock, next_mock):
             ),
         ]
 )
-@patch('scripts.wazuh_server.Path')
-def test_status(path_mock, capsys, daemons, expected):
+def test_status(capsys, daemons, expected):
     """Check and set the behavior of wazuh_server `status` function."""
     from wazuh.core import common
 
     wazuh_server.common = common
 
-    path_mock.return_value.glob.return_value = (Mock(stem=f'{daemon}-{i}') for i, daemon in enumerate(daemons))
-
-    wazuh_server.status()
+    with patch.object(pyDaemonModule, 'get_running_processes', return_value=daemons):
+        wazuh_server.status()
 
     captured = capsys.readouterr().out.split('\n')
 

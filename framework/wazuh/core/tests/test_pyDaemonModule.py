@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 import pytest
 
 from wazuh.core.pyDaemonModule import *
@@ -77,3 +77,32 @@ def test_delete_pid():
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         with patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new=tmpdirname.split('/')[2]):
             delete_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
+
+@patch('wazuh.core.pyDaemonModule.next')
+@patch('wazuh.core.pyDaemonModule.Path')
+def test_get_wazuh_server_pid(path_mock, next_mock):
+    """Validate that `get_wazuh_server_pid` works as expected."""
+    pid = 123
+    daemon_name = 'wazuh-server'
+    wazuh_server_pid = f'{daemon_name}-{pid}'
+    next_mock.return_value = MagicMock(stem=wazuh_server_pid)
+
+    assert get_wazuh_server_pid(daemon_name) == pid
+
+
+@patch('wazuh.core.pyDaemonModule.next', side_effect=StopIteration)
+@patch('wazuh.core.pyDaemonModule.Path')
+def test_get_wazuh_server_pid_ko(path_mock, next_mock):
+    """Validate that `get_wazuh_server_pid` works as expected when the server is not running."""
+    daemon_name = 'wazuh-server'
+    with pytest.raises(StopIteration):
+        get_wazuh_server_pid(daemon_name)
+
+
+@patch('wazuh.core.pyDaemonModule.Path')
+def test_get_running_processes(path_mock):
+    """Validate that `get_running_processes` works as expected."""
+    daemons = ['wazuh-server', 'wazuh-apid', 'wazuh-comms-apid', 'wazuh-engine']
+    path_mock.return_value.glob.return_value = (MagicMock(stem=f'{daemon}-{i}') for i, daemon in enumerate(daemons))
+
+    assert get_running_processes() == daemons
