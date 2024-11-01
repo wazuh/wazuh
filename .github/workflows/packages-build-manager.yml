@@ -171,6 +171,9 @@ jobs:
             exit 1;
           fi
 
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:

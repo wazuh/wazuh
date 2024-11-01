@@ -1,0 +1,46 @@
+name: "Check installed files"
+description: "Validates that the installed files are the ones expected and with the right stats"
+
+inputs:
+  expected_files:
+    required: true
+    description: "Path to the 'expected files' CSV file"
+  report_file:
+    required: true
+    description: "Path to the report file"
+    default: "/tmp/report.md"
+
+runs:
+  using: "composite"
+  steps:
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: '3.12'
+
+  - name: Install dependencies
+    shell: bash
+    run: |
+      pip install -r requirements.txt
+
+  - name: Get the files stats
+    shell: bash
+    run: |
+      python3 get_files_stats.py
+
+  - name: Compare results
+    shell: bash
+    run: |
+      python3 compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
+
+  - name: Upload validation results
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: ${{ inputs.report_file }}
+
+  - name: Generate report
+    if: always()
+    shell: bash
+    run: |
+      cat ${{ inputs.report_file }} >> $GITHUB_STEP_SUMMARY
