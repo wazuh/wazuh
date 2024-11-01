@@ -157,6 +157,7 @@ def exit_handler(signum, frame, process_name: str, logger: logging.Logger) -> No
     delete_child_pids(process_name, pid, logger)
     delete_pid(process_name, pid)
 
+
 def get_wazuh_server_pid(server_daemon_name: str, pids_path: str = common.OSSEC_PIDFILE_PATH) -> int:
     """Get the PID of the running wazuh server process contained in the given path.
 
@@ -187,17 +188,17 @@ def get_wazuh_server_pid(server_daemon_name: str, pids_path: str = common.OSSEC_
 
 
 def get_running_processes(pids_path: str = common.OSSEC_PIDFILE_PATH) -> list:
-    """Get the running processes based on the PID files contained in the give path.
+    """Get the running processes based on the PID files contained in the given path.
 
     Parameters
     ----------
     pids_path : str, optional
-        Path to search the PID's, by default common.OSSEC_PIDFILE_PATH.
+        Path to search for the PIDs, by default `common.OSSEC_PIDFILE_PATH`.
 
     Returns
     -------
     list
-        The running processes name.
+        The running processes names.
     """
     pids_path = Path(pids_path)
     running_processes = [i.stem for i in pids_path.glob('wazuh-*-*') if '_' not in i.stem]
