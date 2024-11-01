@@ -21,6 +21,7 @@ from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.config.models.server import ServerConfig
 
 DEFAULT_DATE: str = 'n/a'
 
@@ -139,7 +140,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.integrity = None
 
         # Maximum zip size allowed when syncing Integrity files.
-        self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
+        self.current_zip_limit = self.server_config.communications.zip.max_size
 
     def to_dict(self):
         """Get worker healthcheck information.
@@ -244,7 +245,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if command == b'dapi' or command == b'dapi_fwd':
             try:
                 timeout = None if wait_for_complete \
-                    else self.cluster_items['intervals']['communication']['timeout_dapi_request']
+                    else self.server_config.communications.timeouts.dapi_request
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                 request_result = self.server.pending_api_requests[request_id]['Response']
             except asyncio.TimeoutError:
@@ -400,10 +401,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
             # Reset integrity permissions if False for more than "max_locked_integrity_time" seconds
             if not self.sync_integrity_free[0] and (utils.get_utc_now() - self.sync_integrity_free[1]).total_seconds() > \
-                    self.cluster_items['intervals']['master']['max_locked_integrity_time']:
+                    self.server_config.master.intervals.max_locked_integrity_time:
                 self.logger.warning(f'Automatically releasing Integrity check permissions flag ({sync_type}) after '
                                     f'being locked out for more than '
-                                    f'{self.cluster_items["intervals"]["master"]["max_locked_integrity_time"]}s.')
+                                    f'{self.server_config.master.intervals.max_locked_integrity_time}s.')
                 self.sync_integrity_free[0] = True
 
             permission = self.sync_integrity_free[0]
@@ -621,8 +622,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Create a child process to run the task.
         try:
             result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.process_files_from_worker,
-                                               files_metadata, decompressed_files_path, self.cluster_items, self.name,
-                                               self.cluster_items['intervals']['master']['timeout_extra_valid'])
+                                               files_metadata, decompressed_files_path, self.server_config, self.name,
+                                               self.server_config.master.intervals.timeout_extra_valid)
         except Exception as e:
             raise exception.WazuhClusterError(3038, extra_message=str(e))
         finally:
@@ -636,7 +637,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.error(error, exc_info=False)
 
     @staticmethod
-    def process_files_from_worker(files_metadata: Dict, decompressed_files_path: str, cluster_items: dict,
+    def process_files_from_worker(files_metadata: Dict, decompressed_files_path: str, server_config: ServerConfig,
                                   worker_name: str, timeout: int):
         """Iterate over received files from worker and updates the local ones.
 
@@ -646,8 +647,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Dictionary containing file metadata (each key is a filepath and each value its metadata).
         decompressed_files_path : str
             Filepath of the decompressed received zipfile.
-        cluster_items : dict
-            Object containing cluster internal variables from the cluster.json file.
+        server_config : ServerConfig
+            Object containing server configuration variables.
         worker_name : str
             Name of the worker instance. Used to access the correct worker folder.
         timeout : int
@@ -672,6 +673,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                 data['merge_type'], decompressed_files_path, data['merge_name']
                         ):
                             try:
+                                # Get dir configuration
+                                if file_config is None:
+                                    raise Exception(f'No dir in internal configuration with name {item_key}')
                                 # Destination path.
                                 full_unmerged_name = common.WAZUH_QUEUE / unmerged_file_path
                                 # Path where to create the file before moving it to the destination path.
@@ -696,9 +700,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     f.write(file_data)
 
                                 mtime_epoch = timegm(mtime.timetuple())
+                                file_config = server_config.get_internal_config().get_dir_config(item_key)
+
                                 utils.safe_move(tmp_unmerged_path, full_unmerged_name,
                                                 ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                                                permissions=cluster_items['files'][item_key]['permissions'],
+                                                permissions=file_config.permissions,
                                                 time=(mtime_epoch, mtime_epoch))
                                 result['total_updated'] += 1
                             except TimeoutError as e:
@@ -711,7 +717,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         try:
                             zip_path = os.path.join(decompressed_files_path, file_path)
                             utils.safe_move(zip_path, full_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                                            permissions=cluster_items['files'][item_key]['permissions'])
+                                            permissions=file_config.permissions)
                         except TimeoutError as e:
                             raise e
                         except Exception as e:
@@ -807,8 +813,9 @@ class Master(server.AbstractServer):
         self.integrity_control = {}
         self.handler_class = MasterHandler
         try:
-            self.task_pool = ProcessPoolExecutor(
-                max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+            self.task_pool = ProcessPoolExecutor(max_workers=min(os.cpu_count(),
+                                                                 self.server_config.master.processes.process_pool_size))
+
         # Handle exception when the user running Wazuh cannot access /dev/shm
         except (FileNotFoundError, PermissionError):
             self.logger.warning(
@@ -837,7 +844,7 @@ class Master(server.AbstractServer):
 
     async def file_status_update(self):
         """Asynchronous task that obtain files status periodically.
-        It updates the local files information every self.cluster_items['intervals']['worker']['sync_integrity']
+        It updates the local files information every recalculate_integrity value defined in the configuration
         seconds.
 
         A dictionary like {'file_path': {<BLAKE2b, merged, merged_name, etc>}, ...} is created and later
@@ -862,7 +869,7 @@ class Master(server.AbstractServer):
             file_integrity_logger.info(f"Finished in {(after - before):.3f}s. Calculated "
                                        f"metadata of {len(self.integrity_control)} files.")
 
-            await asyncio.sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])
+            await asyncio.sleep(self.server_config.master.intervals.recalculate_integrity)
 
     def get_health(self, filter_node) -> Dict:
         """Get nodes and synchronization information.

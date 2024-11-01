@@ -19,6 +19,7 @@ import uvloop
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
+from wazuh.core.config.models.server import ServerConfig
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -27,7 +28,7 @@ class AbstractServerHandler(c_common.Handler):
     """
 
     def __init__(self, server, loop: asyncio.AbstractEventLoop,
-                 cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
+                 server_config: ServerConfig, logger: logging.Logger = None, tag: str = "Client"):
         """Class constructor.
 
         Parameters
@@ -36,15 +37,14 @@ class AbstractServerHandler(c_common.Handler):
             Abstract server object that created this handler.
         loop : asyncio.AbstractEventLoop
             Asyncio loop.
-        cluster_items : dict
-            Cluster.json object containing cluster internal variables.
+        server_config : ServerConfig
+            Object containing server configuration variables.
         logger : Logger object
             Logger object to use.
         tag : str
             Log tag.
         """
-        super().__init__(logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
-                         cluster_items=cluster_items)
+        super().__init__(logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}", server_config=server_config)
         self.server = server
         self.loop = loop
         self.last_keepalive = utils.get_utc_now().timestamp()
@@ -245,7 +245,7 @@ class AbstractServer:
 
     NO_RESULT = 'no_result'
 
-    def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
+    def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, server_config: ServerConfig,
                  logger: logging.Logger = None, tag: str = "Abstract Server"):
         """Class constructor.
 
@@ -257,8 +257,8 @@ class AbstractServer:
             Number of requests to do in the concurrency test.
         configuration : dict
             ossec.conf cluster configuration.
-        cluster_items : dict
-            cluster.json cluster internal configuration.
+        server_config : ServerConfig
+            Server configuration.
         logger : Logger object
             Logger to use.
         tag : str
@@ -268,7 +268,7 @@ class AbstractServer:
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.configuration = configuration
-        self.cluster_items = cluster_items
+        self.server_config = server_config
         self.tag = tag
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
@@ -479,7 +479,7 @@ class AbstractServer:
         """Check date of the last received keep alive.
 
         Task to check the date of the last received keep alive from clients. It is started when
-        the server starts and it runs every self.cluster_items['intervals']['master']['check_worker_lastkeepalive']
+        the server starts and it runs every check_worker_lastkeepalive defined in the configuration
         seconds.
         """
         keep_alive_logger = self.setup_task_logger("Keep alive")
@@ -488,12 +488,12 @@ class AbstractServer:
             curr_timestamp = utils.get_utc_now().timestamp()
             # Iterate all clients and close the connection when their last keepalive is older than allowed.
             for client_name, client in self.clients.copy().items():
-                if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
+                if curr_timestamp - client.last_keepalive > self.server_config.master.intervals.max_allowed_time_without_keep_alive:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
                                             "Disconnecting".format(client_name), exc_info=False)
                     client.transport.close()
             keep_alive_logger.debug("Calculated.")
-            await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])
+            await asyncio.sleep(self.server_config.master.intervals.check_worker_last_keep_alive)
 
     async def performance_test(self):
         """Send a big message to all clients every 3 seconds."""
@@ -542,7 +542,7 @@ class AbstractServer:
         try:
             server = await self.loop.create_server(
                 protocol_factory=lambda: self.handler_class(
-                    server=self, loop=self.loop, logger=self.logger, cluster_items=self.cluster_items
+                    server=self, loop=self.loop, logger=self.logger, server_config=self.server_config
                 ),
                 host=self.configuration['bind_addr'],
                 port=self.configuration['port'],

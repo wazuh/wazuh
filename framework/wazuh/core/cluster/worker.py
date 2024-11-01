@@ -18,6 +18,7 @@ from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.utils import safe_move, get_utc_now
+from wazuh.core.config.models.server import ServerConfig
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -76,7 +77,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         self.integrity_sync_status = {'date_start': 0.0}
 
         # Maximum zip size allowed when syncing Integrity files.
-        self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
+        self.current_zip_limit = self.server_config.communications.zip.max_size
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -231,7 +232,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """Obtain files status and send it to the master.
 
         Asynchronous task that is started when the worker connects to the master. It starts an integrity synchronization
-        process every self.cluster_items['intervals']['worker']['sync_integrity'] seconds.
+        process every sync_integrity seconds (defined in the configuration).
 
         A dictionary like {'file_path': {<BLAKE2b, merged, merged_name, etc>}, ...} is created and sent to the master,
         containing the information of all the files inside the directories specified in cluster.json. The master
@@ -266,7 +267,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 with contextlib.suppress(Exception):
                     await self.send_request(command=b'syn_i_w_m_r', data=f"None {exc}".encode())
 
-            await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
+            await asyncio.sleep(self.server_config.worker.intervals.sync_integrity)
 
     async def sync_extra_valid(self, extra_valid: Dict):
         """Merge and send files of the worker node that are missing in the master node.
@@ -357,7 +358,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Worker does not meet integrity checks. Actions required.")
                 logger.debug("Updating local files: Start.")
                 logs = await cluster.run_in_pool(self.loop, self.server.task_pool, self.update_master_files_in_worker,
-                                                 ko_files, zip_path, self.cluster_items)
+                                                 ko_files, zip_path, self.server_config)
                 log_subprocess_execution(self.task_loggers['Integrity sync'], logs)
                 logger.debug("Updating local files: End.")
 
@@ -374,7 +375,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             zip_path and shutil.rmtree(zip_path)
 
     @staticmethod
-    def update_master_files_in_worker(ko_files: Dict, zip_path: str, cluster_items: Dict):
+    def update_master_files_in_worker(ko_files: Dict, zip_path: str, server_config: ServerConfig):
         """Iterate over received files and updates them locally.
 
         Parameters
@@ -383,8 +384,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             File metadata coming from the master.
         zip_path : str
             Pathname of the unzipped directory received from master and containing the files to update.
-        cluster_items : dict
-            Object containing cluster internal variables from the cluster.json file.
+        server_config : ServerConfig
+            Object containing server configuration variables.
 
         Returns
         -------
@@ -407,6 +408,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
             full_filename_path = common.WAZUH_ETC / filename
+            file_config = server_config.get_internal_config().get_dir_config(data_['cluster_item_key'])
+            if file_config is None:
+                raise Exception(f'No dir in internal configuration with name {data_["cluster_item_key"]}')
 
             if data_['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
@@ -419,7 +423,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
                     safe_move(tmp_unmerged_path, full_unmerged_name,
-                              permissions=cluster_items['files'][data_['cluster_item_key']]['permissions'],
+                              permissions=file_config.permissions,
                               ownership=(common.wazuh_uid(), common.wazuh_gid())
                               )
             else:
@@ -428,7 +432,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
                 safe_move(os.path.join(zip_path, filename_), full_filename_path,
-                          permissions=cluster_items['files'][data_['cluster_item_key']]['permissions'],
+                          permissions=file_config.permissions,
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
 
@@ -469,13 +473,16 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         continue
 
         # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json.
-        directories_to_check = set(os.path.dirname(f) for f, data in ko_files['extra'].items()
-                                   if cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
+        file_config = server_config.get_internal_config().get_dir_config(data['cluster_item_key'])
+        if file_config is None:
+            raise Exception(f'No dir in internal configuration with name {data["cluster_item_key"]}')
+
+        directories_to_check = set(os.path.dirname(f) for f, data in ko_files['extra'].items() if file_config.remove_subdirs_if_empty)
         for directory in directories_to_check:
             try:
                 full_path = common.WAZUH_ETC / directory
                 dir_files = set(os.listdir(full_path))
-                if not dir_files or dir_files.issubset(set(cluster_items['files']['excluded_files'])):
+                if not dir_files or dir_files.issubset(set(server_config.get_internal_config().excluded_files)):
                     shutil.rmtree(full_path)
             except Exception as e:
                 errors['extra'] += 1

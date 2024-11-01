@@ -28,11 +28,11 @@ from wazuh.core.cluster.utils import (
     HAPROXY_PROTOCOL,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
-    get_cluster_items,
     read_config,
 )
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode, to_relative_path
+from wazuh.core.config.client import CentralizedConfig
 
 logger = logging.getLogger('wazuh')
 
@@ -279,25 +279,25 @@ def get_files_status(previous_status=None, get_hash=True):
     if previous_status is None:
         previous_status = {}
 
-    cluster_items = get_cluster_items()
+    server_config = CentralizedConfig.get_internal_server_config()
 
     final_items = {}
     result_logs = {'debug': defaultdict(dict), 'warning': defaultdict(list), 'error': defaultdict(dict)}
-    for file_path, item in cluster_items['files'].items():
-        if file_path == "excluded_files" or file_path == "excluded_extensions":
+    for file_config in server_config.files:
+        if file_config.dir == "excluded_files" or file_config.dir == "excluded_extensions":
             continue
         try:
-            items, logs = walk_dir(file_path, item['recursive'], item['files'],
-                                   cluster_items['files']['excluded_files'],
-                                   cluster_items['files']['excluded_extensions'],
-                                   file_path, previous_status, get_hash)
+            items, logs = walk_dir(file_config.dir, file_config.recursive, file_config.names,
+                                   server_config.excluded_files,
+                                   server_config.excluded_extensions,
+                                   file_config.dir, previous_status, get_hash)
             if 'debug' in logs and logs['debug']:
-                result_logs['debug'][file_path].update(dict(logs['debug']))
+                result_logs['debug'][file_config.dir].update(dict(logs['debug']))
             if 'error' in logs and logs['error']:
-                result_logs['error'][file_path].update(dict(logs['error']))
+                result_logs['error'][file_config.dir].update(dict(logs['error']))
             final_items.update(items)
         except Exception as e:
-            result_logs['warning'][file_path].append(f"Error getting file status: {e}.")
+            result_logs['warning'][file_config.dir].append(f"Error getting file status: {e}.")
 
     return final_items, result_logs
 
@@ -316,17 +316,17 @@ def get_ruleset_status(previous_status):
         Relative path and hash of local ruleset files.
     """
     final_items = {}
-    cluster_items = get_cluster_items()
+    server_config = CentralizedConfig.get_internal_server_config()
     user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.USER_DECODERS_PATH,
                                                                                     common.USER_RULES_PATH,
                                                                                     common.USER_LISTS_PATH]]
 
-    for file_path, item in cluster_items['files'].items():
-        if file_path == "excluded_files" or file_path == "excluded_extensions" or file_path not in user_ruleset:
+    for file_config in server_config.files:
+        if file_config.dir == "excluded_files" or file_config.dir == "excluded_extensions" or file_config.dir not in user_ruleset:
             continue
         try:
-            items, _ = walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                                cluster_items['files']['excluded_extensions'], file_path, previous_status, True)
+            items, _ = walk_dir(file_config.dir, file_config.recursive, file_config.names, server_config.excluded_files,
+                                server_config.excluded_extensions, file_config.dir, previous_status, True)
             final_items.update(items)
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
@@ -393,9 +393,11 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
     zip_size = 0
     exceeded_size = False
     result_logs = {'warning': defaultdict(list), 'debug': defaultdict(list)}
-    compress_level = get_cluster_items()['intervals']['communication']['compress_level']
+    server_config = CentralizedConfig.get_server_config()
+
+    compress_level = server_config.communications.zip.compress_level
     if max_zip_size is None:
-        max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
+        max_zip_size = server_config.communications.zip.max_size
     zip_file_path = path.join(common.WAZUH_QUEUE, name, f'{name}-{get_utc_now().timestamp()}-{uuid4().hex}.zip')
 
     if not path.exists(path.dirname(zip_file_path)):
@@ -574,9 +576,9 @@ def compare_files(good_files, check_files, node_name):
         l1, l2 = itertools.tee((condition(item), item) for item in seq)
         return (i for p, i in l1 if p), (i for p, i in l2 if not p)
 
-    # Get 'files' dictionary inside cluster.json to read options for each file depending on their
+    # Get 'SharedFiles' object  to read options for each file depending on their
     # directory (permissions, if extra_valid files, etc).
-    cluster_items = get_cluster_items()['files']
+    server_config = CentralizedConfig.get_internal_server_config()
 
     # Missing files will be the ones that are present in good files (master) but not in the check files (worker).
     missing_files = {key: good_files[key] for key in good_files.keys() - check_files.keys()}
@@ -584,8 +586,12 @@ def compare_files(good_files, check_files, node_name):
     # Extra files are the ones present in check files (worker) but not in good files (master). The underscore is used
     # to not change the function, as previously it returned an iterator for the 'extra_valid' files as well, but these
     # are no longer in use.
-    _extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(),
-                                  lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
+    #TODO(26356) - Check if it changes the logic
+    condition_func = lambda x: next(
+        (file_config.extra_valid for file_config in server_config.files if file_config.dir == check_files[x]['cluster_item_key']),
+        False
+    )
+    _extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(), condition_func)
     extra_files = {key: check_files[key] for key in extra}
     # extra_valid_files = {key: check_files[key] for key in _extra_valid}
 
@@ -600,8 +606,8 @@ def compare_files(good_files, check_files, node_name):
     # 'shared_e_v' are files present in both nodes but need to be merged before sending them to the worker. Only
     # 'agent-groups' files fit into this category.
     # 'shared' files can be sent as is, without merging.
-    shared_e_v, shared = split_on_condition(all_shared,
-                                            lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
+    #TODO(26356) - Check if it changes the logic
+    shared_e_v, shared = split_on_condition(all_shared, condition_func)
     shared_e_v = list(shared_e_v)
     if shared_e_v:
         # Merge all shared extra valid files into a single one. Create a tuple (merged_filepath, {metadata_dict}).

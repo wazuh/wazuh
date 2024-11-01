@@ -1,5 +1,5 @@
-from pydantic import BaseModel, PositiveInt, conint, confloat
-from typing import List, Literal
+from pydantic import BaseModel, PositiveInt, conint, confloat, PrivateAttr
+from typing import List, Literal, Optional
 
 from wazuh.core.config.models.ssl_config import SSLConfig
 
@@ -7,8 +7,8 @@ from wazuh.core.config.models.ssl_config import SSLConfig
 class MasterIntervalsConfig(BaseModel):
     timeout_extra_valid: PositiveInt = 40
     recalculate_integrity: PositiveInt = 8
-    check_worker_last_keepalive: PositiveInt = 60
-    max_allowed_time_without_keepalive: PositiveInt = 120
+    check_worker_last_keep_alive: PositiveInt = 60
+    max_allowed_time_without_keep_alive: PositiveInt = 120
     max_locked_integrity_time: PositiveInt = 1000
 
 
@@ -64,6 +64,31 @@ class WorkerConfig(BaseModel):
     retries: WorkerRetriesConfig = WorkerRetriesConfig()
 
 
+class SharedFiles(BaseModel):
+    dir: str
+    description: str
+    permissions: PositiveInt
+    source: str
+    names: List[str]
+    recursive: bool
+    restart: bool
+    remove_subdirs_if_empty: bool
+    extra_valid: bool
+
+
+class ServerInternalConfig(BaseModel):
+    files: List[SharedFiles]
+    excluded_files: List[str]
+    excluded_extensions: List[str]
+
+    def get_dir_config(self, name: str) -> Optional[SharedFiles]:
+        for file in self.files:
+            if file.dir == name:
+                return file
+
+        return None
+
+
 class ServerConfig(BaseModel):
     port: PositiveInt = 1516
     bind_addr: str = "localhost"
@@ -74,5 +99,36 @@ class ServerConfig(BaseModel):
     worker: WorkerConfig = WorkerConfig()
     master: MasterConfig = MasterConfig()
     communications: CommunicationsConfig = CommunicationsConfig()
+    internal: ServerInternalConfig = PrivateAttr(
+        ServerInternalConfig(
+            files=[
+                SharedFiles(
+                    dir="etc/",
+                    description="JWT signing key pair",
+                    permissions=416,
+                    source="master",
+                    names=["private_key.pem", "public_key.pem"],
+                    recursive=False,
+                    restart=False,
+                    remove_subdirs_if_empty=False,
+                    extra_valid=False,
+                ),
+                SharedFiles(
+                    dir='etc/shared/',
+                    description='group files',
+                    permissions=432,
+                    source='master',
+                    names=['all'],
+                    recursive=False,
+                    restart=False,
+                    remove_subdirs_if_empty=True,
+                    extra_valid=False,
+                ),
+            ],
+            excluded_files=['ar.conf'],
+            excluded_extensions=['~', '.tmp', '.lock', '.swp']
+        )
+    )
 
-
+    def get_internal_config(self) -> ServerInternalConfig:
+        return self.internal

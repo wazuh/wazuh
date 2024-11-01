@@ -28,6 +28,7 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core.cluster import cluster, utils as cluster_utils
 from wazuh.core.engine.base import APPLICATION_JSON
+from wazuh.core.config.models.server import ServerConfig
 
 
 class Response:
@@ -190,13 +191,13 @@ class Handler(asyncio.Protocol):
     Define common methods for echo clients and servers.
     """
 
-    def __init__(self, cluster_items: Dict, logger: logging.Logger = None, tag: str = "Handler"):
+    def __init__(self, server_config: ServerConfig, logger: logging.Logger = None, tag: str = "Handler"):
         """Class constructor.
 
         Parameters
         ----------
-        cluster_items : dict
-            Cluster.json object containing cluster internal variables.
+        server_config : ServerConfig
+            Object containing server internal variables.
         logger : Logger object
             Logger object to use.
         tag : str
@@ -232,7 +233,7 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         # Modify filter tags with context vars.
         cluster_utils.context_tag.set(self.tag)
-        self.cluster_items = cluster_items
+        self.server_config = server_config
         # Transports in asyncio are an abstraction of sockets.
         self.transport = None
         # Tasks to be interrupted.
@@ -408,8 +409,8 @@ class Handler(asyncio.Protocol):
         try:
             # A lock is hold until response.write() is called inside data_received() method.
             response_data = await asyncio.wait_for(response.read(),
-                                                   timeout=self.cluster_items['intervals']['communication'][
-                                                       'timeout_cluster_request'])
+                                                   timeout=self.server_config.communications.timeouts.cluster_request)
+
             del self.box[msg_counter]
         except asyncio.TimeoutError:
             self.box[msg_counter] = None
@@ -927,8 +928,8 @@ class Handler(asyncio.Protocol):
             Timeout exception.
         """
         try:
-            await asyncio.wait_for(file.wait(),
-                                   timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+            await asyncio.wait_for(file.wait(), timeout=self.server_config.communications.timeouts.receiving_file)
+
         except Exception as e:
             if isinstance(e, asyncio.TimeoutError):
                 exc = exception.WazuhClusterError(3039)
@@ -1224,10 +1225,10 @@ class SyncFiles(SyncTask):
         task_id = b'None'
         sent_size = 0
         time_to_send = 0
-        min_zip_size = self.server.cluster_items['intervals']['communication']['min_zip_size']
-        max_zip_size = self.server.cluster_items['intervals']['communication']['max_zip_size']
-        zip_limit_tolerance = self.server.cluster_items['intervals']['communication']['zip_limit_tolerance']
-        timeout_receiving_file = self.server.cluster_items['intervals']['communication']['timeout_receiving_file']
+        min_zip_size = self.server.server_config.communications.zip.min_size
+        max_zip_size = self.server.server_config.communications.zip.max_size
+        zip_limit_tolerance = self.server.server_config.communications.limit_tolerance
+        timeout_receiving_file = self.server.server_config.communications.timeouts.receiving_file
 
         self.logger.debug(f"Compressing {'files and ' if files else ''}"
                           f"'files_metadata.json' of {metadata_len} files.")

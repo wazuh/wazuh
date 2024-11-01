@@ -26,11 +26,11 @@ from wazuh.core.cluster.utils import (
     REMOVE_DISCONNECTED_NODE_AFTER,
     ClusterFilter,
     context_tag,
-    get_cluster_items,
     read_cluster_config,
 )
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
+from wazuh.core.config.client import CentralizedConfig
 
 CONNECTION_PORT = 1514
 
@@ -468,8 +468,8 @@ class HAPHelper:
         int
             The seconds of connection retry.
         """
-        cluster_items = get_cluster_items()
-        return cluster_items['intervals']['worker']['connection_retry'] + 2
+        server_config = CentralizedConfig.get_server_config()
+        return server_config.worker.intervals.connection_retry + 2
 
     @classmethod
     async def start(cls):

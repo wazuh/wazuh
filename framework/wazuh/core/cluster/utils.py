@@ -351,26 +351,6 @@ def manager_restart() -> WazuhResult:
 
 
 @lru_cache()
-def get_cluster_items():
-    """Load and return the content of cluster.json file as a dict.
-
-    Returns
-    -------
-    cluster_items : dict
-        Dictionary with the information inside cluster.json file.
-    """
-    try:
-        with open(common.WAZUH_ETC / 'cluster' / 'cluster.json') as f:
-            cluster_items = json.load(f)
-        # Rebase permissions.
-        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
-                 filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
-        return cluster_items
-    except Exception as e:
-        raise WazuhError(3005, str(e))
-
-
-@lru_cache()
 def read_config(config_file=common.WAZUH_CONF):
     """Get the cluster configuration.
 

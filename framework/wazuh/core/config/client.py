@@ -2,6 +2,7 @@ import yaml
 import os
 from typing import Optional
 
+from wazuh.core.config.models.server import ServerInternalConfig
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
                                                      ManagementAPIConfig, ServerConfig,
                                                      IndexerConfig, EngineConfig)
@@ -55,3 +56,10 @@ class CentralizedConfig:
             cls.load()
 
         return cls._config.server
+
+    @classmethod
+    def get_internal_server_config(cls) -> ServerInternalConfig:
+        if cls._config is None:
+            cls.load()
+
+        return cls._config.server.get_internal_config()
