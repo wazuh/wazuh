@@ -39,7 +39,7 @@ class BatcherClient:
             Unique identifier assigned to the event.
         """
         metadata = {}
-        if event.module.name is ModuleName.VULNERABILITY:
+        if event.module.name == ModuleName.VULNERABILITY:
             metadata = {'agent': asdict(agent_metadata)}
         else:
             metadata = {
