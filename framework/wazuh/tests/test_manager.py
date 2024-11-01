@@ -41,9 +41,6 @@ class InitManager:
         """Sets up necessary environment to test manager functions"""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
-        # rules
-        self.input_rules_file = 'test_rules.xml'
-        self.output_rules_file = 'uploaded_test_rules.xml'
 
 
 @pytest.fixture(scope='module')

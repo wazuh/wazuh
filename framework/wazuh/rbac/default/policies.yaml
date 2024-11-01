@@ -168,33 +168,6 @@ default_policies:
           - agent:id:*
         effect: allow
 
-  rules_read:
-    description: Allow reading all rule files in the system.
-    policies:
-      rules:
-        actions:
-          - rules:read
-        resources:
-          - rule:file:*
-        effect: allow
-
-  rules_all:
-    description: Allow managing all rule files in the system.
-    policies:
-      files:
-        actions:
-          - rules:read
-          - rules:delete
-        resources:
-          - rule:file:*
-        effect: allow
-      resourceless:
-        actions:
-          - rules:update
-        resources:
-          - '*:*:*'
-        effect: allow
-
   sca_read:
     description: Allow read agent's sca information.
     policies:

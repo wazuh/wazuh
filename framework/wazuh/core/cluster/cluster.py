@@ -301,36 +301,6 @@ def get_files_status(previous_status=None, get_hash=True):
     return final_items, result_logs
 
 
-def get_ruleset_status(previous_status):
-    """Get hash of custom ruleset files.
-
-    Parameters
-    ----------
-    previous_status : dict
-        Integrity information of local files.
-
-    Returns
-    -------
-    Dict
-        Relative path and hash of local ruleset files.
-    """
-    final_items = {}
-    server_config = CentralizedConfig.get_internal_server_config()
-    user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.USER_RULES_PATH]]
-
-    for file_config in server_config.files:
-        if file_config.dir == "excluded_files" or file_config.dir == "excluded_extensions" or file_config.dir not in user_ruleset:
-            continue
-        try:
-            items, _ = walk_dir(file_config.dir, file_config.recursive, file_config.names, server_config.excluded_files,
-                                server_config.excluded_extensions, file_config.dir, previous_status, True)
-            final_items.update(items)
-        except Exception as e:
-            logger.warning(f"Error getting file status: {e}.")
-
-    return {file_path: file_data['hash'] for file_path, file_data in final_items.items()}
-
-
 def update_cluster_control(failed_file, ko_files, exists=True):
     """Move or remove files listed inside 'ko_files'.
 

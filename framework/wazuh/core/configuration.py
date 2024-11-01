@@ -70,7 +70,8 @@ CONF_SECTIONS = MappingProxyType({
     },
     'ruleset': {
         'type': 'merge',
-        'list_options': ['include', 'rule', 'rule_dir', 'rule_exclude']
+        'list_options': ['include', 'rule', 'rule_dir', 'decoder', 'decoder_dir', 'list', 'rule_exclude',
+                         'decoder_exclude']
     },
     'syscheck': {
         'type': 'merge',

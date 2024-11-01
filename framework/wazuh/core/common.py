@@ -230,10 +230,6 @@ DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DECIMALS_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
-# ============================================ Wazuh constants - Extensions ============================================
-RULES_EXTENSION = '.xml'
-
-
 # ========================================= Wazuh constants - Size and limits ==========================================
 MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB.
 MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFER_SIZE - 4KB.
@@ -287,10 +283,3 @@ TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
 QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
-
-
-# ================================================ Wazuh path - Ruleset ================================================
-# TODO: Constants asociated to functionality next to deprecate.
-RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
-RULES_PATH = os.path.join(RULESET_PATH, 'rules')
-USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')

@@ -127,55 +127,6 @@ class WazuhException(Exception):
                               ' protection in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1132: {'message': 'YAML syntax error', 'remediation': 'Please, ensure file content has correct YAML'},
-        # Rule: 1200 - 1299
-        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1201: {'message': 'Error reading rule files',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
-               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
-               },
-        1203: {'message': 'Error in argument \'level\'',
-               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
-               },
-        1205: {'message': 'Requirement not valid',
-               'remediation': 'Please indicate one of the following values:'
-               },
-
-        1207: {'message': 'Error reading rule files, wrong permissions',
-               'remediation': 'Please, check your permissions over the file'
-               },
-        1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
-                          'be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-        },
-        1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the rules'
-        },
-        1211: {'message': 'Invalid relative directory. A \'rule_dir\' tag is declared in ossec.conf '
-                          'ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-               },
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -209,13 +160,6 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-        1413: {'message': 'Error reading rules file'},
-        1414: {'message': 'Error reading rules file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1415: {'message': 'Rules file not found',
-               'remediation': 'Please, use GET /rules/files to list all available rules'
-               },
 
         # Syscheck/AR: 1600 - 1699
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',

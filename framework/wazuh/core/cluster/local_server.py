@@ -63,8 +63,6 @@ class LocalServerHandler(server.AbstractServerHandler):
             return self.get_nodes(data)
         elif command == b'get_health':
             return self.get_health(data)
-        elif command == b'get_hash':
-            return self.get_ruleset_hashes()
         elif command == b'send_file':
             path, node_name = data.decode().split(' ')
             return self.send_file_request(path, node_name)
@@ -124,19 +122,6 @@ class LocalServerHandler(server.AbstractServerHandler):
             If the method is not implemented.
         """
         raise NotImplementedError
-
-    def get_ruleset_hashes(self):
-        """Obtain local ruleset paths and hashes.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            JSON containing local file paths and their hash.
-        """
-        hashes = cluster.get_ruleset_status(self.server.node.integrity_control)
-        return b'ok', json.dumps(hashes).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.

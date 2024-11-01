@@ -12,9 +12,9 @@ import pytest
 from api.validator import (check_exp, check_xml, _alphanumeric_param, _array_numbers, _array_names, _boolean, _dates,
                            _empty_boolean, _hashes, _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges,
                            _search_param, _sort_param, _timeframe_type, _type_format, _yes_no_boolean,
-                           _get_dirnames_path, allowed_fields, is_safe_path, _wazuh_version,
+                           allowed_fields, is_safe_path, _wazuh_version,
                            _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
-                           _iso8601_date_time, _numbers_or_all, _xml_filename_path, _xml_filename,
+                           _iso8601_date_time, _numbers_or_all,
                            check_component_configuration_pair, _active_response_command, _wpk_path)
 from wazuh import WazuhError
 
@@ -72,9 +72,6 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('json', _type_format),
     # paths
     ('/var/ossec/etc/internal_options', _paths),
-    ('/var/ossec/etc/rules/local_rules.xml', _paths),
-    ('local_rules.xml', _xml_filename_path),
-    ('local_rules1.xml,local_rules2.xml', _xml_filename),
     ('scripts/active_response', _active_response_command),
     ('!scripts/active_response', _active_response_command),
     ('correct.wpk', _wpk_path),
@@ -142,16 +139,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('exe', _type_format),
     # paths
     ('/var/ossec/etc/internal_options$', _paths),
-    ('/var/ossec/etc/rules/local_rules.xml()', _paths),
     ('!scripts/active_response()', _active_response_command),
     ('scripts\\active_response$', _active_response_command),
     ('incorrect.txt', _wpk_path),
     ('.wpk', _wpk_path),
-    # relative paths
-    ('etc/internal_options', _get_dirnames_path),
-    ('../../path', _get_dirnames_path),
-    ('../ossec', _get_dirnames_path),
-    ('etc/rules/../../../dir', _get_dirnames_path),
     # version
     ('v4.4', _wazuh_version),
     ('4.4', _wazuh_version),
@@ -199,14 +190,10 @@ def test_is_safe_path():
 
     assert is_safe_path('/api/configuration/api.yaml')
     assert is_safe_path('c:\\api\\configuration\\api.yaml')
-    assert is_safe_path('etc/rules/local_rules.xml', basedir=base_path, relative=False)
     assert is_safe_path('etc/ossec.conf', relative=True)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
-    assert not is_safe_path('../etc/rules/rule.xml', relative=False)
-    assert not is_safe_path('../etc/rules/rule.xml')
     assert not is_safe_path('/..')
     assert not is_safe_path('\\..')
-    assert not is_safe_path('..\\etc\\rules\\rule.xml')
 
 
 @pytest.mark.parametrize('value, format', [
@@ -236,8 +223,6 @@ def test_is_safe_path():
     ("12345", "numbers_or_empty"),
     ("", "numbers_or_empty"),
     ("group_name_test", "group_names"),
-    ("local_rules.xml", "xml_filename_path"),
-    ("local_rules.xml,test_rule.xml", "xml_filename"),
 ])
 def test_validation_json_ok(value, format):
     """Verify that each value is of the indicated format."""
@@ -269,10 +254,6 @@ def test_validation_json_ok(value, format):
     ("test_name test", "names_or_empty"),
     ("12345abc", "numbers_or_empty"),
     ("group_name.test ", "group_names"),
-    ("local_rules../../.xml", "xml_filename_path"),
-    ("local_rules", "xml_filename_path"),
-    ("local_rules.xml,../test_rule.xml", "xml_filename"),
-    ("local_rules.xml,test_rule", "xml_filename"),
 ])
 def test_validation_json_ko(value, format):
     """Verify that each value is not of the indicated format."""

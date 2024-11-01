@@ -131,20 +131,6 @@ async def test_LocalServerHandler_get_health(event_loop):
 
 
 @pytest.mark.asyncio
-async def test_LocalServerHandler_get_ruleset_hashes(event_loop):
-    """Set the behavior of the get_ruleset_hashes function."""
-    class ServerMock:
-        def __init__(self):
-            self.node = MagicMock()
-
-    lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, cluster_items={})
-    with patch("wazuh.core.cluster.local_server.cluster.get_ruleset_status",
-               return_value={'test_path': 'hash'}) as get_ruleset_status_mock:
-        assert lsh.get_ruleset_hashes() == (b'ok', json.dumps({'test_path': 'hash'}).encode())
-        get_ruleset_status_mock.assert_called_once()
-
-
-@pytest.mark.asyncio
 async def test_LocalServerHandler_send_file_request(event_loop):
     """Set the behavior of the send_file_request function."""
     lsh = LocalServerHandler(server=None, loop=event_loop, cluster_items={})
