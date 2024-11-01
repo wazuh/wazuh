@@ -375,7 +375,7 @@ def get_values(o: object, fields: list = None) -> list:
     strings = []
 
     try:
-        obj = o.to_dict()  # Rule, Decoder, Agent...
+        obj = o.to_dict()  # Rule, Agent...
     except:
         obj = o
 
@@ -2119,25 +2119,6 @@ def expand_rules() -> set:
     return rules
 
 
-@common.context_cached('system_decoders')
-def expand_decoders() -> set:
-    """Return all ruleset decoder files in the system.
-
-    Returns
-    -------
-    set
-        Decoder files.
-    """
-    folders = [common.DECODERS_PATH, common.USER_DECODERS_PATH]
-    decoders = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.DECODERS_EXTENSION), files):
-                decoders.add(f)
-
-    return decoders
-
-
 def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
     """Add a detail with attributes (i.e. regex with negate or type).
 
@@ -2165,7 +2146,7 @@ def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
 
 
 def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):
-    """Upload files (rules, lists, decoders and ossec.conf).
+    """Upload files (rules and ossec.conf).
 
     Parameters
     ----------

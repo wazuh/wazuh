@@ -217,47 +217,6 @@ class WazuhException(Exception):
                'remediation': 'Please, use GET /rules/files to list all available rules'
                },
 
-        # Decoders: 1500 - 1599
-        1500: {'message': 'Error reading decoders from ossec.conf',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/custom.html)'
-                              'to get more information on adding or modifying existing decoders'
-               },
-        1501: {'message': 'Error reading decoders file'
-               },
-        1502: {'message': 'Error reading decoders file',
-               'remediation': 'Please, make sure you have read permissions on the file'
-               },
-        1503: {'message': 'Decoders file not found',
-               'remediation': 'Please, use GET /decoders/files to list all available decoders'
-               },
-        1504: {'message': 'The decoder does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1505: {'message': 'Invalid relative directory. A \'decoder_dir\' '
-                          'tag must be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
-        1506: {'message': 'Uploading, updating or deleting default decoders is not allowed.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1507: {'message': 'Invalid relative directory. A \'decoder_dir\' tag is declared '
-                          'in ossec.conf ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
-
         # Syscheck/AR: 1600 - 1699
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1650: 'Active response - Command not specified',

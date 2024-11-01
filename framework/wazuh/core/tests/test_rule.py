@@ -28,7 +28,6 @@ parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 data_path = 'core/tests/data/rules'
 
 ruleset_conf = {
-    'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
     'rule_dir': ['ruleset/rules', 'etc/rules'], 'rule_exclude': ['0215-policy_rules.xml'],
 }
 

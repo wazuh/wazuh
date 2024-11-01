@@ -33,7 +33,6 @@ alert_template = {
     'rule': {'level': 0, 'description': 'alert description', 'id': '', 'firedtimes': 1},
     'id': 'alert_id',
     'full_log': 'full log.',
-    'decoder': {'name': 'decoder-name'},
     'location': 'wazuh-X',
 }
 

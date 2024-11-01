@@ -351,7 +351,7 @@ async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_co
     section : str
         Indicates the wazuh configuration section.
     field : str
-        Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+        Indicates a section child.
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `False`
 

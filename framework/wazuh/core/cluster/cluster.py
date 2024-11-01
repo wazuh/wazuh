@@ -316,9 +316,7 @@ def get_ruleset_status(previous_status):
     """
     final_items = {}
     server_config = CentralizedConfig.get_internal_server_config()
-    user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.USER_DECODERS_PATH,
-                                                                                    common.USER_RULES_PATH,
-                                                                                    common.USER_LISTS_PATH]]
+    user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.USER_RULES_PATH]]
 
     for file_config in server_config.files:
         if file_config.dir == "excluded_files" or file_config.dir == "excluded_extensions" or file_config.dir not in user_ruleset:
