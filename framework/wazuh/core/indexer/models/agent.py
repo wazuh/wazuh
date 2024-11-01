@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 from dataclasses import asdict, dataclass, InitVar
@@ -91,7 +92,7 @@ class Agent:
         """
         salt = _generate_salt()
         key_hash = _hash_key(raw_key, salt)
-        return salt + key_hash
+        return base64.b64encode(salt + key_hash)
 
     def check_key(self, key: str) -> bool:
         """Validate the given key with the stored hash key.
@@ -107,6 +108,7 @@ class Agent:
             True if the hashes are equal, else False.
         """
         stored_key = self.key.encode('latin-1')
+        stored_key = base64.b64decode(stored_key)
         salt, key_hash = stored_key[:16], stored_key[16:]
         return compare_digest(key_hash, _hash_key(key, salt))
 

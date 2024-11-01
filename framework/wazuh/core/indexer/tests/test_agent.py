@@ -16,7 +16,9 @@ class TestAgentIndex:
     create_params = {
         'name': 'test',
         'key': '015fb915771223a3fdd7c0c0a5adcab8',
-        'groups': 'group1'
+        'groups': 'group1',
+        'ips': ['192.168.0.1'],
+        'os': 'Mac OS Mojave',
     }
 
     @pytest.fixture

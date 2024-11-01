@@ -5,7 +5,7 @@
 import contextlib
 import operator
 from os import chmod, chown, path
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from wazuh import __version__
 from wazuh.core import common, configuration
@@ -507,19 +507,30 @@ async def delete_agents(agent_list: list, filters: Optional[dict] = None,) -> Af
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-async def add_agent(id: str, name: str, key: str, groups: str = None) -> WazuhResult:
+async def add_agent(
+    id: str,
+    name: str,
+    key: str,
+    groups: str = None,
+    ips: List[str] = None,
+    os: str = None,
+) -> WazuhResult:
     """Add a new Wazuh agent.
 
     Parameters
     ----------
     id : str
-        New agent ID.
+        Agent ID.
     name : str
-        New agent name.
+        Agent name.
     key : str
-        New agent key.
+        Agent key.
     groups : str
-        New agent groups.
+        Agent groups.
+    ips : str
+        Agent IP addresses.
+    os : str
+        Agent operating system.
 
     Raises
     ------
@@ -536,7 +547,7 @@ async def add_agent(id: str, name: str, key: str, groups: str = None) -> WazuhRe
         raise WazuhError(1738)
 
     async with get_indexer_client() as indexer:
-        new_agent = await indexer.agents.create(id=id, name=name, key=key, groups=groups)
+        new_agent = await indexer.agents.create(id=id, name=name, key=key, groups=groups, ips=ips, os=os)
 
     return WazuhResult({'data': new_agent})
 

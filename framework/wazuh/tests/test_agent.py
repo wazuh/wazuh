@@ -54,7 +54,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         )
         from wazuh.core.agent import Agent
         from wazuh.core.exception import WazuhResourceNotFound
-        from wazuh.core.indexer.agent import Agent as IndexerAgent
+        from wazuh.core.indexer.agent import Agent as IndexerAgent, Host
         from wazuh.core.indexer.base import IndexerKey
         from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
         from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -380,6 +380,7 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
         if agent_keys.failed_items:
             assert (failed_item.message == 'Agent does not exist' for failed_item in agent_keys.failed_items.keys())
 
+
 @pytest.mark.parametrize(
         'agent_list,available_agents,expected_items',
         [
@@ -424,33 +425,46 @@ async def test_agent_delete_agents(
     if len(agent_list) > 1:
         assert list(result.failed_items.values())[0] == set(agent_list[1:])
 
-@pytest.mark.parametrize('id,name,key,groups', [
-    ('019008da-1575-7375-b54f-ef43e393517ef', 'test', '95fffd306c752289d426e66013881538', 'group1'),
+
+@pytest.mark.parametrize('id,name,key,groups,ips,os', [
+    (
+        '019008da-1575-7375-b54f-ef43e393517ef',
+        'test',
+        '95fffd306c752289d426e66013881538',
+        'group1',
+        ['192.168.0.1'],
+        'Mac OS Mojave',
+    ),
 ])
 @patch('wazuh.core.indexer.create_indexer')
-async def test_agent_add_agent(create_indexer_mock, name, id, key, groups):
+async def test_agent_add_agent(create_indexer_mock, name, id, key, groups, ips, os):
     """Test `add_agent` from agent module.
 
     Parameters
     ----------
     id : str
-        New agent ID.
+        Agent ID.
     name : str
-        New agent name.
+        Agent name.
     key : str
-        New agent key.
+        Agent key.
     groups : str
-        New agent groups.
+        Agent groups.
+    ips : List[str]
+        Agent IP addresses.
+    os : str
+        Agent operating system
     """
-    new_agent = IndexerAgent(id=id, name=name, raw_key=key, groups=groups)
+    new_agent = IndexerAgent(id=id, name=name, raw_key=key, groups=groups, host=Host(ip=ips, os=os))
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
-    result = await add_agent(name=name, id=id, key=key, groups=groups)
+    result = await add_agent(name=name, id=id, key=key, groups=groups, os=os)
 
     assert result.dikt['data'].id == new_agent.id
     assert result.dikt['data'].name == new_agent.name
     assert result.dikt['data'].key == new_agent.key
     assert result.dikt['data'].groups == new_agent.groups
+    assert result.dikt['data'].host.os == new_agent.host.os
 
 
 @pytest.mark.parametrize(

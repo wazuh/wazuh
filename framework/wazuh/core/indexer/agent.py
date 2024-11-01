@@ -6,7 +6,7 @@ from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
 from opensearchpy._async.helpers.search import AsyncSearch
 
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.models.agent import Agent, Host, OS
 from wazuh.core.indexer.utils import get_source_items
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
@@ -32,31 +32,49 @@ class AgentsIndex(BaseIndex):
     ctx._source.groups = groups_str;
     """
 
-    async def create(self, id: str, key: str, name: str, groups: str = None) -> Agent:
+    async def create(
+        self,
+        id: str,
+        key: str,
+        name: str,
+        groups: str = None,
+        ips: List[str] = None,
+        os: str = None,
+    ) -> Agent:
         """Create a new agent.
 
         Parameters
         ----------
         id : str
-            New agent ID.
+            Agent ID.
         name : str
-            New agent name.
+            Agent name.
         key : str
-            New agent key.
+            Agent key.
         groups : str
-            New agent groups.
+            Agent groups.
+        ips : str
+            Agent IP addresses.
+        os : str
+            Agent operating system.
 
         Raises
         ------
         WazuhError(1708)
-            When already exists an agent with the provided id.
+            If an agent with the provided ID already exists.
 
         Returns
         -------
         Agent : dict
             The created agent instance.
         """
-        agent = Agent(id=id, raw_key=key, name=name, groups='default' + f',{groups}' if groups else None)
+        agent = Agent(
+            id=id,
+            raw_key=key,
+            name=name,
+            groups='default' + f',{groups}' if groups else None,
+            host=Host(ip=ips, os=OS(full=os)) if ips or os else None
+        )
         try:
             await self._client.index(
                 index=self.INDEX,
