@@ -36,6 +36,7 @@ public:
     }
 
     virtual void update(T data) = 0;
+    virtual ~Observer() = default;
 };
 
 template<typename T>
