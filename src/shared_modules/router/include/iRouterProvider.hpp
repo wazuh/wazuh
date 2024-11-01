@@ -49,7 +49,9 @@ public:
      * @brief Destroy the IRouterProvider object
      *
      */
+    // LCOV_EXCL_START
     virtual ~IRouterProvider() = default;
+    // LCOV_EXCL_STOP
 };
 
 #endif //_IROUTER_PROVIDER_HPP
