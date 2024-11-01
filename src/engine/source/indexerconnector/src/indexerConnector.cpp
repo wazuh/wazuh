@@ -31,6 +31,8 @@ constexpr auto ELEMENTS_PER_BULK {1000};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
 constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
+constexpr auto EVENTS_FAILED_LOG {"/var/log/wazuh-server/fail_indexed.log"};
+constexpr auto INDEXER_ACKNOWLEDGE {201};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
@@ -166,6 +168,44 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
+static void handleIndexerInternalErrors(const std::string& response, const std::string& bulkData)
+{
+    // Parse the response JSON and check if it contains errors with non-empty items
+    const auto parsedResponse = nlohmann::json::parse(response, nullptr, false);
+    if (!parsedResponse.value("errors", false) || !parsedResponse.contains("items"))
+    {
+        return;
+    }
+
+    std::istringstream bulkStream(bulkData);
+    std::string bulkLine, bulkDocument;
+
+    for (const auto& item : parsedResponse["items"])
+    {
+        const auto& indexData = item.value("index", nlohmann::json::object());
+        int status = indexData.value("status", INDEXER_ACKNOWLEDGE);
+
+        // Skip successfully indexed items or items without error details
+        if (status == INDEXER_ACKNOWLEDGE || !indexData.contains("error"))
+        {
+            continue;
+        }
+
+        // Read the next two lines from bulk data (metadata and document)
+        if (!std::getline(bulkStream, bulkLine) || !std::getline(bulkStream, bulkDocument))
+        {
+            LOG_WARNING("Bulk data exhausted while handling index errors");
+            break;
+        }
+
+        const auto& errorData = indexData["error"];
+        const auto errorReason = errorData.value("reason", "Unknown reason");
+
+        // Log the error with document details
+        LOG_WARNING("Error indexing document due '{}' - Detailed event content: {}", errorReason, bulkDocument);
+    }
+}
+
 IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnectorOptions)
 {
     // Get index name.
@@ -237,9 +277,13 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                 // Process data.
                 HTTPRequest::instance().post(
                     {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
-                    {.onSuccess = [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
-                                      const std::string& response)
-                     { LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str()); },
+                    {.onSuccess =
+                         [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse"),
+                          &bulkData](const std::string& response)
+                     {
+                         LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str());
+                         handleIndexerInternalErrors(response, bulkData);
+                     },
                      .onError =
                          [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
                              const std::string& error, const long statusCode)
