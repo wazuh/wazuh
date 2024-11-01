@@ -77,6 +77,8 @@ x-rbac-catalog:
       description: "Reference security policies via its id (i.e. policy:id:1)"
     'role:id':
       description: "Reference security roles via its id (i.e. role:id:1)"
+    'rule:id':
+      description: "Reference security rules via its id (i.e. rule:id:1)"
     'user:id':
       description: "Reference security users via its id (i.e. user:id:1)"
   actions:
