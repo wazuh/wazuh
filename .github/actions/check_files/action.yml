@@ -21,17 +21,17 @@ runs:
   - name: Install dependencies
     shell: bash
     run: |
-      pip install -r requirements.txt
+      pip install -r $GITHUB_ACTION_PATH/requirements.txt
 
   - name: Get the files stats
     shell: bash
     run: |
-      python3 get_files_stats.py
+      python3 $GITHUB_ACTION_PATH/get_files_stats.py
 
   - name: Compare results
     shell: bash
     run: |
-      python3 compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
+      python3 $GITHUB_ACTION_PATH/compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
 
   - name: Upload validation results
     if: always()
