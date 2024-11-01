@@ -14,7 +14,7 @@ jobs:
       security-events: write
       actions: read
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Bandit Scan
