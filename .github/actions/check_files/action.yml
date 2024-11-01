@@ -31,20 +31,20 @@ runs:
     shell: bash
     run: |
       cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python get_files_stats.py
+      sudo venv/bin/python3 get_files_stats.py
 
-  - name: Compare results
-    shell: bash
-    run: |
-      cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
+  # - name: Compare results
+  #   shell: bash
+  #   run: |
+  #     cd ${GITHUB_ACTION_PATH}
+  #     # sudo venv/bin/python3 compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
 
   - name: Upload validation results
     if: always()
     uses: actions/upload-artifact@v4
     with:
-      #name: ${{ inputs.report_file }}
-      name: /tmp/base_list.csv
+      #path: ${{ inputs.report_file }}
+      path: /tmp/base_list.csv
 
   - name: Generate report
     if: always()

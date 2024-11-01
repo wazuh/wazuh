@@ -162,7 +162,8 @@ jobs:
       - name: Test install built manager
         run: |
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
-          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
+          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
+          
           # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
           if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
             echo "Installation successfully."
