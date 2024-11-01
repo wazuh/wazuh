@@ -119,6 +119,8 @@ static const auto C_IDX {2};
 static const auto C_PORT {7777};
 static const auto C_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(C_PORT)};
 
+static const auto DEFAULT_CONTENT {"Content published"};
+
 void IndexerConnectorTest::SetUp()
 {
     logging::testInit();
@@ -386,13 +388,15 @@ TEST_F(IndexerConnectorTest, Publish)
     // Second line: Index data.
     constexpr auto INDEX_DATA {"content"};
     auto callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
-                                   {
-                                       const auto splitData {base::utils::string::split(data, '\n')};
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data, std::string& content)
+        {
+            const auto splitData {base::utils::string::split(data, '\n')};
+            ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+            ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+            callbackCalled = true;
+            content = DEFAULT_CONTENT;
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
@@ -405,6 +409,121 @@ TEST_F(IndexerConnectorTest, Publish)
     publishData["id"] = INDEX_ID_A;
     publishData["operation"] = "INSERT";
     publishData["data"] = INDEX_DATA;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against the
+ * expected one.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishWithErrorsInBulk)
+{
+    nlohmann::json expectedMetadata;
+    expectedMetadata["index"]["_index"] = INDEXER_NAME;
+    expectedMetadata["index"]["_id"] = INDEX_ID_A;
+
+    // Callback that checks the expected data to be published.
+    // The format of the data published is divided in two lines:
+    // First line: JSON data with the metadata (indexer name, index ID)
+    // Second line: Index data.
+    auto callbackCalled {false};
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data, std::string& content)
+                                   {
+                                       const auto splitData {base::utils::string::split(data, '\n')};
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       callbackCalled = true;
+                                       // Properly formatted JSON content as a string
+                                       content = R"(
+    {
+  "took": 5055,
+  "errors": true,
+  "items": [
+    {
+      "index": {
+        "_index": "test-basic-index",
+        "_id": "1bQ_kZIBmzjx6FV-K3nH",
+        "_version": 1,
+        "result": "created",
+        "_shards": {
+          "total": 1,
+          "successful": 1,
+          "failed": 0
+        },
+        "_seq_no": 36,
+        "_primary_term": 1,
+        "status": 201
+      }
+    },
+    {
+      "index": {
+        "_index": "test-basic-index",
+        "_id": "1rQ_kZIBmzjx6FV-K3nH",
+        "status": 400,
+        "error": {
+          "type": "mapper_parsing_exception",
+          "reason": "failed to parse field [suricata.flow.bytes_toclient] of type [long] in document with id '1rQ_kZIBmzjx6FV-K3nH'. Preview of field's value: 'non-integer'",
+          "caused_by": {
+            "type": "illegal_argument_exception",
+            "reason": "For input string: \"non-integer\""
+          }
+        }
+      }
+    }
+  ]
+})";
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and wait until the connection is established.
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
+    auto indexerConnector {IndexerConnector(indexerConfig)};
+
+    // Publish content and wait until the publication finishes.
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = R"({
+        "timestamp" : "2018-10-03T16:16:26.711841+0000",
+        "flow_id" : 678269478904081,
+        "in_iface" : "enp0s3",
+        "event_type" : "alert",
+        "src_ip" : "192.168.1.146",
+        "src_port" : 32864,
+        "dest_ip" : "89.160.20.112",
+        "dest_port" : 80,
+        "proto" : "TCP",
+        "tx_id" : 0,
+        "alert" : {
+            "action" : "allowed",
+            "gid" : 1,
+            "signature_id" : 2013028,
+            "rev" : 4,
+            "signature" : "ET POLICY curl User-Agent Outbound",
+            "category" : "Attempted Information Leak",
+            "severity" : 2
+        },
+        "http" : {
+            "hostname" : "example.net",
+            "url" : "/",
+            "http_user_agent" : "curl/7.58.0",
+            "http_content_type" : "text/html",
+            "http_method" : "GET",
+            "protocol" : "HTTP/1.1",
+            "status" : 200,
+            "length" : 1121
+        },
+        "app_proto" : "http",
+        "flow" : {
+            "pkts_toserver" : 4,
+            "pkts_toclient" : 3,
+            "bytes_toserver" : 347,
+            "bytes_toclient" : "non-integer",
+            "start" : "2018-10-03T16:16:26.467217+0000"
+        }
+    })"_json;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
@@ -425,11 +544,12 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
     // First line: JSON data with the metadata (indexer name, index ID)
     // Second line: Index data. When the operation is DELETED, no data is present.
     auto callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data, std::string& content)
                                    {
                                        const auto splitData {base::utils::string::split(data, '\n')};
                                        ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
                                        callbackCalled = true;
+                                       content = DEFAULT_CONTENT;
                                    }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
@@ -462,13 +582,15 @@ TEST_F(IndexerConnectorTest, PublishWithoutId)
     // Second line: Index data.
     constexpr auto INDEX_DATA {"contentNoId"};
     auto callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
-                                   {
-                                       const auto splitData {base::utils::string::split(data, '\n')};
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data, std::string& content)
+        {
+            const auto splitData {base::utils::string::split(data, '\n')};
+            ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+            ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+            callbackCalled = true;
+            content = DEFAULT_CONTENT;
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
@@ -493,10 +615,11 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
 {
     // Callback function that checks if the callback was executed or not.
     auto callbackCalled {false};
-    const auto checkPublishedData {[&callbackCalled](const std::string& data)
+    const auto checkPublishedData {[&callbackCalled](const std::string& data, std::string& content)
                                    {
                                        std::ignore = data;
                                        callbackCalled = true;
+                                       content = DEFAULT_CONTENT;
                                    }};
     m_indexerServers[B_IDX]->setPublishCallback(checkPublishedData);
 
@@ -521,10 +644,11 @@ TEST_F(IndexerConnectorTest, PublishInvalidData)
 {
     // Callback function that checks if the callback was executed or not.
     auto callbackCalled {false};
-    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data, std::string& content)
                                     {
                                         std::ignore = data;
                                         callbackCalled = true;
+                                        content = DEFAULT_CONTENT;
                                     }};
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
@@ -547,10 +671,11 @@ TEST_F(IndexerConnectorTest, DiscardInvalidJSON)
 {
     // Callback function that checks if the callback was executed.
     auto callbackCalled {false};
-    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data, std::string& content)
                                     {
                                         std::ignore = data;
                                         callbackCalled = true;
+                                        content = DEFAULT_CONTENT;
                                     }};
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
@@ -581,7 +706,7 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
     // First line: JSON data with the metadata (indexer name, index ID).
     // Second line: Index data.
     auto callbackCalled {false};
-    const auto checkPublishedData {[&callbackCalled, &publishedData](const std::string& data)
+    const auto checkPublishedData {[&callbackCalled, &publishedData](const std::string& data, std::string& content)
                                    {
                                        const auto splitData {base::utils::string::split(data, '\n')};
                                        nlohmann::json entry;
@@ -589,6 +714,7 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
                                        entry["data"] = nlohmann::json::parse(splitData.back());
                                        publishedData.push_back(std::move(entry));
                                        callbackCalled = true;
+                                       content = DEFAULT_CONTENT;
                                    }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
@@ -635,10 +761,11 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
 {
     // Callback function that checks if the callback was executed or not.
     auto callbackCalled {false};
-    const auto forceErrorCallback {[&callbackCalled](const std::string& data)
+    const auto forceErrorCallback {[&callbackCalled](const std::string& data, std::string& content)
                                    {
                                        std::ignore = data;
                                        callbackCalled = true;
+                                       content = DEFAULT_CONTENT;
                                        throw std::runtime_error {"Forced server error"};
                                    }};
     m_indexerServers[A_IDX]->setPublishCallback(forceErrorCallback);
@@ -693,13 +820,15 @@ TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
     // Second line: Index data.
     constexpr auto INDEX_DATA {"content"};
     auto callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
-                                   {
-                                       const auto splitData {base::utils::string::split(data, '\n')};
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data, std::string& content)
+        {
+            const auto splitData {base::utils::string::split(data, '\n')};
+            ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+            ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+            callbackCalled = true;
+            content = DEFAULT_CONTENT;
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.

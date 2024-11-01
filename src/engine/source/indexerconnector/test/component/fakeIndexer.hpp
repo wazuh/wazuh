@@ -34,7 +34,7 @@ private:
     bool m_indexerInitialized = false;
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
-    std::function<void(const std::string&)> m_publishCallback = {};
+    std::function<void(const std::string&, std::string&)> m_publishCallback = {};
 
 public:
     /**
@@ -80,7 +80,7 @@ public:
      *
      * @param callback New callback.
      */
-    void setPublishCallback(std::function<void(const std::string&)> callback)
+    void setPublishCallback(std::function<void(const std::string&, std::string&)> callback)
     {
         m_publishCallback = std::move(callback);
     }
@@ -132,12 +132,13 @@ public:
                       {
                           try
                           {
+                              std::string content;
                               if (m_publishCallback)
                               {
-                                  m_publishCallback(req.body);
+                                  m_publishCallback(req.body, content);
                               }
                               res.status = 200;
-                              res.set_content("Content published", "text/plain");
+                              res.set_content(content, "text/plain");
                           }
                           catch (const std::exception& e)
                           {
