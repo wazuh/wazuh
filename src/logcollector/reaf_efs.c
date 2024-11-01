@@ -491,6 +491,151 @@ void handler_remount(const es_message_t *msg)
     free(fstypename);
 }
 
+
+// event: ES_EVENT_TYPE_NOTIFY_OD_CREATE_USER
+void handler_create_user(const es_message_t *msg)
+{
+    cJSON *json = json_base_event("create_user");
+
+    add_string_to_json(json, "user", msg->event.od_create_user->user_name); // User name
+    add_string_to_json(json, "db_path", msg->event.od_create_user->db_path); // Database path
+    cJSON_AddNumberToObject(json, "token", audit_token_to_pid(msg->event.od_create_user->instigator_token)); // Token
+    cJSON_AddNumberToObject(json, "error_code", msg->event.od_create_user->error_code); // Error code
+    add_string_to_json(json, "node_name", msg->event.od_create_user->node_name); // Node name
+
+    // Send the message to the queue
+    send_message_to_queue(json);
+}
+
+// event: ES_EVENT_TYPE_NOTIFY_OD_DELETE_USER
+void handler_delete_user(const es_message_t *msg)
+{
+
+    cJSON *json = json_base_event("delete_user");
+
+    add_string_to_json(json, "user", msg->event.od_delete_user->user_name); // User name
+    add_string_to_json(json, "db_path", msg->event.od_delete_user->db_path); // Database path
+    cJSON_AddNumberToObject(json, "token", audit_token_to_pid(msg->event.od_delete_user->instigator_token)); // Token
+    cJSON_AddNumberToObject(json, "error_code", msg->event.od_delete_user->error_code); // Error code
+    add_string_to_json(json, "node_name", msg->event.od_delete_user->node_name); // Node name
+
+    // Send the message to the queue
+    send_message_to_queue(json);
+}
+
+// event: ES_EVENT_TYPE_NOTIFY_OD_CREATE_GROUP
+void handler_create_group(const es_message_t *msg)
+{
+    cJSON *json = json_base_event("create_group");
+
+    add_string_to_json(json, "group", msg->event.od_create_group->group_name); // Group name
+    add_string_to_json(json, "db_path", msg->event.od_create_group->db_path); // Database path
+    cJSON_AddNumberToObject(json, "token", audit_token_to_pid(msg->event.od_create_group->instigator_token)); // Token
+    cJSON_AddNumberToObject(json, "error_code", msg->event.od_create_group->error_code); // Error code
+    add_string_to_json(json, "node_name", msg->event.od_create_group->node_name); // Node name
+
+    // Send the message to the queue
+    send_message_to_queue(json);
+}
+
+// event: ES_EVENT_TYPE_NOTIFY_OD_DELETE_GROUP
+void handler_delete_group(const es_message_t *msg)
+{
+    cJSON *json = json_base_event("delete_group");
+
+    add_string_to_json(json, "group", msg->event.od_delete_group->group_name); // Group name
+    add_string_to_json(json, "db_path", msg->event.od_delete_group->db_path); // Database path
+    cJSON_AddNumberToObject(json, "token", audit_token_to_pid(msg->event.od_delete_group->instigator_token)); // Token
+    cJSON_AddNumberToObject(json, "error_code", msg->event.od_delete_group->error_code); // Error code
+    add_string_to_json(json, "node_name", msg->event.od_delete_group->node_name); // Node name
+
+    // Send the message to the queue
+    send_message_to_queue(json);
+}
+
+
+// event: ES_EVENT_TYPE_NOTIFY_SU 
+void handler_su(const es_message_t *msg)
+{
+    cJSON *json = json_base_event("su");
+
+    add_string_to_json(json, "from_user", msg->event.su->from_username); // From user
+    add_string_to_json(json, "to_user", msg->event.su->to_username); // To user
+    add_string_to_json(json, "shell", msg->event.su->shell); // Shell
+    cJSON_AddStringToObject(json, "result", msg->event.su->success ? "Success" : "Failure"); // Result
+    add_string_to_json(json, "failure_message", msg->event.su->failure_message); // Failure message
+
+    // Concatenate the arguments
+    char * args_str = NULL;  
+    size_t args_len = 0; 
+    for (size_t i = 0; i < msg->event.su->argc; i++)
+    {
+        args_len += msg->event.su->argv[i].length + 1;
+        args_str = realloc(args_str, args_len);
+        strcat(args_str, msg->event.su->argv[i].data);
+        strcat(args_str, " ");
+        
+    }
+    if (args_str != NULL)
+    {
+        cJSON_AddStringToObject(json, "args", args_str); // Arguments
+        free(args_str);
+    }
+
+    // Send the message to the queue
+    send_message_to_queue(json);
+}
+
+// event: ES_EVENT_TYPE_NOTIFY_SUDO
+void handler_sudo(const es_message_t *msg)
+{
+    cJSON *json = json_base_event("sudo");
+
+    add_string_to_json(json, "from_user", msg->event.sudo->from_username); // From user
+    add_string_to_json(json, "command", msg->event.sudo->command); // Command
+    cJSON_AddStringToObject(json, "result", msg->event.sudo->success ? "Success" : "Failure"); // Result
+    add_string_to_json(json, "failure_message", msg->event.sudo->reject_info->failure_message); // Failure message
+}
+
+// event: ES_EVENT_TYPE_NOTIFY_XP_MALWARE_DETECTED
+void handler_malware_detected(const es_message_t *msg)
+{
+    cJSON *json = json_base_event("malware_detected");
+
+    add_string_to_json(json, "detected_path", msg->event.xp_malware_detected->detected_path); // Detected path
+    add_string_to_json(json, "incident_identifier", msg->event.xp_malware_detected->incident_identifier); // Incident identifier
+    add_string_to_json(json, "malware_identifier", msg->event.xp_malware_detected->malware_identifier); // Malware identifier
+    add_string_to_json(json, "signature_version", msg->event.xp_malware_detected->signature_version); // Signature version
+
+    // Send the message to the queue
+    send_message_to_queue(json);
+}
+
+// event: ES_EVENT_TYPE_NOTIFY_XP_MALWARE_REMEDIATED
+void handler_malware_remediated(const es_message_t *msg)
+{
+    cJSON *json = json_base_event("malware_remediated");
+
+    add_string_to_json(json, "signature_version", msg->event.xp_malware_remediated->signature_version); // Signature version
+    add_string_to_json(json, "malware_identifier", msg->event.xp_malware_remediated->malware_identifier); // Malware identifier
+    add_string_to_json(json, "incident_identifier", msg->event.xp_malware_remediated->incident_identifier); // Incident identifier
+    add_string_to_json(json, "action_type", msg->event.xp_malware_remediated->action_type); // Action type
+
+    cJSON_AddStringToObject(json, "result", msg->event.xp_malware_remediated->success ? "Success" : "Failure"); // Result
+    add_string_to_json(json, "result_description", msg->event.xp_malware_remediated->result_description); // Result description
+
+    add_string_to_json(json, "remediated_path", msg->event.xp_malware_remediated->remediated_path); // Remediated path
+
+    if (msg->event.xp_malware_remediated->remediated_process_audit_token != NULL)
+    {
+        pid_t pid = audit_token_to_pid(*(msg->event.xp_malware_remediated->remediated_process_audit_token));
+        cJSON_AddNumberToObject(json, "remediated_process_pid", pid); // Remediated process PID
+    }
+
+    // Send the message to the queue
+    send_message_to_queue(json);
+}
+
 /************************************************
  * 			Handler of all events
  ***********************************************/
@@ -537,6 +682,16 @@ void * efs_reader_thread(__attribute__((unused)) void * args)
     register_event_handler(ES_EVENT_TYPE_NOTIFY_UNMOUNT, handler_unmount);
     // I don't know how to get this event
     // register_event_handler(ES_EVENT_TYPE_NOTIFY_REMOUNT, handler_remount);
+
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_OD_CREATE_USER, handler_create_user);
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_OD_DELETE_USER, handler_delete_user);
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_OD_CREATE_GROUP, handler_create_group);
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_OD_DELETE_GROUP, handler_delete_group);
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_SU, handler_su);
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_SUDO, handler_sudo);
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_XP_MALWARE_DETECTED, handler_malware_detected);
+    register_event_handler(ES_EVENT_TYPE_NOTIFY_XP_MALWARE_REMEDIATED, handler_malware_remediated);
+
 
     // Subscribe to events
     es_event_type_t *events = malloc(g_handler_event_map_size * sizeof(es_event_type_t));
