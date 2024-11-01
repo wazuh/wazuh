@@ -140,20 +140,24 @@ valid_utf8_sequences= [
 ]
 
 # Invalid UTF-8 byte sequences (these should trigger warnings in logs)
-# Maximal valid UTF-8 cases (1-byte, 2-byte, 3-byte, and 4-byte sequences)
-maximal_cases = [
-    b"\x7F",             # U+007F (1 byte)
-    b"\xDF\xBF",         # U+07FF (2 bytes)
-    b"\xEF\xBF\xBF",     # U+FFFF (3 bytes)
-    b"\xF4\x8F\xBF\xBF",  # U+10FFFF (4 bytes)
+# Filenames to create
+valid_on_win32: list[bytes] = [
+    b"\xED\xA0\x80",
+    b"\xed\xad\xbf",       # Surrogate range, similar to `\xed\xa0\x80`
+    b"\xed\xbf\xbf",       # Upper boundary of the surrogate range
 ]
 
-# Surrogate boundary cases
-surrogate_boundary_sequences = [
-    b"\xED\x9F\xBF",     # U+D7FF (valid)
-    b"\xED\xA0\x80",     # U+D800 (invalid)
+valid_on_posix: list[bytes] = [
+    b"\xDD\xA5\xA0",
+    b"\xf5\x80\x80\x80",   # Out of range for valid UTF-8 (beyond U+10FFFF)
+    b"\xf8\x88\x80\x80\x80",  # 5-byte sequence, invalid for UTF-8
+    b"\xfc\x84\x80\x80\x80\x80"  # 6-byte sequence, invalid for UTF-8
 ]
 
+if sys.platform == "win32":
+    invalid_sequences = valid_on_win32
+else:
+    invalid_sequences = valid_on_posix + valid_on_win32
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_valid_utf8_filenames_do_not_trigger_warning(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
@@ -172,10 +176,11 @@ def test_valid_utf8_filenames_do_not_trigger_warning(test_configuration, test_me
 
         try:
             # Create the file with the invalid byte sequence as part of the file name
-            open(test_path_bytes, 'wb').close()
-        except Exception as e:
-            print(
-                f"Error creating file with invalid byte sequence {valid_sequence}: {e}")
+            with open(test_path_bytes, 'w') as f:
+                f.write('.')
+            assert os.path.exists(test_path_bytes), f"Failed to create file: {test_path_bytes!r}"
+        except:
+            raise
 
         monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
         assert monitor.callback_result
@@ -190,7 +195,7 @@ def test_non_utf8_sequences_should_trigger_warning(test_configuration, test_meta
     monitor = FileMonitor(WAZUH_LOG_PATH)
 
     # iterate over invalid UTF-8 sequences
-    for invalid_sequence in maximal_cases + surrogate_boundary_sequences:
+    for invalid_sequence in invalid_sequences:
         # No UTF-8 conversion here, just direct file name creation with invalid sequences
         # Byte conversion here to concatenate with invalid sequences
         folder_to_monitor_bytes: bytes = test_metadata['folder_to_monitor'].encode(
@@ -201,10 +206,11 @@ def test_non_utf8_sequences_should_trigger_warning(test_configuration, test_meta
 
         try:
             # Create the file with the invalid byte sequence as part of the file name
-            open(test_path_bytes, 'wb').close()
-        except Exception as e:
-            print(
-                f"Error creating file with invalid byte sequence {invalid_sequence!r}: {e}")
+            with open(test_path_bytes, 'w') as f:
+                f.write('.')
+            assert os.path.exists(test_path_bytes), f"Failed to create file: {test_path_bytes!r}"
+        except:
+            raise
 
         monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
         assert monitor.callback_result
