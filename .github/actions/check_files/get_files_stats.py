@@ -263,5 +263,5 @@ if __name__ == "__main__":
 
     df = df.reindex(columns=headers)
 
-    csv_file_path = "base_list.csv"
+    csv_file_path = "/tmp/base_list.csv"
     df.to_csv(csv_file_path, index=False, header=True, sep=",")

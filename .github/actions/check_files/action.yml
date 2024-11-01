@@ -18,20 +18,26 @@ runs:
     with:
       python-version: '3.12'
 
-  - name: Install dependencies
+  - name: Create python virtual environment
     shell: bash
     run: |
-      pip install -r $GITHUB_ACTION_PATH/requirements.txt
+      cd $GITHUB_ACTION_PATH
+      python3 -m venv venv
+      source venv/bin/activate
+      pip3 install --upgrade pip
+      pip3 install -r requirements.txt
 
   - name: Get the files stats
     shell: bash
     run: |
-      python3 $GITHUB_ACTION_PATH/get_files_stats.py
+      cd ${GITHUB_ACTION_PATH}
+      sudo venv/bin/python get_files_stats.py
 
   - name: Compare results
     shell: bash
     run: |
-      python3 $GITHUB_ACTION_PATH/compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
+      cd ${GITHUB_ACTION_PATH}
+      sudo venv/bin/python compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
 
   - name: Upload validation results
     if: always()
