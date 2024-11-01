@@ -173,33 +173,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  lists_read:
-    description: Allow reading all lists paths in the system.
-    policies:
-      rules:
-        actions:
-          - lists:read
-        resources:
-          - list:file:*
-        effect: allow
-
-  lists_all:
-    description: Allow managing all CDB lists files in the system.
-    policies:
-      rules:
-        actions:
-          - lists:read
-          - lists:delete
-        resources:
-          - list:file:*
-        effect: allow
-      resourceless:
-        actions:
-          - lists:update
-        resources:
-          - '*:*:*'
-        effect: allow
-
   rootcheck_read:
     description: Allow read rootcheck information.
     policies:

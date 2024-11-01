@@ -326,8 +326,6 @@ def test_get_files_status(mock_get_cluster_items):
                        'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user rules'},
         'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
                           'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user decoders'},
-        'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
-                       'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user CDB lists'},
         'excluded_files': ['ar.conf', 'ossec.conf'], 'excluded_extensions': ['~', '.tmp', '.lock', '.swp']}
 })
 def test_get_ruleset_status(mock_get_cluster_items):
@@ -339,8 +337,6 @@ def test_get_ruleset_status(mock_get_cluster_items):
              ['~', '.tmp', '.lock', '.swp'], 'etc/rules/', {}, True),
         call('etc/decoders/', True, ['all'], ['ar.conf', 'ossec.conf'],
              ['~', '.tmp', '.lock', '.swp'], 'etc/decoders/', {}, True),
-        call('etc/lists/', True, ['all'], ['ar.conf', 'ossec.conf'],
-             ['~', '.tmp', '.lock', '.swp'], 'etc/lists/', {}, True)
     ]
 
     with patch("wazuh.core.cluster.cluster.walk_dir", return_value=(test_dict, {})) as walk_dir_mock:

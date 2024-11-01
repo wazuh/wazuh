@@ -233,8 +233,6 @@ DECIMALS_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 # ============================================ Wazuh constants - Extensions ============================================
 RULES_EXTENSION = '.xml'
 DECODERS_EXTENSION = '.xml'
-LISTS_EXTENSION = ''
-COMPILED_LISTS_EXTENSION = '.cdb'
 
 
 # ========================================= Wazuh constants - Size and limits ==========================================

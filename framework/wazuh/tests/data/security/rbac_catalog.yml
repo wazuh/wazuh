@@ -357,45 +357,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /cluster/restart
           - PUT /manager/restart
-      lists:read:
-        description: Read CDB lists files
-        resources:
-          - list:file
-        example:
-          actions:
-            - lists:read
-          resources:
-            - list:file:audit-keys
-          effect: deny
-        related_endpoints:
-          - GET /lists
-          - GET /lists/files/{filename}
-          - GET /lists/files
-      lists:update:
-        description: Update or upload CDB lists files
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - lists:update
-          resources:
-            - '*:*:*'
-          effect: allow
-        related_endpoints:
-          - PUT /lists/files/{filename}
-      lists:delete:
-        description: Delete CDB lists files
-        resources:
-          - list:file
-        example:
-          actions:
-            - lists:delete
-          resources:
-            - list:file:audit-keys
-          effect: deny
-        related_endpoints:
-          - PUT /lists/files/{filename}
-          - DELETE /lists/files/{filename}
       logtest:run:
         description: Run logtest tool or end a logtest session
         resources:

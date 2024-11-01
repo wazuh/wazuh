@@ -39,12 +39,11 @@ _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
-_cdb_filename_path = re.compile(r'^[\-\w]+$')
 _xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
 _xml_filename = re.compile(r'^[\w\-]+\.xml(,[\w\-]+\.xml)*$')
 _query_param = re.compile(r"^[\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+(?:[;,][\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}-[\d]{1,2}$')
-_get_dirnames_path = re.compile(r'^(((etc|ruleset)/(decoders|rules)[\w\-/]*)|(etc/lists[\w\-/]*))$')
+_get_dirnames_path = re.compile(r'^(((etc|ruleset)/(decoders|rules)[\w\-/]*))$')
 _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
@@ -411,11 +410,6 @@ def format_numbers(value):
 @Draft4Validator.FORMAT_CHECKER.checks("numbers_or_all")
 def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("cdb_filename_path")
-def format_cdb_filename_path(value):
-    return check_exp(value, _cdb_filename_path)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("xml_filename")
