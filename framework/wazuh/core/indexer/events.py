@@ -10,6 +10,9 @@ from wazuh.core.batcher.client import BatcherClient
 
 from opensearchpy import AsyncOpenSearch
 
+HTTP_STATUS_OK = 200
+HTTP_STATUS_PARTIAL_CONTENT = 206
+
 
 class EventsIndex(BaseIndex, MixinBulk):
     """Set of methods to interact with the stateful events indices."""
@@ -60,7 +63,7 @@ class EventsIndex(BaseIndex, MixinBulk):
         results: List[TaskResult] = []
         for result in tasks_results:
             status = result[IndexerKey.STATUS]
-            if status < 300:
+            if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
                 task_result = TaskResult(
                     id=result[IndexerKey._ID],
                     result=result[IndexerKey.RESULT],
