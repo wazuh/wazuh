@@ -77,9 +77,7 @@ InstallServer()
 {
     PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
 
-    # Install Task Manager files
-    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
-
+    # Install Framework
     ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=/var/lib/wazuh-server
     ${PYTHON_BIN_PATH} -m pip install ../framework/
 
