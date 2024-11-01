@@ -1695,8 +1695,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s cups -> r:package 'cups' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> r:no packages found matching cups|deinstall|not-installed"
 
   # 2.1.12 Ensure rpcbind services are not in use. (Automated)
    - id: 18576
@@ -1717,8 +1719,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s rpcbind -> r:package 'rpcbind' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> r:no packages found matching rpcbind|deinstall|not-installed"
 
   # 2.1.13 Ensure rsync services are not in use. (Automated)
    - id: 18577
@@ -1739,8 +1743,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' rsync -> r:no packages found matching rsync|deinstall|not-installed"
+      - 'c:systemctl is-active rsync" -> r:inactive'
+      - "c:systemctl is-enabled rsync -> r:masked|disabled"
 
   # 2.1.14 Ensure samba file server services are not in use. (Automated)
    - id: 18578
@@ -1760,8 +1767,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s samba -> r:package 'samba' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:no packages found matching samba|deinstall|not-installed"
 
   # 2.1.15 Ensure snmp services are not in use. (Automated)
    - id: 18579
@@ -1782,8 +1791,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s snmp -> r:package 'snmp' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> r:no packages found matching snmp|deinstall|not-installed"
 
   # 2.1.16 Ensure tftp server services are not in use. (Automated)
    - id: 18580
@@ -1826,8 +1837,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s squid -> r:package 'squid' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> r:no packages found matching squid|deinstall|not-installed"
 
   # 2.1.18 Ensure web server services are not in use. (Automated)
    - id: 18582
@@ -1848,8 +1861,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg -s apache2 -> r:package 'apache2' is not installed"
 
   # 2.1.19 Ensure xinetd services are not in use. (Automated)
    - id: 18583
@@ -1870,8 +1884,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: none
      rules:
+      - "c:dpkg -s xinetd -> r:install ok installed"
 
   # 2.1.20 Ensure X window server services are not in use. (Automated)
    - id: 18584
@@ -1892,8 +1907,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:dpkg-query -W -f="${binary:Package}\t${Status}\t${db:Status-Status}\n" xserver-common* -> r:no packages found matching|deinstall|not-installed'
+      - "c:dpkg-query -s xserver-common -> r:package 'xserver-common' is not installed"
 
   # 2.1.21 Ensure mail transfer agent is configured for local-only mode. (Automated)
    - id: 18585
@@ -1913,30 +1930,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'not c:ss -lntu -> r:\.*:25\s && r:127.0.0.1:25\s+|::1]:25\s+'
 
-  # 2.1.22 Ensure only approved services are listening on a network interface. (Manual)
-   - id: 18586
-     title: "Ensure only approved services are listening on a network interface."
-     description: "A network port is identified by its number, the associated IP address, and the type of the communication protocol such as TCP or UDP. A listening port is a network port on which an application or process listens on, acting as a communication endpoint. Each listening port can be open or closed (filtered) using a firewall. In general terms, an open port is a network port that accepts incoming packets from remote locations."
-     rationale: "Services listening on the system pose a potential risk as an attack vector. These services should be reviewed, and if not required, the service should be stopped, and the package containing the service should be removed. If required packages have a dependency, the service should be stopped and masked to reduce the attack surface of the system."
-     impact: "There may be packages that are dependent on the service's package. If the service's package is removed, these dependent packages will be removed as well. Before removing the service's package, review any dependent packages to determine if they are required on the system. - IF - a dependent package is required: stop and mask the <service_name>.socket and <service_name>.service leaving the service's package installed."
-     remediation: "Run the following commands to stop the service and remove the package containing the service: # systemctl stop <service_name>.socket <service_name>.service # apt purge <package_name> - OR - If required packages have a dependency: Run the following commands to stop and mask the service and socket: # systemctl stop <service_name>.socket <service_name>.service # systemctl mask <service_name>.socket <service_name>.service Note: replace <service_name> with the appropriate service name."
-     compliance:
-       - cis: ["2.1.22"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_mitigations: ["M1042"]
-       - mitre_tactics: ["TA0008"]
-       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
+  # 2.1.22 Ensure only approved services are listening on a network interface. (Manual) - Not Implemented
 
   # 2.2.1 Ensure NIS Client is not installed. (Automated)
    - id: 18587
@@ -1957,8 +1955,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s nis -> r:package 'nis' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:no packages found matching nis|deinstall|not-installed"
 
   # 2.2.2 Ensure rsh client is not installed. (Automated)
    - id: 18588
@@ -1979,8 +1979,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s rsh-client -> r:package 'rsh-client' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> r:no packages found matching rsh-client|deinstall|not-installed"
 
   # 2.2.3 Ensure talk client is not installed. (Automated)
    - id: 18589
@@ -2001,8 +2003,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s talk -> r:package 'talk' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:no packages found matching talk|deinstall|not-installed"
 
   # 2.2.4 Ensure telnet client is not installed. (Automated)
    - id: 18590
@@ -2023,8 +2027,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s telnet -> r:package 'telnet' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> r:no packages found matching telnet|deinstall|not-installed"
 
   # 2.2.5 Ensure ldap client is not installed. (Automated)
    - id: 18591
@@ -2045,8 +2051,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s ldap-utils -> r:package 'ldap-utils' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> r:no packages found matching ldap-utils|deinstall|not-installed"
 
   # 2.2.6 Ensure ftp client is not installed. (Automated)
    - id: 18592
@@ -2066,8 +2074,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s tnftpd -> r:package 'tnftpd' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' tnftpd -> r:no packages found matching tnftpd|deinstall|not-installed"
 
   # 2.3.1.1 Ensure a single time synchronization daemon is in use. (Automated)
    - id: 18593
@@ -2087,8 +2097,10 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s vsftpd -> r:package 'vsftpd' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> r:no packages found matching vsftpd|deinstall|not-installed"
 
   # 2.3.2.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated)
    - id: 18594
