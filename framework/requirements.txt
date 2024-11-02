@@ -95,7 +95,7 @@ rpds-py==0.15.2
 rsa==4.7.2
 s3transfer==0.10.2
 secure==0.3.0
-six==1.16.0
+six==1.4.0
 sniffio==1.3.0
 SQLAlchemy==2.0.23
 starlette==0.37.2
@@ -107,7 +107,7 @@ uuid6==2024.07.10
 uvloop==0.17.0
 uvicorn==0.24.0.post1
 websocket-client==0.57.0
-Werkzeug==3.0.3
+Werkzeug==2.0.3
 xmltodict==0.12.0
 yarl==1.7.0
 zipp==3.3.2
