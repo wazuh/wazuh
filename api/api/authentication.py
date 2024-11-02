@@ -18,9 +18,9 @@ import wazuh.rbac.utils as rbac_utils
 from api.util import raise_if_exc
 from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.cluster.utils import read_config
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
+from wazuh.core.config.client import CentralizedConfig
 
 INVALID_TOKEN = "Invalid token"
 EXPIRED_TOKEN = "Token expired"
@@ -202,10 +202,11 @@ def decode_token(token: str) -> dict:
         payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node
+        server_config = CentralizedConfig.get_server_config()
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
                                         'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf'],
-                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
+                                        'run_as': payload['run_as'], 'origin_node_type': server_config.node.type},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=False,

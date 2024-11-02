@@ -8,17 +8,18 @@ from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes, get_node_ruleset_integrity
-from wazuh.core.cluster.utils import get_cluster_status, read_config
+from wazuh.core.cluster.utils import get_cluster_status
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.rbac.decorators import expose_resources, async_list_handler
+from wazuh.core.config.client import CentralizedConfig
 
 node_id = get_node().get('node')
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 async def read_config_wrapper() -> AffectedItemsWazuhResult:
-    """Wrapper for read_config.
+    """Wrapper for the cluster configuration.
 
     Returns
     -------
@@ -29,7 +30,7 @@ async def read_config_wrapper() -> AffectedItemsWazuhResult:
                                       none_msg='No information was returned'
                                       )
     try:
-        result.affected_items.append(read_config())
+        result.affected_items.append(CentralizedConfig.get_server_config().model_dump())
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)

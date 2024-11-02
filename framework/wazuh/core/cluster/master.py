@@ -839,8 +839,8 @@ class Master(server.AbstractServer):
         dict
             Healthcheck and basic information from master node.
         """
-        return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
-                         'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
+        return {'info': {'name': self.server_config.node.name, 'type': self.server_config.node.type,
+                         'version': metadata.__version__, 'ip': self.server_config.nodes[0]}}
 
     async def file_status_update(self):
         """Asynchronous task that obtain files status periodically.
@@ -887,8 +887,8 @@ class Master(server.AbstractServer):
         workers_info = {key: val.to_dict() for key, val in self.clients.items()
                         if filter_node is None or filter_node == {} or key in filter_node}
         n_connected_nodes = len(workers_info)
-        if filter_node is None or self.configuration['node_name'] in filter_node:
-            workers_info.update({self.configuration['node_name']: self.to_dict()})
+        if filter_node is None or self.server_config.node.name in filter_node:
+            workers_info.update({self.server_config.node.name: self.to_dict()})
 
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
@@ -910,4 +910,4 @@ class Master(server.AbstractServer):
         dict
             Basic node information.
         """
-        return {'type': self.configuration['node_type'], 'node': self.configuration['node_name']}
+        return {'type': self.server_config.node.type, 'node': self.server_config.node.name}

@@ -2,23 +2,19 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from os import remove
-from os.path import exists, join, normpath, commonpath
-from typing import Union, Tuple
+from os.path import join, normpath
+from typing import Union
 from xml.parsers.expat import ExpatError
 
 import xmltodict
 
-import wazuh.core.configuration as configuration
 from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
-    RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS, RULE_FILES_FIELDS, RULE_FILES_REQUIRED_FIELDS
-from wazuh.core.utils import process_array, safe_move, \
-    validate_wazuh_xml, upload_file, full_copy, to_relative_path
-from wazuh.core.logtest import validate_dummy_logtest
+from wazuh.core.rule import (check_status, load_rules_from_file, REQUIRED_FIELDS,
+                             RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS)
+from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')
@@ -142,7 +138,7 @@ def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_
 
     return result
 
-
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
 def get_rules_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
                     limit: int = common.DATABASE_LIMIT, sort_by: dict = None, sort_ascending: bool = True,
@@ -191,34 +187,9 @@ def get_rules_files(status: str = None, relative_dirname: str = None, filename: 
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(none_msg='No rule files were returned',
-                                      some_msg='Some rule files were not returned',
-                                      all_msg='All rule files were returned')
-    status = check_status(status)
-    # Rules configuration
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')
-    if not ruleset_conf:
-        raise WazuhError(1200)
-    rules_files = list()
-    tags = ['rule_include', 'rule_exclude', 'rule_dir']
-    if isinstance(filename, list):
-        for f in filename:
-            rules_files.extend(
-                format_rule_decoder_file(ruleset_conf['ruleset'],
-                                         {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
-                                         tags))
-    else:
-        rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
-                                               {'status': status, 'relative_dirname': relative_dirname,
-                                                'filename': filename},
-                                               tags)
-
-    data = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, q=q, select=select, allowed_select_fields=RULE_FILES_FIELDS,
-                         distinct=distinct, required_fields=RULE_FILES_REQUIRED_FIELDS)
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
 
     return result
 
@@ -400,40 +371,8 @@ def get_rule_file(filename: str = None, raw: bool = False,
     return result
 
 
-def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str, WazuhError]:
-    """Validate relative_dirname parameter.
 
-    Parameters
-    ----------
-    relative_dirname : str
-        Relative path to validate.
-
-    Returns
-    -------
-    Tuple (str, WazuhError)
-        The first element of the tuple is the normalized relative path.
-            If relative_dirname is None, return USER_RULES_PATH.
-            If relative_dirname is not None, return relative_dirname without trailing slash
-        The second element of the tuple is a WazuhError exception
-            If relative_dirname has no 'rule_dir' tag in ruleset return WazuhError(1505).
-            If relative_dirname is inside the default RULES_PATH return WazuhError(1506).
-            If relative_dirname has a 'rule_dir' tag in ruleset but it doesn't exists return WazuhError(1507).
-            If the path is valid, return None
-    """
-
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
-        else to_relative_path(common.USER_RULES_PATH)
-    wazuh_error = None
-    if not relative_dirname in ruleset_conf['rule_dir']:
-        wazuh_error = WazuhError(1209)
-    elif commonpath([join(common.WAZUH_PATH, relative_dirname), common.RULES_PATH]) == common.RULES_PATH:
-        wazuh_error = WazuhError(1210)
-    elif not exists(join(common.WAZUH_PATH, relative_dirname)):
-        wazuh_error = WazuhError(1211)
-    return relative_dirname, wazuh_error
-
-
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['rules:update'], resources=['*:*:*'])
 def upload_rule_file(filename: str, content: str, relative_dirname: str = None, 
                      overwrite: bool = False) -> AffectedItemsWazuhResult:
@@ -460,56 +399,13 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
-                                      none_msg='Could not upload rule')
-
-    backup_file = ''
-    try:
-        relative_dirname, wazuh_error = validate_upload_delete_dir(
-            relative_dirname=relative_dirname)
-        full_path = join(common.WAZUH_PATH, relative_dirname, filename)
-        if wazuh_error:
-            raise wazuh_error
-        if len(content) == 0:
-            raise WazuhError(1112)
-
-        validate_wazuh_xml(content)
-
-        # If file already exists and overwrite is False, raise exception
-        if not overwrite and exists(full_path):
-            raise WazuhError(1905)
-        elif overwrite and exists(full_path):
-            backup_file = f'{full_path}.backup'
-            try:
-                full_copy(full_path, backup_file)
-            except IOError as exc:
-                raise WazuhError(1019) from exc
-
-            delete_rule_file(filename=filename, relative_dirname=relative_dirname)
-
-        upload_file(content, to_relative_path(full_path))
-
-        # After uploading the file, validate it using a logtest dummy msg
-        try:
-            validate_dummy_logtest()
-        except WazuhError as exc:
-            if not overwrite and exists(full_path):
-                delete_rule_file(filename=filename, relative_dirname=relative_dirname)
-
-            raise exc
-
-        result.affected_items.append(to_relative_path(full_path))
-        result.total_affected_items = len(result.affected_items)
-        backup_file and exists(backup_file) and remove(backup_file)
-
-    except WazuhError as exc:
-        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
-    finally:
-        exists(backup_file) and safe_move(backup_file, full_path)
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
 
     return result
 
-
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
 def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a rule file.
@@ -526,27 +422,8 @@ def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -
     AffectedItemsWazuhResult
         Affected items.
     """
-    file = filename if isinstance(filename, str) else filename[0]
-    result = AffectedItemsWazuhResult(all_msg='Rule was successfully deleted',
-                                      none_msg='Could not delete rule')
-
-    try:
-        relative_dirname, wazuh_error = validate_upload_delete_dir(
-            relative_dirname=relative_dirname)
-        full_path = join(common.WAZUH_PATH, relative_dirname, file)
-        if wazuh_error:
-            raise wazuh_error
-
-        if exists(full_path):
-            try:
-                remove(full_path)
-                result.affected_items.append(to_relative_path(full_path))
-            except IOError as exc:
-                raise WazuhError(1907) from exc
-        else:
-            raise WazuhError(1906)
-    except WazuhError as exc:
-        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
-    result.total_affected_items = len(result.affected_items)
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
 
     return result

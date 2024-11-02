@@ -17,12 +17,12 @@ from glob import glob
 from operator import setitem
 
 from wazuh.core import common, pyDaemonModule
-from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhHAPHelperError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.config.client import CentralizedConfig
 
 NO = 'no'
 YES = 'yes'
@@ -50,6 +50,7 @@ REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 logger = logging.getLogger('wazuh')
 execq_lockfile = common.WAZUH_RUN / ".api_execq_lock"
 
+#TODO(26356) - Delete HAPROXY Config
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
     HAPROXY_PROTOCOL: 'http',
@@ -171,69 +172,6 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
     return helper_config
 
 
-def read_cluster_config(config_file=common.WAZUH_CONF, from_import=False) -> typing.Dict:
-    """Read cluster configuration from ossec.conf.
-
-    If some fields are missing in the ossec.conf cluster configuration, they are replaced
-    with default values..
-
-    Parameters
-    ----------
-    config_file : str
-        Path to configuration file.
-    from_import : bool
-        This flag indicates whether this function has been called from a module load (True) or from a function (False).
-
-    Returns
-    -------
-    config_cluster : dict
-        Dictionary with cluster configuration.
-    """
-    cluster_default_configuration = {
-        'node_type': 'master',
-        'node_name': 'node01',
-        'port': 1516,
-        'bind_addr': 'localhost',
-        'nodes': ['127.0.0.1'],
-        'hidden': 'no',
-        'cafile': common.WAZUH_ETC / 'server.ca',
-        'certfile': common.WAZUH_ETC / 'server.crt',
-        'keyfile': common.WAZUH_ETC / 'server.key',
-        'keyfile_password': '',
-    }
-
-    try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
-    except WazuhException as e:
-        if e.code == 1106:
-            # If no cluster configuration is present in ossec.conf, return the default configuration.
-            return cluster_default_configuration
-        else:
-            raise WazuhError(3006, extra_message=e.message)
-    except Exception as e:
-        raise WazuhError(3006, extra_message=str(e))
-
-    if 'node_name' not in config_cluster:
-        logger.warning('No "node_name" found in the ossec.conf. There could be errors in distributed requests.')
-
-    # If any value is missing from user's cluster configuration, add the default one.
-    for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
-        config_cluster[value_name] = cluster_default_configuration[value_name]
-
-    if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
-        raise WazuhError(3004, extra_message="Cluster port must be an integer.")
-
-    config_cluster['port'] = int(config_cluster['port'])
-
-    if config_cluster.get(HAPROXY_HELPER):
-        config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
-
-    for key in ('cafile', 'certfile', 'keyfile'):
-        if not config_cluster[key].is_relative_to(common.WAZUH_ETC):
-            config_cluster[key] = common.WAZUH_ETC / config_cluster[key]
-
-    return config_cluster
-
 
 @temporary_cache()
 def get_manager_status(cache=False) -> typing.Dict:
@@ -345,26 +283,8 @@ def manager_restart() -> WazuhResult:
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
-        read_config.cache_clear()
 
     return WazuhResult({'message': 'Restart request sent'})
-
-
-@lru_cache()
-def read_config(config_file=common.WAZUH_CONF):
-    """Get the cluster configuration.
-
-    Parameters
-    ----------
-    config_file : str
-        Path to configuration file.
-
-    Returns
-    -------
-    dict
-        Dictionary with cluster configuration.
-    """
-    return read_cluster_config(config_file=config_file)
 
 
 # Context vars
@@ -499,15 +419,15 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
 
 
 def running_in_master_node() -> bool:
-    """Determine if cluster is disabled or API is running in a master node.
+    """Determine if API is running in a master node.
 
     Returns
     -------
     bool
         True if API is running in master node.
     """
-    cluster_config = read_cluster_config()
-    return cluster_config['node_type'] == 'master'
+    server_config = CentralizedConfig.get_server_config()
+    return server_config.node.type == 'master'
 
 
 def raise_if_exc(result: object) -> None:

@@ -2,23 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from os import remove
-from os.path import join, exists, normpath, commonpath
-from typing import Union, Tuple
+from os.path import join, normpath
+from typing import Union
 from xml.parsers.expat import ExpatError
 
 import xmltodict
 
-import wazuh.core.configuration as configuration
 from wazuh.core import common
-from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS, \
-    DECODER_FILES_FIELDS, DECODER_FILES_REQUIRED_FIELDS
+from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import format_rule_decoder_file
-from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
-    upload_file, to_relative_path, full_copy
-from wazuh.core.logtest import validate_dummy_logtest
+from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -113,7 +107,7 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
 
     return result
 
-
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
 def get_decoders_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
                        limit: int = common.DATABASE_LIMIT, sort_by: list = None, sort_ascending: bool = True,
@@ -161,33 +155,9 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(none_msg='No decoder files were returned',
-                                      some_msg='Some decoder files were not returned',
-                                      all_msg='All decoder files were returned')
-    status = check_status(status)
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
-    if not ruleset_conf:
-        raise WazuhInternalError(1500)
-
-    decoders_files = list()
-    tags = ['decoder_include', 'decoder_exclude', 'decoder_dir']
-    if isinstance(filename, list):
-        for f in filename:
-            decoders_files.extend(format_rule_decoder_file(
-                ruleset_conf, {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
-                tags))
-    else:
-        decoders_files = format_rule_decoder_file(
-            ruleset_conf,
-            {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
-            tags)
-
-    data = process_array(decoders_files, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, q=q, select=select, allowed_select_fields=DECODER_FILES_FIELDS,
-                         distinct=distinct, required_fields=DECODER_FILES_REQUIRED_FIELDS)
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
 
     return result
 
@@ -276,40 +246,7 @@ def get_decoder_file(filename: str, raw: bool = False,
     return result
 
 
-def validate_upload_delete_dir(relative_dirname: Union[str, None]) -> Tuple[str, WazuhError]:
-    """Validate relative_dirname parameter.
-
-    Parameters
-    ----------
-    relative_dirname : str
-        Relative path to validate.
-
-    Returns
-    -------
-    Tuple (str, WazuhError)
-        The first element of the tuple is the normalized relative path.
-            If relative_dirname is None, return USER_DECODERS_PATH.
-            If relative_dirname is not None, return relative_dirname without trailing slash
-        The second element of the tuple is a WazuhError exception.
-            If relative_dirname has no 'decoder_dir' tag in ruleset return WazuhError(1505).
-            If relative_dirname is inside the default DECODERS_PATH return WazuhError(1506).
-            If relative_dirname has a 'decoder_dir' tag in ruleset but it doesn't exists return WazuhError(1507).
-            If the path is valid, return None
-    """
-
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
-    relative_dirname = relative_dirname.rstrip('/') if relative_dirname \
-        else to_relative_path(common.USER_DECODERS_PATH)
-    wazuh_error = None
-    if not relative_dirname in ruleset_conf['decoder_dir']:
-        wazuh_error = WazuhError(1505)
-    elif commonpath([join(common.WAZUH_PATH, relative_dirname), common.DECODERS_PATH]) == common.DECODERS_PATH:
-        wazuh_error = WazuhError(1506)
-    elif not exists(join(common.WAZUH_PATH, relative_dirname)):
-        wazuh_error = WazuhError(1507)
-    return relative_dirname, wazuh_error
-
-
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['decoders:update'], resources=['*:*:*'])
 def upload_decoder_file(filename: str, content: str, relative_dirname: str = None,
                         overwrite: bool = False) -> AffectedItemsWazuhResult:
@@ -336,55 +273,14 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
-                                      none_msg='Could not upload decoder'
-                                      )
-    backup_file = ''
-    try:
-        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
-        full_path = join(common.WAZUH_PATH, relative_dirname, filename)
-        if wazuh_error:
-            raise wazuh_error
-
-        if len(content) == 0:
-            raise WazuhError(1112)
-
-        validate_wazuh_xml(content)
-        # If file already exists and overwrite is False, raise exception
-        if not overwrite and exists(full_path):
-            raise WazuhError(1905)
-        elif overwrite and exists(full_path):
-            backup_file = f'{full_path}.backup'
-            try:
-                full_copy(full_path, backup_file)
-            except IOError as exc:
-                raise WazuhError(1019) from exc
-
-            delete_decoder_file(filename=filename,
-                                relative_dirname=relative_dirname)
-
-        upload_file(content, to_relative_path(full_path))
-
-        # After uploading the file, validate it using a logtest dummy msg
-        try:
-            validate_dummy_logtest()
-        except WazuhError as exc:
-            if not overwrite and exists(full_path):
-                delete_decoder_file(filename=filename, relative_dirname=relative_dirname)
-
-            raise exc
-
-        result.affected_items.append(to_relative_path(full_path))
-        result.total_affected_items = len(result.affected_items)
-        backup_file and exists(backup_file) and remove(backup_file)
-    except WazuhError as exc:
-        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
-    finally:
-        exists(backup_file) and safe_move(backup_file, full_path)
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
 
     return result
 
 
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['decoders:delete'], resources=['decoder:file:{filename}'])
 def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a decoder file.
@@ -404,26 +300,8 @@ def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None
     AffectedItemsWazuhResult
         Affected items.
     """
-    file = filename[0] if isinstance(filename, list) else filename
-
-    result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
-                                      none_msg='Could not delete decoder file')
-    try:
-        relative_dirname, wazuh_error = validate_upload_delete_dir(relative_dirname=relative_dirname)
-        full_path = join(common.WAZUH_PATH, relative_dirname, file)
-        if wazuh_error:
-            raise wazuh_error
-
-        if exists(full_path):
-            try:
-                remove(full_path)
-                result.affected_items.append(to_relative_path(full_path))
-            except IOError as exc:
-                raise WazuhError(1907) from exc
-        else:
-            raise WazuhError(1906)
-    except WazuhError as exc:
-        result.add_failed_item(id_=to_relative_path(full_path), error=exc)
-    result.total_affected_items = len(result.affected_items)
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
 
     return result

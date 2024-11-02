@@ -26,9 +26,7 @@ from wazuh.core.cluster.utils import (
     REMOVE_DISCONNECTED_NODE_AFTER,
     ClusterFilter,
     context_tag,
-    read_cluster_config,
 )
-from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 from wazuh.core.config.client import CentralizedConfig
 
@@ -479,8 +477,9 @@ class HAPHelper:
         logger = HAPHelper._get_logger(tag)
 
         try:
-            helper_config = read_cluster_config()['haproxy_helper']
-            port_config = get_ossec_conf(section='remote')
+            helper_config = HELPER_DEFAULTS['haproxy_helper']
+            # TODO(26356) - Check use with team
+            port_config = {'remote': [{'port': 8000}]}
             connection_port = int(port_config.get('remote')[0].get('port', CONNECTION_PORT))
 
             protocol = helper_config[HAPROXY_PROTOCOL]

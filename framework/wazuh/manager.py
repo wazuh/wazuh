@@ -9,7 +9,6 @@ from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart
-from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
     get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS
@@ -271,7 +270,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
     return result
 
-
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['cluster:read'],
                   resources=[f'node:id:{node_id}'])
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
@@ -294,21 +293,9 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully read"
-                                              f"{' in specified node' if node_id != 'manager' else ''}",
-                                      some_msg='Could not read configuration in some nodes',
-                                      none_msg=f"Could not read configuration"
-                                               f"{' in specified node' if node_id != 'manager' else ''}"
-                                      )
-
-    try:
-        if raw:
-            with open(common.WAZUH_CONF) as f:
-                return f.read()
-        result.affected_items.append(get_ossec_conf(section=section, field=field, distinct=distinct))
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
 
     return result
 
@@ -339,6 +326,7 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     return result
 
 
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['cluster:update_config'],
                   resources=[f'node:id:{node_id}'])
 def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
@@ -354,42 +342,9 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully updated"
-                                              f"{' in specified node' if node_id != 'manager' else ''}",
-                                      some_msg='Could not update configuration in some nodes',
-                                      none_msg=f"Could not update configuration"
-                                               f"{' in specified node' if node_id != 'manager' else ''}"
-                                      )
-    backup_file = f'{common.WAZUH_CONF}.backup'
-    try:
-        # Check a configuration has been provided
-        if not new_conf:
-            raise WazuhError(1125)
-
-        # Check if the configuration is valid
-        validate_wazuh_xml(new_conf, config_file=True)
-
-        # Create a backup of the current configuration before attempting to replace it
-        try:
-            full_copy(common.WAZUH_CONF, backup_file)
-        except IOError:
-            raise WazuhError(1019)
-
-        # Write the new configuration and validate it
-        write_ossec_conf(new_conf)
-        is_valid = validate_ossec_conf()
-
-        if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
-            raise WazuhError(1125)
-        else:
-            result.affected_items.append(node_id)
-        exists(backup_file) and remove(backup_file)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    finally:
-        exists(backup_file) and safe_move(backup_file, common.WAZUH_CONF)
-
-    result.total_affected_items = len(result.affected_items)
+    result = AffectedItemsWazuhResult(all_msg='This feature will be replaced or deleted by new centralized config',
+                                      some_msg='This feature will be replaced or deleted by new centralized config',
+                                      none_msg='This feature will be replaced or deleted by new centralized config')
     return result
 
 

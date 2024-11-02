@@ -175,7 +175,7 @@ def shutdown_cluster(cluster_pid: int):
 #
 # Master main
 #
-async def master_main(args: argparse.Namespace, cluster_config: dict, server_config: ServerConfig, logger: WazuhLogger):
+async def master_main(args: argparse.Namespace, server_config: ServerConfig, logger: WazuhLogger):
     """Start the master node main process.
 
     Parameters
@@ -197,10 +197,10 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, server_con
     my_server = master.Master(
         performance_test=args.performance_test,
         concurrency_test=args.concurrency_test,
-        configuration=cluster_config,
         logger=logger,
         server_config=server_config,
     )
+
     # Spawn pool processes
     if my_server.task_pool is not None:
         my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
@@ -210,13 +210,13 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, server_con
         logger=logger,
         concurrency_test=args.concurrency_test,
         node=my_server,
-        configuration=cluster_config,
         server_config=server_config,
     )
 
     tasks = [my_server, my_local_server]
-    if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
-        tasks.append(HAPHelper)
+    #TODO(26356) - Delete in future Issue including references to HAPROXY
+    #if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
+    #    tasks.append(HAPHelper)
     await asyncio.gather(*[task.start() for task in tasks])
 
 
@@ -360,13 +360,7 @@ def main():
         os.chmod(CLUSTER_LOG, 0o660)
 
     try:
-        cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
-    except Exception as e:
-        main_logger.error(e)
-        sys.exit(1)
-
-    try:
-        wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
+        server_config = CentralizedConfig.get_server_config()
     except Exception as e:
         main_logger.error(e)
         sys.exit(1)
@@ -394,7 +388,7 @@ def main():
     if args.foreground:
         print(f'Starting cluster in foreground (pid: {cluster_pid})')
 
-    if cluster_configuration['node_type'] == 'master':
+    if server_config.node.type == 'master':
         main_function = master_main
 
         # Generate JWT signing key pair if it doesn't exist
@@ -407,9 +401,7 @@ def main():
     try:
         start_daemons(args.foreground, args.root)
 
-        asyncio.run(main_function(args, cluster_configuration,
-                                  CentralizedConfig.get_server_config(),
-                                  main_logger))
+        asyncio.run(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:

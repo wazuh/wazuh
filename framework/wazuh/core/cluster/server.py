@@ -245,7 +245,7 @@ class AbstractServer:
 
     NO_RESULT = 'no_result'
 
-    def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, server_config: ServerConfig,
+    def __init__(self, performance_test: int, concurrency_test: int, server_config: ServerConfig,
                  logger: logging.Logger = None, tag: str = "Abstract Server"):
         """Class constructor.
 
@@ -255,8 +255,6 @@ class AbstractServer:
             Message length to use in the performance test.
         concurrency_test : int
             Number of requests to do in the concurrency test.
-        configuration : dict
-            ossec.conf cluster configuration.
         server_config : ServerConfig
             Server configuration.
         logger : Logger object
@@ -267,7 +265,6 @@ class AbstractServer:
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
-        self.configuration = configuration
         self.server_config = server_config
         self.tag = tag
         self.logger = logging.getLogger('wazuh') if not logger else logger
@@ -381,7 +378,7 @@ class AbstractServer:
         dict
             Basic information (ip, name).
         """
-        return {'info': {'ip': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
+        return {'info': {'ip': self.server_config.nodes[0], 'name': self.server_config.node.name}}
 
     def setup_task_logger(self, task_tag: str) -> logging.Logger:
         """Create logger with a task_tag.
@@ -459,7 +456,7 @@ class AbstractServer:
 
         if filter_node is not None:
             filter_node = set(filter_node) if isinstance(filter_node, list) else {filter_node}
-            if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.configuration['node_name']]))):
+            if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.server_config.node.name]))):
                 raise exception.WazuhResourceNotFound(1730)
 
         res = [val.to_dict()['info'] for val in itertools.chain([self], self.clients.values())
@@ -533,10 +530,10 @@ class AbstractServer:
         ssl_context = c_common.create_ssl_context(
             self.logger,
             ssl.Purpose.CLIENT_AUTH,
-            self.configuration['cafile'],
-            self.configuration['certfile'],
-            self.configuration['keyfile'],
-            self.configuration['keyfile_password']
+            self.server_config.node.ssl.ca,
+            self.server_config.node.ssl.cert,
+            self.server_config.node.ssl.key,
+            self.server_config.node.ssl.keyfile_password
         )
 
         try:
@@ -544,8 +541,8 @@ class AbstractServer:
                 protocol_factory=lambda: self.handler_class(
                     server=self, loop=self.loop, logger=self.logger, server_config=self.server_config
                 ),
-                host=self.configuration['bind_addr'],
-                port=self.configuration['port'],
+                host=self.server_config.bind_addr,
+                port=self.server_config.port,
                 ssl=ssl_context
             )
         except OSError as e:

@@ -8,7 +8,7 @@ import logging
 import ssl
 import traceback
 from time import perf_counter
-from typing import Tuple, Dict, List
+from typing import Tuple, List
 
 import uvloop
 
@@ -22,14 +22,12 @@ class AbstractClientManager:
     Define an abstract client. Manage connection with server.
     """
 
-    def __init__(self, configuration: Dict, server_config: ServerConfig, performance_test: int, concurrency_test: int,
+    def __init__(self, server_config: ServerConfig, performance_test: int, concurrency_test: int,
                  file: str, string: int, logger: logging.Logger = None, tag: str = "Client Manager"):
         """Class constructor.
 
         Parameters
         ----------
-        configuration : dict
-            Client configuration.
         server_config : ServerConfig
             Object containing server internal variables.
         performance_test : int
@@ -45,8 +43,7 @@ class AbstractClientManager:
         tag : str
             Log tag.
         """
-        self.name = configuration['node_name']
-        self.configuration = configuration
+        self.name = server_config.node.name
         self.server_config = server_config
         self.performance_test = performance_test
         self.concurrency_test = concurrency_test
@@ -95,19 +92,19 @@ class AbstractClientManager:
         ssl_context = common.create_ssl_context(
             self.logger,
             ssl.Purpose.SERVER_AUTH,
-            self.configuration['cafile'],
-            self.configuration['certfile'],
-            self.configuration['keyfile'],
-            self.configuration['keyfile_password']
+            self.server_config.node.ssl.ca,
+            self.server_config.node.ssl.cert,
+            self.server_config.node.ssl.key,
+            self.server_config.node.ssl.keyfile_password
         )
 
         while True:
             try:
                 transport, protocol = await self.loop.create_connection(
                     protocol_factory=lambda: self.handler_class(
-                        loop=self.loop, on_con_lost=on_con_lost, name=self.name, logger=self.logger, 
+                        loop=self.loop, on_con_lost=on_con_lost, name=self.name, logger=self.logger,
                         server_config=self.server_config, manager=self, **self.extra_args),
-                        host=self.configuration['nodes'][0], port=self.configuration['port'], ssl=ssl_context)
+                    host=self.server_config.nodes[0], port=self.server_config.port, ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to master. Trying again in 10 seconds.")

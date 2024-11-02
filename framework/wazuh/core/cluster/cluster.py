@@ -27,8 +27,7 @@ from wazuh.core.cluster.utils import (
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
     IMBALANCE_TOLERANCE,
-    REMOVE_DISCONNECTED_NODE_AFTER,
-    read_config,
+    REMOVE_DISCONNECTED_NODE_AFTER
 )
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode, to_relative_path
@@ -165,10 +164,10 @@ def get_node():
         Dict containing current node_name and node_type.
     """
     data = {}
-    config_cluster = read_config()
+    server_config = CentralizedConfig.get_server_config()
 
-    data["node"] = config_cluster["node_name"]
-    data["type"] = config_cluster["node_type"]
+    data["node"] = server_config.node.name
+    data["type"] = server_config.node.type
 
     return data
 

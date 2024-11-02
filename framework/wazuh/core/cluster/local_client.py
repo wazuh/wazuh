@@ -10,7 +10,6 @@ from typing import Tuple
 
 import uvloop
 
-import wazuh.core.cluster.utils
 from wazuh.core import common, exception
 from wazuh.core.cluster import client
 from wazuh.core.config.client import CentralizedConfig
@@ -126,7 +125,7 @@ class LocalClient(client.AbstractClientManager):
 
     def __init__(self):
         """Class constructor"""
-        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), performance_test=0, concurrency_test=0,
+        super().__init__(performance_test=0, concurrency_test=0,
                          file='', string=0, logger=logging.getLogger(), tag="Local Client",
                          server_config=CentralizedConfig.get_server_config())
         self.request_result = None
