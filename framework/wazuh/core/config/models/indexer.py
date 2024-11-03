@@ -4,6 +4,7 @@ from typing import List
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 
+#TODO(26356) - Check with Indexer team if this is useful
 class IndexesConfig(BaseModel):
     alert: str = "wazuh-alerts-5.x"
     agents: str = "agents-index"

@@ -2,12 +2,11 @@ import yaml
 import os
 from typing import Optional
 
+from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.config.models.server import ServerInternalConfig
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
                                                      ManagementAPIConfig, ServerConfig,
                                                      IndexerConfig, EngineConfig)
-
-CENTRALIZED_CONFIG_FILE_PATH = "./wazuh-server.yml"
 
 
 class CentralizedConfig:
@@ -16,9 +15,9 @@ class CentralizedConfig:
     @classmethod
     def load(cls):
         if cls._config is None:
-            if not os.path.exists(CENTRALIZED_CONFIG_FILE_PATH):
-                raise FileNotFoundError(f"Configuration file not found: {CENTRALIZED_CONFIG_FILE_PATH}")
-            with open(CENTRALIZED_CONFIG_FILE_PATH, 'r') as file:
+            if not os.path.exists(WAZUH_SERVER_YML):
+                raise FileNotFoundError(f"Configuration file not found: {WAZUH_SERVER_YML}")
+            with open(WAZUH_SERVER_YML, 'r') as file:
                 config_data = yaml.safe_load(file)
                 cls._config = Config(**config_data)
 

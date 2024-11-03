@@ -33,7 +33,10 @@ class ManagementAPIConfig(BaseModel):
     rbac_mode: Literal["black", "white"] = "white"
 
     intervals: ManagementAPIIntervals = ManagementAPIIntervals()
-    ssl: APISSLConfig = APISSLConfig()
+    ssl: APISSLConfig = APISSLConfig(
+        key="server.key",
+        cert="server.crt"
+    )
     logging: LoggingWithRotationConfig = LoggingWithRotationConfig()
     cors: CorsConfig = CorsConfig()
     access: AccessConfig = AccessConfig()

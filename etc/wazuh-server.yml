@@ -1,0 +1,11 @@
+server:
+  nodes:
+    - 'master'
+  node:
+    name: manager_01
+    type: master
+
+indexer:
+  host: localhost:9200
+  user: admin
+  password: admin

@@ -20,6 +20,5 @@ class CommsAPIConfig(BaseModel):
     ssl: APISSLConfig = APISSLConfig(
         key="/var/ossec/api/configuration/ssl/server.key",
         cert="/var/ossec/api/configuration/ssl/server.crt",
-        ca="/etc/ssl/certs/ca-certificates.crt",
         ssl_ciphers=""
     )
