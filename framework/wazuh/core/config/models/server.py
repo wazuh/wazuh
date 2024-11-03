@@ -23,13 +23,9 @@ class MasterConfig(BaseModel):
 
 
 class NodeConfig(BaseModel):
-    name: str = "manager_01"
-    type: Literal["master", "worker"] = "master"
-    ssl: SSLConfig = SSLConfig(
-        key="var/ossec/etc/etc/sslmanager.key",
-        cert="var/ossec/etc/sslmanager.cert",
-        ca="var/ossec/etc/sslmanager.ca"
-    )
+    name: str
+    type: Literal["master", "worker"]
+    ssl: SSLConfig
 
 
 class ZipConfig(BaseModel):
@@ -92,16 +88,16 @@ class ServerInternalConfig(BaseModel):
 
 class ServerConfig(BaseModel):
     port: PositiveInt = 1516
-    bind_addr: str = "localhost"
-    nodes: List[str] = ["master"]
+    bind_addr: str = "0.0.0.0"
+    nodes: List[str]
     hidden: bool = False
 
-    node: NodeConfig = NodeConfig()
+    node: NodeConfig
     worker: WorkerConfig = WorkerConfig()
     master: MasterConfig = MasterConfig()
     communications: CommunicationsConfig = CommunicationsConfig()
-    logging: LoggingConfig = LoggingConfig(level="debug")
-    internal: ServerInternalConfig = PrivateAttr(
+    logging: LoggingConfig = LoggingConfig(level="debug2")
+    _internal: ServerInternalConfig = PrivateAttr(
         ServerInternalConfig(
             files=[
                 SharedFiles(
@@ -133,4 +129,4 @@ class ServerConfig(BaseModel):
     )
 
     def get_internal_config(self) -> ServerInternalConfig:
-        return self.internal
+        return self._internal

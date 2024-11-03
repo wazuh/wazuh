@@ -3,9 +3,9 @@ from typing import Literal
 
 
 class SSLConfig(BaseModel):
-    key: str = "var/ossec/etc/etc/sslmanager.key"
-    cert: str = "var/ossec/etc/sslmanager.cert"
-    ca: str = "var/ossec/etc/sslmanager.ca"
+    key: str
+    cert: str
+    ca: str
     keyfile_password: str = ""
 
 

@@ -60,7 +60,7 @@ def configure_ssl(params: dict, config):
     config: APISSLConfig
         Configuration for SSL
     """
-    from wazuh.core.config.client import CENTRALIZED_CONFIG_FILE_PATH
+    from wazuh.core.common import WAZUH_SERVER_YML
 
     try:
         # Generate SSL if it does not exist and HTTPS is enabled
@@ -101,8 +101,8 @@ def configure_ssl(params: dict, config):
             params['ssl_cert_reqs'] = ssl.CERT_REQUIRED
             params['ssl_ca_certs'] = config.ca
 
-        params['ssl_certfile'] = config.ssl.cert
-        params['ssl_keyfile'] = config.ssl.key
+        params['ssl_certfile'] = config.cert
+        params['ssl_keyfile'] = config.key
 
         # Load SSL ciphers if any has been specified
         if config.ssl_ciphers != "":
@@ -126,7 +126,7 @@ def configure_ssl(params: dict, config):
         else:
             msg = f'Wazuh API SSL ERROR. Please, ensure ' \
                     f'if path to certificates is correct in the configuration ' \
-                    f'file WAZUH_PATH/{to_relative_path(CENTRALIZED_CONFIG_FILE_PATH)}'
+                    f'file {WAZUH_SERVER_YML}'
             print(msg)
             logger.error(msg)
             raise exc from exc
@@ -212,11 +212,8 @@ def start(params: dict, config: ManagementAPIConfig):
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
     app.add_error_handler(403, error_handler.problem_error_handler)
 
-    # API configuration logging
-    logger.debug(f'Loaded API configuration: {management_config}')
 
     # Start uvicorn server
-
     try:
         uvicorn.run(app, **params)
 

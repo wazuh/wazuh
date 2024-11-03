@@ -111,7 +111,7 @@ def set_logging(log_filepath, logging_config: LoggingWithRotationConfig, foregro
     log_config_dict : dict
         Logging configuration dictionary.
     """
-    log_level = logging_config.level
+    log_level = logging_config.get_level()
     handlers = {
         'plainfile': None, 
         'jsonfile': None,

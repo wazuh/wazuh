@@ -25,7 +25,7 @@ class AccessConfig(BaseModel):
 
 
 class ManagementAPIConfig(BaseModel):
-    host: str = "localhost"
+    host: str = "0.0.0.0"
     port: PositiveInt = 55000
     drop_privileges: bool = True
     max_upload_size: PositiveInt = 10485760
@@ -34,8 +34,8 @@ class ManagementAPIConfig(BaseModel):
 
     intervals: ManagementAPIIntervals = ManagementAPIIntervals()
     ssl: APISSLConfig = APISSLConfig(
-        key="server.key",
-        cert="server.crt"
+        key="/var/ossec/api/configuration/ssl/server.key",
+        cert="/var/ossec/api/configuration/ssl/server.crt"
     )
     logging: LoggingWithRotationConfig = LoggingWithRotationConfig()
     cors: CorsConfig = CorsConfig()

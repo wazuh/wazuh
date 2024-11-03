@@ -27,7 +27,7 @@ from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
 
 import wazuh.core.results as results
-from api.configuration import hardcoded_api_config
+import api.configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -888,7 +888,7 @@ def check_remote_commands(data: str):
     data : str
         Configuration file
     """
-    blocked_configurations = hardcoded_api_config['upload_configuration']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
 
     def check_section(command_regex, section, split_section):
         try:
@@ -958,7 +958,7 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
 
         return matched_configurations
 
-    limits_configuration = hardcoded_api_config['upload_configuration']['limits']
+    limits_configuration = api.configuration.hardcoded_api_config['upload_configuration']['limits']
     for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
         new_limits = xml_to_dict(new_conf, disabled_limit)
         original_limits = xml_to_dict(original_conf, disabled_limit)
@@ -975,7 +975,7 @@ def check_agents_allow_higher_versions(data: str):
     data : str
         Configuration file content.
     """
-    blocked_configurations = hardcoded_api_config['upload_configuration']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
 
     def check_section(agents_regex, split_section):
         try:
@@ -1054,7 +1054,7 @@ def check_indexer(new_conf: str, original_conf: str):
 
         return matched_configurations
 
-    upload_configuration = hardcoded_api_config['upload_configuration']
+    upload_configuration = api.configuration.hardcoded_api_config['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:
         new_indexer = xml_to_dict(new_conf)
@@ -1099,7 +1099,7 @@ def check_virustotal_integration(new_conf: str):
                         keys.append(api_key_section.text.strip())
         return keys
 
-    blocked_configurations = hardcoded_api_config['upload_configuration']['integrations']['virustotal']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']['integrations']['virustotal']
 
     if not blocked_configurations['public_key']['allow']:
         minimum_quota = blocked_configurations['public_key']['minimum_quota']

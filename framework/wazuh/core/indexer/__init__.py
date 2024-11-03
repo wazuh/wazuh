@@ -160,6 +160,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
     client = await create_indexer(
         host=indexer_config.host,
+        port=indexer_config.port,
         user=indexer_config.user,
         password=indexer_config.password,
         use_ssl=indexer_config.ssl.use_ssl,

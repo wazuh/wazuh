@@ -8,8 +8,8 @@ from wazuh.core.config.models.comms_api import CommsAPIConfig
 
 
 class Config(BaseModel):
-    server: ServerConfig = ServerConfig()
-    indexer: IndexerConfig = IndexerConfig()
+    server: ServerConfig
+    indexer: IndexerConfig
     engine: EngineConfig = EngineConfig()
     management: ManagementAPIConfig = ManagementAPIConfig()
     communications_api: CommsAPIConfig = CommsAPIConfig()

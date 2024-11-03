@@ -14,9 +14,9 @@ class IndexesConfig(BaseModel):
 
 class IndexerConfig(BaseModel):
     #host: List[str] = ["localhost:9200"] #TODO(26356) - How to handle multiples Indexers
-    host: str = "wazuh-indexer"
-    port: PositiveInt = 9200
-    user: str = "admin"
-    password: str = "SecretPassword1%"
+    host: str
+    port: PositiveInt
+    user: str
+    password: str
     indexes: IndexesConfig = IndexesConfig()
     ssl: IndexerSSLConfig = IndexerSSLConfig()
