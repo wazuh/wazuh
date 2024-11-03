@@ -73,7 +73,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
         1107: 'Internal options file not found',
-        1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
         1112: {'message': 'Empty files are not supported',

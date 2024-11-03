@@ -2,6 +2,7 @@ from pydantic import BaseModel, PositiveInt, conint, confloat, PrivateAttr
 from typing import List, Literal, Optional
 
 from wazuh.core.config.models.ssl_config import SSLConfig
+from wazuh.core.config.models.logging import LoggingConfig
 
 
 class MasterIntervalsConfig(BaseModel):
@@ -99,6 +100,7 @@ class ServerConfig(BaseModel):
     worker: WorkerConfig = WorkerConfig()
     master: MasterConfig = MasterConfig()
     communications: CommunicationsConfig = CommunicationsConfig()
+    logging: LoggingConfig = LoggingConfig(level="debug")
     internal: ServerInternalConfig = PrivateAttr(
         ServerInternalConfig(
             files=[

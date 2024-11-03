@@ -379,7 +379,6 @@ def get_group_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
     return {'total_affected_items': len(data), 'affected_items': data}
 
 
-
 def update_group_configuration(group_id: str, file_content: str) -> str:
     """Update group configuration.
 

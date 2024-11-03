@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import List
 
 from wazuh.core.common import BIN_ROOT, WAZUH_SHARE, WAZUH_LOG
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 from wazuh.core.config.models.server import ServerConfig
@@ -182,8 +183,6 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     ----------
     args : argparse.Namespace
         Script arguments.
-    cluster_config : dict
-        Cluster configuration.
     server_config : ServerConfig
         Server configuration.
     logger : WazuhLogger
@@ -451,7 +450,10 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # Set logger
-    debug_mode_ = args.debug_level
+    try:
+        debug_mode_ = CentralizedConfig.get_server_config().logging.get_level_value()
+    except Exception:
+        debug_mode_ = 0
 
     main_logger = set_logging(foreground_mode=getattr(args, 'foreground', False), debug_mode=debug_mode_)
 
