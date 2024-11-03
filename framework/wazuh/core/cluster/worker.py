@@ -527,7 +527,7 @@ class Worker(client.AbstractClientManager):
         self.task_pool = kwargs.pop('task_pool')
         super().__init__(**kwargs, tag="Worker")
         self.version = metadata.__version__
-        self.node_type = self.configuration['node_type']
+        self.node_type = self.server_config.node.type
         self.handler_class = WorkerHandler
         self.extra_args = {'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
@@ -553,4 +553,4 @@ class Worker(client.AbstractClientManager):
         dict
             Basic node information.
         """
-        return {'type': self.configuration['node_type'], 'node': self.configuration['node_name']}
+        return {'type': self.server_config.node.type, 'node': self.server_config.node.name}

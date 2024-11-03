@@ -1,4 +1,3 @@
-import os
 import random
 from asyncio import sleep
 from contextlib import asynccontextmanager

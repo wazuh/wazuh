@@ -95,8 +95,6 @@ class WazuhException(Exception):
         1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
         1121: {'message': "Error connecting with socket",
                'remediation': "Please ensure the selected module is running and properly configured"},
-        1122: {'message': 'Experimental features are disabled',
-               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml'},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
@@ -585,6 +583,7 @@ class WazuhException(Exception):
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
+        #TODO(26356) - Update Message
         6001: {'message': 'Maximum number of requests per minute reached',
                'remediation': f'This limit can be changed in api.yaml file. More information here: https:/'
                               f'/documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html#'

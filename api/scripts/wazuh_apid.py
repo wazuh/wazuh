@@ -50,7 +50,7 @@ def spawn_authentication_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def configure_ssl(params: dict, config: ManagementAPIConfig):
+def configure_ssl(params: dict, config):
     """Configure https files and permission, and set the uvicorn dictionary configuration keys.
 
     Parameters
@@ -271,7 +271,7 @@ if __name__ == '__main__':
                         action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version",
                         action='store_true', dest="version")
-    #TODO(26356) - Delete this parameter that isnt'used
+    #TODO(26356) - Delete this parameter that isn't used
     parser.add_argument('-t', help="Test configuration",
                         action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root",
@@ -283,13 +283,8 @@ if __name__ == '__main__':
                         dest='debug_level')
     args = parser.parse_args()
 
-    from api.configuration import read_yaml_config
     if args.version:
         version()
-        sys.exit(0)
-
-    elif args.test_config:
-        test_config(args.config_file)
         sys.exit(0)
 
     import asyncio
@@ -297,7 +292,6 @@ if __name__ == '__main__':
     import logging.config
     import ssl
 
-    import jwt
     import uvicorn
     from connexion import AsyncApp
     from connexion.exceptions import HTTPException, ProblemException, Unauthorized
@@ -309,6 +303,7 @@ if __name__ == '__main__':
     from wazuh.core import common, pyDaemonModule, utils
     from wazuh.rbac.orm import check_database_integrity
     from wazuh.core.config.client import CentralizedConfig
+    from wazuh.core.config.models.management_api import ManagementAPIConfig
 
     from api import __path__ as api_path
     from api import error_handler

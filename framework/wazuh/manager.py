@@ -2,9 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from os import remove
-from os.path import exists
-
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
@@ -13,7 +10,7 @@ from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
     get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
+from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')

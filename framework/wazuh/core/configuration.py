@@ -6,9 +6,6 @@ import json
 import logging
 import os
 import re
-import sys
-from configparser import NoOptionError, RawConfigParser
-from io import StringIO
 from os import path as os_path
 from types import MappingProxyType
 from typing import Union
@@ -289,53 +286,6 @@ def _replace_custom_values(opt_value: Union[list, dict, str]) -> Union[list, dic
         return opt_value.replace('_custom_amp_lt_', '&lt;').replace('_custom_amp_gt_', '&gt;')
     return opt_value
 
-
-def _conf2json(src_xml: str, dst_json: dict):
-    """Parse src_xml to JSON. It is inserted in dst_json.
-
-    Parameters
-    ----------
-    src_xml : str
-        Configuration to be parsed to JSON.
-    dst_json : dict
-        Destination.
-    """
-
-    for section in list(src_xml):
-        section_name = section.attrib['name'] if section.tag.lower() == 'wodle' else section.tag.lower()
-        section_json = {}
-
-        for option in list(section):
-            option_name, option_value = _read_option(section_name, option)
-            if type(option_value) is list and not (section_name == 'remote' and option_name == 'protocol'):
-                for ov in option_value:
-                    _insert(section_json, section_name, option_name, ov)
-            else:
-                _insert(section_json, section_name, option_name, option_value)
-
-        _insert_section(dst_json, section_name, section_json)
-
-
-def _ossecconf2json(xml_conf: str) -> dict:
-    """Return ossec.conf in JSON from XML.
-
-    Parameters
-    ----------
-    xml_conf : str
-        Configuration to be parsed to JSON.
-
-    Returns
-    -------
-    dict
-        Final JSON with the ossec.conf content.
-    """
-    final_json = {}
-
-    for root in list(xml_conf):
-        if root.tag.lower() == "ossec_config":
-            _conf2json(root, final_json)
-
-    return final_json
 
 
 def get_group_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:

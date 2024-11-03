@@ -189,7 +189,6 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
         Cluster logger.
     """
     from wazuh.core.cluster import local_server, master
-    from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
 
     cluster_utils.context_tag.set('Master')
 
@@ -334,6 +333,7 @@ def get_script_arguments() -> argparse.Namespace:
         dest='config_file',
         default=common.WAZUH_CONF,
     )
+    # TODO(26356) - Delete this parameter that isn't used
     start_parser.add_argument('-t', help='Test configuration', action='store_true', dest='test_config')
 
     start_parser.set_defaults(func=main)
@@ -364,6 +364,7 @@ def main():
         main_logger.error(e)
         sys.exit(1)
 
+    #TODO(26356) - Delete this parameter that isn't used
     if args.test_config:
         sys.exit(0)
 

@@ -11,7 +11,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
-    load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
+    load_spec, sanitize_rbac_policy, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
@@ -1317,6 +1317,7 @@ async def get_security_config() -> WazuhResult:
     return WazuhResult({'data': get_security_conf()})
 
 
+#TODO(26356) - To be removed/refactored in other Issue
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
 async def update_security_config(updated_config: dict = None) -> str:
     """Update or restore current security configuration.
@@ -1334,10 +1335,6 @@ async def update_security_config(updated_config: dict = None) -> str:
     str
         Confirmation/Error message.
     """
-    try:
-        update_security_conf(updated_config)
-        result = 'Configuration was successfully updated'
-    except WazuhError as e:
-        result = f'Configuration could not be updated. Error: {e}'
+    result = 'This feature will be replaced or deleted by new centralized config'
 
     return result

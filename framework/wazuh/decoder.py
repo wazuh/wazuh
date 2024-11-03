@@ -10,7 +10,7 @@ import xmltodict
 
 from wazuh.core import common
 from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS
-from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
