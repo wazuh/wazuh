@@ -1360,25 +1360,6 @@ def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_conn_db, 
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_conn_db, mock_glob,
-                                                      mock_exists):
-    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                               search=None, select=None,
-                               fields={'os.name': 'ubuntu', 'os.version': '18.04'},
-                               default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0, query_format='mitre'), count=5,
-                               get_data=None, date_fields=['date1', 'date2'])
-
-    query._add_select_to_query()
-    query._get_total_items()
-
-    mock_conn_db.assert_called_once_with()
-
-
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
-@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-@patch('socket.socket.connect')
 def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
     """Test utils.WazuhDBQuery._get_total_items function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,

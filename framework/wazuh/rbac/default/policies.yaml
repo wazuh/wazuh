@@ -135,16 +135,6 @@ default_policies:
           - agent:id:*
         effect: allow
 
-  mitre_read:
-    description: Allow read MITRE database information.
-    policies:
-      mitre:
-        actions:
-          - mitre:read
-        resources:
-          - '*:*:*'
-        effect: allow
-
   rootcheck_read:
     description: Allow read rootcheck information.
     policies:
