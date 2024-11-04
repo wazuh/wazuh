@@ -395,6 +395,7 @@ if __name__ == "__main__":
         mandatory_items_qtty = len(mandatory_items)
 
         print("Scanning started...")
+        failed = False
         for file_object in current_items:
             # filename: key_name
             key_name = file_object['full_filename']
@@ -404,12 +405,17 @@ if __name__ == "__main__":
                 mandatory_items.pop(key_name)
                 difference_dict = file_diff(mandatory_item_fields, file_object)
                 if len(difference_dict) != 0:
+                    failed = True
                     not_fully_match[key_name] = difference_dict
                 else:
                     continue
             else:
                 # File not found - pushing to NOT-LISTED"
+                failed = True
                 not_listed[key_name] = file_object
 
         printReport(mandatory_items, not_listed,
                     not_fully_match, current_items, report_path, mandatory_items_qtty)
+        
+        if failed:
+            sys.exit("Failed: Results didn't match the expected output")
