@@ -1,6 +1,6 @@
 import logging
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal, List
 
 
@@ -44,7 +44,7 @@ class LogFileMaxSizeConfig(BaseModel):
         The maximum size of the log file. Supports 'M' for megabytes and 'K' for kilobytes. Default is "1M".
     """
     enabled: bool = False
-    size: str = "1M" #TODO(26356) - Handle M and K pattern
+    size: str = Field(default="1M", pattern=r"(\d+)([KM])")
 
 
 class LoggingWithRotationConfig(BaseModel):
