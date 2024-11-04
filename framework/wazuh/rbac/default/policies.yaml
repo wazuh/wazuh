@@ -125,16 +125,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  ciscat_read:
-    description: Allow read agent's ciscat results information.
-    policies:
-      ciscat:
-        actions:
-          - ciscat:read
-        resources:
-          - agent:id:*
-        effect: allow
-
   syscheck_read:
     description: Allow read syscheck information
     policies:

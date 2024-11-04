@@ -21,7 +21,6 @@ relationships:
         - agents_commands
         - security_all
         - cluster_all
-        - ciscat_read
         - syscheck_all
         - logtest_all
         - task_status
@@ -34,7 +33,6 @@ relationships:
     readonly:
       policy_ids:
         - agents_read
-        - ciscat_read
         - cluster_read
         - syscheck_read
       rule_ids: []

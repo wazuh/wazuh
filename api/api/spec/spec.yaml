@@ -184,15 +184,6 @@ x-rbac-catalog:
         actions: ['group:delete']
         resources: ['group:id:*']
         effect: "allow"
-    'ciscat:read':
-      description: "Access CIS-CAT results for agents"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['ciscat:read']
-        resources: ['agent:id:001', 'agent:id:003', 'agent:group:default']
-        effect: "deny"
     'cluster:read':
       description: "Read Wazuh's cluster nodes configuration"
       resources:
@@ -758,19 +749,6 @@ components:
               items:
                 $ref: '#/components/schemas/GroupFiles'
 
-    AllItemsResponseCiscatResult:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CiscatResults'
-
     AllItemsResponseSyscheckResult:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1133,44 +1111,6 @@ components:
       example:
         filename: agent.conf
         hash: ab73af41699f13fdd81903b5f23d8d00
-
-    ## CisCat models
-    CiscatResults:
-      type: object
-      properties:
-        benchmark:
-          type: string
-          description: "CIS-CAT benchmark where the profile is defined"
-        error:
-          type: integer
-          format: int32
-          description: "Number of checks that CIS-CAT was not able to run"
-        fail:
-          type: integer
-          format: int32
-          description: "Number of failed checks. If this number is higher than 0 the host will probably have a
-          vulnerability"
-        notchecked:
-          type: integer
-          format: int32
-          description: "Number of not passed checks"
-        pass:
-          type: integer
-          format: int32
-          description: "Number of passed checks"
-        profile:
-          type: string
-          description: "CIS-CAT profile scanned"
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
-        score:
-          type: integer
-          format: int32
-          description: "Percentage of passed checks"
-        unknown:
-          type: integer
-          format: int32
-          description: "Number of checks which status CIS-CAT was not able to determine"
 
     ## Cluster models
     ClusterNodeBasic:
@@ -5005,8 +4945,6 @@ tags:
     description: "Agents Active Response"
   - name: Agents
     description: "Agents management related operations"
-  - name: Ciscat
-    description: "Retrieve information from CIS-CAT scans"
   - name: Cluster
     description: "Wazuh cluster and nodes management"
   - name: Groups
@@ -5879,75 +5817,6 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /ciscat/{agent_id}/results:
-    get:
-      tags:
-        - Ciscat
-      summary: "Get results"
-      description: "Return the agent's ciscat results info"
-      operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/ciscat:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/benchmark'
-        - $ref: '#/components/parameters/profile'
-        - $ref: '#/components/parameters/pass'
-        - $ref: '#/components/parameters/fail'
-        - $ref: '#/components/parameters/error'
-        - $ref: '#/components/parameters/notchecked'
-        - $ref: '#/components/parameters/unknown'
-        - $ref: '#/components/parameters/score'
-        - $ref: '#/components/parameters/query'
-      responses:
-        '200':
-          description: "List of agents or error description"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseCiscatResult'
-              example:
-                data:
-                  affected_items:
-                    - benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                      error: 0
-                      fail: 82
-                      notchecked: 36
-                      pass: 102
-                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
-                      scan:
-                        id: 23487414
-                        time: '2019-10-24T14:30:20.768Z'
-                      score: 55
-                      unknown: 0
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: 'All CISCAT results were returned'
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
