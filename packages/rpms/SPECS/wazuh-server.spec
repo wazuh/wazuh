@@ -81,6 +81,9 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/log
 
 cp -p %{_localstatedir}usr/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
+cp -p %{_localstatedir}usr/bin/wazuh-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
+cp -p %{_localstatedir}usr/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
+cp -p %{_localstatedir}usr/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
 
 cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/
@@ -166,6 +169,9 @@ if [ $1 = 0 ];then
   # Remove lingering folders and files
   rm -rf %{_localstatedir}tmp/wazuh-server
   rm -rf %{_localstatedir}usr/bin/wazuh-engine
+  rm -rf %{_localstatedir}usr/bin/wazuh-apid
+  rm -rf %{_localstatedir}usr/bin/wazuh-comms-apid
+  rm -rf %{_localstatedir}usr/bin/wazuh-server
   rm -rf %{_localstatedir}run/wazuh-server
   rm -rf %{_localstatedir}var/lib/wazuh-server
 fi
@@ -192,6 +198,9 @@ find %{_localstatedir}var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -typ
 chown -R root:wazuh %{_localstatedir}var/log/wazuh-server
 find %{_localstatedir}var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 
+# Fix Python permissions
+chmod -R 0750 %{_localstatedir}var/lib/wazuh-server/framework/python/bin
+
 %triggerin -- glibc
 
 %clean
@@ -204,8 +213,24 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/vd
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/tzdb
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/etc
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/lib
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/logs
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/var
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/var/run
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/queue
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/queue/cluster
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/queue/sockets
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/framework
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/api
+%dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/apis
 %dir %attr(750, root, wazuh) %{_localstatedir}var/log/wazuh-server
 %{_localstatedir}var/lib/wazuh-server/engine/tzdb/*
+%{_localstatedir}var/lib/wazuh-server/etc/*
+%{_localstatedir}var/lib/wazuh-server/lib/*
+%{_localstatedir}var/lib/wazuh-server/framework/*
+%{_localstatedir}var/lib/wazuh-server/api/*
+%{_localstatedir}var/lib/wazuh-server/apis/*
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/store
 %{_localstatedir}var/lib/wazuh-server/engine/store/*
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/kvdb
@@ -213,6 +238,9 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/indexer-connector
 
 %attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-engine
+%attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-apid
+%attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-comms-apid
+%attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-server
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/engine_store_0.0.2_5.0.0.tar.gz
 

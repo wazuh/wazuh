@@ -5,7 +5,7 @@
 # Syntax: make [ all | build | install | examples | clean ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+INSTALLDIR       ?= /var/lib/wazuh-server
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
@@ -35,6 +35,11 @@ install:
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster/dapi
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster/hap_helper
+	$(INSTALL_DIR) $(INSTALLDIR)/logs
+	$(INSTALL_DIR) $(INSTALLDIR)/etc
+	$(INSTALL_DIR) $(INSTALLDIR)/var/run
+	$(INSTALL_DIR) $(INSTALLDIR)/queue/cluster
+	$(INSTALL_DIR) $(INSTALLDIR)/queue/sockets
 
 	$(INSTALL_FILE) scripts/*.py ${INSTALLDIR}/framework/scripts
 	$(INSTALL_FILE) wazuh/*.py ${INSTALLDIR}/framework/wazuh
@@ -42,15 +47,13 @@ install:
 	$(INSTALL_FILE) wazuh/core/cluster/*.py ${INSTALLDIR}/framework/wazuh/core/cluster
 	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/dapi
 	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
+	$(INSTALL_FILE) ../etc/ossec.conf ${INSTALLDIR}/etc
 
-#	Remove update_ruleset script when upgrading to >=4.2.0 (deprecated)
-	[ ! -e ${INSTALLDIR}/bin/update_ruleset ] || $(RM_FILE) ${INSTALLDIR}/bin/update_ruleset
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
 #   Provisional name change for wazuh-logtest and wazuh-clusterd
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_logtest $(INSTALLDIR)/bin/wazuh-logtest
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_clusterd $(INSTALLDIR)/bin/wazuh-clusterd
-	$(RM_FILE) $(INSTALLDIR)/bin/__init__
+	$(MV_FILE) /bin/wazuh_server /bin/wazuh-server
+	$(RM_FILE) /bin/__init__
 
 examples: install
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/examples

@@ -7,9 +7,9 @@ After=network.target network-online.target
 Type=forking
 LimitNOFILE=65536
 
-ExecStart=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-control start
-ExecStop=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-control stop
-ExecReload=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-control reload
+# TODO: Remove root flag
+ExecStart=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-server start -r
+ExecStop=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-server stop
 
 KillMode=process
 RemainAfterExit=yes

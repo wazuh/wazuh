@@ -351,7 +351,7 @@ def test_process_spawn_sleep(pyDaemon_create_pid_mock, get_pid_mock):
     child = 1
     utils.process_spawn_sleep(child)
 
-    pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-clusterd_child_{child}', get_pid_mock.return_value)
+    pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-server_child_{child}', get_pid_mock.return_value)
 
 
 @pytest.mark.asyncio

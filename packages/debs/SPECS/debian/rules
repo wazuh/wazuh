@@ -64,6 +64,10 @@ override_dh_install:
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/log
 
 	cp -p $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)bin/
+	cp -p $(INSTALLATION_DIR)bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)bin/
+	cp -p $(INSTALLATION_DIR)bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)bin/
+	cp -p $(INSTALLATION_DIR)bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)bin/
+
 	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)tmp/
 	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
 	cp -pr $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/
@@ -93,7 +97,13 @@ override_dh_fixperms:
 
 	# Binaries
 	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-engine
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-apid
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-apid
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-engine
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-comms-apid
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-comms-apid
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-server
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-server
 
 	# Services
 	chown root:root $(TARGET_DIR)/etc/init.d/wazuh-server
@@ -102,12 +112,7 @@ override_dh_fixperms:
 	chmod 644 $(TARGET_DIR)/usr/lib/systemd/system/wazuh-server.service
 
 	# Fix Python permissions
-	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/2to3-3.10
-	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/pydoc3.10
-	# chmod 0750 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/bin/python3-config
-	# chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.10-embed.pc
-	# chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python-3.10.pc
-	# chmod 0640 ${TARGET_DIR}$(INSTALLATION_DIR)/framework/python/lib/pkgconfig/python3.pc
+	chmod -R 0750 ${TARGET_DIR}$(INSTALLATION_DIR)var/lib/wazuh-server/framework/python/bin
 
 override_dh_strip:
 	dh_strip --dbg-package=wazuh-server-dbg --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python

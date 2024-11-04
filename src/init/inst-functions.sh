@@ -44,36 +44,52 @@ InstallCommon()
 
 }
 
-#InstallAPI()
-#{
-    #if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
-    #    CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
-    #fi
+InstallPython()
+{
+    PYTHON_VERSION='3.10.15'
+    PYTHON_FILENAME='python.tar.gz'
+    PYTHON_INSTALLDIR=${INSTALLDIR}var/lib/wazuh-server/framework/python/
+    PYTHON_FULL_PATH=${PYTHON_INSTALLDIR}$PYTHON_FILENAME
 
-    # Install Task Manager files
-    #${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
+    echo "Download Python ${PYTHON_VERSION} file"
+    mkdir -p ${PYTHON_INSTALLDIR}
+    wget -O ${PYTHON_FULL_PATH} http://packages.wazuh.com/deps/50/libraries/python/${PYTHON_VERSION}/${PYTHON_FILENAME}
 
-    ### Install Python
-    #${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
+    tar -xf $PYTHON_FULL_PATH -C ${PYTHON_INSTALLDIR} && rm -rf ${PYTHON_FULL_PATH}
 
-    #${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR}
+    mkdir -p ${INSTALLDIR}var/lib/wazuh-server/lib
 
-    ### Backup old API
-    #if [ "X${update_only}" = "Xyes" ]; then
-    #  ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
-    #fi
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libwazuhext.so ${INSTALLDIR}var/lib/wazuh-server/lib
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libpython3.10.so.1.0 ${INSTALLDIR}var/lib/wazuh-server/lib
 
-    ### Install Server management API
-    #${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR}
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${PYTHON_INSTALLDIR}
+}
 
-    ### Install Communications API
-    #${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=${INSTALLDIR}
+InstallPythonDependencies()
+{
+    PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
 
-    ### Restore old API
-    #if [ "X${update_only}" = "Xyes" ]; then
-    #  ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
-    #fi
-#}
+    echo "Installing Python dependecies"
+    ${PYTHON_BIN_PATH} -m pip install -r ../framework/requirements.txt
+}
+
+InstallServer()
+{
+    PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
+
+    # Install Framework
+    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=/var/lib/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../framework/
+
+    ## Install Server management API
+    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=/var/lib/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../api/
+
+    ## Install Communications API
+    ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=/var/lib/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../apis/
+
+}
 
 checkDownloadContent()
 {
@@ -139,18 +155,13 @@ InstallEngine()
   installEngineStore
 }
 
-#InstallCluster()
-#{
-  # Install cluster files
-  #${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-cluster
-#}
-
 InstallWazuh()
 {
   InstallCommon
   InstallEngine
-  #InstallAPI
-  #InstallCluster
+  InstallPython
+  InstallPythonDependencies
+  InstallServer
 }
 
 BuildEngine()

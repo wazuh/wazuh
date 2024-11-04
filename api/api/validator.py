@@ -523,12 +523,13 @@ def format_group_names(value):
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)
 
-@Draft4Validator.FORMAT_CHECKER.checks("uuid7")
-def format_uuid7(value):
+
+@Draft4Validator.FORMAT_CHECKER.checks("uuid4")
+def format_uuid4(value):
     ret_val = True
     try:
         uuid = UUID(value)
-        if uuid.version != 7:
+        if uuid.version != 4:
             ret_val = False
     except ValueError:
         ret_val = False
