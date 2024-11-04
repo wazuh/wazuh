@@ -9,6 +9,9 @@ class BatcherConfig(BaseModel):
     max_size: PositiveInt = 3000
     wait_time: PositiveFloat = 0.15
 
+class CommsAPIIntervals(BaseModel):
+    request_timeout: int = 10
+
 
 class CommsAPIConfig(BaseModel):
     host: str = "localhost"
@@ -17,6 +20,7 @@ class CommsAPIConfig(BaseModel):
 
     logging: LoggingWithRotationConfig = LoggingWithRotationConfig()
     batcher: BatcherConfig = BatcherConfig()
+    intervals: CommsAPIIntervals = CommsAPIIntervals()
     ssl: APISSLConfig = APISSLConfig(
         key="/var/ossec/api/configuration/ssl/server.key",
         cert="/var/ossec/api/configuration/ssl/server.crt",

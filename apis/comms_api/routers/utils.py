@@ -5,11 +5,12 @@ from functools import wraps
 from fastapi import status
 
 from comms_api.routers.exceptions import HTTPError
+import wazuh.core.config.client
 
 logger = logging.getLogger('wazuh-comms-api')
 
-#TODO(26356) - Timeout of endpoints - Add to config - CAPI
-DEFAULT_TIMEOUT = 10
+
+DEFAULT_TIMEOUT = wazuh.core.config.client.CentralizedConfig.get_comms_api_config().intervals.request_timeout
 
 
 def timeout(seconds: float = DEFAULT_TIMEOUT):

@@ -10,7 +10,7 @@ from wazuh.core.indexer.models.agent import Agent, Status
 from wazuh.core.utils import get_utc_now
 
 
-@timeout(20)
+@timeout()
 async def authentication(credentials: Credentials) -> TokenResponse:
     """Authentication endpoint handler.
 
