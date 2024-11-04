@@ -42,10 +42,12 @@
 #include "packages/packagesNPM.hpp"
 #include "packages/modernPackageDataRetriever.hpp"
 
+
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
 constexpr auto SYSTEM_IDLE_PROCESS_NAME {"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME {"System"};
+
 
 static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
 {
@@ -933,6 +935,25 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 nlohmann::json SysInfo::getHotfixes() const
 {
     std::set<std::string> hotfixes;
+
+    // Initialize COM
+    HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+
+    if (FAILED(hres))
+    {
+        std::wcout << L"Error initializing COM. Code: " << std::hex << hres << std::endl;
+        return 1;
+    }
+
+    // Query hotfixes using WMI
+    Utils::QueryWMIHotFixes(hotfixes);
+
+    // Query hotfixes using Windows Update API
+    Utils::QueryWUHotFixes(hotfixes);
+
+    // Uninitialize COM
+    CoUninitialize();
+
     PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);
     PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
     PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, hotfixes);
@@ -948,4 +969,18 @@ nlohmann::json SysInfo::getHotfixes() const
     }
 
     return ret;
+}
+
+// This function provides a minimal implementation for converting C strings to BSTRs,
+// avoiding the need to include a full COM library. This can be useful when you only need this specific functionality
+// and want to minimize dependencies.
+namespace _com_util
+{
+    BSTR ConvertStringToBSTR(const char* str)
+    {
+        int len = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0);
+        BSTR bstr = SysAllocStringLen(0, len);
+        MultiByteToWideChar(CP_ACP, 0, str, -1, bstr, len);
+        return bstr;
+    }
 }
