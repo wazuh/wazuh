@@ -155,16 +155,6 @@ default_policies:
           - node:id:*
         effect: allow
 
-  events_ingest:
-    description: Allow ingesting events.
-    policies:
-      resourceless:
-        actions:
-          - event:ingest
-        resources:
-          - '*:*:*'
-        effect: allow
-
   orders_send:
     description: Allow sending orders to the server.
     policies:

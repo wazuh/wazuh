@@ -398,18 +398,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /security/config
           - DELETE /security/config
-      event:ingest:
-        description: "Ingest events"
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - event:ingest
-          resources:
-            - "*:*:*"
-          effect: "allow"
-        related_endpoints:
-          - POST /events
       order:send:
         description: "Send orders to the server"
         resources:
