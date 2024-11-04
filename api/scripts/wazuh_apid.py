@@ -268,7 +268,7 @@ if __name__ == '__main__':
                         action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version",
                         action='store_true', dest="version")
-    #TODO(26356) - Delete this parameter that isn't used
+    # TODO(26693) - Delete this parameter that isn't used
     parser.add_argument('-t', help="Test configuration",
                         action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root",

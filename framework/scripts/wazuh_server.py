@@ -333,7 +333,7 @@ def get_script_arguments() -> argparse.Namespace:
         dest='config_file',
         default=common.WAZUH_CONF,
     )
-    # TODO(26356) - Delete this parameter that isn't used
+    # TODO(26693) - Delete this parameter that isn't used
     start_parser.add_argument('-t', help='Test configuration', action='store_true', dest='test_config')
 
     start_parser.set_defaults(func=main)
