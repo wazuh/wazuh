@@ -6,9 +6,14 @@ inputs:
     required: true
     description: "Path to the 'expected files' CSV file"
   report_file:
-    required: true
+    required: false
     description: "Path to the report file"
     default: "/tmp/report.md"
+  current_status:
+    required: false
+    description: "Path to the current status CSV file"
+    default: "/tmp/current.csv"
+
 
 runs:
   using: "composite"
@@ -27,12 +32,18 @@ runs:
       pip3 install --upgrade pip
       pip3 install -r requirements.txt
 
-  #TODO: uncomment
-  # - name: Get the files stats
-  #   shell: bash
-  #   run: |
-  #     cd ${GITHUB_ACTION_PATH}
-  #     sudo venv/bin/python3 check_files.py -b '${{ inputs.expected_files }}'
+  - name: Get the files stats
+    shell: bash
+    run: |
+      cd ${GITHUB_ACTION_PATH}
+      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}'
+
+  - name: Upload current stats
+    if: success()
+    uses: actions/upload-artifact@v4
+    with:
+      name: current_stats
+      path: ${{ inputs.current_status }}
 
   - name: Compare results
     shell: bash
@@ -44,6 +55,7 @@ runs:
     if: always()
     uses: actions/upload-artifact@v4
     with:
+      name: validation_results
       path: ${{ inputs.report_file }}
 
   - name: Generate report
