@@ -243,7 +243,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - GET /ciscat/{agent_id}/results
-          - GET /experimental/ciscat/results
       cluster:status:
         description: Check Wazuh's cluster general status
         resources:
@@ -350,7 +349,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - DELETE /syscheck/{agent_id}
-          - DELETE /experimental/syscheck
       syscollector:read:
         description: Access agents syscollector information
         resources:
@@ -363,15 +361,6 @@ get_rbac_actions:
             - agent:id:*
           effect: allow
         related_endpoints:
-          - GET /experimental/syscollector/hardware
-          - GET /experimental/syscollector/netaddr
-          - GET /experimental/syscollector/netiface
-          - GET /experimental/syscollector/netproto
-          - GET /experimental/syscollector/os
-          - GET /experimental/syscollector/packages
-          - GET /experimental/syscollector/ports
-          - GET /experimental/syscollector/processes
-          - GET /experimental/syscollector/hotfixes
           - GET /syscollector/{agent_id}/hardware
           - GET /syscollector/{agent_id}/hotfixes
           - GET /syscollector/{agent_id}/netaddr
