@@ -15,6 +15,7 @@ from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import load_wazuh_yaml, validate_wazuh_configuration, get_group_file_path
+import wazuh.core.config.client
 
 logger = logging.getLogger('wazuh')
 
@@ -568,7 +569,6 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
                          extra_message=f'{component}:{configuration}')
 
 
-#TODO(26356) - Check with team, for now the value is hardcoded
 def update_check_is_enabled() -> bool:
     """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
 
@@ -578,14 +578,14 @@ def update_check_is_enabled() -> bool:
         True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
     """
     try:
-        global_configurations = {}
-        return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE
+        config_value = wazuh.core.config.client.CentralizedConfig.get_server_config().cti.update_check
+        return config_value
     except WazuhError as e:
         if e.code != 1106:
             raise e
         return True
 
-#TODO(26356) - Check CTI with team, for now the value is hardcoded
+
 def get_cti_url() -> str:
     """Get the CTI service URL from the configuration.
 
@@ -595,7 +595,7 @@ def get_cti_url() -> str:
         CTI service URL. The default value is returned if CTI_URL_FIELD isn't present.
     """
     try:
-        return DEFAULT_CTI_URL
+        return wazuh.core.config.client.CentralizedConfig.get_server_config().cti.url
     except WazuhError as e:
         if e.code != 1106:
             raise e

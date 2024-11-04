@@ -86,17 +86,24 @@ class ServerInternalConfig(BaseModel):
         return None
 
 
+class CTIConfig(BaseModel):
+    update_check: bool = True
+    url: str = "https://cti.wazuh.com"
+
+
 class ServerConfig(BaseModel):
     port: PositiveInt = 1516
     bind_addr: str = "0.0.0.0"
     nodes: List[str]
     hidden: bool = False
+    update_check: bool = False
 
     node: NodeConfig
     worker: WorkerConfig = WorkerConfig()
     master: MasterConfig = MasterConfig()
     communications: CommunicationsConfig = CommunicationsConfig()
     logging: LoggingConfig = LoggingConfig(level="debug2")
+    cti: CTIConfig = CTIConfig()
     _internal: ServerInternalConfig = PrivateAttr(
         ServerInternalConfig(
             files=[
