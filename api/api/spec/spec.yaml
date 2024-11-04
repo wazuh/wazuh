@@ -241,15 +241,6 @@ x-rbac-catalog:
         actions: [ 'logtest:run' ]
         resources: [ '*:*:*' ]
         effect: "allow"
-    'sca:read':
-      description: "Access agents security configuration assessment"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['sca:read']
-        resources: ['agent:id:*']
-        effect: "allow"
     'security:create':
       description: "Create new system security resources"
       resources:
@@ -931,32 +922,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/LastScan'
-
-    AllItemsResponseSCADatabase:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                  $ref: '#/components/schemas/SCADatabase'
-
-    AllItemsResponseSCAChecks:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                  $ref: '#/components/schemas/SCAChecks'
 
     AllItemsResponseClusterNodes:
       allOf:
@@ -5046,12 +5011,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    sca_name:
-      in: query
-      name: name
-      description: "Filter by policy name"
-      schema:
-        type: string
     notchecked:
       in: query
       name: notchecked
@@ -10160,166 +10119,6 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '404':
           $ref: '#/components/responses/ResourceNotFoundResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /sca/{agent_id}:
-    get:
-      tags:
-        - SCA
-      summary: "Get results"
-      description: "Return the security SCA database of an agent"
-      operationId: api.controllers.sca_controller.get_sca_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/sca:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/sca_name'
-        - $ref: '#/components/parameters/description'
-        - $ref: '#/components/parameters/references'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: "SCA database elements"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseSCADatabase'
-              example:
-                data:
-                  affected_items:
-                    - description: "This document provides prescriptive guidance for establishing a secure configuration
-                      posture for Ubuntu Linux 20.04 LTS."
-                      fail: 87
-                      start_scan: "2022-09-27T08:07:02+00:00"
-                      references: "https://www.cisecurity.org/cis-benchmarks/"
-                      name: "CIS benchmark for Ubuntu Linux 20.04 LTS"
-                      pass: 56
-                      score: 39
-                      end_scan: "2022-09-27T08:07:02+00:00"
-                      policy_id: "cis_ubuntu20-04"
-                      total_checks: 191
-                      hash_file: "fb41fe9660f4320aaed0c3c292c8602953df7f8c42b37b724855f9005c43fafc"
-                      invalid: 48
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected SCA information was returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /sca/{agent_id}/checks/{policy_id}:
-    get:
-      tags:
-        - SCA
-      summary: "Get policy checks"
-      description: "Return the policy monitoring alerts for a given policy"
-      operationId: api.controllers.sca_controller.get_sca_checks
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/sca:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/policy_id'
-        - $ref: '#/components/parameters/title'
-        - $ref: '#/components/parameters/description'
-        - $ref: '#/components/parameters/rationale'
-        - $ref: '#/components/parameters/remediation'
-        - $ref: '#/components/parameters/command'
-        - $ref: '#/components/parameters/reason'
-        - $ref: '#/components/parameters/full_path_filter'
-        - $ref: '#/components/parameters/process'
-        - $ref: '#/components/parameters/directory'
-        - $ref: '#/components/parameters/registry'
-        - $ref: '#/components/parameters/references'
-        - $ref: '#/components/parameters/result'
-        - $ref: '#/components/parameters/condition'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/distinct'
-      responses:
-        '200':
-          description: "List of SCA Checks for a given policy ID"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseSCAChecks'
-              example:
-                data:
-                  affected_items:
-                    - description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in
-                      small footprint systems. A cramfs image can be used without having to first decompress the image."
-                      id: 19000
-                      reason: "Invalid path or wrong permissions to run command 'modprobe -n -v cramfs'"
-                      command: "modprobe -n -v cramfs,lsmod"
-                      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the
-                      server. If this filesystem type is not needed, disable it."
-                      condition: "all"
-                      title: "Ensure mounting of cramfs filesystems is disabled."
-                      result: "not applicable"
-                      policy_id: "cis_ubuntu20-04"
-                      remediation: "1) Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add
-                      the following line: install cramfs /bin/true. 2) Run the following command to unload the cramfs
-                      module: # rmmod cramfs"
-                      compliance:
-                        - value: "1.1.1.1"
-                          key: "cis"
-                        - value: "5.1"
-                          key: "cis_csc"
-                        - value: "2.2.5"
-                          key: "pci_dss"
-                        - value: "CC6.3"
-                          key: "tsc"
-                      rules:
-                        - type: "command"
-                          rule: "c:modprobe -n -v cramfs -> r:^install /bin/true"
-                        - type: "numeric"
-                          rule: "not c:lsmod -> r:cramfs"
-                  total_affected_items: 191
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected SCA/policy information was returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

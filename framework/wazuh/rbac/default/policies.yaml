@@ -135,16 +135,6 @@ default_policies:
           - agent:id:*
         effect: allow
 
-  sca_read:
-    description: Allow read agent's sca information.
-    policies:
-      sca:
-        actions:
-          - sca:read
-        resources:
-          - agent:id:*
-        effect: allow
-
   syscheck_read:
     description: Allow read syscheck information
     policies:

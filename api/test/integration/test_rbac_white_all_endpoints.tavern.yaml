@@ -1808,34 +1808,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /sca/{agent_id}
-
-stages:
-  - name: Try to get SCA data
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /sca/{agent_id}/checks/{policy_id}
-
-stages:
-  - name: Try to request policy checks for 001
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: PUT /syscheck
 
 stages:
