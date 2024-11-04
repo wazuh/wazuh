@@ -2124,8 +2124,12 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
+      - "c:dpkg -s chrony -> r:package 'chrony' is not installed"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
+      - "c:timedatectl status -> r:NTP enabled: yes | NTP synchronized: yes"
 
   # 2.3.2.2 Ensure systemd-timesyncd is enabled and running. (Automated)
    - id: 18595
@@ -2146,8 +2150,10 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
+      - "c:systemctl is-active systemd-timesyncd.service -> r:active"
 
   # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated)
    - id: 18596
@@ -2168,8 +2174,12 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg -s ntp -> r:package 'ntp' is not installed"
+      - "c:systemctl is-enabled systemd-timesyncd -> r:masked"
+      - 'f:/etc/chrony/chrony.conf -> r:server\s*\S+'
+      - 'c:ps -ef -> r:_chrony'
 
   # 2.3.3.2 Ensure chrony is running as user _chrony. (Automated)
    - id: 18597
@@ -2190,8 +2200,10 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: any
      rules:
+      - 'c:ps -ef -> r:_chrony\.+chronyd'
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
 
   # 2.3.3.3 Ensure chrony is enabled and running. (Automated)
    - id: 18598
@@ -2212,8 +2224,11 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - "c:ps -ef -> r:chronyd"
+      - "c:systemctl is-enabled chrony.service -> r:enabled"
+      - "c:systemctl is-active chrony.service -> r:active"
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
    - id: 18599
@@ -2226,8 +2241,10 @@ checks:
        - mitre_mitigations: ["M1018"]
        - mitre_tactics: ["TA0005"]
        - mitre_techniques: ["T1562", "T1562.001"]
-     condition:
+     condition: all
      rules:
+      - "c:systemctl is-enabled cron -> r:enabled"
+      - "c:systemctl status cron -> r:Active: active \\(running\\)"
 
   # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
    - id: 18600
@@ -2249,8 +2266,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/crontab -> r:Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
    - id: 18601
@@ -2272,8 +2290,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
    - id: 18602
@@ -2295,8 +2314,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
    - id: 18603
@@ -2318,8 +2338,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
    - id: 18604
@@ -2341,8 +2362,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
    - id: 18605
@@ -2364,8 +2386,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /etc/cron.d/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.1.8 Ensure crontab is restricted to authorized users. (Automated)
    - id: 18606
@@ -2387,8 +2410,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "not f:/etc/cron.deny"
+      - 'c:stat /etc/cron.allow -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
    - id: 18607
@@ -2410,8 +2435,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "not f:/etc/at.deny"
+      - 'c:stat /etc/at.allow -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual)
    - id: 18608
@@ -2432,8 +2459,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "f:/sys/module/ipv6/parameters/disable -> r:^0$"
 
   # 3.1.2 Ensure wireless interfaces are disabled. (Automated)
    - id: 18609
