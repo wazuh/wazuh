@@ -86,7 +86,7 @@ def setup_logging(foreground_mode: bool, logging_config: LoggingWithRotationConf
     foreground_mode : bool
         Whether to execute the script in foreground mode or not.
     logging_config :  LoggingWithRotationConfig
-        Logger configuration
+        Logger configuration.
 
     Returns
     -------

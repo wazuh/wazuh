@@ -148,7 +148,7 @@ def start(params: dict, config: ManagementAPIConfig):
     params : dict
         uvicorn parameter configuration dictionary.
     config: ManagementAPIConfig
-        API Configuration
+        API Configuration.
     """
     try:
         check_database_integrity()

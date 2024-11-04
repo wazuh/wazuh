@@ -19,7 +19,7 @@ node_id = get_node().get('node')
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 async def read_config_wrapper() -> AffectedItemsWazuhResult:
-    """Wrapper for the cluster configuration.
+    """Wrapper for the server configuration.
 
     Returns
     -------

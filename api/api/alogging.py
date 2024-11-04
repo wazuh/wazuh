@@ -97,7 +97,7 @@ def set_logging(log_filepath, logging_config: LoggingWithRotationConfig, foregro
     log_filepath : str
         Log file path.
     logging_config :  LoggingWithRotationConfig
-        Logger configuration
+        Logger configuration.
     foreground_mode : bool
         Log output to console streams when true
         else Log output to file.
