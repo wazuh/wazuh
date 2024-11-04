@@ -1,6 +1,7 @@
 import sys
 import argparse
 from importlib.metadata import metadata
+from shared.default_settings import Constants as DefaultSettings
 
 import shared.resource_handler as rs
 
@@ -14,7 +15,7 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='engine-clear')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
-    parser.add_argument('--api-sock', default='/run/wazuh-server/engine-api.socket',
+    parser.add_argument('--api-sock', default=DefaultSettings.SOCKET_PATH,
                         help='Path to the engine-api socket')
     parser.add_argument('-f, --force', action='store_true',
                         default=False, dest='force', help='Force the execution of the command')
