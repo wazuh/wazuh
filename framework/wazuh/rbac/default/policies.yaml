@@ -125,28 +125,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  syscheck_read:
-    description: Allow read syscheck information
-    policies:
-      syscheck:
-        actions:
-          - syscheck:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscheck_all:
-    description: Allow read, run and clear syscheck information
-    policies:
-      syscheck:
-        actions:
-          - syscheck:clear
-          - syscheck:read
-          - syscheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
   cluster_all:
     description: Provide full access to all cluster related functionalities.
     policies:

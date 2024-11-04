@@ -41,7 +41,7 @@ full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008']
     (None, None, ['002'], 'restart-wazuh0', [], None, 'Wazuh v4.2.1'),
 ])
 @patch("wazuh.core.wazuh_queue.WazuhQueue._connect")
-@patch("wazuh.syscheck.WazuhQueue._send", return_value='1')
+@patch("wazuh.core.wazuh_queue.WazuhQueue._send", return_value='1')
 @patch("wazuh.core.wazuh_queue.WazuhQueue.close")
 @patch('wazuh.core.common.AR_CONF', new=test_data_path)
 @patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
