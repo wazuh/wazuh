@@ -308,18 +308,6 @@ def test_validate_auth_context(response, expected_roles=None):
     assert payload['rbac_roles'] == expected_roles
 
 
-def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
-    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
-    if experimental:
-        hotfixes_keys.add('agent_id')
-    affected_items = response.json()['data']['affected_items']
-    if affected_items:
-        for item in affected_items:
-            assert set(item.keys()) == hotfixes_keys
-            if hotfix_filter:
-                assert item['hotfix'] == hotfix_filter
-
-
 def test_validate_group_configuration(response, expected_field, expected_value):
     response_json = response.json()
     assert len(response_json['data']['affected_items']) > 0 and \
