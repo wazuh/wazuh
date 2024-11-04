@@ -27,23 +27,24 @@ runs:
       pip3 install --upgrade pip
       pip3 install -r requirements.txt
 
-  - name: Get the files stats
-    shell: bash
-    run: |
-      cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python3 get_files_stats.py
-
-  # - name: Compare results
+  #TODO: uncomment
+  # - name: Get the files stats
   #   shell: bash
   #   run: |
   #     cd ${GITHUB_ACTION_PATH}
-  #     # sudo venv/bin/python3 compare_files.py --report '${{ inputs.report_file }}' --compare '${{ inputs.expected_files }}'
+  #     sudo venv/bin/python3 check_files.py -b '${{ inputs.expected_files }}'
+
+  - name: Compare results
+    shell: bash
+    run: |
+      cd ${GITHUB_ACTION_PATH}
+      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}'
 
   - name: Upload validation results
     if: always()
     uses: actions/upload-artifact@v4
     with:
-      #path: ${{ inputs.report_file }}
+      path: ${{ inputs.report_file }}
       path: /tmp/base_list.csv
 
   - name: Generate report
