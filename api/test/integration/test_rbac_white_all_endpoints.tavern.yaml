@@ -1427,17 +1427,3 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
-
----
-test_name: GET /tasks/status
-
-stages:
-  - name: Try to get tasks status
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied

@@ -398,18 +398,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /security/config
           - DELETE /security/config
-      task:status:
-        description: Access task's status information
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - task:status
-          resources:
-            - "*:*:*"
-          effect: deny
-        related_endpoints:
-          - GET /tasks/status
       event:ingest:
         description: "Ingest events"
         resources:

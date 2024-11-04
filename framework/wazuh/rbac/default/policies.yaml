@@ -155,16 +155,6 @@ default_policies:
           - node:id:*
         effect: allow
 
-  task_status:
-    description: Provide permissions to check the status of tasks
-    policies:
-      task:
-        actions:
-          - task:status
-        resources:
-          - '*:*:*'
-        effect: allow
-
   events_ingest:
     description: Allow ingesting events.
     policies:
