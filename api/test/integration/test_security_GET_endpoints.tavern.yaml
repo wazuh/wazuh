@@ -1652,24 +1652,24 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        endpoint: "PUT /active-response"
+        endpoint: "POST /agents"
     response:
       status_code: 200
       json:
         error: 0
         data:
-          active-response:command:
+          agent:create:
             description: !anystr
             resources:
-              - agent:id
+              - "*:*"
             example:
               actions:
-                - active-response:command
+                - agent:create
               resources:
-                - agent:id:001
+                - "*:*:*"
               effect: allow
             related_endpoints:
-              - PUT /active-response
+              - POST /agents
 
   - name: Testing RBAC's actions catalog
     request:

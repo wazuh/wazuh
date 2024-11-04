@@ -23,20 +23,6 @@ get_rbac_actions:
   - params:
       endpoint: None
     result:
-      active-response:command:
-        description: Execute active response commands in the agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - active-response:command
-          resources:
-            - agent:id:001
-            - agent:group:atlantic
-          effect: allow
-        related_endpoints:
-          - PUT /active-response
       agent:delete:
         description: Delete agents
         resources:

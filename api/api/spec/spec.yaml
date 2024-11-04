@@ -81,15 +81,6 @@ x-rbac-catalog:
     'user:id':
       description: "Reference security users via its id (i.e. user:id:1)"
   actions:
-    'active-response:command':
-      description: "Execute active response commands in the agents"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['active-response:command']
-        resources: ['agent:id:001', 'agent:group:atlantic']
-        effect: "allow"
     'agent:create':
       description: "Create new agents"
       resources:
@@ -808,29 +799,6 @@ components:
           description: "Server hostname"
         timestamp:
           type: string
-
-    ## Active-response models
-    ActiveResponseBody:
-      type: object
-      properties:
-        arguments:
-          description: "Command arguments"
-          type: array
-          items:
-            type: string
-        command:
-          description: "Command running in the agent. If this value starts with `!`, then it refers to a script name
-          instead of a command name"
-          type: string
-          format: active_response_command
-        alert:
-          type: object
-          properties:
-            data:
-              description: "Alert data depending on the active response command executed"
-              type: object
-      required:
-        - command
 
     ## Agents models
     Agent:
@@ -4742,8 +4710,6 @@ components:
 tags:
   - name: API Info
     description: "Wazuh API information"
-  - name: Active-response
-    description: "Agents Active Response"
   - name: Agents
     description: "Agents management related operations"
   - name: Cluster
@@ -4794,56 +4760,6 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
-
-  /active-response:
-    put:
-      tags:
-        - Active-response
-      summary: "Run command"
-      description: "Run an Active Response command on all agents or a list of them"
-      operationId: api.controllers.active_response_controller.run_command
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/active-response:command'
-      parameters:
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ActiveResponseBody'
-      responses:
-        '200':
-          description: "Command sent to agents"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - "001"
-                    - "002"
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: 'AR command was sent to all agents'
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents:
     delete:
@@ -9040,18 +8956,6 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
               example:
-                active-response:command:
-                  description: Allow to execute active response commands in the agents
-                  resources:
-                  - "agent:id"
-                  example:
-                    actions:
-                      - active-response:command
-                    resources:
-                      - agent:id:001
-                    effect: allow
-                  related_endpoints:
-                    - PUT /active-response
                 agent:create:
                   description: Create new agents
                   resources:
