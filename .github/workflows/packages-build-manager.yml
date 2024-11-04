@@ -175,7 +175,7 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
-          expected_files: manage_base.csv
+          expected_files: manager_base.csv
 
       # - name: Set up AWS CLI
       #   uses: aws-actions/configure-aws-credentials@v4
