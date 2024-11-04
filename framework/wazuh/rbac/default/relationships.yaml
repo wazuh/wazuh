@@ -22,7 +22,6 @@ relationships:
         - security_all
         - cluster_all
         - ciscat_read
-        - rootcheck_all
         - sca_read
         - syscheck_all
         - syscollector_read
@@ -39,7 +38,6 @@ relationships:
         - agents_read
         - ciscat_read
         - cluster_read
-        - rootcheck_read
         - sca_read
         - syscheck_read
         - syscollector_read
