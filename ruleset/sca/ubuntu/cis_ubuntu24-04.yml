@@ -2482,8 +2482,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:nmcli radio wifi -> r:^disabled"
+      - "c:nmcli radio wwan -> r:^disabled"
 
   # 3.1.3 Ensure bluetooth services are not in use. (Automated)
    - id: 18610
@@ -2506,8 +2508,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "not c:systemctl is-enabled bluetooth.service -> r:^enabled"
+      - "not c:systemctl is-active bluetooth.service -> r:^active"
 
   # 3.2.1 Ensure dccp kernel module is not available. (Automated)
    - id: 18611
@@ -2527,8 +2531,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:modprobe -n -v dccp -> r:install /bin/true'
+      - 'not c:lsmod -> r:dccp'
 
   # 3.2.2 Ensure tipc kernel module is not available. (Automated)
    - id: 18612
@@ -2548,8 +2554,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:modprobe -n -v tipc -> r:install /bin/true'
+      - 'not c:lsmod -> r:tipc'
 
   # 3.2.3 Ensure rds kernel module is not available. (Automated)
    - id: 18613
@@ -2569,8 +2577,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:modprobe -n -v rds -> r:install /bin/true'
+      - 'not c:lsmod -> r:rds'
 
   # 3.2.4 Ensure sctp kernel module is not available. (Automated)
    - id: 18614
@@ -2590,8 +2600,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:modprobe -n -v sctp -> r:install /bin/true'
+      - 'not c:lsmod -> r:sctp'
 
   # 3.3.1 Ensure ip forwarding is disabled. (Automated)
    - id: 18615
@@ -2612,8 +2624,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.all\.forwarding /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
 
   # 3.3.2 Ensure packet redirect sending is disabled. (Automated)
    - id: 18616
@@ -2634,8 +2650,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
 
   # 3.3.3 Ensure bogus icmp responses are ignored. (Automated)
    - id: 18617
@@ -2655,8 +2675,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*\t*1$'
+      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.3.4 Ensure broadcast icmp requests are ignored. (Automated)
    - id: 18618
@@ -2676,8 +2698,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*\t*1$'
+      - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
   # 3.3.5 Ensure icmp redirects are not accepted. (Automated)
    - id: 18619
@@ -2697,8 +2721,16 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
 
   # 3.3.6 Ensure secure icmp redirects are not accepted. (Automated)
    - id: 18620
@@ -2718,8 +2750,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
 
   # 3.3.7 Ensure reverse path filtering is enabled. (Automated)
    - id: 18621
@@ -2740,8 +2776,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:=\s*\t*1$'
+      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:=\s*\t*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
 
   # 3.3.8 Ensure source routed packets are not accepted. (Automated)
    - id: 18622
@@ -2760,8 +2800,16 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0$'
 
   # 3.3.9 Ensure suspicious packets are logged. (Automated)
    - id: 18623
@@ -2781,8 +2829,12 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:=\s*\t*1$'
+      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:=\s*\t*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
 
   # 3.3.10 Ensure tcp syn cookies is enabled. (Automated)
    - id: 18624
@@ -2802,8 +2854,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
+      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
   # 3.3.11 Ensure ipv6 router advertisements are not accepted. (Automated)
    - id: 18625
@@ -2823,8 +2877,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:=\s*\t*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0$'
 
   # 4.1.1 Ensure a single firewall configuration utility is in use. (Automated)
    - id: 18626
@@ -2873,8 +2931,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.3.1", "1.4"]
        - pci_dss_v4.0: ["1.2.1", "1.4.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s ufw -> r:Status: install ok installed"
 
   # 4.2.2 Ensure iptables-persistent is not installed with ufw. (Automated)
    - id: 18628
