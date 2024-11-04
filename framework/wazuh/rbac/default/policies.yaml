@@ -155,16 +155,6 @@ default_policies:
           - node:id:*
         effect: allow
 
-  logtest_all:
-    description: Provide access to all logtest related functionalities.
-    policies:
-      logtest:
-        actions:
-          - logtest:run
-        resources:
-          - '*:*:*'
-        effect: allow
-
   task_status:
     description: Provide permissions to check the status of tasks
     policies:

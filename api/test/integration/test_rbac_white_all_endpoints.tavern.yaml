@@ -672,40 +672,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: PUT /logtest
-
-stages:
-  - name: Try to run logtest
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/json
-      json:
-        token: "token_without_session"
-        event: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-        log_format: "syslog"
-        location: "master->/var/log/syslog"
-    response:
-      <<: *permission_denied
-
----
-test_name: DELETE /logtest/sessions/{token}
-
-stages:
-  - name: Try to end logtest session
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/testtoken"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /manager/status
 
 stages:

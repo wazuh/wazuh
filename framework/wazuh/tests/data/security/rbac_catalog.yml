@@ -280,19 +280,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /cluster/restart
           - PUT /manager/restart
-      logtest:run:
-        description: Run logtest tool or end a logtest session
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - logtest:run
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /logtest
-          - DELETE /logtest/sessions/{token}
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:
