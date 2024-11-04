@@ -107,7 +107,7 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
 
     return result
 
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26552) - To be removed
 @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
 def get_decoders_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
                        limit: int = common.DATABASE_LIMIT, sort_by: list = None, sort_ascending: bool = True,
@@ -246,7 +246,7 @@ def get_decoder_file(filename: str, raw: bool = False,
     return result
 
 
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26552) - To be removed
 @expose_resources(actions=['decoders:update'], resources=['*:*:*'])
 def upload_decoder_file(filename: str, content: str, relative_dirname: str = None,
                         overwrite: bool = False) -> AffectedItemsWazuhResult:
@@ -280,7 +280,7 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
     return result
 
 
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26552) - To be removed
 @expose_resources(actions=['decoders:delete'], resources=['decoder:file:{filename}'])
 def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a decoder file.

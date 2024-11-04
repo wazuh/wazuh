@@ -100,7 +100,6 @@ async def unauthorized_error_handler(request: ConnexionRequest,
         request.method in {'GET', 'POST'}:
         problem["detail"] = "Invalid credentials"
 
-        #TODO(26356) - Check if it is better to pass as param
         prevent_bruteforce_attack(
             request=request,
             attempts=CentralizedConfig.get_management_api_config().access.max_login_attempts

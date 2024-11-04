@@ -50,7 +50,7 @@ REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 logger = logging.getLogger('wazuh')
 execq_lockfile = common.WAZUH_RUN / ".api_execq_lock"
 
-#TODO(26356) - Delete HAPROXY Config
+#TODO(25554) - Delete HAPROXY Config
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
     HAPROXY_PROTOCOL: 'http',

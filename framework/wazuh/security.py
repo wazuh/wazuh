@@ -1317,7 +1317,7 @@ async def get_security_config() -> WazuhResult:
     return WazuhResult({'data': get_security_conf()})
 
 
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26553) - To be removed
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
 async def update_security_config(updated_config: dict = None) -> str:
     """Update or restore current security configuration.

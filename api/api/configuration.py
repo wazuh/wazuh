@@ -185,6 +185,6 @@ except ValidationError as e:
     raise APIError(2000, details=e.message) from None
 
 # Configuration - global object
-#TODO(26356) - This is only used as a placeholder for no longer used endpoints
+# TODO(25554) - This is only used as a placeholder for no longer used endpoints
 hardcoded_api_config = default_api_configuration
 hardcoded_security_conf = default_security_configuration

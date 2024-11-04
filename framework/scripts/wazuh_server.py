@@ -212,7 +212,7 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     )
 
     tasks = [my_server, my_local_server]
-    #TODO(26356) - Delete in future Issue including references to HAPROXY
+    #TODO(25554) - Delete in future Issue including references to HAPROXY
     #if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
     #    tasks.append(HAPHelper)
     await asyncio.gather(*[task.start() for task in tasks])

@@ -585,7 +585,6 @@ def compare_files(good_files, check_files, node_name):
     # Extra files are the ones present in check files (worker) but not in good files (master). The underscore is used
     # to not change the function, as previously it returned an iterator for the 'extra_valid' files as well, but these
     # are no longer in use.
-    #TODO(26356) - Check if it changes the logic
     condition_func = lambda x: next(
         (file_config.extra_valid for file_config in server_config.files if file_config.dir == check_files[x]['cluster_item_key']),
         False
@@ -605,7 +604,6 @@ def compare_files(good_files, check_files, node_name):
     # 'shared_e_v' are files present in both nodes but need to be merged before sending them to the worker. Only
     # 'agent-groups' files fit into this category.
     # 'shared' files can be sent as is, without merging.
-    #TODO(26356) - Check if it changes the logic
     shared_e_v, shared = split_on_condition(all_shared, condition_func)
     shared_e_v = list(shared_e_v)
     if shared_e_v:

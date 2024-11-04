@@ -478,7 +478,6 @@ class HAPHelper:
 
         try:
             helper_config = HELPER_DEFAULTS['haproxy_helper']
-            # TODO(26356) - Check use with team
             port_config = {'remote': [{'port': 8000}]}
             connection_port = int(port_config.get('remote')[0].get('port', CONNECTION_PORT))
 

@@ -138,7 +138,8 @@ def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_
 
     return result
 
-#TODO(26356) - To be removed/refactored in other Issue
+
+# TODO(26552) - To be removed
 @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
 def get_rules_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
                     limit: int = common.DATABASE_LIMIT, sort_by: dict = None, sort_ascending: bool = True,
@@ -287,6 +288,7 @@ def get_requirement(requirement: str = None, offset: int = 0, limit: int = commo
 
     return result
 
+
 def get_rule_file_path(filename: str = None, relative_dirname: str = None) -> str:
     """Find file with or without relative directory name.
 
@@ -371,8 +373,7 @@ def get_rule_file(filename: str = None, raw: bool = False,
     return result
 
 
-
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26552) - To be removed
 @expose_resources(actions=['rules:update'], resources=['*:*:*'])
 def upload_rule_file(filename: str, content: str, relative_dirname: str = None, 
                      overwrite: bool = False) -> AffectedItemsWazuhResult:
@@ -405,7 +406,7 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
 
     return result
 
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26552) - To be removed
 @expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
 def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Delete a rule file.

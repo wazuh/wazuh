@@ -177,7 +177,6 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict,
 
     pidfile = common.WAZUH_RUN / f'{MAIN_PROCESS}-{pid}.pid'
 
-    #TODO(26356) - Aks Gasti for SSL_Version
     return {
         'proc_name': MAIN_PROCESS,
         'pidfile': str(pidfile),
@@ -322,7 +321,6 @@ if __name__ == '__main__':
     else:
         logger.info('Starting API as root')
 
-    #TODO(26356) - Should I use the new config model?
     batcher_config = BatcherConfig(
         max_elements=comms_api_config.batcher.max_elements,
         max_size=comms_api_config.batcher.max_size,

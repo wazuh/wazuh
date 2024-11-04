@@ -267,7 +267,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
     return result
 
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26555) - To be removed
 @expose_resources(actions=['cluster:read'],
                   resources=[f'node:id:{node_id}'])
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
@@ -323,7 +323,7 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     return result
 
 
-#TODO(26356) - To be removed/refactored in other Issue
+# TODO(26555) - To be removed
 @expose_resources(actions=['cluster:update_config'],
                   resources=[f'node:id:{node_id}'])
 def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:

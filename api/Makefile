@@ -31,7 +31,6 @@ install:
 	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/ssl
 	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/security
 
-	$(INSTALL_CONFIG_FILE) api/configuration/api.yaml ${ETC_INSTALLDIR}/api/configuration
 
 	# SHARE
 	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/api/scripts
