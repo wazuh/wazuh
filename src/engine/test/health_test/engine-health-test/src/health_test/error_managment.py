@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+
 class ErrorReporter:
     def __init__(self, target):
         self.errors = {}
