@@ -99,7 +99,7 @@ public:
         m_socketServer.reset();
         m_msgDispatcher->rundown();
     }
-    // LCOV_EXCL_START
+    // LCOV_EXCL_STOP
 };
 
 #endif // _PUBLISHER_HPP
