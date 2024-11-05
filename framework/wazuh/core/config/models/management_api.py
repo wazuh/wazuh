@@ -1,5 +1,5 @@
 from pydantic import BaseModel, PositiveInt
-from typing import Literal
+from typing import Literal, List
 
 
 from wazuh.core.config.models.ssl_config import APISSLConfig
@@ -85,7 +85,7 @@ class ManagementAPIConfig(BaseModel):
     access : AccessConfig
         Access configuration for the management API. Default is an instance of AccessConfig.
     """
-    host: str = "0.0.0.0"
+    host: List[str] = ["localhost", "::1"]
     port: PositiveInt = 55000
     drop_privileges: bool = True
     max_upload_size: PositiveInt = 10485760

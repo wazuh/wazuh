@@ -61,8 +61,10 @@ indexer:
 #    timeout: 10.0
 #  logging:
 #    level: "info"
-#management:
-#  host: "0.0.0.0"
+#management_api:
+#  host:
+#    - "localhost"
+#    - "::1"
 #  port: 55000
 #  drop_privileges: true
 #  max_upload_size: 10485760

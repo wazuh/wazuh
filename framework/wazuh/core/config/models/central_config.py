@@ -18,7 +18,7 @@ class Config(BaseModel):
         Configuration for the indexer.
     engine : EngineConfig, optional
         Configuration for the engine. Default is an instance of EngineConfig.
-    management : ManagementAPIConfig, optional
+    management_api : ManagementAPIConfig, optional
         Configuration for the management API. Default is an instance of ManagementAPIConfig.
     communications_api : CommsAPIConfig, optional
         Configuration for the communications API. Default is an instance of CommsAPIConfig.
@@ -26,5 +26,5 @@ class Config(BaseModel):
     server: ServerConfig
     indexer: IndexerConfig
     engine: EngineConfig = EngineConfig()
-    management: ManagementAPIConfig = ManagementAPIConfig()
+    management_api: ManagementAPIConfig = ManagementAPIConfig()
     communications_api: CommsAPIConfig = CommsAPIConfig()

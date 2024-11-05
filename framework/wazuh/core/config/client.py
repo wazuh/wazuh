@@ -66,7 +66,7 @@ class CentralizedConfig:
         if cls._config is None:
             cls.load()
 
-        return cls._config.management
+        return cls._config.management_api
 
     @classmethod
     def get_indexer_config(cls) -> IndexerConfig:
