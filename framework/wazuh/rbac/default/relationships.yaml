@@ -33,6 +33,7 @@ relationships:
         - logtest_all
         - task_status
         - events_ingest
+        - orders_send
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin
