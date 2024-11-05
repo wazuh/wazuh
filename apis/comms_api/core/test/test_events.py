@@ -33,21 +33,26 @@ async def test_create_stateful_events(create_indexer_mock):
         TaskResult(id='1', result='created', status=201),
         TaskResult(id='2', result='created', status=201),
     ]
-    agent_metadata = AgentMetadata(
-        id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
-        groups=[],
-        name='test',
-        type='endpoint',
-        version='v5.0.0'
-    )
     create_indexer_mock.return_value.events.create.return_value = expected
     batcher_queue = AsyncMock()
 
-    events = StatefulEvents(events=[
-        StatefulEvent(data=SCAEvent(), module=ModuleName.SCA),
-        StatefulEvent(data=SCAEvent(), module=ModuleName.SCA)
-    ])
-    result = await create_stateful_events(agent_metadata, events, batcher_queue)
+    events = StatefulEvents(
+        agent=AgentMetadata(
+            uuid='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
+            groups=[],
+            type='endpoint',
+            os='Debian 12',
+            platform='Linux',
+            arch='x86_64',
+            version='v5.0.0',
+            ip='127.0.0.1'
+        ),
+        events=[
+            StatefulEvent(data=SCAEvent(), module=ModuleName.SCA),
+            StatefulEvent(data=SCAEvent(), module=ModuleName.SCA)
+        ]
+    )
+    result = await create_stateful_events(events, batcher_queue)
 
     create_indexer_mock.assert_called_once()
     create_indexer_mock.return_value.events.create.assert_called_once()

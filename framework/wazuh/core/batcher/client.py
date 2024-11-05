@@ -44,7 +44,7 @@ class BatcherClient:
         else:
             metadata = {
                 'agent': {
-                    'id': agent_metadata.id,
+                    'id': agent_metadata.uuid,
                     'groups': agent_metadata.groups
                 }
             }

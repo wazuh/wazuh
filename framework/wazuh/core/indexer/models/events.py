@@ -23,11 +23,14 @@ INVENTORY_SYSTEM_TYPE = 'system'
 @dataclass
 class AgentMetadata:
     """Agent metadata."""
-    id: str
+    uuid: str
     groups: List[str]
-    name: str
+    os: str
+    platform: str
+    arch: str
     type: str
     version: str
+    ip: str
 
 
 @dataclass
@@ -257,7 +260,6 @@ class VulnerabilityEvent:
 @dataclass
 class CommandResult:
     """Command result data model."""
-    document_id: str
     result: Result
 
 
@@ -273,6 +275,7 @@ class ModuleName(str, Enum):
 @dataclass
 class Module:
     """Stateful event module."""
+    document_id: str
     name: ModuleName
     type: str = None
 
