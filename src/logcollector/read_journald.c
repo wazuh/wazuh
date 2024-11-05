@@ -92,7 +92,7 @@ bool w_journald_can_read(unsigned long owner_id) {
     if (gs_journald_global.owner_id == 0) {
 
         gs_journald_global.owner_id = owner_id;
- 
+
         if (gs_journald_global.journal_ctx == NULL && w_journal_context_create(&gs_journald_global.journal_ctx) != 0) {
             merror(LOGCOLLECTOR_JOURNAL_LOG_DISABLING);
             gs_journald_global.is_disabled = true;
@@ -150,7 +150,7 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
         w_journal_entry_free(entry);
 
         if (entry_str == NULL) {
-            merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_GET);
+            mdebug1(LOGCOLLECTOR_JOURNAL_LOG_FAIL_GET);
             break;
         }
 
