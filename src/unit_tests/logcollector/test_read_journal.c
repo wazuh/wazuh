@@ -243,7 +243,7 @@ void test_read_journald_dump_entry_error(void ** state) {
     will_return(__wrap_w_journal_entry_to_string, NULL);
     expect_function_call(__wrap_w_journal_entry_free);
 
-    expect_string(__wrap__merror, formatted_msg, "(1611): Failed to get the message from the journal");
+    expect_string(__wrap__mdebug1, formatted_msg, "(1611): Failed to get the message from the journal");
 
     assert_null(read_journald(&lf, &rc, 0));
     assert_false(journald_isDisabled());
