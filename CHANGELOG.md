@@ -14,10 +14,11 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 - Added support for multiple Certificate Authorities files in the indexer connector. ([#24620](https://github.com/wazuh/wazuh/pull/24620))
 - Removed hardcoded cipher text size from the RSA decryption method. ([#24529](https://github.com/wazuh/wazuh/pull/24529))
-- Avoid infinite loop while updating the vulnerability detector content. [#25094](https://github.com/wazuh/wazuh/pull/25094)
-- Fixed repeated OS vulnerability reports. [#26223](https://github.com/wazuh/wazuh/pull/26223)
-- Fixed inconsistencies between reported context and vulnerability data. [#25479](https://github.com/wazuh/wazuh/issues/25479)
-- Fixed concurrency issues in LRU caches [#26073](https://github.com/wazuh/wazuh/pull/26073)
+- Avoid infinite loop while updating the vulnerability detector content. ([#25094](https://github.com/wazuh/wazuh/pull/25094))
+- Fixed repeated OS vulnerability reports. ([#26223](https://github.com/wazuh/wazuh/pull/26223))
+- Fixed inconsistencies between reported context and vulnerability data. ([#25479](https://github.com/wazuh/wazuh/issues/25479))
+- Fixed concurrency issues in LRU caches ([#26073](https://github.com/wazuh/wazuh/pull/26073))
+- Removed all CVEs related to a deleted agent from the indexer. ([#26232](https://github.com/wazuh/wazuh/pull/26232))
 
 #### Changed
 - Added self-recovery mechanism for rocksDB databases. ([#24333](https://github.com/wazuh/wazuh/pull/24333))
@@ -55,8 +56,17 @@ All notable changes to this project will be documented in this file.
 #### Changed
 - Updated the embedded Python version up to 3.10.15. ([#25374](https://github.com/wazuh/wazuh/issues/25374))
 - Upgraded `certifi` and removed unused packages. ([#25324](https://github.com/wazuh/wazuh/pull/25324))
-- Upgraded external `cryptography` library dependency version to 43.0.1. [#25893](https://github.com/wazuh/wazuh/pull/25893)
-- Upgraded external `starlette` and `uvicorn` dependencies. [#26252](https://github.com/wazuh/wazuh/pull/26252)
+- Upgraded external `cryptography` library dependency version to 43.0.1. ([#25893](https://github.com/wazuh/wazuh/pull/25893))
+- Upgraded external `starlette` and `uvicorn` dependencies. ([#26252](https://github.com/wazuh/wazuh/pull/26252))
+
+
+## [v4.9.2]
+
+### Manager
+
+#### Fixed
+
+- Fixed an unhandled exception during IPC event parsing. ([#26453](https://github.com/wazuh/wazuh/pull/26453))
 
 
 ## [v4.9.1]

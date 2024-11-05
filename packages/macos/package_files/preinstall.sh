@@ -10,6 +10,7 @@
 # $2 is the error code
 
 DIR="/Library/Ossec"
+ARCH="PACKAGE_ARCH"
 
 function check_errm
 {
@@ -19,6 +20,23 @@ function check_errm
         exit ${2};
         fi
 }
+
+function check_arch
+{
+    local system_arch=$(uname -m)
+
+    if [ "$ARCH" = "intel64" ] && [ "$system_arch" = "arm64" ]; then
+        if ! arch -x86_64 zsh -c '' &> /dev/null; then
+            >&2 echo "ERROR: Rosetta is not installed. Please install it and try again."
+            exit 1
+        fi
+    elif [ "$ARCH" = "arm64" ] && [ "$system_arch" = "x86_64" ]; then
+        >&2 echo "ERROR: Incompatible architecture. Please use the Intel package on this system."
+        exit 1
+    fi
+}
+
+check_arch
 
 if [ -d "${DIR}" ]; then
     echo "A Wazuh agent installation was found in ${DIR}. Will perform an upgrade."

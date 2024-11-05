@@ -135,6 +135,8 @@ function prepare_building_folder() {
     cp $preinstall_script $CURRENT_PATH/wazuh-agent/scripts/preinstall
     cp $postinstall_script $CURRENT_PATH/wazuh-agent/scripts/postinstall
 
+    sed -i '' "s|PACKAGE_ARCH|$ARCH|g" $CURRENT_PATH/wazuh-agent/scripts/preinstall
+
     mkdir -p ${packaged_directory}$(dirname ${SERVICE_PATH})
     cp -p $SERVICE_PATH ${packaged_directory}$(dirname ${SERVICE_PATH})
 
@@ -452,7 +454,7 @@ function main() {
     done
 
     if [ ${VERBOSE} = "yes" ]; then
-        set -exf
+        set -ex
     fi
 
     testdep
