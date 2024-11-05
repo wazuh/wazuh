@@ -4,20 +4,23 @@ from google.protobuf.json_format import ParseDict
 from shared.dumpers import dict_to_yml
 
 from api_communication.client import APIClient
-import api_communication.proto.tester_pb2 as etester
 import api_communication.proto.engine_pb2 as engine
+import api_communication.proto.tester_pb2 as etester
+
 
 
 def run(args):
 
     # Get the params
     api_socket: str = args['api_socket']
+    name: str = args['name']
 
     # Create API client
     client = APIClient(api_socket)
 
     # Create the request
-    request = etester.TableGet_Request()
+    request = etester.SessionGet_Request()
+    request.name = name
 
     # Send the request
     error, response = client.send_recv(request)
@@ -25,12 +28,12 @@ def run(args):
         sys.exit(f'Error getting session list: {error}')
 
     # Parse the response
-    parsed_response = ParseDict(response, etester.TableGet_Response())
+    parsed_response = ParseDict(response, etester.SessionGet_Response())
     if parsed_response.status == engine.ERROR:
         sys.exit(f'Error getting session list: {parsed_response.error}')
 
     # Print the response
-    data: str = dict_to_yml(response)
+    data: str = dict_to_yml(response['session'])
 
     print(data)
 
@@ -38,5 +41,8 @@ def run(args):
 
 
 def configure(subparsers):
-    parser = subparsers.add_parser('list', help='List all sessions')
+    parser = subparsers.add_parser(
+        'get', help='Get information about a session')
+    parser.add_argument(
+        'name', type=str, help='Name of the session to get information about')
     parser.set_defaults(func=run)
