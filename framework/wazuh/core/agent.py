@@ -433,7 +433,7 @@ class Agent:
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
               'group_config_status': 'group_config_status', 'status_code': 'status_code'}
-    
+
     new_fields = {'id': 'id', 'name': 'name', 'key': 'key', 'groups': 'groups', 'type': 'type', 'version': 'version',
                  'type': 'type', 'last_login': 'last_login', 'persistent_connection_mode': 'persistent_connection_mode'}
 
@@ -899,7 +899,7 @@ class Agent:
                         remove_agent = True
 
         return remove_agent
-    
+
     @staticmethod
     async def get(agent_id: str) -> IndexerAgent:
         """Get agent.
@@ -979,8 +979,8 @@ class Agent:
             if remove:
                 await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=[agent_id])
                 return
-        
-            await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=[agent_id], 
+
+            await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=[agent_id],
                                                             override=override)
 
     @staticmethod
@@ -1013,7 +1013,7 @@ class Agent:
         if not force:
             # Check if agent and the group exists
             _ = await Agent.get(agent_id)
-        
+
             if not Agent.group_exists(group_id):
                 raise WazuhResourceNotFound(1710)
 
@@ -1196,7 +1196,7 @@ def get_groups() -> set:
         Names of all groups in the system.
     """
     groups = set()
-    for group_file in listdir(common.SHARED_PATH):
+    for group_file in listdir(common.WAZUH_SHARED):
         filepath = Path(group_file)
         # TODO(#25121): Remove second condition once those files are not longer present
         if filepath.suffix == GROUP_FILE_EXT and filepath.stem not in ('agent-template', 'ar'):

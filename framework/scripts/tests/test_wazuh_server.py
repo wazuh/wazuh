@@ -408,7 +408,7 @@ def test_get_script_arguments(command, expected_args):
 
     expected_args.extend(['version', 'debug_level'])
     with patch('argparse._sys.argv', ['wazuh_server.py', command]):
-        with patch.object(wazuh_server.common, 'OSSEC_CONF', 'testing/path'):
+        with patch.object(wazuh_server.common, 'WAZUH_CONF', 'testing/path'):
             parsed_args = wazuh_server.get_script_arguments().parse_args()
 
             for arg in expected_args:
@@ -461,10 +461,9 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                 wazuh_server.main()
             main_logger_mock.assert_called_once()
             main_logger_mock.reset_mock()
-            path_exists_mock.assert_any_call(f'{common.WAZUH_PATH}/logs/cluster.log')
-            chown_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 'uid_test',
-                                        'gid_test')
-            chmod_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 432)
+            path_exists_mock.assert_any_call(wazuh_server.CLUSTER_LOG)
+            chown_mock.assert_called_with(wazuh_server.CLUSTER_LOG, 'uid_test', 'gid_test')
+            chmod_mock.assert_called_with(wazuh_server.CLUSTER_LOG, 432)
             exit_mock.assert_called_once_with(1)
             exit_mock.reset_mock()
 

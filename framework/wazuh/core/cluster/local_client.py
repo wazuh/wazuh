@@ -141,12 +141,10 @@ class LocalClient(client.AbstractClientManager):
         try:
             self.transport, self.protocol = await loop.create_unix_connection(
                                                 protocol_factory=lambda: LocalClientHandler(
-                                                    loop=loop, on_con_lost=on_con_lost, name=self.name, 
+                                                    loop=loop, on_con_lost=on_con_lost, name=self.name,
                                                     logger=self.logger, manager=self,cluster_items=self.cluster_items
                                                     ),
-                                                path=os.path.join(
-                                                    common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'
-                                                )
+                                                path=common.WAZUH_SOCKET / 'c-internal.sock'
                                             )
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)

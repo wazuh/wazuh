@@ -1,7 +1,7 @@
 {
     "files":{
 
-        "etc/": {
+        "/": {
             "permissions": "0o640",
             "source": "master",
             "files": ["private_key.pem", "public_key.pem"],

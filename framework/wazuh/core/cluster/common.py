@@ -18,6 +18,7 @@ import time
 import traceback
 from importlib import import_module
 from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
+from pathlib import Path
 
 import httpx
 from uuid import uuid4
@@ -434,9 +435,8 @@ class Handler(asyncio.Protocol):
             raise exception.WazuhClusterError(3034, extra_message=filename)
 
         sent_size = 0
-        filename = filename.encode()
-        relative_path = filename.replace(common.WAZUH_PATH.encode(), b'')
-
+        filename = Path(filename)
+        relative_path = str(filename.relative_to(common.WAZUH_RUN)).encode()
         try:
             # Tell to the destination node where (inside wazuh_path) the file has to be written.
             await self.send_request(command=b'new_file', data=relative_path)
@@ -715,7 +715,7 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        self.in_file[data] = {'fd': open(common.WAZUH_PATH + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
+        self.in_file[data] = {'fd': open(common.WAZUH_RUN / data.decode(), 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -955,12 +955,12 @@ class Handler(asyncio.Protocol):
 
     async def send_orders(self, orders: bytes) -> tuple:
         """Send orders to the Communications API unix socket HTTP server.
-        
+
         Parameters
         ----------
         orders : bytes
             Encoded orders.
-        
+
         Raises
         ------
         WazuhError(3041)
@@ -975,7 +975,7 @@ class Handler(asyncio.Protocol):
         """
         self.logger.info('Sending orders to the Communications API')
 
-        transport = httpx.AsyncHTTPTransport(uds='/var/ossec/queue/sockets/comms-api.sock')
+        transport = httpx.AsyncHTTPTransport(uds=common.WAZUH_SOCKET / 'comms-api.sock')
         client = httpx.AsyncClient(transport=transport, timeout=httpx.Timeout(10))
 
         orders_list = json.loads(orders)
@@ -1073,16 +1073,16 @@ class WazuhCommon:
         task_id, filename = task_and_file_names.split(' ', 1)
         if task_id not in self.sync_tasks:
             # Remove filename if task_id does not exist, before raising exception.
-            if os.path.exists(os.path.join(common.WAZUH_PATH, filename)):
+            if os.path.exists(os.path.join(common.WAZUH_RUN, filename)):
                 try:
-                    os.remove(os.path.join(common.WAZUH_PATH, filename))
+                    os.remove(os.path.join(common.WAZUH_RUN, filename))
                 except Exception as e:
                     self.get_logger(logger_tag).error(
-                        f"Attempt to delete file {os.path.join(common.WAZUH_PATH, filename)} failed: {e}")
+                        f"Attempt to delete file {os.path.join(common.WAZUH_RUN, filename)} failed: {e}")
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
         # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
-        self.sync_tasks[task_id].filename = os.path.join(common.WAZUH_PATH, filename)
+        self.sync_tasks[task_id].filename = os.path.join(common.WAZUH_RUN, filename)
         self.sync_tasks[task_id].received_information.set()
         return b'ok', b'File correctly received'
 
@@ -1254,7 +1254,7 @@ class SyncFiles(SyncTask):
             # Notify what is the zip path for the current taskID.
             await self.server.send_request(
                 command=self.cmd + b'_e',
-                data=task_id + b' ' + os.path.relpath(compressed_data, common.WAZUH_PATH).encode()
+                data=task_id + b' ' + os.path.relpath(compressed_data, common.WAZUH_RUN).encode()
             )
         except Exception as e:
             self.logger.error(f"Error sending zip file: {e}")
@@ -1394,7 +1394,7 @@ def create_ssl_context(
     keyfile_password: str = '',
 ) -> ssl.SSLContext:
     """Create a SSLContext with the key and certificates provided.
-    
+
     Parameters
     ----------
     logger : logging.Logger
@@ -1423,7 +1423,7 @@ def create_ssl_context(
     except ssl.SSLError as exc:
         logger.error(f'Failed loading SSL context: {exc}. Using default one.')
         ssl_context = ssl.create_default_context(purpose=purpose)
-    
+
     ssl_context.minimum_version = ssl.TLSVersion.TLSv1_3
 
     return ssl_context

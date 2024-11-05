@@ -339,7 +339,7 @@ def _ossecconf2json(xml_conf: str) -> dict:
 
 
 # Main functions
-def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
+def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.WAZUH_CONF,
                    from_import: bool = False, distinct: bool = False) -> dict:
     """Return ossec.conf (manager) as dictionary.
 
@@ -350,7 +350,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     field : str
         Filters by field in section (i.e. included).
     conf_file : str
-        Path of the configuration file to read. Default: common.OSSEC_CONF
+        Path of the configuration file to read. Default: common.WAZUH_CONF
     from_import : bool
         This flag indicates whether this function has been called from a module load (True) or from a function (False).
     distinct : bool
@@ -586,8 +586,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
     def get_active_configuration_manager():
         """Get manager active configuration."""
         # Communicate with the socket that corresponds to the component requested
-        dest_socket = os_path.join(common.WAZUH_PATH, "queue", component_socket_dir_mapping[component],
-                                   component_socket_mapping[component])
+        dest_socket = common.WAZUH_QUEUE / component_socket_dir_mapping[component] / component_socket_mapping[component]
 
         # Verify component configuration
         if not os.path.exists(dest_socket):
@@ -710,7 +709,7 @@ def write_ossec_conf(new_conf: str):
         Error updating ossec configuration.
     """
     try:
-        with open(common.OSSEC_CONF, 'w') as f:
+        with open(common.WAZUH_CONF, 'w') as f:
             f.writelines(new_conf)
     except Exception as e:
         raise WazuhError(1126, extra_message=str(e))

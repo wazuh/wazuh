@@ -5,10 +5,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 from wazuh import WazuhInternalError
-from wazuh.core.common import wazuh_uid, wazuh_gid, WAZUH_PATH
+from wazuh.core.common import wazuh_uid, wazuh_gid, WAZUH_ETC
 
-_private_key_path = os.path.join(WAZUH_PATH, 'etc', 'private_key.pem')
-_public_key_path = os.path.join(WAZUH_PATH, 'etc', 'public_key.pem')
+_private_key_path = WAZUH_ETC / 'private_key.pem'
+_public_key_path = WAZUH_ETC / 'public_key.pem'
 
 JWT_ALGORITHM = 'ES256'
 JWT_ISSUER = 'wazuh'
@@ -36,13 +36,13 @@ def get_keypair() -> Tuple[str, str]:
         private_key = key_file.read()
     with open(_public_key_path, mode='r') as key_file:
         public_key = key_file.read()
-            
+
     return private_key, public_key
 
 
 def generate_keypair() -> Tuple[str, str]:
     """Generate JWT signing key pair and store them in files.
-    
+
     Returns
     -------
     private_key : str
@@ -65,7 +65,7 @@ def generate_keypair() -> Tuple[str, str]:
         key_file.write(private_key)
     with open(_public_key_path, mode='w') as key_file:
         key_file.write(public_key)
-    
+
     try:
         os.chown(_private_key_path, wazuh_uid(), wazuh_gid())
         os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
@@ -80,7 +80,7 @@ def generate_keypair() -> Tuple[str, str]:
 
 def keypair_exists() -> bool:
     """Return whether the key pair exists or not.
-    
+
     Returns
     -------
     bool

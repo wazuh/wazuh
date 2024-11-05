@@ -289,7 +289,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
-        worker_dir = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', self.name)
+        worker_dir = common.CLUSTER_QUEUE / self.name
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
 
@@ -663,7 +663,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             with utils.Timeout(timeout):
                 for file_path, data in files_metadata.items():
-                    full_path = os.path.join(common.WAZUH_PATH, file_path)
+                    full_path = common.WAZUH_RUN / file_path
                     item_key = data['cluster_item_key']
 
                     # If the file is merged, create individual files from it.
@@ -673,11 +673,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         ):
                             try:
                                 # Destination path.
-                                full_unmerged_name = os.path.join(common.WAZUH_PATH, unmerged_file_path)
+                                full_unmerged_name = common.CLUSTER_QUEUE / unmerged_file_path
                                 # Path where to create the file before moving it to the destination path.
-                                tmp_unmerged_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', worker_name,
-                                                                 os.path.basename(unmerged_file_path))
-
+                                tmp_unmerged_path = common.CLUSTER_QUEUE / worker_name / os.path.basename(
+                                    unmerged_file_path
+                                )
                                 # Format the file_data specified inside the merged file.
                                 try:
                                     mtime = utils.get_utc_strptime(file_time, '%Y-%m-%d %H:%M:%S.%f%z')
@@ -758,7 +758,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Clean cluster files from previous executions.
         self.name and cluster.clean_up(node_name=self.name)
-    
+
     def distribute_orders(self, data: bytes):
         """Send orders to the communications API unix server and to other nodes.
 

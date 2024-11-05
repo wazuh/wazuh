@@ -14,19 +14,20 @@ import sys
 from pathlib import Path
 from typing import List
 
-from wazuh.core.common import WAZUH_PATH
+from wazuh.core.common import BIN_ROOT, WAZUH_SHARE, WAZUH_LOG
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 
 BIN_PATH = '/bin'
 SERVER_DAEMON_NAME = 'wazuh-server'
-COMMS_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'apis', 'scripts', 'wazuh_comms_apid.py')
+COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / 'wazuh_comms_apid.py'
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
-EMBEDDED_PYTHON_PATH = os.path.join(WAZUH_PATH, 'framework', 'python', 'bin', 'python3')
-ENGINE_BINARY_PATH = os.path.join(BIN_PATH, 'wazuh-engine')
+EMBEDDED_PYTHON_PATH = WAZUH_SHARE / 'framework' / 'python' / 'bin' / 'python3'
+ENGINE_BINARY_PATH = BIN_ROOT / 'wazuh-engine'
 ENGINE_DAEMON_NAME = 'wazuh-engined'
-MANAGEMENT_API_SCRIPT_PATH = os.path.join(WAZUH_PATH, 'api', 'scripts', 'wazuh_apid.py')
+MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
+CLUSTER_LOG = WAZUH_LOG / 'cluster.log'
 
 #
 # Aux functions
@@ -50,7 +51,7 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
     """
     cluster_logger = cluster_utils.ClusterLogger(
         foreground_mode=foreground_mode,
-        log_path='logs/cluster.log',
+        log_path='cluster.log',
         debug_level=debug_mode,
         tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
     )
@@ -330,7 +331,7 @@ def get_script_arguments() -> argparse.Namespace:
         type=str,
         metavar='config',
         dest='config_file',
-        default=common.OSSEC_CONF,
+        default=common.WAZUH_CONF,
     )
     start_parser.add_argument('-t', help='Test configuration', action='store_true', dest='test_config')
 
@@ -351,9 +352,9 @@ def main():
     from wazuh.core.authentication import generate_keypair, keypair_exists
 
     # Set correct permissions on cluster.log file
-    if os.path.exists(f'{common.WAZUH_PATH}/logs/cluster.log'):
-        os.chown(f'{common.WAZUH_PATH}/logs/cluster.log', common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)
+    if os.path.exists(CLUSTER_LOG):
+        os.chown(CLUSTER_LOG, common.wazuh_uid(), common.wazuh_gid())
+        os.chmod(CLUSTER_LOG, 0o660)
 
     try:
         cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
@@ -442,7 +443,7 @@ def status():
 
 if __name__ == '__main__':
     import wazuh.core.cluster.utils as cluster_utils
-    from wazuh.core import common, configuration, pyDaemonModule
+    from wazuh.core import common, pyDaemonModule
 
     cluster_items = cluster_utils.get_cluster_items()
     original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)

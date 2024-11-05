@@ -182,7 +182,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             exc = future.exception()
             if exc:
                 self.logger.error(exc, exc_info=False)
-    
+
     def distribute_orders(self, orders: bytes):
         """Send orders to the communications API unix server and to other nodes.
 
@@ -225,7 +225,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock')
+        socket_path = common.WAZUH_SOCKET / 'c-internal.sock'
 
         try:
             local_server = await loop.create_unix_server(

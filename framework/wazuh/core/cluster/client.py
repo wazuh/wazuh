@@ -104,7 +104,7 @@ class AbstractClientManager:
             try:
                 transport, protocol = await self.loop.create_connection(
                     protocol_factory=lambda: self.handler_class(
-                        loop=self.loop, on_con_lost=on_con_lost, name=self.name, logger=self.logger, 
+                        loop=self.loop, on_con_lost=on_con_lost, name=self.name, logger=self.logger,
                         cluster_items=self.cluster_items, manager=self, **self.extra_args
                         ),
                         host=self.configuration['nodes'][0], port=self.configuration['port'], ssl=ssl_context)

@@ -165,22 +165,23 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         Gunicorn configuration options.
     """
     # TODO(#25121): get values from the configuration
-    keyfile = '/var/lib/wazuh-server/api/configuration/ssl/server.key'
-    certfile = '/var/lib/wazuh-server/api/configuration/ssl/server.crt'
+    SSL_PATH = common.WAZUH_ETC / 'api' / 'configuration' / 'ssl'
+    keyfile = SSL_PATH / 'server.key'
+    certfile = SSL_PATH / 'server.crt'
     configure_ssl(keyfile, certfile)
 
-    pidfile = os.path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{MAIN_PROCESS}-{pid}.pid')
+    pidfile = common.WAZUH_RUN / f'{MAIN_PROCESS}-{pid}.pid'
 
     return {
         'proc_name': MAIN_PROCESS,
-        'pidfile': pidfile,
+        'pidfile': str(pidfile),
         'daemon': not foreground_mode,
         'bind': f'{args.host}:{args.port}',
         'workers': 4,
         'worker_class': 'uvicorn.workers.UvicornWorker',
         'preload_app': True,
-        'keyfile': keyfile,
-        'certfile': certfile,
+        'keyfile': str(keyfile),
+        'certfile': str(certfile),
         'ca_certs': None,
         'ssl_context': ssl_context,
         'ciphers': '',

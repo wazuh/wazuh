@@ -5,9 +5,10 @@ from fastapi import APIRouter, FastAPI
 
 from comms_api.core.unix_server.commands import post_commands
 from comms_api.core.commands import CommandsManager
+from wazuh.core import common
 
 
-UNIX_SOCKET_PATH = '/var/lib/wazuh-server/queue/sockets/comms-api.sock'
+UNIX_SOCKET_PATH = common.WAZUH_SOCKET / 'comms-api.sock'
 
 
 def start_unix_server(commands_manager: CommandsManager):

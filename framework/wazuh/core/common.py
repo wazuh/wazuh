@@ -10,6 +10,7 @@ from copy import deepcopy
 from functools import lru_cache, wraps
 from grp import getgrnam
 from multiprocessing import Event
+from pathlib import Path
 from pwd import getpwnam
 from typing import Any, Dict
 
@@ -190,7 +191,29 @@ _WAZUH_UID = None
 _WAZUH_GID = None
 GROUP_NAME = 'wazuh'
 USER_NAME = 'wazuh'
-WAZUH_PATH = find_wazuh_path()
+WAZUH_PATH = ''
+
+USR_ROOT = Path('/usr')
+ETC_ROOT = Path('/etc')
+RUN_ROOT = Path('/run')
+VAR_ROOT = Path('/var')
+BIN_ROOT = Path('/bin')
+
+USR_SHARE = USR_ROOT / Path('share')
+VAR_LOG = VAR_ROOT / Path('log')
+VAR_LIB = VAR_ROOT / Path('lib')
+
+WAZUH_SERVER = 'wazuh-server'
+WAZUH_SHARE = USR_SHARE / WAZUH_SERVER
+WAZUH_ETC = ETC_ROOT / WAZUH_SERVER
+WAZUH_RUN = RUN_ROOT / WAZUH_SERVER
+WAZUH_LOG = VAR_LOG / WAZUH_SERVER
+WAZUH_LIB = VAR_LIB / WAZUH_SERVER
+
+WAZUH_QUEUE = WAZUH_RUN / 'queue'
+WAZUH_SOCKET = WAZUH_RUN / 'socket'
+
+CLUSTER_QUEUE = WAZUH_QUEUE / 'cluster'
 
 
 # ============================================= Wazuh constants - Commands =============================================
@@ -230,51 +253,52 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 
 
 # ================================================ Wazuh path - Config =================================================
-OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'ossec.conf')
-INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'internal_options.conf')
-LOCAL_INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'local_internal_options.conf')
-AR_CONF = os.path.join(WAZUH_PATH, 'etc', 'shared', 'ar.conf')
-CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
-SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
+WAZUH_CONF = WAZUH_ETC / 'ossec.conf'
+
+# Keep until we remove the different functionalities completely
+AR_CONF = ''
+CLIENT_KEYS = ''
+SHARED_PATH = ''
 
 
 # ================================================= Wazuh path - Misc ==================================================
-WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
-WAZUH_LOG = os.path.join(WAZUH_LOGS, 'ossec.log')
-WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'ossec.json')
-DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
-DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
-ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-analysisd.state')
-REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-remoted.state')
-OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
-OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
-WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
-STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
-BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
+
+# OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
+# WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
+# WAZUH_LOG = os.path.join(WAZUH_LOGS, 'ossec.log')
+# WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'ossec.json')
+# DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
+# DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
+# ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-analysisd.state')
+# REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-remoted.state')
+# OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
+# WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
+# STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
+# BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
 
 
 # ================================================ Wazuh path - Sockets ================================================
-ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
-AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
-EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
-AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
-WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
-LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
-UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
-REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
-TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
-WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
-WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
-QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
+# ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
+# AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
+# EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
+# AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
+# WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
+# LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
+# UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
+# REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
+# TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
+# WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
+# WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
+# QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
 
 
 # ================================================ Wazuh path - Ruleset ================================================
-RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
-RULES_PATH = os.path.join(RULESET_PATH, 'rules')
-DECODERS_PATH = os.path.join(RULESET_PATH, 'decoders')
-LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
-USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
-USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
-USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
+# RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
+# RULES_PATH = os.path.join(RULESET_PATH, 'rules')
+# DECODERS_PATH = os.path.join(RULESET_PATH, 'decoders')
+# LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
+# USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
+# USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
+# USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')

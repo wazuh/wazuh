@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from defusedxml.ElementTree import fromstring
 
-from wazuh.core.common import OSSEC_CONF, REMOTED_SOCKET
+from wazuh.core.common import WAZUH_CONF, REMOTED_SOCKET
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -386,7 +386,7 @@ def test_write_ossec_conf():
     content = "New config"
     with patch('wazuh.core.configuration.open', mock_open()) as mocked_file:
         configuration.write_ossec_conf(new_conf=content)
-        mocked_file.assert_called_once_with(OSSEC_CONF, 'w')
+        mocked_file.assert_called_once_with(WAZUH_CONF, 'w')
         mocked_file().writelines.assert_called_once_with(content)
 
 

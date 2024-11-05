@@ -25,7 +25,7 @@ class TimeBasedFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         # Rotate the file first
         logging.handlers.TimedRotatingFileHandler.doRollover(self)
 
-        # Save rotated file in {WAZUH_PATH}/logs/api directory
+        # Save rotated file in /var/logs/wazuh-server/api directory
         rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
 
         new_rotated_file = self.compute_log_directory(rotated_file)
@@ -65,7 +65,7 @@ class SizeBasedFileRotatingHandler(logging.handlers.RotatingFileHandler):
         # Rotate the file first
         logging.handlers.RotatingFileHandler.doRollover(self)
 
-        # Save rotated file in {WAZUH_PATH}/logs/api directory
+        # Save rotated file in /var/logs/wazuh-server/api directory
         rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
 
         new_rotated_file = self.compute_log_directory()
@@ -154,7 +154,7 @@ class WazuhLogger:
         max_size : int
             Number of bytes the log can store at max. Once reached, the log will be rotated.
         """
-        self.log_path = os.path.join(common.WAZUH_PATH, log_path)
+        self.log_path = common.WAZUH_LOG / log_path
         self.logger = None
         self.foreground_mode = foreground_mode
         self.debug_level = debug_level
@@ -176,7 +176,7 @@ class WazuhLogger:
         :param handler: custom handler that can be set instead of the default one.
         """
         logger = logging.getLogger(self.logger_name)
-        cf = CustomFilter('log') if self.log_path.endswith('.log') else CustomFilter('json')
+        cf = CustomFilter('log') if self.log_path.suffix == '.log' else CustomFilter('json')
         logger.propagate = False
         # configure logger
         if handler:
