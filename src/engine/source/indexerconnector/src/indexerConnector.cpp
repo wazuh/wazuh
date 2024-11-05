@@ -21,6 +21,8 @@
 #include <base/utils/timeUtils.hpp>
 #include <indexerConnector/indexerConnector.hpp>
 
+#include "indexerQueryBuilder.hpp"
+
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 
@@ -151,58 +153,49 @@ static void builderBulkDelete(std::string& bulkData, std::string_view id, std::s
     bulkData.append("\n");
 }
 
-static void builderBulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
+static void handleIndexerInternalErrors(const std::string& response, const std::vector<nlohmann::json>& events)
 {
-    bulkData.append(R"({"index":{"_index":")");
-    bulkData.append(index);
-
-    if (!id.empty())
+    // Parse the response JSON with error handling
+    auto parsedResponse = nlohmann::json::parse(response, nullptr, false);
+    if (parsedResponse.is_discarded())
     {
-        bulkData.append(R"(","_id":")");
-        bulkData.append(id);
+        LOG_WARNING("Failed to parse the indexer response JSON");
+        return;
     }
 
-    bulkData.append(R"("}})");
-    bulkData.append("\n");
-    bulkData.append(data);
-    bulkData.append("\n");
-}
-
-static void handleIndexerInternalErrors(const std::string& response, const std::string& bulkData)
-{
-    // Parse the response JSON and check if it contains errors with non-empty items
-    const auto parsedResponse = nlohmann::json::parse(response, nullptr, false);
+    // Check if the response has errors and contains items
     if (!parsedResponse.value("errors", false) || !parsedResponse.contains("items"))
     {
         return;
     }
 
-    std::istringstream bulkStream(bulkData);
-    std::string bulkLine, bulkDocument;
-
-    for (const auto& item : parsedResponse["items"])
+    // Verify that the sizes of events and response items match
+    const auto& items = parsedResponse["items"];
+    if (events.size() != items.size())
     {
-        const auto& indexData = item.value("index", nlohmann::json::object());
-        int status = indexData.value("status", INDEXER_ACKNOWLEDGE);
+        LOG_WARNING("Mismatch between the number of events ({}) and response items ({})", events.size(), items.size());
+        return;
+    }
 
-        // Skip successfully indexed items or items without error details
-        if (status == INDEXER_ACKNOWLEDGE || !indexData.contains("error"))
+    // Iterate over events and corresponding response items
+    for (size_t i = 0; i < events.size(); ++i)
+    {
+        const auto& item = items.at(i);
+
+        // Skip successfully indexed items or those without error details
+        if (item.at("index").at("status") == INDEXER_ACKNOWLEDGE || !item.at("index").contains("error"))
         {
             continue;
         }
 
-        // Read the next two lines from bulk data (metadata and document)
-        if (!std::getline(bulkStream, bulkLine) || !std::getline(bulkStream, bulkDocument))
-        {
-            LOG_WARNING("Bulk data exhausted while handling index errors");
-            break;
-        }
+        // Extract and log error details
+        const auto& errorReason = item.at("index").at("error").value("reason", "Unknown reason");
+        const auto& errorType = item.at("index").at("error").value("type", "Unknown type");
 
-        const auto& errorData = indexData["error"];
-        const auto errorReason = errorData.value("reason", "Unknown reason");
-
-        // Log the error with document details
-        LOG_WARNING("Error indexing document due '{}' - Detailed event content: {}", errorReason, bulkDocument);
+        LOG_WARNING("Error indexing document (type {} - reason: '{}') - Associated event: {}",
+                    errorType,
+                    errorReason,
+                    events.at(i).dump());
     }
 }
 
@@ -210,6 +203,7 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
 {
     // Get index name.
     m_indexName = indexerConnectorOptions.name;
+    m_processedEvents.reserve(ELEMENTS_PER_BULK); // Reserve space for the bulk size.
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {
@@ -243,6 +237,10 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
 
             auto url = selector->getNext();
             std::string bulkData;
+
+            // Clear the processed events.
+            m_processedEvents.clear();
+
             url.append("/_bulk?refresh=wait_for");
 
             std::string indexNameCurrentDate = m_indexName;
@@ -253,6 +251,7 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                 auto data = dataQueue.front();
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data, nullptr, false);
+                const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
 
                 if (parsedData.is_discarded())
                 {
@@ -261,14 +260,15 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
                     builderBulkDelete(bulkData, id, indexNameCurrentDate);
                 }
                 else
                 {
-                    const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
-                    const auto dataString = parsedData.at("data").dump();
-                    builderBulkIndex(bulkData, id, indexNameCurrentDate, dataString);
+                    bulkData += IndexerQueryBuilder::builder()
+                                    .bulkIndex(indexNameCurrentDate, id)
+                                    .addData(parsedData.at("data").dump())
+                                    .build();
+                    m_processedEvents.push_back(parsedData.at("data"));
                 }
             }
 
@@ -279,10 +279,10 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                     {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
                     {.onSuccess =
                          [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse"),
-                          &bulkData](const std::string& response)
+                          this](const std::string& response)
                      {
                          LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str());
-                         handleIndexerInternalErrors(response, bulkData);
+                         handleIndexerInternalErrors(response, m_processedEvents);
                      },
                      .onError =
                          [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
