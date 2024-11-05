@@ -18,12 +18,15 @@ class Item:
         Unique identifier for the item.
     content : dict
         Item content as a dictionary. Can be either a stateful event or a response from OpenSearch.
+    operation : str
+        Kind of operation to perform. Can be either 'create', 'delete' or 'update'.
     index_name : str
         Name of the index the item should be created in. Should be set when inserting an item to the mux_queue only.
     """
-    def __init__(self, id: int, content: dict, index_name: str = None):
+    def __init__(self, id: int, content: dict, operation: str, index_name: str = None):
         self.id = id
         self.content = content
+        self.operation = operation
         self.index_name = index_name
 
 

@@ -51,8 +51,9 @@ class BatcherClient:
 
         content = metadata | asdict(event.data, dict_factory=remove_empty_values)
         item = Item(
-            id=id(event),
+            id=event.document_id,
             content=content,
+            operation=event.operation,
             index_name=get_module_index_name(event.module)
         )
         self.queue.send_to_mux(item)

@@ -4,8 +4,9 @@ from enum import Enum
 from typing import Dict, List, Union
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.models.commands import Result
+from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
+from wazuh.core.indexer.models.commands import Result
 
 FIM_INDEX = 'wazuh-states-fim'
 INVENTORY_NETWORK_INDEX = 'wazuh-states-inventory-network'
@@ -275,14 +276,15 @@ class ModuleName(str, Enum):
 @dataclass
 class Module:
     """Stateful event module."""
-    document_id: str
     name: ModuleName
     type: str = None
-
 
 @dataclass
 class StatefulEvent:
     """Stateful event data model."""
+    document_id: str
+    operation: Operation
+    module: Module
     data: Union[
         FIMEvent,
         InventoryNetworkEvent,
@@ -293,7 +295,6 @@ class StatefulEvent:
         VulnerabilityEvent,
         CommandResult
     ]
-    module: Module
 
 
 STATEFUL_EVENTS_INDICES: Dict[ModuleName, str] = {

@@ -7,6 +7,7 @@ from comms_api.models.events import StatefulEvents, StatefulEventsResponse
 from comms_api.routers.events import post_stateful_events, post_stateless_events
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.exception import WazuhEngineError, WazuhError
+from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.events import AgentMetadata, TaskResult, SCAEvent, StatefulEvent, ModuleName
 
 
@@ -28,7 +29,9 @@ async def test_post_stateful_events(create_stateful_events_mock):
         version='v5.0.0',
         ip='127.0.0.1'
     )
-    events = StatefulEvents(agent=agent_metadata, events=[StatefulEvent(data=SCAEvent(), module=ModuleName.SCA)])
+    events = StatefulEvents(agent=agent_metadata, events=[
+        StatefulEvent(document_id='', operation=Operation.CREATE, data=SCAEvent(), module=ModuleName.SCA)
+    ])
     results = [TaskResult(id='123', result='created', status=201)]
     create_stateful_events_mock.return_value = results
 
@@ -56,7 +59,7 @@ async def test_post_stateful_events_ko():
         version='v5.0.0',
         ip='127.0.0.1'
     )
-    events = StatefulEvents(agent=agent_metadata, events=[])
+    events = StatefulEvents(document_id='', operation=Operation.CREATE, agent=agent_metadata, events=[])
 
     code = status.HTTP_400_BAD_REQUEST
     exception = WazuhError(2200)

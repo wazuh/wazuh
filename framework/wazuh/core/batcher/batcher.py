@@ -9,7 +9,8 @@ from typing import List, Optional
 from multiprocessing import Process
 
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.bulk import BulkDoc, BulkAction
+from wazuh.core.indexer.bulk import BulkDoc, Operation
+from wazuh.core.indexer.models.events import Operation
 
 from wazuh.core.batcher.buffer import Buffer
 from wazuh.core.batcher.timer import TimerManager
@@ -78,17 +79,14 @@ class Batcher:
         """
         try:
             async with get_indexer_client() as indexer_client:
-                bulk_list: List[BulkDoc] = [
-                    BulkDoc.create(index=item.index_name, doc_id=None, doc=item.content) for item in items
-                ]
-
+                bulk_list = create_bulk_list(items=items)
                 response = await indexer_client.events.bulk(data=bulk_list)
 
                 item_ids: List[uuid.UUID] = [item.id for item in items]
                 for response_item, item_id in zip(response["items"], item_ids):
                     action_found = False
 
-                    for action in BulkAction:
+                    for action in Operation:
                         if action.value in response_item:
                             action_found = True
                             item = Item(id=item_id, content=response_item[action.value])
@@ -197,3 +195,17 @@ class BatcherProcess(Process):
         """
         batcher = Batcher(mux_demux_queue=self.queue, config=self.config)
         asyncio.run(batcher.run())
+
+
+def create_bulk_list(items: List[Item]) -> List[BulkDoc]:
+    """Create a bulk list with documents depending on the operation performed."""
+    docs: List[BulkDoc] = []
+    for item in items:
+        if item.operation == Operation.CREATE.value:
+            docs.append(BulkDoc.create(index=item.index_name, doc_id=item.id, doc=item.content))    
+        elif item.operation == Operation.DELETE.value:
+            docs.append(BulkDoc.delete(index=item.index_name, doc_id=item.id, doc=item.content))
+        elif item.operation == Operation.UPDATE.value:
+            docs.append(BulkDoc.update(index=item.index_name, doc_id=item.id, doc=item.content))
+
+    return docs

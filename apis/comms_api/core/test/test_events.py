@@ -5,6 +5,7 @@ from comms_api.core.events import create_stateful_events, send_stateless_events
 from comms_api.models.events import StatefulEvents, StatelessEvents
 from wazuh.core.engine.models.events import StatelessEvent, Event, WazuhLocation
 from wazuh.core.indexer import Indexer
+from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, TaskResult, StatefulEvent, ModuleName
 
 INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
@@ -48,8 +49,8 @@ async def test_create_stateful_events(create_indexer_mock):
             ip='127.0.0.1'
         ),
         events=[
-            StatefulEvent(data=SCAEvent(), module=ModuleName.SCA),
-            StatefulEvent(data=SCAEvent(), module=ModuleName.SCA)
+            StatefulEvent(document_id='', operation=Operation.CREATE, data=SCAEvent(), module=ModuleName.SCA),
+            StatefulEvent(document_id='', operation=Operation.UPDATE, data=SCAEvent(), module=ModuleName.SCA)
         ]
     )
     result = await create_stateful_events(events, batcher_queue)
