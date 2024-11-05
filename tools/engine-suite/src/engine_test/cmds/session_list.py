@@ -30,7 +30,7 @@ def run(args):
         sys.exit(f'Error getting session list: {parsed_response.error}')
 
     # Print the response
-    data: str = dict_to_yml(response)
+    data: str = dict_to_yml(response['sessions'])
 
     print(data)
 
