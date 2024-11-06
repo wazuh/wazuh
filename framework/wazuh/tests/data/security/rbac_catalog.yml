@@ -755,7 +755,7 @@ get_rbac_actions:
           - rule:id
         example:
           actions:
-            - security:update
+            - security:delete
           resources:
             - policy:id:*
             - role:id:3
@@ -833,6 +833,18 @@ get_rbac_actions:
         related_endpoints:
           - PUT /security/config
           - DELETE /security/config
+      security:revoke:
+        description: Revoke all active JWT tokens
+        resources:
+          - "*:*"
+        example:
+          actions:
+          - security:revoke
+          resources:
+          - "*:*:*"
+          effect: deny
+        related_endpoints:
+          - PUT /security/user/revoke
       task:status:
         description: Access task's status information
         resources:
