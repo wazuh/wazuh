@@ -22,7 +22,6 @@
 #include <indexerConnector/indexerConnector.hpp>
 
 #include "indexerQueryBuilder.hpp"
-
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 
@@ -33,7 +32,6 @@ constexpr auto ELEMENTS_PER_BULK {1000};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
 constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
-constexpr auto EVENTS_FAILED_LOG {"/var/log/wazuh-server/fail_indexed.log"};
 constexpr auto INDEXER_ACKNOWLEDGE {201};
 
 // Single thread in case the events needs to be processed in order.
@@ -159,7 +157,7 @@ static void handleIndexerInternalErrors(const std::string& response, const std::
     auto parsedResponse = nlohmann::json::parse(response, nullptr, false);
     if (parsedResponse.is_discarded())
     {
-        LOG_WARNING("Failed to parse the indexer response JSON");
+        LOG_DEBUG("Failed to parse the indexer response {}", response);
         return;
     }
 
