@@ -225,6 +225,7 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/api
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/apis
 %dir %attr(750, root, wazuh) %{_localstatedir}var/log/wazuh-server
+%dir %attr(750, root, wazuh) %{_localstatedir}var/log/wazuh-server/engine
 %{_localstatedir}var/lib/wazuh-server/engine/tzdb/*
 %{_localstatedir}var/lib/wazuh-server/etc/*
 %{_localstatedir}var/lib/wazuh-server/lib/*
