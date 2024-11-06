@@ -121,7 +121,7 @@ namespace Utils
             // If the queue is not canceled, get the elements.
             if (!m_canceled)
             {
-                for (auto i = 0; i < elementsQuantity && i < m_queue.size(); ++i)
+                for (size_t i = 0; i < elementsQuantity && i < m_queue.size(); ++i)
                 {
                     bulkQueue.push(std::move(m_queue.at(i)));
                 }
@@ -133,7 +133,7 @@ namespace Utils
         void popBulk(const uint64_t elementsQuantity)
         {
             std::lock_guard<std::mutex> lock {m_mutex};
-            for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
+            for (size_t i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
             {
                 m_queue.pop();
             }
@@ -167,8 +167,8 @@ namespace Utils
     private:
         mutable std::mutex m_mutex;
         std::condition_variable m_cv;
-        std::atomic<bool> m_canceled {};
         Tq m_queue;
+        std::atomic<bool> m_canceled {};
     };
 
     template<typename T, typename Tq = std::queue<T>>

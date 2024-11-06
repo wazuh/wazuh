@@ -217,12 +217,11 @@ private:
     }
 
     Functor m_functor;
+    const size_t m_maxQueueSize;
+    const uint64_t m_bulkSize;
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
-
-    const size_t m_maxQueueSize;
-    const uint64_t m_bulkSize;
 };
 
 template<typename Type, typename Functor>

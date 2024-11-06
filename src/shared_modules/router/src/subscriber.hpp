@@ -39,7 +39,13 @@ public:
     {
     }
 
+    /**
+     * @brief Destroy the Subscriber object
+     *
+     */
+    // LCOV_EXCL_START
     ~Subscriber() = default;
+    // LCOV_EXCL_STOP
 
     /**
      * @brief Executes update callback.

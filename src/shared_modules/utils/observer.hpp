@@ -36,6 +36,9 @@ public:
     }
 
     virtual void update(T data) = 0;
+    // LCOV_EXCL_START
+    virtual ~Observer() = default;
+    // LCOV_EXCL_STOP
 };
 
 template<typename T>
