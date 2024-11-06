@@ -7,6 +7,7 @@ import json
 import time
 import sys
 import subprocess
+from shared.default_settings import Constants
 from engine_handler.handler import EngineHandler
 from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
@@ -250,7 +251,7 @@ class OpensearchManagement:
         with open(template_path, 'r') as template_file:
             template_json = json.load(template_file)
             headers = {"Content-Type": "application/json"}
-            url = f'http://localhost:9200/test-basic-index'
+            url = f'http://localhost:9200/{Constants.INDEX_PATTERN}'
             response = requests.put(url, data=json.dumps(template_json['template']), headers=headers)
             return response
 
@@ -285,7 +286,7 @@ class OpensearchManagement:
             while counter < 10:
                 url = 'http://localhost:9200/_cat/indices'
                 response = requests.get(url)
-                if response.status_code == 200 and 'test-basic-index' in response.text:
+                if response.status_code == 200 and Constants.INDEX_PATTERN in response.text:
                     break
                 time.sleep(1)
                 counter += 1
@@ -320,7 +321,7 @@ class OpensearchManagement:
                         all_custom_fields.discard(field)
 
     def read_index(self, result: Result, custom_fields: dict, all_custom_fields: set, outputs_number: int, retries=10, delay=4):
-        url_search = 'http://localhost:9200/test-basic-index/_search'
+        url_search = f'http://localhost:9200/{Constants.INDEX_PATTERN}/_search'
         headers = {"Content-Type": "application/json"}
         terminate = False
         for attempt in range(retries):
@@ -613,11 +614,11 @@ def delete_indexer_output_in_policy(engine_handler: EngineHandler, stop_on_warn:
 
 def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment...")
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         sys.exit(f"Configuration file not found: {conf_path}")
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
 
@@ -668,16 +669,18 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         print("\n\nRunning tests...")
         results = run_test(integrations, engine_handler.api_socket_path, schema_data)
 
-    finally:
-        if exist_index_output(engine_handler):
-            delete_indexer_output_in_policy(engine_handler)
-            delete_indexer_output(engine_handler)
-        print("Restart wazuh-core-message decoder changes")
-        engine_handler.stop()
-        opensearch_management.stop()
-        print("Engine stopped.")
+    except Exception as e:
+        # TODO: Improve error handling diferentiating between elasic or engine errors, and handle them properly
+        sys.exit(f"An unexpected error occurred: {e}")
 
-    print("\n\n")
+    if exist_index_output(engine_handler):
+        delete_indexer_output_in_policy(engine_handler)
+        delete_indexer_output(engine_handler)
+    print("Restart wazuh-core-message decoder changes")
+    engine_handler.stop()
+    opensearch_management.stop()
+    print("Engine stopped.\n\n")
+
     for result in results:
         print(result)
 
@@ -695,11 +698,11 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
 
 def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment for rules...")
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         sys.exit(f"Configuration file not found: {conf_path}")
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
 
@@ -750,6 +753,9 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
         print("\n\nRunning tests...")
         results = run_test(rules, engine_handler.api_socket_path, schema_data)
 
+    except Exception as e:
+        # TODO: Improve error handling diferentiating between elasic or engine errors, and handle them properly
+        print(f"An unexpected error occurred: {e}")
     finally:
         if exist_index_output(engine_handler):
             delete_indexer_output_in_policy(engine_handler)

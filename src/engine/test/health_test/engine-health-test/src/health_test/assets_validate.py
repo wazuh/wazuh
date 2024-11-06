@@ -14,7 +14,7 @@ def process_integration_entry(api_socket, entry, kvdbs, added_kvdbs_paths, execu
     original = resource_handler.load_file(entry)
     name = original['name']
     # Recover original content
-    content = yaml.dump(content, sort_keys=False)
+    content = yaml.dump(original, sort_keys=False)
 
     if entry.parent.as_posix() not in added_kvdbs_paths:
         added_kvdbs_paths.append(entry.parent.as_posix())
@@ -140,17 +140,14 @@ def run(args):
     conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         sys.exit(f"Configuration file not found: {conf_path}")
-        sys.exit(1)
 
     bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
-        sys.exit(1)
 
     ruleset_path = (env_path / "ruleset").resolve()
     if not ruleset_path.is_dir():
         sys.exit(f"Engine ruleset not found: {ruleset_path}")
-        sys.exit(1)
 
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix())
@@ -161,8 +158,10 @@ def run(args):
         print("Engine started.")
         validator(args, ruleset_path, resource_handler, api_socket)
     except Exception as e:
-        print(f"Error running test: {e}")
-    finally:
-        print("Stopping engine...")
+        print(f"Error running test: {e}. Stopping engine...")
         engine_handler.stop()
-        print("Engine stopped.")
+        sys.exit(1)
+
+    print("Stopping engine...")
+    engine_handler.stop()
+    print("Engine stopped.")

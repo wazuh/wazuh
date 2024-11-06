@@ -248,7 +248,7 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                      }});
             }
         },
-        ThreadEventDispatcherParams {.dbPath = indexerConnectorOptions.databasePath + m_indexName,
+        ThreadEventDispatcherParams {.dbPath = indexerConnectorOptions.databasePath + "/"+ m_indexName,
                                      .bulkSize = ELEMENTS_PER_BULK,
                                      .dispatcherType =
                                          (indexerConnectorOptions.workingThreads <= SINGLE_ORDERED_DISPATCHING
