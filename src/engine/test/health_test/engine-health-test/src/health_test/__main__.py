@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from health_test.health_test import run as test_run
+from health_test.core import run as test_run
 from health_test.validate_custom_field_indexing import run as validate_custom_field_indexing_run
 from health_test.validate_event_indexing import run as validate_event_indexing_run
 import sys
@@ -15,7 +15,6 @@ from health_test.load_rules import run as load_rules_run
 from health_test.assets_validate import run as assets_validate_run
 from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
-from health_test.core import run as test_run
 
 
 def parse_args() -> Namespace:
