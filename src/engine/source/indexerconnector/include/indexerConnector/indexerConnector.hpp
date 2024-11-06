@@ -19,8 +19,9 @@
 #include <queue>
 #include <vector>
 
-#include <base/utils/threadEventDispatcher.hpp>
 #include <nlohmann/json.hpp>
+
+#include <base/utils/threadEventDispatcher.hpp>
 
 #include <indexerConnector/iindexerconnector.hpp>
 
