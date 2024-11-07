@@ -41,7 +41,7 @@ runs:
     shell: bash
     run: |
       cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}'
+      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }}
 
   - name: Upload current stats
     if: success()

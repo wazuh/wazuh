@@ -44,5 +44,5 @@ grep -i " installed.*wazuh-$target" $installed_log| tee -a /packages/status.log
 wazuh_gid=$(getent group wazuh | cut -d: -f3)
 wazuh_uid=$(getent passwd wazuh | cut -d: -f3)
 
-echo $wazuh_gid > wazuh_gid
-echo $wazuh_uid > wazuh_uid
+echo $wazuh_gid > /tests/wazuh_gid
+echo $wazuh_uid > /tests/wazuh_uid

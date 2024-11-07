@@ -161,8 +161,9 @@ jobs:
 
       - name: Test install built manager
         run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
-          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
+          sudo docker run -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
           
           # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
           if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
@@ -172,8 +173,8 @@ jobs:
             exit 1;
           fi
 
-          echo "WAZUH_UID=$(cat /tmp/wazuh_uid_gid)" | tee -a $GITHUB_ENV
-          echo "WAZUH_GID=$(cat /tmp/wazuh_uid_gid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
 
       - name: Check installed files
         uses: ./.github/actions/check_files
