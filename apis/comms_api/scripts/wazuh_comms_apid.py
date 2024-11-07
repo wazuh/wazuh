@@ -164,7 +164,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict,
         Whether to execute the script in foreground mode or not.
     log_config_dict : dict
         Logging configuration dictionary.
-    config: CommsAPIConfig
+    config : CommsAPIConfig
         Comms API configuration object.
 
     Returns
@@ -300,7 +300,7 @@ if __name__ == '__main__':
     try:
         CentralizedConfig.load()
     except Exception as e:
-        print(f"Error when trying to start the Management Wazuh API. {e}")
+        print(f"Error when trying to load the configuration. {e}")
         sys.exit(1)
     comms_api_config = CentralizedConfig.get_comms_api_config()
 

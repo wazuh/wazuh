@@ -11,6 +11,10 @@ import sys
 import warnings
 from functools import partial
 
+from wazuh.core.common import WAZUH_SERVER_YML
+from wazuh.core.config.models.central_config import ManagementAPIConfig
+from wazuh.core.config.models.ssl_config import APISSLConfig
+
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
                         'be completely removed in the next major release.'
@@ -50,17 +54,16 @@ def spawn_authentication_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def configure_ssl(params: dict, config):
+def configure_ssl(params: dict, config: APISSLConfig):
     """Configure https files and permission, and set the uvicorn dictionary configuration keys.
 
     Parameters
     ----------
     params : dict
         uvicorn parameter configuration dictionary.
-    config: APISSLConfig
+    config : APISSLConfig
         Configuration for SSL
     """
-    from wazuh.core.common import WAZUH_SERVER_YML
 
     try:
         # Generate SSL if it does not exist and HTTPS is enabled
@@ -132,9 +135,6 @@ def configure_ssl(params: dict, config):
             raise exc from exc
 
 
-from wazuh.core.config.models.central_config import ManagementAPIConfig
-
-
 def start(params: dict, config: ManagementAPIConfig):
     """Run the Wazuh API.
 
@@ -147,7 +147,7 @@ def start(params: dict, config: ManagementAPIConfig):
     ----------
     params : dict
         uvicorn parameter configuration dictionary.
-    config: ManagementAPIConfig
+    config : ManagementAPIConfig
         API Configuration.
     """
     try:
@@ -322,7 +322,7 @@ if __name__ == '__main__':
     try:
         CentralizedConfig.load()
     except Exception as e:
-        print(f"Error when trying to start the Management Wazuh API. {e}")
+        print(f"Error when trying to load the Management Wazuh API. {e}")
         sys.exit(1)
     management_config = CentralizedConfig.get_management_api_config()
 

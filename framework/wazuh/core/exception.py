@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Union
 
 from wazuh.core.cluster import __version__
-from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE
+from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE, WAZUH_SERVER_YML
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
@@ -584,7 +584,7 @@ class WazuhException(Exception):
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
         6001: {'message': 'Maximum number of requests per minute reached',
-               'remediation': f'This limit can be changed in wazuh-server.yml file'},
+               'remediation': f'This limit can be changed in the {WAZUH_SERVER_YML} file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'

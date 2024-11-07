@@ -37,8 +37,6 @@ class APIException(Exception):
             2005: 'Body request is not a valid JSON',
             2006: 'Error parsing body request to UTF-8',
             2007: 'Body is empty',
-            2008: 'Experimental features are disabled. '
-                  'It can be changed in the API configuration',
             2009: 'Semicolon (;) is a reserved character and must '
                   'be percent-encoded (%3B) to use it.',
             2010: 'Error while attempting to bind on address: address already in use',
