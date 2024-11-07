@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 
 from fastapi import Request
@@ -16,7 +17,7 @@ async def create_stateful_events(
     events: StatefulEvents,
     batcher_queue: MuxDemuxQueue
 ) -> List[TaskResult]:
-    """Post new events to the indexer.
+    """Post new events to the batcher.
 
     Parameters
     ----------
@@ -116,3 +117,70 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
         headers=headers,
         events=events
     )
+
+
+async def send_events(
+    agent_metadata: AgentMetadata,
+    events: List[StatefulEvent],
+    batcher_client: BatcherClient
+) -> List[TaskResult]:
+    """Send events to the batcher.
+
+    Parameters
+    ----------
+    agent_metadata : AgentMetadata
+        Agent metadata.
+    events : List[StatefulEvent]
+        Stateful events list.
+    batcher_client : BatcherClient
+        Client responsible for sending the events to the batcher and managing responses.
+
+    Returns
+    -------
+    List[TaskResult]
+        Indexer response for each one of the bulk tasks.
+    """
+    item_ids: List[UUID] = []
+
+    # Sends the events to the batcher
+    for event in events:
+        item_id = batcher_client.send_event(agent_metadata, event)
+        item_ids.append(item_id)
+
+    # Create tasks using a lambda function to obtain the result of each one
+    tasks: List[asyncio.Task] = []
+    for id in item_ids:
+        task = asyncio.create_task(
+            (lambda u: batcher_client.get_response(u))(id)
+        )
+        tasks.append(task)
+
+    # Wait for all of them and create response
+    tasks_results = await asyncio.gather(*tasks)
+    return parse_tasks_results(tasks_results)
+
+
+def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
+    """Parse tasks results.
+    
+    Parameters
+    ----------
+    tasks_results : List[dict]
+        Tasks results dictionary list.
+    
+    Returns
+    -------
+    results : List[TaskResult]
+        Tasks results object list.
+    """
+    results: List[TaskResult] = []
+    for result in tasks_results:
+        status = result[IndexerKey.STATUS]
+        if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
+            task_result = TaskResult(id=result[IndexerKey._ID], result=result[IndexerKey.RESULT], status=status)
+        else:
+            task_result = TaskResult(id='', result=result[IndexerKey.ERROR][IndexerKey.REASON], status=status)
+
+        results.append(task_result)
+
+    return results
