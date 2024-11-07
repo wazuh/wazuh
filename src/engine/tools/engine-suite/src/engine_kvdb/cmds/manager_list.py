@@ -1,10 +1,10 @@
 import sys
 from google.protobuf.json_format import ParseDict
-from shared.dumpers import dict_to_str_yml
 
 from api_communication.client import APIClient
-import api_communication.proto.router_pb2 as erouter
 import api_communication.proto.engine_pb2 as engine
+import api_communication.proto.kvdb_pb2 as ekvdb
+from shared.dumpers import dict_to_str_yml
 
 
 def run(args):
@@ -15,26 +15,29 @@ def run(args):
     # Create API client
     client = APIClient(api_socket)
 
-    # Create the request
-    request = erouter.TableGet_Request()
+    request = ekvdb.managerGet_Request()
+
+    # Todo: Add must_be_loaded and filter_by_name when implemented
 
     # Send the request
     error, response = client.send_recv(request)
     if error:
-        sys.exit(f'Error getting route: {error}')
+        sys.exit(f'Error getting the list of key-value databases: {error}')
 
     # Parse the response
-    parsed_response = ParseDict(response, erouter.TableGet_Response())
+    parsed_response = ParseDict(response, ekvdb.managerGet_Response())
     if parsed_response.status == engine.ERROR:
-        sys.exit(f'Error getting route: {parsed_response.error}')
+        sys.exit(f'Error getting the list of key-value databases: {parsed_response.error}')
 
     # Print the response
-    data: str = dict_to_str_yml(response['table'])
+    data: str = dict_to_str_yml(response['dbs'])
     print(data)
 
     return 0
 
 
 def configure(subparsers):
-    parser = subparsers.add_parser('list', help='Get routes table')
+    parser = subparsers.add_parser(
+        'list', help='List all key-value databases')
+
     parser.set_defaults(func=run)

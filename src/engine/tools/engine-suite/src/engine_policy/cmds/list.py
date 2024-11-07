@@ -2,7 +2,7 @@ import sys
 from google.protobuf.json_format import ParseDict
 from google.protobuf.json_format import MessageToDict
 
-from shared.dumpers import dict_to_yml
+from shared.dumpers import dict_to_str_yml
 
 from api_communication.client import APIClient
 import api_communication.proto.policy_pb2 as epolicy
@@ -30,7 +30,7 @@ def run(args):
         sys.exit(f'Error getting policies: {parsed_response.error}')
 
     # Message to dic
-    data : str = dict_to_yml(response['data'])
+    data : str = dict_to_str_yml(response['data'])
     print(data)
 
     return 0

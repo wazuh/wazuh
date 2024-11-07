@@ -1,4 +1,5 @@
 import yaml
+import json
 
 try:
     from yaml import CDumper as BaseDumper
@@ -15,6 +16,13 @@ class EngineDumper(BaseDumper):
             style = '|'
         return super(EngineDumper, self).represent_scalar(tag, value, style)
 
-def dict_to_yml(data) -> str:
+def dict_to_str_yml(data) -> str:
     data = yaml.dump(data, sort_keys=True, Dumper=EngineDumper, allow_unicode=True)
+    return data
+
+def dict_to_str_json(data, pretty=False) -> str:
+    if pretty:
+        data = json.dumps(data, indent=2, sort_keys=True, separators=(',', ': '))
+    else:
+        data = json.dumps(data, separators=(',', ':'))
     return data

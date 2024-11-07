@@ -1,6 +1,6 @@
 import sys
 from google.protobuf.json_format import ParseDict
-from shared.dumpers import dict_to_yml
+from shared.dumpers import dict_to_str_yml
 
 from api_communication.client import APIClient
 import api_communication.proto.router_pb2 as erouter
@@ -31,7 +31,7 @@ def run(args):
         sys.exit(f'Error getting route: {parsed_response.error}')
 
     # Print the response
-    data: str = dict_to_yml(response['route'])
+    data: str = dict_to_str_yml(response['route'])
     print(data)
 
     return 0

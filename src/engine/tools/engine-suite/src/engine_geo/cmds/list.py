@@ -4,7 +4,7 @@ from google.protobuf.json_format import ParseDict
 from api_communication.client import APIClient
 import api_communication.proto.engine_pb2 as engine
 import api_communication.proto.geo_pb2 as egeo
-from shared.dumpers import dict_to_yml
+from shared.dumpers import dict_to_str_yml
 
 
 def run(args):
@@ -28,7 +28,7 @@ def run(args):
         sys.exit(f'Error adding GeoIP database: {parsed_response.error}')
 
     # Print the response
-    data: str = dict_to_yml(response['entries'])
+    data: str = dict_to_str_yml(response['entries'])
     print(data)
 
     return 0
