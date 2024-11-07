@@ -11,6 +11,9 @@ import pwd
 import stat
 import sys
 
+wazuh_gid = 0
+wazuh_uid = 0
+
 HEADERS = ['full_filename', 'owner_name', 'group_name', 'mode',
            'type', 'prot_permissions', 'size_bytes', 'size_error']
 
@@ -81,15 +84,25 @@ def filemode(mode):
 
 """
 
+def translate_id(id):
+    if id == wazuh_gid:
+        return "wazuh"
+    elif id == wazuh_uid:
+        return "wazuh"
+    elif id == 0:
+        return "root"
+    else:
+        return "unknown"
+
 
 def get_data(item):
     result = {}
 
     # Common attributes
     stat_info = os.stat(item)
-    result['group_name'] = grp.getgrgid(stat_info.st_gid)[0]
+    result['group_name'] = translate_id(stat_info.st_gid)
     result['mode'] = oct(stat.S_IMODE(stat_info.st_mode))[2:]
-    result['owner_name'] = pwd.getpwuid(stat_info.st_uid)[0]
+    result['owner_name'] = translate_id(stat_info.st_uid)
     result['type'] = "file"
     result['prot_permissions'] = stat.filemode(stat_info.st_mode)
     result['size_error'] = 0.2
@@ -367,6 +380,9 @@ if __name__ == "__main__":
                             help="Directory to scan and check, '/var/ossec' by default")
     arg_parser.add_argument("-b", "--base_file", type=str, default="",
                             help="Creates a base csv in path, not to be used with --report")
+    arg_parser.add_argument("-wg", "--wazuh_gid", type=int, help="The group id for wazuh", default=1001)
+    arg_parser.add_argument("-wu", "--wazuh_uid", type=int, help="The user id for wazuh", default=1000)
+
     # TODO:
     # arg_parser.add_argument("-i", "--ignore", type=str, help="Ignore path: /var/ossec/wodles/oscap/content,/var/ossec/api.")
 
@@ -374,6 +390,9 @@ if __name__ == "__main__":
 
     OSSEC_PATH = '/var/ossec'
     base_file_path = args.base_file
+
+    wazuh_gid = args.wazuh_gid
+    wazuh_uid = args.wazuh_uid
 
     if (base_file_path != '' and args.report != ''):
         sys.exit('Do not set csv file creation alongside report creation')

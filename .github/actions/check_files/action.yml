@@ -13,7 +13,12 @@ inputs:
     required: false
     description: "Path to the current status CSV file"
     default: "/tmp/current.csv"
-
+  wazuh_uid:
+    required: true
+    description: "Wazuh user ID"
+  wazuh_gid:
+    required: true
+    description: "Wazuh group ID"
 
 runs:
   using: "composite"
@@ -49,7 +54,7 @@ runs:
     shell: bash
     run: |
       cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}'
+      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }}
 
   - name: Upload validation results
     if: always()

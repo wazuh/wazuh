@@ -172,10 +172,15 @@ jobs:
             exit 1;
           fi
 
+          echo "WAZUH_UID=$(cat /tmp/wazuh_uid_gid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat /tmp/wazuh_uid_gid)" | tee -a $GITHUB_ENV
+
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
           expected_files: manager_base.csv
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
 
       # - name: Set up AWS CLI
       #   uses: aws-actions/configure-aws-credentials@v4
