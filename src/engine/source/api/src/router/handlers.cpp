@@ -126,7 +126,15 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry,
     eEntry.set_entry_status(state);
 
     // Calculate the uptime
-    eEntry.set_uptime(static_cast<uint32_t>(currentTime() - entry.lastUpdate()));
+    if (state == eRouter::State::DISABLED)
+    {
+        eEntry.set_uptime(entry.lastUpdate());
+    }
+    else
+    {
+        eEntry.set_uptime(static_cast<uint32_t>(currentTime() - entry.lastUpdate()));
+    }
+
     return eEntry;
 }
 } // namespace
