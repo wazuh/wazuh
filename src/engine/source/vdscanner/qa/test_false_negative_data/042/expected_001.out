@@ -1,4 +1,0 @@
-[
-    "Translation for package 'USBPcap 1.1.0.0' on platform 'windows' found in Level 2 cache.",
-    "Match found, the package 'usbpcap', is vulnerable to 'CVE-2017-6178'. Current version: '1.1.0.0' is equal to '1.1.0.0'. - Agent '' (ID: '035', Version: '')"
-]
