@@ -82,13 +82,7 @@ jobs:
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
       # Run Agentd integration tests.
-      # - name: Run Agentd integration tests
-      #   run: |
-      #     cd tests/integration
-      #     sudo python -m pytest --tier 0 --tier 1 test_agentd/
-
-      # Check files
-      - name: check Installed Files
-        uses: ./.github/actions/check_files
-        with:
-          expected_files: agent_base.csv
+      - name: Run Agentd integration tests
+        run: |
+          cd tests/integration
+          sudo python -m pytest --tier 0 --tier 1 test_agentd/

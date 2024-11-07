@@ -13,6 +13,10 @@ inputs:
     required: false
     description: "Path to the current status CSV file"
     default: "/tmp/current.csv"
+  installation_directory:
+    required: false
+    description: "Path to the wazuh Installation directory"
+    default: "/var/ossec"
   wazuh_uid:
     required: true
     description: "Wazuh user ID"
@@ -41,7 +45,7 @@ runs:
     shell: bash
     run: |
       cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }}
+      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory ${{ inputs.installation_directory }}
 
   - name: Upload current stats
     if: success()
@@ -54,7 +58,7 @@ runs:
     shell: bash
     run: |
       cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }}
+      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory ${{ inputs.installation_directory }}
 
   - name: Upload validation results
     if: always()

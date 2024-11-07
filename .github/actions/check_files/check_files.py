@@ -172,7 +172,7 @@ def get_data(item):
             result['archive_flag'] = False
 
     # Special case for htpasswd file
-    if item == '{0}/api/configuration/auth/htpasswd'.format(OSSEC_PATH):
+    if item == '/var/ossec/api/configuration/auth/htpasswd':
         result['group_name'] = 'root'
         result['mode'] = '0777'
         result['type'] = 'link'
@@ -303,7 +303,7 @@ def printReport(mandatory_items, not_listed, not_fully_match, current_items, rep
     failed = True
 
     if (left_mandatory_items == 0 and unregistered_files == 0 and qtty_not_fully_matched == 0):
-        failed = True
+        failed = False
 
     baseReport += f"""
 # Checkfiles Test
@@ -397,15 +397,15 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
     wazuh_gid = args.wazuh_gid
     wazuh_uid = args.wazuh_uid
-    
-    OSSEC_PATH = '/var/ossec'
+    installed_dir = args.directory
+
     base_file_path = args.base_file
 
     if (base_file_path != '' and args.report != ''):
         sys.exit('Do not set csv file creation alongside report creation')
     elif base_file_path != '':
         print("starting base csv")
-        result = get_current_items()
+        result = get_current_items(installed_dir)
         df = pd.DataFrame(result)
         df = df.reindex(columns=HEADERS)
         df.to_csv(base_file_path, index=False, header=True, sep=',')
@@ -416,7 +416,7 @@ if __name__ == "__main__":
         not_listed = {}
         not_fully_match = {}
 
-        current_items = get_current_items()
+        current_items = get_current_items(installed_dir)
         mandatory_items = csv_to_dict(csv_file_path, 'full_filename')
         mandatory_items_qtty = len(mandatory_items)
 
@@ -442,6 +442,6 @@ if __name__ == "__main__":
 
         printReport(mandatory_items, not_listed,
                     not_fully_match, current_items, report_path, mandatory_items_qtty)
-        
+
         if failed:
             sys.exit("Failed: Results didn't match the expected output")
