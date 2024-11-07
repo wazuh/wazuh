@@ -1,5 +1,5 @@
 import sys
-from shared.dumpers import dict_to_yml
+from shared.dumpers import dict_to_str_yml
 from shared.default_settings import Constants
 from api_communication.client import APIClient
 import api_communication.proto.policy_pb2 as epolicy
@@ -31,7 +31,7 @@ def run(args):
         sys.exit(f'Error creating policy: {parsed_response.error}')
 
     if len(response['data']):
-        print(dict_to_yml(response['data']))
+        print(dict_to_str_yml(response['data']))
 
     return 0
 

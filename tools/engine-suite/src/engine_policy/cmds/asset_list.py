@@ -6,7 +6,7 @@ from api_communication.client import APIClient
 import api_communication.proto.policy_pb2 as epolicy
 import api_communication.proto.engine_pb2 as engine
 
-from shared.dumpers import dict_to_yml
+from shared.dumpers import dict_to_str_yml
 
 
 def run(args):
@@ -35,7 +35,7 @@ def run(args):
         sys.exit(f'Error getting assets: {parsed_response.error}')
 
     # Dictionary to yml
-    data: str = dict_to_yml(response['data'])
+    data: str = dict_to_str_yml(response['data'])
     print(data)
 
     return 0
