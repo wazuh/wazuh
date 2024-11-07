@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Union
+from typing_extensions import Self
+
+from pydantic import BaseModel, model_validator
 
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
@@ -42,224 +45,200 @@ class TaskResult:
     status: int
 
 
-@dataclass
 class Hash:
     """Hash data model."""
-    md5: str
-    sha1: str
-    sha256: str
+    md5: str = None
+    sha1: str = None
+    sha256: str = None
 
 
-@dataclass
 class File:
     """File data model."""
-    attributes: List[str]
-    name: str
-    path: str
-    gid: int
-    group: str
-    inode: str
-    mtime: datetime
-    mode: str
-    size: float
-    target_path: str
-    type: str
-    uid: int
-    owner: str
-    hash: Hash
+    attributes: List[str] = None
+    name: str = None
+    path: str = None
+    gid: int = None
+    group: str = None
+    inode: str = None
+    mtime: datetime = None
+    mode: str = None
+    size: float = None
+    target_path: str = None
+    type: str = None
+    uid: int = None
+    owner: str = None
+    hash: Hash = None
 
 
-@dataclass
 class Registry:
     """Registry data model."""
-    key: str
-    value: str
+    key: str = None
+    value: str = None
 
 
-@dataclass
-class FIMEvent:
+class FIMEvent(BaseModel):
     """FIM events data model."""
-    file: File
-    registry: Registry
+    file: File = None
+    registry: Registry = None
 
 
-@dataclass
-class InventoryNetworkEvent:
+class InventoryNetworkEvent(BaseModel):
     """Inventory network events data model."""
     # TODO(25121): Add inventory network fields once they are defined
 
 
-@dataclass
 class OS:
     """OS data model."""
-    kernel: str
-    full: str
-    name: str
-    platform: str
-    version: str
-    type: str
+    kernel: str = None
+    full: str = None
+    name: str = None
+    platform: str = None
+    version: str = None
+    type: str = None
 
 
-@dataclass
 class Host:
     """Host data model."""
-    architecture: str
-    hostname: str
-    os: OS
+    architecture: str = None
+    hostname: str = None
+    os: OS = None
 
 
-@dataclass
 class Package:
     """Package data model."""
-    architecture: str
-    description: str
-    installed: datetime
-    name: str
-    path: str
-    size: float
-    type: str
-    version: str
+    architecture: str = None
+    description: str = None
+    installed: datetime = None
+    name: str = None
+    path: str = None
+    size: float = None
+    type: str = None
+    version: str = None
 
 
-@dataclass
-class InventoryPackageEvent:
+class InventoryPackageEvent(BaseModel):
     """Inventory packages events data model."""
-    scan_time: datetime
-    package: Package
+    scan_time: datetime = None
+    package: Package = None
 
 
-@dataclass
 class Parent:
     """Process parent data model."""
-    pid: float
+    pid: float = None
 
 
-@dataclass
 class ID:
     """Process users and groups ID data model."""
-    id: str
+    id: str = None
 
 
-@dataclass
 class Process:
     """Process data model."""
-    pid: float
-    name: str
-    parent: Parent
-    command_line: str
-    args: List[str]
-    user: ID
-    real_user: ID
-    saved_user: ID
-    group: ID
-    real_group: ID
-    saved_group: ID
-    start: datetime
-    thread: ID
+    pid: float = None
+    name: str = None
+    parent: Parent = None
+    command_line: str = None
+    args: List[str] = None
+    user: ID = None
+    real_user: ID = None
+    saved_user: ID = None
+    group: ID = None
+    real_group: ID = None
+    saved_group: ID = None
+    start: datetime = None
+    thread: ID = None
 
 
-@dataclass
-class InventoryProcessEvent:
+class InventoryProcessEvent(BaseModel):
     """Inventory process events data model."""
-    scan_time: datetime
-    process: Process
+    scan_time: datetime = None
+    process: Process = None
 
 
-@dataclass
-class InventorySystemEvent:
+class InventorySystemEvent(BaseModel):
     """Inventory system events data model."""
-    scan_time: datetime
-    host: Host
+    scan_time: datetime = None
+    host: Host = None
 
 
-@dataclass
-class SCAEvent:
+class SCAEvent(BaseModel):
     """SCA events data model."""
     # TODO(25121): Add SCA event fields once they are defined
 
 
-@dataclass
 class VulnerabilityEventHost:
     """Host data model in relation to vulnerability events."""
-    os: OS
+    os: OS = None
 
 
-@dataclass
 class VulnerabilityEventPackage:
     """Package data model in relation to vulnerability events."""
-    architecture: str
-    build_version: str
-    checksum: str
-    description: str
-    install_scope: str
-    installed: datetime
-    license: str
-    name: str
-    path: str
-    reference: str
-    size: float
-    type: str
-    version: str
+    architecture: str = None
+    build_version: str = None
+    checksum: str = None
+    description: str = None
+    install_scope: str = None
+    installed: datetime = None
+    license: str = None
+    name: str = None
+    path: str = None
+    reference: str = None
+    size: float = None
+    type: str = None
+    version: str = None
 
 
-@dataclass
 class Cluster:
     """Wazuh cluster data model."""
-    name: str
-    node: str
+    name: str = None
+    node: str = None
 
 
-@dataclass
 class Schema:
     """Wazuh schema data model."""
-    version: str
+    version: str = None
 
 
-@dataclass
 class Wazuh:
     """Wazuh instance information data model."""
-    cluster: Cluster
-    schema: Schema
+    cluster: Cluster = None
+    schema: Schema = None
 
 
-@dataclass
 class Scanner:
     """Scanner data model."""
-    source: str
-    vendor: str
+    source: str = None
+    vendor: str = None
 
 
-@dataclass
 class Score:
     """Score data model."""
-    base: float
-    environmental: float
-    temporal: float
-    version: str
+    base: float = None
+    environmental: float = None
+    temporal: float = None
+    version: str = None
 
 
-@dataclass
-class VulnerabilityEvent:
+class VulnerabilityEvent(BaseModel):
     """Vulnerability events data model."""
-    host: VulnerabilityEventHost
-    package: VulnerabilityEventPackage
-    scanner: Scanner
-    score: Score
-    category: str
-    classification: str
-    description: str
-    detected_at: datetime
-    enumeration: str
-    id: str
-    published_at: datetime
-    reference: str
-    report_id: str
-    severity: str
-    under_evaluation: bool
+    host: VulnerabilityEventHost = None
+    package: VulnerabilityEventPackage = None
+    scanner: Scanner = None
+    score: Score = None
+    category: str = None
+    classification: str = None
+    description: str = None
+    detected_at: datetime = None
+    enumeration: str = None
+    id: str = None
+    published_at: datetime = None
+    reference: str = None
+    report_id: str = None
+    severity: str = None
+    under_evaluation: bool = None
 
 
-@dataclass
-class CommandResult:
+class CommandResult(BaseModel):
     """Command result data model."""
     result: Result
 
@@ -273,14 +252,13 @@ class ModuleName(str, Enum):
     COMMAND = 'command'
 
 
-@dataclass
 class Module:
     """Stateful event module."""
     name: ModuleName
     type: str = None
 
-@dataclass
-class StatefulEvent:
+
+class StatefulEvent(BaseModel):
     """Stateful event data model."""
     document_id: str
     operation: Operation
@@ -294,7 +272,21 @@ class StatefulEvent:
         SCAEvent,
         VulnerabilityEvent,
         CommandResult
-    ]
+    ] = None
+
+    @model_validator(mode='after')
+    def validate_model_fields(self) -> Self:
+        """Validate the model fields depending on the operation performed."""
+        if self.operation == Operation.CREATE or self.operation == Operation.UPDATE:
+            assert self.data is not None
+        
+        if self.operation == Operation.CREATE:
+            assert self.data.model_fields_set
+        
+        if self.operation == Operation.DELETE:
+            assert self.data is None
+                
+        return self
 
 
 STATEFUL_EVENTS_INDICES: Dict[ModuleName, str] = {
