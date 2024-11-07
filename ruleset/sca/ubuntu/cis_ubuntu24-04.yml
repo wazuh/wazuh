@@ -3666,8 +3666,10 @@ checks:
        - mitre_mitigations: ["M1042"]
        - mitre_tactics: ["TA0001"]
        - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^hostbasedauthentication no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*HostBasedAuthentication\\s*\\t*yes"
 
   # 5.1.11 Ensure sshd IgnoreRhosts is enabled. (Automated)
    - id: 18665
@@ -3686,8 +3688,10 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^ignorerhosts yes"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*IgnoreRhosts\\s*\\t*no"
 
   # 5.1.12 Ensure sshd KexAlgorithms is configured. (Automated)
    - id: 18666
@@ -3710,8 +3714,9 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: none
      rules:
+      - "c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.1.13 Ensure sshd LoginGraceTime is configured. (Automated)
    - id: 18667
@@ -3724,8 +3729,11 @@ checks:
        - mitre_mitigations: ["M1036"]
        - mitre_tactics: ["TA0006"]
        - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004"]
-     condition:
+     condition: all
      rules:
+      - 'c:sshd -T -> n:^\s*logingracetime\s*(\d+) compare <= 60 && n:^logingracetime\s*(\d+) compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*\t*(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*LoginGraceTime\s*\t*(\d+) compare == 0'
 
   # 5.1.14 Ensure sshd LogLevel is configured. (Automated)
    - id: 18668
@@ -3747,8 +3755,10 @@ checks:
        - nist_sp_800-53: ["AU-7"]
        - pci_dss_v3.2.1: ["10.2", "10.3"]
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-     condition:
+     condition: any
      rules:
+      - "c:sshd -T -> r:^loglevel VERBOSE|^loglevel INFO"
+      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE|^\\s*\\t*loglevel\\s*\\t*INFO"
 
   # 5.1.15 Ensure sshd MACs are configured. (Automated)
    - id: 18669
@@ -3772,8 +3782,9 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: none
      rules:
+      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.1.16 Ensure sshd MaxAuthTries is configured. (Automated)
    - id: 18670
@@ -3793,8 +3804,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> n:^maxauthtries\\s+(\\d+) compare <= 4"
+      - "not f:/etc/ssh/sshd_config -> n:^\\s*\\t*maxauthtries\\s+(\\d+) compare > 4"
 
   # 5.1.17 Ensure sshd MaxSessions is configured. (Automated)
    - id: 18671
@@ -3806,8 +3819,10 @@ checks:
        - cis: ["5.1.17"]
        - mitre_tactics: ["TA0040"]
        - mitre_techniques: ["T1499", "T1499.002"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> n:^maxsessions\\s*\\t*(\\d+) compare <= 10"
+      - "not f:/etc/ssh/sshd_config -> n:^^\\s*\\t*MaxSessions\\s+(\\d+) compare > 10"
 
   # 5.1.18 Ensure sshd MaxStartups is configured. (Automated)
    - id: 18672
@@ -3819,8 +3834,17 @@ checks:
        - cis: ["5.1.18"]
        - mitre_tactics: ["TA0040"]
        - mitre_techniques: ["T1499", "T1499.002"]
-     condition:
+     condition: all
      rules:
+      - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60 && n:^maxstartups\s+(\d+):\d+:\d+ compare >= 1'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*(\d+):\d+:\d+ compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*(\d+):\d+:\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:(\d+):\d+ compare > 30'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:(\d+):\d+ compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:\d+:(\d+) compare > 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxStartups\s*\t*\d+:\d+:(\d+) compare == 0'
 
   # 5.1.19 Ensure sshd PermitEmptyPasswords is disabled. (Automated)
    - id: 18673
@@ -3839,8 +3863,10 @@ checks:
        - mitre_techniques: ["T1021"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^permitemptypasswords no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitEmptyPasswords\\s*\\t*yes"
 
   # 5.1.20 Ensure sshd PermitRootLogin is disabled. (Automated)
    - id: 18674
@@ -3860,8 +3886,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^permitrootlogin no"
+      - "f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitRootLogin\\s*\\t*no"
 
   # 5.1.21 Ensure sshd PermitUserEnvironment is disabled. (Automated)
    - id: 18675
@@ -3874,8 +3902,10 @@ checks:
        - mitre_mitigations: ["M1042"]
        - mitre_tactics: ["TA0008"]
        - mitre_techniques: ["T1021"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^permituserenvironment no"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitUserEnvironment\\s*\\t*yes"
 
   # 5.1.22 Ensure sshd UsePAM is enabled. (Automated)
    - id: 18676
@@ -3894,8 +3924,10 @@ checks:
        - mitre_techniques: ["T1021", "T1021.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:sshd -T -> r:^usepam yes"
+      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*UsePAM\\s*\\t*no"
 
   # 5.2.1 Ensure sudo is installed. (Automated)
    - id: 18677
@@ -3915,8 +3947,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: any
      rules:
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
 
   # 5.2.2 Ensure sudo commands use pty. (Automated)
    - id: 18678
@@ -3937,8 +3971,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 5.2.3 Ensure sudo log file exists. (Automated)
    - id: 18679
@@ -3960,8 +3996,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
+      - 'd:/etc/sudoers.d -> \.* -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
 
   # 5.2.4 Ensure users must provide password for privilege escalation. (Automated)
    - id: 18680
@@ -3982,8 +4020,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*NOPASSWD'
 
   # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
    - id: 18681
@@ -4003,8 +4043,10 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*!authenticate'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*!authenticate'
 
   # 5.2.6 Ensure sudo authentication timeout is configured correctly. (Automated)
    - id: 18682
@@ -4026,8 +4068,11 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/sudoers -> !r:^\s*\t*# && n:^\s*\t*timestamp_timeout=(\d+) compare <= 15 && n:^\s*\t*timestamp_timeout=(\d+) compare >= 0'
+      - 'd:/etc/sudoers.d -> r:\.* -> !r:^\s*\t*# && n:^\s*\t*timestamp_timeout=(\d+) compare <= 15 && n:^\s*\t*timestamp_timeout=(\d+) compare >= 0'
+      - 'c:sudo -V -> n:Authentication timestamp timeout:\s*\t*(\d+) compare <= 15 && n:Authentication timestamp timeout:\s*\t*(\d+) compare >= 0'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
    - id: 18683
@@ -4049,8 +4094,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*required\s*pam_wheel.so && r:use_uid && r:group='
 
   # 5.3.1.1 Ensure latest version of pam is installed. (Automated)
    - id: 18684
@@ -4059,8 +4105,9 @@ checks:
      rationale: "To ensure the system has full functionality and access to the options covered by this Benchmark the latest version of libpam-runtime should be installed on the system."
      compliance:
        - cis: ["5.3.1.1"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg -s libpam-modules -> r:install ok installed"
 
   # 5.3.1.2 Ensure libpam-modules is installed. (Automated)
    - id: 18685
@@ -4069,8 +4116,9 @@ checks:
      rationale: "To ensure the system has full functionality and access to the PAM options covered by this Benchmark."
      compliance:
        - cis: ["5.3.1.2"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg -s libpam-modules -> r:install ok installed"
 
   # 5.3.1.3 Ensure libpam-pwquality is installed. (Automated)
    - id: 18686
@@ -4082,8 +4130,9 @@ checks:
        - 'https://packages.debian.org/buster/libpam-pwquality'
      compliance:
        - cis: ["5.3.1.3"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg -s libpam-pwquality -> r:install ok installed"
 
   # 5.3.2.1 Ensure pam_unix module is enabled. (Automated)
    - id: 18687
@@ -4148,8 +4197,11 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:apt list --installed libpam-pwquality -> r:libpam-pwquality"
+      - 'f:/etc/security/pwquality.conf -> n:^\s*\t*minlen\s+=\s+(\d+) compare >=14'
+      - 'f:/etc/security/pwquality.conf -> r:^\s*\t*minclass\s+=\s+4'
 
   # 5.3.2.4 Ensure pam_pwhistory module is enabled. (Automated)
    - id: 18690
@@ -4168,13 +4220,15 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix.so && r:use_authtok'
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
    - id: 18691
      title: "Ensure password failed attempts lockout is configured."
-     description: "The deny=<n> option will deny access if the number of consecutive authentication failures for this user during the recent interval exceeds ."
+     description: "The deny=<n> option will deny access if the number of consecutive authentication failures for this user during the recent interval exceeds."
      rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
      remediation: "Create or edit the following line in /etc/security/faillock.conf setting the deny option to 5 or less: deny = 5 Run the following command: # grep -Pl -- '\\bpam_faillock\\.so\\h+([^#\\n\\r]+\\h+)?deny\\b' /usr/share/pam- configs/* Edit any returned files and remove the deny=<N> arguments from the pam_faillock.so line(s):."
      compliance:
@@ -4191,8 +4245,15 @@ checks:
        - pci_dss_v3.2.1: ["8.1.3"]
        - pci_dss_v4.0: ["8.2.4", "8.2.5"]
        - soc_2: ["CC6.2", "CC6.3"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*required\s*\t*pam_faillock.so\s*\t*preauth'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*[default=die]\s*\t*pam_faillock.so\s*\t*authfail'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*\t*auth\s*\t*sufficient\s*\t*pam_faillock.so\s*\t*authsucc'
+      - 'f:/etc/pam.d/common-account -> r:^\s*\t*account\s*\t*required\s*\t*pam_faillock.so'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare <= 4'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*fail_interval\s*\t*=\s*\t*(\d+) compare <= 900'
+      - 'not f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare < 600 && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare > 0'
 
   # 5.3.3.1.2 Ensure password unlock time is configured. (Automated)
    - id: 18692
@@ -4259,8 +4320,9 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:difok\s*\t*=\s*\t*(\d+) compare => 2'
 
   # 5.3.3.2.2 Ensure minimum password length is configured. (Automated)
    - id: 18695
@@ -4280,8 +4342,9 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minlen\s*\t*=\s*\t*(\d+) compare >= 14'
 
   # 5.3.3.2.3 Ensure password complexity is configured. (Manual)
    - id: 18696
@@ -4303,8 +4366,9 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minclass\s*\t*=\s*\t*(\d+) compare >= 4'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured. (Automated)
    - id: 18697
