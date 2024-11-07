@@ -33,4 +33,4 @@ jobs:
           pip install -r framework/requirements-dev.txt --no-build-isolation
 
       - name: Run External integrations tests
-        run: python -m pytest integrations --cov=integrations
+        run: python -m pytest integrations --ignore=tests --cov=integrations
