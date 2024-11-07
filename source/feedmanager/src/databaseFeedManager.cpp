@@ -66,7 +66,7 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
             extractOnly.emplace_back(LEGACY_DB_PATH + "vd");
 
             LOG_DEBUG("Starting TAR file decompression.");
-            fs::ArchiveHelper::decompress(TAR_DB_FILE_PATH, false, DECOMPRESSED_DB_PATH, extractOnly);
+            fs::ArchiveHelper::decompress(TAR_DB_FILE_PATH, DECOMPRESSED_DB_PATH, extractOnly);
 
             LOG_DEBUG("Finishing TAR file decompression. Removing {}.", TAR_DB_FILE_PATH);
             std::filesystem::remove(TAR_DB_FILE_PATH);

@@ -12,17 +12,15 @@
 
 namespace fs
 {
-void ArchiveHelper::copyData(struct archive* archiveRead,
-                             struct archive* archiveWrite,
-                             const std::atomic<bool>& forceStop)
+void ArchiveHelper::copyData(struct archive* archiveRead, struct archive* archiveWrite)
 {
     const void* buff {};
     size_t size {};
     int64_t offset {};
 
-    while (!forceStop.load())
+    int retVal {ARCHIVE_EOF};
+    while (retVal = archive_read_data_block(archiveRead, &buff, &size, &offset), retVal == ARCHIVE_OK)
     {
-        auto retVal = archive_read_data_block(archiveRead, &buff, &size, &offset);
         if (retVal == ARCHIVE_EOF)
         {
             break;
@@ -43,7 +41,6 @@ void ArchiveHelper::copyData(struct archive* archiveRead,
 }
 
 void ArchiveHelper::decompress(const std::string& filename,
-                               const std::atomic<bool>& forceStop,
                                const std::string& outputDir,
                                const std::vector<std::string>& extractOnly,
                                int flags)
@@ -70,12 +67,11 @@ void ArchiveHelper::decompress(const std::string& filename,
         throw std::runtime_error("Error opening file during decompression. Error: " + errMsg);
     }
 
-    while (!forceStop.load())
+    while (retVal = archive_read_next_header(archiveRead.get(), &entry), retVal == ARCHIVE_OK)
     {
-        retVal = archive_read_next_header(archiveRead.get(), &entry);
         if (retVal == ARCHIVE_EOF)
         {
-            return;
+            break;
         }
 
         if (retVal != ARCHIVE_OK)
@@ -106,20 +102,12 @@ void ArchiveHelper::decompress(const std::string& filename,
                 throw std::runtime_error(archive_error_string(archiveWrite.get()));
             }
 
-            copyData(archiveRead.get(), archiveWrite.get(), forceStop);
+            copyData(archiveRead.get(), archiveWrite.get());
             retVal = archive_write_finish_entry(archiveWrite.get());
             if (retVal != ARCHIVE_OK)
             {
                 throw std::runtime_error(archive_error_string(archiveWrite.get()));
             }
-        }
-    }
-
-    if (forceStop.load())
-    {
-        for (const auto& item : content)
-        {
-            std::filesystem::remove_all(item);
         }
     }
 }

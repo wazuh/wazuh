@@ -159,8 +159,7 @@ TEST(ArchiveHelperTest, SuccessfulDecompressionDirectory)
 
 TEST(ArchiveHelperTest, SuccessfulDecompressionDirectoryCustomTargetPath)
 {
-    const bool stop = false;
-    fs::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, stop, OUTPUT_DIR_PATH.string());
+    fs::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, OUTPUT_DIR_PATH.string());
 
     std::ifstream inputFile(DECOMPRESSED_OUTPUT_DIR_FILE1_PATH);
     ASSERT_TRUE(inputFile.is_open());
@@ -197,8 +196,7 @@ TEST(ArchiveHelperTest, SuccessfulDecompressionDirectoryCustomTargetPath)
 
 TEST(ArchiveHelperTest, SuccessfulDecompressionDirectoryCustomNestedTargetPaths)
 {
-    const bool stop = false;
-    fs::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, stop, OUTPUT_NESTED_DIRS_PATH.string());
+    fs::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, OUTPUT_NESTED_DIRS_PATH.string());
 
     std::ifstream inputFile(DECOMPRESSED_OUTPUT_NESTED_DIRS_FILE1_PATH);
     ASSERT_TRUE(inputFile.is_open());
@@ -237,8 +235,7 @@ TEST(ArchiveHelperTest, SuccessfulDecompressionExtractOnly)
 {
     std::vector<std::string> extractOnly;
     extractOnly.emplace_back("content_dir/content_example1.json");
-    const bool stop = false;
-    fs::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, stop, OUTPUT_DIR_PATH.string(), extractOnly);
+    fs::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, OUTPUT_DIR_PATH.string(), extractOnly);
 
     std::ifstream inputFile(DECOMPRESSED_OUTPUT_DIR_FILE1_PATH);
     ASSERT_TRUE(inputFile.is_open());

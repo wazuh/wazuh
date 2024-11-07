@@ -48,7 +48,13 @@ namespace fs
 class ArchiveHelper
 {
 private:
-    static void copyData(struct archive* archiveRead, struct archive* archiveWrite, const std::atomic<bool>& forceStop);
+    /**
+     * @brief Function that write read data to disk.
+     *
+     * @param archiveRead Read structure.
+     * @param archiveWrite Write structure.
+     */
+    static void copyData(struct archive* archiveRead, struct archive* archiveWrite);
 
 public:
     ArchiveHelper(const ArchiveHelper&) = delete;
@@ -65,7 +71,6 @@ public:
      * @param flags Extraction flags.
      */
     static void decompress(const std::string& filename,
-                           const std::atomic<bool>& forceStop = false,
                            const std::string& outputDir = "",
                            const std::vector<std::string>& extractOnly = {},
                            int flags = 0);
