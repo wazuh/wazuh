@@ -18,10 +18,10 @@ jobs:
     env:
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -33,4 +33,4 @@ jobs:
           pip install -r framework/requirements-dev.txt --no-build-isolation
 
       - name: Run API tests
-        run: python -m pytest api/api
+        run: python -m pytest api/api --ignore=test --cov=api
