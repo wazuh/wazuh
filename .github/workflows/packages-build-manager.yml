@@ -179,7 +179,7 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
-          expected_files: manager_base.csv
+          expected_files: manager_base_${{ inputs.system }}.csv
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
 
