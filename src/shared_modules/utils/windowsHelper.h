@@ -32,7 +32,6 @@
 
 /* Hotfixes APIs */
 #include <set>
-#include <regex>
 #include <wbemidl.h>
 #include <wbemcli.h>
 #include <comdef.h>

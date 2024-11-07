@@ -12,13 +12,8 @@ RUN curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && \
     ./bootstrap && make -j$(nproc) && make install && \
     ln -s /usr/local/bin/cmake /usr/bin/cmake && cd / && rm -rf cmake-*
 
-# Install wine from source
-RUN git clone https://gitlab.winehq.org/wine/wine.git -b wine-9.20 --depth 1 
-RUN apt-get update && \
-    apt-get install -y bison flex gcc-multilib g++-multilib && \
+RUN apt-get update && apt install -y wine &&\
     rm -rf /var/lib/apt/lists/*
-RUN cd wine && ./configure --without-x --without-freetype && make && make install && \
-    cd / && rm -rf wine*
 
 ADD entrypoint.sh /
 
