@@ -11,7 +11,6 @@ from opensearchpy.exceptions import TransportError, ImproperlyConfigured
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.commands import CommandsManager
-from wazuh.core.indexer.events import EventsIndex
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
@@ -50,7 +49,6 @@ class Indexer:
 
         # Register indices and plugins clients here
         self.agents = AgentsIndex(client=self._client)
-        self.events = EventsIndex(client=self._client)
         self.commands_manager = CommandsManager(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
