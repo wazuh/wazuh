@@ -322,7 +322,7 @@ if __name__ == '__main__':
     try:
         CentralizedConfig.load()
     except Exception as e:
-        print(f"Error when trying to load the Management Wazuh API. {e}")
+        print(f"Error when trying to load the configuration. {e}")
         sys.exit(1)
     management_config = CentralizedConfig.get_management_api_config()
 
