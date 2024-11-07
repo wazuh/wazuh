@@ -4,7 +4,7 @@ from typing import Optional
 
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item
 from wazuh.core.indexer.base import remove_empty_values
-from wazuh.core.indexer.models.events import AgentMetadata, ModuleName, StatefulEvent, get_module_index_name
+from wazuh.core.indexer.models.events import AgentMetadata, StatefulEvent, get_module_index_name
 
 
 class BatcherClient:
@@ -38,16 +38,21 @@ class BatcherClient:
         int
             Unique identifier assigned to the event.
         """
-        metadata = {}
-        if event.module.name == ModuleName.VULNERABILITY:
-            metadata = {'agent': asdict(agent_metadata)}
-        else:
-            metadata = {
-                'agent': {
-                    'id': agent_metadata.uuid,
-                    'groups': agent_metadata.groups
-                }
+        metadata = {
+            'agent': {
+                'id': agent_metadata.uuid,
+                'groups': agent_metadata.groups,
+                'type': agent_metadata.type,
+                'version': agent_metadata.version,
+                'host': {
+                    'architecture': agent_metadata.arch,
+                    'ip': agent_metadata.ip,
+                    'os': {
+                        'full': agent_metadata.os
+                    }
+                },
             }
+        }
 
         content = metadata | asdict(event.data, dict_factory=remove_empty_values)
         item = Item(
