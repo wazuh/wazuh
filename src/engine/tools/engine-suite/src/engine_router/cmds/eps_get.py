@@ -1,6 +1,6 @@
 import sys
 from google.protobuf.json_format import ParseDict
-from shared.dumpers import dict_to_yml
+from shared.dumpers import dict_to_str_yml
 
 from api_communication.client import APIClient
 import api_communication.proto.router_pb2 as erouter
@@ -28,7 +28,7 @@ def run(args):
     if parsed_response.status == engine.ERROR:
         sys.exit(f'Error getting EPS status: {parsed_response.error}')
 
-    data = dict_to_yml(response)
+    data = dict_to_str_yml(response)
     print(data)
 
     return 0
