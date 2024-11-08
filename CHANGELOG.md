@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - Fixed permission error on Windows 11 agents after remote upgrade. ([#25429](https://github.com/wazuh/wazuh/pull/25429))
 - Fixed increase of the variable containing file size in FIM for Windows. ([#24387](https://github.com/wazuh/wazuh/pull/24387))
 - Fixed timeout issue when upgrading Windows agent via WPK. ([#25699](https://github.com/wazuh/wazuh/pull/25699))
+- Allowed unknown syslog identifiers in Logcollector's journald reader. ([#26748](https://github.com/wazuh/wazuh/pull/26748))
 
 #### Changed
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
