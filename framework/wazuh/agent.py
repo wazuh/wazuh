@@ -302,25 +302,6 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
     return result
 
 
-# TODO(#25554): Review whether to keep this endpoint or not
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
-                  post_proc_kwargs={'exclude_codes': [1701, 1707], 'force': True})
-def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Restart all agents belonging to a node.
-
-    Parameters
-    ----------
-    agent_list : list, optional
-        List of agents. Default `None`
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    return restart_agents(agent_list=agent_list)
-
-
 @expose_resources(
     actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_kwargs={'exclude_codes': [1701]}
 )

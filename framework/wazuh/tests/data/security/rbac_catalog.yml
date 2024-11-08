@@ -139,7 +139,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/{agent_id}/restart
-          - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
       agent:upgrade:
         description: Upgrade the version of the agents
@@ -220,7 +219,6 @@ get_rbac_actions:
             - node:id:worker3
           effect: deny
         related_endpoints:
-          - PUT /agents/node/{node_id}/restart
           - GET /cluster/local/info
           - GET /cluster/local/config
           - GET /cluster/nodes

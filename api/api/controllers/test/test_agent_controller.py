@@ -41,7 +41,6 @@ with patch('wazuh.common.wazuh_uid'):
             reconnect_agents,
             restart_agent,
             restart_agents,
-            restart_agents_by_node,
         )
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -217,37 +216,6 @@ async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with({'agent_list': []})
     assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_restart_agents_by_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
-    """Verify 'restart_agents_by_node' endpoint is working as expected."""
-    with patch('api.controllers.agent_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
-        result = await restart_agents_by_node(
-                                              node_id='001')
-        f_kwargs = {'node_id': '001',
-                    'agent_list': '*'
-                    }
-        mock_dapi.assert_called_once_with(f=agent.restart_agents_by_node,
-                                          f_kwargs=mock_remove.return_value,
-                                          request_type='distributed_master',
-                                          is_async=False,
-                                          wait_for_complete=False,
-                                          logger=ANY,
-                                          rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                          nodes=mock_exc.return_value
-                                          )
-        mock_exc.assert_has_calls([call(mock_snodes.return_value),
-                                   call(mock_dfunc.return_value)])
-        assert mock_exc.call_count == 2
-        mock_remove.assert_called_once_with(f_kwargs)
-        assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio

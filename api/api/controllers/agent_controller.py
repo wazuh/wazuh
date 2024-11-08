@@ -288,43 +288,6 @@ async def restart_agents(
     return json_response(data, pretty=pretty)
 
 
-# TODO(#25554): Review whether to keep this endpoint or not
-async def restart_agents_by_node(node_id: str, pretty: bool = False,
-                                 wait_for_complete: bool = False) -> ConnexionResponse:
-    """Restart all agents belonging to a node.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node ID.
-    pretty : bool, optional
-        Show results in human-readable format. Default `False`
-    wait_for_complete : bool, optional
-        Disable timeout response. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    nodes = raise_if_exc(await get_system_nodes())
-
-    f_kwargs = {'node_id': node_id, 'agent_list': '*'}
-
-    dapi = DistributedAPI(f=agent.restart_agents_by_node,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart an agent.
 

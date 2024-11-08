@@ -46,7 +46,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             reconnect_agents,
             remove_agents_from_group,
             restart_agents,
-            restart_agents_by_node,
             upgrade_agents,
             update_group_file,
         )
@@ -249,29 +248,6 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
         assert failed_ids == set(expected_items)
     else:
         assert result.affected_items == expected_items
-
-
-@pytest.mark.parametrize('agent_list, expected_items, error_code', [])
-@pytest.mark.skip('We sould review whether to keep this endpoint or not.')
-def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
-                                      expected_items, error_code):
-    """Test `restart_agents_by_node` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'restart_agents'.
-    error_code : int
-        The expected error code.
-    """
-    result = restart_agents_by_node(agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
-    if result.failed_items:
-        code = next(iter(result.failed_items.keys())).code
-        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
 
 @pytest.mark.parametrize(

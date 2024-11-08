@@ -314,32 +314,6 @@ def test_validate_mitre(response, data, index=0):
             assert v == response.json()['data']['affected_items'][index][k]
 
 
-def test_validate_restart_by_node(response, data):
-    data = json.loads(data.replace("'", '"'))
-    affected_items = list()
-    for item in data['affected_items']:
-        if item['status'] == 'active':
-            affected_items.append(item['id'])
-    assert response.json()['data']['affected_items'] == affected_items
-    assert not response.json()['data']['failed_items']
-    healthcheck_agent_restart(response, affected_items)
-
-
-def test_validate_restart_by_node_rbac(response, permitted_agents):
-    data = response.json().get('data', None)
-    if data:
-        if data['affected_items']:
-            healthcheck_agent_restart(response, data['affected_items'])
-            for agent in data['affected_items']:
-                assert agent in permitted_agents
-        else:
-            assert data['total_affected_items'] == 0
-    else:
-        assert response.status_code == 403
-        assert response.json()['error'] == 4000
-        assert 'agent:id' in response.json()['detail']
-
-
 def test_validate_auth_context(response, expected_roles=None):
     """Check that the authorization context has been matched with the correct rules
 
