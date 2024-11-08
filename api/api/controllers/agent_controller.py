@@ -585,43 +585,6 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
     return json_response(data, pretty=pretty)
 
 
-async def get_component_stats(pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                              component: str = None) -> ConnexionResponse:
-    """Get a specified agent's component stats.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agent_id : str
-        Agent ID for which the specified component's stats are obtained. Accepted values
-        from 001 onwards.
-    component : str
-        Selected agent's component which stats are got.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the module stats.
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'component': component}
-
-    dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def delete_multiple_agent_single_group(group_id: str, agents_list: str = None, pretty: bool = False,
                                              wait_for_complete: bool = False) -> ConnexionResponse:
     """Remove agents assignment from a specified group.

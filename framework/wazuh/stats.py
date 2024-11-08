@@ -140,35 +140,3 @@ def deprecated_get_daemons_stats(filename):
     result.total_affected_items = len(result.affected_items)
 
     return result
-
-
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_component_stats_json(agent_list: list = None, component: str = None) -> AffectedItemsWazuhResult:
-    """Get statistics of an agent's component.
-
-    Parameters
-    ----------
-    agent_list: list, optional
-        List of agents ID's, by default None.
-    component: str, optional
-        Name of the component to get stats from, by default None.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Component stats.
-    """
-    result = AffectedItemsWazuhResult(all_msg='Statistical information for each agent was successfully read',
-                                      some_msg='Could not read statistical information for some agents',
-                                      none_msg='Could not read statistical information for any agent')
-    system_agents = get_agents_info()
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise exception.WazuhResourceNotFound(1701)
-            result.affected_items.append(Agent(agent_id).get_stats(component=component))
-        except exception.WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
