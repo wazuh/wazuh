@@ -46,7 +46,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_outdated_agents,
             get_upgrade_result,
             reconnect_agents,
-            remove_agent_from_groups,
             remove_agents_from_group,
             restart_agents,
             restart_agents_by_node,
@@ -676,94 +675,6 @@ async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list,
     assert result.total_failed_items == len(group_list)
     assert len(result.failed_items.keys()) == len(expected_errors)
     assert set(result.failed_items.keys()).difference(set(expected_errors)) == set()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('group_list, agent_list', [
-    (['group-1'], ['0191c87f-a892-78b1-8452-8180e261075c'])
-])
-@patch('wazuh.core.agent.Agent.get')
-@patch('wazuh.core.agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_groups', return_value={'group-1'})
-@patch('wazuh.core.indexer.create_indexer')
-async def test_agent_remove_agent_from_groups(create_indexer_mock, mock_get_groups, mock_get_agent, mock_unset,
-                                              group_list, agent_list):
-    """Test `remove_agent_from_groups` function from agent module.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of group names from where the agents will be removed.
-    agent_list : List of str
-        List of agent ID's.
-    """
-    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
-    commands_create_mock = AsyncMock(return_value=create_response)
-    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
-
-    result = await remove_agent_from_groups(agent_list=agent_list, group_list=group_list)
-    # Check typing
-    assert isinstance(result, AffectedItemsWazuhResult)
-    assert isinstance(result.affected_items, list)
-    # Check affected items
-    assert result.total_affected_items == len(result.affected_items)
-    assert set(result.affected_items).difference(set(group_list)) == set(), f'received: {result.affected_items}'
-    # Check failed items
-    assert result.total_failed_items == 0
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['any-group'], ['0191c87f-a892-78b1-8452-8180e261075c'], WazuhResourceNotFound(1701), True),
-    (['any-group'], ['0191c87f-a892-77a3-a988-b73fc8164c32'], WazuhResourceNotFound(1710), False),
-])
-@patch('wazuh.core.agent.Agent.unset_single_group_agent')
-@patch('wazuh.core.agent.Agent.get', return_value='0191c87f-a892-78b1-8452-8180e261075c')
-@patch('wazuh.agent.get_groups', return_value={'group-1'})
-@patch('wazuh.core.indexer.create_indexer')
-async def test_agent_remove_agent_from_groups_exceptions(create_indexer_mock, mock_get_groups, mock_get_agent,
-                                                         mock_unset, group_list, agent_list, expected_error,
-                                                         catch_exception):
-    """Test `remove_agent_from_groups` function from agent module raises the expected errors when using invalid group
-    or agent lists.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of group names from where the agents will be removed.
-    agent_list : List of str
-        List of agent ID's.
-    expected_error : WazuhError
-        The expected error to be raised or returned by the function.
-    catch_exception : bool
-        True if the exception will be raised by the function and must be caught. False if the function must return an
-        `AffectedItemsWazuhResult` containing the exceptions in its 'failed_items'.
-    """
-    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
-    commands_create_mock = AsyncMock(return_value=create_response)
-    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
-
-    try:
-        with patch('wazuh.core.agent.Agent.get',
-            return_value='0191c87f-a892-78b1-8452-8180e261075c',
-            side_effect=expected_error if catch_exception else None
-        ):
-            result = await remove_agent_from_groups(group_list=group_list, agent_list=agent_list)
-
-        assert not catch_exception, \
-            'An "WazuhError" exception was expected but was not raised.'
-        # Check Typing
-        assert isinstance(result, AffectedItemsWazuhResult)
-        assert isinstance(result.failed_items, dict)
-        # Check Failed Items
-        assert result.total_failed_items == len(group_list)
-        assert result.total_failed_items == len(result.failed_items)
-        assert set(result.failed_items.keys()).difference({expected_error}) == set()
-    except (WazuhError, WazuhResourceNotFound) as error:
-        assert catch_exception, \
-            'No exception should be raised at this point. An AffectedItemsWazuhResult object with at least one ' \
-            'failed item was expected instead.'
-        assert error == expected_error
 
 
 @pytest.mark.asyncio

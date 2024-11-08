@@ -7195,55 +7195,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/group:
-    delete:
-      tags:
-        - Agents
-      summary: "Remove agent from groups"
-      description: 'Remove the agent from all groups or a list of them. The agent will automatically revert to the
-      default group if it is removed from all its assigned groups'
-      operationId: api.controllers.agent_controller.delete_single_agent_multiple_groups
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
-        - $ref: '#/x-rbac-catalog/actions/group:modify_assignments'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/groups_list'
-      responses:
-        '200':
-          description: "Remove the agent from all groups"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
-              example:
-                data:
-                  affected_items:
-                    - group1
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: 'Specified agent was removed from returned groups'
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /agents/{agent_id}/key:
     get:
       tags:

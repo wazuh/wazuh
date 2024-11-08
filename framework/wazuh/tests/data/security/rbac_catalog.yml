@@ -18,35 +18,6 @@ get_rbac_actions:
         related_endpoints:
           - GET /agents
   - params:
-      endpoint: DELETE /agents/{agent_id}/group
-    result:
-      agent:modify_group:
-        description: Change the group of agents
-        resources:
-          - "agent:id"
-          - "agent:group"
-        example:
-          actions:
-            - agent:modify_group
-          resources:
-            - agent:id:004
-            - agent:group:us-east
-          effect: allow
-        related_endpoints:
-          - DELETE /agents/{agent_id}/group
-      group:modify_assignments:
-        description: Change the agents assigned to the group
-        resources:
-          - "group:id"
-        example:
-          actions:
-            - group:modify_assignments
-          resources:
-            - group:id:*
-          effect: allow
-        related_endpoints:
-          - DELETE /agents/{agent_id}/group
-  - params:
       endpoint: GET /
     result: {}
   - params:
@@ -129,7 +100,6 @@ get_rbac_actions:
             - agent:group:us-east
           effect: allow
         related_endpoints:
-          - DELETE /agents/{agent_id}/group
           - DELETE /agents/group
           - PUT /agents/group
       group:modify_assignments:
@@ -143,7 +113,6 @@ get_rbac_actions:
             - group:id:*
           effect: allow
         related_endpoints:
-          - DELETE /agents/{agent_id}/group
           - DELETE /agents/group
           - PUT /agents/group
       agent:reconnect:

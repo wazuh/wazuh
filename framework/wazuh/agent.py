@@ -844,67 +844,6 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     return result
 
 
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-@expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'exclude_codes': [1710, 1734, 1745]})
-async def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
-    """Removes an agent assignation with a list of groups.
-
-    Parameters
-    ----------
-    group_list : list
-        List of groups IDs.
-    agent_list : list
-        List with the agent ID.
-
-    Raises
-    ------
-    WazuhResourceNotFound(1701)
-        Agent was not found.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    agent_id = agent_list[0]
-    result = AffectedItemsWazuhResult(all_msg='Specified agent was removed from returned groups',
-                                      some_msg='Specified agent was not removed from some groups',
-                                      none_msg='Specified agent was not removed from any group'
-                                      )
-
-    # Check if agent exists
-    _ = await Agent.get(agent_id)
-
-    # We move default group to last position in case it is contained in group_list. When an agent is removed from all
-    # groups it is reverted to 'default'. We try default last to avoid removing it and then adding again.
-    with contextlib.suppress(ValueError):
-        group_list.append(group_list.pop(group_list.index('default')))
-
-    system_groups = get_groups()
-    for group_id in group_list:
-        try:
-            if group_id not in system_groups:
-                raise WazuhResourceNotFound(1710)
-            await Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
-            result.affected_items.append(group_id)
-        except WazuhException as e:
-            result.add_failed_item(id_=group_id, error=e)
-
-    # Create a command for the agent to request its group configuration
-    async with get_indexer_client() as indexer_client:
-        command = create_update_group_command(agent_id=agent_id)
-
-        response = await indexer_client.commands_manager.create(command)
-        if response.result is not ResponseResult.CREATED:
-            result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
-
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort()
-
-    return result
-
-
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1734]})

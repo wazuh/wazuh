@@ -154,20 +154,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: DELETE /agents/{agent_id}/group
-
-stages:
-  - name: Try to remove agent 005 from all groups
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/005/group"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /agents/{agent_id}/key
 
 stages:

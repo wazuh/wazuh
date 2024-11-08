@@ -368,45 +368,6 @@ async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False
     return json_response(data, pretty=pretty)
 
 
-async def delete_single_agent_multiple_groups(agent_id: str, groups_list: str = None, pretty: bool = False,
-                                              wait_for_complete: bool = False) -> ConnexionResponse:
-    """Remove the agent from all groups or a list of them.
-
-    The agent will automatically revert to the "default" group if it is removed from all its assigned groups.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agent_id : str
-        Agent ID. All possible values from 001 onwards.
-    groups_list : str
-        Array of groups IDs to remove the agent from.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'group_list': groups_list}
-
-    dapi = DistributedAPI(f=agent.remove_agent_from_groups,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_agent_key(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get agent key.
 
