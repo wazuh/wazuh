@@ -45,11 +45,13 @@ def _hash_key(key: str, salt: bytes) -> str:
 class OS:
     """Agent operating system information."""
     full: str = None
+    platform: str = None
 
 
 @dataclass
 class Host:
     """Agent host information."""
+    architecture: str = None
     ip: List[str] = None
     os: OS = None
 

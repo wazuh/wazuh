@@ -38,23 +38,7 @@ class BatcherClient:
         int
             Unique identifier assigned to the event.
         """
-        metadata = {
-            'agent': {
-                'id': agent_metadata.uuid,
-                'groups': agent_metadata.groups,
-                'type': agent_metadata.type,
-                'version': agent_metadata.version,
-                'host': {
-                    'architecture': agent_metadata.arch,
-                    'ip': agent_metadata.ip,
-                    'os': {
-                        'full': agent_metadata.os
-                    }
-                },
-            }
-        }
-
-        content = metadata | asdict(event.data, dict_factory=remove_empty_values)
+        content = asdict(agent_metadata) | asdict(event.data, dict_factory=remove_empty_values)
         item = Item(
             id=event.document_id,
             content=content,

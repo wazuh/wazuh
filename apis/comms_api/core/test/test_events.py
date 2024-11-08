@@ -6,7 +6,9 @@ from comms_api.models.events import StatefulEvents, StatelessEvents
 from wazuh.core.engine.models.events import StatelessEvent, Event, WazuhLocation
 from wazuh.core.indexer import Indexer
 from wazuh.core.indexer.bulk import Operation
-from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, TaskResult, StatefulEvent, ModuleName
+from wazuh.core.indexer.models.agent import Host, OS
+from wazuh.core.indexer.models.events import AgentMetadata, CommandResult, SCAEvent, TaskResult, StatefulEvent, \
+    Module, ModuleName, Result
 
 INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 
@@ -39,18 +41,36 @@ async def test_create_stateful_events(create_indexer_mock):
 
     events = StatefulEvents(
         agent=AgentMetadata(
-            uuid='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
+            id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
             groups=[],
             type='endpoint',
-            os='Debian 12',
-            platform='Linux',
-            arch='x86_64',
-            version='v5.0.0',
-            ip='127.0.0.1'
+            version='5.0.0',
+            host=Host(
+                architecture='x86_64',
+                ip='127.0.0.1',
+                os=OS(
+                    full='Debian 12',
+                    platform='Linux'
+                )
+            ),
         ),
         events=[
-            StatefulEvent(document_id='', operation=Operation.CREATE, data=SCAEvent(), module=ModuleName.SCA),
-            StatefulEvent(document_id='', operation=Operation.UPDATE, data=SCAEvent(), module=ModuleName.SCA)
+            StatefulEvent(
+                document_id='1',
+                operation=Operation.CREATE,
+                data=CommandResult(result=Result(
+                    code=200,
+                    message='',
+                    data=''
+                )),
+                module=Module(name=ModuleName.COMMAND),
+            ),
+            StatefulEvent(
+                document_id='2',
+                operation=Operation.UPDATE,
+                data=SCAEvent(),
+                module=Module(name=ModuleName.SCA),
+            )
         ]
     )
     result = await create_stateful_events(events, batcher_queue)

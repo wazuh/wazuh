@@ -4,6 +4,7 @@ import pytest
 
 from framework.wazuh.core.batcher.client import BatcherClient
 from wazuh.core.indexer.bulk import Operation
+from wazuh.core.indexer.models.agent import Host, OS
 from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, StatefulEvent, Module, ModuleName
 
 
@@ -12,14 +13,18 @@ def test_send_event(queue_mock):
     """Check that the `send_event` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
     agent_metadata = AgentMetadata(
-        uuid='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
-        groups=[],
+        id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
+        groups=['group1', 'group2'],
         type='endpoint',
-        os='Debian 12',
-        platform='Linux',
-        arch='x86_64',
-        version='v5.0.0',
-        ip='127.0.0.1'
+        version='5.0.0',
+        host=Host(
+            architecture='x86_64',
+            ip='127.0.0.1',
+            os=OS(
+                full='Debian 12',
+                platform='Linux'
+            )
+        ),
     )
     document_id = '1234'
     event = StatefulEvent(

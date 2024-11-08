@@ -9,6 +9,7 @@ from pydantic import BaseModel, model_validator
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
+from wazuh.core.indexer.models.agent import Host as AgentHost
 from wazuh.core.indexer.models.commands import Result
 
 FIM_INDEX = 'wazuh-states-fim'
@@ -27,14 +28,11 @@ INVENTORY_SYSTEM_TYPE = 'system'
 @dataclass
 class AgentMetadata:
     """Agent metadata."""
-    uuid: str
+    id: str
     groups: List[str]
-    os: str
-    platform: str
-    arch: str
     type: str
     version: str
-    ip: str
+    host: AgentHost
 
 
 @dataclass
@@ -45,14 +43,14 @@ class TaskResult:
     status: int
 
 
-class Hash:
+class Hash(BaseModel):
     """Hash data model."""
     md5: str = None
     sha1: str = None
     sha256: str = None
 
 
-class File:
+class File(BaseModel):
     """File data model."""
     attributes: List[str] = None
     name: str = None
@@ -70,7 +68,7 @@ class File:
     hash: Hash = None
 
 
-class Registry:
+class Registry(BaseModel):
     """Registry data model."""
     key: str = None
     value: str = None
@@ -87,7 +85,7 @@ class InventoryNetworkEvent(BaseModel):
     # TODO(25121): Add inventory network fields once they are defined
 
 
-class OS:
+class OS(BaseModel):
     """OS data model."""
     kernel: str = None
     full: str = None
@@ -97,14 +95,14 @@ class OS:
     type: str = None
 
 
-class Host:
+class Host(BaseModel):
     """Host data model."""
     architecture: str = None
     hostname: str = None
     os: OS = None
 
 
-class Package:
+class Package(BaseModel):
     """Package data model."""
     architecture: str = None
     description: str = None
@@ -122,17 +120,17 @@ class InventoryPackageEvent(BaseModel):
     package: Package = None
 
 
-class Parent:
+class Parent(BaseModel):
     """Process parent data model."""
     pid: float = None
 
 
-class ID:
+class ID(BaseModel):
     """Process users and groups ID data model."""
     id: str = None
 
 
-class Process:
+class Process(BaseModel):
     """Process data model."""
     pid: float = None
     name: str = None
@@ -166,12 +164,12 @@ class SCAEvent(BaseModel):
     # TODO(25121): Add SCA event fields once they are defined
 
 
-class VulnerabilityEventHost:
+class VulnerabilityEventHost(BaseModel):
     """Host data model in relation to vulnerability events."""
     os: OS = None
 
 
-class VulnerabilityEventPackage:
+class VulnerabilityEventPackage(BaseModel):
     """Package data model in relation to vulnerability events."""
     architecture: str = None
     build_version: str = None
@@ -188,30 +186,30 @@ class VulnerabilityEventPackage:
     version: str = None
 
 
-class Cluster:
+class Cluster(BaseModel):
     """Wazuh cluster data model."""
     name: str = None
     node: str = None
 
 
-class Schema:
+class Schema(BaseModel):
     """Wazuh schema data model."""
     version: str = None
 
 
-class Wazuh:
+class Wazuh(BaseModel):
     """Wazuh instance information data model."""
     cluster: Cluster = None
     schema: Schema = None
 
 
-class Scanner:
+class Scanner(BaseModel):
     """Scanner data model."""
     source: str = None
     vendor: str = None
 
 
-class Score:
+class Score(BaseModel):
     """Score data model."""
     base: float = None
     environmental: float = None
@@ -252,7 +250,7 @@ class ModuleName(str, Enum):
     COMMAND = 'command'
 
 
-class Module:
+class Module(BaseModel):
     """Stateful event module."""
     name: ModuleName
     type: str = None
