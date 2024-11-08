@@ -33,7 +33,6 @@
 | agent:delete             | agent:id  | 000,002,004,006,008,010,012             | *                                   |
 | agent:reconnect          | agent:id  | 002,003,005,006,007,008,010             | *                                   |
 | agent:restart            | agent:id  | 002,003,005,006,007,008,010             | *                                   |
-| agent:upgrade            | agent:id  |                                         | *                                   |
 | agent:modify_group       | agent:id  | 004,005,009,010                         | *                                   |
 | agent:create             | *         |                                         | *                                   |
 | group:read               | group:id  | group2,group3                           | *                                   |

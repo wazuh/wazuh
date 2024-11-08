@@ -134,20 +134,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /agents/{agent_id}/restart
           - PUT /agents/restart
-      agent:upgrade:
-        description: Upgrade the version of the agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - agent:upgrade
-          resources:
-            - agent:id:001
-            - agent:group:mediterranean
-          effect: allow
-        related_endpoints:
-          - GET /agents/upgrade_result
       group:delete:
         description: Delete agent groups
         resources:

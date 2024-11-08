@@ -1035,35 +1035,6 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /agents/upgrade_result
-
-stages:
-
-  - name: Get upgrade result from agents list (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "005,006,007,008"
-    response:
-      status_code: 200
-
-  - name: Try get upgrade result agents 003 and 004 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: "003,004"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /agents (deny cluster:read)
 
 stages:

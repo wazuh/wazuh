@@ -134,15 +134,6 @@ x-rbac-catalog:
         actions: ['group:modify_assignments']
         resources: ['group:id:*']
         effect: "allow"
-    'agent:upgrade':
-      description: "Upgrade the version of the agents"
-      resources:
-       - $ref: '#/x-rbac-catalog/resources/agent:id'
-       - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['agent:upgrade']
-        resources: ['agent:id:001', 'agent:group:mediterranean']
-        effect: "allow"
     'agent:reconnect':
       description: "Force reconnect agents"
       resources:
@@ -7075,65 +7066,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/upgrade_result:
-    get:
-      tags:
-        - Agents
-      summary: "Get upgrade results"
-      description: "Return the agents upgrade results"
-      operationId: api.controllers.agent_controller.get_agent_upgrade
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/os.platform'
-        - $ref: '#/components/parameters/os.version'
-        - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
-        - $ref: '#/components/parameters/version'
-        - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/ip'
-        - $ref: '#/components/parameters/registerIP'
-      responses:
-        '200':
-          description: "Get agent upgrade results"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - message: "Success"
-                      agent: "001"
-                      task_id: 1
-                      node: "worker1"
-                      module: "upgrade_module"
-                      command: "upgrade"
-                      status: "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
-                      create_time: "2020-11-03T15:59:32Z"
-                      update_time: "2020-11-03T16:01:55Z"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All upgrade tasks were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /agents/group:
     delete:
       tags:
@@ -13975,7 +13907,6 @@ paths:
                                     - agent:modify_group
                                     - agent:reconnect
                                     - agent:restart
-                                    - agent:upgrade
                                   resources:
                                     - agent:id:*
                                     - agent:group:*
@@ -15056,7 +14987,6 @@ paths:
                           - "agent:modify_group"
                           - "agent:reconnect"
                           - "agent:restart"
-                          - "agent:upgrade"
                         resources:
                           - "agent:id:*"
                           - "agent:id:*"

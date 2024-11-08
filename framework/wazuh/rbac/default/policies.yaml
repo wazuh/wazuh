@@ -18,7 +18,6 @@ default_policies:
           - agent:modify_group
           - agent:reconnect
           - agent:restart
-          - agent:upgrade
         resources:
           - agent:id:*
           - agent:group:*
