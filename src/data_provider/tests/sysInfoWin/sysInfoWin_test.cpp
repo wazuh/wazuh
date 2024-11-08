@@ -9,13 +9,17 @@
  * Foundation.
  */
 
-#include "sysInfoWin_test.h"
+
+#include <set>
+#include <stdio.h>
+#include "sysInfoWin.h"
 #include "packages/packagesWindowsParserHelper.h"
+#include "sysInfoWin_test.h"
 
 void SysInfoWinTest::SetUp() {};
 
-void SysInfoWinTest::TearDown()
-{};
+void SysInfoWinTest::TearDown() {};
+
 
 TEST_F(SysInfoWinTest, test_extract_HFValue_7618)
 {
@@ -101,4 +105,73 @@ TEST_F(SysInfoWinTest, testHF_PRODUCT_Valids_Format)
         EXPECT_FALSE(std::regex_match(hf, std::regex(KB_NO_NUMBERS_FORMAT_REGEX)));
         EXPECT_FALSE(std::regex_match(hf, std::regex(KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX)));
     }
+}
+
+
+// Test for normal case: Check if the function correctly populates hotfixSet
+TEST_F(SysInfoWinTest, PopulatesWMIHotfixSetCorrectly)
+{
+    std::set<std::string> hotfixSet;
+    HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+    EXPECT_TRUE(SUCCEEDED(hres)) << "COM Initialization failed with HRESULT: " << std::hex << hres;
+
+    // Call the function to populate hotfixSet
+    QueryWMIHotFixes(hotfixSet);
+    //QueryWUHotFixes(hotfixSet);
+
+    constexpr auto KB_FORMAT_REGEX_OK { "(KB+[0-9]{6,})"};
+    constexpr auto KB_ONLY_FORMAT_REGEX { "(KB)"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
+
+    for (const auto& hf : hotfixSet)
+    {
+        EXPECT_TRUE(std::regex_match(hf, std::regex(KB_FORMAT_REGEX_OK)));
+        EXPECT_FALSE(std::regex_match(hf, std::regex(KB_ONLY_FORMAT_REGEX)));
+        EXPECT_FALSE(std::regex_match(hf, std::regex(KB_NO_NUMBERS_FORMAT_REGEX)));
+        EXPECT_FALSE(std::regex_match(hf, std::regex(KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX)));
+    }
+
+    // Uninitialize COM
+    CoUninitialize();
+}
+
+TEST_F(SysInfoWinTest, InitializationWMIError)
+{
+    std::set<std::string> hotfixSet;
+    // Skip calling CoInitialize here to intentionally trigger an initialization error.
+    EXPECT_THROW(QueryWMIHotFixes(hotfixSet), std::runtime_error);
+}
+
+TEST_F(SysInfoWinTest, PopulatesWUHHotfixSetCorrectly)
+{
+    std::set<std::string> hotfixSet;
+    // Initialize COM
+    HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+    EXPECT_TRUE(SUCCEEDED(hres)) << "COM Initialization failed with HRESULT: " << std::hex << hres;
+
+    QueryWUHotFixes(hotfixSet);
+
+    constexpr auto KB_FORMAT_REGEX_OK { "(KB+[0-9]{6,})"};
+    constexpr auto KB_ONLY_FORMAT_REGEX { "(KB)"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
+
+    for (const auto& hf : hotfixSet)
+    {
+        EXPECT_TRUE(std::regex_match(hf, std::regex(KB_FORMAT_REGEX_OK)));
+        EXPECT_FALSE(std::regex_match(hf, std::regex(KB_ONLY_FORMAT_REGEX)));
+        EXPECT_FALSE(std::regex_match(hf, std::regex(KB_NO_NUMBERS_FORMAT_REGEX)));
+        EXPECT_FALSE(std::regex_match(hf, std::regex(KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX)));
+    }
+
+    // Uninitialize COM
+    CoUninitialize();
+}
+
+TEST_F(SysInfoWinTest, InitializationWUHError)
+{
+    std::set<std::string> hotfixSet;
+    // Skip calling CoInitialize here to intentionally trigger an initialization error.
+    EXPECT_THROW(QueryWUHotFixes(hotfixSet), std::runtime_error);
 }
