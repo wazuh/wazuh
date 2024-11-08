@@ -612,7 +612,7 @@ void runStart(ConfHandler confManager)
                                   });
 
             LOG_DEBUG("API Server configured.");
-
+            // clang-format off
             /**
              * @api {post} /events/stateless Receive Events for Security Policy Processing
              * @apiName ReceiveEvents
@@ -620,36 +620,40 @@ void runStart(ConfHandler confManager)
              * @apiVersion 0.1.1-alpha
              *
              * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
-             * accepts a JSON payload representing the event details.
+             * accepts a NDJSON payload where each line represents an object.
              * @apiHeader {String} Content-Type=application/x-ndjson The content type of the request.
-             * @apiHeader {String} User-Agent= <name> <type> <version> Agent data split by spaces.
-             * @apiHeader {String} Agent-Groups= <group1>,<group2> Agent groups separated by commas.
-             * @apiBody {Object} log Log information.
-             * @apiBody {Object} log.file File information.
-             * @apiBody {String} (log.file.path) Path to the file, "/path/to/source".
-             * @apiBody {Object} base The base field set contains all fields which are at the root of the events.
-             * @apiBody {String} base.tags List of keywords used to tag each event. (e.g ["production", "env2"])
-             * @apiBody {Object} event Details of the event itself.
-             * @apiBody {String} event.original The original message collected from the agent.
-             * @apiBody {String} event.ingested Timestamp when an event arrived in the wazuh-agent.
-             * @apiBody {String} event.module Name of the module this data is coming from. (e.g. apache, eventchannel,
+             *
+             * @apiBody (Agent Information) {Object} agent Agent information.
+             * @apiBody (Agent Information) {String} agent.uuid Unique identifier for the agent.
+             * @apiBody (Agent Information) {Array} agent.groups Array of groups the agent belongs to.
+             * @apiBody (Agent Information) {String} agent.os Operating system name, e.g., "Amazon Linux 2".
+             * @apiBody (Agent Information) {String} agent.platform Platform type, e.g., "Linux".
+             * @apiBody (Agent Information) {String} agent.type Type of agent, e.g., "Endpoint".
+             * @apiBody (Agent Information) {String} agent.version Version of the agent software.
+             * @apiBody (Agent Information) {String} agent.ip IP address of the agent.
+             *
+             * @apiBody (Module Information) {Object} module Module information.
+             * @apiBody (Module Information) {String} module.module Name of the module, e.g., "logcollector" or "inventory".
+             * @apiBody (Module Information) {String} module.type Type of module, e.g., "file" or "package".
+             *
+             * @apiBody (Log Information) {Object} log Log information.
+             * @apiBody (Log Information) {Object} log.file File information.
+             * @apiBody (Log Information) {String} log.file.path Path to the file, "/path/to/source".
+             * @apiBody (Log Information) {Object} base The base field set contains all fields which are at the root of the events.
+             * @apiBody (Log Information) {String} base.tags List of keywords used to tag each event. (e.g ["production", "env2"])
+             * @apiBody (Log Information) {Object} event Details of the event itself.
+             * @apiBody (Log Information) {String} event.original The original message collected from the agent.
+             * @apiBody (Log Information) {String} event.ingested Timestamp when an event arrived in the wazuh-agent.
+             * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g. apache, eventchannel,
              * journald, etc)
-             * @apiBody {String} event.provider Source of the event. (e.g channel, file, journald unit, etc)
+             * @apiBody (Log Information) {String} event.provider Source of the event. (e.g channel, file, journald unit, etc)
              *
              * @apiExample {ndjson} Request-Example:
-             *     {"base": {"tags": ["security", "policy_check"]}, "event": {"original": "<?xml version=\"1.0\"
-             * encoding=\"utf-8\" standalone=\"yes\"?><Events><Event
-             * xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\"><System><Provider
-             * Name=\"Microsoft-Windows-Eventlog\"
-             * Guid=\"{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}\"></Provider><EventID>1100</EventID><Version>0</Version><Level>4</Level><Task>103</Task><Opcode>0</Opcode><Keywords>0x4020000000000000</Keywords><TimeCreated
-             * SystemTime=\"2023-11-07T10:12:04.123456Z\"></TimeCreated><EventRecordID>14257</EventRecordID><Correlation></Correlation><Execution
-             * ProcessID=\"123\"
-             * ThreadID=\"456\"></Execution><Channel>Security</Channel><Computer>WIN-TEST.local</Computer><Security></Security></System><UserData><ServiceShutdown
-             * xmlns=\"http://manifests.microsoft.com/win/2004/08/windows/eventlog\"></ServiceShutdown></UserData></Event></Events>",
-             * "ingested": "2024-11-01T14:23:40Z", "module": "eventchannel", "provider": "Microsoft-Windows-Eventlog"}}
-             *     {"log": {"file": {"path": "/var/log/apache/access.log"}}, "base": {"tags": ["web", "access_log"]},
-             * "event": {"original": "192.168.1.1 - - [01/Nov/2024:14:23:50 +0000] \"GET /index.html HTTP/1.1\" 200
-             * 1043", "ingested": "2024-11-01T14:23:50Z", "module": "apache", "provider": "access_log"}}
+             *     {"agent": {"uuid": "UUID", "groups": [], "os": "Amazon Linux 2", "platform": "Linux", "type": "Endpoint", "version": "5.0.0", "ip": "192.168.1.2"}}
+             *     {"module": "logcollector", "type": "file"}
+             *     {"log": {"file": {"path": "string"}}, "base": {"tags": "string"}, "event": {"original": "string", "ingested": "string", "module": "string", "provider": "string"}}
+             *     {"module": "inventory", "type": "package"}
+             *     {"base": {"tags": "string"}, "event": {"original": "string", "ingested": "string", "module": "string", "provider": "string"}}
              *
              * @apiSuccessExample Success-Response:
              *     HTTP/1.1 204 No Content
@@ -664,6 +668,7 @@ void runStart(ConfHandler confManager)
              *       "code": 400
              *     }
              */
+            // clang-format on
             g_apiServer->addRoute(apiserver::Method::POST,
                                   "/events/stateless",
                                   [orchestrator](const auto& req, auto& res)
