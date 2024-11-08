@@ -8,6 +8,11 @@ enable_testing()
 # Defs
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
+
+add_library(fs_ifs INTERFACE)
+target_include_directories(fs_ifs INTERFACE ${IFACE_DIR})
+add_library(fs::ifs ALIAS fs_ifs)
 
 add_library(${PROJECT_NAME} STATIC
     ${SRC_DIR}/archiveHelper.cpp
@@ -23,6 +28,8 @@ target_include_directories(${PROJECT_NAME}
     ${SRC_DIR}
 )
 target_link_libraries(${PROJECT_NAME}
+    PUBLIC
+    fs::ifs
     PRIVATE
     liblzma::liblzma
     LibArchive::LibArchive

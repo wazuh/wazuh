@@ -14,8 +14,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "iDataCollector.hpp"
-#include "iDataProvider.hpp"
+#include <fs/iDataCollector.hpp>
+#include <fs/iDataProvider.hpp>
+
 #include "lzma.h"
 
 namespace fs::xz
