@@ -7,10 +7,10 @@ from engine_kvdb.cmds.manager_list import configure as configure_manager_list
 from engine_kvdb.cmds.manager_create import configure as configure_manager_create
 from engine_kvdb.cmds.manager_delete import configure as configure_manager_delete
 from engine_kvdb.cmds.manager_dump import configure as configure_manager_dump
-#from engine_kvdb.cmds.get import configure as configure_get
-#from engine_kvdb.cmds.search import configure as configure_search
-#from engine_kvdb.cmds.remove import configure as configure_remove
-#from engine_kvdb.cmds.upsert import configure as configure_upsert
+from engine_kvdb.cmds.db_get import configure as configure_get
+from engine_kvdb.cmds.db_search import configure as configure_search
+from engine_kvdb.cmds.db_remove import configure as configure_remove
+from engine_kvdb.cmds.db_upsert import configure as configure_upsert
 
 
 
@@ -32,10 +32,10 @@ def parse_args():
     configure_manager_create(subparsers)
     configure_manager_delete(subparsers)
     configure_manager_dump(subparsers)
-    # configure_get(subparsers)
-    # configure_search(subparsers)
-    # configure_remove(subparsers)
-    # configure_upsert(subparsers)
+    configure_get(subparsers)
+    configure_search(subparsers)
+    configure_remove(subparsers)
+    configure_upsert(subparsers)
 
     return parser.parse_args()
 
