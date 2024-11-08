@@ -309,20 +309,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/stats/distinct
-
-stages:
-  - name: Try to return all different combinations that agents have
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
----
 test_name: GET /agents/summary/os
 
 stages:

@@ -305,34 +305,6 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/stats/distinct
-
-stages:
-
- - name: Get the different combinations for os.platform (Partially allowed, user agnostic)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-     params:
-       limit: 2
-       fields: os.platform
-   response:
-     status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - count: 6
-             os:
-               platform: !anystr
-         failed_items: []
-         total_affected_items: !anyint
-         total_failed_items: 0
-
----
 test_name: GET /agents/summary/status
 
 stages:

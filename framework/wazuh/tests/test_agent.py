@@ -39,7 +39,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agents_in_group,
             get_agents_summary_os,
             get_agents_summary_status,
-            get_distinct_agents,
             get_full_overview,
             get_upgrade_result,
             reconnect_agents,
@@ -72,53 +71,6 @@ def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
     return ['ok', dumps(result)] if raw else result
-
-
-@pytest.mark.parametrize('fields, expected_items', [
-    (
-            ['os.platform'],
-            [{'os': {'platform': 'ubuntu'}, 'count': 3}, {'os': {'platform': 'N/A'}, 'count': 2}]
-    ),
-    (
-            ['version'],
-            [{'version': 'Wazuh v3.8.2', 'count': 2},
-             {'version': 'Wazuh v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2}]
-    ),
-    (
-            ['os.platform', 'os.major'],
-            [{'count': 1, 'os': {'major': '18', 'platform': 'ubuntu'}},
-             {'count': 2, 'os': {'major': '16', 'platform': 'ubuntu'}},
-             {'count': 2, 'os': {'major': 'N/A', 'platform': 'N/A'}}]
-    ),
-    (
-            ['node_name'],
-            [{'node_name': 'unknown', 'count': 2}, {'node_name': 'node01', 'count': 3   }]
-    ),
-    (
-            ['os.name', 'os.platform', 'os.version'],
-            [{'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.08.1 LTS'}},
-             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.06.1 LTS'}},
-             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},
-             {'count': 2, 'os': {'name': 'N/A', 'platform': 'N/A', 'version': 'N/A'}}]
-    ),
-])
-@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@pytest.mark.skip('Remove tested function or update it to use the indexer.')
-def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_items):
-    """Test `get_distinct_agents` function from agent module.
-
-    Parameters
-    ----------
-    fields : list
-        List of fields to check their values.
-    expected_items : list
-        List of expected values for the provided fields.
-    """
-    distinct = get_distinct_agents(short_agent_list, fields=fields, sort={'fields': fields, 'order': 'desc'})
-    assert isinstance(distinct, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert distinct.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)

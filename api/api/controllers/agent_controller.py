@@ -894,59 +894,6 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
     return json_response(data, pretty=pretty)
 
 
-async def get_agent_fields(pretty: bool = False, wait_for_complete: bool = False, fields: str = None,
-                           offset: int = 0, limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
-                           q: str = None) -> ConnexionResponse:
-    """Get distinct fields in agents.
-
-    Returns all the different combinations that agents have for the selected fields. It also indicates the total number
-    of agents that have each combination.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    fields : str
-        List of fields affecting the operation.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return.
-    sort : str
-        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-        ascending or descending order.
-    search : str
-        Looks for elements with the specified string.
-    q : str
-        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'fields': fields,
-                'q': q}
-
-    dapi = DistributedAPI(f=agent.get_distinct_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_agent_summary_status(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get agents status summary.
 
