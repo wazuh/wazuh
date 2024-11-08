@@ -236,15 +236,6 @@
                 ]
             },
             {
-                "name": "overview_controller.py",
-                "tag": "overview",
-                "tests": [
-                    "test_overview_endpoints.tavern.yaml",
-                    "test_rbac_black_overview_endpoints.tavern.yaml",
-                    "test_rbac_white_overview_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "rootcheck_controller.py",
                 "tag": "rootcheck",
                 "tests": [
@@ -1378,7 +1369,6 @@
                     "test_rbac_black_logtest_endpoints.tavern.yaml",
                     "test_rbac_black_manager_endpoints.tavern.yaml",
                     "test_rbac_black_mitre_endpoints.tavern.yaml",
-                    "test_rbac_black_overview_endpoints.tavern.yaml",
                     "test_rbac_black_rootcheck_endpoints.tavern.yaml",
                     "test_rbac_black_sca_endpoints.tavern.yaml",
                     "test_rbac_black_security_endpoints.tavern.yaml",
@@ -1395,7 +1385,6 @@
                     "test_rbac_white_logtest_endpoints.tavern.yaml",
                     "test_rbac_white_manager_endpoints.tavern.yaml",
                     "test_rbac_white_mitre_endpoints.tavern.yaml",
-                    "test_rbac_white_overview_endpoints.tavern.yaml",
                     "test_rbac_white_rootcheck_endpoints.tavern.yaml",
                     "test_rbac_white_sca_endpoints.tavern.yaml",
                     "test_rbac_white_security_endpoints.tavern.yaml",
@@ -1656,13 +1645,6 @@
                 ]
             },
             {
-                "name": "test_overview_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_overview_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "test_rbac_black_active_response_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
@@ -1723,13 +1705,6 @@
                 "tag": "test",
                 "tests": [
                     "test_rbac_black_mitre_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "test_rbac_black_overview_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_black_overview_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -1842,13 +1817,6 @@
                 "tag": "test",
                 "tests": [
                     "test_rbac_white_mitre_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "test_rbac_white_overview_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_white_overview_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -2487,25 +2455,6 @@
                 "tag": "black",
                 "tests": [
                     "test_rbac_black_mitre_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "api/test/integration/env/configurations/rbac/overview",
-        "files": [
-            {
-                "name": "black_config.yaml",
-                "tag": "black",
-                "tests": [
-                    "test_rbac_black_overview_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "white_config.yaml",
-                "tag": "white",
-                "tests": [
-                    "test_rbac_white_overview_endpoints.tavern.yaml"
                 ]
             }
         ]

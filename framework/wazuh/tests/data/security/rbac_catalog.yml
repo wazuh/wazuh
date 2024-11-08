@@ -67,7 +67,6 @@ get_rbac_actions:
           - GET /agents/summary/os
           - GET /agents/summary/status
           - GET /groups/{group_id}/agents
-          - GET /overview/agents
       agent:create:
         description: Create new agents
         resources:
@@ -179,7 +178,6 @@ get_rbac_actions:
           - GET /groups
           - GET /groups/{group_id}/agents
           - GET /groups/{group_id}/configuration
-          - GET /overview/agents
       group:create:
         description: Create new agent groups
         resources:

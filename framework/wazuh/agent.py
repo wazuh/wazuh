@@ -1058,31 +1058,3 @@ async def update_group_file(group_list: list = None, file_data: str = None) -> W
     group_id = group_list[0]
 
     return WazuhResult({'message': configuration.update_group_file(group_id, file_data)})
-
-
-def get_full_overview() -> WazuhResult:
-    """Get information about agents.
-
-    Returns
-    -------
-    WazuhResult
-        WazuhResult object with information about agents.
-    """
-    # Get information from different methods of Agent class
-    stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
-    groups = get_agent_groups().affected_items
-    stats_distinct_os = get_distinct_agents(fields=['os.name',
-                                                    'os.platform', 'os.version']).affected_items
-    stats_version = get_distinct_agents(fields=['version']).affected_items
-    agent_summary_status = get_agents_summary_status()
-    summary = agent_summary_status['data'] if 'data' in agent_summary_status else dict()
-    try:
-        last_registered_agent = [get_agents(limit=1,
-                                            sort={'fields': ['dateAdd'], 'order': 'desc'}).affected_items[0]]
-    except IndexError:  # an IndexError could happen if there are not registered agents
-        last_registered_agent = []
-    # combine results in an unique dictionary
-    result = {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
-              'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
-
-    return WazuhResult({'data': result})

@@ -39,7 +39,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agents_in_group,
             get_agents_summary_os,
             get_agents_summary_status,
-            get_full_overview,
             get_upgrade_result,
             reconnect_agents,
             remove_agents_from_group,
@@ -912,67 +911,6 @@ async def test_agent_upload_group_file(mock_update, group_list):
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'message' in result.dikt
     assert result.dikt['message'] == expected_msg
-
-
-@pytest.mark.parametrize('agent_list, group_list, index_error, last_agent', [
-    (['001'], ['group-2'], False, '001'),
-    (['001', '002'], ['group-2', 'group-1'], False, '002'),
-    (['001', '002', '003'], ['group-2', 'group-1'], False, '002'),
-    (full_agent_list, ['group-1'], False, '004'),
-    (full_agent_list, ['group-1'], True, None)
-])
-@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
-@patch('wazuh.agent.get_distinct_agents')
-@patch('wazuh.agent.get_agent_groups')
-@patch('wazuh.agent.get_agents_summary_status')
-@patch('wazuh.agent.get_agents')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@pytest.mark.skip('Define if we will keep this function')
-def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock, group_mock, distinct_mock, agent_list,
-                                 group_list, index_error, last_agent):
-    """Test `get_full_overview` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    group_list : List of str
-        List of group names.
-    index_error : bool
-        True if an `index_error` exception must be raised, False otherwise.
-    last_agent : str
-        ID of the last registered agent.
-    """
-    expected_fields = ['nodes', 'groups', 'agent_os', 'agent_status', 'agent_version', 'last_registered_agent']
-
-    def mocked_get_distinct_agents(fields):
-        return get_distinct_agents(agent_list=agent_list, fields=fields)
-
-    def mocked_get_agent_groups():
-        return get_agent_groups(group_list=group_list)
-
-    def mocked_get_agents_summary_status():
-        return get_agents_summary_status(agent_list=agent_list)
-
-    def mocked_get_agents(limit, sort):
-        if index_error:
-            raise IndexError()
-        else:
-            return get_agents(agent_list=agent_list, limit=limit, sort=sort)
-
-    distinct_mock.side_effect = mocked_get_distinct_agents
-    group_mock.side_effect = mocked_get_agent_groups
-    summary_mock.side_effect = mocked_get_agents_summary_status
-    get_mock.side_effect = mocked_get_agents
-    result = get_full_overview()
-    assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert set(result.dikt['data'].keys()) == set(expected_fields)
-    if index_error:
-        assert len(result.dikt['data']['last_registered_agent']) == 0
-    else:
-        assert result.dikt['data']['last_registered_agent'][0]['id'] == last_agent
-
 
 @pytest.fixture(scope='module')
 def insert_agents_db(n_agents=100000):
