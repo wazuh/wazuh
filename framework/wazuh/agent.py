@@ -1130,42 +1130,6 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agent_config(agent_list: list = None, component: str = None, config: str = None) -> WazuhResult:
-    """Read selected configuration from agent.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agents ID's.
-    component : str
-        Selected component.
-    config : str
-        Configuration to get, written on disk.
-
-    Raises
-    ------
-    WazuhError(1740)
-        If the agent is not active.
-
-    Returns
-    -------
-    WazuhResult
-        Loaded configuration in JSON.
-    """
-    # We access unique agent_id from list, this may change if and when we decide a final way to handle get responses
-    # with failed ids and a list of agents
-    agent_id = agent_list[0]
-    my_agent = Agent(agent_id)
-    my_agent.load_info_from_db()
-
-    if my_agent.status != "active":
-        raise WazuhError(1740)
-
-    return WazuhResult(
-        {'data': my_agent.get_config(component=component, config=config, agent_version=my_agent.version)})
-
-
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 async def get_group_conf(group_list: list = None) -> WazuhResult:
     """Read the configuration of the specified group.

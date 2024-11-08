@@ -64,7 +64,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /agents
-          - GET /agents/{agent_id}/config/{component}/{configuration}
           - GET /agents/{agent_id}/daemons/stats
           - GET /agents/{agent_id}/stats/{component}
           - GET /agents/no_group

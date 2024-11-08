@@ -34,7 +34,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             delete_agents,
             delete_groups,
             get_group_conf,
-            get_agent_config,
             get_agent_groups,
             get_agents,
             get_agents_in_group,
@@ -971,52 +970,6 @@ def test_agent_get_upgrade_result(mock_socket, mock_wdb, mock_client_keys, agent
             for i, error in enumerate(error_codes_in_failed_items):
                 errors_and_items[str(error)] = failed_items[i]
             assert expected_errors_and_items == errors_and_items
-
-
-@pytest.mark.parametrize('agent_list, component, configuration', [
-    (['001'], 'logcollector', 'internal')
-])
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@patch('os.path.exists')
-def test_agent_get_agent_config(mock_exists, socket_mock, send_mock, wazuh_socket_mock, agent_list, component, configuration):
-    """Test `get_agent_config` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    component : str
-        Name of the component.
-    configuration : str
-        Name of the configuration file.
-    """
-    wazuh_socket_mock.return_value.receive.return_value = b'ok {"test": "conf"}'
-
-    result = get_agent_config(agent_list=agent_list, component=component, config=configuration)
-    assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert result.dikt['data'] == {"test": "conf"}, 'Result message is not as expected.'
-
-
-@pytest.mark.parametrize('agent_list', [
-    ['005']
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
-    """Test `get_agent_config` function from agent module raises the expected exceptions when using invalid parameters.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    """
-    try:
-        get_agent_config(agent_list=agent_list)
-        pytest.fail('An exception should be raised.')
-    except WazuhError as error:
-        assert error == WazuhError(1740)
 
 
 @pytest.mark.parametrize('group_list', [

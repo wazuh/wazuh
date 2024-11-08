@@ -7132,69 +7132,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/config/{component}/{configuration}:
-    get:
-      tags:
-        - Agents
-      summary: "Get active configuration"
-      description: "Return the active configuration the agent is currently using. This can be different from the
-      configuration present in the configuration file, if it has been modified and the agent has not been restarted yet"
-      operationId: api.controllers.agent_controller.get_agent_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/component'
-        - $ref: '#/components/parameters/configuration'
-      responses:
-        '200':
-          description: "Get agent configuration"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AgentConfiguration'
-              example:
-                data:
-                  client:
-                    config-profile: "ubuntu, ubuntu20, ubuntu20.04"
-                    notify_time: 10
-                    time-reconnect: 60
-                    force_reconnect_interval: 0
-                    ip_update_interval: 0
-                    auto_restart: "yes"
-                    remote_conf: "yes"
-                    crypto_method: "aes"
-                    server:
-                      - address: "nginx-lb/172.25.0.4"
-                        port: 1514
-                        max_retries: 5
-                        retry_interval: 10
-                        protocol: tcp
-                    enrollment:
-                      - enabled: "yes"
-                        delay_after_enrollment: 20
-                        port: 1515
-                        ssl_cipher: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-                        auto_method: "no"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /agents/{agent_id}/restart:
     put:
       tags:

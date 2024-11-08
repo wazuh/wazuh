@@ -23,7 +23,6 @@ with patch('wazuh.common.wazuh_uid'):
             delete_agents,
             delete_groups,
             delete_multiple_agent_single_group,
-            get_agent_config,
             get_agent_fields,
             get_agent_no_group,
             get_agent_outdated,
@@ -251,37 +250,6 @@ async def test_restart_agents_by_node(mock_exc, mock_dapi, mock_remove, mock_dfu
         assert mock_exc.call_count == 2
         mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.agent_controller.check_component_configuration_pair')
-async def test_get_agent_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
-                               mock_request):
-    """Verify 'get_agent_config' endpoint is working as expected."""
-    kwargs_param = {'configuration': 'configuration_value'
-                    }
-    result = await get_agent_config(**kwargs_param)
-    f_kwargs = {'agent_list': [None],
-                'component': None,
-                'config': kwargs_param.get('configuration', None)
-                }
-    mock_dapi.assert_called_once_with(f=agent.get_agent_config,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio
