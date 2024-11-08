@@ -4387,8 +4387,10 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
    - id: 18698
@@ -4407,8 +4409,10 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)
    - id: 18699
@@ -4427,8 +4431,9 @@ checks:
        - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare =0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
    - id: 18700
@@ -4522,8 +4527,10 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix.so && r:use_authtok'
 
   # 5.3.3.4.1 Ensure pam_unix does not include nullok. (Automated)
    - id: 18705
