@@ -38,7 +38,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agent_groups,
             get_agents,
             get_agents_in_group,
-            get_agents_keys,
             get_agents_summary_os,
             get_agents_summary_status,
             get_distinct_agents,
@@ -352,33 +351,6 @@ async def test_agent_get_agents_in_group(create_indexer_mock, mock_get_groups, g
         # If not `group_exists`, expect an error
         with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
             await get_agents_in_group(group_list=[group])
-
-
-@pytest.mark.parametrize('agent_list, expected_items', [
-    (['001', '002', '003'], ['001', '002', '003']),
-    (['001', '400', '002', '500'], ['001', '002'])
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@pytest.mark.skip('Remove tested function or update it to use the indexer.')
-def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_items):
-    """Test `get_agents_keys` from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'get_agents_keys'.
-    """
-    agent_keys = get_agents_keys(agent_list=agent_list)
-    assert agent_keys.affected_items
-    assert len(agent_keys.affected_items) == len(expected_items)
-    for expected_id, agent in zip(expected_items, agent_keys.affected_items):
-        assert expected_id == agent['id']
-        assert agent['key']
-        if agent_keys.failed_items:
-            assert (failed_item.message == 'Agent does not exist' for failed_item in agent_keys.failed_items.keys())
 
 
 @pytest.mark.parametrize(

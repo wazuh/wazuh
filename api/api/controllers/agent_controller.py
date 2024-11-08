@@ -368,38 +368,6 @@ async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False
     return json_response(data, pretty=pretty)
 
 
-async def get_agent_key(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get agent key.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agent_id : str
-        Agent ID. All possible values from 001 onwards.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the specified agent's key.
-    """
-    f_kwargs = {'agent_list': [agent_id]}
-
-    dapi = DistributedAPI(f=agent.get_agents_keys,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart an agent.
 

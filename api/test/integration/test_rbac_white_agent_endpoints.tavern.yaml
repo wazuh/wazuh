@@ -154,39 +154,6 @@ stages:
       status_code: 200
 
 ---
-test_name: GET /agents/{agent_id}/key
-
-stages:
-
- - name: Try get key agent 005 (Denied)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/005/key"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-      <<: *permission_denied
-
- - name: Get agent key for 006 (Allowed)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/006/key"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - id: '006'
-         failed_items: []
-         total_affected_items: 1
-         total_failed_items: 0
-
----
 test_name: GET /agents/{agent_id}/daemons/stats
 
 stages:

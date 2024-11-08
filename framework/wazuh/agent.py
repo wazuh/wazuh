@@ -434,39 +434,6 @@ async def get_agents_in_group(group_list: list, offset: int = 0, limit: int = No
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701]})
-def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Get the key of existing agents.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agents ID's.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    result = AffectedItemsWazuhResult(all_msg='Obtained keys for all selected agents',
-                                      some_msg='Some agent keys were not obtained',
-                                      none_msg='No agent keys were obtained'
-                                      )
-    system_agents = get_agents_info()
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            result.affected_items.append({'id': agent_id, 'key': Agent(agent_id).get_key()})
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=lambda i: i['id'])
-
-    return result
-
-
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
 async def delete_agents(agent_list: list, filters: Optional[dict] = None,) -> AffectedItemsWazuhResult:

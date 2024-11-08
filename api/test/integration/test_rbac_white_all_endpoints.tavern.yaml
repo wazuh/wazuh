@@ -154,20 +154,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/{agent_id}/key
-
-stages:
-  - name: Try get agent's 001 key
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: PUT /agents/{agent_id}/restart
 
 stages:
