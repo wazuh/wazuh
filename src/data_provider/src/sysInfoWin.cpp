@@ -43,6 +43,15 @@
 #include "packages/modernPackageDataRetriever.hpp"
 
 
+/* Hotfixes APIs */
+#include <set>
+#include <wbemidl.h>
+#include <wbemcli.h>
+#include <comdef.h>
+#include <codecvt>
+#include "wuapi.h"
+
+
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
 constexpr auto SYSTEM_IDLE_PROCESS_NAME {"System Idle Process"};
@@ -932,24 +941,192 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
     ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
 }
+
+static std::string BstrToString(BSTR bstr)
+{
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    std::wstring wstr(bstr, SysStringLen(bstr));
+    return converter.to_bytes(wstr);
+}
+
+// Define GUID manually for CLSID_UpdateSearcher
+DEFINE_GUID(CLSID_UpdateSearcher, 0x5A2A5E6E, 0xD633, 0x4C3A, 0x8A, 0x7E, 0x69, 0x4D, 0xBF, 0x9E, 0xCE, 0xD4);
+
+static void QueryWMIHotFixes(std::set<std::string>& hotfixSet)
+{
+    HRESULT hres;
+    IWbemLocator* pLoc = NULL;
+    IWbemServices* pSvc = NULL;
+    std::ostringstream oss;
+
+    hres = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&pLoc);
+
+    if (FAILED(hres))
+    {
+        oss << "WMI: Error creating IWbemLocator. Code: " << std::hex << hres;
+        throw std::runtime_error(oss.str());
+        return;
+    }
+
+    hres = pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, 0, 0, 0, 0, &pSvc);
+
+    if (FAILED(hres))
+    {
+        oss << "WMI: connection failed. Code: " << std::hex << hres;
+        throw std::runtime_error(oss.str());
+        pLoc->Release();
+        return;
+    }
+
+    hres = CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
+
+    if (FAILED(hres))
+    {
+        oss << "WMI: security error. Code: " << std::hex << hres;
+        throw std::runtime_error(oss.str());
+        pSvc->Release();
+        pLoc->Release();
+        return;
+    }
+
+    IEnumWbemClassObject* pEnumerator = NULL;
+    hres = pSvc->ExecQuery(bstr_t("WQL"), bstr_t("SELECT * FROM Win32_QuickFixEngineering"), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnumerator);
+
+    if (FAILED(hres))
+    {
+        oss << "WMI: query error. Code: " << std::hex << hres;
+        throw std::runtime_error(oss.str());
+
+        pSvc->Release();
+        pLoc->Release();
+        return;
+    }
+
+    IWbemClassObject* pclsObj = NULL;
+    ULONG uReturn = 0;
+
+    while (pEnumerator)
+    {
+        HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+
+        if (0 == uReturn)
+        {
+            break;
+        }
+
+        VARIANT vtProp;
+        hr = pclsObj->Get(L"HotFixID", 0, &vtProp, 0, 0);
+
+        if (SUCCEEDED(hr) && vtProp.vt == VT_BSTR)
+        {
+            std::string hotfix = BstrToString(vtProp.bstrVal);
+
+            if (hotfixSet.find(hotfix) == hotfixSet.end())
+            {
+                // New HotFix found
+                hotfixSet.insert(hotfix);
+            }
+        }
+
+        VariantClear(&vtProp);
+        pclsObj->Release();
+    }
+
+    pSvc->Release();
+    pLoc->Release();
+    pEnumerator->Release();
+}
+
+static void QueryWUHotFixes(std::set<std::string>& hotfixSet)
+{
+    HRESULT hres;
+    IUpdateSearcher* pUpdateSearcher = NULL;
+    IUpdateHistoryEntryCollection* pHistory = NULL;
+    std::regex hotfixRegex("KB[0-9]+");
+    std::ostringstream oss;
+
+    hres = CoCreateInstance(CLSID_UpdateSearcher, NULL, CLSCTX_INPROC_SERVER, IID_IUpdateSearcher, (LPVOID*)&pUpdateSearcher);
+
+    if (FAILED(hres))
+    {
+        oss << "WUA: UpdateSearcher error. Code: 0x" << std::hex << hres;
+        throw std::runtime_error(oss.str());
+        return;
+    }
+
+    LONG count;
+    hres = pUpdateSearcher->GetTotalHistoryCount(&count);
+
+    if (FAILED(hres))
+    {
+        oss << "WUA: Error getting total update history count. Code: 0x" << std::hex << hres;
+        throw std::runtime_error(oss.str());
+        pUpdateSearcher->Release();
+        return;
+    }
+
+    hres = pUpdateSearcher->QueryHistory(0, count, &pHistory);
+
+    if (FAILED(hres))
+    {
+        oss << "WUA: Error querying update history. Code: 0x" << std::hex << hres;
+        throw std::runtime_error(oss.str());
+        pUpdateSearcher->Release();
+        return;
+    }
+
+    LONG historyCount;
+    pHistory->get_Count(&historyCount);
+
+    for (LONG i = 0; i < historyCount; ++i)
+    {
+        IUpdateHistoryEntry* pEntry = NULL;
+        pHistory->get_Item(i, &pEntry);
+        BSTR title;
+        pEntry->get_Title(&title);
+        std::string titleStr = BstrToString(title);
+
+        std::smatch match;
+
+        if (std::regex_search(titleStr, match, hotfixRegex))
+        {
+            std::string hotfix = match[0];
+
+            if (hotfixSet.find(hotfix) == hotfixSet.end())
+            {
+                // New HotFix found
+                hotfixSet.insert(hotfix);
+            }
+        }
+
+        pEntry->Release();
+        SysFreeString(title);
+    }
+
+    pHistory->Release();
+    pUpdateSearcher->Release();
+}
+
 nlohmann::json SysInfo::getHotfixes() const
 {
     std::set<std::string> hotfixes;
+    std::ostringstream oss;
 
     // Initialize COM
     HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
 
     if (FAILED(hres))
     {
-        std::wcout << L"Error initializing COM. Code: " << std::hex << hres << std::endl;
+        oss << "Error initializing COM. Code: 0x" << std::hex << hres;
+        throw std::runtime_error(oss.str());
         return 1;
     }
 
     // Query hotfixes using WMI
-    Utils::QueryWMIHotFixes(hotfixes);
+    QueryWMIHotFixes(hotfixes);
 
     // Query hotfixes using Windows Update API
-    Utils::QueryWUHotFixes(hotfixes);
+    QueryWUHotFixes(hotfixes);
 
     // Uninitialize COM
     CoUninitialize();
