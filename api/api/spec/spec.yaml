@@ -14612,8 +14612,6 @@ paths:
                     effect: allow
                   related_endpoints:
                     - POST /agents
-                    - POST /agents/insert
-                    - POST /agents/insert/quick
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

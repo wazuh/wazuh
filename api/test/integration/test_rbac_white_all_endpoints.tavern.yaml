@@ -257,41 +257,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: POST /agents/insert
-
-stages:
-  - name: Try to create a new agent specifying id, ip, key and name
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        name: "NewAgentPostInsert"
-        ip: "any"
-        id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
-    response:
-      <<: *permission_denied
-
----
-test_name: POST /agents/insert/quick
-
-stages:
-  - name: Try to create new agent specifying its name
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agent_name: test_agent
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /agents/outdated
 
 stages:
