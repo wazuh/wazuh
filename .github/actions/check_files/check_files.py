@@ -1,13 +1,11 @@
 import argparse
 import csv
 from datetime import datetime
-import grp
 import hashlib
 import mimetypes
 import os
 import pandas as pd
 import platform
-import pwd
 import stat
 import sys
 
@@ -108,14 +106,18 @@ def get_data(item):
 
     # Common attributes
     stat_info = os.stat(item)
-    result['group_name'] = translate_gid(stat_info.st_gid)
     result['mode'] = oct(stat.S_IMODE(stat_info.st_mode))[2:]
-    result['owner_name'] = translate_uid(stat_info.st_uid)
     result['type'] = "file"
     result['prot_permissions'] = stat.filemode(stat_info.st_mode)
     result['size_error'] = 0.2
 
+    #if 'win32' or 'cygwin' or 'msys' in sys.platform:
+    #    print("Im windows")
     if platform.system() == 'Linux' and os.path.isfile(item):
+        import grp
+        import pwd
+        result['group_name'] = translate_gid(stat_info.st_gid)
+        result['owner_name'] = translate_uid(stat_info.st_uid)
         result['size_bytes'] = stat_info.st_size
         result['last_modified'] = datetime.fromtimestamp(
             stat_info.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
@@ -124,6 +126,9 @@ def get_data(item):
         result['created_time'] = datetime.fromtimestamp(
             stat_info.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
     elif platform.system() == 'Darwin':  # macOS
+        import grp
+        result['group_name'] = translate_gid(stat_info.st_gid)
+        result['owner_name'] = translate_uid(stat_info.st_uid)
         result['size_bytes'] = stat_info.st_size
         result['last_modified'] = datetime.fromtimestamp(
             stat_info.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
@@ -136,6 +141,9 @@ def get_data(item):
     elif platform.system() == 'Windows':
         import win32file
         import pywintypes
+        # TODO: rework on owner and group for windows
+        result['group_name'] = ''
+        result['owner_name'] = ''
         result['last_modified'] = datetime.fromtimestamp(
             os.path.getmtime(item)).strftime('%Y-%m-%d %H:%M:%S')
         result['last_accessed'] = datetime.fromtimestamp(
@@ -148,12 +156,8 @@ def get_data(item):
             result['is_hidden'] = bool(
                 file_attributes & win32file.FILE_ATTRIBUTE_HIDDEN)
             result['extension'] = os.path.splitext(item)[1][1:]
-            result['symlink_target'] = win32file.GetFinalPathName(item) if win32file.GetFileAttributesW(
-                item) & win32file.FILE_ATTRIBUTE_REPARSE_POINT else ''
             # File attributes as string
             result['attributes'] = oct(file_attributes)[-4:]
-            result['is_compressed'] = bool(
-                file_attributes & win32file.FILE_ATTRIBUTE_COMPRESSED)
             result['readonly_flag'] = bool(
                 file_attributes & win32file.FILE_ATTRIBUTE_READONLY)
             result['system_flag'] = bool(
@@ -164,8 +168,6 @@ def get_data(item):
             printf(f"Error processing Windows file {item}: {str(e)}")
             # Set default values for Windows-specific attributes
             result['is_hidden'] = False
-            result['symlink_target'] = ''
-            result['is_compressed'] = False
             result['attributes'] = ''
             result['readonly_flag'] = False
             result['system_flag'] = False

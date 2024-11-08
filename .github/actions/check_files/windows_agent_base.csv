@@ -15,7 +15,6 @@ C:\Program Files (x86)\ossec-agent/LICENSE.txt,,,666,file,-rw-rw-rw-,25209,0.2
 C:\Program Files (x86)\ossec-agent/local_internal_options.conf,,,666,file,-rw-rw-rw-,383,0.2
 C:\Program Files (x86)\ossec-agent/manage_agents.exe,,,777,file,-rwxrwxrwx,348400,0.2
 C:\Program Files (x86)\ossec-agent/ossec.conf,,,666,file,-rw-rw-rw-,9852,0.2
-C:\Program Files (x86)\ossec-agent/ossec.log,,,666,file,-rw-rw-rw-,383,0.2
 C:\Program Files (x86)\ossec-agent/profile-10.template,,,666,file,-rw-rw-rw-,51,0.2
 C:\Program Files (x86)\ossec-agent/REVISION,,,666,file,-rw-rw-rw-,7,0.2
 C:\Program Files (x86)\ossec-agent/rsync.dll,,,666,file,-rw-rw-rw-,336608,0.2
@@ -32,7 +31,7 @@ C:\Program Files (x86)\ossec-agent\active-response\bin/netsh.exe,,,777,file,-rwx
 C:\Program Files (x86)\ossec-agent\active-response\bin/restart-wazuh.exe,,,777,file,-rwxrwxrwx,186992,0.2
 C:\Program Files (x86)\ossec-agent\active-response\bin/route-null.exe,,,777,file,-rwxrwxrwx,189552,0.2
 C:\Program Files (x86)\ossec-agent\queue\syscollector/norm_config.json,,,666,file,-rw-rw-rw-,4206,0.2
-C:\Program Files (x86)\ossec-agent\ruleset\sca/cis_win11_enterprise.yml,,,666,file,-rw-rw-rw-,1158947,0.2
+C:\Program Files (x86)\ossec-agent\ruleset\sca/cis_win10_enterprise.yml,,,666,file,-rw-rw-rw-,678759,0.2
 C:\Program Files (x86)\ossec-agent\shared/rootkit_files.txt,,,666,file,-rw-rw-rw-,16174,0.2
 C:\Program Files (x86)\ossec-agent\shared/rootkit_trojans.txt,,,666,file,-rw-rw-rw-,5547,0.2
 C:\Program Files (x86)\ossec-agent\shared/win_applications_rcl.txt,,,666,file,-rw-rw-rw-,5214,0.2

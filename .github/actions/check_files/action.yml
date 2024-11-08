@@ -45,7 +45,7 @@ runs:
     shell: bash
     run: |
       cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory ${{ inputs.installation_directory }}
+      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory '${{ inputs.installation_directory }}'
 
   - name: Upload current stats
     if: success()
@@ -58,7 +58,7 @@ runs:
     shell: bash
     run: |
       cd ${GITHUB_ACTION_PATH}
-      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory ${{ inputs.installation_directory }}
+      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory '${{ inputs.installation_directory }}'
 
   - name: Upload validation results
     if: always()
