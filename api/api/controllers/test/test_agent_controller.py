@@ -23,7 +23,6 @@ with patch('wazuh.common.wazuh_uid'):
             delete_agents,
             delete_groups,
             delete_multiple_agent_single_group,
-            get_agent_summary_os,
             get_agent_summary_status,
             get_agent_upgrade,
             get_agents,
@@ -646,29 +645,6 @@ async def test_get_agent_summary_status(mock_exc, mock_dapi, mock_remove, mock_d
     """Verify 'get_agent_summary_status' endpoint is working as expected."""
     result = await get_agent_summary_status()
     mock_dapi.assert_called_once_with(f=agent.get_agents_summary_status,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with({})
-    assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_agent_summary_os(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
-    """Verify 'get_agent_summary_os' endpoint is working as expected."""
-    result = await get_agent_summary_os()
-    mock_dapi.assert_called_once_with(f=agent.get_agents_summary_os,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
                                       is_async=False,

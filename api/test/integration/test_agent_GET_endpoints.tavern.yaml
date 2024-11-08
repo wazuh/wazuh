@@ -2283,29 +2283,6 @@ stages:
             total: 12
 
 ---
-test_name: GET /agents/summary/os
-
-stages:
-
-  - name: Get the summary/os of all agents
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - ubuntu
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: []
-
----
 test_name: GET /agents/upgrade_result
 
 stages:

@@ -136,37 +136,6 @@ def get_agents_summary_status(agent_list: list[str] = None) -> WazuhResult:
     return WazuhResult({'data': {'connection': connection, 'configuration': sync_configuration}})
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhResult:
-    """Get a list of available OS.
-
-    Parameters
-    ----------
-    agent_list : list[str]
-       List of agents ID's
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
-                                      all_msg='Showing the operative system of all specified agents',
-                                      some_msg='Could not get the operative system of some agents')
-    if agent_list:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
-
-        with WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
-                                distinct=True, **rbac_filters) as db_query:
-            query_data = db_query.run()
-
-        query_data['items'] = [row['os']['platform'] for row in query_data['items']]
-        result.affected_items = query_data['items']
-        result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
 @expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1707]})
 def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:

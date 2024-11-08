@@ -7484,46 +7484,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/summary/os:
-    get:
-      tags:
-        - Agents
-      summary: "Summarize agents OS"
-      description: "Return a summary of the OS of available agents"
-      operationId: api.controllers.agent_controller.get_agent_summary_os
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Get summary of agents OS"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - ubuntu
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Showing the operative system of all specified agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /agents/summary/status:
     get:
       tags:

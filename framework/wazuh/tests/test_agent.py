@@ -37,7 +37,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agent_groups,
             get_agents,
             get_agents_in_group,
-            get_agents_summary_os,
             get_agents_summary_status,
             get_upgrade_result,
             reconnect_agents,
@@ -93,16 +92,6 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     assert all(all(summary_data[key][status] == expected_results[key][status] for status in
                    summary_data[key].keys()) for key in expected_results.keys()), \
         'The agents connection or configuration status counts are not the expected ones'
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@pytest.mark.skip('Remove tested function or update it to use the indexer.')
-def test_agent_get_agents_summary_os(connect_mock, send_mock):
-    """Tests `get_os_summary function`."""
-    summary = get_agents_summary_os(short_agent_list)
-    assert isinstance(summary, AffectedItemsWazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert summary.affected_items == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
