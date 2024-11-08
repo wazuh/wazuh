@@ -892,33 +892,3 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
-
-
-async def get_agent_summary_status(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get agents status summary.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format
-    wait_for_complete : bool
-        Disable timeout response
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {}
-
-    dapi = DistributedAPI(f=agent.get_agents_summary_status,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)

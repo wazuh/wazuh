@@ -101,41 +101,6 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
         }
     }
 
-
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_summary_status(agent_list: list[str] = None) -> WazuhResult:
-    """Count the number of agents by connection and groups configuration synchronization statuses.
-
-    Parameters
-    ----------
-    agent_list : list[str]
-       List of agents ID's
-
-    Returns
-    -------
-    WazuhResult
-        WazuhResult object.
-    """
-    connection = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
-    sync_configuration = {'synced': 0, 'not synced': 0, 'total': 0}
-    if agent_list:
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
-
-        with WazuhDBQueryAgents(limit=None, select=['status', 'group_config_status'],
-                                **rbac_filters) as db_query:
-            data = db_query.run()
-
-        items = data['items']
-        for agent in items:
-            connection[agent['status']] += 1
-            sync_configuration[agent['group_config_status']] += 1
-
-        connection['total'] = sync_configuration['total'] = len(items)
-
-    sync_configuration['not_synced'] = sync_configuration.pop('not synced')
-    return WazuhResult({'data': {'connection': connection, 'configuration': sync_configuration}})
-
-
 @expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1707]})
 def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:

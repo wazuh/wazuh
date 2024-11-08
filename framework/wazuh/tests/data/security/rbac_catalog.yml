@@ -64,7 +64,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /agents
-          - GET /agents/summary/status
           - GET /groups/{group_id}/agents
       agent:create:
         description: Create new agents

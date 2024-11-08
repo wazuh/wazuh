@@ -1329,40 +1329,6 @@ components:
       - disconnected
       description: "Agent status. It is calculated based on the last keepalive and the Wazuh version"
 
-    AgentsSummaryStatus:
-      type: object
-      properties:
-        connection:
-          type: object
-          properties:
-            total:
-              type: integer
-              format: int32
-            active:
-              type: integer
-              format: int32
-            disconnected:
-              type: integer
-              format: int32
-            never_connected:
-              type: integer
-              format: int32
-            pending:
-              type: integer
-              format: int32
-        configuration:
-          type: object
-          properties:
-            total:
-              type: integer
-              format: int32
-            synced:
-              type: integer
-              format: int32
-            not_synced:
-              type: integer
-              format: int32
-
     AgentDistinct:
       allOf:
         - $ref: '#/components/schemas/Agent'
@@ -7473,54 +7439,6 @@ paths:
                       - '0191bed5-cf10-7492-b69f-6de8ea3e3d59'
                     total_affected_items: 4
                     total_failed_items: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/summary/status:
-    get:
-      tags:
-        - Agents
-      summary: "Summarize agents status"
-      description: "Return a summary of the connection and groups configuration synchronization statuses of available agents"
-      operationId: api.controllers.agent_controller.get_agent_summary_status
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Get summary of agents connection and group configuration statuses"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AgentsSummaryStatus'
-              example:
-                data:
-                  connection:
-                    active: 8
-                    disconnected: 0
-                    never_connected: 3
-                    pending: 0
-                    total: 11
-                  configuration:
-                    synced: 8
-                    not_synced: 3
-                    total: 11
-                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

@@ -37,7 +37,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agent_groups,
             get_agents,
             get_agents_in_group,
-            get_agents_summary_status,
             get_upgrade_result,
             reconnect_agents,
             remove_agents_from_group,
@@ -69,29 +68,6 @@ def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
     return ['ok', dumps(result)] if raw else result
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@pytest.mark.skip('Remove tested function or update it to use the indexer.')
-def test_agent_get_agents_summary_status(socket_mock, send_mock):
-    """Test `get_agents_summary` function from agent module."""
-    summary = get_agents_summary_status(short_agent_list)
-    assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    # Asserts are based on what it should get from the fake database
-    expected_results = {'connection': {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5},
-                        'configuration': {'synced': 2, 'not_synced': 3, 'total': 5}}
-    summary_data = summary['data']
-
-    # For the following test cases, if summary_data has unexpected keys, a KeyError will be raised
-
-    # Check the data dictionary follows the expected keys schema
-    assert all(summary_data[key].keys() == expected_results[key].keys() for key in expected_results.keys()), \
-        'The result obtained has unexpected keys'
-    # Check that the agents count for connection and configuration statuses are the expected ones
-    assert all(all(summary_data[key][status] == expected_results[key][status] for status in
-                   summary_data[key].keys()) for key in expected_results.keys()), \
-        'The agents connection or configuration status counts are not the expected ones'
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [

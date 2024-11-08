@@ -305,34 +305,6 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/summary/status
-
-stages:
-
- - name: Get the agents status summary (Partially allowed, user agnostic)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/summary/status"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-     json:
-       error: 0
-       data:
-         connection:
-           active: 4
-           disconnected: 1
-           never_connected: 1
-           pending: 0
-           total: 6
-         configuration:
-           synced: 4
-           not_synced: 2
-           total: 6
-
----
 test_name: DELETE /agents/group?group_id={group_id}
 
 stages:

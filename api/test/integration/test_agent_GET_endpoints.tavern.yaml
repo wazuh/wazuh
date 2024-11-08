@@ -2255,34 +2255,6 @@ stages:
         error: 1724
 
 ---
-test_name: GET /agents/summary/status
-
-stages:
-
-  - name: Get the agents status summary
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/status"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          connection:
-            active: 8
-            disconnected: 2
-            never_connected: 2
-            pending: 0
-            total: 12
-          configuration:
-            synced: 8
-            not_synced: 4
-            total: 12
-
----
 test_name: GET /agents/upgrade_result
 
 stages:
