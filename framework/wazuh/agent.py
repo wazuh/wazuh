@@ -857,53 +857,6 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
-                        search: dict = None, select: str = None, q: str = None) -> AffectedItemsWazuhResult:
-    """Gets the outdated agents.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agents ID's.
-    offset : int
-        First item to return.
-    limit : int
-        Maximum number of items to return. Default: common.DATABASE_LIMIT
-    sort : dict
-        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    search : dict
-        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
-    select : str
-        Select which fields to return (separated by comma).
-    q : str
-        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
-                                      some_msg='Some agents information was not returned',
-                                      none_msg='No agent information was returned'
-                                      )
-    if agent_list:
-
-        rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
-
-        with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=f"version!=v{__version__}" + (';' + q if q else ''),
-                                **rbac_filters) as db_query:
-            data = db_query.run()
-
-        result.affected_items = data['items']
-        result.total_affected_items = data['totalItems']
-
-    return result
-
-
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
 def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,

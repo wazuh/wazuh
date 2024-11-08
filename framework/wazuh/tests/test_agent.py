@@ -41,7 +41,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agents_summary_status,
             get_distinct_agents,
             get_full_overview,
-            get_outdated_agents,
             get_upgrade_result,
             reconnect_agents,
             remove_agents_from_group,
@@ -695,30 +694,6 @@ async def test_agent_remove_agents_from_group_exceptions(group_mock, create_inde
     except (WazuhError, WazuhResourceNotFound) as error:
         assert catch_exception
         assert error == expected_error
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-@pytest.mark.skip('Remove tested function or update it to use the indexer.')
-def test_agent_get_outdated_agents(socket_mock, send_mock):
-    """Test get_oudated_agents function from agent module.
-
-    Parameters
-    ----------
-    outdated_agents : List of str
-        List of agent ID's we expect to be outdated.
-    """
-    outdated_agents = ['001', '002', '005']
-    result = get_outdated_agents(agent_list=short_agent_list)
-    # Check typing
-    assert isinstance(result, AffectedItemsWazuhResult)
-    assert isinstance(result.affected_items, list)
-    # Check affected items
-    assert result.total_affected_items == len(outdated_agents)
-    for item in result.affected_items:
-        assert item['id'] in outdated_agents
-    # Check failed items
-    assert result.total_failed_items == 0
 
 
 @pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [

@@ -64,7 +64,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /agents
-          - GET /agents/outdated
           - GET /agents/stats/distinct
           - GET /agents/summary/os
           - GET /agents/summary/status
