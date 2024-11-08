@@ -16,7 +16,7 @@
 #include <fstream>
 #include <vector>
 
-#include "iDataCollector.hpp"
+#include <fs/iDataCollector.hpp>
 
 namespace fs::xz
 {

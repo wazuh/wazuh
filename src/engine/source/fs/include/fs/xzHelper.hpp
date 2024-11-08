@@ -12,10 +12,11 @@
 #include <string>
 #include <vector>
 
+#include <fs/iDataCollector.hpp>
+#include <fs/iDataProvider.hpp>
+
 #include "xz/fileDataCollector.hpp"
 #include "xz/fileDataProvider.hpp"
-#include "xz/iDataCollector.hpp"
-#include "xz/iDataProvider.hpp"
 #include "xz/stringDataProvider.hpp"
 #include "xz/vectorDataCollector.hpp"
 #include "xz/vectorDataProvider.hpp"
