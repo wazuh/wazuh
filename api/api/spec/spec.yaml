@@ -7075,65 +7075,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/upgrade:
-    put:
-      tags:
-        - Agents
-      summary: "Upgrade agents"
-      description: "Upgrade agents using a WPK file from online repository. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
-      operationId: api.controllers.agent_controller.put_upgrade_agents
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_all'
-        - $ref: '#/components/parameters/wpk_repo'
-        - $ref: '#/components/parameters/upgrade_version'
-        - $ref: '#/components/parameters/use_http'
-        - $ref: '#/components/parameters/force'
-        - $ref: '#/components/parameters/package_type'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/os.platform'
-        - $ref: '#/components/parameters/os.version'
-        - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
-        - $ref: '#/components/parameters/version'
-        - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/ip'
-        - $ref: '#/components/parameters/registerIP'
-      responses:
-        '200':
-          description: "Agents upgraded"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - agent: "001"
-                      task_id: 1
-                    - agent: "002"
-                      task_id: 2
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All upgrade tasks were created"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /agents/upgrade_custom:
     put:
       tags:

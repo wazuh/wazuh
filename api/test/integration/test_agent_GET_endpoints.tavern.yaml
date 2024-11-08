@@ -2259,33 +2259,6 @@ test_name: GET /agents/upgrade_result
 
 stages:
 
-  - name: Upgrade all agents (only old agents will appear in affected_items). We use q to leave agent 008 with no tasks in DB
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: all
-        upgrade_version: 4.0.0
-        q: id!=8
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - agent: '005'
-              task_id: !anyint
-            - agent: '006'
-              task_id: !anyint
-            - agent: '007'
-              task_id: !anyint
-          total_affected_items: !anyint
-          total_failed_items: 0
-        message: !anystr
-
   - name: Try to get upgrade result from a not existing agent
     request:
       verify: False
