@@ -299,29 +299,6 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/no_group
-
-stages:
-
- - name: Get the agents without group (Partially allowed, user agnostic)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - id: '011'
-         failed_items: []
-         total_affected_items: 1
-         total_failed_items: 0
-
----
 test_name: GET /agents/outdated
 
 stages:

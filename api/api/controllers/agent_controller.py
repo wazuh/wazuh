@@ -894,55 +894,6 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
     return json_response(data, pretty=pretty)
 
 
-async def get_agent_no_group(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                             limit: int = DATABASE_LIMIT, select=None, sort=None, search=None, q=None) -> ConnexionResponse:
-    """Get agents without group.
-
-    Parameters
-    ----------
-    pretty: bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return. Default: DATABASE_LIMIT
-    select : str
-        Select which fields to return (separated by comma).
-    sort : str
-        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-        ascending or descending order.
-    search : str
-        Look for elements with the specified string.
-    q : str
-        Query to filter results by. For example "q&#x3D;&amp;quot;status&#x3D;active&amp;quot;".
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'q': 'group=null' + (';' + q if q else '')}
-
-    dapi = DistributedAPI(f=agent.get_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_agent_outdated(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
                              select: str = None, q: str = None) -> ConnexionResponse:
