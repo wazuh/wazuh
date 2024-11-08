@@ -7,7 +7,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
-    add_executable(sysInfoWindows_unit_test
+add_executable(sysInfoWindows_unit_test
+    ${SYSINFO_SRC}
     ${sysinfo_UNIT_TEST_SRC})
 
 target_link_libraries(sysInfoWindows_unit_test
@@ -22,6 +23,12 @@ target_link_libraries(sysInfoWindows_unit_test
     pthread
     sqlite3
     cjson
+    wbemuuid
+    uuid
+    wuguid
+    ole32
+    oleaut32
+    sysinfo
     -static-libgcc -static-libstdc++
 )
 

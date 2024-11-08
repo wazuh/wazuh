@@ -41,15 +41,7 @@
 #include "packages/packagesPYPI.hpp"
 #include "packages/packagesNPM.hpp"
 #include "packages/modernPackageDataRetriever.hpp"
-
-
-/* Hotfixes APIs */
-#include <set>
-#include <wbemidl.h>
-#include <wbemcli.h>
-#include <comdef.h>
-#include <codecvt>
-#include "wuapi.h"
+#include "sysInfoWin.h"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -942,17 +934,69 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
 }
 
-static std::string BstrToString(BSTR bstr)
+nlohmann::json SysInfo::getHotfixes() const
+{
+    std::set<std::string> hotfixes;
+    std::ostringstream oss;
+
+    // Initialize COM
+    HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+
+    if (FAILED(hres))
+    {
+        oss << "Error initializing COM. Code: 0x" << std::hex << hres;
+        throw std::runtime_error(oss.str());
+        return 1;
+    }
+
+    // Query hotfixes using WMI
+    QueryWMIHotFixes(hotfixes);
+
+    // Query hotfixes using Windows Update API
+    QueryWUHotFixes(hotfixes);
+
+    // Uninitialize COM
+    CoUninitialize();
+
+    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
+    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, hotfixes);
+    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, hotfixes);
+
+    nlohmann::json ret;
+
+    for (auto& hotfix : hotfixes)
+    {
+        nlohmann::json hotfixValue;
+        hotfixValue["hotfix"] = std::move(hotfix);
+        ret.push_back(std::move(hotfixValue));
+    }
+
+    return ret;
+}
+
+// This function provides a minimal implementation for converting C strings to BSTRs,
+// avoiding the need to include a full COM library. This can be useful when you only need this specific functionality
+// and want to minimize dependencies.
+namespace _com_util
+{
+    BSTR ConvertStringToBSTR(const char* str)
+    {
+        int len = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0);
+        BSTR bstr = SysAllocStringLen(0, len);
+        MultiByteToWideChar(CP_ACP, 0, str, -1, bstr, len);
+        return bstr;
+    }
+}
+
+std::string BstrToString(BSTR bstr)
 {
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     std::wstring wstr(bstr, SysStringLen(bstr));
     return converter.to_bytes(wstr);
 }
 
-// Define GUID manually for CLSID_UpdateSearcher
-DEFINE_GUID(CLSID_UpdateSearcher, 0x5A2A5E6E, 0xD633, 0x4C3A, 0x8A, 0x7E, 0x69, 0x4D, 0xBF, 0x9E, 0xCE, 0xD4);
-
-static void QueryWMIHotFixes(std::set<std::string>& hotfixSet)
+void QueryWMIHotFixes(std::set<std::string>& hotfixSet)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
@@ -1037,7 +1081,7 @@ static void QueryWMIHotFixes(std::set<std::string>& hotfixSet)
     pEnumerator->Release();
 }
 
-static void QueryWUHotFixes(std::set<std::string>& hotfixSet)
+void QueryWUHotFixes(std::set<std::string>& hotfixSet)
 {
     HRESULT hres;
     IUpdateSearcher* pUpdateSearcher = NULL;
@@ -1049,7 +1093,7 @@ static void QueryWUHotFixes(std::set<std::string>& hotfixSet)
 
     if (FAILED(hres))
     {
-        oss << "WUA: UpdateSearcher error. Code: 0x" << std::hex << hres;
+        oss << "WUA: UpdateSearcher error. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
         return;
     }
@@ -1105,59 +1149,4 @@ static void QueryWUHotFixes(std::set<std::string>& hotfixSet)
 
     pHistory->Release();
     pUpdateSearcher->Release();
-}
-
-nlohmann::json SysInfo::getHotfixes() const
-{
-    std::set<std::string> hotfixes;
-    std::ostringstream oss;
-
-    // Initialize COM
-    HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
-
-    if (FAILED(hres))
-    {
-        oss << "Error initializing COM. Code: 0x" << std::hex << hres;
-        throw std::runtime_error(oss.str());
-        return 1;
-    }
-
-    // Query hotfixes using WMI
-    QueryWMIHotFixes(hotfixes);
-
-    // Query hotfixes using Windows Update API
-    QueryWUHotFixes(hotfixes);
-
-    // Uninitialize COM
-    CoUninitialize();
-
-    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);
-    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
-    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, hotfixes);
-    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, hotfixes);
-
-    nlohmann::json ret;
-
-    for (auto& hotfix : hotfixes)
-    {
-        nlohmann::json hotfixValue;
-        hotfixValue["hotfix"] = std::move(hotfix);
-        ret.push_back(std::move(hotfixValue));
-    }
-
-    return ret;
-}
-
-// This function provides a minimal implementation for converting C strings to BSTRs,
-// avoiding the need to include a full COM library. This can be useful when you only need this specific functionality
-// and want to minimize dependencies.
-namespace _com_util
-{
-    BSTR ConvertStringToBSTR(const char* str)
-    {
-        int len = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0);
-        BSTR bstr = SysAllocStringLen(0, len);
-        MultiByteToWideChar(CP_ACP, 0, str, -1, bstr, len);
-        return bstr;
-    }
 }
