@@ -5128,13 +5128,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    manager_host:
-      in: query
-      name: manager
-      description: "Filter by manager hostname where agents are connected to"
-      schema:
-        type: string
-        format: alphanumeric
     node_name:
       in: query
       name: manager
@@ -5244,20 +5237,6 @@ components:
         type: integer
         format: int32
         minimum: 0
-    phase_name:
-      in: query
-      name: phase_name
-      description: "Show results filtered by phase"
-      schema:
-        type: string
-        format: alphanumeric
-    platform_name:
-      in: query
-      name: platform_name
-      description: "Show results filtered by platform"
-      schema:
-        type: string
-        format: alphanumeric
     pretty:
       in: query
       name: pretty
@@ -5511,16 +5490,6 @@ components:
       schema:
         type: string
         format: sort
-    stats_component:
-      in: path
-      name: component
-      description: "Selected component stats"
-      required: true
-      schema:
-        type: string
-        enum:
-          - logcollector
-          - agent
     status:
       in: query
       name: status
@@ -5528,36 +5497,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    statusAgentParam:
-      in: query
-      name: status
-      description: "Filter by agent status (use commas to enter multiple statuses)"
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - active
-          - pending
-          - never_connected
-          - disconnected
-        minItems: 1
-    statusDeleteAgentParam:
-      in: query
-      name: status
-      required: true
-      description: "Filter by agent status (use commas to enter multiple statuses)"
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-            - all
-            - active
-            - pending
-            - never_connected
-            - disconnected
-        minItems: 1
     title:
       in: query
       name: title
@@ -5573,19 +5512,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    type_agents:
-      in: query
-      name: type
-      description: "Type of file"
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - conf
-          - rootkit_files
-          - rootkit_trojans
-          - rcl
     type_syscollector:
       in: query
       name: type
@@ -6221,28 +6147,12 @@ components:
       schema:
         type: string
         format: alphanumeric
-    group_config_status:
-      in: query
-      name: group_config_status
-      description: "Agent groups configuration sync status"
-      schema:
-        type: string
-        enum:
-          - "synced"
-          - "not synced"
     force_single_group:
       in: query
       name: force_single_group
       description: "Removes the agent from all groups to which it belongs and assigns it to the specified group"
       schema:
         type: boolean
-    wpk_repo:
-      in: query
-      name: wpk_repo
-      description: "WPK repository"
-      schema:
-        type: string
-        format: path
     use_http:
       in: query
       name: use_http
@@ -6250,29 +6160,6 @@ components:
       schema:
         type: boolean
         default: false
-    upgrade_version:
-      in: query
-      name: upgrade_version
-      description: "Wazuh version to upgrade to"
-      schema:
-        type: string
-        format: wazuh_version
-    force:
-      in: query
-      name: force
-      description: "Force upgrade"
-      schema:
-        type: boolean
-        default: false
-    package_type:
-      in: query
-      name: package_type
-      description: "Select package type to use. By default, the manager infers this."
-      schema:
-        type: string
-        enum:
-        - 'rpm'
-        - 'deb'
     force_query:
       in: query
       name: force_query
@@ -6280,23 +6167,6 @@ components:
       schema:
         type: boolean
         default: false
-    file_path:
-      in: query
-      name: file_path
-      description: "Full path to the WPK file. The file must be on a folder on the Wazuh's installation directory
-      (by default, <code>/var/ossec</code>)"
-      required: True
-      schema:
-        type: string
-        format: wpk_path
-    installer:
-      in: query
-      name: installer
-      description: "Installation script. Default is <code>upgrade.sh</code> or <code>upgrade.bat</code> for windows
-      agents"
-      schema:
-        type: string
-        format: alphanumeric
     resource_list:
       in: query
       name: resource
