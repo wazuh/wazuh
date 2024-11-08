@@ -31,7 +31,6 @@ with patch('wazuh.common.wazuh_uid'):
             post_group,
             put_group_config,
             put_multiple_agent_single_group,
-            put_upgrade_custom_agents,
             reconnect_agents,
             restart_agent,
             restart_agents,
@@ -233,58 +232,6 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@pytest.mark.parametrize('agents_list, file_path',  [
-    (['all'], '/var/ossec/valid_file.wpk'),
-    (['001', '002'], '/var/ossec/var/upgrade/valid_file.wpk'),
-    (['001'], '/var/ossec/wrong_file.txt')
-])
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
-                                         agents_list, file_path, mock_request):
-    """Verify 'put_upgrade_custom_agents' endpoint is working as expected."""
-    result = await put_upgrade_custom_agents(agents_list=agents_list, file_path=file_path)
-
-    if 'all' in agents_list:
-        agents_list = '*'
-    f_kwargs = {'agent_list': agents_list,
-                'file_path': file_path,
-                'installer': None,
-                'filters': {
-                    'manager': None,
-                    'version': None,
-                    'group': None,
-                    'node_name': None,
-                    'name': None,
-                    'ip': None,
-                    'registerIP': mock_request.query_params.get('registerIP', None)
-                },
-                'q': None
-                }
-
-    nested = ['os.version', 'os.name', 'os.platform']
-    for field in nested:
-        f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
-
-    mock_dapi.assert_called_once_with(f=agent.upgrade_agents,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                      broadcasting=agents_list == '*'
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)

@@ -139,36 +139,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: PUT /agents/upgrade_custom
-
-stages:
-  - name: Try to customly upgrade all agents (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: all
-        file_path: "{custom_wpk_path:s}"
-    response:
-      <<: *empty_response
-
-  - name: Try to customly upgrade agent 008 using default installer
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: 008
-        file_path: "{custom_wpk_path:s}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /agents/upgrade_result
 
 stages:

@@ -147,7 +147,6 @@ get_rbac_actions:
             - agent:group:mediterranean
           effect: allow
         related_endpoints:
-          - PUT /agents/upgrade_custom
           - GET /agents/upgrade_result
       group:delete:
         description: Delete agent groups
