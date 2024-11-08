@@ -117,3 +117,8 @@ void wdb_pool_clean() {
 unsigned wdb_pool_size() {
     return wdb_pool.size;
 }
+
+void wdb_pool_free() {
+    w_mutex_destroy(&wdb_pool.mutex);
+    rbtree_destroy(wdb_pool.nodes);
+}

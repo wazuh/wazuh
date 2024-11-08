@@ -78,3 +78,5 @@ void wdb_pool_clean();
  * @return Number of nodes in the pool.
  */
 unsigned wdb_pool_size();
+
+void wdb_pool_free();
