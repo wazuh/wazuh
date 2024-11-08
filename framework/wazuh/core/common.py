@@ -214,6 +214,7 @@ WAZUH_QUEUE = WAZUH_RUN / 'queue'
 WAZUH_SOCKET = WAZUH_RUN / 'socket'
 
 CLUSTER_QUEUE = WAZUH_QUEUE / 'cluster'
+WAZUH_SHARED = WAZUH_ETC / 'shared'
 
 
 # ============================================= Wazuh constants - Commands =============================================
@@ -255,50 +256,46 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 # ================================================ Wazuh path - Config =================================================
 WAZUH_CONF = WAZUH_ETC / 'ossec.conf'
 
-# Keep until we remove the different functionalities completely
+# TODO: Keep until we remove the different functionalities completely
 AR_CONF = ''
 CLIENT_KEYS = ''
-SHARED_PATH = ''
 
 
 # ================================================= Wazuh path - Misc ==================================================
-OS_PIDFILE_PATH = os.path.join('var', 'run')
-
-# OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
-# WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
-# WAZUH_LOG = os.path.join(WAZUH_LOGS, 'ossec.log')
-# WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'ossec.json')
-# DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
-# DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
-# ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-analysisd.state')
-# REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-remoted.state')
-# OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
-# WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
-# STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
-# BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
+# OS_PIDFILE_PATH = os.path.join('var', 'run')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
+
+# TODO: Constants asociate to functionality next to deprecate.
+WAZUH_LOG_JSON = os.path.join('', 'ossec.json')
+ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-analysisd.state')
+REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-remoted.state')
+OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
+WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
+STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
 
 
 # ================================================ Wazuh path - Sockets ================================================
-# ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
-# AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
-# EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
-# AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
-# WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
-# LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
-# UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
-# REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
-# TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
-# WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
-# WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
-# QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
+# TODO: Constants asociated to functionality next to deprecate.
+ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
+AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
+EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
+AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
+WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
+LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
+UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
+REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
+TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
+WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
+WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
+QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')
 
 
 # ================================================ Wazuh path - Ruleset ================================================
-# RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
-# RULES_PATH = os.path.join(RULESET_PATH, 'rules')
-# DECODERS_PATH = os.path.join(RULESET_PATH, 'decoders')
-# LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
-# USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
-# USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
-# USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
+# TODO: Constants asociated to functionality next to deprecate.
+RULESET_PATH = os.path.join(WAZUH_PATH, 'ruleset')
+RULES_PATH = os.path.join(RULESET_PATH, 'rules')
+DECODERS_PATH = os.path.join(RULESET_PATH, 'decoders')
+LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
+USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
+USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
+USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')

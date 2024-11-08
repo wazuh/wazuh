@@ -25,7 +25,7 @@ def test_set_logging():
     with patch.object(cluster_utils, 'ClusterLogger') as clusterlogger_mock:
         assert wazuh_server.set_logging(foreground_mode=False, debug_mode=0)
         clusterlogger_mock.assert_called_once_with(
-            foreground_mode=False, log_path='logs/cluster.log', debug_level=0,
+            foreground_mode=False, log_path='cluster.log', debug_level=0,
             tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
 
 

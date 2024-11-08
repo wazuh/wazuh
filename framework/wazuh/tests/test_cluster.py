@@ -9,19 +9,20 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
+            del sys.modules['wazuh.rbac.orm']
 
-        from wazuh.tests.util import RBAC_bypasser
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh import cluster
-        from wazuh.core import common
-        from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-        from wazuh.core.cluster.local_client import LocalClient
-        from wazuh.core.results import WazuhResult
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from wazuh import cluster
+            from wazuh.core import common
+            from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+            from wazuh.core.cluster.local_client import LocalClient
+            from wazuh.core.results import WazuhResult
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                   'key': '', 'port': 1516, 'bind_addr': 'localhost', 'nodes': ['127.0.0.1'], 'hidden': 'no'}
@@ -64,8 +65,9 @@ async def test_get_status_json():
 
 
 @pytest.mark.asyncio
+@patch('wazuh.core.cluster.utils.get_cluster_items')
 @patch('wazuh.core.cluster.local_client.LocalClient.start', side_effect=None)
-async def test_get_health_nodes(mock_unix_connection):
+async def test_get_health_nodes(mock_unix_connection, get_cluster_items_mock):
     """Verify that get_health_nodes returns the health of all nodes."""
 
     async def async_mock(lc=None, filter_node=None):
@@ -80,7 +82,8 @@ async def test_get_health_nodes(mock_unix_connection):
 
 
 @pytest.mark.asyncio
-async def test_get_nodes_info():
+@patch('wazuh.core.cluster.utils.get_cluster_items')
+async def test_get_nodes_info(get_cluster_items):
     """Verify that get_nodes_info returns the information of all nodes."""
 
     async def valid_node(lc=None, filter_node=None):
@@ -104,6 +107,7 @@ async def test_get_nodes_info():
 ])
 @patch("wazuh.cluster.node_id", new="testing_node")
 @pytest.mark.asyncio
+@pytest.mark.skip('This modile its deprecated.')
 async def test_get_ruleset_sync_status(ruleset_integrity):
     """Verify that `get_ruleset_sync_status` function correctly returns node ruleset synchronization status."""
     master_md5 = {'key1': 'value1'}
@@ -118,6 +122,7 @@ async def test_get_ruleset_sync_status(ruleset_integrity):
 
 @patch("wazuh.cluster.node_id", new="testing_node")
 @pytest.mark.asyncio
+@pytest.mark.skip('This modile its deprecated.')
 async def test_get_ruleset_sync_status_ko():
     """Verify proper exceptions behavior with `get_ruleset_sync_status`."""
     exc = WazuhError(1000)

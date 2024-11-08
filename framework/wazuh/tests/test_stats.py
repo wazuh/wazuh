@@ -11,17 +11,18 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        import wazuh.stats as stats
-        from wazuh.core.results import AffectedItemsWazuhResult
-        from api.util import remove_nones_to_dict
-        from wazuh.core.tests.test_agent import InitAgent
+            import wazuh.stats as stats
+            from wazuh.core.results import AffectedItemsWazuhResult
+            from api.util import remove_nones_to_dict
+            from wazuh.core.tests.test_agent import InitAgent
 
 SOCKET_PATH_DAEMONS_MAPPING = {'/var/ossec/queue/sockets/remote': 'wazuh-remoted',
                                '/var/ossec/queue/sockets/analysis': 'wazuh-analysisd'}
@@ -105,8 +106,8 @@ def side_effect_test_get_daemons_stats(daemon_path, agents_list):
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
 @patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
 @patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats)
-async def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents_info, 
-                                        mock_socket_connect, mock_send_wdb, 
+async def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents_info,
+                                        mock_socket_connect, mock_send_wdb,
                                         daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected."""
     agents_list = ['001', '004', '999']  # Only stats from 001 are obtained
@@ -154,7 +155,7 @@ def side_effect_test_get_daemons_stats_all(daemon_path, agents_list, last_id):
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
 @patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
 @patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats_all)
-async def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, 
+async def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket,
                                             daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected."""
     result = await stats.get_daemons_stats_agents(daemons_list, ['all'])

@@ -28,7 +28,8 @@ with patch('wazuh.core.common.wazuh_uid'):
     (WazuhClusterError(3023), 'No orders were published'),
 ])
 @patch('wazuh.order.distribute_orders')
-async def test_send_orders(distribute_orders_mock, side_effect, message):
+@patch('wazuh.order.local_client.LocalClient')
+async def test_send_orders(local_client_mock, distribute_orders_mock, side_effect, message):
     """Validate that the `send_orders` function is working as expected."""
     distribute_orders_mock.side_effect = side_effect
     orders = [Order().to_dict()]

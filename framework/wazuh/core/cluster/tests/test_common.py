@@ -442,11 +442,11 @@ async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
     handler.interrupted_tasks.add(b'abcd')
 
     with patch('hashlib.sha256', return_value=MockHash()):
-        assert (await handler.send_file('some_file.txt', task_id=b'abcd') == 3)
+        assert (await handler.send_file(common.WAZUH_RUN / 'some_file.txt', task_id=b'abcd') == 3)
         send_request_mock.assert_has_calls([call(command=b'file_upd', data=b'some_file.txt chu'),
                                             call(command=b'file_end', data=b'some_file.txt ')])
         assert send_request_mock.call_count == 3
-        os_path_exists_mock.assert_called_once_with('some_file.txt')
+        os_path_exists_mock.assert_called_once_with(common.WAZUH_RUN / 'some_file.txt')
 
 
 @pytest.mark.asyncio
@@ -687,11 +687,12 @@ def test_handler_receive_file():
     """Test if a descriptor file is created for an incoming file."""
     handler = cluster_common.Handler(cluster_items)
 
-    assert handler.receive_file(b"data") == (b"ok ", b"Ready to receive new file")
-    assert "fd" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["fd"], _io.BufferedWriter)
-    assert "checksum" in handler.in_file[b"data"]
-    assert isinstance(handler.in_file[b"data"]["checksum"], _hashlib.HASH)
+    with patch('wazuh.core.cluster.common.open') as open_mock:
+        assert handler.receive_file(b"data") == (b"ok ", b"Ready to receive new file")
+        assert "fd" in handler.in_file[b"data"]
+        assert handler.in_file[b"data"]["fd"] == open_mock.return_value
+        assert "checksum" in handler.in_file[b"data"]
+        assert isinstance(handler.in_file[b"data"]["checksum"], _hashlib.HASH)
 
 
 def test_handler_update_file():
@@ -1308,7 +1309,7 @@ async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unli
                 compress_files_mock.assert_has_calls([call('Testing', {'path1': 'metadata1'},
                                                            {'path2': 'metadata2'}, None)] * 2)
                 unlink_mock.assert_called_with("files/path/")
-                relpath_mock.assert_called_once_with('files/path/', common.WAZUH_PATH)
+                relpath_mock.assert_called_once_with('files/path/', common.WAZUH_RUN)
                 assert json_dumps_mock.call_count == 2
 
                 # Reset all mocks
@@ -1330,7 +1331,7 @@ async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unli
                 compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'},
                                                             {'path2': 'metadata2'}, None)
                 unlink_mock.assert_called_once_with("files/path/")
-                relpath_mock.assert_called_once_with('files/path/', common.WAZUH_PATH)
+                relpath_mock.assert_called_once_with('files/path/', common.WAZUH_RUN)
                 json_dumps_mock.assert_called_once()
 
                 # Reset all mocks
@@ -1349,14 +1350,17 @@ async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unli
             log_subprocess_mock.assert_called()
             compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'}, {'path2': 'metadata2'}, None)
             unlink_mock.assert_called_once_with("files/path/")
-            relpath_mock.assert_called_once_with('files/path/', common.WAZUH_PATH)
+            relpath_mock.assert_called_once_with('files/path/', common.WAZUH_RUN)
 
             assert worker_mock.interrupted_tasks == {b'abcd'}
 
 
 @pytest.mark.asyncio
+@patch('wazuh.core.cluster.cluster.open')
+@patch('wazuh.core.cluster.cluster.mkdir_with_mode')
+@patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch("wazuh.core.cluster.common.Handler.send_request", side_effect=Exception())
-async def test_sync_files_sync_ko(send_request_mock):
+async def test_sync_files_sync_ko(send_request_mock, get_cluster_items_mock, mkdir_with_mode_mock, open_mock):
     """Test if the right exceptions are being risen when necessary."""
     files_to_sync = {"path1": "metadata1"}
     files_metadata = {"path2": "metadata2"}

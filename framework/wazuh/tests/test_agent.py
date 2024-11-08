@@ -16,51 +16,52 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh import WazuhError, WazuhException, WazuhInternalError
-        from wazuh.agent import (
-            ERROR_CODES_UPGRADE_SOCKET,
-            ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST,
-            add_agent,
-            build_agents_query,
-            create_group,
-            delete_agents,
-            delete_groups,
-            get_group_conf,
-            get_agent_config,
-            get_agent_groups,
-            get_agents,
-            get_agents_in_group,
-            get_agents_keys,
-            get_agents_summary_os,
-            get_agents_summary_status,
-            get_distinct_agents,
-            get_full_overview,
-            get_outdated_agents,
-            get_upgrade_result,
-            reconnect_agents,
-            remove_agent_from_groups,
-            remove_agents_from_group,
-            restart_agents,
-            restart_agents_by_node,
-            upgrade_agents,
-            update_group_file,
-        )
-        from wazuh.core.agent import Agent
-        from wazuh.core.exception import WazuhResourceNotFound
-        from wazuh.core.indexer.agent import Agent as IndexerAgent, Host
-        from wazuh.core.indexer.base import IndexerKey
-        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
-        from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-        from wazuh.core.tests.test_agent import InitAgent
+            from wazuh import WazuhError, WazuhException, WazuhInternalError
+            from wazuh.agent import (
+                ERROR_CODES_UPGRADE_SOCKET,
+                ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST,
+                add_agent,
+                build_agents_query,
+                create_group,
+                delete_agents,
+                delete_groups,
+                get_group_conf,
+                get_agent_config,
+                get_agent_groups,
+                get_agents,
+                get_agents_in_group,
+                get_agents_keys,
+                get_agents_summary_os,
+                get_agents_summary_status,
+                get_distinct_agents,
+                get_full_overview,
+                get_outdated_agents,
+                get_upgrade_result,
+                reconnect_agents,
+                remove_agent_from_groups,
+                remove_agents_from_group,
+                restart_agents,
+                restart_agents_by_node,
+                upgrade_agents,
+                update_group_file,
+            )
+            from wazuh.core.agent import Agent
+            from wazuh.core.exception import WazuhResourceNotFound
+            from wazuh.core.indexer.agent import Agent as IndexerAgent
+            from wazuh.core.indexer.base import IndexerKey
+            from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
+            from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+            from wazuh.core.tests.test_agent import InitAgent
 
-        from api.util import remove_nones_to_dict
+            from api.util import remove_nones_to_dict
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -497,7 +498,7 @@ async def test_agent_add_agent_ko(create_indexer_mock, name, id, key):
     (['group-1', 'group-2', 'group-3'], None, ['group-1', 'group-2']),
     ([], '', []) # An empty group_list should return nothing
 ])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
 async def test_agent_get_agent_groups(group_list, q, expected_result):
     """Test `get_agent_groups` from agent module.
 
@@ -534,14 +535,14 @@ async def test_agent_get_agent_groups_exceptions(mock_get_groups, system_groups,
     'non-existent-group',
     'invalid-group'
 ])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
 @patch('wazuh.core.common.wazuh_gid', return_value=getgrnam('root'))
 @patch('wazuh.core.common.wazuh_uid', return_value=getpwnam('root'))
 @patch('wazuh.agent.chown')
 async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     """Test `create_group` function from agent module.
 
-    When a group is created a folder with the same name is created in `common.SHARED_PATH`.
+    When a group is created a folder with the same name is created in `common.WAZUH_SHARED`.
 
     Parameters
     ----------
@@ -574,7 +575,7 @@ async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     ('delete-me', WazuhInternalError, 1005),
     ('agent-template', WazuhError, 1713)
 ])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
 async def test_create_group_exceptions(group_id, exception, exception_code):
     """Test `create_group` function from agent module raises the expected exceptions if an invalid `group_id` is
     specified.
@@ -729,7 +730,7 @@ async def test_agent_remove_agent_from_groups_exceptions(create_indexer_mock, mo
     create_indexer_mock.return_value.commands_manager.create = commands_create_mock
 
     try:
-        with patch('wazuh.core.agent.Agent.get', 
+        with patch('wazuh.core.agent.Agent.get',
             return_value='0191c87f-a892-78b1-8452-8180e261075c',
             side_effect=expected_error if catch_exception else None
         ):
@@ -1124,7 +1125,7 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
 @pytest.mark.parametrize('group_list', [
     ['group-1']
 ])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
 async def test_agent_get_group_conf(group_list):
     """Test `get_group_conf` function from agent module.
 
@@ -1142,7 +1143,7 @@ async def test_agent_get_group_conf(group_list):
 @pytest.mark.parametrize('group_list', [
     ['update']
 ])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
 @patch('wazuh.core.configuration.update_group_configuration')
 async def test_agent_upload_group_file(mock_update, group_list):
     """Test `upload_group_file` function from agent module.
@@ -1167,7 +1168,7 @@ async def test_agent_upload_group_file(mock_update, group_list):
     (full_agent_list, ['group-1'], False, '004'),
     (full_agent_list, ['group-1'], True, None)
 ])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
 @patch('wazuh.agent.get_distinct_agents')
 @patch('wazuh.agent.get_agent_groups')
 @patch('wazuh.agent.get_agents_summary_status')

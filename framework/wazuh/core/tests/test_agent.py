@@ -710,7 +710,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @pytest.mark.asyncio
 @patch('wazuh.core.agent.remove')
 @patch('wazuh.core.agent.path.exists', return_value=True)
-@patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.indexer.Indexer._get_opensearch_client')
 @patch('wazuh.core.indexer.Indexer.connect')
 @patch('wazuh.core.indexer.Indexer.close')
@@ -982,8 +982,8 @@ async def test_agent_get_agent_groups(create_indexer_mock):
 @patch('wazuh.core.indexer.Indexer.close')
 @patch('wazuh.core.indexer.agent.AgentsIndex.remove_agents_from_group')
 @patch('wazuh.core.indexer.agent.AgentsIndex.add_agents_to_group')
-async def test_agent_set_agent_group_relationship(add_agents_to_group_mock, remove_agents_from_group_mock, 
-                                                  close_mock, connect_mock, get_opensearch_client_mock, remove, 
+async def test_agent_set_agent_group_relationship(add_agents_to_group_mock, remove_agents_from_group_mock,
+                                                  close_mock, connect_mock, get_opensearch_client_mock, remove,
                                                   override, expected_mode):
     """Test if set_agent_group_relationship() uses the correct command to create/remove the relationship between
     an agent and a group.
@@ -1032,8 +1032,8 @@ async def test_agent_set_agent_group_relationship_ko(get_client_mock):
 @patch('wazuh.core.indexer.Indexer.connect')
 @patch('wazuh.core.indexer.Indexer.close')
 @patch('wazuh.core.indexer.agent.AgentsIndex.get')
-async def test_agent_unset_single_group_agent(get_agent_mock, close_mock, connect_mock, get_os_client_mock, 
-                                              group_exists_mock, set_agent_group_mock, agent_id, group_id, force, 
+async def test_agent_unset_single_group_agent(get_agent_mock, close_mock, connect_mock, get_os_client_mock,
+                                              group_exists_mock, set_agent_group_mock, agent_id, group_id, force,
                                               previous_groups):
     """Test if unset_single_group_agent() returns expected message and removes group from agent.
 
@@ -1182,7 +1182,7 @@ def test_get_groups():
     expected_result = {'group-1', 'group-2'}
     shared = os.path.join(test_data_path, 'shared')
 
-    with patch('wazuh.core.common.SHARED_PATH', new=shared):
+    with patch('wazuh.core.common.WAZUH_SHARED', new=shared):
         try:
             os.makedirs(shared)
             for group in list(expected_result):

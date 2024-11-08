@@ -20,25 +20,32 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
+            del sys.modules['wazuh.rbac.orm']
 
-        from wazuh.tests.util import RBAC_bypasser
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
-        from wazuh.core.manager import get_manager_status
-        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
-        from wazuh.core.exception import WazuhClusterError
-        from api.util import raise_if_exc
-        from wazuh.core.cluster import local_client
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
+            from wazuh.core.manager import get_manager_status
+            from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+            from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
+            from wazuh.core.exception import WazuhClusterError
+            from api.util import raise_if_exc
+            from wazuh.core.cluster import local_client
 
 logger = logging.getLogger('wazuh')
 
 DEFAULT_REQUEST_TIMEOUT = 10
+
+
+@pytest.fixture(scope='module', autouse=True)
+def path_get_cluset_items():
+    with patch('wazuh.core.cluster.utils.get_cluster_items'):
+        yield
 
 
 async def raise_if_exc_routine(dapi_kwargs, expected_error=None):
@@ -65,7 +72,7 @@ class TestingLoggerParent:
 class TestingLogger:
     """Class used to create custom Logger objects for testing purposes."""
     __test__ = False
-    
+
     def __init__(self, logger_name):
         self.name = logger_name
         self.handlers = []

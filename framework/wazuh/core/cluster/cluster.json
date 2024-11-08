@@ -1,7 +1,7 @@
 {
     "files":{
 
-        "/": {
+        "": {
             "permissions": "0o640",
             "source": "master",
             "files": ["private_key.pem", "public_key.pem"],
@@ -12,7 +12,7 @@
             "description": "JWT signing key pair"
         },
 
-        "etc/shared/": {
+        "shared": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],

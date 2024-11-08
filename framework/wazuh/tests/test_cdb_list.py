@@ -10,6 +10,8 @@ from wazuh.core.exception import WazuhInternalError
 
 import pytest
 
+pytest.skip("This module it is deprecated.", allow_module_level=True)
+
 DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "test_cdb_list")
 
 with patch('wazuh.core.common.getgrnam'):

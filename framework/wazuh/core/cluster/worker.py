@@ -415,7 +415,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # directory inside '{wazuh_path}/queue/' path.
                 for name, content, _ in cluster.unmerge_info('TYPE', zip_path, filename_):
                     full_unmerged_name = common.WAZUH_ETC / name
-                    tmp_unmerged_path = full_unmerged_name + '.tmp'
+                    tmp_unmerged_path = full_unmerged_name.with_suffix('.tmp')
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
                     safe_move(tmp_unmerged_path, full_unmerged_name,

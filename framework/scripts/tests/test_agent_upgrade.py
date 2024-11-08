@@ -9,16 +9,17 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        import scripts.agent_upgrade as agent_upgrade
-        from wazuh.core.exception import WazuhError, WazuhInternalError
-        from wazuh.core.results import AffectedItemsWazuhResult
+            import scripts.agent_upgrade as agent_upgrade
+            from wazuh.core.exception import WazuhError, WazuhInternalError
+            from wazuh.core.results import AffectedItemsWazuhResult
 
 
 @patch('scripts.agent_upgrade.exit')

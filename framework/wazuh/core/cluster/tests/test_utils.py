@@ -3,8 +3,10 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+import json
 import os
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,13 +15,21 @@ with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
         with patch('wazuh.core.common.wazuh_uid'):
             with patch('wazuh.core.common.wazuh_gid'):
-                sys.modules['wazuh.rbac.orm'] = MagicMock()
+                with patch('wazuh.core.utils.load_wazuh_xml'):
 
-                from wazuh.core import common
-                from wazuh.core.cluster import utils
-                from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhPermissionError, \
-                    WazuhResourceNotFound, WazuhHAPHelperError
-                from wazuh.core.results import WazuhResult
+                    sys.modules['wazuh.rbac.orm'] = MagicMock()
+
+                    from wazuh.core import common
+                    from wazuh.core.cluster import utils
+                    from wazuh.core.exception import (
+                        WazuhError,
+                        WazuhException,
+                        WazuhInternalError,
+                        WazuhPermissionError,
+                        WazuhResourceNotFound,
+                        WazuhHAPHelperError
+                    )
+                    from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
     'node_type': 'master',
@@ -28,9 +38,9 @@ default_cluster_config = {
     'bind_addr': 'localhost',
     'nodes': ['127.0.0.1'],
     'hidden': 'no',
-    'cafile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.ca'),
-    'certfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
-    'keyfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'),
+    'cafile': common.WAZUH_ETC / 'sslmanager.ca',
+    'certfile': common.WAZUH_ETC / 'sslmanager.cert',
+    'keyfile': common.WAZUH_ETC / 'sslmanager.key',
     'keyfile_password': '',
 }
 
@@ -263,19 +273,24 @@ def test_get_cluster_items():
     """Verify the cluster files information."""
     utils.get_cluster_items.cache_clear()
 
-    with patch('os.path.abspath', side_effect=FileNotFoundError):
+    with patch('builtins.open', side_effect=FileNotFoundError):
         with pytest.raises(WazuhException, match='.* 3005 .*'):
             utils.get_cluster_items()
 
-    items = utils.get_cluster_items()
+    cluster_json_path = Path(__file__).parent.parent / 'cluster.json'
+    cluster_json = json.loads(cluster_json_path.read_text())
+    with patch('builtins.open'):
+        with patch('wazuh.core.cluster.utils.json.loads', return_value=cluster_json):
+            items = utils.get_cluster_items()
+
     assert items == {
         'files': {
-            'etc/': {
+            '': {
                 'permissions': 416, 'source': 'master', 'files': ['private_key.pem', 'public_key.pem'],
                 'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False, 'extra_valid': False,
                 'description': 'JWT signing key pair'
             },
-            'etc/shared/': {
+            'shared': {
                 'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': False, 'restart': False,
                 'remove_subdirs_if_empty': True, 'extra_valid': False, 'description': 'group files'
             },
