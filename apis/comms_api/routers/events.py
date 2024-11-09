@@ -1,26 +1,21 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 
 from comms_api.authentication.authentication import JWTBearer
-from comms_api.core.events import create_stateful_events, send_stateless_events
-from comms_api.models.events import StatefulEvents, StatefulEventsResponse, StatelessEvents
+from comms_api.core.events import create_stateful_events, send_stateless_events, parse_stateful_events
+from comms_api.models.events import StatefulEventsResponse, StatelessEvents
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhCommsAPIError
 
 
 @timeout(30)
-async def post_stateful_events(
-    request: Request,
-    events: StatefulEvents,
-) -> StatefulEventsResponse:
+async def post_stateful_events(request: Request) -> StatefulEventsResponse:
     """Handle posting stateful events.
 
     Parameters
     ----------
     request : Request
         Incoming HTTP request.
-    events : StatefulEvents
-        Events to post.
 
     Raises
     ------
@@ -33,6 +28,7 @@ async def post_stateful_events(
         Response from the Indexer.
     """
     try:
+        events = await parse_stateful_events(request)
         results = await create_stateful_events(events, request.app.state.batcher_queue)
         return StatefulEventsResponse(results=results)
     except WazuhError as exc:
