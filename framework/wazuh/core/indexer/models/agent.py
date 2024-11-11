@@ -3,10 +3,11 @@ import hashlib
 import os
 from dataclasses import asdict, dataclass, InitVar
 from datetime import datetime
+from enum import Enum
 from hmac import compare_digest
 from typing import List
 
-from wazuh.core.indexer.base import remove_empty_values
+from wazuh.core.indexer.utils import convert_enums
 
 ITERATIONS = 100_000
 HASH_ALGO = 'sha256'
@@ -41,6 +42,15 @@ def _hash_key(key: str, salt: bytes) -> str:
     return hashlib.pbkdf2_hmac(HASH_ALGO, key.encode('utf-8'), salt, ITERATIONS)
 
 
+class Status(str, Enum):
+    """Agent connection status enum."""
+    ACTIVE = 'active'
+    DISCONNECTED = 'disconnected'
+    PENDING = 'pending'
+    NEVER_CONNECTED = 'never_connected'
+    REMOVED = 'removed'
+
+
 @dataclass
 class OS:
     """Agent operating system information."""
@@ -52,9 +62,9 @@ class OS:
 class Host:
     """Agent host information."""
     architecture: str = None
+    hostname: str = None
     ip: List[str] = None
     os: OS = None
-    hostname: str = None
 
 
 @dataclass
@@ -64,11 +74,11 @@ class Agent:
     id: str = None
     name: str = None
     key: str = None
-    groups: str = None
     type: str = None
     version: str = None
+    groups: str = None
     last_login: datetime = None
-    is_connected: bool = None
+    status: Status = None
     host: Host = None
 
     raw_key: InitVar[str | None] = None
@@ -124,7 +134,7 @@ class Agent:
             The translated data.
         """
         ret_val = {}
-        for k, v in asdict(self, dict_factory=remove_empty_values).items():
+        for k, v in asdict(self, dict_factory=convert_enums).items():
             if k == 'groups':
                 v = ','.join(v)
             ret_val[k] = v
