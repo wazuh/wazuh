@@ -610,12 +610,12 @@ def test_merge_info(stat_mock, listdir_mock):
 
     with patch('builtins.open', mock_open(read_data=agent_groups)) as open_mock:
         files_to_send, output_file = cluster.merge_info('testing', 'worker1', file_type='-shared')
-        open_mock.assert_any_call(str(common.WAZUH_RUN / 'queue/cluster/worker1/testing-shared.merged'), 'wb')
-        open_mock.assert_any_call(str(common.WAZUH_RUN / 'queue/testing/005'), 'rb')
-        open_mock.assert_any_call(str(common.WAZUH_RUN / 'queue/testing/006'), 'rb')
+        open_mock.assert_any_call(str(common.WAZUH_RUN / 'cluster/worker1/testing-shared.merged'), 'wb')
+        open_mock.assert_any_call(str(common.WAZUH_RUN / 'cluster/testing/005'), 'rb')
+        open_mock.assert_any_call(str(common.WAZUH_RUN / 'cluster/testing/006'), 'rb')
 
         assert files_to_send == 2
-        assert output_file == "queue/cluster/worker1/testing-shared.merged"
+        assert output_file == "cluster/worker1/testing-shared.merged"
 
         files_to_send, output_file = cluster.merge_info('testing', 'worker1', files=["one", "two"],
                                                         file_type='-shared')

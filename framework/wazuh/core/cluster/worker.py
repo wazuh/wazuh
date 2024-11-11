@@ -89,7 +89,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         super().connection_result(future_result)
         if self.connected:
             # create directory for temporary files
-            worker_tmp_files = common.CLUSTER_QUEUE / self.name
+            worker_tmp_files = common.WAZUH_QUEUE / self.name
             if not os.path.exists(worker_tmp_files):
                 utils.mkdir_with_mode(worker_tmp_files)
 

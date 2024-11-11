@@ -494,8 +494,8 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, path_ex
     assert master_handler.hello(b"name node_type version") == (b"ok", "payload")
 
     super_hello_mock.assert_called_once_with(b"name")
-    mkdir_with_mode_mock.assert_called_once_with(common.WAZUH_RUN / "queue" / "cluster" / "name")
-    path_exists_mock.assert_called_once_with(common.WAZUH_RUN / "queue" / "cluster" / "name")
+    mkdir_with_mode_mock.assert_called_once_with(common.WAZUH_RUN / "cluster" / "name")
+    path_exists_mock.assert_called_once_with(common.WAZUH_RUN / "cluster" / "name")
     sync_files_mock.assert_called_once_with(cmd=b"syn_m_c", logger=ANY, manager=ANY)
 
     assert "Integrity check" in master_handler.task_loggers

@@ -114,8 +114,8 @@ async def test_worker_handler_connection_result(connection_result_mock, mkdir_wi
     worker_handler = get_worker_handler(event_loop)
     worker_handler.connected = True
     worker_handler.connection_result("something")
-    exists_mock.assert_called_once_with(core_common.CLUSTER_QUEUE / "Testing")
-    mkdir_with_mode_mock.assert_called_once_with(core_common.CLUSTER_QUEUE / "Testing")
+    exists_mock.assert_called_once_with(core_common.WAZUH_QUEUE / "Testing")
+    mkdir_with_mode_mock.assert_called_once_with(core_common.WAZUH_QUEUE / "Testing")
     connection_result_mock.assert_called_once()
 
 

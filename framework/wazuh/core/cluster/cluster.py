@@ -396,7 +396,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
     compress_level = get_cluster_items()['intervals']['communication']['compress_level']
     if max_zip_size is None:
         max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
-    zip_file_path = path.join(common.CLUSTER_QUEUE, name, f'{name}-{get_utc_now().timestamp()}-{uuid4().hex}.zip')
+    zip_file_path = path.join(common.WAZUH_QUEUE, name, f'{name}-{get_utc_now().timestamp()}-{uuid4().hex}.zip')
 
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
@@ -655,7 +655,7 @@ def clean_up(node_name=""):
                 continue
 
     try:
-        rm_path = path.join(common.CLUSTER_QUEUE, node_name)
+        rm_path = path.join(common.WAZUH_QUEUE, node_name)
         logger.debug(f"Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
         logger.debug(f"Removed '{rm_path}'.")
@@ -691,7 +691,7 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
         Path to the created merged file.
     """
     merge_path = path.join(common.WAZUH_QUEUE, merge_type)
-    output_file = path.join('queue', 'cluster', node_name, merge_type + file_type + '.merged')
+    output_file = path.join('cluster', node_name, merge_type + file_type + '.merged')
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 

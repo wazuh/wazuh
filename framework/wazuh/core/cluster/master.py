@@ -289,7 +289,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
-        worker_dir = common.CLUSTER_QUEUE / self.name
+        worker_dir = common.WAZUH_QUEUE / self.name
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
 
@@ -673,9 +673,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         ):
                             try:
                                 # Destination path.
-                                full_unmerged_name = common.CLUSTER_QUEUE / unmerged_file_path
+                                full_unmerged_name = common.WAZUH_QUEUE / unmerged_file_path
                                 # Path where to create the file before moving it to the destination path.
-                                tmp_unmerged_path = common.CLUSTER_QUEUE / worker_name / os.path.basename(
+                                tmp_unmerged_path = common.WAZUH_QUEUE / worker_name / os.path.basename(
                                     unmerged_file_path
                                 )
                                 # Format the file_data specified inside the merged file.
