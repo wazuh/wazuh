@@ -2,7 +2,7 @@ import asyncio
 from typing import List
 
 from .base import BaseIndex
-from wazuh.core.indexer.models.events import AgentMetadata, Header, StatefulEvent, TaskResult
+from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, StatefulEvent, TaskResult
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.batcher.client import BatcherClient
@@ -48,7 +48,11 @@ class EventsIndex(BaseIndex, MixinBulk):
 
         # Sends the events to the batcher
         for i, header in enumerate(headers):
-            batcher_client.send_event(agent_metadata, header, events[i])
+            batcher_client.send_event(
+                agent_metadata=agent_metadata,
+                header=header,
+                event=events[i] if header.operation != Operation.DELETE else None
+            )
 
             task = asyncio.create_task(
                 (lambda u: batcher_client.get_response(u))(header.id)

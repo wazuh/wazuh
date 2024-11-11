@@ -21,7 +21,7 @@ class BatcherClient:
         self.queue = queue
         self.wait_frequency = wait_frequency
 
-    def send_event(self, agent_metadata: AgentMetadata, header: Header, event: StatefulEvent):
+    def send_event(self, agent_metadata: AgentMetadata, header: Header, event: StatefulEvent = None):
         """Send an event through the RouterQueue.
 
         Parameters
@@ -33,11 +33,11 @@ class BatcherClient:
         event : StatefulEvent
             Event data.
         """
-        content = agent_metadata.model_dump() | event.data.model_dump()
+        content = agent_metadata.model_dump() | event.data.model_dump(exclude_none=True) if event else None
         item = Item(
             id=header.id,
-            content=content,
             operation=header.operation,
+            content=content,
             index_name=get_module_index_name(header.module, header.type)
         )
         self.queue.send_to_mux(item)
