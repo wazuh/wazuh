@@ -296,7 +296,6 @@ if __name__ == '__main__':
     # The bash script that starts all services first executes them using the `-t` flag to check the configuration.
     # We don't have a configuration yet, but it will be added in the future, so we just exit successfully for now.
     #
-    # TODO(#25121): handle master/worker case (only master now)
     try:
         CentralizedConfig.load()
     except Exception as e:

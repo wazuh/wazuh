@@ -10,7 +10,7 @@ from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhCommsAPIError
 
 
-@timeout()
+@timeout(30)
 async def get_commands(token: Annotated[str, Depends(JWTBearer())], request: Request) -> Commands:
     """Get commands endpoint handler.
 

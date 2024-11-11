@@ -10,7 +10,7 @@ import wazuh.core.config.client
 logger = logging.getLogger('wazuh-comms-api')
 
 
-DEFAULT_TIMEOUT = wazuh.core.config.client.CentralizedConfig.get_comms_api_config().intervals.request_timeout
+DEFAULT_TIMEOUT = 10
 
 
 def timeout(seconds: float = DEFAULT_TIMEOUT):

@@ -9,7 +9,7 @@ from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhCommsAPIError
 
 
-@timeout()
+@timeout(30)
 async def get_files(file_name: str) -> FileResponse:
     """Get files endpoint handler.
 

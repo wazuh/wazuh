@@ -43,7 +43,6 @@ async def post_stateful_events(request: Request) -> StatefulEventsResponse:
 
 @timeout(10)
 async def post_stateless_events(request: Request) -> Response:
-
     """Post stateless events handler.
 
     Parameters

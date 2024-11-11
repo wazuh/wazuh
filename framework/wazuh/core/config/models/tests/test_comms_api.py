@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from wazuh.core.config.models.comms_api import BatcherConfig, CommsAPIIntervals, CommsAPIConfig
+from wazuh.core.config.models.comms_api import BatcherConfig, CommsAPIConfig
 
 
 @pytest.mark.parametrize("init_values, expected", [
@@ -30,26 +30,6 @@ def test_batcher_config_invalid_values(init_values):
     with pytest.raises(ValidationError):
         _ = BatcherConfig(**init_values)
 
-
-@pytest.mark.parametrize("init_values, expected", [
-    ({}, {"request_timeout": 10}),
-    ({"request_timeout": 3}, {"request_timeout": 3})
-])
-def test_comms_api_intervals_default_values(init_values, expected):
-    """Check the correct initialization of the `CommsAPIIntervals` class."""
-    config = CommsAPIIntervals(**init_values)
-
-    assert config.request_timeout == expected["request_timeout"]
-
-
-@pytest.mark.parametrize("value", [
-    -10,
-    0
-])
-def test_comms_api_intervals_invalid_values(value):
-    """Check the correct behavior of the `CommsAPIIntervals` class validations."""
-    with pytest.raises(ValidationError):
-        _ = CommsAPIIntervals(request_timeout=value)
 
 
 @pytest.mark.parametrize("init_values, expected", [

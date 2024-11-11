@@ -24,17 +24,6 @@ class BatcherConfig(BaseModel):
     wait_time: PositiveFloat = 0.15
 
 
-class CommsAPIIntervals(BaseModel):
-    """Configuration for the communication API intervals.
-
-    Parameters
-    ----------
-    request_timeout : PositiveInt
-        The timeout duration for requests in seconds. Default: 10.
-    """
-    request_timeout: PositiveInt = 10
-
-
 class CommsAPIConfig(BaseModel):
     """Configuration for the Communications API.
 
@@ -61,7 +50,6 @@ class CommsAPIConfig(BaseModel):
 
     logging: RotatedLoggingConfig = RotatedLoggingConfig()
     batcher: BatcherConfig = BatcherConfig()
-    intervals: CommsAPIIntervals = CommsAPIIntervals()
     ssl: APISSLConfig = APISSLConfig(
         key=DEFAULT_COMMUNICATIONS_API_KEY_PATH,
         cert=DEFAULT_COMMUNICATIONS_API_CERT_PATH,

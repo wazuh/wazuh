@@ -103,8 +103,6 @@ indexer:
 #    max_elements: 5
 #    max_size: 3000
 #    wait_time: 0.15
-#  intervals:
-#    request_timeout: 10
 #  ssl:
 #    key: "/var/ossec/api/configuration/ssl/server.key"
 #    cert: "/var/ossec/api/configuration/ssl/server.crt"
