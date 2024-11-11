@@ -1,3 +1,11 @@
+#include <list>
+#include <memory>
+#include <string_view>
+#include <vector>
+
+#include <base/json.hpp>
+#include <base/logging.hpp>
+
 #include <router/orchestrator.hpp>
 
 #include "entryConverter.hpp"
@@ -23,6 +31,59 @@ void validatePointer(const T& ptr, const std::string& name)
     else if (!ptr)
         throw std::runtime_error {"Configuration error: " + name + " cannot be empty"};
 }
+
+/**
+ * @brief create the base::Event list from batch of raw ndjson
+ *
+ * @param std::list<std::string_view> list of json (ndjson batch)
+ * @return std::vector<base::Event> list of base::Event created from the batch
+ * @throw std::runtime_error if any event is invalid
+ */
+inline std::vector<base::Event> createEventsFromBatch(const std::list<std::string_view>& batch)
+{
+    const std::size_t headerSize = 2; // Header and subheader
+    const auto isSubHeader = [](const base::Event& event) -> bool
+    {
+        return event->isString("/module");
+    }; // '/module' is a mandatory field and not present in wazuh common schema
+
+    // Extract the header for futher merge with the events.
+    json::Json agentInfo {};
+    try
+    {
+        agentInfo = std::move(json::Json(batch.front().data()));
+    }
+    catch (const std::exception& e)
+    {
+        LOG_DEBUG("Error parsing agent info: '{}'", e.what());
+        throw std::runtime_error {"Error parsing agent info, invalid header, discarting batch"};
+    }
+
+    std::vector<base::Event> events {};
+    events.reserve(batch.size() - headerSize);
+    for (auto it = std::next(batch.begin(), headerSize); it != batch.end(); ++it)
+
+    {
+        try
+        {
+            auto event = std::make_shared<json::Json>(it->data());
+            if (event->isString("/module"))
+            {
+                LOG_TRACE("Ignoring subheader event");
+                continue;
+            }
+            event->merge(true, agentInfo);
+            events.emplace_back(event);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_DEBUG("Error parsing event '{}': '{}', ignore event", e.what());
+        }
+    }
+
+    return events;
+}
+
 } // namespace
 
 // Private
@@ -428,6 +489,61 @@ base::OptError Orchestrator::postStrEvent(std::string_view event)
         return err;
     }
     return std::nullopt;
+}
+
+void Orchestrator::postRawEventBatch(std::string&& batch)
+{
+    const std::size_t min_header_size = 2; // Header + subheader
+    const std::size_t min_size = 3;        // min_header_size + 1 event
+
+    if (batch.empty())
+    {
+        LOG_DEBUG("Received empty ndjson batch");
+        throw std::runtime_error {"ndjson is empty"};
+    }
+
+    // Extract the json raw from ndjson batch
+    std::list<std::string_view> rawJson {};
+    {
+        std::replace(batch.begin(), batch.end(), '\n', '\0'); // Use string as buffer
+        const char* start = batch.data();
+        const char* end = start + batch.size();
+        while (start < end)
+        {
+            const char* next = std::find(start, end, '\0');
+            if (start != next)
+            {
+                rawJson.emplace_back(start, next - start);
+            }
+            start = next + 1;
+        }
+    }
+
+    // Validate the batch
+    if (rawJson.size() < min_size)
+    {
+        LOG_DEBUG("Received ndjson with less than '{}' lines", min_size);
+        throw std::runtime_error {"ndjson is too small"};
+    }
+
+    if (m_eventQueue->capacity() < rawJson.size() - min_header_size)
+    {
+        LOG_DEBUG("Recieved '{}' events in router, but the event queue has a capacity of '{}'",
+                    rawJson.size(),
+                    m_eventQueue->capacity());
+    }
+
+    // Process the batch
+    std::vector<base::Event> events = createEventsFromBatch(rawJson);
+    std::size_t discardedEvents = 0;
+    for (const auto& event : events)
+    {
+        discardedEvents += m_eventQueue->tryPush(event) ? 0 : 1;
+        LOG_INFO("EVENT: {}", event->prettyStr());
+    }
+    if (discardedEvents > 0) {
+        LOG_DEBUG("Router: {} events discarded from the batch", discardedEvents);
+    }
 }
 
 base::OptError Orchestrator::changeEpsSettings(uint eps, uint refreshInterval)
