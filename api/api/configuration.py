@@ -187,4 +187,3 @@ except ValidationError as e:
 # Configuration - global object
 # TODO(25554) - This is only used as a placeholder for no longer used endpoints
 hardcoded_api_config = default_api_configuration
-hardcoded_security_conf = default_security_configuration

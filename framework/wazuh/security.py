@@ -17,6 +17,7 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
+from wazuh.core.config.client import CentralizedConfig
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
@@ -1317,7 +1318,6 @@ async def get_security_config() -> WazuhResult:
     return WazuhResult({'data': get_security_conf()})
 
 
-# TODO(26553) - To be removed
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
 async def update_security_config(updated_config: dict = None) -> str:
     """Update or restore current security configuration.
@@ -1335,6 +1335,10 @@ async def update_security_config(updated_config: dict = None) -> str:
     str
         Confirmation/Error message.
     """
-    result = 'This feature will be replaced or deleted by new centralized config'
+    try:
+        CentralizedConfig.update_security_conf(config=updated_config)
+        result = 'Configuration was successfully updated'
+    except WazuhError as e:
+        result = f'Configuration could not be updated. Error: {e}'
 
     return result

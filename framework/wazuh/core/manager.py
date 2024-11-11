@@ -24,7 +24,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
-
+from wazuh.core.config.client import CentralizedConfig
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
@@ -267,7 +267,10 @@ def get_api_conf() -> dict:
     dict
         API configuration.
     """
-    return copy.deepcopy(configuration.hardcoded_api_config)
+    management_api_conf = CentralizedConfig.get_management_api_config()
+    comms_api_conf = CentralizedConfig.get_comms_api_config()
+    return copy.deepcopy({"management_api": management_api_conf.model_dump(exclude_defaults=True),
+                          "comms_api": comms_api_conf.model_dump(exclude_defaults=True)})
 
 
 def _get_ssl_context() -> ssl.SSLContext:

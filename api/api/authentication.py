@@ -89,7 +89,11 @@ def get_security_conf() -> dict:
     dict
         Dictionary with the content of the security.yaml file.
     """
-    return conf.hardcoded_security_conf
+    management_api_config = CentralizedConfig.get_management_api_config()
+    return {
+        "auth_token_exp_timeout": management_api_config.jwt_expiration_timeout,
+        "rbac_mode": management_api_config.rbac_mode
+    }
 
 
 def generate_token(user_id: str = None, data: dict = None, auth_context: dict = None) -> str:

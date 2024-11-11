@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig, ManagementAPIConfig,
@@ -78,3 +78,22 @@ def test_get_server_internal_config(patch_load):
     """Check the correct behavior of the `get_internal_server_config` class method."""
     internal_config = CentralizedConfig.get_internal_server_config()
     assert internal_config == DEFAULT_SERVER_INTERNAL_CONFIG
+
+
+@pytest.mark.parametrize("updated_values, expected_yaml_update", [
+    ({"auth_token_exp_timeout": 7200, "rbac_mode": None},
+     {"auth_token_exp_timeout": 7200, "rbac_mode": "white"}),
+    ({"auth_token_exp_timeout": None, "rbac_mode": "black"},
+     {"auth_token_exp_timeout": 900, "rbac_mode": "black"}),
+    ({"auth_token_exp_timeout": 7200, "rbac_mode": "black"},
+     {"auth_token_exp_timeout": 7200, "rbac_mode": "black"}),
+])
+@patch("yaml.dump")
+@patch("builtins.open", new_callable=mock_open)
+def test_update_security_conf(mock_open_file, mock_yaml_dump, patch_load, updated_values, expected_yaml_update):
+    """Check the correct behavior of the `get_internal_server_config` class method."""
+    CentralizedConfig.update_security_conf(updated_values)
+
+    assert CentralizedConfig._config.management_api.jwt_expiration_timeout == expected_yaml_update["auth_token_exp_timeout"]
+    assert CentralizedConfig._config.management_api.rbac_mode == expected_yaml_update["rbac_mode"]
+    mock_yaml_dump.assert_called_once()

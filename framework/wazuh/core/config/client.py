@@ -1,9 +1,12 @@
 import yaml
 import os
 from typing import Optional
+from pydantic import ValidationError
 
+from wazuh import WazuhInternalError
 from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.config.models.server import ServerSyncConfig
+from wazuh.core.config.models.management_api import RBACMode
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
                                                      ManagementAPIConfig, ServerConfig,
                                                      IndexerConfig, EngineConfig)
@@ -131,3 +134,42 @@ class CentralizedConfig:
             cls.load()
 
         return cls._config.server.get_internal_config()
+
+    @classmethod
+    def update_security_conf(cls, config: dict):
+        """Update the security configuration with the provided values.
+
+        This method updates the security-related settings, including the
+        authentication token expiration timeout and the RBAC mode, then writes
+        the changes back to the YAML configuration file.
+
+        Parameters
+        ----------
+        config : dict
+            A dictionary containing the security-related configuration settings,
+            such as "auth_token_exp_timeout" and "rbac_mode".
+
+        Raises
+        ------
+        WazuhInternalError
+            If an error occurs while updating the configuration or saving
+            to the file.
+        """
+        if cls._config is None:
+            cls.load()
+
+        if config["auth_token_exp_timeout"] is not None:
+            cls._config.management_api.jwt_expiration_timeout = config["auth_token_exp_timeout"]
+
+        if config["rbac_mode"] is not None:
+            cls._config.management_api.rbac_mode = RBACMode(config["rbac_mode"])
+
+        non_default_values = cls._config.model_dump(exclude_defaults=True)
+
+        try:
+            with open(WAZUH_SERVER_YML, 'w') as file:
+                yaml.dump(non_default_values, file)
+        except IOError as e:
+            raise WazuhInternalError(1005)
+        except ValidationError as e:
+            raise WazuhInternalError(1103)
