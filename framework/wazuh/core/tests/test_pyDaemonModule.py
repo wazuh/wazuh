@@ -68,13 +68,12 @@ def test_get_parent_pid(os_listdir_mock, expected_pid, process_name):
     assert expected_pid == actual_pid
 
 
-@patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path('/tmp'))
 def test_delete_pid():
     """Tests delete_pid function works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new=tmpdirname.split('/')[2]):
+        with patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path(tmpdirname.split('/')[2])):
             delete_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 @patch('wazuh.core.pyDaemonModule.next')

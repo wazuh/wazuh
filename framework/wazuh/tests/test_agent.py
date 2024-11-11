@@ -57,6 +57,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core.exception import WazuhResourceNotFound
             from wazuh.core.indexer.agent import Agent as IndexerAgent
             from wazuh.core.indexer.base import IndexerKey
+            from wazuh.core.indexer.models.agent import Host
             from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
             from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
             from wazuh.core.tests.test_agent import InitAgent
