@@ -60,8 +60,10 @@ override_dh_install:
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/tmp
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/bin
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/run
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/etc
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/log
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/usr/share
 
 	cp -p $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)bin/
 	cp -p $(INSTALLATION_DIR)bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)bin/
@@ -72,6 +74,8 @@ override_dh_install:
 	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
 	cp -pr $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/
 	cp -pr $(INSTALLATION_DIR)var/log/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/log/
+	cp -pr $(INSTALLATION_DIR)usr/share/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/
+	cp -pr $(INSTALLATION_DIR)etc/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)etc/
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
@@ -92,6 +96,10 @@ override_dh_fixperms:
 	find $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 
@@ -112,7 +120,7 @@ override_dh_fixperms:
 	chmod 644 $(TARGET_DIR)/usr/lib/systemd/system/wazuh-server.service
 
 	# Fix Python permissions
-	chmod -R 0750 ${TARGET_DIR}$(INSTALLATION_DIR)var/lib/wazuh-server/framework/python/bin
+	chmod -R 0750 ${TARGET_DIR}$(INSTALLATION_DIR)usr/share/wazuh-server/framework/python/bin
 
 override_dh_strip:
 	dh_strip --dbg-package=wazuh-server-dbg --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
