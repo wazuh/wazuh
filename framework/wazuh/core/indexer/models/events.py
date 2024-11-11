@@ -26,6 +26,7 @@ INVENTORY_SYSTEM_TYPE = 'system'
 class AgentMetadata(BaseModel):
     """Agent metadata."""
     id: str
+    name: str
     groups: List[str]
     type: str
     version: str

@@ -4,13 +4,11 @@ import pytest
 from fastapi import Request, status
 from fastapi.applications import FastAPI
 
-from comms_api.models.events import StatefulEvents, StatefulEventsResponse
+from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.events import post_stateful_events, post_stateless_events
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.exception import WazuhEngineError, WazuhError
-from wazuh.core.indexer.bulk import Operation
-from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import AgentMetadata, TaskResult
+from wazuh.core.indexer.models.events import TaskResult
 
 
 @pytest.mark.asyncio

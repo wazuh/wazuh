@@ -43,6 +43,7 @@ async def test_create_stateful_events(create_indexer_mock):
     events = StatefulEvents(
         agent=AgentMetadata(
             id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
+            name='test',
             groups=[],
             type='endpoint',
             version='5.0.0',

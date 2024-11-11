@@ -14,6 +14,7 @@ def test_send_event(queue_mock):
     batcher = BatcherClient(queue=queue_mock)
     agent_metadata = AgentMetadata(
         id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
+        name='test',
         groups=['group1', 'group2'],
         type='endpoint',
         version='5.0.0',
