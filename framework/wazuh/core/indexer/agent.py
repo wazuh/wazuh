@@ -73,7 +73,7 @@ class AgentsIndex(BaseIndex):
             raw_key=key,
             name=name,
             groups='default' + f',{groups}' if groups else None,
-            host=Host(ip=ips, os=OS(full=os)) if ips or os else None
+            host=Host(ip=ips, os=OS(name=os)) if ips or os else None
         )
         try:
             await self._client.index(

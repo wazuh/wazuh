@@ -4,7 +4,6 @@ import os
 from dataclasses import asdict, dataclass, InitVar
 from datetime import datetime
 from hmac import compare_digest
-from typing import List
 
 from wazuh.core.indexer.base import remove_empty_values
 
@@ -44,7 +43,7 @@ def _hash_key(key: str, salt: bytes) -> str:
 @dataclass
 class OS:
     """Agent operating system information."""
-    full: str = None
+    name: str = None
     platform: str = None
 
 
@@ -52,8 +51,9 @@ class OS:
 class Host:
     """Agent host information."""
     architecture: str = None
-    ip: List[str] = None
+    ip: str = None
     os: OS = None
+    hostname: str = None
 
 
 @dataclass
