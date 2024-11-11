@@ -24,45 +24,44 @@ with patch('wazuh.core.common.wazuh_uid'):
             del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from wazuh import WazuhError, WazuhException, WazuhInternalError
-            from wazuh.agent import (
-                ERROR_CODES_UPGRADE_SOCKET,
-                ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST,
-                add_agent,
-                build_agents_query,
-                create_group,
-                delete_agents,
-                delete_groups,
-                get_group_conf,
-                get_agent_config,
-                get_agent_groups,
-                get_agents,
-                get_agents_in_group,
-                get_agents_keys,
-                get_agents_summary_os,
-                get_agents_summary_status,
-                get_distinct_agents,
-                get_full_overview,
-                get_outdated_agents,
-                get_upgrade_result,
-                reconnect_agents,
-                remove_agent_from_groups,
-                remove_agents_from_group,
-                restart_agents,
-                restart_agents_by_node,
-                upgrade_agents,
-                update_group_file,
-            )
-            from wazuh.core.agent import Agent
-            from wazuh.core.exception import WazuhResourceNotFound
-            from wazuh.core.indexer.agent import Agent as IndexerAgent
-            from wazuh.core.indexer.base import IndexerKey
-            from wazuh.core.indexer.models.agent import Host
-            from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
-            from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-            from wazuh.core.tests.test_agent import InitAgent
+        from wazuh import WazuhError, WazuhException, WazuhInternalError
+        from wazuh.agent import (
+            ERROR_CODES_UPGRADE_SOCKET,
+            ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST,
+            add_agent,
+            build_agents_query,
+            create_group,
+            delete_agents,
+            delete_groups,
+            get_group_conf,
+            get_agent_config,
+            get_agent_groups,
+            get_agents,
+            get_agents_in_group,
+            get_agents_keys,
+            get_agents_summary_os,
+            get_agents_summary_status,
+            get_distinct_agents,
+            get_full_overview,
+            get_outdated_agents,
+            get_upgrade_result,
+            reconnect_agents,
+            remove_agent_from_groups,
+            remove_agents_from_group,
+            restart_agents,
+            restart_agents_by_node,
+            upgrade_agents,
+            update_group_file,
+        )
+        from wazuh.core.agent import Agent
+        from wazuh.core.exception import WazuhResourceNotFound
+        from wazuh.core.indexer.base import IndexerKey
+        from wazuh.core.indexer.models.agent import Agent as IndexerAgent
+        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
+        from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+        from wazuh.core.tests.test_agent import InitAgent
 
-            from api.util import remove_nones_to_dict
+        from api.util import remove_nones_to_dict
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -428,54 +427,66 @@ async def test_agent_delete_agents(
         assert list(result.failed_items.values())[0] == set(agent_list[1:])
 
 
-@pytest.mark.parametrize('id,name,key,groups,ips,os', [
+@pytest.mark.parametrize('id,name,key,groups,type,version', [
     (
         '019008da-1575-7375-b54f-ef43e393517ef',
         'test',
         '95fffd306c752289d426e66013881538',
         'group1',
-        ['192.168.0.1'],
-        'Mac OS Mojave',
+        'endpoint',
+        '5.0.0'
     ),
 ])
 @patch('wazuh.core.indexer.create_indexer')
-async def test_agent_add_agent(create_indexer_mock, name, id, key, groups, ips, os):
-    """Test `add_agent` from agent module.
-
-    Parameters
-    ----------
-    id : str
-        Agent ID.
-    name : str
-        Agent name.
-    key : str
-        Agent key.
-    groups : str
-        Agent groups.
-    ips : List[str]
-        Agent IP addresses.
-    os : str
-        Agent operating system
-    """
-    new_agent = IndexerAgent(id=id, name=name, raw_key=key, groups=groups, host=Host(ip=ips, os=os))
+async def test_agent_add_agent(
+    create_indexer_mock,
+    name,
+    id,
+    key,
+    groups,
+    type,
+    version,
+):
+    """Test `add_agent` from agent module. """
+    new_agent = IndexerAgent(
+        id=id,
+        name=name,
+        raw_key=key,
+        type=type,
+        version=version,
+        groups=groups,
+    )
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
-    result = await add_agent(name=name, id=id, key=key, groups=groups, os=os)
+    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    commands_create_mock = AsyncMock(return_value=create_response)
+    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
+
+    result = await add_agent(
+        name=name,
+        id=id,
+        key=key,
+        type=type,
+        version=version,
+        groups=groups,
+        
+    )
 
     assert result.dikt['data'].id == new_agent.id
     assert result.dikt['data'].name == new_agent.name
     assert result.dikt['data'].key == new_agent.key
+    assert result.dikt['data'].type == new_agent.type
+    assert result.dikt['data'].version == new_agent.version
     assert result.dikt['data'].groups == new_agent.groups
-    assert result.dikt['data'].host.os == new_agent.host.os
 
 
 @pytest.mark.parametrize(
-    'id,name,key', [
-        ('019008da-1575-7375-b54f-ef43e393517ef', 'test', '95fffd306c752289d426e66013881538'),
+    'id,name,key,type,version', [
+        ('019008da-1575-7375-b54f-ef43e393517ef', 'test', '95fffd306c752289d426e66013881538', 'endpoint', '5.0.0'),
     ]
 )
 @patch('wazuh.core.indexer.create_indexer')
-async def test_agent_add_agent_ko(create_indexer_mock, name, id, key):
+async def test_agent_add_agent_ko(create_indexer_mock, name, id, key, type, version):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -488,7 +499,7 @@ async def test_agent_add_agent_ko(create_indexer_mock, name, id, key):
         The agent key.
     """
     with pytest.raises(WazuhError, match='.* 1738 .*'):
-        await add_agent(name=name*128, id=id, key=key)
+        await add_agent(name=name*128, id=id, key=key, type=type, version=version)
 
 
 

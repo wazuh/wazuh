@@ -90,130 +90,191 @@ class AgentForce(Model):
         self._after_registration_time = after_registration_time
 
 
-class AgentAddedModel(Body):
+class OS(Model):
+    """Agent OS model."""
+
+    def __init__(self, name: str = None, platform: str = None):
+        self.swagger_types = {
+            'name': str,
+            'platform': str
+        }
+
+        self.attribute_map = {
+            'name': 'name',
+            'platform': 'platform'
+        }
+
+        self._name = name
+        self._platform = platform
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @name.setter
+    def name(self, name: str):
+        self._name = name
+
+    @property
+    def platform(self) -> str:
+        return self._platform
+
+    @platform.setter
+    def platform(self, platform: str):
+        self._platform = platform
+
+
+class Host(Model):
+    """Agent host model."""
+
+    def __init__(self, architecture: str = None, hostname: str = None, ip: List[str] = None, os: OS = None):
+        self.swagger_types = {
+            'architecture': str,
+            'hostname': str,
+            'ip': List[str],
+            'os': OS,
+        }
+
+        self.attribute_map = {
+            'architecture': 'architecture',
+            'hostname': 'hostname',
+            'ip': 'ip',
+            'os': 'os',
+        }
+
+        self._architecture = architecture
+        self._hostname = hostname
+        self._ip = ip
+        self._os = os
+
+    @property
+    def architecture(self) -> str:
+        return self._architecture
+
+    @architecture.setter
+    def architecture(self, architecture: str):
+        self._architecture = architecture
+
+    @property
+    def hostname(self) -> str:
+        return self._hostname
+
+    @hostname.setter
+    def hostname(self, hostname: str):
+        self._hostname = hostname
+
+    @property
+    def ip(self) -> List[str]:
+        return self._ip
+
+    @ip.setter
+    def ip(self, ip: List[str]):
+        self._ip = ip
+    
+    @property
+    def os(self) -> OS:
+        return self._os
+
+    @os.setter
+    def os(self, os: OS):
+        self._os = os
+
+
+class AgentRegistrationModel(Body):
+    """Agent registration model."""
 
     def __init__(
         self,
         id: str = None,
         name: str = None,
         key: str = None,
+        type: str = None,
+        version: str = None,
         groups: str = None,
-        ips: str = None,
-        os: str = None,
+        host: Host = None,
     ):
         self.swagger_types = {
             'id': str,
             'name': str,
             'key': str,
+            'type': str,
+            'version': str,
             'groups': str,
-            'ips': str,
-            'os': str,
+            'host': Host,
         }
 
         self.attribute_map = {
             'id': 'id',
             'name': 'name',
             'key': 'key',
+            'type': 'type',
+            'version': 'version',
             'groups': 'groups',
-            'ips': 'ips',
-            'os': 'os'
+            'host': 'host',
         }
 
-        self._name = name
         self._id = id
+        self._name = name
         self._key = key
+        self._type = type
+        self._version = version
         self._groups = groups
-        self._ips = ips
-        self._os = os
+        self._host = host
 
     @property
     def id(self) -> str:
-        """
-        :return: Agent id value
-        :rtype: str
-        """
         return self._id
 
     @id.setter
-    def id(self, id):
-        """
-        :param id: Agent id.
-        """
+    def id(self, id: str):
         self._id = id
 
     @property
     def name(self) -> str:
-        """
-        :return: Agent name
-        :rtype: str
-        """
         return self._name
 
     @name.setter
-    def name(self, name):
-        """
-        :param name: Agent name
-        """
+    def name(self, name: str):
         self._name = name
 
     @property
-    def key(self):
-        """
-        :return: Agent key
-        :rtype: str
-        """
+    def key(self) -> str:
         return self._key
 
     @key.setter
-    def key(self, key):
-        """
-        :param key: Agent key
-        """
+    def key(self, key: str):
         if len(key) != 32:
             raise ProblemException(status=400, title='Invalid key length', detail='The key must be 32 characters long')
         self._key = key
     
     @property
-    def groups(self):
-        """
-        :return: Agent groups
-        :rtype: str
-        """
+    def type(self) -> str:
+        return self._type
+
+    @type.setter
+    def type(self, type: str):
+        self._type = type
+
+    @property
+    def version(self) -> str:
+        return self._version
+
+    @version.setter
+    def version(self, version: str):
+        self._version = version
+    
+    @property
+    def groups(self) -> str:
         return self._groups
 
     @groups.setter
-    def groups(self, groups):
-        """
-        :param groups: Agent groups
-        """
+    def groups(self, groups: str):
         self._groups = groups
 
     @property
-    def ips(self):
-        """
-        :return: Agent IP addresses
-        :rtype: str
-        """
-        return self._ips
+    def host(self) -> Host:
+        return self._host
 
-    @ips.setter
-    def ips(self, ips):
-        """
-        :param ip: Agent IP addresses
-        """
-        self._ips = ips
-
-    @property
-    def os(self):
-        """
-        :return: Agent operating system
-        :rtype: str
-        """
-        return self._os
-
-    @os.setter
-    def os(self, os):
-        """
-        :param os: Agent operating system
-        """
-        self._os = os
+    @host.setter
+    def host(self, host: Host):
+        self._host = host

@@ -156,7 +156,7 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
 async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'add_agent' endpoint is working as expected."""
     with patch('api.controllers.agent_controller.Body.validate_content_type'):
-        with patch('api.controllers.agent_controller.AgentAddedModel.get_kwargs',
+        with patch('api.controllers.agent_controller.AgentRegistrationModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await add_agent()
             mock_dapi.assert_called_once_with(

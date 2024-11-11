@@ -6,9 +6,12 @@ from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
 from opensearchpy._async.helpers.search import AsyncSearch
 
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.agent import Agent, Host, OS
+from wazuh.core.indexer.models.agent import Agent, Host
 from wazuh.core.indexer.utils import get_source_items
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+
+DEFAULT_GROUP = 'default'
+
 
 class AgentsIndex(BaseIndex):
     """Set of methods to interact with the `agents` index."""
@@ -35,11 +38,12 @@ class AgentsIndex(BaseIndex):
     async def create(
         self,
         id: str,
-        key: str,
         name: str,
+        key: str,
+        type: str,
+        version: str,
         groups: str = None,
-        ips: List[str] = None,
-        os: str = None,
+        host: Host = None,
     ) -> Agent:
         """Create a new agent.
 
@@ -51,12 +55,14 @@ class AgentsIndex(BaseIndex):
             Agent name.
         key : str
             Agent key.
+        type : str
+            Agent type.
+        version : str
+            Agent version.
         groups : str
             Agent groups.
-        ips : str
-            Agent IP addresses.
-        os : str
-            Agent operating system.
+        host : Host
+            Agent host information.
 
         Raises
         ------
@@ -70,10 +76,12 @@ class AgentsIndex(BaseIndex):
         """
         agent = Agent(
             id=id,
-            raw_key=key,
             name=name,
-            groups='default' + f',{groups}' if groups else None,
-            host=Host(ip=ips, os=OS(name=os)) if ips or os else None
+            raw_key=key,
+            type=type,
+            version=version,
+            groups=DEFAULT_GROUP + f',{groups}' if groups else DEFAULT_GROUP,
+            host=host if host else None
         )
         try:
             await self._client.index(
