@@ -60,10 +60,10 @@ add_dependencies(database_feed compile_schemas)
 
 target_link_libraries(database_feed
         PUBLIC
-        flatbuffers::flatbuffers
-        RocksDB::rocksdb
         base
         PRIVATE
+        flatbuffers::flatbuffers
+        RocksDB::rocksdb
         filesystem
         )
 
