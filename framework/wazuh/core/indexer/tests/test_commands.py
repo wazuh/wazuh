@@ -93,7 +93,7 @@ def test_create_restart_command():
         ),
         action=Action(
             name='restart',
-            version='v5.0.0'
+            version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
         timeout=100
@@ -117,7 +117,7 @@ def test_create_set_group_command():
         action=Action(
             name='set-group',
             args=groups,
-            version='v5.0.0'
+            version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
         timeout=100
@@ -139,7 +139,7 @@ def test_create_update_group_command():
         ),
         action=Action(
             name='update-group',
-            version='v5.0.0'
+            version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
         timeout=100

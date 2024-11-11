@@ -138,7 +138,7 @@ def create_restart_command(agent_id: str) -> Command:
         ),
         action=Action(
             name='restart',
-            version='v5.0.0'
+            version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
         timeout=100,
@@ -169,7 +169,7 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
         action=Action(
             name='set-group',
             args=groups,
-            version='v5.0.0'
+            version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
         timeout=100,
@@ -197,7 +197,7 @@ def create_update_group_command(agent_id: str) -> Command:
         ),
         action=Action(
             name='update-group',
-            version='v5.0.0'
+            version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
         timeout=100,
