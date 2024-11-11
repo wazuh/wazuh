@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from comms_api.authentication.authentication import JWTBearer
 from comms_api.core.events import create_stateful_events, send_stateless_events, parse_stateful_events
 from comms_api.models.events import StatefulEventsResponse, StatelessEvents
-from comms_api.routers.exceptions import HTTPError
+from comms_api.routers.exceptions import HTTPError, validation_exception_handler
 from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhCommsAPIError
 
@@ -35,7 +37,8 @@ async def post_stateful_events(request: Request) -> StatefulEventsResponse:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)
     except WazuhCommsAPIError as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_403_FORBIDDEN)
-
+    except ValidationError as exc:
+        return await validation_exception_handler(request, RequestValidationError(exc.errors()))
 
 
 @timeout(10)
