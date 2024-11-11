@@ -291,8 +291,10 @@ def test_cti_config_default_values(init_values, expected):
 
 
 @pytest.mark.parametrize("init_values, expected", [
-    ({"nodes": ["master"], "node": {"name": "example", "type": "master", "ssl": {"key": "value", "cert": "value", "ca": "value"}}},
-     {"port": 1516, "bind_addr": "0.0.0.0", "nodes": ["master"], "hidden": False, "update_check": False, "node": {"name": "example", "type": "master", "ssl": {"key": "value", "cert": "value", "ca": "value"}}})
+    ({"nodes": ["master"], "node": {"name": "example", "type": "master", "ssl":
+        {"key": "value", "cert": "value", "ca": "value"}}},
+     {"port": 1516, "bind_addr": "localhost", "nodes": ["master"], "hidden": False, "update_check": False, "node":
+         {"name": "example", "type": "master", "ssl": {"key": "value", "cert": "value", "ca": "value"}}})
 ])
 def test_server_config_default_values(init_values, expected):
     """Check the correct initialization of the `ServerConfig` class."""

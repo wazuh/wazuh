@@ -176,8 +176,8 @@ def start(params: dict, config: ManagementAPIConfig):
                 arguments={
                     'title': 'Wazuh API',
                     'protocol': 'https',
-                    'host': params['host'],
-                    'port': params['port']},
+                    'host': config.host,
+                    'port': config.port},
                 strict_validation=True,
                 validate_responses=False
                 )

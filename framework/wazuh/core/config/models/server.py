@@ -296,7 +296,7 @@ class ServerConfig(BaseModel):
     port : PositiveInt
         The port on which the server will listen. Default is 1516.
     bind_addr : str
-        The address to bind to. Default is "0.0.0.0".
+        The address to bind to. Default is "localhost".
     nodes : List[str]
         List of nodes in the server.
     hidden : bool
@@ -319,7 +319,7 @@ class ServerConfig(BaseModel):
         Internal server configurations. These settings are internal
     """
     port: PositiveInt = 1516
-    bind_addr: str = "0.0.0.0"
+    bind_addr: str = "localhost"
     nodes: List[str] = Field(min_length=1)
     hidden: bool = False
     update_check: bool = False

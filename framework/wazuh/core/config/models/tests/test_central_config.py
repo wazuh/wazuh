@@ -6,11 +6,13 @@ from wazuh.core.config.models.central_config import Config, EngineConfig, Manage
 @pytest.mark.parametrize("init_values, expected", [
     ({
         "indexer": {"host": "localhost", "port": 9200, "user": "user_example", "password": "password_example"},
-        "server": {"nodes": ["master"], "node": {"name": "example", "type": "master", "ssl": {"key": "value", "cert": "value", "ca": "value"}}}
+        "server": {"nodes": ["master"], "node": {"name": "example", "type": "master", "ssl":
+            {"key": "value", "cert": "value", "ca": "value"}}}
      },
      {
         "node": {"name": "example", "type": "master", "ssl": {"key": "value", "cert": "value", "ca": "value"}},
-        "server": {"nodes": ["master"], "port": 1516, "bind_addr": "0.0.0.0", "hidden": False, "update_check": False, "logging.level": "debug2"},
+        "server": {"nodes": ["master"], "port": 1516, "bind_addr": "localhost", "hidden": False, "update_check": False,
+                   "logging.level": "debug2"},
         "indexer": {"host": "localhost", "port": 9200, "user": "user_example", "password": "password_example"},
         "engine": {},
         "management_api": {},

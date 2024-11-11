@@ -383,18 +383,15 @@ def main():
     if args.foreground:
         print(f'Starting cluster in foreground (pid: {cluster_pid})')
 
-    try:
-        if server_config.node.type == 'master':
-            main_function = master_main
+    if server_config.node.type == 'master':
+        main_function = master_main
 
-            # Generate JWT signing key pair if it doesn't exist
-            if not keypair_exists():
-                main_logger.info('Generating JWT signing key pair')
-                generate_keypair()
-        else:
-            main_function = worker_main
-    except Exception as e:
-        main_logger.error(f"Unhandled exception: {e}")
+        # Generate JWT signing key pair if it doesn't exist
+        if not keypair_exists():
+            main_logger.info('Generating JWT signing key pair')
+            generate_keypair()
+    else:
+        main_function = worker_main
 
     try:
         start_daemons(args.foreground, args.root)
