@@ -1,0 +1,92 @@
+name: Build and Upload Filebeat Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      checksum:
+        description: Generate package checksum.
+        required: false
+        type: boolean
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      checksum:
+        required: false
+        type: boolean
+      id:
+        type: string
+        required: false
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        architecture: [amd64, arm64]
+        package_type: [deb, rpm]
+
+    env:
+      FILEBEAT_VERSION: 7.10.2
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          repository: "elastic/beats"
+          ref: "v${{ env.FILEBEAT_VERSION }}"
+
+      - name: Apply patch for Ubuntu build
+        run: |
+          sed -i 's/apt-get install -y --no-install-recommends/DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends/' filebeat/Dockerfile
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update \
+          && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          gcc make fpm curl golang-go
+
+      - name: Set package name
+        run: |
+          echo "FILEBEAT_TAR_NAME=filebeat-${{ env.FILEBEAT_VERSION }}-${{ matrix.architecture }}-${{ matrix.package_type }}.tar.gz" >> $GITHUB_ENV
+
+      - name: Build Filebeat
+        run: |
+          cd filebeat
+          make ARCH=${{ matrix.architecture }} TYPE=${{ matrix.package_type }}
+
+      - name: Package Filebeat
+        run: |
+          fpm -s dir -t ${matrix.package_type} -a ${matrix.architecture} \
+              -n filebeat -v ${FILEBEAT_VERSION} \
+              --prefix /usr/local/bin ./filebeat
+
+      - name: Create SHA512 Hash
+        if: ${{ inputs.checksum }}
+        run: |
+          sha512sum ${{ env.FILEBEAT_TAR_NAME }} > ${{ env.FILEBEAT_TAR_NAME }}.sha512
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload Filebeat module to S3
+        if: env.MODULE_CHECKED == 'yes'
+        working-directory: extensions/filebeat/7.x/wazuh-module
+        run: |
+          aws s3 cp ${{ env.FILEBEAT_TAR_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/${{ env.FILEBEAT_TAR_NAME }}"
+          echo "S3 URI: ${s3uri}"
+
+      - name: Upload SHA512 to S3
+        if: ${{ inputs.checksum }}
+        run: |
+          aws s3 cp ${{ env.FILEBEAT_TAR_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_FOLDER }}/
+          echo "Uploaded SHA512 hash to s3://${{ env.S3_BUCKET }}/${{ env.S3_FOLDER }}/${{ env.FILEBEAT_TAR_NAME }}.sha512"
