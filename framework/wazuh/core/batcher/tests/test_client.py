@@ -5,14 +5,14 @@ import pytest
 from framework.wazuh.core.batcher.client import BatcherClient
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, StatefulEvent, Header, Module
+from wazuh.core.indexer.models.events import Agent, AgentMetadata, SCAEvent, StatefulEvent, Header, Module
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 def test_send_event(queue_mock):
     """Check that the `send_event` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
-    agent_metadata = AgentMetadata(
+    agent_metadata = AgentMetadata(agent=Agent(
         id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
         name='test',
         groups=['group1', 'group2'],
@@ -26,7 +26,7 @@ def test_send_event(queue_mock):
                 platform='Linux'
             )
         ),
-    )
+    ))
     header = Header(id='1234', module=Module.SCA, operation=Operation.CREATE)
     event = StatefulEvent(data=SCAEvent())
 

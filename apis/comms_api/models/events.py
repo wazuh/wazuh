@@ -7,7 +7,7 @@ from wazuh.core.indexer.models.events import AgentMetadata, Header, StatefulEven
 
 
 class StatefulEvents(BaseModel):
-    agent: AgentMetadata
+    agent_metadata: AgentMetadata
     headers: List[Header]
     events: List[StatefulEvent]
 

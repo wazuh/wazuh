@@ -23,14 +23,19 @@ INVENTORY_PROCESSES_TYPE = 'process'
 INVENTORY_SYSTEM_TYPE = 'system'
 
 
-class AgentMetadata(BaseModel):
-    """Agent metadata."""
+class Agent(BaseModel):
+    """Agent model in the context of events."""
     id: str
     name: str
     groups: List[str]
     type: str
     version: str
     host: AgentHost
+
+
+class AgentMetadata(BaseModel):
+    """Agent metadata."""
+    agent: Agent
 
 
 class TaskResult(BaseModel):

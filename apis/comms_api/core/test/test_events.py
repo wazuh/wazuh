@@ -10,7 +10,7 @@ from wazuh.core.exception import WazuhError
 from wazuh.core.indexer import Indexer
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import AgentMetadata, CommandResult, SCAEvent, TaskResult, StatefulEvent, \
+from wazuh.core.indexer.models.events import Agent, AgentMetadata, CommandResult, SCAEvent, TaskResult, StatefulEvent, \
     Header, Module, Result
 
 INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
@@ -41,7 +41,7 @@ async def test_create_stateful_events(create_indexer_mock):
     batcher_queue = AsyncMock()
 
     events = StatefulEvents(
-        agent=AgentMetadata(
+        agent_metadata=AgentMetadata(agent=Agent(
             id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
             name='test',
             groups=[],
@@ -55,7 +55,7 @@ async def test_create_stateful_events(create_indexer_mock):
                     platform='Linux'
                 )
             ),
-        ),
+        )),
         headers=[
             Header(
                 id='1',
@@ -97,32 +97,33 @@ async def test_parse_stateful_events():
     })
     request.app.state.batcher_queue = AsyncMock()
 
-    agent_metadata = AgentMetadata(
+    agent_metadata = AgentMetadata(agent=Agent(
         id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
+        name='test',
         groups=['group1', 'group2'],
         type='endpoint',
         version='5.0.0',
         host=Host(
             architecture='x86_64',
             hostname='wazuh-agent',
-            ip='127.0.0.1',
+            ip=['127.0.0.1'],
             os=OS(
                 name='Debian 12',
                 platform='Linux'
             )
         ),
-    )
+    ))
     header = Header(id='1', module=Module.COMMAND, operation=Operation.CREATE)
     event = StatefulEvent(data=CommandResult(result=Result(code=200, message='', data='')))
     events = StatefulEvents(
-        agent=agent_metadata,
+        agent_metadata=agent_metadata,
         headers=[header],
         events=[event],
     )
     request._body = '\n'.join([
         agent_metadata.model_dump_json(), 
         header.model_dump_json(),
-        event.model_dump_json(),
+        event.data.model_dump_json(),
     ]).encode()
 
     result = await parse_stateful_events(request)

@@ -2,13 +2,13 @@ from typing import List
 
 from fastapi import Request
 
-from comms_api.models.events import AgentMetadata, Header, StatefulEvent, StatefulEvents, StatelessEvents
+from comms_api.models.events import StatefulEvents, StatelessEvents
 from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.batcher.client import BatcherClient
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue
-from wazuh.core.indexer.models.events import Operation, TaskResult
+from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, StatefulEvent, TaskResult
 
 
 async def create_stateful_events(
@@ -31,7 +31,12 @@ async def create_stateful_events(
     """
     async with get_indexer_client() as indexer_client:
         batcher_client = BatcherClient(queue=batcher_queue)
-        return await indexer_client.events.create(events.agent, events.events, batcher_client)
+        return await indexer_client.events.create(
+            agent_metadata=events.agent_metadata,
+            headers=events.headers,
+            events=events.events,
+            batcher_client=batcher_client,
+        )
 
 
 async def send_stateless_events(events: StatelessEvents) -> None:
@@ -70,7 +75,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
 
     i: int = 0
     headers: List[Header] = []
-    events: List[StatefulEvent] = []
+    events = []
 
     async for chunk in request.stream():
         if len(chunk) == 0:
@@ -82,10 +87,13 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
             raise WazuhError(2709)
 
         for part in parts:
+            if len(part) == 0:
+                continue
+
             if i == 0:
-                agent = AgentMetadata.model_validate_json(part)
+                agent_metadata = AgentMetadata.model_validate_json(part)
             elif i % 2 == 0:
-                events.append(StatefulEvent.model_validate_json(part))
+                events.append(StatefulEvent.model_validate_json(b'{"data": %b}' % part))
             else:
                 header = Header.model_validate_json(part)
                 headers.append(header)
@@ -96,7 +104,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
             i+=1
 
     return StatefulEvents(
-        agent=agent,
+        agent_metadata=agent_metadata,
         headers=headers,
         events=events
     )
