@@ -24,6 +24,7 @@
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
 static const std::string UTILITIES_FOLDER   { "/Utilities"          };
+const std::set<std::string> excludedCategories = {"pkg", "x86_64", "arm64"};
 
 class PKGWrapper final : public IPackageWrapper
 {
@@ -41,9 +42,12 @@ class PKGWrapper final : public IPackageWrapper
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime {UNKNOWN_VALUE}
         {
-            if (Utils::endsWith(ctx.package, ".app")) {
+            if (Utils::endsWith(ctx.package, ".app"))
+            {
                 getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
-            } else {
+            }
+            else
+            {
                 getPkgDataRcp(ctx.filePath + "/" + ctx.package);
             }
         }
@@ -265,21 +269,32 @@ class PKGWrapper final : public IPackageWrapper
                     {
                         line = Utils::trim(line, " \t");
 
-                        if (line == "<key>PackageFileName</key>" &&
-                            std::getline(data, line))
-                        {
-                            m_name = getValueFnc(line);
-                            m_name = m_name.substr(0, m_name.find(".pkg"));
-                            Utils::replaceAll(m_name, "_", " ");
-                        }
-                        else if (line == "<key>PackageIdentifier</key>" &&
-                            std::getline(data, line))
+                        if (line == "<key>PackageIdentifier</key>" &&
+                                std::getline(data, line))
                         {
                             m_description = getValueFnc(line);
                             auto reverseDomainName = Utils::split(m_description, '.');
-                            if (reverseDomainName.size() > 1)
+
+                            for (size_t i = 0; i < reverseDomainName.size(); i++)
                             {
-                                m_vendor = reverseDomainName[1];
+                                if (i == 1)
+                                {
+                                    m_vendor = reverseDomainName[i];
+                                }
+                                else if (i > 1)
+                                {
+                                    const std::string& current = reverseDomainName[i];
+
+                                    if (excludedCategories.find(current) == excludedCategories.end())
+                                    {
+                                        if (!m_name.empty())
+                                        {
+                                            m_name += ".";
+                                        }
+
+                                        m_name += current;
+                                    }
+                                }
                             }
                         }
                         else if (line == "<key>PackageVersion</key>" &&

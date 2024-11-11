@@ -153,7 +153,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
         for (const auto& package : packages)
         {
             if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
-                (RCP == pkgType && Utils::endsWith(package, ".plist")))
+                    (RCP == pkgType && Utils::endsWith(package, ".plist")))
             {
                 try
                 {
