@@ -1,10 +1,8 @@
 import asyncio
-from dataclasses import asdict
 from typing import Optional
 
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item
-from wazuh.core.indexer.base import remove_empty_values
-from wazuh.core.indexer.models.events import AgentMetadata, StatefulEvent, get_module_index_name
+from wazuh.core.indexer.models.events import AgentMetadata, Header, StatefulEvent, get_module_index_name
 
 
 class BatcherClient:
@@ -23,30 +21,26 @@ class BatcherClient:
         self.queue = queue
         self.wait_frequency = wait_frequency
 
-    def send_event(self, agent_metadata: AgentMetadata, event: StatefulEvent) -> int:
+    def send_event(self, agent_metadata: AgentMetadata, header: Header, event: StatefulEvent):
         """Send an event through the RouterQueue.
 
         Parameters
         ----------
         agent_metadata : AgentMetadata
             Agent metadata.
+        header : Header
+            Event header.
         event : StatefulEvent
-            Event to send.
-
-        Returns
-        -------
-        int
-            Unique identifier assigned to the event.
+            Event data.
         """
-        content = asdict(agent_metadata) | asdict(event.data, dict_factory=remove_empty_values)
+        content = agent_metadata.model_dump() | event.data.model_dump()
         item = Item(
-            id=event.document_id,
+            id=header.id,
             content=content,
-            operation=event.operation,
-            index_name=get_module_index_name(event.module)
+            operation=header.operation,
+            index_name=get_module_index_name(header.module, header.type)
         )
         self.queue.send_to_mux(item)
-        return item.id
 
     async def get_response(self, item_id: int) -> Optional[dict]:
         """Asynchronously wait for a response to become available and retrieve it.

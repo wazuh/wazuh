@@ -1,10 +1,8 @@
-from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Union
-from typing_extensions import Self
+from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
@@ -25,8 +23,7 @@ INVENTORY_PROCESSES_TYPE = 'process'
 INVENTORY_SYSTEM_TYPE = 'system'
 
 
-@dataclass
-class AgentMetadata:
+class AgentMetadata(BaseModel):
     """Agent metadata."""
     id: str
     groups: List[str]
@@ -35,8 +32,7 @@ class AgentMetadata:
     host: AgentHost
 
 
-@dataclass
-class TaskResult:
+class TaskResult(BaseModel):
     """Stateful event bulk task result data model."""
     id: str
     result: str
@@ -241,7 +237,7 @@ class CommandResult(BaseModel):
     result: Result
 
 
-class ModuleName(str, Enum):
+class Module(str, Enum):
     """Stateful event module name."""
     FIM = 'fim'
     INVENTORY = 'inventory'
@@ -250,17 +246,16 @@ class ModuleName(str, Enum):
     COMMAND = 'command'
 
 
-class Module(BaseModel):
-    """Stateful event module."""
-    name: ModuleName
-    type: str = None
+class Header(BaseModel):
+    """Stateful event header."""
+    id: Optional[str] = None
+    module: Module
+    type: Optional[str] = None
+    operation: Operation = None
 
 
 class StatefulEvent(BaseModel):
     """Stateful event data model."""
-    document_id: str
-    operation: Operation
-    module: Module
     data: Union[
         FIMEvent,
         InventoryNetworkEvent,
@@ -270,38 +265,26 @@ class StatefulEvent(BaseModel):
         SCAEvent,
         VulnerabilityEvent,
         CommandResult
-    ] = None
-
-    @model_validator(mode='after')
-    def validate_model_fields(self) -> Self:
-        """Validate the model fields depending on the operation performed."""
-        if self.operation == Operation.CREATE or self.operation == Operation.UPDATE:
-            assert self.data is not None
-        
-        if self.operation == Operation.CREATE:
-            assert self.data.model_fields_set
-        
-        if self.operation == Operation.DELETE:
-            assert self.data is None
-                
-        return self
+    ]
 
 
-STATEFUL_EVENTS_INDICES: Dict[ModuleName, str] = {
-    ModuleName.FIM: FIM_INDEX,
-    ModuleName.SCA: SCA_INDEX,
-    ModuleName.VULNERABILITY: VULNERABILITY_INDEX,
-    ModuleName.COMMAND: CommandsManager.INDEX
+STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
+    Module.FIM: FIM_INDEX,
+    Module.SCA: SCA_INDEX,
+    Module.VULNERABILITY: VULNERABILITY_INDEX,
+    Module.COMMAND: CommandsManager.INDEX
 }
 
 
-def get_module_index_name(module: Module) -> str:
-    """Get the index name corresponding to the specified module.
+def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
+    """Get the index name corresponding to the specified module and type.
 
     Parameters
     ----------
     module : Module
         Event module.
+    type : Optional[str]
+        Event module type
     
     Raises
     ------
@@ -315,19 +298,19 @@ def get_module_index_name(module: Module) -> str:
     str
         Index name.
     """
-    if module.name == ModuleName.INVENTORY:
-        if module.type == INVENTORY_PACKAGES_TYPE:
+    if module == Module.INVENTORY:
+        if type == INVENTORY_PACKAGES_TYPE:
             return INVENTORY_PACKAGES_INDEX
-        if module.type == INVENTORY_PROCESSES_TYPE:
+        if type == INVENTORY_PROCESSES_TYPE:
             return INVENTORY_PROCESSES_INDEX
-        if module.type == INVENTORY_NETWORK_TYPE:
+        if type == INVENTORY_NETWORK_TYPE:
             return INVENTORY_NETWORK_INDEX
-        if module.type == INVENTORY_SYSTEM_TYPE:
+        if type == INVENTORY_SYSTEM_TYPE:
             return INVENTORY_SYSTEM_INDEX
 
         raise WazuhError(1763)
 
     try:
-        return STATEFUL_EVENTS_INDICES[module.name]
+        return STATEFUL_EVENTS_INDICES[module]
     except KeyError:
         raise WazuhError(1765)

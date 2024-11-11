@@ -5,7 +5,7 @@ import pytest
 from framework.wazuh.core.batcher.client import BatcherClient
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, StatefulEvent, Module, ModuleName
+from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, StatefulEvent, Header, Module
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
@@ -21,21 +21,15 @@ def test_send_event(queue_mock):
             architecture='x86_64',
             ip='127.0.0.1',
             os=OS(
-                full='Debian 12',
+                name='Debian 12',
                 platform='Linux'
             )
         ),
     )
-    document_id = '1234'
-    event = StatefulEvent(
-        document_id=document_id,
-        operation=Operation.CREATE,
-        module=Module(name=ModuleName.SCA),
-        data=SCAEvent()
-    )
+    header = Header(id='1234', module=Module.SCA, operation=Operation.CREATE)
+    event = StatefulEvent(data=SCAEvent())
 
-    item_id = batcher.send_event(agent_metadata, event)
-    assert item_id == document_id
+    batcher.send_event(agent_metadata, header, event)
     queue_mock.send_to_mux.assert_called_once()
 
 
