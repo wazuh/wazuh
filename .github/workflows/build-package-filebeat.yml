@@ -22,9 +22,14 @@ on:
         type: string
         required: false
 
+  pull_request:
+    paths:
+        - ".github/workflows/build-package-filebeat.yml"
+
 jobs:
   build-and-upload:
     runs-on: ubuntu-20.04
+    timeout-minutes: 60
     strategy:
       matrix:
         architecture: [amd64, arm64]
@@ -34,41 +39,23 @@ jobs:
       FILEBEAT_VERSION: 7.10.2
 
     steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           repository: "elastic/beats"
           ref: "v${{ env.FILEBEAT_VERSION }}"
 
-      - name: Apply patch for Ubuntu build
-        run: |
-          sed -i 's/apt-get install -y --no-install-recommends/DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends/' filebeat/Dockerfile
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update \
-          && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-          gcc make fpm curl golang-go
-
-      - name: Set package name
-        run: |
-          echo "FILEBEAT_TAR_NAME=filebeat-${{ env.FILEBEAT_VERSION }}-${{ matrix.architecture }}-${{ matrix.package_type }}.tar.gz" >> $GITHUB_ENV
-
-      - name: Build Filebeat
-        run: |
-          cd filebeat
-          make ARCH=${{ matrix.architecture }} TYPE=${{ matrix.package_type }}
-
-      - name: Package Filebeat
-        run: |
-          fpm -s dir -t ${matrix.package_type} -a ${matrix.architecture} \
-              -n filebeat -v ${FILEBEAT_VERSION} \
-              --prefix /usr/local/bin ./filebeat
-
-      - name: Create SHA512 Hash
-        if: ${{ inputs.checksum }}
-        run: |
-          sha512sum ${{ env.FILEBEAT_TAR_NAME }} > ${{ env.FILEBEAT_TAR_NAME }}.sha512
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.0
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
@@ -77,16 +64,59 @@ jobs:
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Upload Filebeat module to S3
-        if: env.MODULE_CHECKED == 'yes'
-        working-directory: extensions/filebeat/7.x/wazuh-module
+      - name: Apply patch for Ubuntu build
         run: |
-          aws s3 cp ${{ env.FILEBEAT_TAR_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/${{ env.FILEBEAT_TAR_NAME }}"
+          sed -i 's/apt-get install -y --no-install-recommends/DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends/' filebeat/Dockerfile
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+          make golang-go
+
+      - name: Build Filebeat
+        run: |
+          cd filebeat
+          make ARCH=${{ matrix.architecture }} TYPE=${{ matrix.package_type }}
+
+      - name: Package Filebeat
+        working-directory: filebeat
+        run: |
+          # Install specific version of dotenv and fpm
+          gem install dotenv -v 2.8.1 --no-document
+          gem install fpm --no-document
+          fpm -s dir -t ${{ matrix.package_type }} -a ${{ matrix.architecture }} \
+              -n filebeat -v ${{ env.FILEBEAT_VERSION }} \
+              filebeat=/usr/local/bin/filebeat \
+              filebeat.yml=/etc/filebeat/filebeat.yml
+
+          if [[ "${{ matrix.package_type }}" == "rpm" ]]; then
+            if [[ "${{ matrix.architecture }}" == "amd64" ]]; then
+              echo "FILEBEAT_PACKAGE_NAME=filebeat-${{ env.FILEBEAT_VERSION }}-1.x86_64.rpm" >> $GITHUB_ENV
+            elif [[ "${{ matrix.architecture }}" == "arm64" ]]; then
+              echo "FILEBEAT_PACKAGE_NAME=filebeat-${{ env.FILEBEAT_VERSION }}-1.aarch64.rpm" >> $GITHUB_ENV
+            fi
+          else
+            echo "FILEBEAT_PACKAGE_NAME=filebeat_${{ env.FILEBEAT_VERSION }}_${{ matrix.architecture }}.${{ matrix.package_type }}" >> $GITHUB_ENV
+          fi
+
+      - name: Create SHA512 Hash
+        if: ${{ inputs.checksum }}
+        working-directory: filebeat
+        run: |
+          sha512sum ${{ env.FILEBEAT_PACKAGE_NAME }} > ${{ env.FILEBEAT_PACKAGE_NAME }}.sha512
+
+      - name: Upload Filebeat module to S3
+        working-directory: filebeat
+        run: |
+          aws s3 cp ${{ env.FILEBEAT_PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/${{ env.FILEBEAT_PACKAGE_NAME }}"
           echo "S3 URI: ${s3uri}"
 
-      - name: Upload SHA512 to S3
+      - name: Upload Filebeat module SHA512 to S3
         if: ${{ inputs.checksum }}
+        working-directory: filebeat
         run: |
-          aws s3 cp ${{ env.FILEBEAT_TAR_NAME }}.sha512 s3://${{ env.S3_BUCKET }}/${{ env.S3_FOLDER }}/
-          echo "Uploaded SHA512 hash to s3://${{ env.S3_BUCKET }}/${{ env.S3_FOLDER }}/${{ env.FILEBEAT_TAR_NAME }}.sha512"
+          aws s3 cp ${{ env.FILEBEAT_PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/${{ env.FILEBEAT_PACKAGE_NAME }}.sha512"
+          echo "S3 sha512 URI: ${s3uri}"
