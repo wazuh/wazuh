@@ -529,8 +529,8 @@ void Orchestrator::postRawEventBatch(std::string&& batch)
     if (m_eventQueue->capacity() < rawJson.size() - min_header_size)
     {
         LOG_DEBUG("Recieved '{}' events in router, but the event queue has a capacity of '{}'",
-                    rawJson.size(),
-                    m_eventQueue->capacity());
+                  rawJson.size(),
+                  m_eventQueue->capacity());
     }
 
     // Process the batch
@@ -541,7 +541,8 @@ void Orchestrator::postRawEventBatch(std::string&& batch)
         discardedEvents += m_eventQueue->tryPush(event) ? 0 : 1;
         LOG_INFO("EVENT: {}", event->prettyStr());
     }
-    if (discardedEvents > 0) {
+    if (discardedEvents > 0)
+    {
         LOG_DEBUG("Router: {} events discarded from the batch", discardedEvents);
     }
 }
