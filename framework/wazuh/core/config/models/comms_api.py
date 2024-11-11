@@ -1,7 +1,10 @@
 from pydantic import BaseModel, PositiveInt, PositiveFloat, FilePath
 
 from wazuh.core.config.models.ssl_config import APISSLConfig
-from wazuh.core.config.models.logging import LoggingWithRotationConfig
+from wazuh.core.config.models.logging import RotatedLoggingConfig
+
+DEFAULT_COMMUNICATIONS_API_KEY_PATH = "/var/ossec/api/configuration/ssl/server.key"
+DEFAULT_COMMUNICATIONS_API_CERT_PATH = "/var/ossec/api/configuration/ssl/server.crt"
 
 
 class BatcherConfig(BaseModel):
@@ -26,10 +29,10 @@ class CommsAPIIntervals(BaseModel):
 
     Parameters
     ----------
-    request_timeout : int
+    request_timeout : PositiveInt
         The timeout duration for requests in seconds. Default: 10.
     """
-    request_timeout: int = 10
+    request_timeout: PositiveInt = 10
 
 
 class CommsAPIConfig(BaseModel):
@@ -43,7 +46,7 @@ class CommsAPIConfig(BaseModel):
         The port number for the communications API. Default: 27000.
     workers : PositiveInt
         The number of worker threads for the communications API. Default: 4.
-    logging : LoggingWithRotationConfig
+    logging : RotatedLoggingConfig
         Logging configuration for the communications API. Default is an instance of LoggingWithRotationConfig.
     batcher : BatcherConfig
         Configuration for the batcher. Default is an instance of BatcherConfig.
@@ -56,11 +59,11 @@ class CommsAPIConfig(BaseModel):
     port: PositiveInt = 27000
     workers: PositiveInt = 4
 
-    logging: LoggingWithRotationConfig = LoggingWithRotationConfig()
+    logging: RotatedLoggingConfig = RotatedLoggingConfig()
     batcher: BatcherConfig = BatcherConfig()
     intervals: CommsAPIIntervals = CommsAPIIntervals()
     ssl: APISSLConfig = APISSLConfig(
-        key="/var/ossec/api/configuration/ssl/server.key",
-        cert="/var/ossec/api/configuration/ssl/server.crt",
+        key=DEFAULT_COMMUNICATIONS_API_KEY_PATH,
+        cert=DEFAULT_COMMUNICATIONS_API_CERT_PATH,
         ssl_ciphers=""
     )

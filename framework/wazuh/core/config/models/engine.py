@@ -3,6 +3,9 @@ from wazuh.core.config.models.logging import LoggingConfig
 
 
 # TODO(#25121): Change the socket path once the Cpp team does it
+DEFAULT_ENGINE_SOCKET_PATH = "/var/wazuh/queue/engine.sock"
+
+
 class EngineClientConfig(BaseModel):
     """Configuration for the Engine client.
 
@@ -15,7 +18,7 @@ class EngineClientConfig(BaseModel):
     timeout : PositiveFloat
         The timeout duration in seconds. Default: 10.0.
     """
-    api_socket_path: FilePath = "/var/wazuh/queue/engine.sock"
+    api_socket_path: FilePath = FilePath(DEFAULT_ENGINE_SOCKET_PATH)
     retries: PositiveInt = 3
     timeout: PositiveFloat = 10
 

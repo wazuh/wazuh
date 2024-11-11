@@ -10,7 +10,7 @@ from pythonjsonlogger import jsonlogger
 
 from api.api_exception import APIError
 
-from wazuh.core.config.models.logging import LoggingWithRotationConfig
+from wazuh.core.config.models.logging import RotatedLoggingConfig
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
@@ -85,7 +85,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         log_record['data'] = record.message
 
 
-def set_logging(log_filepath, logging_config: LoggingWithRotationConfig, foreground_mode: bool = False) -> dict:
+def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_mode: bool = False) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -96,7 +96,7 @@ def set_logging(log_filepath, logging_config: LoggingWithRotationConfig, foregro
     ----------
     log_filepath : str
         Log file path.
-    logging_config :  LoggingWithRotationConfig
+    logging_config :  RotatedLoggingConfig
         Logger configuration.
     foreground_mode : bool
         Log output to console streams when true

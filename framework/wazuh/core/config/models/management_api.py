@@ -1,20 +1,29 @@
-from pydantic import BaseModel, PositiveInt
-from typing import Literal, List
-
+from pydantic import BaseModel, PositiveInt, Field
+from typing import List
+from enum import Enum
 
 from wazuh.core.config.models.ssl_config import APISSLConfig
-from wazuh.core.config.models.logging import LoggingWithRotationConfig
+from wazuh.core.config.models.logging import RotatedLoggingConfig
+
+DEFAULT_MANAGEMENT_API_KEY_PATH = "/var/ossec/api/configuration/ssl/server.key"
+DEFAULT_MANAGEMENT_API_CERT_PATH = "/var/ossec/api/configuration/ssl/server.crt"
+
+
+class RBACMode(str, Enum):
+    """Enum representing the different RBAC modes"""
+    white = "white"
+    black = "black"
 
 
 class ManagementAPIIntervals(BaseModel):
-    """Configuration for management API intervals.
+    """Configuration for Management API intervals.
 
     Parameters
     ----------
-    request_timeout : int
+    request_timeout : PositiveInt
         The timeout for requests in seconds. Default is 10.
     """
-    request_timeout: int = 10
+    request_timeout: PositiveInt = 10
 
 
 class CorsConfig(BaseModel):
@@ -58,12 +67,12 @@ class AccessConfig(BaseModel):
 
 
 class ManagementAPIConfig(BaseModel):
-    """Configuration for the management API.
+    """Configuration for the Management API.
 
     Parameters
     ----------
     host : str
-        The host address for the management API. Default is "0.0.0.0".
+        The host address for the Management API. Default is "localhost".
     port : PositiveInt
         The port number for the management API. Default is 55000.
     drop_privileges : bool
@@ -72,31 +81,31 @@ class ManagementAPIConfig(BaseModel):
         The maximum upload size in bytes. Default is 10485760 (10 MB).
     jwt_expiration_timeout : PositiveInt
         The expiration timeout for JWT in seconds. Default is 900.
-    rbac_mode : Literal["black", "white"]
+    rbac_mode : RBACMode
         The role-based access control mode. Default is "white".
     intervals : ManagementAPIIntervals
         Configuration for management API intervals. Default is an instance of ManagementAPIIntervals.
     ssl : APISSLConfig
         SSL configuration for the management API. Default is an instance of APISSLConfig.
-    logging : LoggingWithRotationConfig
+    logging : RotatedLoggingConfig
         Logging configuration for the management API. Default is an instance of LoggingWithRotationConfig.
     cors : CorsConfig
         CORS configuration for the management API. Default is an instance of CorsConfig.
     access : AccessConfig
         Access configuration for the management API. Default is an instance of AccessConfig.
     """
-    host: List[str] = ["localhost", "::1"]
+    host: List[str] = Field(default=["localhost", "::1"], min_length=2)
     port: PositiveInt = 55000
     drop_privileges: bool = True
     max_upload_size: PositiveInt = 10485760
     jwt_expiration_timeout: PositiveInt = 900
-    rbac_mode: Literal["black", "white"] = "white"
+    rbac_mode: RBACMode = RBACMode.white
 
     intervals: ManagementAPIIntervals = ManagementAPIIntervals()
     ssl: APISSLConfig = APISSLConfig(
-        key="/var/ossec/api/configuration/ssl/server.key",
-        cert="/var/ossec/api/configuration/ssl/server.crt"
+        key=DEFAULT_MANAGEMENT_API_KEY_PATH,
+        cert=DEFAULT_MANAGEMENT_API_CERT_PATH
     )
-    logging: LoggingWithRotationConfig = LoggingWithRotationConfig()
+    logging: RotatedLoggingConfig = RotatedLoggingConfig()
     cors: CorsConfig = CorsConfig()
     access: AccessConfig = AccessConfig()

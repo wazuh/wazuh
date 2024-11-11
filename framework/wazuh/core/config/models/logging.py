@@ -1,7 +1,30 @@
 import logging
 
 from pydantic import BaseModel, Field
-from typing import Literal, List
+from typing import List
+from enum import Enum
+
+
+class LoggingFormat(str, Enum):
+    """Enum representing the available logging formats."""
+    plain = "plain"
+    json = "json"
+
+
+class LoggingLevel(str, Enum):
+    """Enum representing the different levels of logging verbosity."""
+    info = "info"
+    debug = "debug"
+    debug2 = "debug2"
+
+
+class APILoggingLevel(str, Enum):
+    """Enum representing the different levels of logging verbosity for an API."""
+    debug = "debug"
+    info = "info"
+    warning = "warning"
+    error = "error"
+    critical = "critical"
 
 
 class LoggingConfig(BaseModel):
@@ -12,7 +35,7 @@ class LoggingConfig(BaseModel):
     level : Literal["info", "debug", "debug2"]
         The logging level. Default is "info".
     """
-    level: Literal["info", "debug", "debug2"] = "info"
+    level: LoggingLevel = LoggingLevel.info
 
     def get_level_value(self) -> int:
         """Returns the integer value associated with the logging level.
@@ -25,12 +48,12 @@ class LoggingConfig(BaseModel):
             - 1 for "debug"
             - 2 for "debug2"
         """
-        if self.level == "info":
+        if self.level == LoggingLevel.info:
             return 0
-        elif self.level == "debug":
+        if self.level == LoggingLevel.debug:
             return 1
-        else:
-            return 2
+
+        return 2
 
 
 class LogFileMaxSizeConfig(BaseModel):
@@ -44,10 +67,10 @@ class LogFileMaxSizeConfig(BaseModel):
         The maximum size of the log file. Supports 'M' for megabytes and 'K' for kilobytes. Default is "1M".
     """
     enabled: bool = False
-    size: str = Field(default="1M", pattern=r"(\d+)([KM])")
+    size: str = Field(default="1M", pattern=r"^([1-9]\d*)([KM])$")
 
 
-class LoggingWithRotationConfig(BaseModel):
+class RotatedLoggingConfig(BaseModel):
     """Configuration for logging with rotation.
 
      Parameters
@@ -59,8 +82,8 @@ class LoggingWithRotationConfig(BaseModel):
      max_size : LogFileMaxSizeConfig
          Configuration for the maximum log file size. Default is an instance of LogFileMaxSizeConfig.
     """
-    level: Literal["debug", "info", "warning", "error", "critical"] = "debug"
-    format: List[Literal["plain", "json"]] = ["plain"]
+    level: APILoggingLevel = APILoggingLevel.debug
+    format: List[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)
     max_size: LogFileMaxSizeConfig = LogFileMaxSizeConfig()
 
     def get_level(self) -> int:
@@ -76,15 +99,15 @@ class LoggingWithRotationConfig(BaseModel):
             - logging.ERROR for "error"
             - logging.CRITICAL for "critical"
         """
-        if self.level == "debug":
+        if self.level == APILoggingLevel.debug:
             return logging.DEBUG
-        elif self.level == "info":
+        elif self.level == APILoggingLevel.info:
             return logging.INFO
-        elif self.level == "warning":
+        elif self.level == APILoggingLevel.warning:
             return logging.WARNING
-        elif self.level == "error":
+        elif self.level == APILoggingLevel.error:
             return logging.ERROR
-        elif self.level == "critical":
+        elif self.level == APILoggingLevel.critical:
             return logging.CRITICAL
         else:
             return logging.ERROR

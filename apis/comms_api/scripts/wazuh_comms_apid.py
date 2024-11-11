@@ -41,7 +41,7 @@ from wazuh.core.batcher.config import BatcherConfig
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
 
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.logging import LoggingWithRotationConfig
+from wazuh.core.config.models.logging import RotatedLoggingConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
 
 MAIN_PROCESS = 'wazuh-comms-apid'
@@ -78,14 +78,14 @@ def create_app(batcher_queue: MuxDemuxQueue, commands_manager: CommandsManager) 
     return app
 
 
-def setup_logging(foreground_mode: bool, logging_config: LoggingWithRotationConfig) -> dict:
+def setup_logging(foreground_mode: bool, logging_config: RotatedLoggingConfig) -> dict:
     """Set up the logging module and returns the configuration used.
 
     Parameters
     ----------
     foreground_mode : bool
         Whether to execute the script in foreground mode or not.
-    logging_config :  LoggingWithRotationConfig
+    logging_config :  RotatedLoggingConfig
         Logger configuration.
 
     Returns

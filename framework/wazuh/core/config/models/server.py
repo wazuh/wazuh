@@ -1,8 +1,17 @@
-from pydantic import BaseModel, PositiveInt, conint, confloat, PrivateAttr
-from typing import List, Literal, Optional
+from pydantic import BaseModel, PositiveInt, conint, confloat, PrivateAttr, Field
+from typing import List, Optional
+from enum import Enum
 
 from wazuh.core.config.models.ssl_config import SSLConfig
 from wazuh.core.config.models.logging import LoggingConfig
+
+DEFAULT_CTI_URL = "https://cti.wazuh.com"
+
+
+class NodeType(str, Enum):
+    """Enum representing supported nodes types."""
+    worker = "worker"
+    master = "master"
 
 
 class MasterIntervalsConfig(BaseModel):
@@ -65,8 +74,8 @@ class NodeConfig(BaseModel):
     ssl : SSLConfig
         SSL configuration for the node.
     """
-    name: str
-    type: Literal["master", "worker"]
+    name: str = Field(min_length=1)
+    type: NodeType
     ssl: SSLConfig
 
 
@@ -198,7 +207,7 @@ class SharedFiles(BaseModel):
     extra_valid: bool
 
 
-class ServerInternalConfig(BaseModel):
+class ServerSyncConfig(BaseModel):
     """Configuration for server internal settings.
 
     Parameters
@@ -246,7 +255,37 @@ class CTIConfig(BaseModel):
         The URL for the CTI service. Default is "https://cti.wazuh.com".
     """
     update_check: bool = True
-    url: str = "https://cti.wazuh.com"
+    url: str = DEFAULT_CTI_URL
+
+
+DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
+    files=[
+        SharedFiles(
+            dir="etc/",
+            description="JWT signing key pair",
+            permissions=416,
+            source="master",
+            names=["private_key.pem", "public_key.pem"],
+            recursive=False,
+            restart=False,
+            remove_subdirs_if_empty=False,
+            extra_valid=False,
+        ),
+        SharedFiles(
+            dir='etc/shared/',
+            description='group files',
+            permissions=432,
+            source='master',
+            names=['all'],
+            recursive=False,
+            restart=False,
+            remove_subdirs_if_empty=True,
+            extra_valid=False,
+        ),
+    ],
+    excluded_files=['ar.conf'],
+    excluded_extensions=['~', '.tmp', '.lock', '.swp']
+)
 
 
 class ServerConfig(BaseModel):
@@ -276,12 +315,12 @@ class ServerConfig(BaseModel):
         Logging configuration. Default is LoggingConfig(level="debug2").
     cti : CTIConfig
         Configuration for CTI settings. Default is CTIConfig().
-    _internal : ServerInternalConfig
+    _internal : ServerSyncConfig
         Internal server configurations. These settings are internal
     """
     port: PositiveInt = 1516
     bind_addr: str = "0.0.0.0"
-    nodes: List[str]
+    nodes: List[str] = Field(min_length=1)
     hidden: bool = False
     update_check: bool = False
 
@@ -291,43 +330,14 @@ class ServerConfig(BaseModel):
     communications: CommunicationsConfig = CommunicationsConfig()
     logging: LoggingConfig = LoggingConfig(level="debug2")
     cti: CTIConfig = CTIConfig()
-    _internal: ServerInternalConfig = PrivateAttr(
-        ServerInternalConfig(
-            files=[
-                SharedFiles(
-                    dir="etc/",
-                    description="JWT signing key pair",
-                    permissions=416,
-                    source="master",
-                    names=["private_key.pem", "public_key.pem"],
-                    recursive=False,
-                    restart=False,
-                    remove_subdirs_if_empty=False,
-                    extra_valid=False,
-                ),
-                SharedFiles(
-                    dir='etc/shared/',
-                    description='group files',
-                    permissions=432,
-                    source='master',
-                    names=['all'],
-                    recursive=False,
-                    restart=False,
-                    remove_subdirs_if_empty=True,
-                    extra_valid=False,
-                ),
-            ],
-            excluded_files=['ar.conf'],
-            excluded_extensions=['~', '.tmp', '.lock', '.swp']
-        )
-    )
+    _internal: ServerSyncConfig = PrivateAttr(DEFAULT_SERVER_INTERNAL_CONFIG)
 
-    def get_internal_config(self) -> ServerInternalConfig:
+    def get_internal_config(self) -> ServerSyncConfig:
         """Retrieve the internal server configuration.
 
         Returns
         -------
-        ServerInternalConfig
+        ServerSyncConfig
             The internal configuration for the server.
         """
         return self._internal

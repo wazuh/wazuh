@@ -3,7 +3,7 @@ import os
 from typing import Optional
 
 from wazuh.core.common import WAZUH_SERVER_YML
-from wazuh.core.config.models.server import ServerInternalConfig
+from wazuh.core.config.models.server import ServerSyncConfig
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
                                                      ManagementAPIConfig, ServerConfig,
                                                      IndexerConfig, EngineConfig)
@@ -40,12 +40,12 @@ class CentralizedConfig:
     def get_comms_api_config(cls) -> CommsAPIConfig:
         """Retrieve the communications API configuration.
 
+        Loads the configuration if it has not been loaded yet.
+
         Returns
         -------
         CommsAPIConfig
             The communications API configuration.
-
-        Loads the configuration if it has not been loaded yet.
         """
         if cls._config is None:
             cls.load()
@@ -56,12 +56,12 @@ class CentralizedConfig:
     def get_management_api_config(cls) -> ManagementAPIConfig:
         """Retrieve the management API configuration.
 
+         Loads the configuration if it has not been loaded yet.
+
         Returns
         -------
         ManagementAPIConfig
             The management API configuration.
-
-        Loads the configuration if it has not been loaded yet.
         """
         if cls._config is None:
             cls.load()
@@ -72,12 +72,12 @@ class CentralizedConfig:
     def get_indexer_config(cls) -> IndexerConfig:
         """Retrieve the indexer configuration.
 
+        Loads the configuration if it has not been loaded yet.
+
         Returns
         -------
         IndexerConfig
             The indexer configuration.
-
-        Loads the configuration if it has not been loaded yet.
         """
         if cls._config is None:
             cls.load()
@@ -88,12 +88,12 @@ class CentralizedConfig:
     def get_engine_config(cls) -> EngineConfig:
         """Retrieve the engine configuration.
 
+        Loads the configuration if it has not been loaded yet.
+
         Returns
         -------
         EngineConfig
             The engine configuration.
-
-        Loads the configuration if it has not been loaded yet.
         """
         if cls._config is None:
             cls.load()
@@ -104,12 +104,12 @@ class CentralizedConfig:
     def get_server_config(cls) -> ServerConfig:
         """Retrieve the server configuration.
 
+        Loads the configuration if it has not been loaded yet.
+
         Returns
         -------
         ServerConfig
             The server configuration.
-
-        Loads the configuration if it has not been loaded yet.
         """
         if cls._config is None:
             cls.load()
@@ -117,15 +117,15 @@ class CentralizedConfig:
         return cls._config.server
 
     @classmethod
-    def get_internal_server_config(cls) -> ServerInternalConfig:
+    def get_internal_server_config(cls) -> ServerSyncConfig:
         """Retrieve the internal server configuration.
+
+        Loads the configuration if it has not been loaded yet.
 
         Returns
         -------
-        ServerInternalConfig
+        ServerSyncConfig
             The internal server configuration.
-
-        Loads the configuration if it has not been loaded yet.
         """
         if cls._config is None:
             cls.load()

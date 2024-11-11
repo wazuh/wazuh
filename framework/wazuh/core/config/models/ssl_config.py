@@ -1,5 +1,14 @@
 from pydantic import BaseModel
-from typing import Literal
+from enum import Enum
+
+
+class SSLProtocol(str, Enum):
+    """Enum representing supported SSL/TLS protocols."""
+    tls = "TLS"
+    tls_v1 = "TLSv1"
+    tls_v1_1 = "TLSv1.1"
+    tls_v1_2 = "TLSv1.2"
+    auto = "auto"
 
 
 class SSLConfig(BaseModel):
@@ -64,6 +73,6 @@ class APISSLConfig(BaseModel):
     cert: str
     use_ca: bool = False
     ca: str = ""
-    ssl_protocol: Literal["TLS", "TLSv1", "TLSv1.1", "TLSv1.2", "auto"] = "auto"
+    ssl_protocol: SSLProtocol = SSLProtocol.auto
     ssl_ciphers: str = ""
 
