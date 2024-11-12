@@ -227,6 +227,26 @@ options:
 engine-health-test dynamic -e health_test/environment load_decoders
 ```
 
+### Validate decoder mapping
+Verifies that only certain fields are mapped in the decoders.
+```bash
+usage: engine-health-test dynamic validate_decoder_mapping [-h] [--integration INTEGRATION] [--skip SKIP]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify the name of the integration to test, if not specified all integration will be tested
+  --skip SKIP           Skip the tests with the specified name
+```
+
+#### Use
+```bash
+# Validate specific integration
+engine-health-test dynamic -e health_test/environment validate_decoder_mapping --integration suricata
+# Validate all decoders
+engine-health-test dynamic -e health_test/environment validate_decoder_mapping
+```
+
 ### Load rules
 This tool load and add the rules to the policy.
 It is necessary to run this tool to correctly perform the tests with rules, otherwise they will fail.

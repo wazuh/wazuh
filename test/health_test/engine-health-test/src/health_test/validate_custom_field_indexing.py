@@ -658,7 +658,8 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
                 integrations.append(integration_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
-        engine_handler.start()
+        log = (env_path / "logs/engine.log").as_posix()
+        engine_handler.start("warning", log)
         print("Engine started.")
         print("Update wazuh-core-message decoder")
         if not exist_index_output(engine_handler):
@@ -740,7 +741,8 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
                 rules.append(ruleset_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
-        engine_handler.start()
+        log = (env_path / "logs/engine.log").as_posix()
+        engine_handler.start("warning", log)
         print("Engine started.")
         if not exist_index_output(engine_handler):
             load_indexer_output(engine_handler)
