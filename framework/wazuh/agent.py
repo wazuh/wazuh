@@ -545,7 +545,6 @@ async def add_agent(
     WazuhError(1762)
         Failed while creating the update-group order.
     
-
     Returns
     -------
     WazuhResult
