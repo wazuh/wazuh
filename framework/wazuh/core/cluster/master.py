@@ -910,4 +910,4 @@ class Master(server.AbstractServer):
         dict
             Basic node information.
         """
-        return {'type': self.server_config.node.type.value, 'node': self.server_config.node.name}
+        return {'type': self.server_config.node.type, 'node': self.server_config.node.name}

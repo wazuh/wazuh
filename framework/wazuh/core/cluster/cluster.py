@@ -167,7 +167,7 @@ def get_node():
     server_config = CentralizedConfig.get_server_config()
 
     data["node"] = server_config.node.name
-    data["type"] = server_config.node.type.value
+    data["type"] = server_config.node.type
 
     return data
 

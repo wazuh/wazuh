@@ -221,15 +221,13 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
 #
 # Worker main
 #
-async def worker_main(args: argparse.Namespace, cluster_config: dict, server_config: ServerConfig, logger: WazuhLogger):
+async def worker_main(args: argparse.Namespace, server_config: ServerConfig, logger: WazuhLogger):
     """Start main process of a worker node.
 
     Parameters
     ----------
     args : argparse.Namespace
         Script arguments.
-    cluster_config : dict
-        Cluster configuration.
     server_config : ServerConfig
         Server configuration.
     logger : WazuhLogger
@@ -258,7 +256,6 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, server_con
 
     while True:
         my_client = worker.Worker(
-            configuration=cluster_config,
             performance_test=args.performance_test,
             concurrency_test=args.concurrency_test,
             file=args.send_file,
@@ -272,7 +269,6 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, server_con
             logger=logger,
             concurrency_test=args.concurrency_test,
             node=my_client,
-            configuration=cluster_config,
             server_config=server_config,
         )
         # Spawn pool processes
