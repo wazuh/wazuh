@@ -8,6 +8,7 @@ import pandas as pd
 import platform
 import stat
 import sys
+import fnmatch
 
 wazuh_gid = -1
 wazuh_uid = -1
@@ -277,7 +278,7 @@ def file_diff(mandatory_item, current_items, size_check):
     differences = {}
 
     for head_type in HEADERS:
-        if head_type == 'size_bytes':
+        if head_type == 'size_bytes' or head_type == 'full_filename':
             continue
         elif head_type == 'size_error' and size_check:
             expected_error = float(mandatory_item[head_type])
@@ -376,19 +377,6 @@ def printReport(mandatory_items, not_listed, not_fully_match, current_items, rep
     else:
         print(base_report)
 
-# ---------------------------------------------------------------------------------------------------------------
-
-
-"""
-    ACTION
-
-    Parameters:
-        - param1: 
-    Return:
-
-    Example:
-
-"""
 
 if __name__ == "__main__":
 
@@ -441,24 +429,50 @@ if __name__ == "__main__":
 
         print("Scanning started...")
         failed = False
+        # Separate mandatory items into exact matches and patterns
+        exact_matches = {}
+        glob_patterns = {}
+
+        # Split `mandatory_items` into exact matches and glob patterns
+        for key_name, fields in mandatory_items.items():
+            if '*' in key_name or '?' in key_name or '[' in key_name:
+                glob_patterns[key_name] = fields
+            else:
+                exact_matches[key_name] = fields
+
         for file_object in current_items:
-            # filename: key_name
-            key_name = file_object['full_filename']
-            if key_name in mandatory_items:
-                # File name matched
-                mandatory_item_fields = mandatory_items[key_name]
-                mandatory_items.pop(key_name)
-                difference_dict = file_diff(
-                    mandatory_item_fields, file_object, size_check)
+            current_file_name = file_object['full_filename']
+            matched = False
+
+            # 1. Check for exact match first (fast O(1) lookup)
+            if current_file_name in exact_matches:
+                matched = True
+                mandatory_item_fields = exact_matches[current_file_name]
+                
+                # Check for differences
+                difference_dict = file_diff(mandatory_item_fields, file_object, size_check)
                 if len(difference_dict) != 0:
                     failed = True
-                    not_fully_match[key_name] = difference_dict
-                else:
-                    continue
-            else:
-                # File not found - pushing to NOT-LISTED"
+                    # Track differences using the current file name as a key
+                    not_fully_match[(current_file_name, current_file_name)] = difference_dict
+
+            # 2. Check for matches with glob patterns if no exact match found
+            if not matched:
+                for pattern, mandatory_item_fields in glob_patterns.items():
+                    if fnmatch.fnmatch(current_file_name, pattern):
+                        matched = True
+                        
+                        # Check for differences
+                        difference_dict = file_diff(mandatory_item_fields, file_object, size_check)
+                        if len(difference_dict) != 0:
+                            failed = True
+                            # Use (pattern, current_file_name) as a key to track differences
+                            not_fully_match[(pattern, current_file_name)] = difference_dict
+
+            # 3. If no patterns matched, consider it a "not found" case
+            if not matched:
                 failed = True
-                not_listed[key_name] = file_object
+                not_listed[current_file_name] = file_object
 
         printReport(mandatory_items, not_listed,
                     not_fully_match, current_items, report_path, mandatory_items_qtty)
