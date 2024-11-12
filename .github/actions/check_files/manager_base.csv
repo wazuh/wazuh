@@ -2638,10 +2638,10 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/lexv2-runtime/2020-08-07/examples-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/lexv2-runtime/2020-08-07/paginators-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/lexv2-runtime/2020-08-07/service-2.json.gz,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-linux-subscriptions/2018--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,1310,0.2
+/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-linux-subscriptions/2018--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-linux-subscriptions/2018-05-10/paginators-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-linux-subscriptions/2018-05-10/service-2.json.gz,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-user-subscriptions/2018--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,1167,0.2
+/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-user-subscriptions/2018--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-user-subscriptions/2018-05-10/paginators-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager-user-subscriptions/2018-05-10/service-2.json.gz,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/license-manager/2018-08-01/endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,,
@@ -3028,7 +3028,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-cluster/2019-12-02/examples-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-cluster/2019-12-02/paginators-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-cluster/2019-12-02/service-2.json.gz,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-control-config/2020--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,1286,0.2
+/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-control-config/2020--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-control-config/2020-11-02/paginators-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-control-config/2020-11-02/service-2.json.gz,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/route53-recovery-control-config/2020-11-02/waiters-2.json,root,wazuh,640,file,-rw-r-----,,
@@ -3078,7 +3078,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-edge/2020-09-23/examples-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-edge/2020-09-23/paginators-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-edge/2020-09-23/service-2.json.gz,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-featurestore-runtime/2020--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,1170,0.2
+/var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-featurestore-runtime/2020--endpoint-rule-set-1.json.gz,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-featurestore-runtime/2020-07-01/examples-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-featurestore-runtime/2020-07-01/paginators-1.json,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/botocore/data/sagemaker-featurestore-runtime/2020-07-01/service-2.json.gz,root,wazuh,640,file,-rw-r-----,,
