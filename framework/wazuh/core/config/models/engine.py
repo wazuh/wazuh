@@ -1,4 +1,6 @@
-from pydantic import BaseModel, FilePath, PositiveInt, PositiveFloat
+from pydantic import FilePath, PositiveInt, PositiveFloat
+
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.logging import LoggingConfig
 
 
@@ -6,7 +8,7 @@ from wazuh.core.config.models.logging import LoggingConfig
 DEFAULT_ENGINE_SOCKET_PATH = "/var/wazuh/queue/engine.sock"
 
 
-class EngineClientConfig(BaseModel):
+class EngineClientConfig(WazuhConfigBaseModel):
     """Configuration for the Engine client.
 
     Parameters
@@ -23,7 +25,7 @@ class EngineClientConfig(BaseModel):
     timeout: PositiveFloat = 10
 
 
-class EngineConfig(BaseModel):
+class EngineConfig(WazuhConfigBaseModel):
     """Configuration for the Engine.
 
     Parameters

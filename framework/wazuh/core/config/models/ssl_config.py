@@ -1,6 +1,6 @@
-from pydantic import BaseModel
 from enum import Enum
 
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 
 class SSLProtocol(str, Enum):
     """Enum representing supported SSL/TLS protocols."""
@@ -11,7 +11,7 @@ class SSLProtocol(str, Enum):
     auto = "auto"
 
 
-class SSLConfig(BaseModel):
+class SSLConfig(WazuhConfigBaseModel):
     """Configuration for SSL settings specific to the server.
 
     Parameters
@@ -31,7 +31,7 @@ class SSLConfig(BaseModel):
     keyfile_password: str = ""
 
 
-class IndexerSSLConfig(BaseModel):
+class IndexerSSLConfig(WazuhConfigBaseModel):
     """Configuration for SSL settings specific to the indexer.
 
     Parameters
@@ -51,7 +51,7 @@ class IndexerSSLConfig(BaseModel):
     ca: str = ""
 
 
-class APISSLConfig(BaseModel):
+class APISSLConfig(WazuhConfigBaseModel):
     """Configuration for API SSL settings.
 
     Parameters

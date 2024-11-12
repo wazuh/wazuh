@@ -1,7 +1,8 @@
-from pydantic import BaseModel, PositiveInt, Field
+from pydantic import PositiveInt, Field
 from typing import List
 from enum import Enum
 
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.core.config.models.logging import RotatedLoggingConfig
 
@@ -15,7 +16,7 @@ class RBACMode(str, Enum):
     black = "black"
 
 
-class ManagementAPIIntervals(BaseModel):
+class ManagementAPIIntervals(WazuhConfigBaseModel):
     """Configuration for Management API intervals.
 
     Parameters
@@ -26,7 +27,7 @@ class ManagementAPIIntervals(BaseModel):
     request_timeout: PositiveInt = 10
 
 
-class CorsConfig(BaseModel):
+class CorsConfig(WazuhConfigBaseModel):
     """Configuration for Cross-Origin Resource Sharing (CORS).
 
     Parameters
@@ -49,7 +50,7 @@ class CorsConfig(BaseModel):
     allow_credentials: bool = False
 
 
-class AccessConfig(BaseModel):
+class AccessConfig(WazuhConfigBaseModel):
     """Configuration for access control settings.
 
     Parameters
@@ -66,7 +67,7 @@ class AccessConfig(BaseModel):
     max_request_per_minute: PositiveInt = 300
 
 
-class ManagementAPIConfig(BaseModel):
+class ManagementAPIConfig(WazuhConfigBaseModel):
     """Configuration for the Management API.
 
     Parameters

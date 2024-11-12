@@ -1,9 +1,10 @@
-from pydantic import BaseModel, PositiveInt
+from pydantic import PositiveInt
 
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 
-class IndexerConfig(BaseModel):
+class IndexerConfig(WazuhConfigBaseModel):
     """Configuration for the Indexer.
 
     Parameters

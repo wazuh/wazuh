@@ -1,5 +1,6 @@
-from pydantic import BaseModel, PositiveInt, PositiveFloat, FilePath
+from pydantic import PositiveInt, PositiveFloat
 
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.core.config.models.logging import RotatedLoggingConfig
 
@@ -7,7 +8,7 @@ DEFAULT_COMMUNICATIONS_API_KEY_PATH = "/var/ossec/api/configuration/ssl/server.k
 DEFAULT_COMMUNICATIONS_API_CERT_PATH = "/var/ossec/api/configuration/ssl/server.crt"
 
 
-class BatcherConfig(BaseModel):
+class BatcherConfig(WazuhConfigBaseModel):
     """Configuration for the Batcher.
 
     Parameters
@@ -24,7 +25,7 @@ class BatcherConfig(BaseModel):
     wait_time: PositiveFloat = 0.15
 
 
-class CommsAPIConfig(BaseModel):
+class CommsAPIConfig(WazuhConfigBaseModel):
     """Configuration for the Communications API.
 
     Parameters

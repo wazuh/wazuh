@@ -1,7 +1,8 @@
-from pydantic import BaseModel, PositiveInt, conint, confloat, PrivateAttr, Field
+from pydantic import PositiveInt, conint, confloat, PrivateAttr, Field
 from typing import List, Optional
 from enum import Enum
 
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import SSLConfig
 from wazuh.core.config.models.logging import LoggingConfig
 
@@ -14,7 +15,7 @@ class NodeType(str, Enum):
     master = "master"
 
 
-class MasterIntervalsConfig(BaseModel):
+class MasterIntervalsConfig(WazuhConfigBaseModel):
     """Configuration for master intervals.
 
     Parameters
@@ -37,7 +38,7 @@ class MasterIntervalsConfig(BaseModel):
     max_locked_integrity_time: PositiveInt = 1000
 
 
-class MasterProcesses(BaseModel):
+class MasterProcesses(WazuhConfigBaseModel):
     """Configuration for master processes.
 
     Parameters
@@ -48,7 +49,7 @@ class MasterProcesses(BaseModel):
     process_pool_size: PositiveInt = 2
 
 
-class MasterConfig(BaseModel):
+class MasterConfig(WazuhConfigBaseModel):
     """Configuration for the master node.
 
     Parameters
@@ -62,7 +63,7 @@ class MasterConfig(BaseModel):
     processes: MasterProcesses = MasterProcesses()
 
 
-class NodeConfig(BaseModel):
+class NodeConfig(WazuhConfigBaseModel):
     """Configuration for a node.
 
     Parameters
@@ -79,7 +80,7 @@ class NodeConfig(BaseModel):
     ssl: SSLConfig
 
 
-class ZipConfig(BaseModel):
+class ZipConfig(WazuhConfigBaseModel):
     """Configuration for zip settings.
 
     Parameters
@@ -99,7 +100,7 @@ class ZipConfig(BaseModel):
     limit_tolerance: confloat(ge=0.0, le=1.0) = 0.2
 
 
-class CommunicationsTimeoutConfig(BaseModel):
+class CommunicationsTimeoutConfig(WazuhConfigBaseModel):
     """Configuration for communication timeouts.
 
     Parameters
@@ -116,7 +117,7 @@ class CommunicationsTimeoutConfig(BaseModel):
     receiving_file: PositiveInt = 120
 
 
-class CommunicationsConfig(BaseModel):
+class CommunicationsConfig(WazuhConfigBaseModel):
     """Configuration for communications settings.
 
     Parameters
@@ -130,7 +131,7 @@ class CommunicationsConfig(BaseModel):
     timeouts: CommunicationsTimeoutConfig = CommunicationsTimeoutConfig()
 
 
-class WorkerIntervalsConfig(BaseModel):
+class WorkerIntervalsConfig(WazuhConfigBaseModel):
     """Configuration for worker intervals.
 
     Parameters
@@ -147,7 +148,7 @@ class WorkerIntervalsConfig(BaseModel):
     connection_retry: PositiveInt = 10
 
 
-class WorkerRetriesConfig(BaseModel):
+class WorkerRetriesConfig(WazuhConfigBaseModel):
     """Configuration for worker retries.
 
     Parameters
@@ -158,7 +159,7 @@ class WorkerRetriesConfig(BaseModel):
     max_failed_keepalive_attempts: PositiveInt = 2
 
 
-class WorkerConfig(BaseModel):
+class WorkerConfig(WazuhConfigBaseModel):
     """Configuration for worker nodes.
 
     Parameters
@@ -172,7 +173,7 @@ class WorkerConfig(BaseModel):
     retries: WorkerRetriesConfig = WorkerRetriesConfig()
 
 
-class SharedFiles(BaseModel):
+class SharedFiles(WazuhConfigBaseModel):
     """Configuration for shared files.
 
     Parameters
@@ -207,7 +208,7 @@ class SharedFiles(BaseModel):
     extra_valid: bool
 
 
-class ServerSyncConfig(BaseModel):
+class ServerSyncConfig(WazuhConfigBaseModel):
     """Configuration for server internal settings.
 
     Parameters
@@ -244,7 +245,7 @@ class ServerSyncConfig(BaseModel):
         return None
 
 
-class CTIConfig(BaseModel):
+class CTIConfig(WazuhConfigBaseModel):
     """Configuration for CTI settings.
 
     Parameters
@@ -288,7 +289,7 @@ DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
 )
 
 
-class ServerConfig(BaseModel):
+class ServerConfig(WazuhConfigBaseModel):
     """Configuration for the server.
 
     Parameters

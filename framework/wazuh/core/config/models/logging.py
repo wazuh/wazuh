@@ -1,8 +1,10 @@
 import logging
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 from typing import List
 from enum import Enum
+
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 
 
 class LoggingFormat(str, Enum):
@@ -27,7 +29,7 @@ class APILoggingLevel(str, Enum):
     critical = "critical"
 
 
-class LoggingConfig(BaseModel):
+class LoggingConfig(WazuhConfigBaseModel):
     """Configuration for logging levels.
 
     Parameters
@@ -56,7 +58,7 @@ class LoggingConfig(BaseModel):
         return 2
 
 
-class LogFileMaxSizeConfig(BaseModel):
+class LogFileMaxSizeConfig(WazuhConfigBaseModel):
     """Configuration for maximum log file size.
 
     Parameters
@@ -70,7 +72,7 @@ class LogFileMaxSizeConfig(BaseModel):
     size: str = Field(default="1M", pattern=r"^([1-9]\d*)([KM])$")
 
 
-class RotatedLoggingConfig(BaseModel):
+class RotatedLoggingConfig(WazuhConfigBaseModel):
     """Configuration for logging with rotation.
 
      Parameters
