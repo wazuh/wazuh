@@ -13,7 +13,7 @@ from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 class AgentsIndex(BaseIndex):
     """Set of methods to interact with the `agents` index."""
 
-    INDEX = 'agents'
+    INDEX = '.agents'
     SECONDARY_INDEXES = []
     REMOVE_GROUP_SCRIPT = """
     def groups = ctx._source.groups.splitOnToken(",");
