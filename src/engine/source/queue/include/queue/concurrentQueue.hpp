@@ -371,7 +371,7 @@ public:
      *
      * @return size_t The approximate number of elements that can be pushed into the queue.
      */
-    inline size_t capacity() const override { return m_minCapacity - m_queue.size_approx(); }
+    inline size_t aproxFreeSlots() const override { return m_minCapacity - m_queue.size_approx(); }
 };
 
 } // namespace base::queue

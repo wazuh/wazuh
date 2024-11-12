@@ -33,13 +33,15 @@ void validatePointer(const T& ptr, const std::string& name)
 }
 
 /**
- * @brief create the base::Event list from batch of raw ndjson
+ * @brief create the base::Event list from batch of raw json
  *
- * @param std::list<std::string_view> list of json (ndjson batch)
+ * @param std::list<std::string_view> list of json (ndjson)
+ * @param std::size_t maxEvents maximum number of events to create
  * @return std::vector<base::Event> list of base::Event created from the batch
  * @throw std::runtime_error if any event is invalid
  */
-inline std::vector<base::Event> createEventsFromBatch(const std::list<std::string_view>& batch)
+inline std::vector<base::Event> createEventsFromBatch(const std::list<std::string_view>& batch,
+                                                      const std::size_t maxEvents)
 {
     const std::size_t headerSize = 2; // Header and subheader
     const auto isSubHeader = [](const base::Event& event) -> bool
@@ -56,13 +58,12 @@ inline std::vector<base::Event> createEventsFromBatch(const std::list<std::strin
     catch (const std::exception& e)
     {
         LOG_DEBUG("Error parsing agent info: '{}'", e.what());
-        throw std::runtime_error {"Error parsing agent info, invalid header, discarting batch"};
+        throw std::runtime_error {"Error parsing agent info, invalid header, discarting ndjson"};
     }
 
     std::vector<base::Event> events {};
-    events.reserve(batch.size() - headerSize);
-    for (auto it = std::next(batch.begin(), headerSize); it != batch.end(); ++it)
-
+    events.reserve(maxEvents);
+    for (auto it = std::next(batch.begin(), headerSize); it != batch.end() && events.size() < maxEvents; ++it)
     {
         try
         {
@@ -77,7 +78,7 @@ inline std::vector<base::Event> createEventsFromBatch(const std::list<std::strin
         }
         catch (const std::exception& e)
         {
-            LOG_DEBUG("Error parsing event '{}': '{}', ignore event", e.what());
+            LOG_DEBUG("Error parsing event '{}': '{}', ignore event", *it, e.what());
         }
     }
 
@@ -491,18 +492,18 @@ base::OptError Orchestrator::postStrEvent(std::string_view event)
     return std::nullopt;
 }
 
-void Orchestrator::postRawEventBatch(std::string&& batch)
+void Orchestrator::postRawNdjson(std::string&& batch)
 {
     const std::size_t min_header_size = 2; // Header + subheader
     const std::size_t min_size = 3;        // min_header_size + 1 event
 
     if (batch.empty())
     {
-        LOG_DEBUG("Received empty ndjson batch");
+        LOG_TRACE("Router: Received empty ndjson");
         throw std::runtime_error {"ndjson is empty"};
     }
 
-    // Extract the json raw from ndjson batch
+    // Extract each json raw from ndjson
     std::list<std::string_view> rawJson {};
     {
         std::replace(batch.begin(), batch.end(), '\n', '\0'); // Use string as buffer
@@ -522,28 +523,32 @@ void Orchestrator::postRawEventBatch(std::string&& batch)
     // Validate the batch
     if (rawJson.size() < min_size)
     {
-        LOG_DEBUG("Received ndjson with less than '{}' lines", min_size);
+        LOG_DEBUG("Router: Received ndjson with less than '{}' lines", min_size);
         throw std::runtime_error {"ndjson is too small"};
     }
 
-    if (m_eventQueue->capacity() < rawJson.size() - min_header_size)
-    {
-        LOG_DEBUG("Recieved '{}' events in router, but the event queue has a capacity of '{}'",
-                  rawJson.size(),
-                  m_eventQueue->capacity());
-    }
+    // Check if the event queue has enough space
+    const std::size_t eventToSend = rawJson.size() - min_header_size; // Apox, because the subheader is ignored
+    const std::size_t freeSlots = m_eventQueue->aproxFreeSlots();     // On high load, can not be accurate
+    const std::size_t discardedEvents = freeSlots < eventToSend ? eventToSend - freeSlots : 0;
 
-    // Process the batch
-    std::vector<base::Event> events = createEventsFromBatch(rawJson);
-    std::size_t discardedEvents = 0;
-    for (const auto& event : events)
-    {
-        discardedEvents += m_eventQueue->tryPush(event) ? 0 : 1;
-        LOG_INFO("EVENT: {}", event->prettyStr());
-    }
     if (discardedEvents > 0)
     {
-        LOG_DEBUG("Router: {} events discarded from the batch", discardedEvents);
+        LOG_DEBUG(
+            "Router: {} events discarded, not enough space in the queue ({} free slots)", discardedEvents, freeSlots);
+        if (freeSlots == 0)
+        {
+            return;
+        }
+    }
+
+    std::vector<base::Event> events = createEventsFromBatch(rawJson, freeSlots);
+    for (const auto& event : events)
+    {
+        if (!m_eventQueue->tryPush(event))
+        {
+            LOG_DEBUG("Router: Event queue is full, discarding event");
+        }
     }
 }
 

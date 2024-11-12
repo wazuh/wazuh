@@ -71,11 +71,11 @@ public:
     virtual size_t size() const = 0;
 
     /**
-     * @brief Get the approximate free capacity of the queue.
+     * @brief Get the approximate free aproxFreeSlots of the queue.
      *
      * @return The approximate number of elements that can be pushed into the queue.
      */
-    virtual size_t capacity() const = 0;
+    virtual size_t aproxFreeSlots() const = 0;
 };
 
 } // namespace base::queue
