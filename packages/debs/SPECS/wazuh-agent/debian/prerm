@@ -95,51 +95,6 @@ case "$1" in
       fi
       ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
 
-      # Process: wazuh-execd
-      if pgrep -f "wazuh-execd" > /dev/null 2>&1; then
-        kill -15 $(pgrep -f "wazuh-execd") > /dev/null 2>&1
-      fi
-
-      if pgrep -f "wazuh-execd" > /dev/null 2>&1; then
-        kill -9 $(pgrep -f "wazuh-execd") > /dev/null 2>&1
-      fi
-
-      # Process: wazuh-agentd
-      if pgrep -f "wazuh-agentd" > /dev/null 2>&1; then
-        kill -15 $(pgrep -f "wazuh-agentd") > /dev/null 2>&1
-      fi
-
-      if pgrep -f "wazuh-agentd" > /dev/null 2>&1; then
-        kill -9 $(pgrep -f "wazuh-agentd") > /dev/null 2>&1
-      fi
-
-      # Process: wazuh-syscheckd
-      if pgrep -f "wazuh-syscheckd" > /dev/null 2>&1; then
-        kill -15 $(pgrep -f "wazuh-syscheckd") > /dev/null 2>&1
-      fi
-
-      if pgrep -f "wazuh-syscheckd" > /dev/null 2>&1; then
-        kill -9 $(pgrep -f "wazuh-syscheckd") > /dev/null 2>&1
-      fi
-
-      # Process: wazuh-logcollector
-      if pgrep -f "wazuh-logcollector" > /dev/null 2>&1; then
-        kill -15 $(pgrep -f "wazuh-logcollector") > /dev/null 2>&1
-      fi
-
-      if pgrep -f "wazuh-logcollector" > /dev/null 2>&1; then
-        kill -9 $(pgrep -f "wazuh-logcollector") > /dev/null 2>&1
-      fi
-
-      # Process: wazuh-modulesd
-      if pgrep -f "wazuh-modulesd" > /dev/null 2>&1; then
-        kill -15 $(pgrep -f "wazuh-modulesd") > /dev/null 2>&1
-      fi
-
-      if pgrep -f "wazuh-modulesd" > /dev/null 2>&1; then
-        kill -9 $(pgrep -f "wazuh-modulesd") > /dev/null 2>&1
-      fi
-
     ;;
 
     remove)
