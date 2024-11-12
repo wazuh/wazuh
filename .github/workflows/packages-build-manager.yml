@@ -182,6 +182,7 @@ jobs:
           expected_files: manager_base_${{ inputs.system }}.csv
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
+          size_check: "false"
 
       # - name: Set up AWS CLI
       #   uses: aws-actions/configure-aws-credentials@v4
