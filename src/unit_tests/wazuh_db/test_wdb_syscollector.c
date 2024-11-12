@@ -82,6 +82,8 @@ static void wdb_syscollector_processes_save2_fail(void) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetStringValue, "1");
     will_return(__wrap_cJSON_GetObjectItem, NULL);
+    will_return(__wrap_cJSON_GetStringValue, "1");
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetStringValue, "name");
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetStringValue, "state");
@@ -120,7 +122,7 @@ static void wdb_syscollector_processes_save2_fail(void) {
 static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
     int i = 0;
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         will_return(__wrap_cJSON_GetObjectItem, NULL);
     }
 
@@ -141,6 +143,7 @@ static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetStringValue, "scan_time");
+    will_return(__wrap_cJSON_GetStringValue, "1");
     will_return(__wrap_cJSON_GetStringValue, "1");
     will_return(__wrap_cJSON_GetStringValue, "name");
     will_return(__wrap_cJSON_GetStringValue, "state");
@@ -253,6 +256,144 @@ static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 }
+
+static void  wdb_syscollector_processes_save2_success_2(cJSON *attribute) {
+    int i = 0;
+
+    for (i = 0; i < 4; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, NULL);
+    }
+
+    for (i = 0; i < 3; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, 1);
+        will_return(__wrap_cJSON_GetObjectItem, attribute);
+    }
+
+    for (i = 0; i < 9; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, NULL);
+    }
+
+    for (i = 0; i < 13; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, 1);
+        will_return(__wrap_cJSON_GetObjectItem, attribute);
+    }
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, "scan_time");
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+    will_return(__wrap_cJSON_GetStringValue, "name");
+    will_return(__wrap_cJSON_GetStringValue, "state");
+    will_return(__wrap_cJSON_GetStringValue, "cmd");
+    will_return(__wrap_cJSON_GetStringValue, "argvs");
+    will_return(__wrap_cJSON_GetStringValue, "euser");
+    will_return(__wrap_cJSON_GetStringValue, "ruser");
+    will_return(__wrap_cJSON_GetStringValue, "suser");
+    will_return(__wrap_cJSON_GetStringValue, "egroup");
+    will_return(__wrap_cJSON_GetStringValue, "rgroup");
+    will_return(__wrap_cJSON_GetStringValue, "sgroup");
+    will_return(__wrap_cJSON_GetStringValue, "fgroup");
+    will_return(__wrap_cJSON_GetStringValue, "checksum");
+
+    will_return(__wrap_wdb_begin2, 0);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "0");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "state");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 7);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 8);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "cmd");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "argvs");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "euser");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "ruser");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "suser");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "egroup");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "rgroup");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 16);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "sgroup");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 17);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "fgroup");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 18);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 19);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 21);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 22);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 23);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 24);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5294967296);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 25);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 26);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 27);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 28);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 29);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 30);
+    expect_value(__wrap_sqlite3_bind_int, value, 123);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 31);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+}
+
 
 static void wdb_syscollector_package_save2_fail() {
     int i = 0;
@@ -3414,6 +3555,25 @@ void test_wdb_syscollector_save2_processes_success(void **state) {
     assert_int_equal(output, 0);
 }
 
+void test_wdb_syscollector_save2_processes_success_2(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+    cJSON attribute = {0};
+
+    attribute.valueint = 123;
+    attribute.valuedouble = 5294967296;
+
+    will_return(__wrap_cJSON_Parse, 1);
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    data->transaction = 0;
+    wdb_syscollector_processes_save2_success_2(&attribute);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    output = wdb_syscollector_save2(data, WDB_SYSCOLLECTOR_PROCESSES, NULL);
+    assert_int_equal(output, 0);
+}
+
 void test_wdb_syscollector_save2_package_fail(void **state) {
     int output = 0;
     wdb_t *data = (wdb_t *)*state;
@@ -5175,6 +5335,7 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_processes_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_processes_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_processes_success_2, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_package_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_package_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_hotfix_fail, test_setup, test_teardown),
