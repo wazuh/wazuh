@@ -680,7 +680,7 @@ void runStart(ConfHandler confManager)
                                   {
                                       try
                                       {
-                                          orchestrator->postRawEventBatch(std::string(req.body));
+                                          orchestrator->postRawNdjson(std::string(req.body));
                                           res.status = httplib::StatusCode::NoContent_204;
                                       }
                                       catch (const std::runtime_error& e)
