@@ -191,6 +191,8 @@ _WAZUH_UID = None
 _WAZUH_GID = None
 GROUP_NAME = 'wazuh'
 USER_NAME = 'wazuh'
+
+# TODO: Keep until we remove the different deprecated functionalities that are importing it.
 WAZUH_PATH = ''
 
 USR_ROOT = Path('/usr')
@@ -214,6 +216,8 @@ WAZUH_QUEUE = WAZUH_RUN / 'cluster'
 WAZUH_SOCKET = WAZUH_RUN / 'socket'
 
 WAZUH_SHARED = WAZUH_ETC / 'shared'
+
+LOCAL_SERVER_SOCKET = 'local-server.sock'
 
 
 # ============================================= Wazuh constants - Commands =============================================
@@ -261,7 +265,6 @@ CLIENT_KEYS = ''
 
 
 # ================================================= Wazuh path - Misc ==================================================
-# OS_PIDFILE_PATH = os.path.join('var', 'run')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
 
 # TODO: Constants asociate to functionality next to deprecate.

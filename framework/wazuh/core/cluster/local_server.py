@@ -225,7 +225,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = common.WAZUH_SOCKET / 'c-internal.sock'
+        socket_path = common.WAZUH_SOCKET / common.LOCAL_SERVER_SOCKET
 
         try:
             local_server = await loop.create_unix_server(

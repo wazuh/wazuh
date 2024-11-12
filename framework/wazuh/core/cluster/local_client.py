@@ -144,7 +144,7 @@ class LocalClient(client.AbstractClientManager):
                                                     loop=loop, on_con_lost=on_con_lost, name=self.name,
                                                     logger=self.logger, manager=self,cluster_items=self.cluster_items
                                                     ),
-                                                path=common.WAZUH_SOCKET / 'c-internal.sock'
+                                                path=common.WAZUH_SOCKET / common.LOCAL_SERVER_SOCKET
                                             )
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)

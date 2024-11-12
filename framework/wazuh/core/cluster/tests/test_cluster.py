@@ -563,7 +563,7 @@ def test_clean_up_ok():
 
                 path_exists_mock.return_value = True
                 with patch('wazuh.core.cluster.cluster.listdir',
-                           return_value=["c-internal.sock", "other_file.txt"]):
+                           return_value=[common.LOCAL_SERVER_SOCKET, "other_file.txt"]):
                     with patch('os.path.isdir', return_value=True) as is_dir_mock:
                         with patch('shutil.rmtree'):
                             cluster.clean_up("worker1")
@@ -593,7 +593,7 @@ def test_clean_up_ko():
 
                 with patch('os.path.exists', return_value=True):
                     with patch('wazuh.core.cluster.cluster.listdir',
-                               return_value=["c-internal.sock", "other_file.txt"]):
+                               return_value=[common.LOCAL_SERVER_SOCKET, "other_file.txt"]):
                         with patch('shutil.rmtree', side_effect=Exception):
                             cluster.clean_up("worker1")
                             mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")

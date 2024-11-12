@@ -131,7 +131,7 @@ async def test_localclient_start(read_config_mock, get_cluster_items_mock):
             lc = LocalClient()
             await lc.start()
             assert mock_create_unix_connection.call_count == 1
-            assert mock_create_unix_connection.call_args[1]["path"] == common.WAZUH_SOCKET / 'c-internal.sock'
+            assert mock_create_unix_connection.call_args[1]["path"] == common.WAZUH_SOCKET / common.LOCAL_SERVER_SOCKET
             assert isinstance(mock_create_unix_connection.call_args[1]["protocol_factory"], Callable)
             assert lc.protocol == "protocol"
             assert lc.transport == "transport"

@@ -38,9 +38,9 @@ default_cluster_config = {
     'bind_addr': 'localhost',
     'nodes': ['127.0.0.1'],
     'hidden': 'no',
-    'cafile': common.WAZUH_ETC / 'sslmanager.ca',
-    'certfile': common.WAZUH_ETC / 'sslmanager.cert',
-    'keyfile': common.WAZUH_ETC / 'sslmanager.key',
+    'cafile': common.WAZUH_ETC / 'server.ca',
+    'certfile': common.WAZUH_ETC / 'server.crt',
+    'keyfile': common.WAZUH_ETC / 'server.key',
     'keyfile_password': '',
 }
 

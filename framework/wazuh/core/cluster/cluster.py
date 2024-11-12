@@ -642,7 +642,7 @@ def clean_up(node_name=""):
             return
 
         for f in listdir(local_rm_path):
-            if f == "c-internal.sock":
+            if f == common.LOCAL_SERVER_SOCKET:
                 continue
             f_path = path.join(local_rm_path, f)
             try:
