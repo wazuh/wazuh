@@ -203,7 +203,7 @@ def handle_special_cases(result, item):
         result['prot_permissions'] = 'lrwxrwxrwx'
 
 
-def get_current_items(scan_path='/var/ossec', ignore_names=[]):
+def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[]):
     """ Get all the files in the specified directory and its subdirectories.
 
     Args:
@@ -222,7 +222,7 @@ def get_current_items(scan_path='/var/ossec', ignore_names=[]):
                 if not file_path.endswith('.pyc') and file_path not in ignore_names:
                     try:
                         item = {'full_filename': file_path}
-                        item.update(get_data(file_path))
+                        item.update(get_data(file_path, size_check))
                         c_items.append(item)
                     except Exception as e:
                         print(f"Error processing file {file_path}: {str(e)}")
@@ -395,8 +395,8 @@ if __name__ == "__main__":
                             help="The group id for wazuh", default=-1)
     arg_parser.add_argument("-wu", "--wazuh_uid", type=int,
                             help="The user id for wazuh", default=-1)
-    arg_parser.add_argument("-s", "--size_check", action="store_false",
-                            help="Disable size validation", default=True)
+    arg_parser.add_argument("-s", "--size_check", action="store_true",
+                            help="Enable size validation", default=False)
 
     # TODO:
     # arg_parser.add_argument("-i", "--ignore", type=str, help="Ignore path: /var/ossec/wodles/oscap/content,/var/ossec/api.")
@@ -412,7 +412,7 @@ if __name__ == "__main__":
         if args.report != '':
             sys.exit('Do not set csv file creation alongside report creation')
         print("Starting base csv creation...")
-        result = get_current_items(installed_dir)
+        result = get_current_items(installed_dir, size_check)
         df = pd.DataFrame(result)
         df = df.reindex(columns=HEADERS)
         df.to_csv(base_file_path, index=False, header=True, sep=',')
@@ -423,7 +423,7 @@ if __name__ == "__main__":
         not_listed = {}
         not_fully_match = {}
 
-        current_items = get_current_items(installed_dir)
+        current_items = get_current_items(installed_dir, size_check)
         mandatory_items = csv_to_dict(csv_file_path, 'full_filename')
         mandatory_items_qtty = len(mandatory_items)
 
@@ -448,26 +448,30 @@ if __name__ == "__main__":
             if current_file_name in exact_matches:
                 matched = True
                 mandatory_item_fields = exact_matches[current_file_name]
-                
+
                 # Check for differences
-                difference_dict = file_diff(mandatory_item_fields, file_object, size_check)
+                difference_dict = file_diff(
+                    mandatory_item_fields, file_object, size_check)
                 if len(difference_dict) != 0:
                     failed = True
                     # Track differences using the current file name as a key
-                    not_fully_match[(current_file_name, current_file_name)] = difference_dict
+                    not_fully_match[(current_file_name,
+                                     current_file_name)] = difference_dict
 
             # 2. Check for matches with glob patterns if no exact match found
             if not matched:
                 for pattern, mandatory_item_fields in glob_patterns.items():
                     if fnmatch.fnmatch(current_file_name, pattern):
                         matched = True
-                        
+
                         # Check for differences
-                        difference_dict = file_diff(mandatory_item_fields, file_object, size_check)
+                        difference_dict = file_diff(
+                            mandatory_item_fields, file_object, size_check)
                         if len(difference_dict) != 0:
                             failed = True
                             # Use (pattern, current_file_name) as a key to track differences
-                            not_fully_match[(pattern, current_file_name)] = difference_dict
+                            not_fully_match[(
+                                pattern, current_file_name)] = difference_dict
 
             # 3. If no patterns matched, consider it a "not found" case
             if not matched:

@@ -4,6 +4,12 @@ name: Package - Build Wazuh manager
 on:
   workflow_dispatch:
     inputs:
+      upload_package:
+        description: |
+          Set to true to upload the package to the S3 bucket. By default is 'false'
+        default: false
+        type: boolean
+        required: false
       docker_image_tag:
         description: |
           Tag name of the Docker image to be downloaded.
@@ -90,8 +96,19 @@ on:
         type: string
         required: false
 
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'src/**'
+      - 'packages/**'
+      - '.github/workflows/packages-build-manager.yml'
+
 jobs:
   Build-manager-packages:
+    env:
+      SHOULD_UPLOAD: ${{ inputs.upload_package || github.event_name != 'pull_request' }}
+      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum || inputs.upload_package || github.event_name != 'pull_request' }}
+
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
@@ -184,30 +201,33 @@ jobs:
           wazuh_gid: ${{ env.WAZUH_GID }}
           size_check: "false"
 
-      # - name: Set up AWS CLI
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
-      #     aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-      #     aws-region: ${{ secrets.CI_AWS_REGION }}
+      - name: Set up AWS CLI
+        if: ${{ inputs.upload_package || github.event_name != 'pull_request' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
 
-      # - name: Upload package to S3
-      #   working-directory: packages
-      #   run: |
-      #     aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-      #     s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
-      #     echo "S3 URI: ${s3uri}"
+      - name: Upload package to S3
+        if: ${{ env.SHOULD_UPLOAD}}
+        working-directory: packages
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
+          echo "S3 URI: ${s3uri}"
 
-      # - name: Upload checksum to S3
-      #   if: ${{ inputs.checksum }}
-      #   run: |
-      #     aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-      #     aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-      #     s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
-      #     echo "S3 sha512 URI: ${s3uri}"
+      - name: Upload checksum to S3
+        if: ${{ env.SHOULD_UPLOAD_CHECKSUM }}
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+          echo "S3 sha512 URI: ${s3uri}"
 
-      # - name: Upload debug symbols to S3
-      #   run: |
-      #     aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-      #     symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${symbols_name}"
-      #     echo "S3 symbols URI: ${symbols}"
+      - name: Upload debug symbols to S3
+        if: ${{ env.SHOULD_UPLOAD }}
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${symbols_name}"
+          echo "S3 symbols URI: ${symbols}"
