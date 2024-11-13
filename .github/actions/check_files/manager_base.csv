@@ -4160,7 +4160,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/framework/python/lib/python3.10/site-packages/h11/tests/test_headers.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/h11/tests/test_helpers.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/h11/tests/test_util.py,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/framework/python/lib/python3.10/site-packages/h11/tests/data/test-file,root,wazuh,640,file,-rw-r-----,,*
+/var/ossec/framework/python/lib/python3.10/site-packages/h11/tests/data/test-file,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/greenlet/greenlet_internal.hpp,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/greenlet/greenlet_thread_state.hpp,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/python/lib/python3.10/site-packages/greenlet/greenlet_exceptions.hpp,root,wazuh,640,file,-rw-r-----,,

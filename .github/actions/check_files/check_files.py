@@ -274,32 +274,30 @@ def csv_to_dict(file_path, key_column):
 """
 
 
-def file_diff(mandatory_item, current_items, size_check):
+def file_diff(expected_item, current_items, size_check):
     differences = {}
 
     for head_type in HEADERS:
         if head_type == 'size_bytes' or head_type == 'full_filename':
             continue
         elif head_type == 'size_error' and size_check:
-            expected_error = float(mandatory_item[head_type])
-            mandatory_size_bytes = float(mandatory_item['size_bytes'])
+            expected_error = float(expected_item[head_type])
+            expected_size_bytes = float(expected_item['size_bytes'])
             difference_bytes = abs(
-                float(current_items['size_bytes']) - mandatory_size_bytes)
-            if (mandatory_size_bytes and (difference_bytes / mandatory_size_bytes) > expected_error):
+                float(current_items['size_bytes']) - expected_size_bytes)
+            if (expected_size_bytes and (difference_bytes / expected_size_bytes) > expected_error):
                 differences['size_bytes'] = current_items['size_bytes']
-        elif mandatory_item[head_type] != current_items[head_type]:
+        elif expected_item[head_type] != current_items[head_type]:
             differences[head_type] = current_items[head_type]
 
     return differences
-
-# ---------------------------------------------------------------------------------------------------------------
 
 
 """
     print a report in MarkDown forat
 
     Parameters:
-        - mandatory_items: dictionary of mandatory items
+        - expected_items: dictionary of expected items
         - not_listed: dictionary of not listed items
         - not_fully_match: dictionary of not fully matched items
         - current_items: dictionary of present items
@@ -310,72 +308,64 @@ def file_diff(mandatory_item, current_items, size_check):
 """
 
 
-def printReport(mandatory_items, not_listed, not_fully_match, current_items, report_path, mandatory_items_qtty):
-
-    left_mandatory_items = len(mandatory_items)
-    unregistered_files = len(not_listed)
+def printReport(expected_items, not_listed, not_fully_match, current_items, matches, report_path):
+    # Quantities
+    qtty_expected = len(expected_items)
+    qtty_not_listed = len(not_listed)
     qtty_not_fully_matched = len(not_fully_match)
-    base_report = ""
-    failed = True
+    qtty_current = len(current_items)
 
-    if (left_mandatory_items == 0 and unregistered_files == 0 and qtty_not_fully_matched == 0):
-        failed = False
+    # Determine the status
+    failed = qtty_current < qtty_expected or qtty_not_listed != 0 or qtty_not_fully_matched != 0
+    status = "Failed" if failed else "Success"
 
-    base_report += f"""
-# Checkfiles Test
-
-## Result
-
-**{"Failed" if failed else "Succes"}**
-    """
+    # Report accumulator
+    report_lines = [
+        "# Checkfiles Test\n",
+        "\n## Result Summary\n",
+        f"- Status: {status}\n",
+        f"- Items found: {qtty_current}\n",
+        f"- Items Expected: {qtty_expected}\n",
+        f"- Items not listed: {qtty_not_listed}\n",
+        f"- Items not fully matched: {qtty_not_fully_matched}\n"
+    ]
 
     if failed:
-        base_report += f"""
-## Result Summary
+        # Differences Section
+        if qtty_not_fully_matched > 0:
+            report_lines.append("\n## Differences\n")
+            report_lines.append("### Files Differences\n")
+            report_lines.append(
+                f"{qtty_not_fully_matched} files didn't match the expected values:\n")
+            report_lines.extend(
+                f"- '{filename}' : {details}\n" for filename, details in not_fully_match.items())
 
-* Items found: {len(current_items)}
-* Items Expected: {mandatory_items_qtty}
-"""
+        # Expected files not found
+        missing_files = [key for key,
+                         matched in matches.items() if not matched]
+        if missing_files:
+            report_lines.append("\n### Expected files\n")
+            report_lines.append(
+                f"{len(missing_files)} expected files were not found:\n")
+            report_lines.extend(
+                f"- '{filename}'\n" for filename in missing_files)
 
-        if qtty_not_fully_matched != 0:
-            base_report += f"""
+        # Unexpected files found
+        if qtty_not_listed > 0:
+            report_lines.append("\n### Unexpected files\n")
+            report_lines.append(
+                f"{qtty_not_listed} unexpected files found:\n")
+            report_lines.extend(f"- '{item}'\n" for item in not_listed)
 
-## differences
+    # Combine all lines into a single report string
+    final_report = ''.join(report_lines)
 
-### Mandatory Files Differences
-
-{qtty_not_fully_matched} Mandatory files didn't fully matched with the expected
-
-"""
-            for item in not_fully_match:
-                base_report += f"* `{item}` : {not_fully_match[item]}\n"
-
-        if left_mandatory_items != 0:
-            base_report += f"""
-
-### Mandatory Files Not Found
-
-{left_mandatory_items} Mandatory item/s was/where not found
-
-"""
-            for item in mandatory_items:
-                base_report += f"* `{item}`\n"
-
-        if unregistered_files != 0:
-            base_report += f"""
-### Found Files Not Expected
-
-{unregistered_files} unregistered files in mandatory list
-
-"""
-            for item in not_listed:
-                base_report += f"* `{item}`\n"
-
-    if report_path != '':
+    # Output to file or console
+    if report_path:
         with open(report_path, 'w') as file:
-            file.write(base_report)
+            file.write(final_report)
     else:
-        print(base_report)
+        print(final_report)
 
 
 if __name__ == "__main__":
@@ -424,17 +414,22 @@ if __name__ == "__main__":
         not_fully_match = {}
 
         current_items = get_current_items(installed_dir, size_check)
-        mandatory_items = csv_to_dict(csv_file_path, 'full_filename')
-        mandatory_items_qtty = len(mandatory_items)
+        expected_items = csv_to_dict(csv_file_path, 'full_filename')
+        expected_items_qtty = len(expected_items)
 
         print("Scanning started...")
+
         failed = False
-        # Separate mandatory items into exact matches and patterns
+
+        # Separate expected items into exact matches and patterns
         exact_matches = {}
         glob_patterns = {}
 
-        # Split `mandatory_items` into exact matches and glob patterns
-        for key_name, fields in mandatory_items.items():
+        # Dictionary to track matches
+        matches = {key: False for key in expected_items.keys()}
+
+        # Split expected_items into exact matches and glob patterns
+        for key_name, fields in expected_items.items():
             if '*' in key_name or '?' in key_name or '[' in key_name:
                 glob_patterns[key_name] = fields
             else:
@@ -447,39 +442,40 @@ if __name__ == "__main__":
             # 1. Check for exact match first (fast O(1) lookup)
             if current_file_name in exact_matches:
                 matched = True
-                mandatory_item_fields = exact_matches[current_file_name]
+                # Remove the exact match from the dictionary
+                matches[current_file_name] = True
+                expected_item_fields = exact_matches[current_file_name]
 
                 # Check for differences
                 difference_dict = file_diff(
-                    mandatory_item_fields, file_object, size_check)
+                    expected_item_fields, file_object, size_check)
                 if len(difference_dict) != 0:
                     failed = True
                     # Track differences using the current file name as a key
-                    not_fully_match[(current_file_name,
-                                     current_file_name)] = difference_dict
+                    not_fully_match[current_file_name] = difference_dict
 
             # 2. Check for matches with glob patterns if no exact match found
             if not matched:
-                for pattern, mandatory_item_fields in glob_patterns.items():
+                for pattern, expected_item_fields in glob_patterns.items():
                     if fnmatch.fnmatch(current_file_name, pattern):
                         matched = True
+                        matches[current_file_name] = True
 
                         # Check for differences
                         difference_dict = file_diff(
-                            mandatory_item_fields, file_object, size_check)
+                            expected_item_fields, file_object, size_check)
                         if len(difference_dict) != 0:
                             failed = True
                             # Use (pattern, current_file_name) as a key to track differences
-                            not_fully_match[(
-                                pattern, current_file_name)] = difference_dict
-
+                            not_fully_match[current_file_name] = difference_dict
             # 3. If no patterns matched, consider it a "not found" case
             if not matched:
                 failed = True
                 not_listed[current_file_name] = file_object
 
-        printReport(mandatory_items, not_listed,
-                    not_fully_match, current_items, report_path, mandatory_items_qtty)
+        print("Scanning finished")
+        printReport(expected_items, not_listed,
+                    not_fully_match, current_items, matches, report_path)
 
         if failed:
             sys.exit("Failed: Results didn't match the expected output")
