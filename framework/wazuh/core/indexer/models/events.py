@@ -243,18 +243,16 @@ class Header(BaseModel):
     operation: Operation = None
 
 
-class StatefulEvent(BaseModel):
-    """Stateful event data model."""
-    data: Union[
-        FIMEvent,
-        InventoryNetworkEvent,
-        InventoryPackageEvent,
-        InventoryProcessEvent,
-        InventorySystemEvent,
-        SCAEvent,
-        VulnerabilityEvent,
-        CommandResult
-    ]
+StatefulEvent = Union[
+    FIMEvent,
+    InventoryNetworkEvent,
+    InventoryPackageEvent,
+    InventoryProcessEvent,
+    InventorySystemEvent,
+    SCAEvent,
+    VulnerabilityEvent,
+    CommandResult
+]
 
 
 STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
