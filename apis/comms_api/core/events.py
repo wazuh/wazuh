@@ -70,7 +70,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
         Object containing the agent metadata, headers and events.
     """
     if request.headers.get('Content-Type') != 'application/json' or \
-        request.headers.get('Transfer-Encoding') != 'chunked':
+            request.headers.get('Transfer-Encoding') != 'chunked':
         raise WazuhError(2708)
 
     i: int = 0
@@ -101,7 +101,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
                     # Skip the counter increment, we don't expect event data after this header
                     continue
 
-            i+=1
+            i += 1
 
     return StatefulEvents(
         agent_metadata=agent_metadata,
