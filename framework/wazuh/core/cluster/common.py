@@ -1227,7 +1227,7 @@ class SyncFiles(SyncTask):
         time_to_send = 0
         min_zip_size = self.server.server_config.communications.zip.min_size
         max_zip_size = self.server.server_config.communications.zip.max_size
-        zip_limit_tolerance = self.server.server_config.communications.limit_tolerance
+        zip_limit_tolerance = self.server.server_config.communications.zip.limit_tolerance
         timeout_receiving_file = self.server.server_config.communications.timeouts.receiving_file
 
         self.logger.debug(f"Compressing {'files and ' if files else ''}"
