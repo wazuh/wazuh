@@ -1,9 +1,8 @@
 import asyncio
 from typing import List
-from uuid import UUID
 
 from .base import BaseIndex
-from wazuh.core.indexer.models.events import AgentMetadata, StatefulEvent, TaskResult
+from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, StatefulEvent, TaskResult
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.batcher.client import BatcherClient
@@ -20,9 +19,10 @@ class EventsIndex(BaseIndex, MixinBulk):
     def __init__(self, client: AsyncOpenSearch):
         super().__init__(client)
 
-    async def create(
+    async def send(
         self,
         agent_metadata: AgentMetadata,
+        headers: List[Header],
         events: List[StatefulEvent],
         batcher_client: BatcherClient
     ) -> List[TaskResult]:
@@ -32,6 +32,8 @@ class EventsIndex(BaseIndex, MixinBulk):
         ----------
         agent_metadata : AgentMetadata
             Agent metadata.
+        headers : List[Header]
+            List of events headers.
         events : List[StatefulEvent]
             List of events.
         batcher_client : BatcherClient
@@ -42,18 +44,18 @@ class EventsIndex(BaseIndex, MixinBulk):
         results : List[TaskResult]
             Indexer response for each one of the bulk tasks.
         """
-        item_ids: List[UUID] = []
+        tasks = []
 
         # Sends the events to the batcher
-        for event in events:
-            item_id = batcher_client.send_event(agent_metadata, event)
-            item_ids.append(item_id)
+        for i, header in enumerate(headers):
+            batcher_client.send_operation(
+                agent_metadata=agent_metadata,
+                header=header,
+                event=events[i] if header.operation != Operation.DELETE else None
+            )
 
-        # Create tasks using a lambda function to obtain the result of each one
-        tasks = []
-        for id in item_ids:
             task = asyncio.create_task(
-                (lambda u: batcher_client.get_response(u))(id)
+                (lambda u: batcher_client.get_response(u))(header.id)
             )
             tasks.append(task)
 

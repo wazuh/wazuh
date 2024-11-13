@@ -3,28 +3,34 @@ from unittest.mock import patch, AsyncMock, call
 import pytest
 
 from framework.wazuh.core.batcher.client import BatcherClient
-from wazuh.core.indexer.models.events import AgentMetadata, SCAEvent, StatefulEvent, Module, ModuleName
+from wazuh.core.indexer.bulk import Operation
+from wazuh.core.indexer.models.agent import Host, OS
+from wazuh.core.indexer.models.events import Agent, AgentMetadata, SCAEvent, StatefulEvent, Header, Module
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
-@patch("builtins.id")
-def test_send_event(id_mock, queue_mock):
-    """Check that the `send_event` method works as expected."""
+def test_send_event(queue_mock):
+    """Check that the `send_operation` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
-    agent_metadata = AgentMetadata(
-        id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
-        groups=[],
+    agent_metadata = AgentMetadata(agent=Agent(
+        id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
         name='test',
+        groups=['group1', 'group2'],
         type='endpoint',
-        version='v5.0.0'
-    )
-    event = StatefulEvent(data=SCAEvent(), module=Module(name=ModuleName.SCA))
-    expected_item_id = 1234
+        version='5.0.0',
+        host=Host(
+            architecture='x86_64',
+            ip='127.0.0.1',
+            os=OS(
+                name='Debian 12',
+                platform='Linux'
+            )
+        ),
+    ))
+    header = Header(id='1234', module=Module.SCA, operation=Operation.CREATE)
+    event = StatefulEvent(data=SCAEvent())
 
-    id_mock.return_value = expected_item_id
-
-    item_id = batcher.send_event(agent_metadata, event)
-    assert item_id == expected_item_id
+    batcher.send_operation(agent_metadata, header, event)
     queue_mock.send_to_mux.assert_called_once()
 
 

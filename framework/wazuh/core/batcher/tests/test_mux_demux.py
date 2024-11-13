@@ -16,7 +16,7 @@ def test_send_to_mux():
     expected_item_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     expected_content = "test"
 
-    queue.send_to_mux(Item(expected_item_id, expected_content))
+    queue.send_to_mux(Item(id=expected_item_id, content=expected_content, operation='create'))
 
     assert not mux_queue.empty()
     result = mux_queue.get()
@@ -37,7 +37,7 @@ def test_receive_from_mux():
     expected_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     expected_content = "test"
 
-    mux_queue.put(Item(expected_id, expected_content))
+    mux_queue.put(Item(id=expected_id, content=expected_content, operation='create'))
 
     result = queue.receive_from_mux()
 
@@ -58,7 +58,7 @@ def test_send_to_demux():
     expected_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     expected_content = "test"
 
-    queue.send_to_demux(Item(expected_id, expected_content))
+    queue.send_to_demux(Item(id=expected_id, content=expected_content, operation='create'))
 
     assert not demux_queue.empty()
     result = demux_queue.get()
@@ -114,7 +114,7 @@ def test_internal_get_response_from_demux():
     expected_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     expected_content = "test"
 
-    demux_queue.put(Item(expected_id, expected_content))
+    demux_queue.put(Item(id=expected_id, content=expected_content, operation='create'))
 
     result = queue.internal_get_response_from_demux()
 
@@ -135,7 +135,7 @@ def test_internal_store_response():
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     example_value = "test"
 
-    queue.internal_store_response(Item(example_uid, example_value))
+    queue.internal_store_response(Item(id=example_uid, content=example_value, operation='create'))
 
     assert example_uid in dict_test
     assert dict_test[example_uid] == example_value

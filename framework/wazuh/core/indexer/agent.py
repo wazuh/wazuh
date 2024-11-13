@@ -13,7 +13,7 @@ from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 class AgentsIndex(BaseIndex):
     """Set of methods to interact with the `agents` index."""
 
-    INDEX = 'agents'
+    INDEX = '.agents'
     SECONDARY_INDEXES = []
     REMOVE_GROUP_SCRIPT = """
     def groups = ctx._source.groups.splitOnToken(",");
@@ -73,7 +73,7 @@ class AgentsIndex(BaseIndex):
             raw_key=key,
             name=name,
             groups='default' + f',{groups}' if groups else None,
-            host=Host(ip=ips, os=OS(full=os)) if ips or os else None
+            host=Host(ip=ips, os=OS(name=os)) if ips or os else None
         )
         try:
             await self._client.index(

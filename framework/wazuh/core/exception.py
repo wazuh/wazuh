@@ -440,6 +440,9 @@ class WazuhException(Exception):
         2705: {'message': 'Invalid file name, it must not contain directories'},
         2706: {'message': 'Invalid authentication token'},
         2707: {'message': 'Authentication token expired'},
+        2708: {'message': 'Invalid request headers'},
+        2709: {'message': 'Invalid stateful events request body. It must contain the agent metadata, headers and '
+               'events objects separated by newlines'},
 
         # Engine API client
         2800: {'message': 'The engine client connection timeout has been exceeded'},

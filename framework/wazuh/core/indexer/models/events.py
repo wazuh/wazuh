@@ -1,11 +1,14 @@
-from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
+
+from pydantic import BaseModel
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.models.commands import Result
+from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
+from wazuh.core.indexer.models.agent import Host as AgentHost
+from wazuh.core.indexer.models.commands import Result
 
 FIM_INDEX = 'wazuh-states-fim'
 INVENTORY_NETWORK_INDEX = 'wazuh-states-inventory-network'
@@ -20,248 +23,227 @@ INVENTORY_PROCESSES_TYPE = 'process'
 INVENTORY_SYSTEM_TYPE = 'system'
 
 
-@dataclass
-class AgentMetadata:
-    """Agent metadata."""
+class Agent(BaseModel):
+    """Agent model in the context of events."""
     id: str
-    groups: List[str]
     name: str
+    groups: List[str]
     type: str
     version: str
+    host: AgentHost
 
 
-@dataclass
-class TaskResult:
+class AgentMetadata(BaseModel):
+    """Agent metadata."""
+    agent: Agent
+
+
+class TaskResult(BaseModel):
     """Stateful event bulk task result data model."""
     id: str
     result: str
     status: int
 
 
-@dataclass
-class Hash:
+class Hash(BaseModel):
     """Hash data model."""
-    md5: str
-    sha1: str
-    sha256: str
+    md5: str = None
+    sha1: str = None
+    sha256: str = None
 
 
-@dataclass
-class File:
+class File(BaseModel):
     """File data model."""
-    attributes: List[str]
-    name: str
-    path: str
-    gid: int
-    group: str
-    inode: str
-    mtime: datetime
-    mode: str
-    size: float
-    target_path: str
-    type: str
-    uid: int
-    owner: str
-    hash: Hash
+    attributes: List[str] = None
+    name: str = None
+    path: str = None
+    gid: int = None
+    group: str = None
+    inode: str = None
+    mtime: datetime = None
+    mode: str = None
+    size: float = None
+    target_path: str = None
+    type: str = None
+    uid: int = None
+    owner: str = None
+    hash: Hash = None
 
 
-@dataclass
-class Registry:
+class Registry(BaseModel):
     """Registry data model."""
-    key: str
-    value: str
+    key: str = None
+    value: str = None
 
 
-@dataclass
-class FIMEvent:
+class FIMEvent(BaseModel):
     """FIM events data model."""
-    file: File
-    registry: Registry
+    file: File = None
+    registry: Registry = None
 
 
-@dataclass
-class InventoryNetworkEvent:
+class InventoryNetworkEvent(BaseModel):
     """Inventory network events data model."""
     # TODO(25121): Add inventory network fields once they are defined
 
 
-@dataclass
-class OS:
+class OS(BaseModel):
     """OS data model."""
-    kernel: str
-    full: str
-    name: str
-    platform: str
-    version: str
-    type: str
+    kernel: str = None
+    full: str = None
+    name: str = None
+    platform: str = None
+    version: str = None
+    type: str = None
 
 
-@dataclass
-class Host:
+class Host(BaseModel):
     """Host data model."""
-    architecture: str
-    hostname: str
-    os: OS
+    architecture: str = None
+    hostname: str = None
+    os: OS = None
 
 
-@dataclass
-class Package:
+class Package(BaseModel):
     """Package data model."""
-    architecture: str
-    description: str
-    installed: datetime
-    name: str
-    path: str
-    size: float
-    type: str
-    version: str
+    architecture: str = None
+    description: str = None
+    installed: datetime = None
+    name: str = None
+    path: str = None
+    size: float = None
+    type: str = None
+    version: str = None
 
 
-@dataclass
-class InventoryPackageEvent:
+class InventoryPackageEvent(BaseModel):
     """Inventory packages events data model."""
-    scan_time: datetime
-    package: Package
+    scan_time: datetime = None
+    package: Package = None
 
 
-@dataclass
-class Parent:
+class Parent(BaseModel):
     """Process parent data model."""
-    pid: float
+    pid: float = None
 
 
-@dataclass
-class ID:
+class ID(BaseModel):
     """Process users and groups ID data model."""
-    id: str
+    id: str = None
 
 
-@dataclass
-class Process:
+class Process(BaseModel):
     """Process data model."""
-    pid: float
-    name: str
-    parent: Parent
-    command_line: str
-    args: List[str]
-    user: ID
-    real_user: ID
-    saved_user: ID
-    group: ID
-    real_group: ID
-    saved_group: ID
-    start: datetime
-    thread: ID
+    pid: float = None
+    name: str = None
+    parent: Parent = None
+    command_line: str = None
+    args: List[str] = None
+    user: ID = None
+    real_user: ID = None
+    saved_user: ID = None
+    group: ID = None
+    real_group: ID = None
+    saved_group: ID = None
+    start: datetime = None
+    thread: ID = None
 
 
-@dataclass
-class InventoryProcessEvent:
+class InventoryProcessEvent(BaseModel):
     """Inventory process events data model."""
-    scan_time: datetime
-    process: Process
+    scan_time: datetime = None
+    process: Process = None
 
 
-@dataclass
-class InventorySystemEvent:
+class InventorySystemEvent(BaseModel):
     """Inventory system events data model."""
-    scan_time: datetime
-    host: Host
+    scan_time: datetime = None
+    host: Host = None
 
 
-@dataclass
-class SCAEvent:
+class SCAEvent(BaseModel):
     """SCA events data model."""
     # TODO(25121): Add SCA event fields once they are defined
 
 
-@dataclass
-class VulnerabilityEventHost:
+class VulnerabilityEventHost(BaseModel):
     """Host data model in relation to vulnerability events."""
-    os: OS
+    os: OS = None
 
 
-@dataclass
-class VulnerabilityEventPackage:
+class VulnerabilityEventPackage(BaseModel):
     """Package data model in relation to vulnerability events."""
-    architecture: str
-    build_version: str
-    checksum: str
-    description: str
-    install_scope: str
-    installed: datetime
-    license: str
-    name: str
-    path: str
-    reference: str
-    size: float
-    type: str
-    version: str
+    architecture: str = None
+    build_version: str = None
+    checksum: str = None
+    description: str = None
+    install_scope: str = None
+    installed: datetime = None
+    license: str = None
+    name: str = None
+    path: str = None
+    reference: str = None
+    size: float = None
+    type: str = None
+    version: str = None
 
 
-@dataclass
-class Cluster:
+class Cluster(BaseModel):
     """Wazuh cluster data model."""
-    name: str
-    node: str
+    name: str = None
+    node: str = None
 
 
-@dataclass
-class Schema:
+class Schema(BaseModel):
     """Wazuh schema data model."""
-    version: str
+    version: str = None
 
 
-@dataclass
-class Wazuh:
+class Wazuh(BaseModel):
     """Wazuh instance information data model."""
-    cluster: Cluster
-    schema: Schema
+    cluster: Cluster = None
+    schema: Schema = None
 
 
-@dataclass
-class Scanner:
+class Scanner(BaseModel):
     """Scanner data model."""
-    source: str
-    vendor: str
+    source: str = None
+    vendor: str = None
 
 
-@dataclass
-class Score:
+class Score(BaseModel):
     """Score data model."""
-    base: float
-    environmental: float
-    temporal: float
-    version: str
+    base: float = None
+    environmental: float = None
+    temporal: float = None
+    version: str = None
 
 
-@dataclass
-class VulnerabilityEvent:
+class VulnerabilityEvent(BaseModel):
     """Vulnerability events data model."""
-    host: VulnerabilityEventHost
-    package: VulnerabilityEventPackage
-    scanner: Scanner
-    score: Score
-    category: str
-    classification: str
-    description: str
-    detected_at: datetime
-    enumeration: str
-    id: str
-    published_at: datetime
-    reference: str
-    report_id: str
-    severity: str
-    under_evaluation: bool
+    host: VulnerabilityEventHost = None
+    package: VulnerabilityEventPackage = None
+    scanner: Scanner = None
+    score: Score = None
+    category: str = None
+    classification: str = None
+    description: str = None
+    detected_at: datetime = None
+    enumeration: str = None
+    id: str = None
+    published_at: datetime = None
+    reference: str = None
+    report_id: str = None
+    severity: str = None
+    under_evaluation: bool = None
 
 
-@dataclass
-class CommandResult:
+class CommandResult(BaseModel):
     """Command result data model."""
-    document_id: str
     result: Result
 
 
-class ModuleName(str, Enum):
+class Module(str, Enum):
     """Stateful event module name."""
     FIM = 'fim'
     INVENTORY = 'inventory'
@@ -270,15 +252,15 @@ class ModuleName(str, Enum):
     COMMAND = 'command'
 
 
-@dataclass
-class Module:
-    """Stateful event module."""
-    name: ModuleName
-    type: str = None
+class Header(BaseModel):
+    """Stateful event header."""
+    id: Optional[str] = None
+    module: Module
+    type: Optional[str] = None
+    operation: Operation = None
 
 
-@dataclass
-class StatefulEvent:
+class StatefulEvent(BaseModel):
     """Stateful event data model."""
     data: Union[
         FIMEvent,
@@ -290,24 +272,25 @@ class StatefulEvent:
         VulnerabilityEvent,
         CommandResult
     ]
-    module: Module
 
 
-STATEFUL_EVENTS_INDICES: Dict[ModuleName, str] = {
-    ModuleName.FIM: FIM_INDEX,
-    ModuleName.SCA: SCA_INDEX,
-    ModuleName.VULNERABILITY: VULNERABILITY_INDEX,
-    ModuleName.COMMAND: CommandsManager.INDEX
+STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
+    Module.FIM: FIM_INDEX,
+    Module.SCA: SCA_INDEX,
+    Module.VULNERABILITY: VULNERABILITY_INDEX,
+    Module.COMMAND: CommandsManager.INDEX
 }
 
 
-def get_module_index_name(module: Module) -> str:
-    """Get the index name corresponding to the specified module.
+def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
+    """Get the index name corresponding to the specified module and type.
 
     Parameters
     ----------
     module : Module
         Event module.
+    type : Optional[str]
+        Event module type
     
     Raises
     ------
@@ -321,19 +304,19 @@ def get_module_index_name(module: Module) -> str:
     str
         Index name.
     """
-    if module.name == ModuleName.INVENTORY:
-        if module.type == INVENTORY_PACKAGES_TYPE:
+    if module == Module.INVENTORY:
+        if type == INVENTORY_PACKAGES_TYPE:
             return INVENTORY_PACKAGES_INDEX
-        if module.type == INVENTORY_PROCESSES_TYPE:
+        if type == INVENTORY_PROCESSES_TYPE:
             return INVENTORY_PROCESSES_INDEX
-        if module.type == INVENTORY_NETWORK_TYPE:
+        if type == INVENTORY_NETWORK_TYPE:
             return INVENTORY_NETWORK_INDEX
-        if module.type == INVENTORY_SYSTEM_TYPE:
+        if type == INVENTORY_SYSTEM_TYPE:
             return INVENTORY_SYSTEM_INDEX
 
         raise WazuhError(1763)
 
     try:
-        return STATEFUL_EVENTS_INDICES[module.name]
+        return STATEFUL_EVENTS_INDICES[module]
     except KeyError:
         raise WazuhError(1765)

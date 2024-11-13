@@ -1,35 +1,33 @@
 import pytest
 from unittest.mock import AsyncMock
 
-from wazuh.core.indexer.bulk import BulkAction, BulkMetadata, BulkDoc, MixinBulk, RequiresClient
+from wazuh.core.indexer.bulk import Operation, BulkMetadata, BulkDoc, MixinBulk, RequiresClient
 
 
 def test_bulk_action_values():
     """Test the values of the BulkAction enum."""
-    assert BulkAction.CREATE.value == "create"
-    assert BulkAction.CREATE_OR_UPDATE.value == "index"
-    assert BulkAction.UPDATE.value == "update"
-    assert BulkAction.DELETE.value == "delete"
+    assert Operation.CREATE.value == "create"
+    assert Operation.UPDATE.value == "update"
+    assert Operation.DELETE.value == "delete"
 
 
 def test_bulk_action_exists_with_valid_action():
     """Check that the `exists` method works as expected."""
-    assert BulkAction.exists("create") is True
-    assert BulkAction.exists("index") is True
-    assert BulkAction.exists("update") is True
-    assert BulkAction.exists("delete") is True
+    assert Operation.exists("create") is True
+    assert Operation.exists("update") is True
+    assert Operation.exists("delete") is True
 
 
 def test_bulk_action_exists_with_invalid_action():
     """Check that the `exists` method works as expected with invalid options"""
-    assert BulkAction.exists("invalid_action") is False
-    assert BulkAction.exists("") is False
-    assert BulkAction.exists("CREATE") is False
+    assert Operation.exists("invalid_action") is False
+    assert Operation.exists("") is False
+    assert Operation.exists("CREATE") is False
 
 
 def test_bulk_metadata_decode():
     """Check that the `decode` method works as expected."""
-    metadata = BulkMetadata(index="test_index", doc_id="1", action=BulkAction.CREATE)
+    metadata = BulkMetadata(index="test_index", doc_id="1", operation=Operation.CREATE)
     expected_output = {"create": {"_index": "test_index", "_id": "1"}}
     assert metadata.decode() == expected_output
 
@@ -40,14 +38,14 @@ def test_bulk_metadata_decode():
         (
             "test_index",
             "1",
-            BulkAction.CREATE,
+            Operation.CREATE,
             {"field": "value"},
             [{"create": {"_index": "test_index", "_id": "1"}}, {"field": "value"}],
         ),
         (
             "test_index",
             "1",
-            BulkAction.DELETE,
+            Operation.DELETE,
             None,
             [{"delete": {"_index": "test_index", "_id": "1"}}],
         ),
@@ -55,7 +53,7 @@ def test_bulk_metadata_decode():
 )
 def test_bulk_doc_decode(index, doc_id, action, doc, expected_output):
     """Check that the `decode` method works as expected."""
-    bulk_doc = BulkDoc(index=index, doc_id=doc_id, action=action, doc=doc)
+    bulk_doc = BulkDoc(index=index, doc_id=doc_id, operation=action, doc=doc)
     assert bulk_doc.decode() == expected_output
 
 
@@ -65,17 +63,7 @@ def test_bulk_doc_create():
     bulk_doc = BulkDoc.create(index="test_index", doc_id="1", doc=doc)
     assert bulk_doc.metadata.index == "test_index"
     assert bulk_doc.metadata.doc_id == "1"
-    assert bulk_doc.metadata.action == BulkAction.CREATE
-    assert bulk_doc.doc == doc
-
-
-def test_bulk_doc_create_or_update():
-    """Check that the `create_or_update` method works as expected."""
-    doc = {"field": "value"}
-    bulk_doc = BulkDoc.create_or_update(index="test_index", doc_id="1", doc=doc)
-    assert bulk_doc.metadata.index == "test_index"
-    assert bulk_doc.metadata.doc_id == "1"
-    assert bulk_doc.metadata.action == BulkAction.CREATE_OR_UPDATE
+    assert bulk_doc.metadata.operation == Operation.CREATE
     assert bulk_doc.doc == doc
 
 
@@ -85,7 +73,7 @@ def test_bulk_doc_update():
     bulk_doc = BulkDoc.update(index="test_index", doc_id="1", doc=doc)
     assert bulk_doc.metadata.index == "test_index"
     assert bulk_doc.metadata.doc_id == "1"
-    assert bulk_doc.metadata.action == BulkAction.UPDATE
+    assert bulk_doc.metadata.operation == Operation.UPDATE
     assert bulk_doc.doc == doc
 
 
@@ -94,7 +82,7 @@ def test_bulk_doc_delete():
     bulk_doc = BulkDoc.delete(index="test_index", doc_id="1")
     assert bulk_doc.metadata.index == "test_index"
     assert bulk_doc.metadata.doc_id == "1"
-    assert bulk_doc.metadata.action == BulkAction.DELETE
+    assert bulk_doc.metadata.operation == Operation.DELETE
     assert bulk_doc.doc is None
 
 
