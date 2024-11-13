@@ -1,8 +1,6 @@
 import argparse
 import csv
 from datetime import datetime
-import grp
-import pwd
 import os
 import pandas as pd
 import platform
@@ -76,6 +74,7 @@ class helper:
 
 def translate_uid(id):
     # If wazuh_uid was not set, use the default behavior
+    import pwd
     if wazuh_uid == -1:
         return pwd.getpwuid(id)[0]
     elif id == wazuh_uid:
@@ -86,6 +85,7 @@ def translate_uid(id):
 
 def translate_gid(id):
     # If wazuh_gid was not set, use the default behavior
+    import grp
     if wazuh_gid == -1:
         return grp.getgrgid(id)[0]
     elif id == wazuh_gid:
