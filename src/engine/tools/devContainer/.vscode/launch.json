@@ -9,6 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${env:ENGINE_BUILD}/main",
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${env:ENGINE_BUILD}",
             "environment": [
@@ -17,20 +18,25 @@
                     "value": "2"
                 },
                 {
-                    "name": "WAZUH_STORE_PATH",
-                    "value": "${workspaceFolder}/engine-installed/store"
+                    "name": "WAZUH_LOG_LEVEL",
+                    "value": "trace"
                 },
                 {
                     "name": "WAZUH_QUEUE_FLOOD_FILE",
                     "value": ""
                 },
                 {
+                    "name": "WAZUH_SERVER_EVENT_QUEUE_SIZE",
+                    "value": "0"
+                },
+                /*
+                {
                     "name": "WAZUH_KVDB_PATH",
                     "value": "${workspaceFolder}/engine-installed/kvdb/"
                 },
                 {
-                    "name": "WAZUH_LOG_LEVEL",
-                    "value": "info"
+                    "name": "WAZUH_STORE_PATH",
+                    "value": "${workspaceFolder}/engine-installed/store"
                 },
                 {
                     "name": "WAZUH_SERVER_API_SOCKET",
@@ -40,10 +46,7 @@
                     "name": "WAZUH_SERVER_EVENT_SOCKET",
                     "value": "/var/ossec/queue/sockets/queue"
                 },
-                {
-                    "name": "WAZUH_SERVER_EVENT_QUEUE_SIZE",
-                    "value": "0"
-                },
+                */
             ],
             "MIMode": "gdb",
             "setupCommands": [
@@ -52,7 +55,7 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 },
-            {
+                {
                     "description": "Enable capture SIGINT",
                     "text": "handle SIGINT print nostop pass",
                     "ignoreFailures": true
@@ -63,6 +66,19 @@
                     "ignoreFailures": true
                 },
             ]
+        },
+        /*********************************************************************************
+        *                        Go tools debug configurations
+        *********************************************************************************/
+        {
+            "name": "http by pass",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${env:ENGINE_SRC}/tools/http_bypass.go",
+            "env": {},
+            "args": [],
+            "showLog": true
         },
         /*********************************************************************************
         *                        Python Tools debug configurations
@@ -156,6 +172,25 @@
                 "validate_successful_assets",
                 "--target", "decoder",
                 "--skip", "wazuh-core"
+            ],
+            "cwd": "${env:TMP_CLEAN_ENV}",
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test dynamic validate_custom_field_indexing decoder",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "dynamic",
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "validate_custom_field_indexing",
+                "--target", "decoder"
             ],
             "cwd": "${env:TMP_CLEAN_ENV}",
             "env": {
@@ -385,47 +420,37 @@
             },
             "justMyCode": false
         },
-        /*********************************************************************************
-        *                        C++ Tools debug configurations
-        *********************************************************************************/
         {
-            "name": "Engine Run - Itegration test",
-            "type": "cppdbg",
+            "name": "Python: engine-test",
+            "type": "debugpy",
             "request": "launch",
-            "program": "${env:ENGINE_BUILD}/main",
+            "program": "${env:ENGINE_SRC}/tools/engine-suite/src/engine_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
             "args": [
-                "--config",
-                //"${env:ENGINE_SRC}/test/integration_tests/configuration_files/general.conf",
-                "/tmp/engine-integration-test/engine/general.conf",
-                "server",
-                "start",
+                "run", "syslog"
             ],
-            "stopAtEntry": false,
-            "cwd": "${env:ENGINE_BUILD}",
-            "environment": [
-                {
-                    "name": "MALLOC_CHECK_",
-                    "value": "2"
-                }
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: TEMP engine-helper-test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src/helper_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "/tmp/actions",
+                "run",
+                "--input-file", "/tmp/helper_tests/date_from_epoch.yml"
             ],
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Enable capture SIGINT",
-                    "text": "handle SIGINT print nostop pass",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Muchos caracteres",
-                    "text": "-interpreter-exec console \"set print elements 100\"",
-                    "ignoreFailures": true
-                },
-            ]
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
         },
         /*********************************************************************************
         *                        C++ Core dump configurations
@@ -444,7 +469,7 @@
             "type": "cppdbg",
             "request": "launch",
             "name": "Open a core dump cpp_test",
-            "program": "/root/repos/wazuh/src/engine/build/test/source/zz_cpp_test/cpp_test",
+            "program": "${env:ENGINE_BUILD}/source/router/router_utest",
             "coreDumpPath": "${input:coreFileName}",
             "cwd": "${env:ENGINE_SRC}",
             "miDebuggerPath": "/usr/bin/gdb",
