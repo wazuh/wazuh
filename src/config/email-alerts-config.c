@@ -16,8 +16,8 @@
 int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void *mailp)
 {
     int i = 0;
-    unsigned int granto_size = 0;
-    unsigned int granto_email_counter = 0;
+    int granto_size = 0;
+    int granto_email_counter = 0;
 
     /* XML definitions */
     const char *xml_email_to = "email_to";
@@ -239,12 +239,11 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
 
     /* We must have at least one entry set */
     if ((Mail->gran_location[granto_size] == NULL &&
-            Mail->gran_level[granto_size] == 0 &&
-            Mail->gran_group[granto_size] == NULL &&
-            Mail->gran_id[granto_size] == NULL &&
-            Mail->gran_format[granto_size] == FULL_FORMAT) ||
-            Mail->gran_to == NULL ||
-            Mail->gran_to[granto_size] == NULL) {
+        Mail->gran_level[granto_size] == 0 &&
+        Mail->gran_group[granto_size] == NULL &&
+        Mail->gran_id[granto_size] == NULL &&
+        Mail->gran_format[granto_size] == FULL_FORMAT) ||
+        (Mail->to == NULL && (Mail->gran_to == NULL || Mail->gran_to[granto_size] == NULL))) {
         merror(XML_INV_GRAN_MAIL);
         return (OS_INVALID);
     }
