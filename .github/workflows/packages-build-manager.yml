@@ -6,8 +6,8 @@ on:
     inputs:
       upload_package:
         description: |
-          Set to true to upload the package to the S3 bucket. By default is 'false'
-        default: false
+          Set to true to upload the package to the S3 bucket. By default is 'true'
+        default: true
         type: boolean
         required: false
       docker_image_tag:
@@ -107,8 +107,8 @@ on:
 jobs:
   Build-manager-packages:
     env:
-      SHOULD_UPLOAD: ${{ inputs.upload_package && github.event_name != 'pull_request' }}
-      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package && github.event_name != 'pull_request' }}
+      SHOULD_UPLOAD: ${{ inputs.upload_package == 'true' && github.event_name != 'pull_request' }}
+      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum == 'true' && inputs.upload_package == 'true' && github.event_name != 'pull_request' }}
 
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
@@ -211,7 +211,7 @@ jobs:
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload package to S3
-        if: ${{ env.SHOULD_UPLOAD}}
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
         working-directory: packages
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
@@ -219,7 +219,7 @@ jobs:
           echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
-        if: ${{ env.SHOULD_UPLOAD_CHECKSUM }}
+        if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
@@ -227,7 +227,7 @@ jobs:
           echo "S3 sha512 URI: ${s3uri}"
 
       - name: Upload debug symbols to S3
-        if: ${{ env.SHOULD_UPLOAD }}
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${symbols_name}"

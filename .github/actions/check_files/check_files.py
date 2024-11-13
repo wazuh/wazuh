@@ -325,7 +325,6 @@ def printReport(expected_items, not_listed, not_fully_match, current_items, matc
         "\n## Result Summary\n",
         f"- Status: {status}\n",
         f"- Items found: {qtty_current}\n",
-        f"- Items Expected: {qtty_expected}\n",
         f"- Items not listed: {qtty_not_listed}\n",
         f"- Items not fully matched: {qtty_not_fully_matched}\n"
     ]
