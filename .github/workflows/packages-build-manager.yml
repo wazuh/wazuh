@@ -96,18 +96,19 @@ on:
         type: string
         required: false
 
-  pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
-    paths:
-      - 'src/**'
-      - 'packages/**'
-      - '.github/workflows/packages-build-manager.yml'
+  # TODO: Adapt inputs for pull_request
+  # pull_request:
+  #   types: [opened, reopened, synchronize, ready_for_review]
+  #   paths:
+  #     - 'src/**'
+  #     - 'packages/**'
+  #     - '.github/workflows/packages-build-manager.yml'
 
 jobs:
   Build-manager-packages:
     env:
-      SHOULD_UPLOAD: ${{ inputs.upload_package || github.event_name != 'pull_request' }}
-      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum || inputs.upload_package || github.event_name != 'pull_request' }}
+      SHOULD_UPLOAD: ${{ inputs.upload_package && github.event_name != 'pull_request' }}
+      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package && github.event_name != 'pull_request' }}
 
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
