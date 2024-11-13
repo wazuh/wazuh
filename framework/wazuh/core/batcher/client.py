@@ -21,8 +21,8 @@ class BatcherClient:
         self.queue = queue
         self.wait_frequency = wait_frequency
 
-    def send_event(self, agent_metadata: AgentMetadata, header: Header, event: StatefulEvent = None):
-        """Send an event through the RouterQueue.
+    def send_operation(self, agent_metadata: AgentMetadata, header: Header, event: StatefulEvent = None):
+        """Send an event operation through the RouterQueue.
 
         Parameters
         ----------

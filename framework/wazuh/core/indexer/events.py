@@ -19,7 +19,7 @@ class EventsIndex(BaseIndex, MixinBulk):
     def __init__(self, client: AsyncOpenSearch):
         super().__init__(client)
 
-    async def create(
+    async def send(
         self,
         agent_metadata: AgentMetadata,
         headers: List[Header],
@@ -48,7 +48,7 @@ class EventsIndex(BaseIndex, MixinBulk):
 
         # Sends the events to the batcher
         for i, header in enumerate(headers):
-            batcher_client.send_event(
+            batcher_client.send_operation(
                 agent_metadata=agent_metadata,
                 header=header,
                 event=events[i] if header.operation != Operation.DELETE else None

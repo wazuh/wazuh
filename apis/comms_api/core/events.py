@@ -31,7 +31,7 @@ async def create_stateful_events(
     """
     async with get_indexer_client() as indexer_client:
         batcher_client = BatcherClient(queue=batcher_queue)
-        return await indexer_client.events.create(
+        return await indexer_client.events.send(
             agent_metadata=events.agent_metadata,
             headers=events.headers,
             events=events.events,

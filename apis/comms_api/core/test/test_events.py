@@ -37,7 +37,7 @@ async def test_create_stateful_events(create_indexer_mock):
         TaskResult(id='1', result='created', status=201),
         TaskResult(id='2', result='created', status=201),
     ]
-    create_indexer_mock.return_value.events.create.return_value = expected
+    create_indexer_mock.return_value.events.send.return_value = expected
     batcher_queue = AsyncMock()
 
     events = StatefulEvents(
@@ -84,7 +84,7 @@ async def test_create_stateful_events(create_indexer_mock):
     result = await create_stateful_events(events, batcher_queue)
 
     create_indexer_mock.assert_called_once()
-    create_indexer_mock.return_value.events.create.assert_called_once()
+    create_indexer_mock.return_value.events.send.assert_called_once()
     assert result == expected
 
 
