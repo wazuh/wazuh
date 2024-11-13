@@ -136,6 +136,6 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
     """Check that the RBAC database factory reset is correct."""
     _, _, core_security = db_setup
     assert core_security.rbac_db_factory_reset() == {'reset': True}
-    assert remove_mock.call_args[0][0].endswith("rbac.db")
+    assert remove_mock.call_args[0][0].name == "rbac.db"
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()

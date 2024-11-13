@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import MagicMock, patch
+from pathlib import Path
 import pytest
 
 from wazuh.core.pyDaemonModule import *
@@ -34,26 +35,24 @@ def test_pyDaemon(mock_chdir, mock_dup, mock_fileno, mock_write, mock_setsid, mo
     mock_chdir.assert_called_once_with('/')
 
 
-@patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path('/tmp'))
 def test_create_pid():
     """Tests create_pid function works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new=tmpdirname.split('/')[2]):
-            create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
+        create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 
-@patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path('/tmp'))
 @patch('wazuh.core.pyDaemonModule.os.chmod', side_effect=OSError)
 def test_create_pid_ko(mock_chmod):
     """Tests create_pid function exception works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new=tmpdirname.split('/')[2]):
-            with pytest.raises(WazuhException, match=".* 3002 .*"):
-                create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
+        with pytest.raises(WazuhException, match=".* 3002 .*"):
+            create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 
 @pytest.mark.parametrize('process_name, expected_pid', [
@@ -69,13 +68,12 @@ def test_get_parent_pid(os_listdir_mock, expected_pid, process_name):
     assert expected_pid == actual_pid
 
 
-@patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new='/tmp')
 def test_delete_pid():
     """Tests delete_pid function works"""
 
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new=tmpdirname.split('/')[2]):
+        with patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path(tmpdirname.split('/')[2])):
             delete_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 @patch('wazuh.core.pyDaemonModule.next')

@@ -58,7 +58,7 @@ def configure_ssl(params):
     uvicorn_params : dict
         uvicorn parameter configuration dictionary.
     """
-    from api.constants import CONFIG_FILE_PATH
+    from api.constants import API_SSL_PATH, CONFIG_FILE_PATH
 
     try:
         # Generate SSL if it does not exist and HTTPS is enabled
@@ -68,10 +68,10 @@ def configure_ssl(params):
                         'Attempting to generate them')
             private_key = generate_private_key(api_conf['https']['key'])
             logger.info(
-                f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}")
+                f"Generated private key file in {API_SSL_PATH}")
             generate_self_signed_certificate(private_key, api_conf['https']['cert'])
             logger.info(
-                f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
+                f"Generated certificate file in {API_SSL_PATH}")
 
         # Load SSL context
         allowed_ssl_protocols = {
@@ -125,7 +125,7 @@ def configure_ssl(params):
         else:
             msg = f'Wazuh API SSL ERROR. Please, ensure ' \
                     f'if path to certificates is correct in the configuration ' \
-                    f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
+                    f'file {CONFIG_FILE_PATH}'
             print(msg)
             logger.error(msg)
             raise exc from exc

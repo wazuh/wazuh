@@ -273,7 +273,7 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
     async with get_indexer_client() as indexer_client:
         query = {IndexerKey.MATCH_ALL: {}}
         agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='id')
-        
+
         available_agents = [agent.id for agent in agents]
 
         if len(agent_list) == 0:
@@ -661,7 +661,7 @@ async def create_group(group_id: str) -> WazuhResult:
         raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/shared
-    agent_conf_template = path.join(common.SHARED_PATH, 'agent-template.conf')
+    agent_conf_template = path.join(common.WAZUH_SHARED, 'agent-template.conf')
     try:
         full_copy(agent_conf_template, group_path)
 
@@ -701,7 +701,7 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
                 raise WazuhResourceNotFound(1710)
             elif group_id == 'default':
                 raise WazuhError(1712)
-            
+
             async with get_indexer_client() as indexer_client:
                 # Get the list of agents belonging to the group to send them the update-group command
                 agent_list = await indexer_client.agents.get_group_agents(group_name=group_id)
@@ -714,7 +714,7 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
                     response = await indexer_client.commands_manager.create(command)
                     if response.result is not ResponseResult.CREATED:
                         raise WazuhError(1762, extra_message=response.result.value)
-                    
+
                     await indexer_client.agents.delete_group(group_name=group_id)
 
             await Agent.delete_single_group(group_id)

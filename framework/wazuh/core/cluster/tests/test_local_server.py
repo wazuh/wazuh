@@ -15,16 +15,17 @@ from uvloop import Loop
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
-        from wazuh.tests.util import RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.local_server import *
-        from wazuh.core.cluster.dapi import dapi
-        from wazuh.core.exception import WazuhClusterError
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from wazuh.core.cluster.local_server import *
+            from wazuh.core.cluster.dapi import dapi
+            from wazuh.core.exception import WazuhClusterError
 
 async def wait_function_called(func_mock):
     while not func_mock.call_count:
@@ -73,7 +74,7 @@ async def test_LocalServerHandler_process_request(process_request_mock, event_lo
     with patch.object(lsh, "send_file_request") as send_file_mock:
         lsh.process_request(command=b"send_file", data=b"test send_file")
         send_file_mock.assert_called_with("test", "send_file")
-    
+
     with patch.object(lsh, 'distribute_orders') as distribute_orders_mock:
         data = b'orders'
         lsh.process_request(command=b'dist_orders', data=data)
@@ -170,7 +171,7 @@ async def test_LocalServerHandler_get_send_file_response(send_request_mock:Async
         lsh.get_send_file_response(future=future)
         await wait_callback_called(send_res_callback_mock)
         send_request_mock.assert_awaited_once_with(command=b"send_f_res", data="test_get_send_file_response")
-        send_res_callback_mock.assert_called_once() 
+        send_res_callback_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -360,7 +361,7 @@ async def test_LocalServerHandlerMaster_send_file_request(event_loop):
 
     def callback_mock(future: asyncio.Future):
         assert future.result() == 'send_file_return_value'
-        
+
     server_mock = ServerMock()
     lshm = LocalServerHandlerMaster(server=server_mock, loop=event_loop, cluster_items={})
     with pytest.raises(WazuhClusterError, match=".* 3022 .*"):
@@ -528,7 +529,7 @@ async def test_LocalServerHandlerWorker_get_api_response(event_loop):
     server_mock = ServerMock()
     lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, cluster_items={})
     future = asyncio.Future()
-    future.set_result('') 
+    future.set_result('')
     with patch.object(lshw, "send_request", side_effect=send_request_mock) as send_request_mock:
         # with patch.object(lshw, 'log_exceptions', return_value='') as log_exceptions_mock:
         lshw.get_api_response(in_command=b"dapi", future=future)
@@ -581,7 +582,7 @@ async def test_LocalServerHandlerWorker_distribute_orders(event_loop):
     class ServerMock:
         def __init__(self):
             self.node = NodeMock()
-    
+
     def callback_mock(future: asyncio.Future):
         assert future.result() == 'ok'
 

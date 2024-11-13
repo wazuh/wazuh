@@ -13,8 +13,9 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        from wazuh.core.manager import *
-        from wazuh.core.exception import WazuhException
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            from wazuh.core.manager import *
+            from wazuh.core.exception import WazuhException
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)

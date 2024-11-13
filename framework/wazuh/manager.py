@@ -249,7 +249,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
         Selected component.
     config : str
         Configuration to get, written on disk.
-        
+
     Returns
     -------
     AffectedItemsWazuhResult
@@ -303,7 +303,7 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
 
     try:
         if raw:
-            with open(common.OSSEC_CONF) as f:
+            with open(common.WAZUH_CONF) as f:
                 return f.read()
         result.affected_items.append(get_ossec_conf(section=section, field=field, distinct=distinct))
     except WazuhError as e:
@@ -360,7 +360,7 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
                                       none_msg=f"Could not update configuration"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    backup_file = f'{common.OSSEC_CONF}.backup'
+    backup_file = f'{common.WAZUH_CONF}.backup'
     try:
         # Check a configuration has been provided
         if not new_conf:
@@ -371,7 +371,7 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
 
         # Create a backup of the current configuration before attempting to replace it
         try:
-            full_copy(common.OSSEC_CONF, backup_file)
+            full_copy(common.WAZUH_CONF, backup_file)
         except IOError:
             raise WazuhError(1019)
 
@@ -387,7 +387,7 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, common.OSSEC_CONF)
+        exists(backup_file) and safe_move(backup_file, common.WAZUH_CONF)
 
     result.total_affected_items = len(result.affected_items)
     return result

@@ -70,7 +70,7 @@ def clean_pid_files(daemon: str) -> None:
         Daemon's name.
     """
     regex = rf'{daemon}[\w_]*-(\d+).pid'
-    for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
+    for pid_file in os.listdir(common.WAZUH_RUN):
         if match := re.match(regex, pid_file):
             try:
                 pid = int(match.group(1))
@@ -82,12 +82,12 @@ def clean_pid_files(daemon: str) -> None:
                     os.killpg(pgid, SIGKILL)
                     print(f"{daemon}: Orphan child process {pid} was terminated.")
                 else:
-                    print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+                    print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_RUN}...")
 
             except (OSError, psutil.NoSuchProcess):
-                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
+                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_RUN}...')
             finally:
-                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
+                os.remove(path.join(common.WAZUH_RUN, pid_file))
 
 
 def find_nth(string: str, substring: str, n: int) -> int:
@@ -184,7 +184,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
     """
     if not array:
         return {'items': [], 'totalItems': 0}
-    
+
     if isinstance(filters, dict) and len(filters.keys()) > 0:
         new_array = []
         for element in array:
@@ -674,6 +674,7 @@ def delete_wazuh_file(full_path: str) -> bool:
     bool
         True if success.
     """
+    # TODO: This is used in CBD lists, It will be deprecated
     if not full_path.startswith(common.WAZUH_PATH) or '..' in full_path:
         raise WazuhError(1907)
 
@@ -1121,7 +1122,7 @@ def check_virustotal_integration(new_conf: str):
 
 def validate_wazuh_configuration(data: str):
     """Check that the Wazuh configuration provided is valid.
-    
+
     Parameters
     ----------
     data : str
@@ -1179,21 +1180,21 @@ def load_wazuh_xml(xml_path, data=None):
 
 def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
     """Load Wazuh YAML configuration files.
-    
+
     Parameters
     ----------
     filepath : str
         File path.
     data : str
         YAML formatted string.
-    
+
     Raises
     ------
     WazuhError(1006)
         File does not exist or lack of permissions.
     WazuhError(1132)
         Invalid YAML syntax.
-    
+
     Returns
     -------
     dict
@@ -1218,18 +1219,18 @@ def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
 
 def get_group_file_path(group_id: str) -> str:
     """Returns the path to the group configuration file.
-    
+
     Parameters
     ----------
     group_id : str
         Group ID.
-        
+
     Returns
     -------
     str
         Group configuration file path.
     """
-    return path.join(common.SHARED_PATH, group_id+GROUP_FILE_EXT)
+    return path.join(common.WAZUH_SHARED, group_id+GROUP_FILE_EXT)
 
 
 class WazuhVersion:
@@ -1883,7 +1884,7 @@ class WazuhDBQuery(object):
             repeat_close = 1
             if curr_level > level:
                 repeat_close += curr_level - level
-            
+
             self.query += ')' * repeat_close
             self.query += ' {} '.format(q_filter['separator'])
             curr_level = level
@@ -2224,7 +2225,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
             check_remote_commands(final_xml)
             check_agents_allow_higher_versions(final_xml)
             check_virustotal_integration(final_xml)
-            with open(common.OSSEC_CONF, 'r') as f:
+            with open(common.WAZUH_CONF, 'r') as f:
                 current_xml = f.read()
             check_indexer(final_xml, current_xml)
             check_wazuh_limits_unchanged(final_xml, current_xml)
@@ -2264,7 +2265,7 @@ def upload_file(content: str, file_path: str, check_xml_formula_values: bool = T
     WazuhResult
         Confirmation message.
     """
-
+    # # TODO: This is used in CBD lists and rules, It will be deprecated.
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
@@ -2354,6 +2355,7 @@ def to_relative_path(full_path: str, prefix: str = common.WAZUH_PATH) -> str:
     str
         Relative path to `full_path` from `prefix`.
     """
+    # # TODO: This is used in CBD lists, rules, decoders. It will be deprecated.
     return path.relpath(full_path, prefix)
 
 

@@ -757,7 +757,7 @@ def test_load_wazuh_yaml_data_ko(safe_load_mock):
         utils.load_wazuh_yaml('', data='1')
 
 
-@patch('wazuh.core.common.SHARED_PATH', new='/test')
+@patch('wazuh.core.common.WAZUH_SHARED', new='/test')
 def test_get_group_file_path():
     """Test `get_group_file_path` returns the corrrect path."""
     group_id = 'default'
@@ -1923,7 +1923,7 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 @patch('wazuh.core.utils.check_agents_allow_higher_versions')
 @patch('wazuh.core.utils.check_virustotal_integration')
 @patch('wazuh.core.utils.check_indexer')
-@patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
+@patch('wazuh.core.common.WAZUH_ETC', new=test_files_path)
 def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
                             mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
@@ -2144,8 +2144,8 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
 def test_agents_allow_higher_versions(new_conf, agents_conf):
     """Check if ossec.conf agents versions are protected by the API.
 
-    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf 
-    cannot be changed. However, other configuration sections can be added, 
+    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf
+    cannot be changed. However, other configuration sections can be added,
     removed or modified.
 
     Parameters
@@ -2241,11 +2241,11 @@ def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed
 @patch('wazuh.core.utils.chmod')
 @patch('wazuh.core.common.wazuh_gid')
 @patch('wazuh.core.common.wazuh_uid')
-def test_upload_file(mock_uid, mock_gid, 
+def test_upload_file(mock_uid, mock_gid,
                      mock_chmod, mock_mks,
                      chk_xml, content):
     """Test upload_file function.
-    
+
     Parameters
     ----------
     mock_uid: Mock

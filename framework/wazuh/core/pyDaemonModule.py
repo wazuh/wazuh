@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import glob
 import logging
 import psutil
 import os
@@ -73,7 +72,7 @@ def create_pid(name: str, pid: int):
     WazuhInternalError(3002)
         Error creating pidfile.
     """
-    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
+    filename = common.WAZUH_RUN / f'{name}-{pid}.pid'
 
     with open(filename, 'a') as fp:
         try:
@@ -97,7 +96,7 @@ def get_parent_pid(name: str) -> int:
         Parent process ID.
     """
     regex = rf'{name}*-(\d+).pid'
-    for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
+    for pid_file in os.listdir(common.WAZUH_RUN):
         if match := re.match(regex, pid_file):
             return int(match.group(1))
 
@@ -112,7 +111,7 @@ def delete_pid(name: str, pid: int):
     pid : int
         Process ID.
     """
-    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
+    filename = common.WAZUH_RUN / f'{name}-{pid}.pid'
 
     try:
         if path.exists(filename):
@@ -133,7 +132,7 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
     logger : logging.Logger
         Logger object.
     """
-    filenames = glob.glob(path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}*.pid'))
+    filenames = [i for i in common.WAZUH_RUN.glob(f'{name}*.pid')]
 
     for process in psutil.Process(ppid).children(recursive=True):
         try:
@@ -143,7 +142,7 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
         except Exception as exc:
             logger.error(f'Unhandled exception while trying to terminate the process with ID {process.pid}: {exc}')
         for filename in filenames[:]:
-            if str(process.pid) in filename:
+            if str(process.pid) in str(filename):
                 try:
                     path.exists(filename) and os.unlink(filename)
                 except OSError:
@@ -158,7 +157,7 @@ def exit_handler(signum, frame, process_name: str, logger: logging.Logger) -> No
     delete_pid(process_name, pid)
 
 
-def get_wazuh_server_pid(server_daemon_name: str, pids_path: str = common.OSSEC_PIDFILE_PATH) -> int:
+def get_wazuh_server_pid(server_daemon_name: str, pids_path: str = common.WAZUH_RUN) -> int:
     """Get the PID of the running wazuh server process contained in the given path.
 
     Parameters
@@ -166,7 +165,7 @@ def get_wazuh_server_pid(server_daemon_name: str, pids_path: str = common.OSSEC_
     server_daemon_name : str
         Daemon name to search.
     pids_path : str, optional
-        Path to search the PID, by default common.OSSEC_PIDFILE_PATH
+        Path to search the PID, by default common.WAZUH_RUN
 
     Returns
     -------
@@ -187,13 +186,13 @@ def get_wazuh_server_pid(server_daemon_name: str, pids_path: str = common.OSSEC_
         raise
 
 
-def get_running_processes(pids_path: str = common.OSSEC_PIDFILE_PATH) -> list:
+def get_running_processes(pids_path: str = common.WAZUH_RUN) -> list:
     """Get the running processes based on the PID files contained in the given path.
 
     Parameters
     ----------
     pids_path : str, optional
-        Path to search for the PIDs, by default `common.OSSEC_PIDFILE_PATH`.
+        Path to search for the PIDs, by default `common.WAZUH_RUN`.
 
     Returns
     -------

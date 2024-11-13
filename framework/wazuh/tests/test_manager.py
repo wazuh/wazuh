@@ -14,17 +14,18 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.manager import *
-        from wazuh.core.manager import LoggingFormat
-        from wazuh.core.tests.test_manager import get_logs
-        from wazuh import WazuhInternalError
+            from wazuh.manager import *
+            from wazuh.core.manager import LoggingFormat
+            from wazuh.core.tests.test_manager import get_logs
+            from wazuh import WazuhInternalError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -301,8 +302,11 @@ def test_get_config_ko():
 
 
 @pytest.mark.parametrize('raw', [True, False])
-def test_read_ossec_conf(raw):
+@patch('builtins.open')
+@patch('wazuh.manager.get_ossec_conf', return_value={})
+def test_read_ossec_conf(get_ossec_conf_mock, open_mock, raw):
     """Tests read_ossec_conf() function works as expected"""
+    open_mock.return_value.__enter__.return_value.read.return_value = ""
     result = read_ossec_conf(raw=raw)
 
     if raw:

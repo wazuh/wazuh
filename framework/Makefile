@@ -5,7 +5,14 @@
 # Syntax: make [ all | build | install | examples | clean ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/lib/wazuh-server
+WAZUH_SERVER	  = wazuh-server
+
+SHARE_INSTALLDIR       ?= /usr/share/${WAZUH_SERVER}
+LOG_INSTALLDIR         ?= /var/log/${WAZUH_SERVER}
+LIB_INSTALLDIR         ?= /var/lib/${WAZUH_SERVER}
+ETC_INSTALLDIR         ?= /etc/${WAZUH_SERVER}
+RUN_INSTALLDIR         ?= /run/${WAZUH_SERVER}
+BIN_INSTALLDIR         ?= /bin
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
@@ -29,31 +36,46 @@ endif
 all: build
 
 install:
-	$(INSTALL_DIR) $(INSTALLDIR)/framework
-	$(INSTALL_DIR) $(INSTALLDIR)/framework/scripts
-	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh
-	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster
-	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster/dapi
-	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster/hap_helper
-	$(INSTALL_DIR) $(INSTALLDIR)/logs
-	$(INSTALL_DIR) $(INSTALLDIR)/etc
-	$(INSTALL_DIR) $(INSTALLDIR)/var/run
-	$(INSTALL_DIR) $(INSTALLDIR)/queue/cluster
-	$(INSTALL_DIR) $(INSTALLDIR)/queue/sockets
+	# SHARE
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/scripts
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/dapi
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh/core/cluster/hap_helper
 
-	$(INSTALL_FILE) scripts/*.py ${INSTALLDIR}/framework/scripts
-	$(INSTALL_FILE) wazuh/*.py ${INSTALLDIR}/framework/wazuh
-	$(INSTALL_FILE) wazuh/core/cluster/*.json ${INSTALLDIR}/framework/wazuh/core/cluster
-	$(INSTALL_FILE) wazuh/core/cluster/*.py ${INSTALLDIR}/framework/wazuh/core/cluster
-	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/dapi
-	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
-	$(INSTALL_FILE) ../etc/ossec.conf ${INSTALLDIR}/etc
+	# LOGS
+	$(INSTALL_DIR) $(LOG_INSTALLDIR)
 
+	# ETC
+	$(INSTALL_DIR) $(ETC_INSTALLDIR)
+	$(INSTALL_DIR) $(ETC_INSTALLDIR)/cluster
+	$(INSTALL_DIR) $(ETC_INSTALLDIR)/shared
+
+	# RUN
+	$(INSTALL_DIR) $(RUN_INSTALLDIR)
+	$(INSTALL_DIR) $(RUN_INSTALLDIR)/cluster
+	$(INSTALL_DIR) $(RUN_INSTALLDIR)/socket
+
+	# SHARE
+	$(INSTALL_FILE) scripts/*.py ${SHARE_INSTALLDIR}/framework/scripts
+	$(INSTALL_FILE) wazuh/*.py ${SHARE_INSTALLDIR}/framework/wazuh
+	$(INSTALL_FILE) wazuh/core/cluster/*.json ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster
+	$(INSTALL_FILE) wazuh/core/cluster/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster
+	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/dapi
+	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
+
+	# ETC
+	$(INSTALL_FILE) ../etc/ossec.conf ${ETC_INSTALLDIR}
+	$(INSTALL_FILE) wazuh/core/cluster/cluster.json ${ETC_INSTALLDIR}/cluster
+
+
+	# BIN
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,${BIN_INSTALLDIR}/%,$(script));)
 #   Provisional name change for wazuh-logtest and wazuh-clusterd
-	$(MV_FILE) /bin/wazuh_server /bin/wazuh-server
-	$(RM_FILE) /bin/__init__
+	$(MV_FILE) ${BIN_INSTALLDIR}/wazuh_server ${BIN_INSTALLDIR}/wazuh-server
+	$(RM_FILE) ${BIN_INSTALLDIR}/__init__
 
 examples: install
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/examples

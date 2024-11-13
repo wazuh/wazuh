@@ -11,7 +11,7 @@ from wazuh.rbac.decorators import expose_resources
 @expose_resources(actions=["order:send"], resources=["*:*:*"], post_proc_func=None)
 async def send_orders(orders: List[Order]) -> AffectedItemsWazuhResult:
     """Send orders to the local server and distribute them to other nodes and components.
-    
+
     Parameters
     ----------
     orders : List[Order]
@@ -36,7 +36,7 @@ async def send_orders(orders: List[Order]) -> AffectedItemsWazuhResult:
     except (WazuhError, WazuhClusterError) as e:
         for id_ in order_ids:
             result.add_failed_item(id_=id_, error=e)
-    
+
     result.total_affected_items = len(result.affected_items)
 
     return result

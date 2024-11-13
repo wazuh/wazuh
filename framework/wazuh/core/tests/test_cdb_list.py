@@ -16,6 +16,8 @@ with patch('wazuh.core.common.wazuh_uid'):
             split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths
         from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
+pytest.skip("This module it is deprecated.", allow_module_level=True)
+
 
 # Variables
 

@@ -8,6 +8,7 @@ import re
 import tempfile
 from datetime import date
 from os.path import join, exists
+from pathlib import Path
 from random import randint
 from unittest.mock import patch, PropertyMock
 
@@ -148,17 +149,17 @@ def test_wazuh_logger_setup_logger(mock_time_handler, mock_size_handler, mock_ad
                                         debug_level=[0, 'test'], max_size=max_size)
     w_logger.setup_logger()
     if max_size == 0:
-        mock_time_handler.assert_called_once_with(filename=tmp_dir.name, when='midnight')
+        mock_time_handler.assert_called_once_with(filename=Path(tmp_dir.name), when='midnight')
         assert not mock_size_handler.called, "Size handler should not be called when using time based rotation"
     else:
-        mock_size_handler.assert_called_with(filename=tmp_dir.name, maxBytes=max_size, backupCount=1)
+        mock_size_handler.assert_called_with(filename=Path(tmp_dir.name), maxBytes=max_size, backupCount=1)
         assert not mock_time_handler.called, "Time handler should not be called when using size based rotation"
 
     mock_add_handler.assert_called()
     mock_add_level_name.assert_called()
 
 
-@patch.object(wlogging.WazuhLogger, 'log_path', create=True, new_callable=PropertyMock)
+@patch.object(wlogging.WazuhLogger, 'log_path', create=True, new_callable=PropertyMock(Path('test')))
 @patch.object(wlogging.WazuhLogger, 'tag', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'logger', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'foreground_mode', create=True, new_callable=PropertyMock)
@@ -176,7 +177,7 @@ def test_wazuh_logger__init__(mock_lformatter, mock_max_size, mock_formatter, mo
                              debug_level=mock_debug_level, logger_name=mock_logger_name,
                              custom_formatter=mock_formatter, max_size=mock_max_size)
     for x in [mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
-              mock_logger, mock_log_path]:
+              mock_logger]:
         x.assert_called()
 
 

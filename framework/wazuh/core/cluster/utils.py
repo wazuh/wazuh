@@ -48,7 +48,7 @@ IMBALANCE_TOLERANCE = 'imbalance_tolerance'
 REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 
 logger = logging.getLogger('wazuh')
-execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock")
+execq_lockfile = common.WAZUH_RUN / ".api_execq_lock"
 
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
@@ -171,7 +171,7 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
     return helper_config
 
 
-def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
+def read_cluster_config(config_file=common.WAZUH_CONF, from_import=False) -> typing.Dict:
     """Read cluster configuration from ossec.conf.
 
     If some fields are missing in the ossec.conf cluster configuration, they are replaced
@@ -196,9 +196,9 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         'bind_addr': 'localhost',
         'nodes': ['127.0.0.1'],
         'hidden': 'no',
-        'cafile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.ca'),
-        'certfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
-        'keyfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'),
+        'cafile': common.WAZUH_ETC / 'server.ca',
+        'certfile': common.WAZUH_ETC / 'server.crt',
+        'keyfile': common.WAZUH_ETC / 'server.key',
         'keyfile_password': '',
     }
 
@@ -229,8 +229,8 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
 
     for key in ('cafile', 'certfile', 'keyfile'):
-        if not config_cluster[key].startswith(common.WAZUH_PATH):
-            config_cluster[key] = os.path.join(common.WAZUH_PATH, config_cluster[key])
+        if not config_cluster[key].is_relative_to(common.WAZUH_ETC):
+            config_cluster[key] = common.WAZUH_ETC / config_cluster[key]
 
     return config_cluster
 
@@ -258,7 +258,7 @@ def get_manager_status(cache=False) -> typing.Dict:
 
     processes = ['wazuh-server', 'wazuh-engined', 'wazuh-apid', 'wazuh-comms-apid']
 
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), common.WAZUH_RUN
     for process in processes:
         pidfile = glob(os.path.join(run_dir, f"{process}-*.pid"))
         if os.path.exists(os.path.join(run_dir, f"{process}.failed")):
@@ -360,8 +360,7 @@ def get_cluster_items():
         Dictionary with the information inside cluster.json file.
     """
     try:
-        here = os.path.abspath(os.path.dirname(__file__))
-        with open(os.path.join(common.WAZUH_PATH, here, 'cluster.json')) as f:
+        with open(common.WAZUH_ETC / 'cluster' / 'cluster.json') as f:
             cluster_items = json.load(f)
         # Rebase permissions.
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
@@ -372,7 +371,7 @@ def get_cluster_items():
 
 
 @lru_cache()
-def read_config(config_file=common.OSSEC_CONF):
+def read_config(config_file=common.WAZUH_CONF):
     """Get the cluster configuration.
 
     Parameters

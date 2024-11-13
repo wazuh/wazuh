@@ -48,7 +48,7 @@ InstallPython()
 {
     PYTHON_VERSION='3.10.15'
     PYTHON_FILENAME='python.tar.gz'
-    PYTHON_INSTALLDIR=${INSTALLDIR}var/lib/wazuh-server/framework/python/
+    PYTHON_INSTALLDIR=${INSTALLDIR}usr/share/wazuh-server/framework/python/
     PYTHON_FULL_PATH=${PYTHON_INSTALLDIR}$PYTHON_FILENAME
 
     echo "Download Python ${PYTHON_VERSION} file"
@@ -57,17 +57,17 @@ InstallPython()
 
     tar -xf $PYTHON_FULL_PATH -C ${PYTHON_INSTALLDIR} && rm -rf ${PYTHON_FULL_PATH}
 
-    mkdir -p ${INSTALLDIR}var/lib/wazuh-server/lib
+    mkdir -p ${INSTALLDIR}usr/share/wazuh-server/lib
 
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libwazuhext.so ${INSTALLDIR}var/lib/wazuh-server/lib
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libpython3.10.so.1.0 ${INSTALLDIR}var/lib/wazuh-server/lib
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libwazuhext.so ${INSTALLDIR}usr/share/wazuh-server/lib
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libpython3.10.so.1.0 ${INSTALLDIR}usr/share/wazuh-server/lib
 
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${PYTHON_INSTALLDIR}
 }
 
 InstallPythonDependencies()
 {
-    PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
+    PYTHON_BIN_PATH=${INSTALLDIR}usr/share/wazuh-server/framework/python/bin/python3
 
     echo "Installing Python dependecies"
     ${PYTHON_BIN_PATH} -m pip install -r ../framework/requirements.txt
@@ -75,18 +75,17 @@ InstallPythonDependencies()
 
 InstallServer()
 {
-    PYTHON_BIN_PATH=${INSTALLDIR}var/lib/wazuh-server/framework/python/bin/python3
+    PYTHON_BIN_PATH=${INSTALLDIR}usr/share/wazuh-server/framework/python/bin/python3
 
-    # Install Framework
-    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=/var/lib/wazuh-server
+    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=/usr/share/wazuh-server
     ${PYTHON_BIN_PATH} -m pip install ../framework/
 
     ## Install Server management API
-    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=/var/lib/wazuh-server
+    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=/usr/share/wazuh-server
     ${PYTHON_BIN_PATH} -m pip install ../api/
 
     ## Install Communications API
-    ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=/var/lib/wazuh-server
+    ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=/usr/share/wazuh-server
     ${PYTHON_BIN_PATH} -m pip install ../apis/
 
 }

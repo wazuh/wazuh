@@ -339,7 +339,7 @@ def _ossecconf2json(xml_conf: str) -> dict:
 
 
 # Main functions
-def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
+def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.WAZUH_CONF,
                    from_import: bool = False, distinct: bool = False) -> dict:
     """Return ossec.conf (manager) as dictionary.
 
@@ -350,7 +350,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     field : str
         Filters by field in section (i.e. included).
     conf_file : str
-        Path of the configuration file to read. Default: common.OSSEC_CONF
+        Path of the configuration file to read. Default: common.WAZUH_CONF
     from_import : bool
         This flag indicates whether this function has been called from a module load (True) or from a function (False).
     distinct : bool
@@ -454,102 +454,6 @@ def get_group_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
 
     return {'total_affected_items': len(data), 'affected_items': data}
 
-
-def parse_internal_options(high_name: str, low_name: str) -> str:
-    """Parse internal_options.conf file.
-
-    Parameters
-    ----------
-    high_name : str
-        Name of the daemon with the option we want to parse.
-    low_name : str
-        Option we want to parse.
-
-    Raises
-    ------
-    WazuhInternalError(1107)
-        Internal options file not found.
-    WazuhInternalError(1108)
-        Value not found in internal_options.conf.
-
-    Returns
-    -------
-    str
-        Value of the internal_options.conf option.
-    """
-
-    def get_config(config_path: str) -> dict:
-        """Read configuration given by its path.
-
-        Parameters
-        ----------
-        config_path : str
-            Configuration path.
-
-        Returns
-        -------
-        dict
-            Configuration as a dictionary.
-        """
-        with open(config_path) as f:
-            str_config = StringIO('[root]\n' + f.read())
-
-        config = RawConfigParser()
-        config.read_file(str_config)
-
-        return config
-
-    if not os_path.exists(common.INTERNAL_OPTIONS_CONF):
-        raise WazuhInternalError(1107)
-
-    # Check if the option exists at local internal options
-    if os_path.exists(common.LOCAL_INTERNAL_OPTIONS_CONF):
-        try:
-            return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
-        except NoOptionError:
-            pass
-
-    try:
-        return get_config(common.INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
-    except NoOptionError as e:
-        raise WazuhInternalError(1108, e.args[0])
-
-
-def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: int) -> int:
-    """Get value of a specific internal option from internal_options.conf.
-
-    Parameters
-    ----------
-    high_name : str
-        Name of the daemon with the option we want to get.
-    low_name : str
-        Option we want to get.
-    max_ : int
-        Maximum value of the option.
-    min_ : int
-        Minimum value of the option.
-
-    Raises
-    ------
-    WazuhError(1109)
-        Option must be a digit.
-    WazuhError(1110)
-        Option value is out of the limits.
-
-    Returns
-    -------
-    int
-        Value of the internal_options.conf option.
-    """
-    option = parse_internal_options(high_name, low_name)
-    if not option.isdigit():
-        raise WazuhError(1109, f'Option: {high_name}.{low_name}. Value: {option}')
-
-    option = int(option)
-    if option < min_ or option > max_:
-        raise WazuhError(1110, f'Max value: {max_}. Min value: {min_}. Found: {option}.')
-
-    return option
 
 
 def update_group_configuration(group_id: str, file_content: str) -> str:
@@ -682,8 +586,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
     def get_active_configuration_manager():
         """Get manager active configuration."""
         # Communicate with the socket that corresponds to the component requested
-        dest_socket = os_path.join(common.WAZUH_PATH, "queue", component_socket_dir_mapping[component],
-                                   component_socket_mapping[component])
+        dest_socket = common.WAZUH_QUEUE / component_socket_dir_mapping[component] / component_socket_mapping[component]
 
         # Verify component configuration
         if not os.path.exists(dest_socket):
@@ -806,7 +709,7 @@ def write_ossec_conf(new_conf: str):
         Error updating ossec configuration.
     """
     try:
-        with open(common.OSSEC_CONF, 'w') as f:
+        with open(common.WAZUH_CONF, 'w') as f:
             f.writelines(new_conf)
     except Exception as e:
         raise WazuhError(1126, extra_message=str(e))

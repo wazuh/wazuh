@@ -4,6 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+from pathlib import Path
 
 import jsonschema as js
 import pytest
@@ -198,11 +199,13 @@ def test_allowed_fields():
 
 def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
+    base_path = Path(__file__).parent.parent.parent.parent
+
     assert is_safe_path('/api/configuration/api.yaml')
     assert is_safe_path('c:\\api\\configuration\\api.yaml')
-    assert is_safe_path('etc/rules/local_rules.xml', relative=False)
+    assert is_safe_path('etc/rules/local_rules.xml', basedir=base_path, relative=False)
     assert is_safe_path('etc/ossec.conf', relative=True)
-    assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
+    assert is_safe_path('ruleset/decoders/decoder.xml', basedir=base_path, relative=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
     assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh_apid.py', relative=True)
     assert not is_safe_path('../etc/rules/rule.xml', relative=False)

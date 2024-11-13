@@ -27,7 +27,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
-from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
+from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES, WAZUH_LIB
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_cache
 
@@ -40,7 +40,7 @@ MAX_ID_RESERVED = 99
 CLOUD_RESERVED_RANGE = 89
 
 # Start a session and set the default security elements
-DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
+DB_FILE = WAZUH_LIB / "rbac.db"
 DB_FILE_TMP = f"{DB_FILE}.tmp"
 CURRENT_ORM_VERSION = 1
 _new_columns = {}

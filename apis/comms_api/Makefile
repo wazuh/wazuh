@@ -5,7 +5,10 @@
 # Syntax: make [ all | install | service ]
 
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/lib/wazuh-server
+WAZUH_SERVER      = wazuh-server
+SHARE_INSTALLDIR  ?= /usr/share/${WAZUH_SERVER}
+ETC_INSTALLDIR    ?= /etc/${WAZUH_SERVER}
+BIN_INSTALLDIR    ?= /bin
 
 MV_FILE        = mv -f
 INSTALL_DIR    = install -o root -g ${WAZUH_GROUP} -m 0750 -d
@@ -18,13 +21,11 @@ INSTALL_FILE   = install -o root -g ${WAZUH_GROUP} -m 0640
 all: install
 
 install:
-    # Copy files and create folders
-	$(INSTALL_DIR) $(INSTALLDIR)
 
-	$(INSTALL_DIR) $(INSTALLDIR)/apis/scripts
-	$(INSTALL_FILE) scripts/wazuh_comms_apid.py ${INSTALLDIR}/apis/scripts
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/apis/scripts
+	$(INSTALL_FILE) scripts/wazuh_comms_apid.py ${SHARE_INSTALLDIR}/apis/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,${BIN_INSTALLDIR}/%,$(script));)
 
-	$(MV_FILE) /bin/wazuh_comms_apid /bin/wazuh-comms-apid
+	$(MV_FILE) ${BIN_INSTALLDIR}/wazuh_comms_apid ${BIN_INSTALLDIR}/wazuh-comms-apid

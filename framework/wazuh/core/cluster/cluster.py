@@ -83,7 +83,7 @@ def validate_haproxy_helper_config(config: dict):
 
 
 def validate_file_path(config: dict, key: str):
-    """Validate a file path is within WAZUH_PATH and that the file exists.
+    """Validate a file path is within WAZUH_ETC and that the file exists.
 
     Parameters
     ----------
@@ -99,13 +99,13 @@ def validate_file_path(config: dict, key: str):
     """
     filepath = config[key]
 
-    if not filepath.startswith(common.WAZUH_PATH):
-        raise WazuhError(3004, f'The {key} path ({filepath}) is not inside {common.WAZUH_PATH}.')
+    if not filepath.is_relative_to(common.WAZUH_ETC):
+        raise WazuhError(3004, f'The {key} path ({filepath}) is not inside {common.WAZUH_ETC}.')
 
-    if '..' in filepath:
+    if '..' in str(filepath):
         raise WazuhError(3004, f'The {key} path ({filepath}) contains "..".')
 
-    if not os.path.exists(filepath):
+    if not filepath.exists():
         raise WazuhError(3004, f'The {key} "{filepath}" does not exist.')
 
 
@@ -140,7 +140,7 @@ def check_cluster_config(config):
 
     if not MIN_PORT < config['port'] < MAX_PORT:
         raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
-    
+
     cert_keys = ['cafile', 'certfile', 'keyfile']
     if len(cert_keys) > len(set(config[key] for key in cert_keys)):
         raise WazuhError(3004, 'Paths to certificates and keys must be different.')
@@ -212,7 +212,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         previous_status = {}
     walk_files = {}
     result_logs = {'debug': defaultdict(list), 'error': defaultdict(list)}
-    full_dirname = path.join(common.WAZUH_PATH, dirname)
+    full_dirname = path.join(common.WAZUH_ETC, dirname)
     # Get list of all files and directories inside 'full_dirname'.
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
@@ -225,7 +225,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                     try:
                         #  If 'all' files have been requested or entry is in the specified files list.
                         if files == ['all'] or file_ in files:
-                            relative_file_path = path.join(path.relpath(root_, common.WAZUH_PATH), file_)
+                            relative_file_path = path.join(path.relpath(root_, common.WAZUH_ETC), file_)
                             abs_file_path = path.join(root_, file_)
                             file_mod_time = path.getmtime(abs_file_path)
                             try:
@@ -396,8 +396,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
     compress_level = get_cluster_items()['intervals']['communication']['compress_level']
     if max_zip_size is None:
         max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
-    zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
-                              f'{name}-{get_utc_now().timestamp()}-{uuid4().hex}.zip')
+    zip_file_path = path.join(common.WAZUH_QUEUE, name, f'{name}-{get_utc_now().timestamp()}-{uuid4().hex}.zip')
 
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
@@ -409,11 +408,11 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                 continue
 
             try:
-                with open(path.join(common.WAZUH_PATH, file), 'rb') as rf:
+                with open(path.join(common.WAZUH_ETC, file), 'rb') as rf:
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
                         result_logs['warning'][file].append(f'File too large to be synced: '
-                                                            f'{path.join(common.WAZUH_PATH, file)}')
+                                                            f'{path.join(common.WAZUH_ETC, file)}')
                         update_cluster_control(file, cluster_control_json)
                         continue
                     # Compress the content of each file and surrounds it with separators.
@@ -643,7 +642,7 @@ def clean_up(node_name=""):
             return
 
         for f in listdir(local_rm_path):
-            if f == "c-internal.sock":
+            if f == common.LOCAL_SERVER_SOCKET:
                 continue
             f_path = path.join(local_rm_path, f)
             try:
@@ -656,7 +655,7 @@ def clean_up(node_name=""):
                 continue
 
     try:
-        rm_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', node_name)
+        rm_path = path.join(common.WAZUH_QUEUE, node_name)
         logger.debug(f"Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
         logger.debug(f"Removed '{rm_path}'.")
@@ -691,12 +690,12 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
     output_file : str
         Path to the created merged file.
     """
-    merge_path = path.join(common.WAZUH_PATH, 'queue', merge_type)
-    output_file = path.join('queue', 'cluster', node_name, merge_type + file_type + '.merged')
+    merge_path = path.join(common.WAZUH_QUEUE, merge_type)
+    output_file = path.join('cluster', node_name, merge_type + file_type + '.merged')
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 
-    with open(path.join(common.WAZUH_PATH, output_file), 'wb') as o_f:
+    with open(path.join(common.WAZUH_RUN, output_file), 'wb') as o_f:
         for filename in listdir(merge_path):
             if files != "all" and filename not in files:
                 continue
