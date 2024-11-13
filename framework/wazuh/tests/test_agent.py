@@ -432,7 +432,7 @@ async def test_agent_delete_agents(
         '019008da-1575-7375-b54f-ef43e393517ef',
         'test',
         '95fffd306c752289d426e66013881538',
-        'group1',
+        ['group1'],
         'endpoint',
         '5.0.0'
     ),
@@ -454,7 +454,7 @@ async def test_agent_add_agent(
         raw_key=key,
         type=type,
         version=version,
-        groups=groups,
+        groups=','.join(groups),
     )
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock

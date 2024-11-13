@@ -5,7 +5,7 @@
 import contextlib
 import operator
 from os import chmod, chown, path
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from api.models.agent_registration_model import Host
 
@@ -516,7 +516,7 @@ async def add_agent(
     key: str,
     type: str,
     version: str,
-    groups: str = None,
+    groups: List[str] = None,
     host: Host = None,
 ) -> WazuhResult:
     """Add a new Wazuh agent.
@@ -561,7 +561,7 @@ async def add_agent(
             key=key,
             type=type,
             version=version,
-            groups=groups,
+            groups=','.join(groups),
             host=IndexerAgentHost(
                 architecture=host['architecture'],
                 ip=host['ip'],

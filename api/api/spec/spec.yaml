@@ -1451,7 +1451,9 @@ components:
           type: string
         groups:
           description: "Agent groups"
-          type: string
+          type: array
+          items:
+            type: string
         host:
           description: "Agent host"
           type: object
@@ -7533,7 +7535,8 @@ paths:
               id: 019008da-1575-7375-b54f-ef43e393517ef
               name: NewHost_2
               key: 7b8276c3bf96aff5709346d368f04fed
-              groups: group1
+              groups: 
+                - group1
               type: endpoint
               version: 5.0.0
               host:

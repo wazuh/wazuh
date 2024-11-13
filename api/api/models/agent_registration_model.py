@@ -190,7 +190,7 @@ class AgentRegistrationModel(Body):
         key: str = None,
         type: str = None,
         version: str = None,
-        groups: str = None,
+        groups: List[str] = None,
         host: Host = None,
     ):
         self.swagger_types = {
@@ -199,7 +199,7 @@ class AgentRegistrationModel(Body):
             'key': str,
             'type': str,
             'version': str,
-            'groups': str,
+            'groups': List[str],
             'host': Host,
         }
 
@@ -264,11 +264,11 @@ class AgentRegistrationModel(Body):
         self._version = version
     
     @property
-    def groups(self) -> str:
+    def groups(self) -> List[str]:
         return self._groups
 
     @groups.setter
-    def groups(self, groups: str):
+    def groups(self, groups: List[str]):
         self._groups = groups
 
     @property
