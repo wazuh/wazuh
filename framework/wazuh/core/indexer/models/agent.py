@@ -46,9 +46,6 @@ class Status(str, Enum):
     """Agent connection status enum."""
     ACTIVE = 'active'
     DISCONNECTED = 'disconnected'
-    PENDING = 'pending'
-    NEVER_CONNECTED = 'never_connected'
-    REMOVED = 'removed'
 
 
 @dataclass
