@@ -4,8 +4,7 @@ from unittest.mock import patch, AsyncMock
 from fastapi import FastAPI, Request
 
 from comms_api.core.events import create_stateful_events, send_stateless_events, parse_stateful_events
-from comms_api.models.events import StatefulEvents, StatelessEvents
-from wazuh.core.engine.models.events import StatelessEvent, Event, WazuhLocation
+from comms_api.models.events import StatefulEvents
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer import Indexer
 from wazuh.core.indexer.bulk import Operation
@@ -19,15 +18,12 @@ INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
 async def test_send_stateless_events(events_send_mock):
     """Check that the `send_stateless_events` function works as expected."""
-    events = [
-        StatelessEvent(
-            wazuh=WazuhLocation(queue=50, location="[003] (agent-name) any->/tmp/syslog.log"),
-            event=Event(original="original message, recollected from the agent")
-        )
-    ]
-    await send_stateless_events(StatelessEvents(events=events))
+    async def stream_mock(b: bytes):
+        yield b
 
-    events_send_mock.assert_called_once_with(events)
+    await send_stateless_events(event_stream=stream_mock)
+
+    events_send_mock.assert_called_once_with(stream_mock)
 
 
 @patch('wazuh.core.indexer.create_indexer', return_value=AsyncMock())

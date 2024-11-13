@@ -1,8 +1,8 @@
-from typing import List
+from typing import AsyncGenerator, List
 
 from fastapi import Request
 
-from comms_api.models.events import StatefulEvents, StatelessEvents
+from comms_api.models.events import StatefulEvents
 from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer import get_indexer_client
@@ -39,16 +39,16 @@ async def create_stateful_events(
         )
 
 
-async def send_stateless_events(events: StatelessEvents) -> None:
+async def send_stateless_events(event_stream: AsyncGenerator[bytes, None]) -> None:
     """Send new events to the engine.
 
     Parameters
     ----------
-    events : StatelessEvents
-        Stateless events list.
+    event_stream : AsyncGenerator[bytes, None]
+        Stateless event stream.
     """
     async with get_engine_client() as engine_client:
-        await engine_client.events.send(events.events)
+        await engine_client.events.send(event_stream)
 
 
 async def parse_stateful_events(request: Request) -> StatefulEvents:
