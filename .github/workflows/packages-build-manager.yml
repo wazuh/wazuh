@@ -201,6 +201,7 @@ jobs:
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
           size_check: "false"
+          ignore: "site-packages,/var/ossec/framework/python/"
 
       - name: Set up AWS CLI
         if: ${{ inputs.upload_package || github.event_name != 'pull_request' }}

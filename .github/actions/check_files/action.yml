@@ -27,6 +27,10 @@ inputs:
     required: false
     description: "Check the size of the files"
     default: "true"
+  ignore:
+    required: false
+    description: "Ignore files from the check"
+    default: ""
 
 runs:
   using: "composite"
@@ -53,7 +57,10 @@ runs:
       size_check=""
       if [ "${{ inputs.size_check }}" == "true" ]; then size_check="--size_check"; fi
 
-      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory '${{ inputs.installation_directory }}' ${size_check}
+      ignore=""
+      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore '${{ inputs.ignore }}'"; fi
+
+      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload current stats
     if: success()
@@ -70,7 +77,10 @@ runs:
       size_check=""
       if [ "${{ inputs.size_check }}" == "true" ]; then size_check="--size_check"; fi
 
-      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory '${{ inputs.installation_directory }}' ${size_check}
+      ignore=""
+      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore '${{ inputs.ignore }}'"; fi
+
+      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload validation results
     if: always()

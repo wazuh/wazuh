@@ -216,16 +216,26 @@ def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[])
     c_items = []
 
     for (dirpath, dirnames, filenames) in os.walk(scan_path, followlinks=False):
-        if dirpath not in ignore_names:
-            for filename in filenames:
-                file_path = "{0}/{1}".format(dirpath, filename)
-                if not file_path.endswith('.pyc') and file_path not in ignore_names:
-                    try:
-                        item = {'full_filename': file_path}
-                        item.update(get_data(file_path, size_check))
-                        c_items.append(item)
-                    except Exception as e:
-                        print(f"Error processing file {file_path}: {str(e)}")
+
+        # Ignore the directory in the exclusion list
+        if any(ignored in dirpath for ignored in ignore_names):
+            print(f"Ignoring directory {dirpath}")
+            continue
+
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+
+            # Ignore files in the exclusion list and pyc
+            if any(ignored in file_path for ignored in ignore_names) or file_path.endswith('.pyc'):
+                continue
+
+            if not file_path.endswith('.pyc'):
+                try:
+                    item = {'full_filename': file_path}
+                    item.update(get_data(file_path, size_check))
+                    c_items.append(item)
+                except Exception as e:
+                    print(f"Error processing file {file_path}: {str(e)}")
 
     return c_items
 
@@ -369,7 +379,7 @@ def printReport(expected_items, not_listed, not_fully_match, current_items, matc
 
 if __name__ == "__main__":
 
-    print("WAZUH FILES CHECKING")
+    print("Wazuh File Integrity Check")
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-r", "--report", type=str, default="",
@@ -386,9 +396,7 @@ if __name__ == "__main__":
                             help="The user id for wazuh", default=-1)
     arg_parser.add_argument("-s", "--size_check", action="store_true",
                             help="Enable size validation", default=False)
-
-    # TODO:
-    # arg_parser.add_argument("-i", "--ignore", type=str, help="Ignore path: /var/ossec/wodles/oscap/content,/var/ossec/api.")
+    arg_parser.add_argument("-i", "--ignore", type=str, help="Paths to be ignored (separated by commas)", default=[])
 
     args = arg_parser.parse_args()
     wazuh_gid = args.wazuh_gid
@@ -396,12 +404,13 @@ if __name__ == "__main__":
     installed_dir = args.directory
     size_check = args.size_check
     base_file_path = args.base_file
+    ignore_names = args.ignore if args.ignore == [] else args.ignore.split(',')
 
     if (base_file_path != ''):
         if args.report != '':
             sys.exit('Do not set csv file creation alongside report creation')
         print("Starting base csv creation...")
-        result = get_current_items(installed_dir, size_check)
+        result = get_current_items(installed_dir, size_check, ignore_names)
         df = pd.DataFrame(result)
         df = df.reindex(columns=HEADERS)
         df.to_csv(base_file_path, index=False, header=True, sep=',')
@@ -412,7 +421,8 @@ if __name__ == "__main__":
         not_listed = {}
         not_fully_match = {}
 
-        current_items = get_current_items(installed_dir, size_check)
+        current_items = get_current_items(
+            installed_dir, size_check, ignore_names)
         expected_items = csv_to_dict(csv_file_path, 'full_filename')
         expected_items_qtty = len(expected_items)
 
@@ -456,7 +466,9 @@ if __name__ == "__main__":
             # 2. Check for matches with glob patterns if no exact match found
             if not matched:
                 for pattern, expected_item_fields in glob_patterns.items():
-                    if fnmatch.fnmatch(current_file_name, pattern):
+                    # Check if the pattern matches the current file name
+                    # Note: Only the current directory is considered (no subdirectories)
+                    if fnmatch.fnmatch(current_file_name, pattern) and '/' not in current_file_name[len(pattern)-1:]:
                         matched = True
                         matches[current_file_name] = True
 
