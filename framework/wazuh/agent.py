@@ -533,7 +533,7 @@ async def add_agent(
         Agent type.
     version : str
         Agent version.
-    groups : str
+    groups : List[str]
         Agent groups.
     host : Host
         Agent host information.

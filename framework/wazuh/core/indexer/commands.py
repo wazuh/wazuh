@@ -152,7 +152,7 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
     ----------
     agent_id : str
         Agent ID.
-    groups : str
+    groups : List[str]
         Group names list.
     
     Returns
