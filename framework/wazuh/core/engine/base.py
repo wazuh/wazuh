@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 from httpx import AsyncClient
 
 APPLICATION_JSON = 'application/json'
+APPLICATION_NDJSON = 'application/x-ndjson'
 
 
 class BaseModule:
