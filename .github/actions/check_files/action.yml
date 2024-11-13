@@ -58,7 +58,7 @@ runs:
       if [ "${{ inputs.size_check }}" == "true" ]; then size_check="--size_check"; fi
 
       ignore=""
-      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore '${{ inputs.ignore }}'"; fi
+      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
       sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
@@ -78,7 +78,7 @@ runs:
       if [ "${{ inputs.size_check }}" == "true" ]; then size_check="--size_check"; fi
 
       ignore=""
-      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore '${{ inputs.ignore }}'"; fi
+      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
       sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 

@@ -218,24 +218,28 @@ def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[])
     for (dirpath, dirnames, filenames) in os.walk(scan_path, followlinks=False):
 
         # Ignore the directory in the exclusion list
-        if any(ignored in dirpath for ignored in ignore_names):
-            print(f"Ignoring directory {dirpath}")
+        if any(os.path.normpath(ignored) in os.path.normpath(dirpath) for ignored in ignore_names):
+            print(f"Ignoring directory: '{dirpath}'")
             continue
 
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
 
-            # Ignore files in the exclusion list and pyc
-            if any(ignored in file_path for ignored in ignore_names) or file_path.endswith('.pyc'):
+            # Ignore pyc files
+            if file_path.endswith('.pyc'):
                 continue
 
-            if not file_path.endswith('.pyc'):
-                try:
-                    item = {'full_filename': file_path}
-                    item.update(get_data(file_path, size_check))
-                    c_items.append(item)
-                except Exception as e:
-                    print(f"Error processing file {file_path}: {str(e)}")
+            # Ignore the file in the exclusion list
+            if (os.path.basename(filename) in ignore_names):
+                print(f"Ignoring file: '{filename}'")
+                continue
+
+            try:
+                item = {'full_filename': file_path}
+                item.update(get_data(file_path, size_check))
+                c_items.append(item)
+            except Exception as e:
+                print(f"Error processing file {file_path}: {str(e)}")
 
     return c_items
 
@@ -396,7 +400,8 @@ if __name__ == "__main__":
                             help="The user id for wazuh", default=-1)
     arg_parser.add_argument("-s", "--size_check", action="store_true",
                             help="Enable size validation", default=False)
-    arg_parser.add_argument("-i", "--ignore", type=str, help="Paths to be ignored (separated by commas)", default=[])
+    arg_parser.add_argument("-i", "--ignore", type=str,
+                            help="Paths to be ignored (separated by commas)", default=[])
 
     args = arg_parser.parse_args()
     wazuh_gid = args.wazuh_gid
@@ -424,7 +429,8 @@ if __name__ == "__main__":
         current_items = get_current_items(
             installed_dir, size_check, ignore_names)
         expected_items = csv_to_dict(csv_file_path, 'full_filename')
-        expected_items_qtty = len(expected_items)
+        # Dictionary to track matches
+        matches = {key: False for key in expected_items.keys()}
 
         print("Scanning started...")
 
@@ -433,9 +439,6 @@ if __name__ == "__main__":
         # Separate expected items into exact matches and patterns
         exact_matches = {}
         glob_patterns = {}
-
-        # Dictionary to track matches
-        matches = {key: False for key in expected_items.keys()}
 
         # Split expected_items into exact matches and glob patterns
         for key_name, fields in expected_items.items():
@@ -470,7 +473,7 @@ if __name__ == "__main__":
                     # Note: Only the current directory is considered (no subdirectories)
                     if fnmatch.fnmatch(current_file_name, pattern) and '/' not in current_file_name[len(pattern)-1:]:
                         matched = True
-                        matches[current_file_name] = True
+                        matches[pattern] = True
 
                         # Check for differences
                         difference_dict = file_diff(
