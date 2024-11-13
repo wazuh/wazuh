@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import call, patch, AsyncMock, MagicMock
 
 from fastapi import FastAPI, Request
 from starlette.requests import ClientDisconnect
@@ -54,62 +54,63 @@ async def test_create_stateful_events(send_events_mock, batcher_client_mock):
         TaskResult(id='1', result='created', status=201),
         TaskResult(id='2', result='created', status=201),
     ]
-    agent_metadata = AgentMetadata(
+    agent_metadata = AgentMetadata(agent=Agent(
         id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
-        groups=[],
         name='test',
+        groups=[],
         type='endpoint',
-        version='v5.0.0'
-    )
+        version='5.0.0',
+        host=Host(
+            architecture='x86_64',
+            ip='127.0.0.1',
+            os=OS(
+                name='Debian 12',
+                platform='Linux'
+            )
+        ),
+    ))
+    headers = [
+        Header(
+            id='1',
+            operation=Operation.CREATE,
+            module=Module.COMMAND
+        ),
+        Header(
+            id='2',
+            operation=Operation.UPDATE,
+            module=Module.SCA
+        ),
+    ]
+    events = [
+        StatefulEvent(
+            data=CommandResult(result=Result(
+                code=200,
+                message='',
+                data=''
+            )),
+        ),
+        StatefulEvent(
+            data=SCAEvent(),
+        )
+    ]
     batcher_queue = AsyncMock()
     batcher_client = BatcherClient(batcher_queue)
     batcher_client_mock.return_value = batcher_client
     send_events_mock.return_value = expected
 
     events = StatefulEvents(
-        agent_metadata=AgentMetadata(agent=Agent(
-            id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
-            name='test',
-            groups=[],
-            type='endpoint',
-            version='5.0.0',
-            host=Host(
-                architecture='x86_64',
-                ip='127.0.0.1',
-                os=OS(
-                    name='Debian 12',
-                    platform='Linux'
-                )
-            ),
-        )),
-        headers=[
-            Header(
-                id='1',
-                operation=Operation.CREATE,
-                module=Module.COMMAND
-            ),
-            Header(
-                id='2',
-                operation=Operation.UPDATE,
-                module=Module.SCA
-            ),
-        ],
-        events=[
-            StatefulEvent(
-                data=CommandResult(result=Result(
-                    code=200,
-                    message='',
-                    data=''
-                )),
-            ),
-            StatefulEvent(
-                data=SCAEvent(),
-            )
-        ]
+        agent_metadata=agent_metadata,
+        headers=headers,
+        events=events
     )
     result = await create_stateful_events(events, batcher_queue)
 
-    send_events_mock.assert_called_once_with(agent_metadata, events.events, batcher_client)
+    send_events_mock.assert_called_once_with(
+        agent_metadata=agent_metadata,
+        headers=headers,
+        events=events.events,
+        batcher_client=batcher_client,
+    )
     assert result == expected
 
 
@@ -186,23 +187,49 @@ async def test_parse_stateful_events_ko(disconnect_client, expected_code):
 @patch('asyncio.gather', new_callable=AsyncMock)
 async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mock, batcher_client_mock):
     """Check that the `send_events` function works as expected."""
-    agent_metadata = AgentMetadata(
+    agent_metadata = AgentMetadata(agent=Agent(
         id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
-        groups=[],
         name='test',
+        groups=[],
         type='endpoint',
-        version='v5.0.0'
+        version='5.0.0',
+        host=Host(
+            architecture='x86_64',
+            ip='127.0.0.1',
+            os=OS(
+                name='Debian 12',
+                platform='Linux'
+            )
+        ),
+    ))
+    headers = [
+        Header(
+            id='1',
+            operation=Operation.CREATE,
+            module=Module.COMMAND
+        ),
+        Header(
+            id='2',
+            operation=Operation.UPDATE,
+            module=Module.SCA
+        ),
+    ]
+    events = StatefulEvents(
+        agent_metadata=agent_metadata,
+        headers=headers,
+        events=[
+            StatefulEvent(data=SCAEvent(), module=Module.SCA),
+            StatefulEvent(data=SCAEvent(), module=Module.SCA)
+        ]
     )
-
-    events = StatefulEvents(events=[
-        StatefulEvent(data=SCAEvent(), module=Module.SCA),
-        StatefulEvent(data=SCAEvent(), module=Module.SCA)
-    ])
-    await send_events(agent_metadata, events, batcher_client_mock)
+    await send_events(agent_metadata, headers, events.events, batcher_client_mock)
 
     create_task_mock.assert_called()
     gather_mock.assert_called_once()
-    batcher_client_mock.send_event.assert_called_once_with(agent_metadata, ('events', list(events.events)))
+    batcher_client_mock.send_operation.assert_has_calls([
+        call(agent_metadata=agent_metadata, header=headers[0], event=events.events[0]),
+        call(agent_metadata=agent_metadata, header=headers[1], event=events.events[1]),
+    ])
     parse_tasks_results_mock.assert_called_once()
 
 

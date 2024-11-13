@@ -7,10 +7,13 @@ from starlette.requests import ClientDisconnect
 from comms_api.models.events import StatefulEvents
 from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.batcher.client import BatcherClient
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue
 from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, StatefulEvent, TaskResult
+
+HTTP_STATUS_OK = 200
+HTTP_STATUS_PARTIAL_CONTENT = 206
 
 
 async def create_stateful_events(
@@ -31,14 +34,13 @@ async def create_stateful_events(
     List[TaskResult]
         List of results from the bulk tasks.
     """
-    async with get_indexer_client() as indexer_client:
-        batcher_client = BatcherClient(queue=batcher_queue)
-        return await indexer_client.events.send(
-            agent_metadata=events.agent_metadata,
-            headers=events.headers,
-            events=events.events,
-            batcher_client=batcher_client,
-        )
+    batcher_client = BatcherClient(queue=batcher_queue)
+    return await send_events(
+        agent_metadata=events.agent_metadata,
+        headers=events.headers,
+        events=events.events,
+        batcher_client=batcher_client,
+    )
 
 
 async def send_stateless_events(request: Request) -> None:
@@ -121,6 +123,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
 
 async def send_events(
     agent_metadata: AgentMetadata,
+    headers: List[Header],
     events: List[StatefulEvent],
     batcher_client: BatcherClient
 ) -> List[TaskResult]:
@@ -130,8 +133,10 @@ async def send_events(
     ----------
     agent_metadata : AgentMetadata
         Agent metadata.
+    headers : List[Header]
+        List of events headers.
     events : List[StatefulEvent]
-        Stateful events list.
+        List of events.
     batcher_client : BatcherClient
         Client responsible for sending the events to the batcher and managing responses.
 
@@ -140,18 +145,18 @@ async def send_events(
     List[TaskResult]
         Indexer response for each one of the bulk tasks.
     """
-    item_ids: List[UUID] = []
+    tasks = []
 
     # Sends the events to the batcher
-    for event in events:
-        item_id = batcher_client.send_event(agent_metadata, event)
-        item_ids.append(item_id)
+    for i, header in enumerate(headers):
+        batcher_client.send_operation(
+            agent_metadata=agent_metadata,
+            header=header,
+            event=events[i] if header.operation != Operation.DELETE else None
+        )
 
-    # Create tasks using a lambda function to obtain the result of each one
-    tasks: List[asyncio.Task] = []
-    for id in item_ids:
         task = asyncio.create_task(
-            (lambda u: batcher_client.get_response(u))(id)
+            (lambda u: batcher_client.get_response(u))(header.id)
         )
         tasks.append(task)
 
