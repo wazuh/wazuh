@@ -5,10 +5,13 @@
 #include <functional>
 #include <string>
 
-#include <fmt/format.h>
-
 namespace httpsrv
 {
+
+/**
+ * @brief An enum class representing the HTTP methods supported by the server.
+ *
+ */
 enum class Method
 {
     GET,
@@ -18,6 +21,12 @@ enum class Method
     ERROR_METHOD
 };
 
+/**
+ * @brief Obtain the string representation of the HTTP method.
+ *
+ * @param method
+ * @return constexpr auto
+ */
 constexpr auto methodToStr(Method method)
 {
     switch (method)
@@ -30,6 +39,12 @@ constexpr auto methodToStr(Method method)
     }
 }
 
+/**
+ * @brief Obtain the HTTP method from the string representation.
+ *
+ * @param str
+ * @return constexpr auto
+ */
 constexpr auto strToMethod(const char* str)
 {
     if (methodToStr(Method::GET) == str)
@@ -54,12 +69,14 @@ constexpr auto strToMethod(const char* str)
     }
 }
 
+/**
+ * @brief CRTP interface for the server.
+ *
+ * @tparam ServerImpl The server implementation.
+ */
 template<class ServerImpl>
 class IServer
 {
-private:
-    ServerImpl m_server;
-
 public:
     virtual ~IServer() = default;
 
@@ -67,23 +84,17 @@ public:
      * @brief Starts the server with the specified socket path.
      *
      * @param socketPath The path to the socket file.
+     * @param useThread If true, the server will be started in a separate thread.
      */
-    void start(const std::filesystem::path& socketPath)
+    void start(const std::filesystem::path& socketPath, bool useThread = true)
     {
-        try
-        {
-            m_server.start(socketPath);
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(fmt::format("Failed to start server at {}: {}", socketPath, e.what()));
-        }
+        static_cast<ServerImpl*>(this)->start(socketPath, useThread);
     }
 
     /**
      * Stops the server.
      */
-    void stop() { m_server.stop(); }
+    void stop() { static_cast<ServerImpl*>(this)->stop(); }
 
     /**
      * @brief Adds a route to the server.
@@ -96,23 +107,21 @@ public:
      * @param route The route path.
      * @param handler The handler function to be called when a request is received. The handler function must take
      * two parameters: a const reference to the request object and a reference to the response object.
-     * The request and response objects must be of google::protobuf::Message type or httplib::Request and
-     * httplib::Response respectively.
      */
     template<typename Request, typename Response>
     void
     addRoute(Method method, const std::string& route, const std::function<void(const Request&, Response&)>& handler)
     {
-        try
-        {
-            m_server.addRoute(method, route, handler);
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(
-                fmt::format("Failed to add route {}:{} error: {}", methodToStr(method), route, e.what()));
-        }
+        static_cast<ServerImpl*>(this)->addRoute(method, route, handler);
     }
+
+    /**
+     * @brief Check if the server is running.
+     *
+     * @return true If the server is running.
+     * @return false Otherwise.
+     */
+    bool isRunning() const { return static_cast<ServerImpl*>(this)->isRunning(); }
 };
 } // namespace httpsrv
 
