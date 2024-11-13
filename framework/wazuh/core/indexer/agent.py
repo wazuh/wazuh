@@ -11,6 +11,7 @@ from wazuh.core.indexer.utils import get_source_items
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
 DEFAULT_GROUP = 'default'
+AGENT_KEY = 'agent'
 
 
 class AgentsIndex(BaseIndex):
@@ -19,7 +20,7 @@ class AgentsIndex(BaseIndex):
     INDEX = '.agents'
     SECONDARY_INDEXES = []
     REMOVE_GROUP_SCRIPT = """
-    def groups = ctx._source.groups.splitOnToken(",");
+    def groups = ctx._source.agent.groups.splitOnToken(",");
     def groups_str = "";
 
     for (int i=0; i < groups.length; i++) {
@@ -32,7 +33,7 @@ class AgentsIndex(BaseIndex):
       }
     }
 
-    ctx._source.groups = groups_str;
+    ctx._source.agent.groups = groups_str;
     """
 
     async def create(
@@ -87,7 +88,7 @@ class AgentsIndex(BaseIndex):
             await self._client.index(
                 index=self.INDEX,
                 id=id,
-                body=agent.to_dict(),
+                body={AGENT_KEY: agent.to_dict()},
                 op_type='create',
                 refresh='wait_for'
             )
@@ -152,7 +153,7 @@ class AgentsIndex(BaseIndex):
         results = await self._client.search(
             **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
         )
-        return [Agent(**item) for item in get_source_items(results)]
+        return [Agent(**item[AGENT_KEY]) for item in get_source_items(results)]
 
     async def get(self, uuid: str) -> Agent:
         """Retrieve an agent information.
@@ -177,7 +178,7 @@ class AgentsIndex(BaseIndex):
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
 
-        return Agent(**data[IndexerKey._SOURCE])
+        return Agent(**data[IndexerKey._SOURCE][AGENT_KEY])
 
     async def update(self, uuid: str, agent: Agent) -> None:
         """Update an agent.
@@ -195,7 +196,7 @@ class AgentsIndex(BaseIndex):
             If no agents exist with the uuid provided.
         """
         try:
-            body = {IndexerKey.DOC: agent.to_dict()}
+            body = {IndexerKey.DOC: {AGENT_KEY: agent.to_dict()}}
             await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
@@ -211,7 +212,11 @@ class AgentsIndex(BaseIndex):
             Group to delete.
         """
         query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
-            .filter(IndexerKey.TERM, groups=group_name) \
+            .filter({
+                IndexerKey.QUERY_STRING: {
+                    IndexerKey.QUERY: f'agent.groups: *{group_name}*'
+                }
+            }) \
             .script(
                 source=self.REMOVE_GROUP_SCRIPT,
                 lang=IndexerKey.PAINLESS,
@@ -232,12 +237,17 @@ class AgentsIndex(BaseIndex):
         agents : List[Agent]
             Agents list.
         """
-        query = AsyncSearch(using=self._client, index=self.INDEX).filter(IndexerKey.TERM, groups=group_name)
+        
+        query = AsyncSearch(using=self._client, index=self.INDEX).filter({
+            IndexerKey.QUERY_STRING: {
+                IndexerKey.QUERY: f'agent.groups: *{group_name}*'
+            }
+        })
         response = await query.execute()
 
         agents = []
         for hit in response:
-            agents.append(Agent(**hit.to_dict()))
+            agents.append(Agent(**hit.to_dict()[AGENT_KEY]))
 
         return agents
 
@@ -285,13 +295,13 @@ class AgentsIndex(BaseIndex):
             source = self.REMOVE_GROUP_SCRIPT
         else:
             if override:
-                source = 'ctx._source.groups = params.group'
+                source = 'ctx._source.agent.groups = params.group'
             else:
                 source = """
-                if (ctx._source.groups == null) {
-                    ctx._source.groups = params.group;
+                if (ctx._source.agent.groups == null) {
+                    ctx._source.agent.groups = params.group;
                 } else {
-                    ctx._source.groups += ","+params.group;
+                    ctx._source.agent.groups += ","+params.group;
                 }
                 """
 

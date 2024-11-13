@@ -17,6 +17,7 @@ class IndexerKey(str, Enum):
     MATCH = 'match'
     MATCH_ALL = 'match_all'
     QUERY = 'query'
+    QUERY_STRING = 'query_string'
     CREATE = 'create'
     DELETE = 'delete'
     INDEX = 'index'
