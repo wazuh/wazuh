@@ -321,8 +321,6 @@ def get_script_arguments() -> argparse.Namespace:
     ####################################################################################################################
     start_parser.add_argument('-f', help='Run in foreground', action='store_true', dest='foreground')
     start_parser.add_argument('-r', help='Run as root', action='store_true', dest='root')
-    # TODO(26693) - Delete this parameter that isn't used
-    start_parser.add_argument('-t', help='Test configuration', action='store_true', dest='test_config')
 
     start_parser.set_defaults(func=main)
 

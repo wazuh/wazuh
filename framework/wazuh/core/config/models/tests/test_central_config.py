@@ -32,4 +32,3 @@ def test_config_default_values(init_values, expected):
     assert config.engine == EngineConfig(**expected["engine"])
     assert config.management_api == ManagementAPIConfig(**expected["management_api"])
     assert config.communications_api == CommsAPIConfig(**expected["communications_api"])
-
