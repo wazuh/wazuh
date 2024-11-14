@@ -261,7 +261,6 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 AR_CONF = ''
 CLIENT_KEYS = ''
 WAZUH_CONFIG_PATH = os.path.join(WAZUH_PATH, '/etc')
-WAZUH_SSL_CONFIG_PATH = os.path.join(WAZUH_CONFIG_PATH, 'api', 'configuration', 'ssl')
 WAZUH_SERVER_YML = os.path.join(WAZUH_CONFIG_PATH, 'wazuh-server.yml')
 
 
