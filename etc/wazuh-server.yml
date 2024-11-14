@@ -73,8 +73,8 @@ indexer:
 #  intervals:
 #    request_timeout: 10
 #  ssl:
-#    key: "/var/ossec/api/configuration/ssl/server.key"
-#    cert: "/var/ossec/api/configuration/ssl/server.crt"
+#    key: "/etc/wazuh-server/api/configuration/ssl/server.key"
+#    cert: "/etc/wazuh-server/api/configuration/ssl/server.crt"
 #    use_ca: false
 #    ca: ""
 #    ssl_protocol: "auto"
@@ -104,8 +104,8 @@ indexer:
 #    max_size: 3000
 #    wait_time: 0.15
 #  ssl:
-#    key: "/var/ossec/api/configuration/ssl/server.key"
-#    cert: "/var/ossec/api/configuration/ssl/server.crt"
+#    key: "/etc/wazuh-server/api/configuration/ssl/server.key"
+#    cert: "/etc/wazuh-server/api/configuration/ssl/server.crt"
 #    use_ca: false
 #    ca: ""
 #    ssl_protocol: "auto"
