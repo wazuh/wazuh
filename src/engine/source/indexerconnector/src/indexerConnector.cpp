@@ -32,7 +32,6 @@ constexpr auto ELEMENTS_PER_BULK {1000};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
 constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
-constexpr auto INDEXER_ACKNOWLEDGE {201};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
@@ -141,16 +140,6 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
         .caRootCertificate(caRootCertificate);
 }
 
-static void builderBulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
-{
-    bulkData.append(R"({"delete":{"_index":")");
-    bulkData.append(index);
-    bulkData.append(R"(","_id":")");
-    bulkData.append(id);
-    bulkData.append(R"("}})");
-    bulkData.append("\n");
-}
-
 static void handleIndexerInternalErrors(const std::string& response, const std::vector<nlohmann::json>& events)
 {
     // Parse the response JSON with error handling
@@ -179,11 +168,13 @@ static void handleIndexerInternalErrors(const std::string& response, const std::
     for (size_t i = 0; i < events.size(); ++i)
     {
         const auto& item = items.at(i);
+        const auto& itemIndex = item.at("index");
 
-        // Skip successfully indexed items or those without error details
-        if (item.at("index").at("status") == INDEXER_ACKNOWLEDGE || !item.at("index").contains("error"))
+        // Check if "error" exists in "index" and is an object(indicating an error occurred)
+        auto errorIt = itemIndex.find("error");
+        if (errorIt == itemIndex.end() || !errorIt->is_object())
         {
-            continue;
+            continue; // Skip items without error details
         }
 
         // Extract and log error details
