@@ -188,23 +188,6 @@ class VulnerabilityEventPackage(BaseModel):
     version: str = None
 
 
-class Cluster(BaseModel):
-    """Wazuh cluster data model."""
-    name: str = None
-    node: str = None
-
-
-class Schema(BaseModel):
-    """Wazuh schema data model."""
-    version: str = None
-
-
-class Wazuh(BaseModel):
-    """Wazuh instance information data model."""
-    cluster: Cluster = None
-    schema: Schema = None
-
-
 class Scanner(BaseModel):
     """Scanner data model."""
     source: str = None
