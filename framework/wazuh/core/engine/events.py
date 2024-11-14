@@ -29,7 +29,7 @@ class EventsModule(BaseModule):
                 }
             )
 
-            if response.status_code != 200:
+            if not response.is_success:
                 return ErrorResponse(**response.json())
 
         except RequestError as exc:
