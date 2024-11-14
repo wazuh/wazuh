@@ -3,7 +3,6 @@ from unittest import mock
 import pytest
 
 from wazuh.core.engine.events import EventsModule
-from wazuh.core.engine.models.events import StatelessEvent, WazuhLocation, Event
 
 
 class TestEventsModule:
@@ -23,6 +22,5 @@ class TestEventsModule:
         response.status_code = 200
         client_mock.post.return_value = response
 
-        events = [StatelessEvent(wazuh=WazuhLocation(queue=50, location="[003] (agent-name) any->/tmp/syslog.log"),
-                                 event=Event(original="original message, recollected from the agent"))]
+        events = b''
         await module_instance.send(events)

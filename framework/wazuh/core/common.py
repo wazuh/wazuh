@@ -277,6 +277,7 @@ STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
 
 
 # ================================================ Wazuh path - Sockets ================================================
+ENGINE_SOCKET = WAZUH_RUN / 'engine.socket'
 # TODO: Constants asociated to functionality next to deprecate.
 ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
 AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')

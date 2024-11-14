@@ -54,10 +54,12 @@ async def test_post_stateful_events_ko():
 @patch('comms_api.routers.events.send_stateless_events')
 async def test_post_stateless_events(send_stateless_events_mock):
     """Verify that the `post_stateless_events` handler works as expected."""
-    events = []
-    response = await post_stateless_events(events)
+    events = b'events'
+    request = MagicMock()
+    request._body = events
+    response = await post_stateless_events(request)
 
-    send_stateless_events_mock.assert_called_once_with(events)
+    send_stateless_events_mock.assert_called_once_with(request)
     assert response.status_code == status.HTTP_200_OK
 
 
@@ -68,4 +70,4 @@ async def test_post_stateless_events_ko():
 
     with patch('comms_api.routers.events.send_stateless_events', MagicMock(side_effect=exception)):
         with pytest.raises(HTTPError, match=fr'{exception.code}: {exception.message}'):
-            _ = await post_stateless_events('')
+            _ = await post_stateless_events(MagicMock())

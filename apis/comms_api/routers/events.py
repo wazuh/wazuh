@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from comms_api.authentication.authentication import JWTBearer
 from comms_api.core.events import create_stateful_events, send_stateless_events, parse_stateful_events
-from comms_api.models.events import StatefulEventsResponse, StatelessEvents
+from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.exceptions import HTTPError, validation_exception_handler
 from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhCommsAPIError
@@ -42,13 +42,13 @@ async def post_stateful_events(request: Request) -> StatefulEventsResponse:
 
 
 @timeout(10)
-async def post_stateless_events(events: StatelessEvents) -> Response:
+async def post_stateless_events(request: Request) -> Response:
     """Post stateless events handler.
 
     Parameters
     ----------
-    events : StatelessEvents
-        Stateless events list.
+    request : Request
+        Incoming HTTP request.
 
     Raises
     ------
@@ -61,8 +61,10 @@ async def post_stateless_events(events: StatelessEvents) -> Response:
         HTTP OK empty response.
     """
     try:
-        await send_stateless_events(events)
+        await send_stateless_events(request)
         return Response(status_code=status.HTTP_200_OK)
+    except WazuhError as exc:
+        raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)
     except WazuhEngineError as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

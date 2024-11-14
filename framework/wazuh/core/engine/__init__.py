@@ -4,14 +4,13 @@ from typing import AsyncIterator
 
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
 
+from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.engine.events import EventsModule
 from wazuh.core.engine.vulnerability import VulnerabilityModule
 from wazuh.core.exception import WazuhEngineError
 
 logger = getLogger('wazuh')
 
-# TODO(#25121): Change the socket path once the Cpp team does it
-ENGINE_API_SOCKET_PATH = '/sockets/engine.sock'
 DEFAULT_RETRIES = 3
 DEFAULT_TIMEOUT = 10.0
 
@@ -21,7 +20,7 @@ class Engine:
 
     def __init__(
         self,
-        socket_path: str = ENGINE_API_SOCKET_PATH,
+        socket_path: str = ENGINE_SOCKET,
         retries: int = DEFAULT_RETRIES,
         timeout: float = DEFAULT_TIMEOUT,
     ) -> None:

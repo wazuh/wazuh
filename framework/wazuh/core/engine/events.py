@@ -1,10 +1,8 @@
-from dataclasses import asdict
 from httpx import RequestError
-from typing import List
+from typing import AsyncGenerator
 
-from wazuh.core.engine.base import APPLICATION_JSON, BaseModule
+from wazuh.core.engine.base import APPLICATION_JSON, APPLICATION_NDJSON, BaseModule
 from wazuh.core.engine.models.base import ErrorResponse
-from wazuh.core.engine.models.events import StatelessEvent
 from wazuh.core.exception import WazuhEngineError
 
 
@@ -13,27 +11,26 @@ class EventsModule(BaseModule):
 
     MODULE = 'events'
 
-    async def send(self, events: List[StatelessEvent]) -> None:
+    async def send(self, event_stream: AsyncGenerator[bytes, None]) -> None:
         """Send events to the engine.
         
         Parameters
         ----------
-        events : List[StatelessEvent]
-            Events list.
+        event_stream : AsyncGenerator[bytes, None]
+            Events as a byte stream.
         """
         try:
-            for event in events:
-                response = await self._client.post(
-                    url=f'{self.API_URL}/{self.MODULE}/stateless',
-                    json=asdict(event),
-                    headers={
-                        'Accept': APPLICATION_JSON,
-                        'Content-Type': APPLICATION_JSON,
-                    }
-                )
+            response = await self._client.post(
+                url=f'{self.API_URL}/{self.MODULE}/stateless',
+                content=event_stream,
+                headers={
+                    'Accept': APPLICATION_JSON,
+                    'Content-Type': APPLICATION_NDJSON,
+                }
+            )
 
-                if response.status_code != 200:
-                    return ErrorResponse(**response.json())
+            if not response.is_success:
+                return ErrorResponse(**response.json())
 
         except RequestError as exc:
             raise WazuhEngineError(2803, extra_message=str(exc))
