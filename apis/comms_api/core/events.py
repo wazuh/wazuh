@@ -39,16 +39,25 @@ async def create_stateful_events(
         )
 
 
-async def send_stateless_events(event_stream: AsyncGenerator[bytes, None]) -> None:
+async def send_stateless_events(request: Request) -> None:
     """Send new events to the engine.
 
     Parameters
     ----------
-    event_stream : AsyncGenerator[bytes, None]
-        Stateless event stream.
+    request : Request
+        Incoming HTTP request.
+    
+    Raises
+    ------
+    WazuhError(2708)
+        Invalid request headers.
     """
+    if request.headers.get('Content-Type') != 'application/x-ndjson' or \
+            request.headers.get('Transfer-Encoding') != 'chunked':
+        raise WazuhError(2708)
+
     async with get_engine_client() as engine_client:
-        await engine_client.events.send(event_stream)
+        await engine_client.events.send(request.stream())
 
 
 async def parse_stateful_events(request: Request) -> StatefulEvents:

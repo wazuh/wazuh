@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 
 from fastapi import FastAPI, Request
 
@@ -18,12 +18,29 @@ INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
 async def test_send_stateless_events(events_send_mock):
     """Check that the `send_stateless_events` function works as expected."""
-    async def stream_mock(b: bytes):
-        yield b
+    request = Request(scope={
+        'type': 'http',
+        'app': FastAPI(),
+        'headers': [(b'content-type', b'application/x-ndjson'), (b'transfer-encoding', b'chunked')]
+    })
+    stream_mock = MagicMock()
+    request.stream = stream_mock
 
-    await send_stateless_events(event_stream=stream_mock)
+    await send_stateless_events(request=request)
 
-    events_send_mock.assert_called_once_with(stream_mock)
+    events_send_mock.assert_called_once_with(stream_mock())
+
+
+async def test_send_stateless_events_ko():
+    """Verify that the `send_stateless_events` function fails on an invalid request."""
+    request = Request(scope={
+        'type': 'http',
+        'app': FastAPI(),
+        'headers': [(b'content-type', b'application/x-ndjson')]
+    })
+
+    with pytest.raises(WazuhError, match=r'2708'):
+        await send_stateless_events(request=request)
 
 
 @patch('wazuh.core.indexer.create_indexer', return_value=AsyncMock())
@@ -85,7 +102,7 @@ async def test_create_stateful_events(create_indexer_mock):
 
 
 async def test_parse_stateful_events():
-    """Verify that the `parse_stateful_events` handler works as expected."""
+    """Verify that the `parse_stateful_events` function works as expected."""
     request = Request(scope={
         'type': 'http',
         'app': FastAPI(),
@@ -132,7 +149,7 @@ async def test_parse_stateful_events():
     ([(b'content-type', b'application/json'), (b'transfer-encoding', b'chunked')], 2709)
 ])
 async def test_parse_stateful_events_ko(headers, expected_code):
-    """Verify that the `parse_stateful_events` fails on an invalid request."""
+    """Verify that the `parse_stateful_events` function fails on an invalid request."""
     request = Request(scope={
         'type': 'http',
         'app': FastAPI(),
