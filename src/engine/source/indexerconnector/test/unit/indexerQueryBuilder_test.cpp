@@ -28,41 +28,6 @@ TEST_F(IndexerQueryBuilderTest, DeleteIndexWithId)
     EXPECT_EQ(builder.build(), expected + "\n");
 }
 
-// Test deleteIndex method without ID
-TEST_F(IndexerQueryBuilderTest, DeleteIndexWithoutId)
-{
-    auto builder = IndexerQueryBuilder().builder();
-    builder.deleteIndex("test-index", "");
-    std::string expected = R"({"delete":{"_index":"test-index"}})";
-    EXPECT_EQ(builder.build(), expected + "\n");
-}
-
-// Test deleteByQuery method
-TEST_F(IndexerQueryBuilderTest, DeleteByQuery)
-{
-    auto builder = IndexerQueryBuilder().builder();
-    builder.deleteByQuery();
-    std::string expected = R"({"query":{"bool":{"filter":{"terms":{"agent.id":[)";
-    EXPECT_EQ(builder.build(), expected);
-}
-
-// Test appendId method with valid IDs
-TEST_F(IndexerQueryBuilderTest, AppendIdWithValidIds)
-{
-    auto builder = IndexerQueryBuilder().builder();
-    builder.deleteByQuery().appendId({"agent_1", "agent_2", "agent_3"});
-    std::string expected = R"({"query":{"bool":{"filter":{"terms":{"agent.id":["agent_1","agent_2","agent_3"]}}}})";
-    EXPECT_EQ(builder.build(), expected);
-}
-
-// Test appendId method with empty ID list
-TEST_F(IndexerQueryBuilderTest, AppendIdWithEmptyList)
-{
-    auto builder = IndexerQueryBuilder().builder();
-    builder.deleteByQuery();
-    EXPECT_THROW(builder.appendId({}), std::runtime_error);
-}
-
 // Test addData method
 TEST_F(IndexerQueryBuilderTest, AddData)
 {
@@ -79,19 +44,14 @@ TEST_F(IndexerQueryBuilderTest, AddData)
 TEST_F(IndexerQueryBuilderTest, BuildWithMultipleOperations)
 {
     auto builder = IndexerQueryBuilder().builder();
-    builder.bulkIndex("index1", "id1")
-        .addData(R"({"field":"value1"})")
-        .deleteIndex("index2", "id2")
-        .deleteByQuery()
-        .appendId({"agent_4", "agent_5"});
+    builder.bulkIndex("index1", "id1").addData(R"({"field":"value1"})").deleteIndex("index2", "id2");
 
     std::string expected = R"({"index":{"_index":"index1","_id":"id1"}})"
                            "\n"
                            R"({"field":"value1"})"
                            "\n"
                            R"({"delete":{"_index":"index2","_id":"id2"}})"
-                           "\n"
-                           R"({"query":{"bool":{"filter":{"terms":{"agent.id":["agent_4","agent_5"]}}}})";
+                           "\n";
 
     EXPECT_EQ(builder.build(), expected);
 }
