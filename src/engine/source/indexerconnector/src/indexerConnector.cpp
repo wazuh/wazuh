@@ -168,7 +168,7 @@ static void handleIndexerInternalErrors(const std::string& response, const std::
     }
 
     // Verify that the sizes of events and response items match
-    const auto& items = parsedResponse["items"];
+    const auto& items = parsedResponse.at("items");
     if (events.size() != items.size())
     {
         LOG_WARNING("Mismatch between the number of events ({}) and response items ({})", events.size(), items.size());
@@ -249,7 +249,6 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                 auto data = dataQueue.front();
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data, nullptr, false);
-                const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
 
                 if (parsedData.is_discarded())
                 {
@@ -258,10 +257,13 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    builderBulkDelete(bulkData, id, indexNameCurrentDate);
+                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
+                    bulkData += IndexerQueryBuilder::builder().deleteIndex(indexNameCurrentDate, id).build();
+                    m_processedEvents.push_back(parsedData.at("id"));
                 }
                 else
                 {
+                    const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
                     bulkData += IndexerQueryBuilder::builder()
                                     .bulkIndex(indexNameCurrentDate, id)
                                     .addData(parsedData.at("data").dump())

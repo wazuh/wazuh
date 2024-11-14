@@ -66,60 +66,9 @@ public:
     IndexerQueryBuilder& deleteIndex(const std::string& index, const std::string& id)
     {
         m_indexerQuery += R"({"delete":{"_index":")" + index + R"(")";
-        if (!id.empty())
-        {
-            m_indexerQuery += R"(,"_id":")" + id + R"(")";
-        }
+        m_indexerQuery += R"(,"_id":")" + id + R"(")";
         m_indexerQuery += R"(}})";
         m_indexerQuery += "\n";
-        return *this;
-    }
-
-    /**
-     * @brief Method to set up a delete by query operation
-     *
-     * @return IndexerQueryBuilder& Reference to the builder object
-     */
-    IndexerQueryBuilder& deleteByQuery()
-    {
-        m_indexerQuery += R"({"query":{"bool":{"filter":{"terms":{"agent.id":[)";
-        return *this;
-    }
-
-    /**
-     * @brief Method to add agent IDs to the delete-by-query operation
-     *
-     * @param agentIds List of agent IDs to delete
-     * @return IndexerQueryBuilder& Reference to the builder object
-     *
-     * @note This method appends the agent IDs to the query and closes the JSON structure
-     */
-    IndexerQueryBuilder& appendId(const std::vector<std::string>& agentIds)
-    {
-        if (agentIds.empty())
-        {
-            throw std::runtime_error("Agent ID list is empty.");
-        }
-
-        // Use a string stream to build the agent IDs string efficiently
-        std::ostringstream agentIdsStream;
-        for (const auto& agentId : agentIds)
-        {
-            agentIdsStream << R"(")" << agentId << R"(")"
-                           << ",";
-        }
-
-        // Convert the stream to a string and remove the trailing comma
-        std::string agentIdsStr = agentIdsStream.str();
-        if (!agentIdsStr.empty())
-        {
-            agentIdsStr.pop_back(); // Remove the last comma
-        }
-
-        // Append the agent IDs to the query and close the JSON structure
-        m_indexerQuery += agentIdsStr;
-        m_indexerQuery += R"(]}}}})";
-
         return *this;
     }
 

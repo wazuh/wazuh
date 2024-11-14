@@ -443,22 +443,6 @@ TEST_F(IndexerConnectorTest, PublishWithErrorsInBulk)
     {
       "index": {
         "_index": "test-basic-index",
-        "_id": "1bQ_kZIBmzjx6FV-K3nH",
-        "_version": 1,
-        "result": "created",
-        "_shards": {
-          "total": 1,
-          "successful": 1,
-          "failed": 0
-        },
-        "_seq_no": 36,
-        "_primary_term": 1,
-        "status": 201
-      }
-    },
-    {
-      "index": {
-        "_index": "test-basic-index",
         "_id": "1rQ_kZIBmzjx6FV-K3nH",
         "status": 400,
         "error": {
@@ -547,7 +531,6 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
     const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data, std::string& content)
                                    {
                                        const auto splitData {base::utils::string::split(data, '\n')};
-                                       std::cerr << "splitData.front()" << splitData.front() << std::endl;
                                        ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
                                        callbackCalled = true;
                                        content = DEFAULT_CONTENT;
@@ -660,7 +643,6 @@ TEST_F(IndexerConnectorTest, PublishInvalidData)
     // Trigger publication and expect that it is not made.
     nlohmann::json publishData;
     publishData["operation"] = "DELETED";
-    publishData["id"] = -1;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
