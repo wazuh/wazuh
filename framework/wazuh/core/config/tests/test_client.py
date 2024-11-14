@@ -97,3 +97,31 @@ def test_update_security_conf(mock_open_file, mock_yaml_dump, patch_load, update
     assert CentralizedConfig._config.management_api.jwt_expiration_timeout == expected_yaml_update["auth_token_exp_timeout"]
     assert CentralizedConfig._config.management_api.rbac_mode == expected_yaml_update["rbac_mode"]
     mock_yaml_dump.assert_called_once()
+
+
+@patch("builtins.open", new_callable=mock_open)
+@patch("yaml.dump")
+@patch.object(CentralizedConfig, "load")
+@patch.object(CentralizedConfig, "_config", create=True)
+def test_update_security_conf(mock_config, mock_load, mock_yaml_dump, mock_open):
+    """Check the correct behavior of the `test_update_security_conf` class method."""
+    mock_config.management_api.jwt_expiration_timeout = 3600
+    mock_config.management_api.rbac_mode = "disabled"
+    mock_config.model_dump.return_value = {
+        "auth_token_exp_timeout": 7200,
+        "rbac_mode": "white"
+    }
+
+    new_config = {
+        "auth_token_exp_timeout": 7200,
+        "rbac_mode": "white"
+    }
+
+    CentralizedConfig.update_security_conf(new_config)
+
+    assert mock_config.management_api.jwt_expiration_timeout == 7200
+    assert mock_config.management_api.rbac_mode == "white"
+    mock_yaml_dump.assert_called_once_with({
+        "auth_token_exp_timeout": 7200,
+        "rbac_mode": "white"
+    }, mock_open().__enter__())
