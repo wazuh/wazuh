@@ -211,7 +211,6 @@ def get_script_arguments() -> Namespace:
     parser.add_argument('-p', '--port', type=int, default=27000, help='API port.')
     parser.add_argument('-f', action='store_true', dest='foreground', help='Run API in foreground mode.')
     parser.add_argument('-r', action='store_true', dest='root', help='Run as root')
-    parser.add_argument('-t', action='store_true', dest='test_config', help='Test configuration')
 
     return parser.parse_args()
 
