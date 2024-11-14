@@ -60,17 +60,14 @@ class EngineHandler:
 
         return True
 
-    def start(self, log_level: str = "", log_file_path: str = "") -> None:
+    def start(self, log_file_path: str = "") -> None:
         """Starts the engine process
 
         Raises:
             Exception: If the engine process fails to start or exits with a non-zero code
         """
 
-        if log_level:
-            command = f"{self.binary_path} --config {self.configuration_path} server -l {log_level} start"
-        else:
-            command = f"{self.binary_path} --config {self.configuration_path} server start"
+        command = f"{self.binary_path} --config {self.configuration_path} server start"
 
         if log_file_path:
             with open(log_file_path, "w") as log_file:
