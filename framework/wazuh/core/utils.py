@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import errno
-import glob
 import hashlib
 import json
 import operator
@@ -19,7 +18,6 @@ from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
 import psutil
-from pyexpat import ExpatError
 from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
@@ -27,10 +25,9 @@ from signal import signal, alarm, SIGALRM, SIGKILL
 import yaml
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
-from defusedxml.minidom import parseString
 
 import wazuh.core.results as results
-from api import configuration
+import api.configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -891,7 +888,7 @@ def check_remote_commands(data: str):
     data : str
         Configuration file
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
 
     def check_section(command_regex, section, split_section):
         try:
@@ -961,7 +958,7 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
 
         return matched_configurations
 
-    limits_configuration = configuration.api_conf['upload_configuration']['limits']
+    limits_configuration = api.configuration.hardcoded_api_config['upload_configuration']['limits']
     for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
         new_limits = xml_to_dict(new_conf, disabled_limit)
         original_limits = xml_to_dict(original_conf, disabled_limit)
@@ -978,7 +975,7 @@ def check_agents_allow_higher_versions(data: str):
     data : str
         Configuration file content.
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
 
     def check_section(agents_regex, split_section):
         try:
@@ -1057,7 +1054,7 @@ def check_indexer(new_conf: str, original_conf: str):
 
         return matched_configurations
 
-    upload_configuration = configuration.api_conf['upload_configuration']
+    upload_configuration = api.configuration.hardcoded_api_config['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:
         new_indexer = xml_to_dict(new_conf)
@@ -1102,7 +1099,7 @@ def check_virustotal_integration(new_conf: str):
                         keys.append(api_key_section.text.strip())
         return keys
 
-    blocked_configurations = configuration.api_conf['upload_configuration']['integrations']['virustotal']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']['integrations']['virustotal']
 
     if not blocked_configurations['public_key']['allow']:
         minimum_quota = blocked_configurations['public_key']['minimum_quota']
@@ -2186,57 +2183,6 @@ def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
 
     details[detail].update(attribs)
 
-
-def validate_wazuh_xml(content: str, config_file: bool = False):
-    """Validate Wazuh XML files (rules, decoders and ossec.conf)
-
-    Parameters
-    ----------
-    content : str
-        File content.
-    config_file : bool
-        Validate remote commands if True.
-
-    Raises
-    ------
-    WazuhError(1113)
-        XML syntax error.
-    """
-    # -- characters are not allowed in XML comments
-    content = replace_in_comments(content, '--', '%wildcard%')
-
-    # Create temporary file for parsing xml input
-    try:
-        # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
-        # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-        indent = '  '  # indent parameter for toprettyxml function
-        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
-        # Revert xml.dom replacings
-        # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-            .replace("&gt;", ">").replace('&apos;', "'")
-        # Delete two first spaces of each line
-        final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
-
-        # Check if remote commands are allowed if it is a configuration file
-        if config_file:
-            check_remote_commands(final_xml)
-            check_agents_allow_higher_versions(final_xml)
-            check_virustotal_integration(final_xml)
-            with open(common.WAZUH_CONF, 'r') as f:
-                current_xml = f.read()
-            check_indexer(final_xml, current_xml)
-            check_wazuh_limits_unchanged(final_xml, current_xml)
-        # Check xml format
-        load_wazuh_xml(xml_path='', data=final_xml)
-    except ExpatError:
-        raise WazuhError(1113)
-    except WazuhError as e:
-        raise e
-    except Exception as e:
-        raise WazuhError(1113, str(e))
 
 
 def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):

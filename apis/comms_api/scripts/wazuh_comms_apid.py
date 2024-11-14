@@ -9,6 +9,7 @@ import logging.config
 import os
 import signal
 import ssl
+import sys
 import atexit
 from argparse import ArgumentParser, Namespace
 from functools import partial
@@ -39,8 +40,9 @@ from wazuh.core.exception import WazuhCommsAPIError
 from wazuh.core.batcher.config import BatcherConfig
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
 
-# TODO(#25121) - Delete after centralized configuration
-from wazuh.core.batcher.config import BATCHER_MAX_ELEMENTS, BATCHER_MAX_SIZE, BATCHER_MAX_TIME_SECONDS
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.logging import RotatedLoggingConfig
+from wazuh.core.config.models.comms_api import CommsAPIConfig
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 
@@ -76,20 +78,24 @@ def create_app(batcher_queue: MuxDemuxQueue, commands_manager: CommandsManager) 
     return app
 
 
-def setup_logging(foreground_mode: bool) -> dict:
+def setup_logging(foreground_mode: bool, logging_config: RotatedLoggingConfig) -> dict:
     """Set up the logging module and returns the configuration used.
 
     Parameters
     ----------
     foreground_mode : bool
         Whether to execute the script in foreground mode or not.
+    logging_config :  RotatedLoggingConfig
+        Logger configuration.
 
     Returns
     -------
     dict
         Logging configuration dictionary.
     """
-    log_config_dict = set_logging(log_filepath=COMMS_API_LOG_PATH, log_level='INFO', foreground_mode=foreground_mode)
+    log_config_dict = set_logging(log_filepath=COMMS_API_LOG_PATH,
+                                  logging_config=logging_config,
+                                  foreground_mode=foreground_mode)
 
     for handler in log_config_dict['handlers'].values():
         if 'filename' in handler:
@@ -114,10 +120,10 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
     try:
         if not os.path.exists(keyfile) or not os.path.exists(certfile):
             private_key = generate_private_key(keyfile)
-            logger.info(f'Generated private key file in {keyfile}')
-
+            logger.info(f"Generated private key file in {keyfile}")
+            
             generate_self_signed_certificate(private_key, certfile)
-            logger.info(f'Generated certificate file in {certfile}')
+            logger.info(f"Generated certificate file in {certfile}")
     except ssl.SSLError as exc:
         raise WazuhCommsAPIError(2700, extra_message=str(exc))
     except IOError as exc:
@@ -147,7 +153,7 @@ def post_worker_init(worker):
     atexit.unregister(_exit_function)
 
 
-def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict) -> dict:
+def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict, config: CommsAPIConfig) -> dict:
     """Get the gunicorn app configuration options.
 
     Parameters
@@ -158,16 +164,16 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         Whether to execute the script in foreground mode or not.
     log_config_dict : dict
         Logging configuration dictionary.
+    config : CommsAPIConfig
+        Comms API configuration object.
 
     Returns
     -------
     dict
         Gunicorn configuration options.
     """
-    # TODO(#25121): get values from the configuration
-    keyfile = API_SSL_PATH / 'server.key'
-    certfile = API_SSL_PATH / 'server.crt'
-    configure_ssl(keyfile, certfile)
+
+    configure_ssl(config.ssl.key, config.ssl.cert)
 
     pidfile = common.WAZUH_RUN / f'{MAIN_PROCESS}-{pid}.pid'
 
@@ -175,15 +181,15 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'proc_name': MAIN_PROCESS,
         'pidfile': str(pidfile),
         'daemon': not foreground_mode,
-        'bind': f'{args.host}:{args.port}',
-        'workers': 4,
+        'bind': f'{config.host}:{config.port}',
+        'workers': config.workers,
         'worker_class': 'uvicorn.workers.UvicornWorker',
         'preload_app': True,
-        'keyfile': str(keyfile),
-        'certfile': str(certfile),
-        'ca_certs': None,
+        'keyfile': config.ssl.key,
+        'certfile': config.ssl.cert,
+        'ca_certs': config.ssl.ca,
         'ssl_context': ssl_context,
-        'ciphers': '',
+        'ciphers': config.ssl.ssl_ciphers,
         'logconfig_dict': log_config_dict,
         'user': os.getuid(),
         'post_worker_init': post_worker_init,
@@ -204,7 +210,6 @@ def get_script_arguments() -> Namespace:
     parser.add_argument('-p', '--port', type=int, default=27000, help='API port.')
     parser.add_argument('-f', action='store_true', dest='foreground', help='Run API in foreground mode.')
     parser.add_argument('-r', action='store_true', dest='root', help='Run as root')
-    parser.add_argument('-t', action='store_true', dest='test_config', help='Test configuration')
 
     return parser.parse_args()
 
@@ -216,7 +221,11 @@ class StandaloneApplication(BaseApplication):
         super().__init__()
 
     def load_config(self):
-        config = {key: value for key, value in self.options.items() if key in self.cfg.settings and value is not None}
+        config = {
+            key: value
+            for key, value in self.options.items()
+            if key in self.cfg.settings and value is not None
+        }
         for key, value in config.items():
             self.cfg.set(key.lower(), value)
 
@@ -256,7 +265,7 @@ def signal_handler(
 def terminate_processes(
     parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process, commands_manager: CommandsManager
 ) -> None:
-    """Terminate all related resources, and delete child and main processes
+    """Terminate all related resources, and delete child and main processes 
     if the current process ID matches the parent process ID.
 
     Parameters
@@ -285,13 +294,16 @@ if __name__ == '__main__':
     # The bash script that starts all services first executes them using the `-t` flag to check the configuration.
     # We don't have a configuration yet, but it will be added in the future, so we just exit successfully for now.
     #
-    # TODO(#25121): check configuration
-    if args.test_config:
-        exit(0)
+    try:
+        CentralizedConfig.load()
+    except Exception as e:
+        print(f"Error when trying to load the configuration. {e}")
+        sys.exit(1)
+    comms_api_config = CentralizedConfig.get_comms_api_config()
 
     utils.clean_pid_files(MAIN_PROCESS)
-
-    log_config_dict = setup_logging(args.foreground)
+    
+    log_config_dict = setup_logging(args.foreground, comms_api_config.logging)
     logger = logging.getLogger('wazuh-comms-api')
 
     if args.foreground:
@@ -307,7 +319,9 @@ if __name__ == '__main__':
         logger.info('Starting API as root')
 
     batcher_config = BatcherConfig(
-        max_elements=BATCHER_MAX_ELEMENTS, max_size=BATCHER_MAX_SIZE, max_time_seconds=BATCHER_MAX_TIME_SECONDS
+        max_elements=comms_api_config.batcher.max_elements,
+        max_size=comms_api_config.batcher.max_size,
+        max_time_seconds=comms_api_config.batcher.wait_time
     )
     mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
 
@@ -326,10 +340,10 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     logger.info(f'Listening on {args.host}:{args.port}')
-
+    
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
-        options = get_gunicorn_options(pid, args.foreground, log_config_dict)
+        options = get_gunicorn_options(pid, args.foreground, log_config_dict, comms_api_config)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
         logger.error(f'Error when trying to start the Wazuh Communications API. {e}')

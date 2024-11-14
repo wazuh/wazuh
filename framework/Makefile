@@ -65,10 +65,6 @@ install:
 	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/dapi
 	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
 
-	# ETC
-	$(INSTALL_FILE) ../etc/ossec.conf ${ETC_INSTALLDIR}
-	$(INSTALL_FILE) wazuh/core/cluster/cluster.json ${ETC_INSTALLDIR}/cluster
-
 
 	# BIN
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%

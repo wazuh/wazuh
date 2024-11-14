@@ -19,7 +19,6 @@ from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
-import api.configuration as aconf
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -29,6 +28,7 @@ from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
+from wazuh.core.config.client import CentralizedConfig
 
 pools = common.mp_pools.get()
 
@@ -87,7 +87,7 @@ class DistributedAPI:
         self.f = f
         self.f_kwargs = f_kwargs if f_kwargs is not None else {}
         self.node = node if node is not None else local_client
-        self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
+        self.server_config = CentralizedConfig.get_server_config() if node is None else node.server_config
         self.debug = debug
         self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
         self.request_type = request_type
@@ -106,8 +106,8 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
-        self.api_request_timeout = max(api_timeout, aconf.api_conf['intervals']['request_timeout']) \
-            if api_timeout else aconf.api_conf['intervals']['request_timeout']
+        api_request_timeout = CentralizedConfig.get_management_api_config().intervals.request_timeout
+        self.api_request_timeout = max(api_timeout, api_request_timeout) if api_timeout else api_request_timeout
         self.remove_denied_nodes = remove_denied_nodes
 
     def debug_log(self, message):
@@ -140,14 +140,12 @@ class DistributedAPI:
             else:
                 self.debug_log(f"Receiving parameters {self.f_kwargs}")
 
-            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
-
             # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or self.request_type == 'local_any' or \
+            if self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
 

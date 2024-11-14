@@ -5,14 +5,13 @@
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
 
-import jwt
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
-from api import configuration
 from api.middlewares import ip_block, ip_stats, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
+from api.api_exception import ExpectFailedException
 from api.controllers.util import json_response, ERROR_CONTENT_TYPE
 from wazuh.core.utils import get_utc_now
+from wazuh.core.config.client import CentralizedConfig
 
 
 def prevent_bruteforce_attack(request: ConnexionRequest, attempts: int = 5):
@@ -103,7 +102,7 @@ async def unauthorized_error_handler(request: ConnexionRequest,
 
         prevent_bruteforce_attack(
             request=request,
-            attempts=configuration.api_conf['access']['max_login_attempts']
+            attempts=CentralizedConfig.get_management_api_config().access.max_login_attempts
         )
     else:
         problem.update({'detail': exc.detail} \

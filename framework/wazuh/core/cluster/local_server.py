@@ -232,7 +232,7 @@ class LocalServer(server.AbstractServer):
                 protocol_factory=lambda: self.handler_class(server=self,
                                                             loop=loop,
                                                             logger=self.logger,
-                                                            cluster_items=self.cluster_items),
+                                                            server_config=self.server_config),
                 path=socket_path)
             os.chmod(socket_path, 0o660)
         except OSError as e:

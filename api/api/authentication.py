@@ -15,13 +15,12 @@ from connexion.exceptions import Unauthorized
 import api.configuration as conf
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
-from api.constants import SECURITY_CONFIG_PATH
 from api.util import raise_if_exc
 from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.cluster.utils import read_config
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
+from wazuh.core.config.client import CentralizedConfig
 
 INVALID_TOKEN = "Invalid token"
 EXPIRED_TOKEN = "Token expired"
@@ -90,9 +89,11 @@ def get_security_conf() -> dict:
     dict
         Dictionary with the content of the security.yaml file.
     """
-    conf.security_conf.update(conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
-                                                    default_conf=conf.default_security_configuration))
-    return conf.security_conf
+    management_api_config = CentralizedConfig.get_management_api_config()
+    return {
+        "auth_token_exp_timeout": management_api_config.jwt_expiration_timeout,
+        "rbac_mode": management_api_config.rbac_mode
+    }
 
 
 def generate_token(user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
@@ -205,10 +206,11 @@ def decode_token(token: str) -> dict:
         payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node
+        server_config = CentralizedConfig.get_server_config()
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
                                         'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf'],
-                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
+                                        'run_as': payload['run_as'], 'origin_node_type': server_config.node.type},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=False,

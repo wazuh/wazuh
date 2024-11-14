@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from defusedxml.ElementTree import fromstring
 
-from wazuh.core.common import WAZUH_CONF, REMOTED_SOCKET
+from wazuh.core.common import REMOTED_SOCKET
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -363,20 +363,6 @@ def test_get_active_configuration_ko(mock_exists, agent_id, component, config, s
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.close'):
                     with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
                         configuration.get_active_configuration(component, config, agent_id)
-
-
-def test_write_ossec_conf():
-    content = "New config"
-    with patch('wazuh.core.configuration.open', mock_open()) as mocked_file:
-        configuration.write_ossec_conf(new_conf=content)
-        mocked_file.assert_called_once_with(WAZUH_CONF, 'w')
-        mocked_file().writelines.assert_called_once_with(content)
-
-
-def test_write_ossec_conf_exceptions():
-    with patch('wazuh.core.configuration.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1126 .*"):
-            configuration.write_ossec_conf(new_conf="placeholder")
 
 
 @pytest.mark.parametrize(

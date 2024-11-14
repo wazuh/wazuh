@@ -8,11 +8,9 @@ from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.engine.events import EventsModule
 from wazuh.core.engine.vulnerability import VulnerabilityModule
 from wazuh.core.exception import WazuhEngineError
+from wazuh.core.config.client import CentralizedConfig
 
 logger = getLogger('wazuh')
-
-DEFAULT_RETRIES = 3
-DEFAULT_TIMEOUT = 10.0
 
 
 class Engine:
@@ -20,9 +18,9 @@ class Engine:
 
     def __init__(
         self,
-        socket_path: str = ENGINE_SOCKET,
-        retries: int = DEFAULT_RETRIES,
-        timeout: float = DEFAULT_TIMEOUT,
+        socket_path: str,
+        retries: int,
+        timeout: float,
     ) -> None:
         transport = AsyncHTTPTransport(uds=socket_path, retries=retries)
         self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
@@ -45,8 +43,12 @@ async def get_engine_client() -> AsyncIterator[Engine]:
     AsyncIterator[Engine]
         Engine client iterator.
     """
-    # TODO: get class parameters from the configuration
-    client = Engine()
+    engine_config = CentralizedConfig.get_engine_config()
+    client = Engine(
+        socket_path=engine_config.client.api_socket_path,
+        timeout=engine_config.client.timeout,
+        retries=engine_config.client.retries
+    )
 
     try:
         yield client

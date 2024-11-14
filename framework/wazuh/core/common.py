@@ -257,11 +257,10 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 
 
 # ================================================ Wazuh path - Config =================================================
-WAZUH_CONF = WAZUH_ETC / 'ossec.conf'
-
 # TODO: Keep until we remove the different functionalities completely
 AR_CONF = ''
 CLIENT_KEYS = ''
+WAZUH_SERVER_YML = WAZUH_ETC / 'wazuh-server.yml'
 
 
 # ================================================= Wazuh path - Misc ==================================================

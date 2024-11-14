@@ -15,8 +15,10 @@ from pathlib import Path
 from typing import List
 
 from wazuh.core.common import BIN_ROOT, WAZUH_SHARE, WAZUH_LOG
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.config.models.server import ServerConfig
 
 BIN_PATH = '/bin'
 SERVER_DAEMON_NAME = 'wazuh-server'
@@ -174,32 +176,29 @@ def shutdown_cluster(cluster_pid: int):
 #
 # Master main
 #
-async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_items: dict, logger: WazuhLogger):
+async def master_main(args: argparse.Namespace, server_config: ServerConfig, logger: WazuhLogger):
     """Start the master node main process.
 
     Parameters
     ----------
     args : argparse.Namespace
         Script arguments.
-    cluster_config : dict
-        Cluster configuration.
-    cluster_items : dict
-        Content of the cluster.json file.
+    server_config : ServerConfig
+        Server configuration.
     logger : WazuhLogger
         Cluster logger.
     """
     from wazuh.core.cluster import local_server, master
-    from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
 
     cluster_utils.context_tag.set('Master')
 
     my_server = master.Master(
         performance_test=args.performance_test,
         concurrency_test=args.concurrency_test,
-        configuration=cluster_config,
         logger=logger,
-        cluster_items=cluster_items,
+        server_config=server_config,
     )
+
     # Spawn pool processes
     if my_server.task_pool is not None:
         my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
@@ -209,29 +208,28 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
         logger=logger,
         concurrency_test=args.concurrency_test,
         node=my_server,
-        configuration=cluster_config,
-        cluster_items=cluster_items,
+        server_config=server_config,
     )
+
     tasks = [my_server, my_local_server]
-    if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
-        tasks.append(HAPHelper)
+    #TODO(25554) - Delete in future Issue including references to HAPROXY
+    #if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
+    #    tasks.append(HAPHelper)
     await asyncio.gather(*[task.start() for task in tasks])
 
 
 #
 # Worker main
 #
-async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_items: dict, logger: WazuhLogger):
+async def worker_main(args: argparse.Namespace, server_config: ServerConfig, logger: WazuhLogger):
     """Start main process of a worker node.
 
     Parameters
     ----------
     args : argparse.Namespace
         Script arguments.
-    cluster_config : dict
-        Cluster configuration.
-    cluster_items : dict
-        Content of the cluster.json file.
+    server_config : ServerConfig
+        Server configuration.
     logger : WazuhLogger
         Cluster logger.
     """
@@ -258,13 +256,12 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
 
     while True:
         my_client = worker.Worker(
-            configuration=cluster_config,
             performance_test=args.performance_test,
             concurrency_test=args.concurrency_test,
             file=args.send_file,
             string=args.send_string,
             logger=logger,
-            cluster_items=cluster_items,
+            server_config=server_config,
             task_pool=task_pool,
         )
         my_local_server = local_server.LocalServerWorker(
@@ -272,8 +269,7 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
             logger=logger,
             concurrency_test=args.concurrency_test,
             node=my_client,
-            configuration=cluster_config,
-            cluster_items=cluster_items,
+            server_config=server_config,
         )
         # Spawn pool processes
         if my_client.task_pool is not None:
@@ -281,8 +277,8 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
-            logging.info('Connection with server has been lost. Reconnecting in 10 seconds.')
-            await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
+            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
+            await asyncio.sleep(server_config.worker.intervals.connection_retry)
 
 
 def get_script_arguments() -> argparse.Namespace:
@@ -325,15 +321,6 @@ def get_script_arguments() -> argparse.Namespace:
     ####################################################################################################################
     start_parser.add_argument('-f', help='Run in foreground', action='store_true', dest='foreground')
     start_parser.add_argument('-r', help='Run as root', action='store_true', dest='root')
-    start_parser.add_argument(
-        '-c',
-        help='Configuration file to use',
-        type=str,
-        metavar='config',
-        dest='config_file',
-        default=common.WAZUH_CONF,
-    )
-    start_parser.add_argument('-t', help='Test configuration', action='store_true', dest='test_config')
 
     start_parser.set_defaults(func=main)
 
@@ -349,6 +336,7 @@ def get_script_arguments() -> argparse.Namespace:
 def main():
     """Main function of the wazuh-clusterd script in charge of starting the cluster process."""
     import wazuh.core.cluster.cluster
+    from wazuh.core.config.client import CentralizedConfig
     from wazuh.core.authentication import generate_keypair, keypair_exists
 
     # Set correct permissions on cluster.log file
@@ -357,23 +345,13 @@ def main():
         os.chmod(CLUSTER_LOG, 0o660)
 
     try:
-        cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
+        server_config = CentralizedConfig.get_server_config()
     except Exception as e:
         main_logger.error(e)
         sys.exit(1)
-
-    try:
-        wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
-    except Exception as e:
-        main_logger.error(e)
-        sys.exit(1)
-
-    if args.test_config:
-        sys.exit(0)
 
     # Clean cluster files from previous executions
     wazuh.core.cluster.cluster.clean_up()
-
     # Check for unused PID files
     clean_pid_files(SERVER_DAEMON_NAME)
 
@@ -391,7 +369,7 @@ def main():
     if args.foreground:
         print(f'Starting cluster in foreground (pid: {cluster_pid})')
 
-    if cluster_configuration['node_type'] == 'master':
+    if server_config.node.type == 'master':
         main_function = master_main
 
         # Generate JWT signing key pair if it doesn't exist
@@ -404,7 +382,7 @@ def main():
     try:
         start_daemons(args.foreground, args.root)
 
-        asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
+        asyncio.run(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:
@@ -445,7 +423,6 @@ if __name__ == '__main__':
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import common, pyDaemonModule
 
-    cluster_items = cluster_utils.get_cluster_items()
     original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)
 
     parser = get_script_arguments()
@@ -455,7 +432,10 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # Set logger
-    debug_mode_ = args.debug_level
+    try:
+        debug_mode_ = CentralizedConfig.get_server_config().logging.get_level_value()
+    except Exception:
+        debug_mode_ = 0
 
     main_logger = set_logging(foreground_mode=getattr(args, 'foreground', False), debug_mode=debug_mode_)
 

@@ -20,11 +20,11 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 
 from wazuh.core.utils import get_utc_now
 
-from api import configuration
 from api.alogging import custom_logging
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.configuration import default_api_configuration
 from wazuh.core.authentication import get_keypair, JWT_ALGORITHM
+from wazuh.core.config.client import CentralizedConfig
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
@@ -124,8 +124,8 @@ def check_blocked_ip(request: Request):
 
     """
     global ip_block, ip_stats
-    access_conf = configuration.api_conf['access']
-    block_time = access_conf['block_time']
+    access_conf = CentralizedConfig.get_management_api_config().access
+    block_time = access_conf.block_time
     try:
         if get_utc_now().timestamp() - block_time >= ip_stats[request.client.host]['timestamp']:
             del ip_stats[request.client.host]
@@ -185,7 +185,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """"Check request limits per minute."""
-        max_request_per_minute = configuration.api_conf['access']['max_request_per_minute']
+        max_request_per_minute = CentralizedConfig.get_management_api_config().access.max_request_per_minute
         error_code = check_rate_limit(
             'general_request_counter',
             'general_current_time',

@@ -26,7 +26,7 @@ def check_experimental_feature_value(func):
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        if not configuration.api_conf['experimental_features']:
+        if not configuration.hardcoded_api_config['experimental_features']:
             raise_if_exc(WazuhResourceNotFound(1122))
         else:
             return await func(*args, **kwargs)

@@ -1,0 +1,112 @@
+server:
+#  port: 1516
+#  bind_addr: "0.0.0.0"
+#  nodes: []
+#  hidden: false
+#  update_check: false
+  node:
+    name: ""
+    type: "master"
+    ssl:
+      key: ""
+      cert: ""
+      ca: ""
+#      keyfile_password: ""
+#  worker:
+#    intervals:
+#      sync_integrity: 9
+#      keep_alive: 60
+#      connection_retry: 10
+#    retries:
+#      max_failed_keepalive_attempts: 2
+#  master:
+#    intervals:
+#      timeout_extra_valid: 40
+#      recalculate_integrity: 8
+#      check_worker_last_keep_alive: 60
+#      max_allowed_time_without_keep_alive: 120
+#      max_locked_integrity_time: 1000
+#    processes:
+#      process_pool_size: 2
+#  communications:
+#    zip:
+#      max_size: 1073741824
+#      min_size: 31457280
+#      compress_level: 1
+#      limit_tolerance: 0.2
+#    timeouts:
+#      cluster_request: 20
+#      dapi_request: 200
+#      receiving_file: 120
+#  logging:
+#    level: "debug2"
+#  cti:
+#    update_check: true
+#    url: "https://cti.wazuh.com"
+indexer:
+  host: ""
+  port: 0
+  user: ""
+  password: ""
+#  ssl:
+#    use_ssl: false
+#    key: ""
+#    cert: ""
+#    ca: ""
+#engine:
+#  tzdv_automatic_update: false
+#  client:
+#    api_socket_path: "/var/wazuh/queue/engine.sock"
+#    retries: 3
+#    timeout: 10.0
+#  logging:
+#    level: "info"
+#management_api:
+#  host:
+#    - "localhost"
+#    - "::1"
+#  port: 55000
+#  drop_privileges: true
+#  max_upload_size: 10485760
+#  jwt_expiration_timeout: 900
+#  rbac_mode: "white"
+#  intervals:
+#    request_timeout: 10
+#  ssl:
+#    key: "/etc/wazuh-server/api/configuration/ssl/server.key"
+#    cert: "/etc/wazuh-server/api/configuration/ssl/server.crt"
+#    use_ca: false
+#    ca: ""
+#    ssl_protocol: "auto"
+#    ssl_ciphers: ""
+#  logging:
+#    level: "debug"
+#  cors:
+#    enabled: false
+#    source_route: "*"
+#    expose_headers: "*"
+#    allow_headers: "*"
+#    allow_credentials: false
+#  access:
+#    max_login_attempts: 50
+#    block_time: 300
+#    max_request_per_minute: 300
+#communications_api:
+#  host: "localhost"
+#  port: 27000
+#  workers: 4
+#  logging:
+#    level: "debug"
+#    format:
+#      - "plain"
+#  batcher:
+#    max_elements: 5
+#    max_size: 3000
+#    wait_time: 0.15
+#  ssl:
+#    key: "/etc/wazuh-server/api/configuration/ssl/server.key"
+#    cert: "/etc/wazuh-server/api/configuration/ssl/server.crt"
+#    use_ca: false
+#    ca: ""
+#    ssl_protocol: "auto"
+#    ssl_ciphers: ""

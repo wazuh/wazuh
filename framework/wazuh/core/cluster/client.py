@@ -8,12 +8,13 @@ import logging
 import ssl
 import traceback
 from time import perf_counter
-from typing import Tuple, Dict, List
+from typing import Tuple, List
 
 import uvloop
 
 from wazuh.core.cluster import common
 from wazuh.core.cluster.utils import context_tag
+from wazuh.core.config.models.server import ServerConfig
 
 
 class AbstractClientManager:
@@ -21,16 +22,14 @@ class AbstractClientManager:
     Define an abstract client. Manage connection with server.
     """
 
-    def __init__(self, configuration: Dict, cluster_items: Dict, performance_test: int, concurrency_test: int,
+    def __init__(self, server_config: ServerConfig, performance_test: int, concurrency_test: int,
                  file: str, string: int, logger: logging.Logger = None, tag: str = "Client Manager"):
         """Class constructor.
 
         Parameters
         ----------
-        configuration : dict
-            Client configuration.
-        cluster_items : dict
-            Cluster.json object containing cluster internal variables.
+        server_config : ServerConfig
+            Object containing server internal variables.
         performance_test : int
             Value for the performance test function.
         concurrency_test : int
@@ -44,9 +43,8 @@ class AbstractClientManager:
         tag : str
             Log tag.
         """
-        self.name = configuration['node_name']
-        self.configuration = configuration
-        self.cluster_items = cluster_items
+        self.name = server_config.node.name
+        self.server_config = server_config
         self.performance_test = performance_test
         self.concurrency_test = concurrency_test
         self.file = file
@@ -94,10 +92,10 @@ class AbstractClientManager:
         ssl_context = common.create_ssl_context(
             self.logger,
             ssl.Purpose.SERVER_AUTH,
-            self.configuration['cafile'],
-            self.configuration['certfile'],
-            self.configuration['keyfile'],
-            self.configuration['keyfile_password']
+            self.server_config.node.ssl.ca,
+            self.server_config.node.ssl.cert,
+            self.server_config.node.ssl.key,
+            self.server_config.node.ssl.keyfile_password
         )
 
         while True:
@@ -105,17 +103,16 @@ class AbstractClientManager:
                 transport, protocol = await self.loop.create_connection(
                     protocol_factory=lambda: self.handler_class(
                         loop=self.loop, on_con_lost=on_con_lost, name=self.name, logger=self.logger,
-                        cluster_items=self.cluster_items, manager=self, **self.extra_args
-                        ),
-                        host=self.configuration['nodes'][0], port=self.configuration['port'], ssl=ssl_context)
+                        server_config=self.server_config, manager=self, **self.extra_args),
+                    host=self.server_config.nodes[0], port=self.server_config.port, ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to master. Trying again in 10 seconds.")
-                await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
+                await asyncio.sleep(self.server_config.worker.intervals.connection_retry)
                 continue
             except OSError as e:
                 self.logger.error(f"Could not connect to master: {e}. Trying again in 10 seconds.")
-                await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
+                await asyncio.sleep(self.server_config.worker.intervals.connection_retry)
                 continue
 
             self.tasks.extend([(on_con_lost, None), (self.client.client_echo, tuple())] + self.add_tasks())
@@ -127,7 +124,7 @@ class AbstractClientManager:
                 transport.close()
 
             self.logger.info("The connection has been closed. Reconnecting in 10 seconds.")
-            await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
+            await asyncio.sleep(self.server_config.worker.intervals.connection_retry)
 
 
 class AbstractClient(common.Handler):
@@ -136,7 +133,8 @@ class AbstractClient(common.Handler):
     """
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str,
-                 logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client"):
+                 logger: logging.Logger, manager: AbstractClientManager, server_config: ServerConfig,
+                 tag: str = "Client"):
         """Class constructor.
 
         Parameters
@@ -149,12 +147,12 @@ class AbstractClient(common.Handler):
             Logger to use.
         manager : AbstractClientManager
             The Client manager that created this object.
-        cluster_items : dict
-            Cluster.json object containing cluster internal variables.
+        server_config : ServerConfig
+            Object containing server internal variables.
         tag : str
             Log tag.
         """
-        super().__init__(logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
+        super().__init__(logger=logger, tag=f"{tag} {name}", server_config=server_config)
         self.loop = loop
         self.server = manager
         self.name = name
@@ -289,10 +287,10 @@ class AbstractClient(common.Handler):
         return b'ok-c', data
 
     async def client_echo(self):
-        """Send a 'keepalive' to the server every self.cluster_items['intervals']['worker']['keep_alive'] seconds.
+        """Send a 'keepalive' to the server every x seconds, defined by the server_config properties.
 
         The client will disconnect from the server if more than
-        self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts'] attempts in a row are failed.
+        max_failed_keepalive_attempts (defined in server_config) attempts in a row are failed.
 
         This asyncio task will be started as soon as the client connects to the server and will be always running.
         """
@@ -308,11 +306,11 @@ class AbstractClient(common.Handler):
                 except Exception as e:
                     keep_alive_logger.error(f"Error sending keep alive: {e}")
                     n_attempts += 1
-                    if n_attempts >= self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts']:
+                    if n_attempts >= self.server_config.worker.retries.max_failed_keepalive_attempts:
                         keep_alive_logger.error("Maximum number of failed keep alives reached. Disconnecting.")
                         self.transport.close()
 
-            await asyncio.sleep(self.cluster_items['intervals']['worker']['keep_alive'])
+            await asyncio.sleep(self.server_config.worker.intervals.keep_alive)
 
     async def performance_test_client(self, test_size: int):
         """Send a request to the server with a big payload.

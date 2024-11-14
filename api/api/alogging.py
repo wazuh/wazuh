@@ -8,8 +8,9 @@ import json
 import re
 from pythonjsonlogger import jsonlogger
 
-from api.configuration import api_conf
 from api.api_exception import APIError
+
+from wazuh.core.config.models.logging import RotatedLoggingConfig
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
@@ -84,7 +85,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         log_record['data'] = record.message
 
 
-def set_logging(log_filepath, log_level = INFO, foreground_mode = False) -> dict:
+def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_mode: bool = False) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -93,10 +94,10 @@ def set_logging(log_filepath, log_level = INFO, foreground_mode = False) -> dict
     
     Parameters
     ----------
-    log_path : str
+    log_filepath : str
         Log file path.
-    log_level :  str
-        Logger Log level.
+    logging_config :  RotatedLoggingConfig
+        Logger configuration.
     foreground_mode : bool
         Log output to console streams when true
         else Log output to file.
@@ -110,6 +111,7 @@ def set_logging(log_filepath, log_level = INFO, foreground_mode = False) -> dict
     log_config_dict : dict
         Logging configuration dictionary.
     """
+    log_level = logging_config.get_level()
     handlers = {
         'plainfile': None, 
         'jsonfile': None,
@@ -117,13 +119,13 @@ def set_logging(log_filepath, log_level = INFO, foreground_mode = False) -> dict
     if foreground_mode:
         handlers.update({'console': {}})
 
-    if 'json' in api_conf['logs']['format']:
+    if 'json' in logging_config.format:
         handlers["jsonfile"] = {
             'filename': f"{log_filepath}.json",
             'formatter': 'json',
             'filters': ['json-filter'],
         }
-    if 'plain' in api_conf['logs']['format']:
+    if 'plain' in logging_config.format:
         handlers["plainfile"] = {
             'filename': f"{log_filepath}.log",
             'formatter': 'log',
@@ -193,8 +195,8 @@ def set_logging(log_filepath, log_level = INFO, foreground_mode = False) -> dict
     # configure file handlers
     for handler, d in handlers.items():
         if d and 'filename' in d:
-            if api_conf['logs']['max_size']['enabled']:
-                max_size = APILoggerSize(api_conf['logs']['max_size']['size']).size
+            if logging_config.max_size.enabled:
+                max_size = APILoggerSize(logging_config.max_size.size).size
                 d.update({
                     'class':'wazuh.core.wlogging.SizeBasedFileRotatingHandler',
                     'maxBytes': max_size,

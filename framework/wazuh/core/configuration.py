@@ -6,9 +6,6 @@ import json
 import logging
 import os
 import re
-import sys
-from configparser import NoOptionError, RawConfigParser
-from io import StringIO
 from os import path as os_path
 from types import MappingProxyType
 from typing import Union
@@ -17,7 +14,8 @@ from defusedxml.ElementTree import tostring
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.utils import load_wazuh_xml, load_wazuh_yaml, validate_wazuh_configuration, get_group_file_path
+from wazuh.core.utils import load_wazuh_yaml, validate_wazuh_configuration, get_group_file_path
+import wazuh.core.config.client
 
 logger = logging.getLogger('wazuh')
 
@@ -290,129 +288,6 @@ def _replace_custom_values(opt_value: Union[list, dict, str]) -> Union[list, dic
     return opt_value
 
 
-def _conf2json(src_xml: str, dst_json: dict):
-    """Parse src_xml to JSON. It is inserted in dst_json.
-
-    Parameters
-    ----------
-    src_xml : str
-        Configuration to be parsed to JSON.
-    dst_json : dict
-        Destination.
-    """
-
-    for section in list(src_xml):
-        section_name = section.attrib['name'] if section.tag.lower() == 'wodle' else section.tag.lower()
-        section_json = {}
-
-        for option in list(section):
-            option_name, option_value = _read_option(section_name, option)
-            if type(option_value) is list and not (section_name == 'remote' and option_name == 'protocol'):
-                for ov in option_value:
-                    _insert(section_json, section_name, option_name, ov)
-            else:
-                _insert(section_json, section_name, option_name, option_value)
-
-        _insert_section(dst_json, section_name, section_json)
-
-
-def _ossecconf2json(xml_conf: str) -> dict:
-    """Return ossec.conf in JSON from XML.
-
-    Parameters
-    ----------
-    xml_conf : str
-        Configuration to be parsed to JSON.
-
-    Returns
-    -------
-    dict
-        Final JSON with the ossec.conf content.
-    """
-    final_json = {}
-
-    for root in list(xml_conf):
-        if root.tag.lower() == "ossec_config":
-            _conf2json(root, final_json)
-
-    return final_json
-
-
-# Main functions
-def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.WAZUH_CONF,
-                   from_import: bool = False, distinct: bool = False) -> dict:
-    """Return ossec.conf (manager) as dictionary.
-
-    Parameters
-    ----------
-    section : str
-        Filters by section (i.e. rules).
-    field : str
-        Filters by field in section (i.e. included).
-    conf_file : str
-        Path of the configuration file to read. Default: common.WAZUH_CONF
-    from_import : bool
-        This flag indicates whether this function has been called from a module load (True) or from a function (False).
-    distinct : bool
-        Look for distinct values.
-
-    Raises
-    ------
-    WazuhError(1101)
-        Requested component does not exist.
-    WazuhError(1102)
-        Invalid section.
-    WazuhError(1103)
-        Invalid field in section.
-    WazuhError(1106)
-        Requested section not present in configuration.
-
-    Returns
-    -------
-    dict
-        ossec.conf (manager) as dictionary.
-    """
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(conf_file)
-
-        # Parse XML to JSON
-        data = _ossecconf2json(xml_data)
-    except Exception as e:
-        if not from_import:
-            raise WazuhError(1101, extra_message=str(e))
-        else:
-            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
-            sys.exit(0)
-
-    if section:
-        try:
-            data = {section: data[section]}
-        except KeyError as e:
-            if section not in CONF_SECTIONS.keys():
-                raise WazuhError(1102, extra_message=e.args[0])
-            else:
-                raise WazuhError(1106, extra_message=e.args[0])
-
-    if section and field:
-        try:
-            if isinstance(data[section], list):
-                data = {section: [{field: item[field]} for item in data[section]]}
-            else:
-                field_data = data[section][field]
-                if distinct and section == 'ruleset':
-                    if field in ('decoder_dir', 'rule_dir'):
-                        # Remove duplicates
-                        values = []
-                        [values.append(x) for x in field_data if x not in values]
-                        field_data = values
-
-                data = {section: {field: field_data}}
-        except KeyError:
-            raise WazuhError(1103)
-
-    return data
-
 
 def get_group_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
     """Return group configuration as dictionary.
@@ -453,7 +328,6 @@ def get_group_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
     data = load_wazuh_yaml(filepath)
 
     return {'total_affected_items': len(data), 'affected_items': data}
-
 
 
 def update_group_configuration(group_id: str, file_content: str) -> str:
@@ -695,26 +569,6 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
                          extra_message=f'{component}:{configuration}')
 
 
-def write_ossec_conf(new_conf: str):
-    """Replace the current wazuh configuration (ossec.conf) with the provided configuration.
-
-    Parameters
-    ----------
-    new_conf : str
-        The new configuration to be applied.
-
-    Raises
-    ------
-    WazuhError(1126)
-        Error updating ossec configuration.
-    """
-    try:
-        with open(common.WAZUH_CONF, 'w') as f:
-            f.writelines(new_conf)
-    except Exception as e:
-        raise WazuhError(1126, extra_message=str(e))
-
-
 def update_check_is_enabled() -> bool:
     """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
 
@@ -724,8 +578,8 @@ def update_check_is_enabled() -> bool:
         True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
     """
     try:
-        global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
-        return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE
+        config_value = wazuh.core.config.client.CentralizedConfig.get_server_config().cti.update_check
+        return config_value
     except WazuhError as e:
         if e.code != 1106:
             raise e
@@ -741,7 +595,7 @@ def get_cti_url() -> str:
         CTI service URL. The default value is returned if CTI_URL_FIELD isn't present.
     """
     try:
-        return get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get(CTI_URL_FIELD, DEFAULT_CTI_URL)
+        return wazuh.core.config.client.CentralizedConfig.get_server_config().cti.url
     except WazuhError as e:
         if e.code != 1106:
             raise e
