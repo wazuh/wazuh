@@ -673,9 +673,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                 data['merge_type'], decompressed_files_path, data['merge_name']
                         ):
                             try:
-                                # Get dir configuration
-                                if file_config is None:
-                                    raise Exception(f'No dir in internal configuration with name {item_key}')
                                 # Destination path.
                                 full_unmerged_name = common.WAZUH_QUEUE / unmerged_file_path
                                 # Path where to create the file before moving it to the destination path.
@@ -700,7 +697,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     f.write(file_data)
 
                                 mtime_epoch = timegm(mtime.timetuple())
+
+                                # Get dir configuration
                                 file_config = server_config.get_internal_config().get_dir_config(item_key)
+                                if file_config is None:
+                                    raise Exception(f'No dir in internal configuration with name {item_key}')
 
                                 utils.safe_move(tmp_unmerged_path, full_unmerged_name,
                                                 ownership=(common.wazuh_uid(), common.wazuh_gid()),
