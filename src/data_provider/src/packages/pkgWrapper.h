@@ -24,6 +24,7 @@
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
 static const std::string UTILITIES_FOLDER   { "/Utilities"          };
+const std::set<std::string> excludedCategories = {"pkg", "x86_64", "arm64"};
 
 class PKGWrapper final : public IPackageWrapper
 {
@@ -41,7 +42,14 @@ class PKGWrapper final : public IPackageWrapper
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime {UNKNOWN_VALUE}
         {
-            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+            if (Utils::endsWith(ctx.package, ".app"))
+            {
+                getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+            }
+            else
+            {
+                getPkgDataRcp(ctx.filePath + "/" + ctx.package);
+            }
         }
 
         ~PKGWrapper() = default;
@@ -223,6 +231,102 @@ class PKGWrapper final : public IPackageWrapper
                 if (file.is_open())
                 {
                     getDataFnc(file);
+                }
+            }
+        }
+
+        void getPkgDataRcp(const std::string& filePath)
+        {
+            const auto isBinaryFnc
+            {
+                [&filePath]()
+                {
+                    // If first line is "bplist00" it's a binary plist file
+                    std::fstream file {filePath, std::ios_base::in};
+                    std::string line;
+                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
+                }
+            };
+            const auto isBinary { isBinaryFnc() };
+
+            static const auto getValueFnc
+            {
+                [](const std::string & val)
+                {
+                    const auto start{val.find(">")};
+                    const auto end{val.rfind("<")};
+                    return val.substr(start + 1, end - start - 1);
+                }
+            };
+
+            const auto getDataFncRcp
+            {
+                [this, &filePath](std::istream & data)
+                {
+                    std::string line;
+
+                    while (std::getline(data, line))
+                    {
+                        line = Utils::trim(line, " \t");
+
+                        if (line == "<key>PackageIdentifier</key>" &&
+                                std::getline(data, line))
+                        {
+                            m_description = getValueFnc(line);
+                            auto reverseDomainName = Utils::split(m_description, '.');
+
+                            for (size_t i = 0; i < reverseDomainName.size(); i++)
+                            {
+                                if (i == 1)
+                                {
+                                    m_vendor = reverseDomainName[i];
+                                }
+                                else if (i > 1)
+                                {
+                                    const std::string& current = reverseDomainName[i];
+
+                                    if (excludedCategories.find(current) == excludedCategories.end())
+                                    {
+                                        if (!m_name.empty())
+                                        {
+                                            m_name += ".";
+                                        }
+
+                                        m_name += current;
+                                    }
+                                }
+                            }
+                        }
+                        else if (line == "<key>PackageVersion</key>" &&
+                                 std::getline(data, line))
+                        {
+                            m_version = getValueFnc(line);
+                        }
+                        else if (line == "<key>InstallDate</key>" &&
+                                 std::getline(data, line))
+                        {
+                            m_installTime = getValueFnc(line);
+                        }
+                    }
+
+                    m_multiarch = UNKNOWN_VALUE;
+                    m_source = "receipts";
+                    m_location = filePath;
+                }
+            };
+
+            if (isBinary)
+            {
+                auto xmlContent { binaryToXML(filePath) };
+                getDataFncRcp(xmlContent);
+            }
+            else
+            {
+                std::fstream file { filePath, std::ios_base::in };
+
+                if (file.is_open())
+                {
+                    getDataFncRcp(file);
                 }
             }
         }
