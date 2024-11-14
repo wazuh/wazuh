@@ -21,7 +21,7 @@ async def test_send_stateless_events(events_send_mock):
     request = Request(scope={
         'type': 'http',
         'app': FastAPI(),
-        'headers': [(b'content-type', b'application/x-ndjson'), (b'transfer-encoding', b'chunked')]
+        'headers': [(b'content-type', b'application/json'), (b'transfer-encoding', b'chunked')]
     })
     stream_mock = MagicMock()
     request.stream = stream_mock
@@ -36,7 +36,7 @@ async def test_send_stateless_events_ko():
     request = Request(scope={
         'type': 'http',
         'app': FastAPI(),
-        'headers': [(b'content-type', b'application/x-ndjson')]
+        'headers': [(b'content-type', b'application/json')]
     })
 
     with pytest.raises(WazuhError, match=r'2708'):

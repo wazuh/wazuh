@@ -1,8 +1,9 @@
-from typing import AsyncGenerator, List
+from typing import List
 
 from fastapi import Request
 
 from comms_api.models.events import StatefulEvents
+from wazuh.core.engine.base import APPLICATION_JSON
 from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer import get_indexer_client
@@ -52,7 +53,7 @@ async def send_stateless_events(request: Request) -> None:
     WazuhError(2708)
         Invalid request headers.
     """
-    if request.headers.get('Content-Type') != 'application/x-ndjson' or \
+    if request.headers.get('Content-Type') != APPLICATION_JSON or \
             request.headers.get('Transfer-Encoding') != 'chunked':
         raise WazuhError(2708)
 
