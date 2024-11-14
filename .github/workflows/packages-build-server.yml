@@ -159,6 +159,20 @@ jobs:
             echo "The installation could not be completed. The package will not be uploaded.";
             exit 1;
           fi
+      
+      - name: Upload package to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
+      
+      - name: Upload debug symbols to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
+          path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
+          if-no-files-found: error
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
