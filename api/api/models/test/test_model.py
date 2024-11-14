@@ -14,10 +14,11 @@ import pytest
 from connexion import ProblemException
 
 from api.controllers.util import JSON_CONTENT_TYPE
+from api.models import agent_registration_model
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
-        from api.models import base_model_ as bm, agent_added_model, event_ingest_model
+        from api.models import base_model_ as bm, event_ingest_model
         from api.util import deserialize_model
         from wazuh import WazuhError
 
@@ -282,7 +283,7 @@ def test_all_models(deserialize_mock, module_name):
                 for p in [p for p in module_class.__dict__ if not p.startswith('__')]:
                     # Assert that all its attributes have defined properties (getter and setter)
                     value = ''
-                    if module_class.__name__ == 'AgentAddedModel' and p == 'key':
+                    if module_class.__name__ == 'AgentRegistrationModel' and p == 'key':
                         value = '7b8276c3bf96aff5709346d368f04aed'
                     else:
                         value = 'test'
@@ -301,16 +302,22 @@ def test_all_models(deserialize_mock, module_name):
     '7b8276c3bf96aff5709346d368f04aedA'
 ))
 async def test_agent_added_model_validation(key):
-    request = {'id': '01929571-49b5-75e8-a3f6-1d2b84f4f71a', 'name': 'testing', 'key': key}
+    request = {
+        'id': '01929571-49b5-75e8-a3f6-1d2b84f4f71a',
+        'name': 'testing',
+        'key': key,
+        'type': 'endpoint',
+        'version': '5.0.0'
+    }
 
-    if len(key) != agent_added_model.KEY_LENGTH:
+    if len(key) != agent_registration_model.KEY_LENGTH:
         with pytest.raises(ProblemException) as exc:
-            await agent_added_model.AgentAddedModel.get_kwargs(request)
+            await agent_registration_model.AgentRegistrationModel.get_kwargs(request)
 
         assert exc.value.title == 'Invalid key length'
         assert exc.value.detail == 'The key must be 32 characters long'
     else:
-        await agent_added_model.AgentAddedModel.get_kwargs(request)
+        await agent_registration_model.AgentRegistrationModel.get_kwargs(request)
 
 
 @pytest.mark.parametrize('size,raises', ([1, True], [2, False]))

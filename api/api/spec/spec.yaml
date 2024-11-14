@@ -1443,22 +1443,42 @@ components:
           description: "Agent authentication key"
           type: string
           format: alphanumeric_symbols
+        type:
+          description: "Agent type"
+          type: string
+        version:
+          description: "Agent version"
+          type: string
         groups:
           description: "Agent groups"
-          type: string
-          format: group_names
-        ips:
-          description: "Agent IP addresses"
           type: array
           items:
             type: string
-        os:
-          description: "Agent operating system"
-          type: string
+        host:
+          description: "Agent host"
+          type: object
+          properties:
+            architecture:
+              type: string
+            hostname:
+              type: string
+            ip:
+              type: array
+              items:
+                type: string
+            os:
+              type: object
+              properties:
+                name:
+                  type: string
+                platform:
+                  type: string
       required:
       - id
       - name
       - key
+      - type
+      - version
 
     AgentGroup:
       type: object
@@ -7515,10 +7535,18 @@ paths:
               id: 019008da-1575-7375-b54f-ef43e393517ef
               name: NewHost_2
               key: 7b8276c3bf96aff5709346d368f04fed
-              groups: group1
-              ips:
-                - 127.0.0.1
-              os: Debian 12 "Bookworm"
+              groups: 
+                - group1
+              type: endpoint
+              version: 5.0.0
+              host:
+                architecture: x86_64
+                hostname: wazuh-agent
+                ip:
+                  - 127.0.0.1
+                os:
+                  name: Debian 12 "Bookworm"
+                  platform: Linux
       responses:
         '201':
           description: "Empty response indicating the agent was registered successfully"

@@ -5,7 +5,9 @@
 import contextlib
 import operator
 from os import chmod, chown, path
-from typing import Optional, Union, List
+from typing import List, Optional, Union
+
+from api.models.agent_registration_model import Host
 
 from wazuh import __version__
 from wazuh.core import common, configuration
@@ -22,6 +24,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.models.agent import Host as IndexerAgentHost
 from wazuh.core.indexer.models.commands import ResponseResult
 from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_update_group_command
 from wazuh.core.InputValidator import InputValidator
@@ -511,9 +514,10 @@ async def add_agent(
     id: str,
     name: str,
     key: str,
-    groups: str = None,
-    ips: List[str] = None,
-    os: str = None,
+    type: str,
+    version: str,
+    groups: List[str] = None,
+    host: Host = None,
 ) -> WazuhResult:
     """Add a new Wazuh agent.
 
@@ -525,18 +529,22 @@ async def add_agent(
         Agent name.
     key : str
         Agent key.
-    groups : str
+    type : str
+        Agent type.
+    version : str
+        Agent version.
+    groups : List[str]
         Agent groups.
-    ips : str
-        Agent IP addresses.
-    os : str
-        Agent operating system.
+    host : Host
+        Agent host information.
 
     Raises
     ------
     WazuhError(1738)
         Name length is greater than 128 characters.
-
+    WazuhError(1762)
+        Failed while creating the update-group order.
+    
     Returns
     -------
     WazuhResult
@@ -546,8 +554,26 @@ async def add_agent(
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
-    async with get_indexer_client() as indexer:
-        new_agent = await indexer.agents.create(id=id, name=name, key=key, groups=groups, ips=ips, os=os)
+    async with get_indexer_client() as indexer_client:
+        new_agent = await indexer_client.agents.create(
+            id=id,
+            name=name,
+            key=key,
+            type=type,
+            version=version,
+            groups=','.join(groups),
+            host=IndexerAgentHost(
+                architecture=host['architecture'],
+                ip=host['ip'],
+                hostname=host['hostname'],
+                os=host['os'],
+            ) if host else None
+        )
+
+        command = create_update_group_command(agent_id=id)
+        response = await indexer_client.commands_manager.create(command)
+        if response.result is not ResponseResult.CREATED:
+            raise WazuhError(1762, extra_message=response.result.value)
 
     return WazuhResult({'data': new_agent})
 

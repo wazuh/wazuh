@@ -13,7 +13,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 
 from api.controllers.util import JSON_CONTENT_TYPE, json_response
-from api.models.agent_added_model import AgentAddedModel
+from api.models.agent_registration_model import AgentRegistrationModel
 from api.models.agent_group_added_model import GroupAddedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
@@ -199,7 +199,7 @@ async def add_agent(pretty: bool = False, wait_for_complete: bool = False) -> Co
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    f_kwargs = await AgentAddedModel.get_kwargs(request)
+    f_kwargs = await AgentRegistrationModel.get_kwargs(request)
 
     dapi = DistributedAPI(
         f=agent.add_agent,
