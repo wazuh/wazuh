@@ -173,7 +173,7 @@ jobs:
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
           if-no-files-found: error
-
+      
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
