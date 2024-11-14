@@ -32,7 +32,7 @@ class EngineHandler:
         with open(self.configuration_path, 'r') as file:
             for line in file:
                 line = line.strip()
-                if line and not line.startswith('#'):  # Ignora líneas vacías y comentarios
+                if line and not line.startswith('#'):  # Ignore empty lines and comments
                     key, value = line.split('=', 1)
                     os.environ[key] = value
 
