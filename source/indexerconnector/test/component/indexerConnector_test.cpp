@@ -717,3 +717,85 @@ TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
+
+/**
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against the
+ * expected one, with and without an index name in the request.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDatePlaceholderIndexNameInRequest)
+{
+    // We create an index with the current date as part of the name.
+    std::string baseIndexName = std::string(INDEXER_NAME) + "_$(date)";
+    // We'll create two indexes name, one will have the date replaced and the other will have a custom string.
+    std::string indexName1 = baseIndexName;
+    base::utils::string::replaceAll(indexName1, "$(date)", base::utils::time::getCurrentDate("."));
+    std::string indexName2 = baseIndexName;
+    base::utils::string::replaceAll(indexName2, "$(date)", "custom_string");
+
+    nlohmann::json expectedMetadata1;
+    expectedMetadata1["index"]["_index"] = indexName1;
+    expectedMetadata1["index"]["_id"] = INDEX_ID_A;
+
+    nlohmann::json expectedMetadata2;
+    expectedMetadata2["index"]["_index"] = indexName2;
+    expectedMetadata2["index"]["_id"] = INDEX_ID_B;
+
+    // Callback that checks the expected data to be published.
+    constexpr auto INDEX_DATA_1 {"content1"};
+    constexpr auto INDEX_DATA_2 {"content2"};
+    constexpr auto CALLBACK_EXPECTED_CALLS {2};
+    auto callbackCalled1 {false};
+    auto callbackCalled2 {false};
+
+    const auto checkPublishedData {[&](const std::string& data)
+                                   {
+                                       const auto splitData {base::utils::string::split(data, '\n')};
+                                       const auto& metadata1 = splitData.at(0);
+                                       const auto& data1 = splitData.at(1);
+                                       const auto& metadata2 = splitData.at(2);
+                                       const auto& data2 = splitData.at(3);
+
+                                       if (nlohmann::json::parse(metadata1) == expectedMetadata1)
+                                       {
+                                           ASSERT_EQ(nlohmann::json::parse(data1), INDEX_DATA_1);
+                                           callbackCalled1 = true;
+                                       }
+                                       else
+                                       {
+                                           FAIL() << "Unexpected data published";
+                                       }
+
+                                       if (nlohmann::json::parse(metadata2) == expectedMetadata2)
+                                       {
+                                           ASSERT_EQ(nlohmann::json::parse(data2), INDEX_DATA_2);
+                                           callbackCalled2 = true;
+                                       }
+                                       else
+                                       {
+                                           FAIL() << "Unexpected data published";
+                                       }
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and wait until the connection is established.
+    IndexerConnectorOptions indexerConfig {.name = baseIndexName, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT};
+    auto indexerConnector {IndexerConnector(indexerConfig)};
+
+    // Publish content and wait until the publication finishes.
+    nlohmann::json publishData1;
+    publishData1["id"] = INDEX_ID_A;
+    publishData1["operation"] = "INSERT";
+    publishData1["data"] = INDEX_DATA_1;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData1.dump()));
+
+    // This element defines an index name in the request.
+    nlohmann::json publishData2;
+    publishData2["id"] = INDEX_ID_B;
+    publishData2["operation"] = "INSERT";
+    publishData2["data"] = INDEX_DATA_2;
+    publishData2["indexName"] = indexName2;
+    ASSERT_NO_THROW(indexerConnector.publish(publishData2.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&]() { return callbackCalled1 && callbackCalled2; }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
