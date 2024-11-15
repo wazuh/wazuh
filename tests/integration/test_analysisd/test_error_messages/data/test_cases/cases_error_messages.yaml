@@ -61,3 +61,10 @@
     input: "5:[001] (vm-test-agent) 192.168.57.2->syscheck:{\"component\":\"syscheck\",\"type\":\"integrity_check_global\",\"\":{\"id\": 1575421330,\"begin\":\"/home/test/file\",\"end\":\"/home/test/file2\",\"checksum\":\"6bdaf5656029544cf0d08e7c4f4feceb0c45853c\"}}"
     output: "dbsync: Corrupt message: cannot get data member."
     stage: "No data field in a DB sync message"
+- name: "dbsync errors 5"
+  description: "Check dbsync message errors"
+  configuration_parameters:
+  metadata:
+    input: "5:[001] (vm-test-agent) 192.168.57.2->syscheck:{\"component\":\"evil_component\",\"type\":\"integrity_check_global\",\"\":{\"id\": 1575421330,\"begin\":\"/home/test/file\",\"end\":\"/home/test/file2\",\"checksum\":\"6bdaf5656029544cf0d08e7c4f4feceb0c45853c\"}}"
+    output: "dbsync: Invalid component specified."
+    stage: "No data field in a DB sync message"

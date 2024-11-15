@@ -270,14 +270,14 @@ void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
         goto end;
     }
 
-    if(wdbc_validate_component(ctx->component) == WB_COMP_INVALID) {
-        merror("dbsync: Invalid component specified.");
-        goto end;
-    }
-
     char * mtype = cJSON_GetStringValue(cJSON_GetObjectItem(root, "type"));
     if (mtype == NULL) {
         merror("dbsync: Corrupt message: cannot get type member.");
+        goto end;
+    }
+
+    if(wdbc_validate_component(ctx->component) == WB_COMP_INVALID) {
+        merror("dbsync: Invalid component specified.");
         goto end;
     }
 
