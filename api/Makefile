@@ -27,7 +27,6 @@ install:
     # Copy files and create folders
 	# ETC
 	$(INSTALL_DIR) $(ETC_INSTALLDIR)/api
-	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration
 	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/ssl
 	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/security
 
