@@ -108,8 +108,8 @@ class TestAgentIndex:
             IndexerKey.QUERY: {
                 IndexerKey.BOOL: {
                     IndexerKey.FILTER: [{
-                        IndexerKey.QUERY_STRING: {
-                            IndexerKey.QUERY: f'agent.groups: *{group_name}*'
+                        IndexerKey.TERM: {
+                            'agent.groups': group_name
                         }
                     }]
                 }
@@ -138,8 +138,8 @@ class TestAgentIndex:
             IndexerKey.QUERY: {
                 IndexerKey.BOOL: {
                     IndexerKey.FILTER: [{
-                        IndexerKey.QUERY_STRING: {
-                            IndexerKey.QUERY: f'agent.groups: *{group_name}*'
+                        IndexerKey.TERM: {
+                            'agent.groups': group_name
                         }
                     }]
                 }
@@ -178,13 +178,14 @@ class TestAgentIndex:
         await index_instance._update_groups(group_name=group_name, agent_ids=agent_ids, override=override)
 
         if override:
-            source = 'ctx._source.agent.groups = params.group'
+            source = 'ctx._source.agent.groups = new String[] {params.group};'
         else:
+            # Changing the indentation makes the test to fail
             source = """
                 if (ctx._source.agent.groups == null) {
-                    ctx._source.agent.groups = params.group;
+                    ctx._source.agent.groups = new String[] {params.group};
                 } else {
-                    ctx._source.agent.groups += ","+params.group;
+                    ctx._source.agent.groups.add(params.group);
                 }
                 """
 
