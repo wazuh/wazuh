@@ -366,7 +366,7 @@ class WazuhException(Exception):
         1763: "Invalid inventory module type. It must be 'network', 'package', 'process' or 'system'",
         1764: "Invalid User-Agent HTTP header value. It must follow the format '<name> <type> <version>'",
         1765: "Invalid module name. It must be 'fim', 'sca', 'inventory', 'command' or 'vulnerability'",
-
+        1766: {'message': 'The agent already belongs to the group'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
