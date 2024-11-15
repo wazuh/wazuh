@@ -9,7 +9,7 @@ trap 'cd "$OLD_PWD";rm -rf "$TMP_DIR"' EXIT
 TMP_DIR="/tmp/wazuh_devContainer"
 REPO_DEV_DIR="src/engine/tools/devContainer"
 REPO_URL="https://github.com/wazuh/wazuh.git"
-BRANCH="enhancement/26838-engine-devcontainer-simp-cli"
+BRANCH="master"
 
 EXCLUDED_FILES=(
     "download_devContainer.sh"
@@ -92,15 +92,26 @@ copy_devContainer
 # Print the success message
 echo "The devContainer folder has been downloaded to $DEV_CONTAINER_DESTINATION"
 
-echo "Do you want open devContainer in VSCode? (y/n)"
-read -r open_vscode
+while true; do
+    echo "Do you want to open the devContainer in VSCode? (y/n)"
+    read -r open_vscode
 
-if [ "$open_vscode" == "y" ]; then
-    cd "$DEV_CONTAINER_DESTINATION"
-    if ! code --list-extensions | grep -q "ms-vscode-remote.remote-containers"; then
-        echo "Installing the Remote - Containers extension"
-        code --install-extension ms-vscode-remote.remote-containers
-    fi
-    echo "Opening the devContainer in VSCode"
-    code --folder-uri="vscode-remote://dev-container+$(pwd | tr -d '\n' | xxd -c 256 -p)/workspaces/$(basename "$(pwd)")"
-fi
+    case $open_vscode in
+        [Yy]* )
+            cd "$DEV_CONTAINER_DESTINATION"
+            if ! code --list-extensions | grep -q "ms-vscode-remote.remote-containers"; then
+                echo "Installing the Remote - Containers extension"
+                code --install-extension ms-vscode-remote.remote-containers
+            fi
+            echo "Opening the devContainer in VSCode"
+            code --folder-uri="vscode-remote://dev-container+$(pwd | tr -d '\n' | xxd -c 256 -p)/workspaces/$(basename "$(pwd)")"
+            break
+            ;;
+        [Nn]* )
+            break
+            ;;
+        * )
+            echo "Please answer yes or no."
+            ;;
+    esac
+done

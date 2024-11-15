@@ -63,7 +63,7 @@
 		{
 			"label": "Install engine python dependencies",
 			"type": "shell",
-			"command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HEALTH} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_IT} ${env:ENGINE_PYTHONPATH_DBG}",
+			"command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HEALTH} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_IT}",
 			"args": [
 			],
 			"problemMatcher": []
