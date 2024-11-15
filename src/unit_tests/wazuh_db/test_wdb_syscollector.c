@@ -82,6 +82,8 @@ static void wdb_syscollector_processes_save2_fail(void) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetStringValue, "1");
     will_return(__wrap_cJSON_GetObjectItem, NULL);
+    will_return(__wrap_cJSON_GetStringValue, "1");
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetStringValue, "name");
     will_return(__wrap_cJSON_GetObjectItem, NULL);
     will_return(__wrap_cJSON_GetStringValue, "state");
@@ -117,7 +119,7 @@ static void wdb_syscollector_processes_save2_fail(void) {
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_process_save(): cannot begin transaction");
 }
 
-static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
+static void  wdb_syscollector_processes_save2_fail_2(cJSON *attribute) {
     int i = 0;
 
     for (i = 0; i < 4; i++) {
@@ -141,6 +143,48 @@ static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetStringValue, "scan_time");
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+    will_return(__wrap_cJSON_GetStringValue, "name");
+    will_return(__wrap_cJSON_GetStringValue, "state");
+    will_return(__wrap_cJSON_GetStringValue, "cmd");
+    will_return(__wrap_cJSON_GetStringValue, "argvs");
+    will_return(__wrap_cJSON_GetStringValue, "euser");
+    will_return(__wrap_cJSON_GetStringValue, "ruser");
+    will_return(__wrap_cJSON_GetStringValue, "suser");
+    will_return(__wrap_cJSON_GetStringValue, "egroup");
+    will_return(__wrap_cJSON_GetStringValue, "rgroup");
+    will_return(__wrap_cJSON_GetStringValue, "sgroup");
+    will_return(__wrap_cJSON_GetStringValue, "fgroup");
+    will_return(__wrap_cJSON_GetStringValue, "checksum");
+
+    will_return(__wrap_wdb_begin2, 0);
+}
+
+static void  wdb_syscollector_processes_save2_success(cJSON *attribute) {
+    int i = 0;
+
+    for (i = 0; i < 5; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, NULL);
+    }
+
+    for (i = 0; i < 3; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, 1);
+        will_return(__wrap_cJSON_GetObjectItem, attribute);
+    }
+
+    for (i = 0; i < 9; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, NULL);
+    }
+
+    for (i = 0; i < 13; i++) {
+        will_return(__wrap_cJSON_GetObjectItem, 1);
+        will_return(__wrap_cJSON_GetObjectItem, attribute);
+    }
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, "scan_time");
+    will_return(__wrap_cJSON_GetStringValue, "1");
     will_return(__wrap_cJSON_GetStringValue, "1");
     will_return(__wrap_cJSON_GetStringValue, "name");
     will_return(__wrap_cJSON_GetStringValue, "state");
@@ -3395,6 +3439,25 @@ void test_wdb_syscollector_save2_processes_fail(void **state) {
     assert_int_equal(output, -1);
 }
 
+void test_wdb_syscollector_save2_processes_fail_2(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+    cJSON attribute = {0};
+
+    attribute.valueint = 123;
+    attribute.valuedouble = 5294967296;
+
+    will_return(__wrap_cJSON_Parse, 1);
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    data->transaction = 0;
+    wdb_syscollector_processes_save2_fail_2(&attribute);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    output = wdb_syscollector_save2(data, WDB_SYSCOLLECTOR_PROCESSES, NULL);
+    assert_int_equal(output, OS_INVALID);
+}
+
 void test_wdb_syscollector_save2_processes_success(void **state) {
     int output = 0;
     wdb_t *data = (wdb_t *)*state;
@@ -5174,6 +5237,7 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_get_attributes_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_processes_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_processes_fail_2, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_processes_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_package_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_package_success, test_setup, test_teardown),
