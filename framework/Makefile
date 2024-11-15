@@ -60,10 +60,12 @@ install:
 	# SHARE
 	$(INSTALL_FILE) scripts/*.py ${SHARE_INSTALLDIR}/framework/scripts
 	$(INSTALL_FILE) wazuh/*.py ${SHARE_INSTALLDIR}/framework/wazuh
-	$(INSTALL_FILE) wazuh/core/cluster/*.json ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster
 	$(INSTALL_FILE) wazuh/core/cluster/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster
 	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/dapi
 	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
+
+	# ETC
+	$(INSTALL_FILE) ../etc/wazuh-server.yml ${ETC_INSTALLDIR}
 
 
 	# BIN
