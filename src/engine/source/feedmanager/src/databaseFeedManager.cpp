@@ -50,10 +50,6 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
             {
                 LOG_DEBUG("Removing existent {} folder.", LEGACY_DB_PATH);
             }
-            if (std::filesystem::remove_all(CURRENT_DB_PATH))
-            {
-                LOG_DEBUG("Removing existent {} folder.", CURRENT_DB_PATH);
-            }
 
             LOG_DEBUG("Starting XZ file decompression");
             fs::XzHelper(std::filesystem::path(XZ_DB_FILE_PATH), std::filesystem::path(TAR_DB_FILE_PATH)).decompress();
