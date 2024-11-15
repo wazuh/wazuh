@@ -25,6 +25,55 @@ const char* WDBC_RESULT[] = {
     [WDBC_UNKNOWN] = "unk"
 };
 
+/// Array of component strings.
+const char* WDBC_VALID_COMPONENTS[] = { 
+    [WB_COMP_SYSCOLLECTOR_PROCESSES]       = "syscollector_processes",
+    [WB_COMP_SYSCOLLECTOR_PACKAGES]        = "syscollector_packages",
+    [WB_COMP_SYSCOLLECTOR_HOTFIXES]        = "syscollector_hotfixes",
+    [WB_COMP_SYSCOLLECTOR_PORTS]           = "syscollector_ports",
+    [WB_COMP_SYSCOLLECTOR_NETWORK_PROTOCOL] = "syscollector_network_protocol",
+    [WB_COMP_SYSCOLLECTOR_NETWORK_ADDRESS] = "syscollector_network_address",
+    [WB_COMP_SYSCOLLECTOR_NETWORK_IFACE]   = "syscollector_network_iface",
+    [WB_COMP_SYSCOLLECTOR_HWINFO]          = "syscollector_hwinfo",
+    [WB_COMP_SYSCOLLECTOR_OSINFO]          = "syscollector_osinfo",
+    [WB_COMP_FIM_FILE]                     = "fim_file",
+    [WB_COMP_FIM_REGISTRY]                 = "fim_registry",
+    [WB_COMP_FIM_REGISTRY_KEY]             = "fim_registry_key",
+    [WB_COMP_FIM_REGISTRY_VALUE]           = "fim_registry_value",
+    [WB_COMP_SCA]                          = "sca",
+    [WB_COMP_NETINFO]                      = "netinfo",
+    [WB_COMP_NETPROTO]                     = "netproto",
+    [WB_COMP_NETADDR]                      = "netaddr",
+    [WB_COMP_OSINFO]                       = "osinfo",
+    [WB_COMP_HARDWARE]                     = "hardware",
+    [WB_COMP_PORT]                         = "port",
+    [WB_COMP_PACKAGE]                      = "package",
+    [WB_COMP_HOTFIX]                       = "hotfix",
+    [WB_COMP_PROCESS]                      = "process",
+    [WB_COMP_DBSYNC]                       = "dbsync",
+    [WB_COMP_CISCAT]                       = "ciscat",
+    [WB_COMP_ROOTCHECK]                    = "rootcheck",
+    [WB_COMP_SQL]                          = "sql",
+    [WB_COMP_REMOVE]                       = "remove",
+    [WB_COMP_BEGIN]                        = "begin",
+    [WB_COMP_COMMIT]                       = "commit",
+    [WB_COMP_CLOSE]                        = "close",
+    [WB_COMP_GET_FRAGMENTATION]            = "get_fragmentation",
+    [WB_COMP_VACUUM]                       = "vacuum",
+    [WB_COMP_SLEEP]                        = "sleep",
+    [WB_COMP_SCAN_INFO_GET]                = "scan_info_get",
+    [WB_COMP_UPDATEDATE]                   = "updatedate",
+    [WB_COMP_CLEANDB]                      = "cleandb",
+    [WB_COMP_SCAN_INFO_UPDATE]             = "scan_info_update",
+    [WB_COMP_CONTROL]                      = "control",
+    [WB_COMP_LOAD]                         = "load",
+    [WB_COMP_DELETE]                       = "delete",
+    [WB_COMP_SAVE]                         = "save",
+    [WB_COMP_SAVE2]                        = "save2",
+    [WB_COMP_INTEGRITY_CHECK]              = "integrity_check_",
+    [WB_COMP_INTEGRITY_CLEAR]              = "integrity_clear"
+};
+
 /* Methods */
 
 /**
