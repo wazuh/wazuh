@@ -171,8 +171,6 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
     // Get index name.
     m_indexName = indexerConnectorOptions.name;
 
-    base::utils::string::replaceAll(m_indexName, "$(date)", base::utils::time::getCurrentDate("."));
-
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {
         throw std::invalid_argument("Index name must be lowercase.");
@@ -207,6 +205,9 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
             std::string bulkData;
             url.append("/_bulk?refresh=wait_for");
 
+            std::string indexNameCurrentDate = m_indexName;
+            base::utils::string::replaceAll(indexNameCurrentDate, "$(date)", base::utils::time::getCurrentDate("."));
+
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
@@ -218,16 +219,20 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                     continue;
                 }
 
+                const auto& finalIndexName = parsedData.contains("indexName")
+                                                 ? parsedData.at("indexName").get_ref<const std::string&>()
+                                                 : indexNameCurrentDate;
+
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
                     const auto& id = parsedData.at("id").get_ref<const std::string&>();
-                    builderBulkDelete(bulkData, id, m_indexName);
+                    builderBulkDelete(bulkData, id, finalIndexName);
                 }
                 else
                 {
                     const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
                     const auto dataString = parsedData.at("data").dump();
-                    builderBulkIndex(bulkData, id, m_indexName, dataString);
+                    builderBulkIndex(bulkData, id, finalIndexName, dataString);
                 }
             }
 
