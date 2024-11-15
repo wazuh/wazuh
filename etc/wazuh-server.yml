@@ -1,17 +1,17 @@
 server:
 #  port: 1516
 #  bind_addr: "0.0.0.0"
-#  nodes: []
 #  hidden: false
 #  update_check: false
+  nodes:
+    - 'wazuh-master'
   node:
-    name: ""
+    name: manager_01
     type: "master"
     ssl:
-      key: ""
-      cert: ""
-      ca: ""
-#      keyfile_password: ""
+      key: /var/lib/wazuh-server/etc/slmanager.key
+      cert: /var/lib/wazuh-server/etc/sslmanager.cert
+      ca: /var/lib/wazuh-server/etc/sslmanager.ca
 #  worker:
 #    intervals:
 #      sync_integrity: 9
@@ -44,10 +44,10 @@ server:
 #    update_check: true
 #    url: "https://cti.wazuh.com"
 indexer:
-  host: ""
-  port: 0
-  user: ""
-  password: ""
+  host: wazuh-indexer
+  port: 9200
+  user: admin
+  password: SecretPassword1%
 #  ssl:
 #    use_ssl: false
 #    key: ""
