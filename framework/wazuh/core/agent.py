@@ -1182,7 +1182,7 @@ async def get_agents_info() -> set:
     """
     async with get_indexer_client() as indexer_client:
         query = {IndexerKey.MATCH_ALL: {}}
-        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='id')
+        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='agent.id')
         return set([agent.id for agent in agents])
 
 
