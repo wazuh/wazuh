@@ -126,7 +126,7 @@ checks:
      title: "Ensure jffs2 kernel module is not available."
      description: "The jffs2 (journaling flash filesystem 2) filesystem type is a log-structured filesystem used in flash memory devices."
      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-     remediation: "Run the following script to unload and disable the jffs2 module: - IF - the jffs2 kernel module is available in ANY installed kernel: - Create a file ending in .conf with install jffs2 /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist jffs2 in the /etc/modprobe.d/ directory - Run modprobe -r jffs2 2>/dev/null; rmmod jffs2 2>/dev/null to remove jffs2 from the kernel - IF - the jffs2 kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash { a_output2=() a_output3=() l_dl=\"\" l_mod_name=\"jffs2\" l_mod_type=\"fs\" l_mod_path=\"$(readlink -f /lib/modules/**/kernel/$l_mod_type | sort -u)\" f_module_fix() { l_dl=\"y\" a_showconfig=() while IFS= read -r l_showconfig; do a_showconfig+=(\"$l_showconfig\") done < <(modprobe --showconfig | grep -P -- '\\b(install|blacklist)\\h+'\"${l_mod_chk_name//-/_}\"'\\b') if lsmod | grep \"$l_mod_chk_name\" &> /dev/null; then a_output2+=(\" - unloading kernel module: \\\"$l_mod_name\\\"\") modprobe -r \"$l_mod_chk_name\" 2>/dev/null; rmmod \"$l_mod_name\" 2>/dev/null fi if ! grep -Pq -- '\\binstall\\h+'\"${l_mod_chk_name//- /_}\"'\\h+(\\/usr)?\\/bin\\/(true|false)\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - setting kernel module: \\\"$l_mod_name\\\" to \\\"$(readlink -f /bin/false)\\\"\") printf '%s\\n' \"install $l_mod_chk_name $(readlink -f /bin/false)\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi if ! grep -Pq -- '\\bblacklist\\h+'\"${l_mod_chk_name//-/_}\"'\\b' <<< \"${a_showconfig[*]}\"; then a_output2+=(\" - denylisting kernel module: \\\"$l_mod_name\\\"\") printf '%s\\n' \"blacklist $l_mod_chk_name\" >> /etc/modprobe.d/\"$l_mod_name\".conf fi } for l_mod_base_directory in $l_mod_path; do # Check if the module exists on the system if."
+     remediation: "Run the following script to unload and disable the jffs2 module: - IF - the jffs2 kernel module is available in ANY installed kernel: - Create a file ending in .conf with install jffs2 /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist jffs2 in the /etc/modprobe.d/ directory - Run modprobe -r jffs2 2>/dev/null; rmmod jffs2 2>/dev/null to remove jffs2 from the kernel - IF - the jffs2 kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary."
      compliance:
        - cis: ["1.1.1.5"]
        - cis_csc_v8: ["4.8"]
@@ -335,7 +335,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "c:findmnt --kernel /tmp -> r:nodev"
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nodev'
 
   # 1.1.2.1.3 Ensure nosuid option set on /tmp partition. (Automated)
    - id: 18512
@@ -359,7 +359,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - "c:findmnt --kernel /tmp -> r:nosuid"
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nosuid'
 
   # 1.1.2.1.4 Ensure noexec option set on /tmp partition. (Automated)
    - id: 18513
@@ -384,7 +384,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/tmp -> r:noexec'
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:noexec'
 
   # 1.1.2.2.1 Ensure /dev/shm is a separate partition. (Automated)
    - id: 18514
@@ -434,7 +434,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:nodev'
+      - 'c:findmnt -kn /dev/shm -> r:\s*/dev/shm\s && r:nodev'
 
   # 1.1.2.2.3 Ensure nosuid option set on /dev/shm partition. (Automated)
    - id: 18516
@@ -482,7 +482,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:noexec'
+      - 'c:findmnt -kn /dev/shm  -> r:\s*/dev/shm\s && r:noexec'
 
   # 1.1.2.3.1 Ensure separate partition exists for /home. (Automated)
    - id: 18518
@@ -509,7 +509,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /home -> r:\s*/home\s'
+      - 'c:findmnt -kn /home -> r:\s*/home\s'
 
   # 1.1.2.3.2 Ensure nodev option set on /home partition. (Automated)
    - id: 18519
@@ -533,7 +533,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /home -> r:\s*/home\s && r:nodev'
+      - 'c:findmnt -kn /home -> r:\s*/home\s && r:nodev'
 
   # 1.1.2.3.3 Ensure nosuid option set on /home partition. (Automated)
    - id: 18520
@@ -557,7 +557,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /home -> r:\s*/home\s && r:nosuid'
+      - 'c:findmnt -kn /home -> r:\s*/home\s && r:nosuid'
 
   # 1.1.2.4.1 Ensure separate partition exists for /var. (Automated)
    - id: 18521
@@ -949,7 +949,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' apparmor -> r:install\\s+ok\\s+installed
+      - "c:dpkg-query -s apparmor -> r:^Status: install ok installed"
+      - "c:dpkg-query -s apparmor-utils -> r:^Status: install ok installed"
 
   # 1.3.1.2 Ensure AppArmor is enabled in the bootloader configuration. (Automated)
    - id: 18537
