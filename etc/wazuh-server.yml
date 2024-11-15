@@ -5,9 +5,9 @@ server:
     name: manager_01
     type: "master"
     ssl:
-      key: /etc/wazuh-server/slmanager.key
-      cert: /etc/wazuh-server/sslmanager.cert
-      ca: /etc/wazuh-server/sslmanager.ca
+      key: /etc/wazuh-server/server.key
+      cert: /etc/wazuh-server/server.cert
+      ca: /etc/wazuh-server/server.ca
 indexer:
   host: wazuh-indexer
   port: 9200
