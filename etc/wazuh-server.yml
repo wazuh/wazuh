@@ -11,5 +11,5 @@ server:
 indexer:
   host: wazuh-indexer
   port: 9200
-  user: admin
-  password: SecretPassword1%
+  user:
+  password:
