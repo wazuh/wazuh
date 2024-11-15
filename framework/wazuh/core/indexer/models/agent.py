@@ -73,7 +73,7 @@ class Agent:
     key: str = None
     type: str = None
     version: str = None
-    groups: str = None
+    groups: List[str] = None
     last_login: datetime = None
     status: Status = None
     host: Host = None
@@ -83,8 +83,6 @@ class Agent:
     def __post_init__(self, raw_key: str | None):
         if raw_key is not None:
             self.key = self.hash_key(raw_key).decode('latin-1')
-        if self.groups is not None:
-            self.groups = self.groups.split(',')
 
     @staticmethod
     def hash_key(raw_key: str) -> bytes:
@@ -130,9 +128,4 @@ class Agent:
         dict
             The translated data.
         """
-        ret_val = {}
-        for k, v in asdict(self, dict_factory=convert_enums).items():
-            if k == 'groups':
-                v = ','.join(v)
-            ret_val[k] = v
-        return ret_val
+        return asdict(self, dict_factory=convert_enums)

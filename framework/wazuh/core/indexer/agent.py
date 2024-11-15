@@ -43,7 +43,7 @@ class AgentsIndex(BaseIndex):
         key: str,
         type: str,
         version: str,
-        groups: str = None,
+        groups: List[str] = None,
         host: Host = None,
     ) -> Agent:
         """Create a new agent.
@@ -75,13 +75,17 @@ class AgentsIndex(BaseIndex):
         Agent : dict
             The created agent instance.
         """
+        group_list = [DEFAULT_GROUP]
+        if groups is not None:
+            group_list.extend(groups)
+
         agent = Agent(
             id=id,
             name=name,
             raw_key=key,
             type=type,
             version=version,
-            groups=DEFAULT_GROUP + f',{groups}' if groups else DEFAULT_GROUP,
+            groups=group_list,
             host=host if host else None
         )
         try:

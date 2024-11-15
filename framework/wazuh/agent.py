@@ -561,7 +561,7 @@ async def add_agent(
             key=key,
             type=type,
             version=version,
-            groups=','.join(groups) if groups else None,
+            groups=groups,
             host=IndexerAgentHost(
                 architecture=host['architecture'],
                 ip=host['ip'],
