@@ -180,7 +180,7 @@ class TestAgentIndex:
         if override:
             source = 'ctx._source.agent.groups = new String[] {params.group};'
         else:
-            # Changing the indentation makes the test to fail
+            # Changing the indentation makes the test fail
             source = """
                 if (ctx._source.agent.groups == null) {
                     ctx._source.agent.groups = new String[] {params.group};

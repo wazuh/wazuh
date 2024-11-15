@@ -488,7 +488,8 @@ async def test_agent_add_agent(
     ]
 )
 @patch('wazuh.core.indexer.create_indexer')
-async def test_agent_add_agent_ko(create_indexer_mock, name, id, key, type, version):
+@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
+async def test_agent_add_agent_ko(mock_group_exists, create_indexer_mock, name, id, key, type, version):
     """Test `add_agent` from agent module.
 
     Parameters
