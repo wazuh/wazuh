@@ -72,10 +72,10 @@ def configure_ssl(params: dict, config: APISSLConfig):
                         'Attempting to generate them')
             private_key = generate_private_key(config.key)
             logger.info(
-                f"Generated private key file in WAZUH_PATH/{to_relative_path(config.key)}")
+                f"Generated private key file in {config.key}")
             generate_self_signed_certificate(private_key, config.cert)
             logger.info(
-                f"Generated certificate file in WAZUH_PATH/{to_relative_path(config.cert)}")
+                f"Generated certificate file in {config.cert}")
 
         # Load SSL context
         allowed_ssl_protocols = {
