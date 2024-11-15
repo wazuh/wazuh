@@ -2,7 +2,7 @@ namespace SyscollectorDeltas;
 
 table dbsync_hotfixes {
     scan_time:string;
-    hotfix:string;
+    hotfix:string (required);
     checksum:string;
 }
 
@@ -172,8 +172,8 @@ table AgentInfo {
 
 table Delta {
     agent_info:AgentInfo;
-    data:Provider;
-    operation:string;
+    data:Provider (required);
+    operation:string (required);
 }
 
 root_type Delta;

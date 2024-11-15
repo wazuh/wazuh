@@ -9,7 +9,7 @@ table AgentInfo {
 
 table syscollector_hotfixes {
     checksum:string;
-    hotfix:string;
+    hotfix:string (required);
     scan_time:string;
 }
 
@@ -169,13 +169,13 @@ union AttributesUnion {
 }
 
 table state {
-  attributes: AttributesUnion;
+  attributes: AttributesUnion (required);
   index: string;
   timestamp: string;
 }
 
 table integrity_check_global {
-  attributes_type:string;
+  attributes_type:string (required);
   id: int;
   begin: string;
   end: string;
@@ -183,7 +183,7 @@ table integrity_check_global {
 }
 
 table integrity_check_right {
-  attributes_type:string;
+  attributes_type:string (required);
   id: int;
   begin: string;
   end: string;
@@ -191,7 +191,7 @@ table integrity_check_right {
 }
 
 table integrity_check_left {
-  attributes_type:string;
+  attributes_type:string (required);
   id: int;
   begin: string;
   end: string;
@@ -200,7 +200,7 @@ table integrity_check_left {
 }
 
 table integrity_clear {
-  attributes_type:string;
+  attributes_type:string (required);
   id: int;
 }
 
@@ -214,7 +214,7 @@ union DataUnion {
 
 table SyncMsg {
     agent_info: AgentInfo;
-    data: DataUnion;
+    data: DataUnion (required);
 }
 
 root_type SyncMsg;
