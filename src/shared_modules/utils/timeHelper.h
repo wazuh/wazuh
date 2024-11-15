@@ -105,11 +105,11 @@ namespace Utils
         return ss.str();
     }
 
-    static std::string getCurrentISO8601()
+    static std::string getCurrentISO8601(const bool defaultValue = false)
     {
         // Get local time in UTC
         auto now = std::chrono::system_clock::now();
-        auto itt = std::chrono::system_clock::to_time_t(now);
+        auto itt = !defaultValue ? std::chrono::system_clock::to_time_t(now) : 0;
 
         std::ostringstream ss;
         struct tm buf;
