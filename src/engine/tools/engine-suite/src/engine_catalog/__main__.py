@@ -3,6 +3,7 @@ import argparse
 from importlib.metadata import metadata
 
 import shared.resource_handler as rs
+from shared.default_settings import Constants as DefaultSettings
 from engine_catalog.cmds.delete import configure as configure_delete
 from engine_catalog.cmds.get import configure as configure_get
 from engine_catalog.cmds.update import configure as configure_update
@@ -18,9 +19,9 @@ def parse_args():
                         version=f'%(prog)s {meta.get("Version")}')
 
     # Add socket path argument
-    parser.add_argument('--api-socket', type=str, default='/var/run/wazuh/api.sock',
+    parser.add_argument('--api-socket', type=str, default=DefaultSettings.SOCKET_PATH,
                         help='Path to the Wazuh API socket')
-    parser.add_argument('-n', '--namespace', type=str, default='user',
+    parser.add_argument('-n', '--namespace', type=str, default=DefaultSettings.DEFAULT_NS,
                         help='Namespace to use for the catalog')
 
     # Add parser for --format, only enum json or yml
