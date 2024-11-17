@@ -998,10 +998,12 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
-      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
-      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
-      - "c:apparmor_status -> r:^0 processes are unconfined"
+      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+loaded compare > 0
+      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0
+      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+kill\s+mode compare == 0
+      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+unconfined\s+mode compare == 0
+      - c:apparmor_status -> n:^(\p*\d+)\s*profiles\s+are\s+in\s+complain\s+mode compare == 0
+      - c:apparmor_status -> n:^(\p*\d+)\s*processes\s+are\s+unconfined compare == 0
 
   # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
    - id: 18539
@@ -1482,7 +1484,7 @@ checks:
        - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
      condition: any
      rules:
-      - c:dpkg-query -s autofs -> r:package 'autofs' is not installed
+      - "c:dpkg-query -s autofs -> r:package 'autofs' is not installed"
       - "not c:systemctl show autofs.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.2 Ensure avahi daemon services are not in use. (Automated)
@@ -1506,8 +1508,8 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: any
      rules:
-      - c:dpkg-query -s avahi-daemon -> r:package 'avahi-daemon' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' avahi-daemon -> r:no packages found matching avahi-daemon|deinstall|not-installed
+      - "c:dpkg-query -s avahi-daemon -> r:package 'avahi-daemon' is not installed"
+      - "not c:systemctl show avahi-daemon.socket avahi-daemon.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.3 Ensure dhcp server services are not in use. (Automated)
    - id: 18565
@@ -1530,10 +1532,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s isc-dhcp-server -> r:package 'isc-dhcp-server' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' isc-dhcp-server -> r:no packages found matching isc-dhcp-server|deinstall|not-installed
+      - "c:dpkg-query -s isc-dhcp-server -> r:package 'isc-dhcp-server' is not installed"
+      - "not c:systemctl show isc-dhcp-server.service isc-dhcp-server6.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.4 Ensure dns server services are not in use. (Automated)
    - id: 18566
@@ -1554,10 +1556,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s bind9 -> r:package 'bind9' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' bind9 -> r:no packages found matching bind9|deinstall|not-installed
+      - "c:dpkg-query -s bind9 -> r:package 'bind9' is not installed"
+      - "not c:systemctl show named.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.5 Ensure dnsmasq services are not in use. (Automated)
    - id: 18567
@@ -1580,7 +1582,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: any
      rules:
-      - c:dpkg-query -s dnsmasq -> r:package 'dnsmasq' is not installed
+      - "c:dpkg-query -s dnsmasq -> r:package 'dnsmasq' is not installed"
       - "not c:systemctl show dnsmasq.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.6 Ensure ftp server services are not in use. (Automated)
@@ -1602,10 +1604,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s vsftpd -> r:package 'vsftpd' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> r:no packages found matching vsftpd|deinstall|not-installed
+      - "c:dpkg-query -s vsftpd -> r:package 'vsftpd' is not installed"
+      - "not c:systemctl show vsftpd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.7 Ensure ldap server services are not in use. (Automated)
    - id: 18569
@@ -1628,10 +1630,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s slapd -> r:package 'slapd' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' slapd -> r:no packages found matching slapd|deinstall|not-installed
+      - "c:dpkg-query -s slapd -> r:package 'slapd' is not installed"
+      - "not c:systemctl show slapd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.8 Ensure message access server services are not in use. (Automated)
    - id: 18570
@@ -1676,10 +1678,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s nfs-kernel-server -> r:package 'nfs-kernel-server' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nfs-kernel-server -> r:no packages found matching nfs-kernel-server|deinstall|not-installed
+      - "c:dpkg-query -s nfs-kernel-server -> r:package 'nfs-kernel-server' is not installed"
+      - "not c:systemctl show nfs-server.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.10 Ensure nis server services are not in use. (Automated)
    - id: 18572
@@ -1702,8 +1704,8 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - c:dpkg-query -s nis -> r:package 'nis' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:no packages found matching nis|deinstall|not-installed
+      - "c:dpkg-query -s ypserv -> r:package 'ypserv' is not installed"
+      - "not c:systemctl show ypserv.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.11 Ensure print server services are not in use. (Automated)
    - id: 18573
@@ -1728,8 +1730,8 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - c:dpkg-query -s cups -> r:package 'cups' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> r:no packages found matching cups|deinstall|not-installed
+      - "c:dpkg-query -s cups -> r:package 'cups' is not installed"
+      - "not c:systemctl show cups.socket cups.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.12 Ensure rpcbind services are not in use. (Automated)
    - id: 18574
@@ -1750,10 +1752,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s rpcbind -> r:package 'rpcbind' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> r:no packages found matching rpcbind|deinstall|not-installed
+      - "c:dpkg-query -s rpcbind -> r:package 'rpcbind' is not installed"
+      - "not c:systemctl show rpcbind.socket rpcbind.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.13 Ensure rsync services are not in use. (Automated)
    - id: 18575
@@ -1774,11 +1776,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' rsync -> r:no packages found matching rsync|deinstall|not-installed
-      - 'c:systemctl is-active rsync" -> r:inactive'
-      - "c:systemctl is-enabled rsync -> r:masked|disabled"
+      - "c:dpkg-query -s rsync -> r:package 'rsync' is not installed"
+      - 'not c:systemctl show rsync.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 2.1.14 Ensure samba file server services are not in use. (Automated)
    - id: 18576
@@ -1798,10 +1799,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s samba -> r:package 'samba' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:no packages found matching samba|deinstall|not-installed
+      - "c:dpkg-query -s samba -> r:package 'samba' is not installed"
+      - "not c:systemctl show smbd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.15 Ensure snmp services are not in use. (Automated)
    - id: 18577
@@ -1822,10 +1823,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s snmp -> r:package 'snmp' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> r:no packages found matching snmp|deinstall|not-installed
+      - "c:dpkg-query -s snmpd -> r:package 'snmpd' is not installed"
+      - "not c:systemctl show snmpd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.16 Ensure tftp server services are not in use. (Automated)
    - id: 18578
@@ -1848,7 +1849,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: any
      rules:
-      - c:dpkg-query -s tftpd-hpa -> r:package 'tftpd-hpa' is not installed
+      - "c:dpkg-query -s tftpd-hpa -> r:package 'tftpd-hpa' is not installed"
       - "not c:systemctl show tftpd-hpa.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.17 Ensure web proxy server services are not in use. (Automated)
@@ -1870,10 +1871,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg-query -s squid -> r:package 'squid' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> r:no packages found matching squid|deinstall|not-installed
+      - "c:dpkg-query -s squid -> r:package 'squid' is not installed"
+      - "not c:systemctl show squid.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.18 Ensure web server services are not in use. (Automated)
    - id: 18580
@@ -1894,9 +1895,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg -s apache2 -> r:package 'apache2' is not installed
+      - "not c:dpkg-query -s apache2 nginx -> r:^Status: install ok installed"
+      - "not c:systemctl show apache2.socket apache2.service nginx.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.19 Ensure xinetd services are not in use. (Automated)
    - id: 18581
@@ -1917,9 +1919,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: none
+     condition: any
      rules:
-      - "c:dpkg -s xinetd -> r:install ok installed"
+      - "c:dpkg-query -s xinetd -> r:package 'xinetd' is not installed"
+      - "not c:systemctl show xinetd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.1.20 Ensure X window server services are not in use. (Automated)
    - id: 18582
@@ -1942,8 +1945,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - 'c:dpkg-query -W -f="${binary:Package}\t${Status}\t${db:Status-Status}\n" xserver-common* -> r:no packages found matching|deinstall|not-installed'
-      - c:dpkg-query -s xserver-common -> r:package 'xserver-common' is not installed
+      - "c:dpkg-query -s xserver-common -> r:package 'xserver-common' is not installed"
 
   # 2.1.21 Ensure mail transfer agent is configured for local-only mode. (Automated)
    - id: 18583
@@ -1990,8 +1992,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - c:dpkg-query -s nis -> r:package 'nis' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:no packages found matching nis|deinstall|not-installed
+      - "c:dpkg-query -s nis -> r:package 'nis' is not installed"
 
   # 2.2.2 Ensure rsh client is not installed. (Automated)
    - id: 18585
@@ -2014,8 +2015,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - c:dpkg-query -s rsh-client -> r:package 'rsh-client' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> r:no packages found matching rsh-client|deinstall|not-installed
+      - "c:dpkg-query -s rsh-client -> r:package 'rsh-client' is not installed"
 
   # 2.2.3 Ensure talk client is not installed. (Automated)
    - id: 18586
@@ -2038,8 +2038,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - c:dpkg-query -s talk -> r:package 'talk' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:no packages found matching talk|deinstall|not-installed
+      - "c:dpkg-query -s talk -> r:package 'talk' is not installed"
 
   # 2.2.4 Ensure telnet client is not installed. (Automated)
    - id: 18587
@@ -2062,8 +2061,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - c:dpkg-query -s telnet -> r:package 'telnet' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> r:no packages found matching telnet|deinstall|not-installed
+      - "not c:dpkg-query -s telnet inetutils-telnet -> r:^Status: install ok installed"
 
   # 2.2.5 Ensure ldap client is not installed. (Automated)
    - id: 18588
@@ -2086,8 +2084,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - c:dpkg-query -s ldap-utils -> r:package 'ldap-utils' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> r:no packages found matching ldap-utils|deinstall|not-installed
+      - "c:dpkg-query -s ldap-utils -> r:package 'ldap-utils' is not installed"
 
   # 2.2.6 Ensure ftp client is not installed. (Automated)
    - id: 18589
@@ -2135,12 +2132,10 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition: all
+     condition: any
      rules:
-      - c:dpkg -s ntp -> r:package 'ntp' is not installed
-      - c:dpkg -s chrony -> r:package 'chrony' is not installed
-      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
-      - "c:timedatectl status -> r:NTP enabled: yes | NTP synchronized: yes"
+      - "f:/etc/systemd/timesyncd.conf -> r:^NTP|^FallbackNTP"
+      - "not c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.3.2.2 Ensure systemd-timesyncd is enabled and running. (Automated)
    - id: 18592
@@ -2163,8 +2158,8 @@ checks:
        - soc_2: ["CC4.1", "CC5.2"]
      condition: all
      rules:
-      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
-      - "c:systemctl is-active systemd-timesyncd.service -> r:active"
+      - "c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded"
+      - "c:systemctl show systemd-timesyncd.service -> r:^ActiveState=active"
 
   # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated)
    - id: 18593
@@ -2187,8 +2182,8 @@ checks:
        - soc_2: ["CC4.1", "CC5.2"]
      condition: any
      rules:
-      - f:/etc/chrony/chrony.conf -> r:^server|^pool
-      - not c:systemctl show chrony.service -> r:^LoadState=loaded|^ActiveState=active
+      - 'f:/etc/chrony/chrony.conf -> r:^server|^pool'
+      - 'not c:systemctl show chrony.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 2.3.3.2 Ensure chrony is running as user _chrony. (Automated)
    - id: 18594
@@ -2209,10 +2204,10 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition: any
+     condition: all
      rules:
       - 'c:ps -ef -> r:_chrony\.+chronyd'
-      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
+      - "not c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.3.3.3 Ensure chrony is enabled and running. (Automated)
    - id: 18595
@@ -2235,9 +2230,9 @@ checks:
        - soc_2: ["CC4.1", "CC5.2"]
      condition: all
      rules:
-      - "c:ps -ef -> r:chronyd"
-      - "c:systemctl is-enabled chrony.service -> r:enabled"
-      - "c:systemctl is-active chrony.service -> r:active"
+      - "c:systemctl show chrony.service -> r:^LoadState=loaded"
+      - "c:systemctl show chrony.service -> r:^ActiveState=active"
+      - "not c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
    - id: 18596
@@ -2252,8 +2247,8 @@ checks:
        - mitre_techniques: ["T1562", "T1562.001"]
      condition: all
      rules:
-      - "c:systemctl is-enabled cron -> r:enabled"
-      - "c:systemctl status cron -> r:Active: active \\(running\\)"
+      - "c:systemctl show cron.service -> r:^LoadState=loaded"
+      - "c:systemctl show cron.service -> r:^ActiveState=active"
 
   # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
    - id: 18597
@@ -2421,7 +2416,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - "not f:/etc/cron.deny"
+      - "f:/etc/cron.allow"
       - 'c:stat /etc/cron.allow -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
@@ -2446,8 +2441,11 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - "not f:/etc/at.deny"
-      - 'c:stat /etc/at.allow -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - "f:/etc/at.allow"
+      - 'c:stat -Lc "%a" /etc/at.allow -> n:^(\d)\d\d$ compare <= 6'
+      - 'c:stat -Lc "%a" /etc/at.allow -> n:^\d(\d)\d$ compare <= 4'
+      - 'c:stat -Lc "%a" /etc/at.allow -> n:^\d\d(\d)$ compare <= 0'
+      - 'c:stat -Lc "%U %G" /etc/at.allow -> r:^root root$|^root daemon$'
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual)
    - id: 18605
@@ -2470,7 +2468,9 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "f:/sys/module/ipv6/parameters/disable -> r:^0$"
+      - "not f:/sys/module/ipv6/parameters/disable -> r:0"
+      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net.ipv6.conf.all.disable_ipv6\s*\t*=\s*\t*1'
+      - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net.ipv6.conf.default.disable_ipv6\s*\t*=\s*\t*1'
 
   # 3.1.2 Ensure wireless interfaces are disabled. (Automated)
    - id: 18606
@@ -2517,10 +2517,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+     condition: any
      rules:
-      - "not c:systemctl is-enabled bluetooth.service -> r:^enabled"
-      - "not c:systemctl is-active bluetooth.service -> r:^active"
+      - "c:dpkg-query -s bluez -> r:package 'bluez' is not installed"
+      - "not c:systemctl is-active bluetooth.service -> r:^LoadState=loaded|^ActiveState=active"
 
   # 3.2.1 Ensure dccp kernel module is not available. (Automated)
    - id: 18608
