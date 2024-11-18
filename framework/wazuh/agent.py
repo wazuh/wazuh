@@ -542,6 +542,8 @@ async def add_agent(
     ------
     WazuhError(1738)
         Name length is greater than 128 characters.
+    WazuhError(1710)
+        Group doesn't exist.
     WazuhError(1762)
         Failed while creating the update-group order.
     
@@ -554,6 +556,10 @@ async def add_agent(
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
+    for group in groups:
+        if not Agent.group_exists(group):
+            raise WazuhError(1710, extra_message=group)
+
     async with get_indexer_client() as indexer_client:
         new_agent = await indexer_client.agents.create(
             id=id,
@@ -561,7 +567,7 @@ async def add_agent(
             key=key,
             type=type,
             version=version,
-            groups=','.join(groups) if groups else None,
+            groups=groups,
             host=IndexerAgentHost(
                 architecture=host['architecture'],
                 ip=host['ip'],
@@ -687,9 +693,10 @@ async def create_group(group_id: str) -> WazuhResult:
         raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/shared
-    agent_conf_template = path.join(common.WAZUH_SHARED, 'agent-template.conf')
     try:
-        full_copy(agent_conf_template, group_path)
+        with open(group_path, 'w') as f:
+            # TODO(#25121): Write group configuration template
+            f.write('# Group configuration')
 
         chown(group_path, common.wazuh_uid(), common.wazuh_gid())
         chmod(group_path, 0o660)
@@ -734,8 +741,8 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
 
                 # Reuse command object
                 command = create_update_group_command(agent_id='')
-                for agent_id in agent_list:
-                    command.target.id = agent_id
+                for agent in agent_list:
+                    command.target.id = agent.id
 
                     response = await indexer_client.commands_manager.create(command)
                     if response.result is not ResponseResult.CREATED:
@@ -800,15 +807,26 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
         query = {IndexerKey.MATCH_ALL: {}}
 
     async with get_indexer_client() as indexer_client:
-        available_agents = [item.id for item in
-            await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='agent.id')
-        ]
+        available_agents = await indexer_client.agents.search(
+            query={IndexerKey.QUERY: query},
+            select='agent.id,agent.groups',
+        )
 
-        for not_found_id in set(agent_list) - set(available_agents):
+        available_agents_ids = []
+        for i, agent in enumerate(available_agents):
+            if group_id in agent.groups:
+                result.add_failed_item(id_=agent.id, error=WazuhError(1766))
+                available_agents.pop(i)
+                agent_list.remove(agent.id)
+                continue
+
+            available_agents_ids.append(agent.id)
+
+        for not_found_id in set(agent_list) - set(available_agents_ids):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
 
-        await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list)
+        await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list, override=replace)
 
         # Reuse command object
         command = create_set_group_command(agent_id='', groups=[group_id])

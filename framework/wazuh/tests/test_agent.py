@@ -438,7 +438,9 @@ async def test_agent_delete_agents(
     ),
 ])
 @patch('wazuh.core.indexer.create_indexer')
+@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
 async def test_agent_add_agent(
+    mock_group_exists,
     create_indexer_mock,
     name,
     id,
@@ -454,7 +456,7 @@ async def test_agent_add_agent(
         raw_key=key,
         type=type,
         version=version,
-        groups=','.join(groups),
+        groups=groups,
     )
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
@@ -486,7 +488,8 @@ async def test_agent_add_agent(
     ]
 )
 @patch('wazuh.core.indexer.create_indexer')
-async def test_agent_add_agent_ko(create_indexer_mock, name, id, key, type, version):
+@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
+async def test_agent_add_agent_ko(mock_group_exists, create_indexer_mock, name, id, key, type, version):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -500,7 +503,6 @@ async def test_agent_add_agent_ko(create_indexer_mock, name, id, key, type, vers
     """
     with pytest.raises(WazuhError, match='.* 1738 .*'):
         await add_agent(name=name*128, id=id, key=key, type=type, version=version)
-
 
 
 @pytest.mark.parametrize('group_list, q, expected_result', [

@@ -20,20 +20,11 @@ class AgentsIndex(BaseIndex):
     INDEX = '.agents'
     SECONDARY_INDEXES = []
     REMOVE_GROUP_SCRIPT = """
-    def groups = ctx._source.agent.groups.splitOnToken(",");
-    def groups_str = "";
-
-    for (int i=0; i < groups.length; i++) {
-      if (groups[i] != params.group) {
-        if (i != 0) {
-          groups_str += ",";
+    for (int i=ctx._source.agent.groups.length-1; i>=0; i--) {
+        if (ctx._source.agent.groups[i] == params.group) {
+            ctx._source.agent.groups.remove(i);
         }
-
-        groups_str += groups[i];
-      }
     }
-
-    ctx._source.agent.groups = groups_str;
     """
 
     async def create(
@@ -43,7 +34,7 @@ class AgentsIndex(BaseIndex):
         key: str,
         type: str,
         version: str,
-        groups: str = None,
+        groups: List[str] = None,
         host: Host = None,
     ) -> Agent:
         """Create a new agent.
@@ -75,13 +66,17 @@ class AgentsIndex(BaseIndex):
         Agent : dict
             The created agent instance.
         """
+        group_list = [DEFAULT_GROUP]
+        if groups is not None:
+            group_list.extend(groups)
+
         agent = Agent(
             id=id,
             name=name,
             raw_key=key,
             type=type,
             version=version,
-            groups=DEFAULT_GROUP + f',{groups}' if groups else DEFAULT_GROUP,
+            groups=group_list,
             host=host if host else None
         )
         try:
@@ -213,8 +208,8 @@ class AgentsIndex(BaseIndex):
         """
         query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
             .filter({
-                IndexerKey.QUERY_STRING: {
-                    IndexerKey.QUERY: f'agent.groups: *{group_name}*'
+                IndexerKey.TERM: {
+                    'agent.groups': group_name
                 }
             }) \
             .script(
@@ -237,10 +232,9 @@ class AgentsIndex(BaseIndex):
         agents : List[Agent]
             Agents list.
         """
-        
         query = AsyncSearch(using=self._client, index=self.INDEX).filter({
-            IndexerKey.QUERY_STRING: {
-                IndexerKey.QUERY: f'agent.groups: *{group_name}*'
+            IndexerKey.TERM: {
+                'agent.groups': group_name
             }
         })
         response = await query.execute()
@@ -295,13 +289,13 @@ class AgentsIndex(BaseIndex):
             source = self.REMOVE_GROUP_SCRIPT
         else:
             if override:
-                source = 'ctx._source.agent.groups = params.group'
+                source = 'ctx._source.agent.groups = new String[] {params.group};'
             else:
                 source = """
                 if (ctx._source.agent.groups == null) {
-                    ctx._source.agent.groups = params.group;
+                    ctx._source.agent.groups = new String[] {params.group};
                 } else {
-                    ctx._source.agent.groups += ","+params.group;
+                    ctx._source.agent.groups.add(params.group);
                 }
                 """
 
