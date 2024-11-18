@@ -19,12 +19,15 @@
 #include "eventDecoder.hpp"
 #include "storeModel.hpp"
 
-const std::string TAR_DB_FILE_PATH {"/tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar"};
-const std::string XZ_DB_FILE_PATH {TAR_DB_FILE_PATH + ".xz"};
-const std::string DECOMPRESSED_DB_PATH {"/var/lib/"};
-const std::string CURRENT_DB_PATH {DECOMPRESSED_DB_PATH + "wazuh-server/"};
-const std::string DATABASE_PATH {CURRENT_DB_PATH + "vd/feed/"};
-const std::string LEGACY_DB_PATH {DECOMPRESSED_DB_PATH + "queue/"};
+const std::string CONTENT_NAME {"vd_1.0.0_vd_4.10.0"};                            // Content name.
+const std::filesystem::path WAZUH_LIB_PATH {"/var/lib/wazuh-server/"};            //< Path to the lib server files.
+const std::filesystem::path TMP_PATH {"/tmp/wazuh-server"};                       //< Path to the tmp files.
+const std::filesystem::path WAZUH_LIB_TMP_PATH {WAZUH_LIB_PATH / "tmp/"};         //< Path to the lib server tmp files.
+const std::filesystem::path XZ_FILE_PATH {TMP_PATH / (CONTENT_NAME + ".tar.xz")}; //< Path of the compressed db
+const std::filesystem::path TAR_FILE_PATH {WAZUH_LIB_TMP_PATH / (CONTENT_NAME + ".tar")}; //< Path to the tar db.
+const std::filesystem::path LEGACY_DB_PATH {WAZUH_LIB_TMP_PATH / "queue/"};           //< Path to the legacy database.
+const std::filesystem::path VD_FEED_DB_BASE_PATH {WAZUH_LIB_PATH / "vd/"};            //< Path to the current database.
+const std::filesystem::path VD_UPDATER_DB_BASE_PATH {WAZUH_LIB_PATH / "vd_updater/"}; //< Path to the updater database.
 
 constexpr auto OFFSET_TRANSACTION_SIZE {1000};
 constexpr auto EMPTY_KEY {""};
@@ -38,43 +41,57 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
 {
     try
     {
-        if (std::filesystem::exists(XZ_DB_FILE_PATH))
+        if (std::filesystem::exists(XZ_FILE_PATH))
         {
             LOG_INFO("Starting database file decompression.");
 
-            if (std::filesystem::remove(TAR_DB_FILE_PATH))
+            if (std::filesystem::remove(TAR_FILE_PATH))
             {
-                LOG_DEBUG("Removing {} file before decompression.", TAR_DB_FILE_PATH);
+                LOG_DEBUG("Removing {} file before decompression.", TAR_FILE_PATH.c_str());
             }
             if (std::filesystem::remove_all(LEGACY_DB_PATH))
             {
-                LOG_DEBUG("Removing existent {} folder.", LEGACY_DB_PATH);
+                LOG_DEBUG("Removing existent {} folder.", LEGACY_DB_PATH.c_str());
             }
-            if (std::filesystem::remove_all(CURRENT_DB_PATH))
+            if (std::filesystem::remove_all(VD_FEED_DB_BASE_PATH))
             {
-                LOG_DEBUG("Removing existent {} folder.", CURRENT_DB_PATH);
+                LOG_DEBUG("Removing existent {} folder.", VD_FEED_DB_BASE_PATH.c_str());
+            }
+            if (std::filesystem::remove_all(VD_UPDATER_DB_BASE_PATH))
+            {
+                LOG_DEBUG("Removing existent {} folder.", VD_UPDATER_DB_BASE_PATH.c_str());
+            }
+            if (!std::filesystem::exists(WAZUH_LIB_TMP_PATH))
+            {
+                std::filesystem::create_directories(WAZUH_LIB_TMP_PATH);
             }
 
             LOG_DEBUG("Starting XZ file decompression");
-            fs::XzHelper(std::filesystem::path(XZ_DB_FILE_PATH), std::filesystem::path(TAR_DB_FILE_PATH)).decompress();
+            fs::XzHelper(std::filesystem::path(XZ_FILE_PATH), std::filesystem::path(TAR_FILE_PATH)).decompress();
 
-            LOG_DEBUG("Finishing XZ file decompression. Removing {}.", XZ_DB_FILE_PATH);
-            std::filesystem::remove(XZ_DB_FILE_PATH);
+            LOG_DEBUG("Finishing XZ file decompression. Removing {}.", XZ_FILE_PATH.c_str());
+            std::filesystem::remove(XZ_FILE_PATH);
 
             // Define folders to extract
             std::vector<std::string> extractOnly;
-            extractOnly.emplace_back(LEGACY_DB_PATH + "vd");
+            extractOnly.emplace_back(LEGACY_DB_PATH / "vd");
+            extractOnly.emplace_back(LEGACY_DB_PATH / "vd_updater");
 
             LOG_DEBUG("Starting TAR file decompression.");
-            fs::ArchiveHelper::decompress(TAR_DB_FILE_PATH, DECOMPRESSED_DB_PATH, extractOnly);
+            fs::ArchiveHelper::decompress(TAR_FILE_PATH, WAZUH_LIB_TMP_PATH, extractOnly);
 
-            LOG_DEBUG("Finishing TAR file decompression. Removing {}.", TAR_DB_FILE_PATH);
-            std::filesystem::remove(TAR_DB_FILE_PATH);
+            LOG_DEBUG("Finishing TAR file decompression. Removing {}.", TAR_FILE_PATH.c_str());
+            std::filesystem::remove(TAR_FILE_PATH);
 
-            std::filesystem::rename(LEGACY_DB_PATH, CURRENT_DB_PATH);
+            // Move the extracted folder to the current database path
+            std::filesystem::rename(LEGACY_DB_PATH / "vd", WAZUH_LIB_PATH / "vd");
+            std::filesystem::rename(LEGACY_DB_PATH / "vd_updater", WAZUH_LIB_PATH / "vd_updater");
+
+            // Remove temporary folder
+            std::filesystem::remove_all(LEGACY_DB_PATH);
         }
 
-        m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(DATABASE_PATH, false);
+        m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(VD_FEED_DB_BASE_PATH / "feed", false);
 
         // Try to load global maps from the database, if it fails we throw an exception to force the download of
         // the complete feed.
@@ -85,8 +102,9 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
         // Create the database if it doesn't exist. We must remove any existing directory, as it may be corrupted.
         if (!m_feedDatabase)
         {
-            std::filesystem::remove_all(DATABASE_PATH);
-            m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(DATABASE_PATH, false);
+            std::filesystem::remove_all(VD_FEED_DB_BASE_PATH);
+            std::filesystem::remove_all(VD_UPDATER_DB_BASE_PATH);
+            m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(VD_FEED_DB_BASE_PATH / "feed", false);
         }
 
         LOG_ERROR("Error opening the database: {}, trying to re-download the feed.", ex.what());
