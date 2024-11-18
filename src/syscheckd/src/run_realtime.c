@@ -23,6 +23,7 @@
 #include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/synchapi_wrappers.h"
 #include "../../unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "../../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #endif
 #endif
 
@@ -689,7 +690,15 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
 
     /* Add directory to be monitored */
     if(realtime_win32read(rtlocald) == 0) {
-        mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
+        DWORD last_error = GetLastError();
+        mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir, last_error, win_strerror(last_error));
+        CloseHandle(rtlocald->h);
+        rtlocald->watch_status = FIM_RT_HANDLE_CLOSED;
+        if (!w_directory_exists(rtlocald->dir)) {
+            mwarn(FIM_REALTIME_FILE_NOT_SUPPORTED, rtlocald->dir);
+            configuration->options &= ~REALTIME_ACTIVE;
+            configuration->options |= SCHEDULED_ACTIVE;
+        }
         free_win32rtfim_data(rtlocald);
 
         w_mutex_unlock(&syscheck.fim_realtime_mutex);

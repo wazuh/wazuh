@@ -171,7 +171,7 @@ def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_lo
         - diff
         - scheduled
     '''
-    if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
+    if (test_metadata.get('fim_mode') == 'whodata' or test_metadata.get('fim_mode') == 'realtime') and sys.platform == WINDOWS:
         time.sleep(5)
     is_truncated = 'testdir_nodiff' in test_metadata.get('folder')
     folder = test_metadata.get('folder')

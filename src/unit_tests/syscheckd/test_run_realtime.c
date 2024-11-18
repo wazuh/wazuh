@@ -1727,6 +1727,43 @@ void test_realtime_adddir_success(void **state) {
     assert_int_equal(ret, 1);
 }
 
+void test_realtime_adddir_fail_file(void **state) {
+    int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\file");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Get_Elem_ex, 127);
+
+    expect_CreateFile_call("C:\\a\\file", (HANDLE)123456);
+
+    will_return(wrap_ReadDirectoryChangesW, 0);
+
+    expect_GetLastError_call(87);
+    will_return(__wrap_win_strerror,"The parameter is incorrect.");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "(6323): Unable to set 'ReadDirectoryChangesW' for path: 'C:\\a\\file'. Error(87): 'The parameter is incorrect.'");
+
+    expect_CloseHandle_call((HANDLE)123456, 0);
+
+    expect_string(__wrap_w_directory_exists, path, "C:\\a\\file");
+    will_return(__wrap_w_directory_exists, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(6957): Realtime mode only supports directories, not files. Switching to scheduled mode. File: 'C:\\a\\file'");
+
+    ret = realtime_adddir("C:\\a\\file", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+
+    assert_int_equal(ret, 0);
+}
+
 void test_RTCallBack_error_on_callback(void **state) {
     OVERLAPPED ov = {.hEvent = "C:\\a\\path"};
 
@@ -2018,6 +2055,7 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle),
         cmocka_unit_test(test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_success, setup_OSHash, teardown_OSHash),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_fail_file, setup_OSHash, teardown_OSHash),
     };
 #endif
 
