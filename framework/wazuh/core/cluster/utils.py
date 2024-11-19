@@ -444,3 +444,8 @@ def raise_if_exc(result: object) -> None:
     """
     if isinstance(result, Exception):
         raise result
+
+
+def print_version():
+    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
+    print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))
