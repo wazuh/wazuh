@@ -1,15 +1,20 @@
 server:
   nodes:
-    - 'wazuh-master'
+    - master
   node:
-    name: manager_01
-    type: "master"
+    name: server_01
+    type: master
     ssl:
       key: /etc/wazuh-server/server.key
-      cert: /etc/wazuh-server/server.cert
+      cert: /etc/wazuh-server/server.crt
       ca: /etc/wazuh-server/server.ca
 indexer:
-  host: wazuh-indexer
+  host: localhost
   port: 9200
-  user: ""
-  password: ""
+  user: admin
+  password: admin
+  ssl:
+    use_ssl: true
+    key: <PATH_TO_KEY_FILE>
+    cert: <PATH_TO_CERT_FILE>
+    ca: <PATH_TO_CA_FILE>
