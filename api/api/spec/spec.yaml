@@ -5860,13 +5860,6 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
-    rule_requirement:
-      in: path
-      name: requirement
-      required: true
-      schema:
-        type: string
-        enum: [pci_dss, gdpr, hipaa, nist-800-53, gpg13, tsc, mitre]
     result:
       in: query
       name: result
@@ -6051,17 +6044,6 @@ components:
             - pending
             - never_connected
             - disconnected
-        minItems: 1
-    statusRLDParam:
-      in: query
-      name: status
-      description: "Filter by list status. Use commas to enter multiple statuses"
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-        - all
         minItems: 1
     title:
       in: query
@@ -6253,66 +6235,10 @@ components:
           - error
           - info
           - warning
-    get_dirnames_path:
-      in: query
-      name: relative_dirname
-      description: "Filter by relative directory name"
-      schema:
-        type: string
-        format: get_dirnames_path
-    overwrite:
-      in: query
-      name: overwrite
-      description: "If set to false, an exception will be raised when updating contents of an already existing filename"
-      schema:
-        type: boolean
-        default: false
     pci_dss:
       in: query
       name: pci_dss
       description: "Filter by PCI_DSS requirement name"
-      schema:
-        type: string
-        format: alphanumeric
-    gdpr:
-      in: query
-      name: gdpr
-      description: "Filter by GDPR requirement"
-      schema:
-        type: string
-        format: alphanumeric
-    gpg13:
-      in: query
-      name: gpg13
-      description: "Filter by GPG13 requirement"
-      schema:
-        type: string
-        format: alphanumeric
-    hipaa:
-      in: query
-      name: hipaa
-      description: "Filter by HIPAA requirement"
-      schema:
-        type: string
-        format: alphanumeric
-    nist-800-53:
-      in: query
-      name: nist-800-53
-      description: "Filter by NIST-800-53 requirement"
-      schema:
-        type: string
-        format: alphanumeric
-    tsc:
-      in: query
-      name: tsc
-      description: "Filters by TSC requirement"
-      schema:
-        type: string
-        format: alphanumeric
-    mitre:
-      in: query
-      name: mitre
-      description: "Filters by MITRE technique ID"
       schema:
         type: string
         format: alphanumeric
