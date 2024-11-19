@@ -35,22 +35,18 @@ class Result(_message.Message):
     def __init__(self, output: _Optional[str] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
 
 class RunPost_Request(_message.Message):
-    __slots__ = ["asset_trace", "location", "message", "name", "namespaces", "queue", "trace_level"]
+    __slots__ = ["asset_trace", "name", "namespaces", "ndjson_event", "trace_level"]
     ASSET_TRACE_FIELD_NUMBER: _ClassVar[int]
-    LOCATION_FIELD_NUMBER: _ClassVar[int]
-    MESSAGE_FIELD_NUMBER: _ClassVar[int]
     NAMESPACES_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
-    QUEUE_FIELD_NUMBER: _ClassVar[int]
+    NDJSON_EVENT_FIELD_NUMBER: _ClassVar[int]
     TRACE_LEVEL_FIELD_NUMBER: _ClassVar[int]
     asset_trace: _containers.RepeatedScalarFieldContainer[str]
-    location: str
-    message: str
     name: str
     namespaces: _containers.RepeatedScalarFieldContainer[str]
-    queue: str
+    ndjson_event: str
     trace_level: TraceLevel
-    def __init__(self, name: _Optional[str] = ..., message: _Optional[str] = ..., location: _Optional[str] = ..., queue: _Optional[str] = ..., trace_level: _Optional[_Union[TraceLevel, str]] = ..., asset_trace: _Optional[_Iterable[str]] = ..., namespaces: _Optional[_Iterable[str]] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., ndjson_event: _Optional[str] = ..., trace_level: _Optional[_Union[TraceLevel, str]] = ..., asset_trace: _Optional[_Iterable[str]] = ..., namespaces: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class RunPost_Response(_message.Message):
     __slots__ = ["error", "result", "status"]

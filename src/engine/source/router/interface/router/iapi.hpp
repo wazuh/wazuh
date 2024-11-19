@@ -65,14 +65,9 @@ public:
 
     // Testing: Ingest Synchronous
     virtual std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) = 0;
-    virtual std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event,
-                                                                    const test::Options& opt) = 0;
 
     // Testing: Ingest Asynchronous
     virtual base::OptError ingestTest(base::Event&& event,
-                                      const test::Options& opt,
-                                      std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
-    virtual base::OptError ingestTest(std::string_view event,
                                       const test::Options& opt,
                                       std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
 
