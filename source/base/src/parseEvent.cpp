@@ -3,6 +3,7 @@
 #include <base/logging.hpp>
 #include <fmt/format.h>
 
+// TODO: Delete this file, remove all implementations parseWazuhEvent and replace it with new protocol parser.
 namespace base::parseEvent
 {
 

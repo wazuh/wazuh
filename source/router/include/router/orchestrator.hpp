@@ -233,21 +233,9 @@ public:
     std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) override;
 
     /**
-     * @copydoc router::ITesterAPI::ingestTest ASynchronous
-     */
-    std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Options& opt) override;
-
-    /**
      * @copydoc router::ITesterAPI::ingestTest Synchronous
      */
     base::OptError ingestTest(base::Event&& event,
-                              const test::Options& opt,
-                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
-
-    /**
-     * @copydoc router::ITesterAPI::ingestTest Synchronous
-     */
-    base::OptError ingestTest(std::string_view event,
                               const test::Options& opt,
                               std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
 
