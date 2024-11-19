@@ -37,6 +37,7 @@ all: build
 
 install:
 	# SHARE
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/bin
 	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework
 	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/scripts
 	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/framework/wazuh

@@ -80,12 +80,13 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/log
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}etc/wazuh-server
 
-cp -p %{_localstatedir}usr/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
-cp -p %{_localstatedir}usr/bin/wazuh-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
-cp -p %{_localstatedir}usr/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
-cp -p %{_localstatedir}usr/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin/
+cp -p %{_localstatedir}usr/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/bin/wazuh-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
 cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/
@@ -247,10 +248,10 @@ rm -fr %{buildroot}
 %{_localstatedir}var/lib/wazuh-server/engine/kvdb/*
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/indexer-connector
 
-%attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-engine
-%attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-apid
-%attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-comms-apid
-%attr(750, root, wazuh) %{_localstatedir}usr/bin/wazuh-server
+%attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine
+%attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid
+%attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid
+%attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/engine_store_0.0.2_5.0.0.tar.gz
 
