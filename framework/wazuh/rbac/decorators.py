@@ -11,7 +11,6 @@ from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
@@ -62,12 +61,6 @@ async def _expand_resource(resource: str) -> set:
             with RulesManager() as rum:
                 rules = rum.get_rules()
             return {str(rule_id.id) for rule_id in rules}
-        elif resource_type == 'rule:file':
-            return expand_rules()
-        elif resource_type == 'decoder:file':
-            return expand_decoders()
-        elif resource_type == 'list:file':
-            return expand_lists()
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless

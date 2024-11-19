@@ -185,28 +185,6 @@ async def get_system_nodes():
         raise e
 
 
-async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
-    """Retrieve custom ruleset integrity.
-
-    Parameters
-    ----------
-    lc : LocalClient
-        LocalClient instance.
-
-    Returns
-    -------
-    dict
-        Dictionary with results
-    """
-    response = await lc.execute(command=b"get_hash", data=b"")
-    result = json.loads(response, object_hook=as_wazuh_object)
-
-    if isinstance(result, Exception):
-        raise result
-
-    return result
-
-
 async def distribute_orders(lc: local_client.LocalClient, orders: List[Order]) -> None:
     """Send the `dist_orders` command to the local server.
 

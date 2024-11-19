@@ -127,55 +127,6 @@ class WazuhException(Exception):
                               ' protection in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1132: {'message': 'YAML syntax error', 'remediation': 'Please, ensure file content has correct YAML'},
-        # Rule: 1200 - 1299
-        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1201: {'message': 'Error reading rule files',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
-               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
-               },
-        1203: {'message': 'Error in argument \'level\'',
-               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
-               },
-        1205: {'message': 'Requirement not valid',
-               'remediation': 'Please indicate one of the following values:'
-               },
-
-        1207: {'message': 'Error reading rule files, wrong permissions',
-               'remediation': 'Please, check your permissions over the file'
-               },
-        1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
-                          'be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-        },
-        1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the rules'
-        },
-        1211: {'message': 'Invalid relative directory. A \'rule_dir\' tag is declared in ossec.conf '
-                          'ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-               },
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -209,54 +160,6 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-        1413: {'message': 'Error reading rules file'},
-        1414: {'message': 'Error reading rules file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1415: {'message': 'Rules file not found',
-               'remediation': 'Please, use GET /rules/files to list all available rules'
-               },
-
-        # Decoders: 1500 - 1599
-        1500: {'message': 'Error reading decoders from ossec.conf',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/custom.html)'
-                              'to get more information on adding or modifying existing decoders'
-               },
-        1501: {'message': 'Error reading decoders file'
-               },
-        1502: {'message': 'Error reading decoders file',
-               'remediation': 'Please, make sure you have read permissions on the file'
-               },
-        1503: {'message': 'Decoders file not found',
-               'remediation': 'Please, use GET /decoders/files to list all available decoders'
-               },
-        1504: {'message': 'The decoder does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1505: {'message': 'Invalid relative directory. A \'decoder_dir\' '
-                          'tag must be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
-        1506: {'message': 'Uploading, updating or deleting default decoders is not allowed.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1507: {'message': 'Invalid relative directory. A \'decoder_dir\' tag is declared '
-                          'in ossec.conf ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
 
         # Syscheck/AR: 1600 - 1699
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
@@ -367,26 +270,6 @@ class WazuhException(Exception):
         1764: "Invalid User-Agent HTTP header value. It must follow the format '<name> <type> <version>'",
         1765: "Invalid module name. It must be 'fim', 'sca', 'inventory', 'command' or 'vulnerability'",
         1766: {'message': 'The agent already belongs to the group'},
-
-        # CDB List: 1800 - 1899
-        1800: {'message': 'Bad format in CDB list {path}'},
-        1801: {'message': 'Wrong \'path\' parameter',
-               'remediation': 'Please, provide a correct path'},
-        1802: {'message': 'Lists file not found',
-               'remediation': 'Please, use `GET /lists/files` to find all available lists'},
-        1803: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1804: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you provide a correct filepath'
-               },
-        1805: {'message': 'File with the same name already exists in a subdirectory.',
-               'remediation': 'Please, make sure to use a name which is not repeated. '
-               },
-        1806: {'message': 'Error trying to create CDB list file.'
-               },
-        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                          'The error message will be the output of upgrade module'},
 
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'

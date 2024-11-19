@@ -31,8 +31,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-test_files_path = os.path.join(test_data_path, 'utils')
-wazuh_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
+test_files_path = os.path.join(test_data_path, 'test_load_wazuh_xml')
 
 # input data for testing q filter
 input_array = [
@@ -154,8 +153,6 @@ mock_nested_dict = {
 }
 
 test_xml = '''
-<!-- Local rules -->
-
 <!-- Modify it at your will. -->
 
 <!-- Example -->
@@ -518,33 +515,6 @@ def test_chown_r(mock_chown):
         mock_chown.assert_any_call(os.path.join(tmp_dirname, tmp_file.name), 'test_user', 'test_group')
 
 
-@patch('wazuh.core.utils.common.WAZUH_PATH', new='/test/path')
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.remove')
-def test_delete_wazuh_file(mock_remove, mock_exists):
-    """Check delete_file calls functions with expected params"""
-    assert utils.delete_wazuh_file('/test/path/etc/file')
-    mock_remove.assert_called_once_with('/test/path/etc/file')
-
-
-@patch('wazuh.core.utils.common.WAZUH_PATH', new='/test/path')
-def test_delete_wazuh_file_ko():
-    """Check delete_file calls functions with expected params"""
-    with pytest.raises(utils.WazuhError, match=r'\b1907\b'):
-        utils.delete_wazuh_file('/test/different_path/etc/file')
-
-    with pytest.raises(utils.WazuhError, match=r'\b1907\b'):
-        utils.delete_wazuh_file('/test/path/file/../../home')
-
-    with patch('wazuh.core.utils.path.exists', return_value=False):
-        with pytest.raises(utils.WazuhError, match=r'\b1906\b'):
-            utils.delete_wazuh_file('/test/path/etc/file')
-
-    with patch('wazuh.core.utils.path.exists', return_value=True):
-        with pytest.raises(utils.WazuhError, match=r'\b1907\b'):
-            utils.delete_wazuh_file('/test/path/etc/file')
-
-
 @pytest.mark.parametrize('ownership, time, permissions',
                          [((1000, 1000), None, None),
                           ((1000, 1000), (12345, 12345), None),
@@ -717,9 +687,9 @@ def test_load_wazuh_xml():
         if len(e1) != len(e2): return False
         return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
 
-    for rule_file in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml')):
+    for file in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml')):
         path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml'),
-                            rule_file)
+                            file)
         original = parse(path).getroot()
         result = utils.load_wazuh_xml(path)
 
@@ -1902,22 +1872,6 @@ def test_select_array(select, required_fields, expected_result):
         assert e.code == 1724
 
 
-@pytest.mark.parametrize('detail, value, attribs, details', [
-    ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
-    ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
-])
-def test_add_dynamic_detail(detail, value, attribs, details):
-    """Test add_dynamic_detail core rule function."""
-    utils.add_dynamic_detail(detail, value, attribs, details)
-    assert detail in details.keys()
-    if detail == next(iter(details.keys())):
-        assert details[detail]['pattern'].endswith(value)
-    else:
-        assert details[detail]['pattern'] == value
-    for key, value in attribs.items():
-        assert details[detail][key] == value
-
-
 @patch('wazuh.core.utils.check_wazuh_limits_unchanged')
 @patch('wazuh.core.utils.check_remote_commands')
 @patch('wazuh.core.utils.check_agents_allow_higher_versions')
@@ -1928,7 +1882,7 @@ def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
                             mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
-    with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
+    with open(os.path.join(test_files_path, 'agent_new_line_query.conf')) as f:
         xml_file = f.read()
 
     m = mock_open(read_data=xml_file)
@@ -1967,56 +1921,12 @@ def test_validate_wazuh_xml_ko(effect, expected_exception):
             utils.validate_wazuh_xml(input_file)
 
 
-@patch('wazuh.core.utils.full_copy')
-def test_delete_file_with_backup(mock_full_copy):
-    """Test delete_file_with_backup function."""
-    backup_file = 'backup'
-    abs_path = 'testing/dir/subdir/file'
-    delete_function = MagicMock()
-
-    utils.delete_file_with_backup(backup_file, abs_path, delete_function)
-
-    mock_full_copy.assert_called_with(abs_path, backup_file)
-    delete_function.assert_called_once_with(filename=os.path.basename(abs_path))
-
-
-@patch('wazuh.core.utils.full_copy', side_effect=IOError)
-def test_delete_file_with_backup_ko(mock_copyfile):
-    """Test delete_file_with_backup function exceptions."""
-    with pytest.raises(utils.WazuhError, match='.* 1019 .*'):
-        utils.delete_file_with_backup('test', 'test', str)
-
-
 def test_to_relative_path():
     """Test to_relative_path function."""
     path = 'etc/ossec.conf'
     assert utils.to_relative_path(os.path.join(WAZUH_PATH, path)) == path
 
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)
-
-
-@patch('wazuh.core.utils.common.RULES_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_RULES_PATH', new=test_files_path)
-def test_expand_rules():
-    rules = utils.expand_rules()
-    assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                     f'*{utils.common.RULES_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.DECODERS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_DECODERS_PATH', new=test_files_path)
-def test_expand_decoders():
-    decoders = utils.expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                        f'*{utils.common.DECODERS_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.LISTS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_LISTS_PATH', new=test_files_path)
-def test_expand_lists():
-    lists = utils.expand_lists()
-    assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
-        test_files_path, f'*{utils.common.LISTS_EXTENSION}')))))
 
 
 def test_full_copy():
