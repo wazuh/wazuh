@@ -96,19 +96,11 @@ on:
         type: string
         required: false
 
-  # TODO: Adapt inputs for pull_request
-  # pull_request:
-  #   types: [opened, reopened, synchronize, ready_for_review]
-  #   paths:
-  #     - 'src/**'
-  #     - 'packages/**'
-  #     - '.github/workflows/packages-build-manager.yml'
-
 jobs:
   Build-manager-packages:
     env:
-      SHOULD_UPLOAD: ${{ inputs.upload_package == 'true' && github.event_name != 'pull_request' }}
-      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum == 'true' && inputs.upload_package == 'true' && github.event_name != 'pull_request' }}
+      SHOULD_UPLOAD: ${{ inputs.upload_package }}
+      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
 
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
@@ -204,7 +196,7 @@ jobs:
           ignore: "site-packages,/var/ossec/framework/python"
 
       - name: Set up AWS CLI
-        if: ${{ inputs.upload_package || github.event_name != 'pull_request' }}
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
