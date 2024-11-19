@@ -4,6 +4,7 @@
 #
 # Syntax: make [ all | backup | install | restore | service ]
 
+WAZUH_USER        = wazuh
 WAZUH_GROUP       = wazuh
 WAZUH_SERVER      = wazuh-server
 SHARE_INSTALLDIR  ?= /usr/share/${WAZUH_SERVER}
@@ -13,11 +14,11 @@ BIN_INSTALLDIR    ?= ${SHARE_INSTALLDIR}/bin
 
 MV_FILE        = mv -f
 RM_FILE        = rm -f
-INSTALL_DIR    = install -o root -g ${WAZUH_GROUP} -m 0750 -d
-INSTALL_RW_DIR = install -o root -g ${WAZUH_GROUP} -m 0770 -d
-INSTALL_EXEC   = install -o root -g ${WAZUH_GROUP} -m 0750
-INSTALL_FILE   = install -o root -g ${WAZUH_GROUP} -m 0640
-INSTALL_CONFIG_FILE   = install -o root -g ${WAZUH_GROUP} -m 0660
+INSTALL_DIR    = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750 -d
+INSTALL_RW_DIR = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0770 -d
+INSTALL_EXEC   = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750
+INSTALL_FILE   = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0640
+INSTALL_CONFIG_FILE   = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0660
 PYTHON_BIN     = $(SHARE_INSTALLDIR)/framework/python/bin/python3
 
 
