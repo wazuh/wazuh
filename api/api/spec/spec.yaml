@@ -3990,47 +3990,6 @@ components:
           format: hash_or_empty
           description: "SHA256 checksum of the file"
 
-    # Decoders models
-    Decoder:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/DecoderFile'
-      properties:
-        name:
-          type: string
-          description: "Decoder name"
-        position:
-          type: integer
-          format: int32
-          minimum: 0
-          description: "Position of this decoder in the decoder file. The parent decoder will have position 0, the
-          following defined decoder will have position 1, and so on"
-        details:
-          type: object
-          description: "Decoder definition fields"
-          properties:
-            program_name:
-              type: object
-              nullable: true
-            parent:
-              type: string
-            prematch:
-              type: object
-            regex:
-              type: object
-              items:
-                type: string
-            order:
-              type: string
-            accumulate:
-              type: boolean
-              nullable: true
-
-    DecoderFile:
-      allOf:
-        - $ref: '#/components/schemas/RulesetFile'
-        - $ref: '#/components/schemas/RulesetStatus'
-
     # Syscollector models
     SyscollectorHardware:
       type: object
