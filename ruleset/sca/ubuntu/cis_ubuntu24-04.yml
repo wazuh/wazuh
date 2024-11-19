@@ -1084,7 +1084,30 @@ checks:
      rules:
       - 'c:stat /boot/grub/grub.cfg -> r:Access: \(0400/-r--------\) && r:Uid:\s+\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s+\t*\(\s*\t*0/\s*\t*root\)'
 
-  # 1.5.1 Ensure address space layout randomization is enabled. (Automated) - Not Implemented
+  # 1.5.1 Ensure address space layout randomization is enabled. (Automated)
+   - id: 18544
+     title: "Ensure address space layout randomization is enabled."
+     description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
+     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
+     remediation: "Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - kernel.randomize_va_space = 2 Example: # printf \"%s\\n\" \"kernel.randomize_va_space = 2\" >> /etc/sysctl.d/60- kernel_sysctl.conf Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2 Note: If these settings appear in a canonically later file, or later in the same file, these settings will be overwritten."
+     references:
+      - "http://manpages.ubuntu.com/manpages/focal/man5/sysctl.d.5.html"
+     compliance:
+      - cis: ["1.5.1"]
+      - cis_csc_v8: ["10.5"]
+      - cis_csc_v7: ["8.3"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_techniques: ["T1068"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
+     condition: any
+     rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'f:/etc/sysctl.conf -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'd:/etc/sysctl.d/ -> r:\.+ -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
 
   # 1.5.3 Ensure core dumps are restricted. (Automated)
@@ -1967,7 +1990,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - 'not c:ss -lntu -> r:\.*:25\s && r:127.0.0.1:25\s+|::1]:25\s+'
+      - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127.0.0.\d+:|\s+[::1]:'
 
   # 2.1.22 Ensure only approved services are listening on a network interface. (Manual) - Not Implemented
 
@@ -2158,8 +2181,8 @@ checks:
        - soc_2: ["CC4.1", "CC5.2"]
      condition: all
      rules:
-      - "c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded"
-      - "c:systemctl show systemd-timesyncd.service -> r:^ActiveState=active"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
+      - "c:systemctl is-active systemd-timesyncd.service -> r:active"
 
   # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated)
    - id: 18593
