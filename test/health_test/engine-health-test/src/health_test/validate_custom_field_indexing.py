@@ -7,7 +7,7 @@ import json
 import time
 import sys
 import subprocess
-from shared.default_settings import Constants
+from shared.default_settings import Constants, CONFIG_ENV_KEYS
 from engine_handler.handler import EngineHandler
 from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
@@ -635,7 +635,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         sys.exit(f"Error reading the JSON schema file: {e}")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix())
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
@@ -661,13 +661,6 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
 
-        # Change level log
-        original_log_level = subprocess.check_output(
-            f'sed -n \'s/server\\.log_level="\\([^"]*\\)"/\\1/p\' {conf_path}',
-            shell=True,
-            text=True
-        ).strip()
-        subprocess.run(['sed', '-i', 's/server.log_level="[^"]*"/server.log_level="warning"/g', conf_path])
 
         log = (env_path / "logs/engine.log").as_posix()
         engine_handler.start(log)
@@ -690,9 +683,6 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
     print("Restart wazuh-core-message decoder changes")
     engine_handler.stop()
     opensearch_management.stop()
-        # Restore level log
-        subprocess.run(
-            ['sed', '-i', f's/server.log_level="warning"/server.log_level="{original_log_level}"/g', conf_path])
     print("Engine stopped.\n\n")
 
     for result in results:
@@ -733,7 +723,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
         sys.exit(f"Error reading the JSON schema file: {e}")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix())
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     results: List[Result] = []
     rules: List[Path] = []
@@ -759,13 +749,6 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
 
-        # Change level log
-        original_log_level = subprocess.check_output(
-            f'sed -n \'s/server\\.log_level="\\([^"]*\\)"/\\1/p\' {conf_path}',
-            shell=True,
-            text=True
-        ).strip()
-        subprocess.run(['sed', '-i', 's/server.log_level="[^"]*"/server.log_level="warning"/g', conf_path])
 
         log = (env_path / "logs/engine.log").as_posix()
         engine_handler.start(log)
@@ -788,10 +771,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
         print("Restart wazuh-core-message decoder changes")
         engine_handler.stop()
         opensearch_management.stop()
-        # Restore level log
-        subprocess.run(
-            ['sed', '-i', f's/server.log_level="warning"/server.log_level="{original_log_level}"/g', conf_path])
-        print("Engine stopped.")
+        print("Engine stopped.\n\n")
 
     print("\n\n")
     for result in results:
