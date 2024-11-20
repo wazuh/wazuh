@@ -120,7 +120,7 @@ public:
         }
         catch (const std::exception& e)
         {
-            LOG_DEBUG("Exception in Api::processRequest: %s", e.what());
+            LOG_DEBUG("Exception in Api::processRequest: {}", e.what());
             wresponse = base::utils::wazuhProtocol::WazuhResponse::unknownError();
             callbackFn(wresponse);
         }
