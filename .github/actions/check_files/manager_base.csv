@@ -58,7 +58,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/wazuh-remoted,root,root,750,file,-rwxr-x---,,
 /var/ossec/bin/wazuh-reportd,root,root,750,file,-rwxr-x---,,
 /var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,,
-/var/ossec/etc/client.keys,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/etc/client.keys,wazuh,wazuh,640,file,-rw-r-----,,
 /var/ossec/etc/decoders/local_decoder.xml,wazuh,wazuh,660,file,-rw-rw----,,
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/etc/lists/amazon/aws-eventnames,wazuh,wazuh,660,file,-rw-rw----,,
