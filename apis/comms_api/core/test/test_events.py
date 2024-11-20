@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
 from fastapi import FastAPI, Request
+from starlette.requests import ClientDisconnect
 
 from comms_api.core.events import create_stateful_events, send_stateless_events, parse_stateful_events
 from comms_api.models.events import StatefulEvents
@@ -29,6 +30,20 @@ async def test_send_stateless_events(events_send_mock):
     await send_stateless_events(request=request)
 
     events_send_mock.assert_called_once_with(stream_mock())
+
+
+@patch('wazuh.core.engine.events.EventsModule.send', side_effect=ClientDisconnect)
+async def test_send_stateless_events_ko(events_send_mock):
+    """Verify that the `send_stateless_events` function fails on a client disconnection."""
+    request = Request(scope={
+        'type': 'http',
+        'app': FastAPI(),
+    })
+    stream_mock = MagicMock()
+    request.stream = stream_mock
+
+    with pytest.raises(WazuhError, match=r'2708'):
+        await send_stateless_events(request=request)
 
 
 @patch('wazuh.core.indexer.create_indexer', return_value=AsyncMock())
@@ -131,16 +146,25 @@ async def test_parse_stateful_events():
     assert result == events
 
 
-async def test_parse_stateful_events_ko():
+@pytest.mark.parametrize('disconnect_client, expected_code', [
+    (True, 2708),
+    (False, 2709)
+])
+async def test_parse_stateful_events_ko(disconnect_client, expected_code):
     """Verify that the `parse_stateful_events` function fails on an invalid request."""
     request = Request(scope={
         'type': 'http',
-        'app': FastAPI()
+        'app': FastAPI(),
     })
     request.app.state.batcher_queue = AsyncMock()
     request._body = '\n'.join([
         '{"id": "123"}', 
     ]).encode()
 
-    with pytest.raises(WazuhError, match=r'2709'):
-        await parse_stateful_events(request)
+    if disconnect_client:
+        with patch('fastapi.Request.stream', side_effect=ClientDisconnect()):
+            with pytest.raises(WazuhError, match=rf'{expected_code}'):
+                await parse_stateful_events(request)
+    else:
+        with pytest.raises(WazuhError, match=rf'{expected_code}'):
+                await parse_stateful_events(request)
