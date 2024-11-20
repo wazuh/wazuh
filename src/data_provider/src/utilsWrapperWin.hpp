@@ -14,6 +14,7 @@
 #include <set>
 #include <wbemidl.h>
 #include <wbemcli.h>
+#include <stdio.h>
 #include <comdef.h>
 #include <codecvt>
 #include "wuapi.h"
@@ -42,63 +43,22 @@ class IComHelper
         virtual HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) = 0;
 };
 
-
 class ComHelper : public IComHelper
 {
     public:
         // Implement WMI functions
-        HRESULT CreateWmiLocator(IWbemLocator*& pLoc) override
-        {
-            return CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&pLoc);
-        }
-
-        HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc) override
-        {
-            return pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, 0, 0, 0, 0, &pSvc);
-        }
-
-        HRESULT SetProxyBlanket(IWbemServices* pSvc) override
-        {
-            return CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL,
-                                     RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
-        }
-
-        HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) override
-        {
-            return pSvc->ExecQuery(bstr_t("WQL"), bstr_t("SELECT * FROM Win32_QuickFixEngineering"),
-                                   WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnumerator);
-        }
+        HRESULT CreateWmiLocator(IWbemLocator*& pLoc) override;
+        HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc) override;
+        HRESULT SetProxyBlanket(IWbemServices* pSvc) override;
+        HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) override;
 
         // Implement Windows Update API functions
-        HRESULT CreateUpdateSearcher(IUpdateSearcher*& pUpdateSearcher) override
-        {
-            return CoCreateInstance(CLSID_UpdateSearcher, NULL, CLSCTX_INPROC_SERVER, IID_IUpdateSearcher, (LPVOID*)&pUpdateSearcher);
-        }
-
-        HRESULT GetTotalHistoryCount(IUpdateSearcher* pUpdateSearcher, LONG& count) override
-        {
-            return pUpdateSearcher->GetTotalHistoryCount(&count);
-        }
-
-        HRESULT QueryHistory(IUpdateSearcher* pUpdateSearcher, IUpdateHistoryEntryCollection*& pHistory, LONG& count) override
-        {
-            return pUpdateSearcher->QueryHistory(0, count, &pHistory);
-        }
-
-        HRESULT GetCount(IUpdateHistoryEntryCollection* pHistory, LONG& count) override
-        {
-            return pHistory->get_Count(&count);
-        }
-
-        HRESULT GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry) override
-        {
-            return pHistory->get_Item(index, pEntry);
-        }
-
-        HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) override
-        {
-            return pEntry->get_Title(&title);
-        }
+        HRESULT CreateUpdateSearcher(IUpdateSearcher*& pUpdateSearcher) override;
+        HRESULT GetTotalHistoryCount(IUpdateSearcher* pUpdateSearcher, LONG& count) override;
+        HRESULT QueryHistory(IUpdateSearcher* pUpdateSearcher, IUpdateHistoryEntryCollection*& pHistory, LONG& count) override;
+        HRESULT GetCount(IUpdateHistoryEntryCollection* pHistory, LONG& count) override;
+        HRESULT GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry) override;
+        HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) override;
 };
 
 // Queries Windows Management Instrumentation (WMI) to retrieve installed hotfixes

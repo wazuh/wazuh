@@ -7,11 +7,22 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
+file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/utilsWrapperWin.cpp")
+
 add_executable(sysInfoWindows_unit_test
-    ${SYSINFO_SRC}
-    ${sysinfo_UNIT_TEST_SRC})
+    ${sysinfo_UNIT_TEST_SRC}
+    ${SYSINFO_SRC})
+
+link_directories("${CMAKE_SOURCE_DIR}/lib/")
+
 
 target_link_libraries(sysInfoWindows_unit_test
+    wbemuuid
+    wuguid
+    # uuid
+    # ole32
+    # oleaut32
     debug gtestd
     debug gmockd
     debug gtest_maind
@@ -23,12 +34,6 @@ target_link_libraries(sysInfoWindows_unit_test
     pthread
     sqlite3
     cjson
-    wbemuuid
-    uuid
-    wuguid
-    ole32
-    oleaut32
-    sysinfo
     -static-libgcc -static-libstdc++
 )
 
