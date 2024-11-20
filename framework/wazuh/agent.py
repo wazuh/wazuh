@@ -7,7 +7,6 @@ from typing import List, Optional, Union
 
 from api.models.agent_registration_model import Host
 
-from wazuh import __version__
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
     Agent,
@@ -24,7 +23,6 @@ from wazuh.core.indexer.commands import create_restart_command, create_set_group
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
-    full_copy,
     get_hash,
     process_array,
     get_group_file_path
