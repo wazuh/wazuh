@@ -143,6 +143,7 @@ function Get-MSIProductVersion {
 # Stop UI and launch the MSI installer
 function install {
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
+    Stop-Service -Name "Wazuh"
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
 
@@ -151,10 +152,9 @@ function install {
 
         if ($msi_new_version -ne $null -and $msi_new_version -eq $current_version) {
             write-output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
-            Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log', 'REINSTALL=ALL', 'REINSTALLMODE=vomus') -Wait -NoNewWindow
-        } else {
-            Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log') -Wait -NoNewWindow
         }
+        
+        Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log') -Wait -NoNewWindow
 
     } catch {
         write-output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
