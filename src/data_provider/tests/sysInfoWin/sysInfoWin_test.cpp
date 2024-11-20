@@ -18,9 +18,7 @@
 
 
 void SysInfoWinTest::SetUp() {};
-
 void SysInfoWinTest::TearDown() {};
-
 
 TEST_F(SysInfoWinTest, test_extract_HFValue_7618)
 {
@@ -236,25 +234,6 @@ TEST_F(SysInfoWinTest, WuaQueryHistory)
     EXPECT_THROW(QueryWUHotFixes(hotfixSet, mockHelper), std::runtime_error);
 }
 
-
-// TEST_F(SysInfoWinTest, WuaPopulatesHotfixSetCorrectly)
-// {
-//     MockComHelper mockHelper;
-//     std::set<std::string> hotfixSet;
-
-//     EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_))
-//     .WillOnce(testing::Return(S_OK));
-
-//     EXPECT_CALL(mockHelper, GetTotalHistoryCount(::testing::_, ::testing::_))
-//     .WillOnce(testing::Return(S_OK));
-
-//     EXPECT_CALL(mockHelper, QueryHistory(::testing::_, ::testing::_, ::testing::_))
-//     .WillOnce(testing::Return(S_OK));
-
-//     EXPECT_THROW(QueryWUHotFixes(hotfixSet, mockHelper), std::runtime_error);
-// }
-
-
 TEST_F(SysInfoWinTest, GetHistoryTest)
 {
     MockComHelper mockHelper;
@@ -269,13 +248,9 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
     EXPECT_CALL(mockHelper, QueryHistory(::testing::_, ::testing::_, ::testing::_))
     .WillOnce(testing::Return(S_OK));
 
-
-    // Setup mock expectations
-    //IUpdateHistoryEntryCollection* pHistory = nullptr;  // Mock or create a mock for IUpdateHistoryEntryCollection
-    //EXPECT_CALL(mockHelper, GetCount(pHistory, testing::_))
     long count = 4;
     EXPECT_CALL(mockHelper, GetCount(testing::_, testing::_))
-    .WillOnce(testing::DoAll(testing::SetArgReferee<1>(count), testing::Return(S_OK)));  // Simulate 5 items in the history collection
+    .WillOnce(testing::DoAll(testing::SetArgReferee<1>(count), testing::Return(S_OK)));
 
     for (int i = 0 ; i < count; i++)
     {
@@ -287,8 +262,8 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
         EXPECT_CALL(mockHelper, GetTitle(testing::_, testing::_))
         .WillRepeatedly(testing::Invoke([](IUpdateHistoryEntry*, BSTR & title) -> HRESULT
         {
-            title = SysAllocString(L"Security Update KB123456"); // Allocate and assign a string
-            return S_OK;                            // Return a success HRESULT
+            title = SysAllocString(L"Security Update KB123456");
+            return S_OK;
         }));
     }
 
