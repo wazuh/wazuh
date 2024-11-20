@@ -2206,6 +2206,7 @@ checks:
      condition: any
      rules:
       - 'f:/etc/chrony/chrony.conf -> r:^server|^pool'
+      - 'd:/etc/chrony/sources.d -> r:\.*.sources -> r:^server|^pool'
       - 'not c:systemctl show chrony.service -> r:^LoadState=loaded|^ActiveState=active'
 
   # 2.3.3.2 Ensure chrony is running as user _chrony. (Automated)
