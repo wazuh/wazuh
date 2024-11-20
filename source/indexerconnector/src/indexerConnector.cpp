@@ -219,20 +219,16 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                     continue;
                 }
 
-                const auto& finalIndexName = parsedData.contains("indexName")
-                                                 ? parsedData.at("indexName").get_ref<const std::string&>()
-                                                 : indexNameCurrentDate;
-
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
                     const auto& id = parsedData.at("id").get_ref<const std::string&>();
-                    builderBulkDelete(bulkData, id, finalIndexName);
+                    builderBulkDelete(bulkData, id, indexNameCurrentDate);
                 }
                 else
                 {
                     const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
                     const auto dataString = parsedData.at("data").dump();
-                    builderBulkIndex(bulkData, id, finalIndexName, dataString);
+                    builderBulkIndex(bulkData, id, indexNameCurrentDate, dataString);
                 }
             }
 
