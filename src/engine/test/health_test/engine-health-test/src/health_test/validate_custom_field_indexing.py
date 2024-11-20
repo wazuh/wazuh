@@ -638,6 +638,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
 
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
+    original_log_level = ""
 
     try:
         if integration_name is not None:
@@ -658,7 +659,17 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
                 integrations.append(integration_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
-        engine_handler.start()
+
+        # Change level log
+        original_log_level = subprocess.check_output(
+            f'sed -n \'s/server\\.log_level="\\([^"]*\\)"/\\1/p\' {conf_path}',
+            shell=True,
+            text=True
+        ).strip()
+        subprocess.run(['sed', '-i', 's/server.log_level="[^"]*"/server.log_level="warning"/g', conf_path])
+
+        log = (env_path / "logs/engine.log").as_posix()
+        engine_handler.start(log)
         print("Engine started.")
         print("Update wazuh-core-message decoder")
         if not exist_index_output(engine_handler):
@@ -675,6 +686,9 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         print("Restart wazuh-core-message decoder changes")
         engine_handler.stop()
         opensearch_management.stop()
+        # Restore level log
+        subprocess.run(
+            ['sed', '-i', f's/server.log_level="warning"/server.log_level="{original_log_level}"/g', conf_path])
         print("Engine stopped.")
 
     print("\n\n")
@@ -721,6 +735,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     results: List[Result] = []
     rules: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
+    original_log_level = ""
 
     try:
         if ruleset_name is not None:
@@ -740,7 +755,17 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
                 rules.append(ruleset_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
-        engine_handler.start()
+
+        # Change level log
+        original_log_level = subprocess.check_output(
+            f'sed -n \'s/server\\.log_level="\\([^"]*\\)"/\\1/p\' {conf_path}',
+            shell=True,
+            text=True
+        ).strip()
+        subprocess.run(['sed', '-i', 's/server.log_level="[^"]*"/server.log_level="warning"/g', conf_path])
+
+        log = (env_path / "logs/engine.log").as_posix()
+        engine_handler.start(log)
         print("Engine started.")
         if not exist_index_output(engine_handler):
             load_indexer_output(engine_handler)
@@ -757,6 +782,9 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
         print("Restart wazuh-core-message decoder changes")
         engine_handler.stop()
         opensearch_management.stop()
+        # Restore level log
+        subprocess.run(
+            ['sed', '-i', f's/server.log_level="warning"/server.log_level="{original_log_level}"/g', conf_path])
         print("Engine stopped.")
 
     print("\n\n")
