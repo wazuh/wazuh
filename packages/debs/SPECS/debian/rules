@@ -90,27 +90,27 @@ override_dh_install:
 override_dh_fixperms:
 	dh_fixperms
 	# Folders
-	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-	chown -R root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 
 	# Binaries
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
 
 
