@@ -85,11 +85,6 @@ class WazuhException(Exception):
         1115: {'message': 'Error executing verify-agent-conf',
                'remediation': 'Please, check your configuration file and try again'
                },
-        1116: {'message': "Requested component configuration does not exist",
-               'remediation': f"Please, visit the official documentation (https://documentation.wazuh.com/"
-                              f"{DOCU_VERSION}/user-manual/api/reference.html#operation/"
-                              f"api.controllers.agents_controller.get_agent_config) to check available component "
-                              f"configurations"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",

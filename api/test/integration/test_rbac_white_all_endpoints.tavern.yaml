@@ -125,63 +125,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/{agent_id}/daemons/stats
-
-stages:
-  - name: Try to get daemon stats from agent 001
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-
----
-test_name: GET /agents/{agent_id}/config/{component}/{configuration}
-
-stages:
-  - name: Try to get client configuration from agent component
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/client"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: DELETE /agents/{agent_id}/group
-
-stages:
-  - name: Try to remove agent 005 from all groups
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/005/group"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /agents/{agent_id}/key
-
-stages:
-  - name: Try get agent's 001 key
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: PUT /agents/{agent_id}/restart
 
 stages:
@@ -192,91 +135,6 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /agents/upgrade
-
-stages:
-  - name: Try to upgrade all agents (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: all
-        version: "4.0.0"
-    response:
-      <<: *empty_response
-
-  - name: Try to upgrade agent 008
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: 008
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /agents/upgrade_custom
-
-stages:
-  - name: Try to customly upgrade all agents (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: all
-        file_path: "{custom_wpk_path:s}"
-    response:
-      <<: *empty_response
-
-  - name: Try to customly upgrade agent 008 using default installer
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: 008
-        file_path: "{custom_wpk_path:s}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /agents/upgrade_result
-
-stages:
-  - name: Try to get all upgrade results (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
-  - name: Try to get agent 007 upgrade result (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '007'
     response:
       <<: *permission_denied
 
@@ -312,83 +170,6 @@ stages:
         group_id: group2
     response:
       <<: *permission_denied
-
----
-test_name: POST /agents/insert
-
-stages:
-  - name: Try to create a new agent specifying id, ip, key and name
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        name: "NewAgentPostInsert"
-        ip: "any"
-        id: "750"
-        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
-    response:
-      <<: *permission_denied
-
----
-test_name: POST /agents/insert/quick
-
-stages:
-  - name: Try to create new agent specifying its name
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agent_name: test_agent
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /agents/no_group
-
-stages:
-  - name: Try to get agents without group
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
----
-test_name: PUT /agents/node/{node_id}/restart
-
-stages:
-  - name: Try to restart all agents belonging to a node (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/node/worker1/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /agents/outdated
-
-stages:
-  - name: Try to get the outdated agents
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
 
 ---
 test_name: PUT /agents/reconnect
@@ -441,61 +222,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
-
----
-test_name: GET /agents/stats/distinct
-
-stages:
-  - name: Try to return all different combinations that agents have
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
----
-test_name: GET /agents/summary/os
-
-stages:
-  - name: Try to get the summary/os of all agents
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
----
-test_name: GET /agents/summary/status
-
-stages:
-  - name: Try to get the agents status summary
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/status"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          connection:
-            active: 0
-            disconnected: 0
-            never_connected: 0
-            pending: 0
-            total: 0
-          configuration:
-            synced: 0
-            not_synced: 0
-            total: 0
 
 ---
 test_name: GET /ciscat/{agent_id}/results
@@ -1276,20 +1002,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /groups/{group_id}/files
-
-stages:
-  - name: Try to get group files
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: PUT /logtest
 
 stages:
@@ -1652,38 +1364,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
-
----
-test_name: GET /overview/agents
-
-stages:
-  - name: Try to get agents overview
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/overview/agents"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      json:
-        data:
-          nodes: []
-          groups: []
-          agent_os: []
-          agent_status:
-            connection:
-              active: 0
-              disconnected: 0
-              never_connected: 0
-              pending: 0
-              total: 0
-            configuration:
-              synced: 0
-              total: 0
-              not_synced: 0
-          agent_version: []
-          last_registered_agent: []
-        error: 0
 
 ---
 test_name: PUT /rootcheck
@@ -2117,7 +1797,7 @@ stages:
         name: "test_i2"
         policy:
           actions:
-            - "agent:upgrade"
+            - "agent:read"
           resources:
             - "agent:id:004"
             - "agent:id:005"

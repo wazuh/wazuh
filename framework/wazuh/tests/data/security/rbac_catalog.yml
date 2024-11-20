@@ -18,35 +18,6 @@ get_rbac_actions:
         related_endpoints:
           - GET /agents
   - params:
-      endpoint: DELETE /agents/{agent_id}/group
-    result:
-      agent:modify_group:
-        description: Change the group of agents
-        resources:
-          - "agent:id"
-          - "agent:group"
-        example:
-          actions:
-            - agent:modify_group
-          resources:
-            - agent:id:004
-            - agent:group:us-east
-          effect: allow
-        related_endpoints:
-          - DELETE /agents/{agent_id}/group
-      group:modify_assignments:
-        description: Change the agents assigned to the group
-        resources:
-          - "group:id"
-        example:
-          actions:
-            - group:modify_assignments
-          resources:
-            - group:id:*
-          effect: allow
-        related_endpoints:
-          - DELETE /agents/{agent_id}/group
-  - params:
       endpoint: GET /
     result: {}
   - params:
@@ -93,17 +64,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /agents
-          - GET /agents/{agent_id}/config/{component}/{configuration}
-          - GET /agents/{agent_id}/key
-          - GET /agents/{agent_id}/daemons/stats
-          - GET /agents/{agent_id}/stats/{component}
-          - GET /agents/no_group
-          - GET /agents/outdated
-          - GET /agents/stats/distinct
-          - GET /agents/summary/os
-          - GET /agents/summary/status
           - GET /groups/{group_id}/agents
-          - GET /overview/agents
       agent:create:
         description: Create new agents
         resources:
@@ -129,7 +90,6 @@ get_rbac_actions:
             - agent:group:us-east
           effect: allow
         related_endpoints:
-          - DELETE /agents/{agent_id}/group
           - DELETE /agents/group
           - PUT /agents/group
       group:modify_assignments:
@@ -143,7 +103,6 @@ get_rbac_actions:
             - group:id:*
           effect: allow
         related_endpoints:
-          - DELETE /agents/{agent_id}/group
           - DELETE /agents/group
           - PUT /agents/group
       agent:reconnect:
@@ -174,24 +133,7 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/{agent_id}/restart
-          - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
-      agent:upgrade:
-        description: Upgrade the version of the agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - agent:upgrade
-          resources:
-            - agent:id:001
-            - agent:group:mediterranean
-          effect: allow
-        related_endpoints:
-          - PUT /agents/upgrade
-          - PUT /agents/upgrade_custom
-          - GET /agents/upgrade_result
       group:delete:
         description: Delete agent groups
         resources:
@@ -218,7 +160,6 @@ get_rbac_actions:
           - GET /groups
           - GET /groups/{group_id}/agents
           - GET /groups/{group_id}/configuration
-          - GET /overview/agents
       group:create:
         description: Create new agent groups
         resources:
@@ -255,7 +196,6 @@ get_rbac_actions:
             - node:id:worker3
           effect: deny
         related_endpoints:
-          - PUT /agents/node/{node_id}/restart
           - GET /cluster/local/info
           - GET /cluster/local/config
           - GET /cluster/nodes

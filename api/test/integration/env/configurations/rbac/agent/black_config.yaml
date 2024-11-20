@@ -4,7 +4,6 @@
   - agent:delete
   - agent:reconnect
   - agent:restart
-  - agent:upgrade
   - agent:modify_group
   resources:
   - agent:id:*
