@@ -84,8 +84,7 @@ public:
      * 3. Sets up the dispatcher to process messages asynchronously using a persistent queue. Messages are dispatched in
      * bulk either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages and the
      * interval is 5 seconds.
-     * 4. In each bulk query, the index name "$(date)" placeholder will be replaced by the current date but it'll be
-     * used only if the element being pushed doesn't contain an "indexName" field.
+     * 4. In each bulk query, the index name "$(date)" placeholder will be replaced by the current date.
      *
      * @param config Indexer connector configuration
     unordered
