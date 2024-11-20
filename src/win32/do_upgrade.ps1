@@ -143,6 +143,7 @@ function Get-MSIProductVersion {
 # Stop UI and launch the MSI installer
 function install {
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
+    Stop-Service -Name "Wazuh"
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
 
