@@ -242,6 +242,9 @@ case "$1" in
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
 
+    # Set client.keys to root:wazuh
+    chown root:${GROUP} ${DIR}/etc/client.keys
+
     # Remove old service file /etc/systemd/system/wazuh-manager.service if present
     if [ -f /etc/systemd/system/wazuh-manager.service ]; then
         rm -f /etc/systemd/system/wazuh-manager.service
