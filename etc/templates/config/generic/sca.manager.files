@@ -55,6 +55,7 @@ ubuntu/cis_ubuntu16-04.yml
 ubuntu/cis_ubuntu18-04.yml
 ubuntu/cis_ubuntu20-04.yml
 ubuntu/cis_ubuntu22-04.yml
+ubuntu/cis_ubuntu24-04.yml
 windows/cis_win10_enterprise.yml
 windows/cis_win11_enterprise.yml
 windows/cis_win2012r2.yml
