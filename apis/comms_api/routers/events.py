@@ -7,7 +7,7 @@ from comms_api.core.events import create_stateful_events, send_stateless_events,
 from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.exceptions import HTTPError, validation_exception_handler
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhCommsAPIError
+from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhIndexerError
 
 
 @timeout(30)
@@ -35,8 +35,8 @@ async def post_stateful_events(request: Request) -> StatefulEventsResponse:
         return StatefulEventsResponse(results=results)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)
-    except WazuhCommsAPIError as exc:
-        raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_403_FORBIDDEN)
+    except WazuhIndexerError as exc:
+        raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except ValidationError as exc:
         return await validation_exception_handler(request, RequestValidationError(exc.errors()))
 
