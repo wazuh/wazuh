@@ -3,7 +3,6 @@ from typing import List
 from fastapi import Request
 
 from comms_api.models.events import StatefulEvents
-from wazuh.core.engine.base import APPLICATION_JSON
 from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer import get_indexer_client
@@ -47,16 +46,7 @@ async def send_stateless_events(request: Request) -> None:
     ----------
     request : Request
         Incoming HTTP request.
-    
-    Raises
-    ------
-    WazuhError(2708)
-        Invalid request headers.
     """
-    if request.headers.get('Content-Type') != APPLICATION_JSON or \
-            request.headers.get('Transfer-Encoding') != 'chunked':
-        raise WazuhError(2708)
-
     async with get_engine_client() as engine_client:
         await engine_client.events.send(request.stream())
 
@@ -69,20 +59,11 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
     request : Request
         Incoming HTTP request.
     
-    Raises
-    ------
-    WazuhError(2708)
-        Invalid request body structure.
-    
     Returns
     -------
     StatefulEvents
         Object containing the agent metadata, headers and events.
     """
-    if request.headers.get('Content-Type') != 'application/json' or \
-            request.headers.get('Transfer-Encoding') != 'chunked':
-        raise WazuhError(2708)
-
     i: int = 0
     headers: List[Header] = []
     events = []
