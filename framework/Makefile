@@ -12,7 +12,7 @@ LOG_INSTALLDIR         ?= /var/log/${WAZUH_SERVER}
 LIB_INSTALLDIR         ?= /var/lib/${WAZUH_SERVER}
 ETC_INSTALLDIR         ?= /etc/${WAZUH_SERVER}
 RUN_INSTALLDIR         ?= /run/${WAZUH_SERVER}
-BIN_INSTALLDIR         ?= /bin
+BIN_INSTALLDIR         ?= /usr/share/wazuh-server/bin
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra

@@ -83,10 +83,10 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}etc/wazuh-server
 
-cp -p %{_localstatedir}usr/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
-cp -p %{_localstatedir}usr/bin/wazuh-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
-cp -p %{_localstatedir}usr/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
-cp -p %{_localstatedir}usr/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
 cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/

@@ -130,7 +130,8 @@ InstallEngine()
 {
   # Check if the content needs to be downloaded.
   checkDownloadContent
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} engine/build/main ${INSTALLDIR}bin/wazuh-engine
+  mkdir -p ${INSTALLDIR}usr/share/wazuh-server/bin
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} engine/build/main ${INSTALLDIR}usr/share/wazuh-server/bin/wazuh-engine
 
   # Folder for the engine socket.
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-server/

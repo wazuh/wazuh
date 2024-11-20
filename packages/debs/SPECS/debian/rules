@@ -65,10 +65,10 @@ override_dh_install:
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/usr/share/wazuh-server/bin
 
 
-	cp -p $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
-	cp -p $(INSTALLATION_DIR)bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
-	cp -p $(INSTALLATION_DIR)bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
-	cp -p $(INSTALLATION_DIR)bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 
 	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)tmp/
 	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/

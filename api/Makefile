@@ -8,7 +8,7 @@ WAZUH_GROUP       = wazuh
 WAZUH_SERVER      = wazuh-server
 SHARE_INSTALLDIR  ?= /usr/share/${WAZUH_SERVER}
 ETC_INSTALLDIR    ?= /etc/${WAZUH_SERVER}
-BIN_INSTALLDIR    ?= /bin
+BIN_INSTALLDIR    ?= /usr/share/wazuh-server/bin
 
 
 MV_FILE        = mv -f
