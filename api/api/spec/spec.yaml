@@ -3995,6 +3995,13 @@ components:
         items:
           type: string
           format: alphanumeric
+    full_path_filter:
+      in: query
+      name: file
+      description: "Filter by full path"
+      schema:
+        type: string
+        format: paths
     file_name:
       in: path
       name: file_name
