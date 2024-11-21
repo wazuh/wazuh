@@ -62,7 +62,7 @@ async def post_stateless_events(request: Request) -> Response:
     """
     try:
         await send_stateless_events(request)
-        return Response(status_code=status.HTTP_200_OK)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)
     except WazuhEngineError as exc:
