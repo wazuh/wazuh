@@ -943,20 +943,32 @@ nlohmann::json SysInfo::getHotfixes() const
     // Initialize COM
     HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
 
-    if (FAILED(hres))
+    if (SUCCEEDED(hres))
     {
-        oss << "Error initializing COM. Code: 0x" << std::hex << hres;
-        throw std::runtime_error(oss.str());
+        try
+        {
+            // Query hotfixes using WMI
+            QueryWMIHotFixes(hotfixes, comHelper);
+        }
+        catch (...)
+        {
+            // Ignore the error. The OS does not support WMI API.
+        }
+
+
+        try
+        {
+            // Query hotfixes using Windows Update API
+            QueryWUHotFixes(hotfixes, comHelper);
+        }
+        catch (...)
+        {
+            // Ignore the error. The OS does not support WUA API.
+        }
+
+        // Uninitialize COM
+        CoUninitialize();
     }
-
-    // Query hotfixes using WMI
-    QueryWMIHotFixes(hotfixes, comHelper);
-
-    // Query hotfixes using Windows Update API
-    QueryWUHotFixes(hotfixes, comHelper);
-
-    // Uninitialize COM
-    CoUninitialize();
 
     PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);
     PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, hotfixes);
