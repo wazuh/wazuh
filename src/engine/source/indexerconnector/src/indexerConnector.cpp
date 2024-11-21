@@ -143,7 +143,7 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
 static void handleIndexerInternalErrors(const std::string& response, const std::vector<nlohmann::json>& events)
 {
     // Parse the response JSON with error handling
-    auto parsedResponse = nlohmann::json::parse(response, nullptr, false);
+    const auto parsedResponse = nlohmann::json::parse(response, nullptr, false);
     if (parsedResponse.is_discarded())
     {
         LOG_DEBUG("Failed to parse the indexer response {}", response);
@@ -170,7 +170,7 @@ static void handleIndexerInternalErrors(const std::string& response, const std::
         const auto& item = items.at(i);
         const auto& itemIndex = item.at("index");
 
-        // Check if "error" exists in "index" and is an object(indicating an error occurred)
+        // Check if "error" exists in "index" and is an object (indicating an error occurred)
         auto errorIt = itemIndex.find("error");
         if (errorIt == itemIndex.end() || !errorIt->is_object())
         {
