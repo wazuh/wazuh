@@ -73,7 +73,6 @@ HRESULT ComHelper::GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title)
     return pEntry->get_Title(&title);
 }
 
-
 // This function provides a minimal implementation for converting C strings to BSTRs,
 // avoiding the need to include a full COM library. This can be useful when you only need this specific functionality
 // and want to minimize dependencies.
@@ -87,6 +86,7 @@ namespace _com_util
         return bstr;
     }
 }
+
 // The BstrToString function takes a Windows-specific string (BSTR) and converts it into
 // a standard C++ string (std::string) that can be more easily used in the application.
 std::string BstrToString(BSTR bstr)

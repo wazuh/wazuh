@@ -10,6 +10,14 @@
  */
 #pragma once
 
+#ifdef _WIN32
+#ifdef WIN_EXPORT
+#define EXPORTED __declspec(dllexport)
+#else
+#define EXPORTED __declspec(dllimport)
+#endif
+#endif
+
 /* Hotfixes APIs */
 #include <set>
 #include <wbemidl.h>
@@ -23,7 +31,7 @@
 // Define GUID manually for CLSID_UpdateSearcher
 DEFINE_GUID(CLSID_UpdateSearcher, 0x5A2A5E6E, 0xD633, 0x4C3A, 0x8A, 0x7E, 0x69, 0x4D, 0xBF, 0x9E, 0xCE, 0xD4);
 
-class IComHelper
+class EXPORTED IComHelper
 {
     public:
         virtual ~IComHelper() = default;
@@ -43,7 +51,7 @@ class IComHelper
         virtual HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) = 0;
 };
 
-class ComHelper : public IComHelper
+class EXPORTED ComHelper : public IComHelper
 {
     public:
         // Implement WMI functions
@@ -63,9 +71,9 @@ class ComHelper : public IComHelper
 
 // Queries Windows Management Instrumentation (WMI) to retrieve installed hotfixes
 //  and stores them in the provided set.
-void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
+EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
 
 
 // Queries Windows Update Agent (WUA) for installed update history,
 // extracts hotfixes, and adds them to the provided set.
-void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
+EXPORTED void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
