@@ -25,6 +25,24 @@ const char* WDBC_RESULT[] = {
     [WDBC_UNKNOWN] = "unk"
 };
 
+/// Array of component strings.
+const char* WDBC_VALID_COMPONENTS[] = { 
+    [WB_COMP_SYSCOLLECTOR_PROCESSES]        = "syscollector_processes",
+    [WB_COMP_SYSCOLLECTOR_PACKAGES]         = "syscollector_packages",
+    [WB_COMP_SYSCOLLECTOR_HOTFIXES]         = "syscollector_hotfixes",
+    [WB_COMP_SYSCOLLECTOR_PORTS]            = "syscollector_ports",
+    [WB_COMP_SYSCOLLECTOR_NETWORK_PROTOCOL] = "syscollector_network_protocol",
+    [WB_COMP_SYSCOLLECTOR_NETWORK_ADDRESS]  = "syscollector_network_address",
+    [WB_COMP_SYSCOLLECTOR_NETWORK_IFACE]    = "syscollector_network_iface",
+    [WB_COMP_SYSCOLLECTOR_HWINFO]           = "syscollector_hwinfo",
+    [WB_COMP_SYSCOLLECTOR_OSINFO]           = "syscollector_osinfo",
+    [WB_COMP_SYSCHECK]                      = "syscheck",
+    [WB_COMP_FIM_FILE]                      = "fim_file",
+    [WB_COMP_FIM_REGISTRY]                  = "fim_registry",
+    [WB_COMP_FIM_REGISTRY_KEY]              = "fim_registry_key",
+    [WB_COMP_FIM_REGISTRY_VALUE]            = "fim_registry_value"
+};
+
 /* Methods */
 
 /**

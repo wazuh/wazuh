@@ -129,12 +129,20 @@ void test_err_query(void **state)
     assert_int_equal(wdbc_parse_result(response, &message), WDBC_ERROR);
 }
 
+void test_invalid_component(void** state)
+{
+    char* query = "random_component";
+
+    assert_int_equal(wdbc_validate_component(query), WB_COMP_INVALID);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ok_query),
         cmocka_unit_test(test_ok2_query),
         cmocka_unit_test(test_okmsg_query),
         cmocka_unit_test(test_err_query),
+        cmocka_unit_test(test_invalid_component)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

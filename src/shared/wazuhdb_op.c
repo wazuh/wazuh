@@ -202,6 +202,20 @@ int wdbc_parse_result(char *result, char **payload) {
 }
 
 /**
+ * @brief Validate the component of the query.
+ * @param[in] component Component to be validated.
+ * @return Enum ComponentType. WB_COMP_INVALID if the component is not valid.
+ */
+component_type wdbc_validate_component(const char *component) {
+    for (int i = 0; i < WB_COMP_INVALID; i++) {
+        if (strcmp(component, WDBC_VALID_COMPONENTS[i]) == 0) {
+            return (component_type)i;
+        }
+    }
+    return WB_COMP_INVALID;  // Return invalid if no match is found
+}
+
+/**
  * @brief Combine wdbc_query_ex and wdbc_parse_result functions and return a JSON item.
  *
  * @param[in] sock Pointer to the client socket descriptor.

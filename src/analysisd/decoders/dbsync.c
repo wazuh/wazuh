@@ -276,6 +276,11 @@ void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf) {
         goto end;
     }
 
+    if(wdbc_validate_component(ctx->component) == WB_COMP_INVALID) {
+        merror("dbsync: Invalid component specified.");
+        goto end;
+    }
+
     ctx->data = cJSON_GetObjectItem(root, "data");
 
     if (strncmp(mtype, "integrity_check_", 16) == 0) {
