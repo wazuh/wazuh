@@ -17,6 +17,9 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <vector>
+
+#include <nlohmann/json.hpp>
 
 #include <base/utils/threadEventDispatcher.hpp>
 
@@ -71,6 +74,7 @@ class EXPORTED IndexerConnector final : public IIndexerConnector
     std::atomic<bool> m_stopping {false};
     std::string m_indexName;
     std::mutex m_syncMutex;
+    std::vector<nlohmann::json> m_processedEvents;
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
 
 public:
