@@ -3,6 +3,7 @@ from unittest import mock
 import pytest
 
 from wazuh.core.engine.events import EventsModule
+from wazuh.core.exception import WazuhError
 
 
 class TestEventsModule:
@@ -19,8 +20,19 @@ class TestEventsModule:
     async def test_send(self, client_mock, module_instance: EventsModule):
         """Check that the EventsModule `send` method works as expected."""
         response = mock.MagicMock()
-        response.status_code = 200
+        response.is_error = False
         client_mock.post.return_value = response
 
-        events = b''
-        await module_instance.send(events)
+        await module_instance.send(b'')
+    
+    async def test_send_ko(self, client_mock, module_instance: EventsModule):
+        """Check that the EventsModule `send` handles exceptions successfully."""
+        response = mock.MagicMock()
+        response.is_error = True
+        response.json = mock.MagicMock()
+        response.json.return_value={'error': ['Service Unavailable', 'failure'], 'code': 400}
+        client_mock.post.return_value = response
+
+        expected_error_msg = 'Error 2710 - Invalid stateless events request: Service Unavailable: failure'
+        with pytest.raises(WazuhError, match=expected_error_msg):
+            await module_instance.send(b'')

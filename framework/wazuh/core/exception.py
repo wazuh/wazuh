@@ -318,6 +318,7 @@ class WazuhException(Exception):
         2708: {'message': 'The client disconnected during the stream processing'},
         2709: {'message': 'Invalid stateful events request body. It must contain the agent metadata, headers and '
                'events objects separated by newlines'},
+        2710: {'message': 'Invalid stateless events request'},
 
         # Engine API client
         2800: {'message': 'The engine client connection timeout has been exceeded'},
