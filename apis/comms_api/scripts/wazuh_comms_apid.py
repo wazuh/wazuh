@@ -205,9 +205,9 @@ def get_script_arguments() -> Namespace:
         Arguments passed to the script.
     """
     parser = ArgumentParser()
-    parser.add_argument('-d', action='store_true', dest='daemon', help='Run as a daemon.')
-    parser.add_argument('-r', action='store_true', dest='root', help='Run as root')
-    parser.add_argument('-V', action='store_true', dest='version', help='Print version')
+    parser.add_argument('-d', '--daemon', action='store_true', dest='daemon', help='Run as a daemon')
+    parser.add_argument('-r', '--root', action='store_true', dest='root', help='Run as root')
+    parser.add_argument('-V', '--version', action='store_true', dest='version', help='Print version')
     return parser.parse_args()
 
 

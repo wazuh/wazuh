@@ -295,11 +295,11 @@ def get_script_arguments() -> argparse.Namespace:
         Arguments passed to the script.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-V', help='Print version', action='store_true', dest='version')
+    parser.add_argument('-V', '--version', help='Print version', action='store_true', dest='version')
 
-    subparsers = parser.add_subparsers(title='subcommands', help='Management operations.')
+    subparsers = parser.add_subparsers(title='subcommands', help='Management operations')
 
-    start_parser = subparsers.add_parser('start', help='Start Wazuh server.')
+    start_parser = subparsers.add_parser('start', help='Start Wazuh server')
     ####################################################################################################################
     # Dev options - Silenced in the help message.
     ####################################################################################################################
@@ -316,15 +316,15 @@ def get_script_arguments() -> argparse.Namespace:
     # implemented in worker nodes.
     start_parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
     ####################################################################################################################
-    start_parser.add_argument('-d', help='Run in daemon', action='store_true', dest='daemon')
-    start_parser.add_argument('-r', help='Run as root', action='store_true', dest='root')
+    start_parser.add_argument('-d', '--daemon', help='Run as a daemon', action='store_true', dest='daemon')
+    start_parser.add_argument('-r', '--root', help='Run as root', action='store_true', dest='root')
 
     start_parser.set_defaults(func=start)
 
-    stop_parser = subparsers.add_parser('stop', help='Stop Wazuh server.')
+    stop_parser = subparsers.add_parser('stop', help='Stop Wazuh server')
     stop_parser.set_defaults(func=stop)
 
-    status_parser = subparsers.add_parser('status', help='Show the Wazuh server status.')
+    status_parser = subparsers.add_parser('status', help='Show the Wazuh server status')
     status_parser.set_defaults(func=status)
 
     return parser
