@@ -26,8 +26,18 @@ protected:
     // LCOV_EXCL_START
     DescriptionsHelperTest() = default;
     ~DescriptionsHelperTest() override = default;
+    /**
+     * @brief Set the environment for testing.
+     *
+     */
+    void SetUp() override;
     // LCOV_EXCL_STOP
 };
+
+void DescriptionsHelperTest::SetUp()
+{
+    logging::testInit();
+}
 
 namespace
 {
