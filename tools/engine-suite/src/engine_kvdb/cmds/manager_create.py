@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 from google.protobuf.json_format import ParseDict
 
 from api_communication.client import APIClient
@@ -17,11 +18,9 @@ def run(args):
 
     request = ekvdb.managerPost_Request()
     request.name = args['name']
-    # Check if the path is a absolute path (The path is relative to the server side)
+    # Resolve Absolute Path
     if args['path'] is not None:
-        if not args['path'].startswith('/'):
-            sys.exit('The path must be an absolute path')
-        request.path = args['path']
+        request.path = Path(args['path']).resolve().as_posix()
 
     # Send the request
     error, response = client.send_recv(request)

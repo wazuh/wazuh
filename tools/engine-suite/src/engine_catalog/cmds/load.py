@@ -19,11 +19,9 @@ def run(args, resource_handler: rs.ResourceHandler):
     # Check if the path exists and is a directory
     if not path.exists():
         sys.exit(f'Error: Path {path} does not exist.')
-        exit(1)
 
     if not path.is_dir():
         print(f'Error: Path {path} is not a directory.')
-        exit(1)
 
     # List all the files in the path
     files : list[str] = []
