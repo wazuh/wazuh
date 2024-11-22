@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Fixed inconsistencies between reported context and vulnerability data. ([#25479](https://github.com/wazuh/wazuh/issues/25479))
 - Fixed concurrency issues in LRU caches ([#26073](https://github.com/wazuh/wazuh/pull/26073))
 - Removed all CVEs related to a deleted agent from the indexer. ([#26232](https://github.com/wazuh/wazuh/pull/26232))
+- Prevented an infinite loop when indexing events in the Vulnerability Detector. ([#26922](https://github.com/wazuh/wazuh/pull/26922))
 
 #### Changed
 - Added self-recovery mechanism for rocksDB databases. ([#24333](https://github.com/wazuh/wazuh/pull/24333))
@@ -30,6 +31,10 @@ All notable changes to this project will be documented in this file.
 - Fixed increase of the variable containing file size in FIM for Windows. ([#24387](https://github.com/wazuh/wazuh/pull/24387))
 - Fixed timeout issue when upgrading Windows agent via WPK. ([#25699](https://github.com/wazuh/wazuh/pull/25699))
 - Allowed unknown syslog identifiers in Logcollector's journald reader. ([#26748](https://github.com/wazuh/wazuh/pull/26748))
+- Prevented agent termination during package upgrades in containers by removing redundant kill commands. ([#26828](https://github.com/wazuh/wazuh/pull/26828))
+- Fixed handle leak in FIM's realtime mode on Windows. ([#26861](https://github.com/wazuh/wazuh/pull/26861))
+- Fixed errors on AIX 7.2 by adapting the blibpath variable. ([#26900](https://github.com/wazuh/wazuh/pull/26900))
+- Sanitized agent paths to prevent issues with parent folder references. ([#26944](https://github.com/wazuh/wazuh/pull/26944))
 
 #### Changed
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
