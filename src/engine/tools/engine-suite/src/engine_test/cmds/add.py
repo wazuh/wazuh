@@ -1,8 +1,11 @@
 import argparse
+import json
+import sys
 
-from engine_test.crud_integration import CrudIntegration
-from engine_test.event_format import Formats
-from engine_test.command import Command
+# from engine_test.crud_integration import CrudIntegration
+from engine_test.conf.integration import Formats, IntegrationConf
+from engine_test.conf.store import ConfigDatabase
+
 
 def check_positive(value):
     try:
@@ -10,57 +13,73 @@ def check_positive(value):
     except ValueError:
         raise argparse.ArgumentTypeError(f"{value} is not a valid integer")
     if ivalue <= 0:
-         raise argparse.ArgumentTypeError(f"{value} is an invalid positive int value")
+        raise argparse.ArgumentTypeError(
+            f"{value} is an invalid positive int value")
     return ivalue
 
 
-class AddCommand(Command):
-    def __init__(self):
-        pass
+def check_args(args):
 
-    def adjust_origin(self, args):
-        if (args['origin'] == None):
-            swticher = {
-                Formats.AUDIT.value["name"]: Formats.AUDIT.value["origin"],
-                Formats.COMMAND.value["name"]: Formats.COMMAND.value["origin"],
-                Formats.EVENTCHANNEL.value["name"]: Formats.EVENTCHANNEL.value["origin"],
-                Formats.FULL_COMMAND.value["name"]: Formats.FULL_COMMAND.value["origin"],
-                Formats.JSON.value["name"]: Formats.JSON.value["origin"],
-                Formats.MACOS.value["name"]: Formats.MACOS.value["origin"],
-                Formats.MULTI_LINE.value["name"]: Formats.MULTI_LINE.value["origin"],
-                Formats.SYSLOG.value["name"]: Formats.SYSLOG.value["origin"],
-                Formats.REMOTE_SYSLOG.value["name"]: Formats.REMOTE_SYSLOG.value["origin"]
-            }
-            args['origin'] = swticher.get(args['format'], None)
+    # Windows ignores module and provider, are automatically set
+    if args['format'] == Formats.WINDOWS_EVENTCHANNEL.value:
+        if args['module'] != None or args['provider'] != None:
+            print(
+                f"Ignoring module and provider for windows-eventchannel format, are automatically set")
 
-    def run(self, args):
-        super().run(args)
+        # TODO: Move to constant in shared module
+        args['module'] = 'windows-eventchannel'
+        args['provider'] = 'auto'  # Read from event channel event
+
+    # If multi-line format, lines are required
+    if args['format'] == Formats.MULTI_LINE.value:
+        if args['lines'] == None:
+            raise argparse.ArgumentTypeError(
+                f"Argument -l/--lines is required for multi-line format")
+
+    # Module and provider are required for all formats
+    if args['module'] == None:
+        raise argparse.ArgumentTypeError(
+            f"Argument -m/--module is required")
+    if args['provider'] == None:
+        raise argparse.ArgumentTypeError(
+            f"Argument -p/--provider is required")
+
+
+def run(args):
+
+    try:
+        # Check the args
         args['post_parse'](args)
-        integration = CrudIntegration()
-        try:
-            if (args['from_file'] != None):
-                integration.import_integration(args['from_file'])
-            else:
-                integration.save_integration(args['integration_name'], args['format'], args['origin'], args['lines'])
-        except Exception as ex:
-            print(ex)
 
-    def configure(self, subparsers):
-        parser_add = subparsers.add_parser("add", help='Add integration')
+        # Get the configuration database
+        db = ConfigDatabase(args['config_file'])
 
-        group = parser_add.add_mutually_exclusive_group()
+        # Create integration configuration
+        iconf = IntegrationConf(args['integration_name'], args['format'], args['module'],
+                                args['provider'], args['event_ingested'], args['lines'])
 
-        group.add_argument('-i', '--integration-name', type=str, help=f'Integration to test name')
+        # Saving integration
+        db.add_integration(iconf)
 
-        group.add_argument('--from-file', type=str, help=f'Add all integrations from the file to current configuration')
+    except Exception as ex:
+        sys.exit(f"Error adding integration: {ex}")
 
-        parser_add.add_argument('-f', '--format', help=f'Format of integration.', choices=Formats.get_formats(),
-                                dest='format')
 
-        parser_add.add_argument('-o', '--origin', help='Origin of integration.',
-                                dest='origin')
+def configure(subparsers):
 
-        parser_add.add_argument('-l', '--lines', help='Number of lines. Only for multi-line format.',
-                                dest='lines', type=check_positive)
+    parser = subparsers.add_parser("add", help='Add integration')
 
-        parser_add.set_defaults(func=self.run, post_parse=self.adjust_origin)
+    parser.add_argument('-i', '--integration-name', type=str,
+                        help=f'Integration to test name', dest='integration_name', required=True)
+    parser.add_argument('-f', '--format', help=f'Format in which events should be handled in engine-test.',
+                        choices=Formats.get_formats(), dest='format', required=True)
+    parser.add_argument(
+        '-m', '--module', help='Name of the module this data is coming from (i.g. apache-error, apache-access, eventchannel, journald, macos-uls)', dest='module')
+    parser.add_argument(
+        '-p', '--provider', help='Name of the provider, source of data (i.g. file, channel name of eventchannel, unit name of journald, program-name of macos-uls, etc)', dest='provider')
+    parser.add_argument(
+        '-l', '--lines', help='Fixed number of lines for each event. Only for multi-line format.', dest='lines', type=check_positive)
+    parser.add_argument('--force-event-ingested', help='Force the event.ingested date to a specific date. Format: YYYY-MM-DDTHH:MM:SSZ',
+                        dest='event_ingested', type=str, default="auto")
+
+    parser.set_defaults(func=run, post_parse=check_args)
