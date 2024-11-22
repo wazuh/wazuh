@@ -211,7 +211,7 @@ public:
      *
      * @return true if the information was successfully retrieved, false otherwise.
      */
-    bool getVulnerabiltyDescriptiveInformation(
+    bool getVulnerabilityDescriptiveInformation(
         const std::string& cveId,
         const std::string& subShortName,
         FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer);

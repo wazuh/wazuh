@@ -95,12 +95,12 @@ public:
                 ());
 
     /**
-     * @brief Mock method for getVulnerabiltyDescriptiveInformation.
+     * @brief Mock method for getVulnerabilityDescriptiveInformation.
      *
      * @note This method is intended for testing purposes and does not perform any real action.
      */
     MOCK_METHOD(bool,
-                getVulnerabiltyDescriptiveInformation,
+                getVulnerabilityDescriptiveInformation,
                 (const std::string& cveId,
                  const std::string& subShortName,
                  FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer),
