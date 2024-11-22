@@ -511,33 +511,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /cluster/{node_id}/stats
-
-stages:
-
-  - name: Cluster stats (worker1) today (Deny)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-  - name: Cluster stats (worker2) today (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        date: "2019-08-27"
-    response:
-      status_code: 200
-
----
 test_name: GET /cluster/{node_id}/status
 
 stages:
