@@ -217,20 +217,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/status
-      cluster:read_api_config:
-        description: Check Wazuh's cluster nodes API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - cluster:read_api_config
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: allow
-        related_endpoints:
-          - GET /cluster/api/config
-          - GET /manager/api/config
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:

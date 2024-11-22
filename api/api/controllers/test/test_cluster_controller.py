@@ -15,8 +15,7 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.cluster_controller import (
-            get_api_config, get_cluster_nodes,
-            get_conf_validation, get_configuration_node,
+            get_cluster_nodes, get_conf_validation, get_configuration_node,
             get_healthcheck, get_info_node, get_log_node, get_log_summary_node,
             get_status, get_status_node, put_restart, update_configuration)
         from wazuh import cluster, manager
@@ -260,34 +259,6 @@ async def test_get_log_summary_node(mock_exc, mock_dapi, mock_remove, mock_dfunc
                                           is_async=False,
                                           wait_for_complete=False,
                                           logger=ANY,
-                                          rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-                                          nodes=mock_exc.return_value
-                                          )
-        mock_exc.assert_has_calls([call(mock_snodes.return_value),
-                                   call(mock_dfunc.return_value)])
-        assert mock_exc.call_count == 2
-        mock_remove.assert_called_once_with(f_kwargs)
-        assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
-@patch('api.controllers.cluster_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.cluster_controller.remove_nones_to_dict')
-@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_api_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
-    """Verify 'get_api_config' endpoint is working as expected."""
-    with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
-        result = await get_api_config()
-        f_kwargs = {'node_list': '*'}
-        mock_dapi.assert_called_once_with(f=manager.get_api_config,
-                                          f_kwargs=mock_remove.return_value,
-                                          request_type='distributed_master',
-                                          is_async=False,
-                                          wait_for_complete=False,
-                                          logger=ANY,
-                                          broadcasting=True,
                                           rbac_permissions=mock_request.context['token_info']['rbac_policies'],
                                           nodes=mock_exc.return_value
                                           )

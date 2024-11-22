@@ -138,9 +138,6 @@ _get_config_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=['cluster:read_api_config'],
-                  resources=[f'node:id:{node_id}'],
-                  post_proc_kwargs={'default_result_kwargs': _get_config_default_result_kwargs})
 def get_api_config() -> AffectedItemsWazuhResult:
     """Return current API configuration.
 

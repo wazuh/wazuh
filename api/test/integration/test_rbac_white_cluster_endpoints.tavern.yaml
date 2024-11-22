@@ -455,36 +455,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /cluster/api/config
-
-stages:
-
-  - name: Request API config (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        nodes_list: 'worker1,worker2'
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - node_name: 'worker2'
-              node_api_config: !anything
-          failed_items:
-            - error:
-                code: 4000
-              id:
-                - worker1
-          total_affected_items: 1
-          total_failed_items: 1
-
----
 test_name: PUT /cluster/restart
 
 stages:
