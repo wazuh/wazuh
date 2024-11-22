@@ -111,33 +111,6 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /cluster/local/info
-
-marks:
-  - cluster
-
-stages:
-
-  - name: Get cluster node
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - node: master-node
-              type: master
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
----
 test_name: GET /cluster/nodes
 
 marks:

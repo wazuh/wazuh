@@ -182,7 +182,6 @@ get_rbac_actions:
             - node:id:worker3
           effect: deny
         related_endpoints:
-          - GET /cluster/local/info
           - GET /cluster/local/config
           - GET /cluster/nodes
           - GET /cluster/healthcheck

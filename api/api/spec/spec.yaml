@@ -1101,18 +1101,6 @@ components:
       - stopped
       - running
 
-    ClusterLocalInfo:
-      type: object
-      properties:
-        data:
-          properties:
-            node:
-              description: "Node name"
-              type: string
-            type:
-              description: "Node type"
-              type: string
-
     ClusterLocalConfig:
       type: object
       properties:
@@ -5449,48 +5437,6 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /cluster/local/info:
-    get:
-      tags:
-        - Cluster
-      summary: "Get local node info"
-      description: "Return basic information about the cluster node receiving the request"
-      operationId: api.controllers.cluster_controller.get_cluster_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Node basic information"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ClusterLocalInfo'
-              example:
-                data:
-                  affected_items:
-                    - node: "master-node"
-                      type: "master"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected information was returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

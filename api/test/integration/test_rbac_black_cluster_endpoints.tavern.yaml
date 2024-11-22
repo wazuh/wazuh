@@ -75,21 +75,6 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /cluster/local/info
-
-stages:
-
-  - name: Get cluster node
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /cluster/nodes
 
 stages:
