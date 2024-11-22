@@ -553,22 +553,6 @@ components:
               items:
                 $ref: '#/components/schemas/Agent'
 
-    AllItemsResponseWazuhDaemonStats:
-      allOf:
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                oneOf:
-                  - $ref: '#/components/schemas/WazuhRemotedStatsItem'
-                  - $ref: '#/components/schemas/WazuhAnalysisdStatsItem'
-                  - $ref: '#/components/schemas/WazuhDBStatsItem'
-        - $ref: '#/components/schemas/AllItemsResponse'
-
     AllItemsResponseGroups:
       allOf:
         - type: object
@@ -3910,29 +3894,6 @@ components:
         - wdb
         - wmodules
         - rule_test
-    daemons_list:
-      in: query
-      name: daemons_list
-      description: "List of daemon names (separated by comma), all daemons selected by default if not specified"
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-            - wazuh-analysisd
-            - wazuh-remoted
-            - wazuh-db
-    daemons_list_agents:
-      in: query
-      name: daemons_list
-      description: "List of daemon names (separated by comma), all daemons selected by default if not specified"
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-            - wazuh-analysisd
-            - wazuh-remoted
     decoder_name:
       in: query
       name: decoder_names
@@ -6418,83 +6379,6 @@ paths:
           $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /cluster/{node_id}/daemons/stats:
-    get:
-      tags:
-        - Cluster
-      summary: "Get Wazuh daemon stats from a cluster node"
-      description: "Return Wazuh statistical information from specified daemons in a specified cluster node"
-      operationId: api.controllers.cluster_controller.get_daemon_stats_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/daemons_list'
-      responses:
-        '200':
-          description: "Wazuh daemon stats"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseWazuhDaemonStats'
-              example:
-                data:
-                  affected_items:
-                    - uptime: 2022-07-21T10:09:20+00:00
-                      timestamp: 2022-07-21T10:48:32+00:00
-                      name: wazuh-remoted
-                      metrics:
-                        bytes:
-                          received: 0
-                          sent: 0
-                        keys_reload_count: 0
-                        messages:
-                          received_breakdown:
-                            control: 0
-                            control_breakdown:
-                              keepalive: 0
-                              request: 0
-                              shutdown: 0
-                              startup: 0
-                            dequeued_after: 0
-                            discarded: 0
-                            event: 0
-                            ping: 0
-                            unknown: 0
-                          sent_breakdown:
-                            ack: 0
-                            ar: 0
-                            discarded: 0
-                            request: 0
-                            sca: 0
-                            shared: 0
-                        queues:
-                          received:
-                            size: 131072
-                            usage: 0
-                        tcp_sessions: 0
-                  total_affected_items: 1
-                  failed_items: []
-                  total_failed_items: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
 
   /cluster/{node_id}/stats:
     get:

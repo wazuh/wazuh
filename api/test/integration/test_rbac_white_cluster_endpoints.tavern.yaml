@@ -511,31 +511,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /cluster/{node_id}/daemons/stats
-
-stages:
-
-  - name: Request daemons statistics from worker1 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-  - name: Request daemons statistics from worker2 (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
----
 test_name: GET /cluster/{node_id}/stats
 
 stages:

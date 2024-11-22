@@ -61,36 +61,6 @@ def test_weekly():
     assert response.total_affected_items == len(response.affected_items)
 
 
-@pytest.mark.asyncio
-@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
-@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
-@patch('wazuh.core.common.WDB_SOCKET', '/var/ossec/queue/db/wdb')
-@patch('wazuh.stats.get_daemons_stats_socket')
-async def test_get_daemons_stats(mock_get_daemons_stats_socket):
-    """Makes sure get_daemons_stats() fit with the expected."""
-    response = await stats.get_daemons_stats(['wazuh-remoted', 'wazuh-analysisd', 'wazuh-db'])
-
-    calls = [call('/var/ossec/queue/sockets/remote'), call('/var/ossec/queue/sockets/analysis'),
-             call('/var/ossec/queue/db/wdb')]
-    mock_get_daemons_stats_socket.assert_has_calls(calls)
-    assert isinstance(response, AffectedItemsWazuhResult), \
-            'The result is not AffectedItemsWazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/wrong_socket_name')
-async def test_get_daemons_stats_ko():
-    """Makes sure get_daemons_stats() fit with the expected."""
-    response = await stats.get_daemons_stats(['wazuh-remoted'])
-
-    assert isinstance(response, AffectedItemsWazuhResult), \
-        'The result is not AffectedItemsWazuhResult type'
-
-    assert response.render()['data']['failed_items'][0]['error']['code'] == 1121, \
-        'Expected error code was not returned'
-
-
 def side_effect_test_get_daemons_stats(daemon_path, agents_list):
     return {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': [{'id': a} for a in agents_list]}
 

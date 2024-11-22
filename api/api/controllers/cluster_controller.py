@@ -341,39 +341,6 @@ async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_co
     return response
 
 
-async def get_daemon_stats_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                                daemons_list: list = None):
-    """Get Wazuh statistical information from the specified daemons of a specified cluster node.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    daemons_list : list
-        List of the daemons to get statistical information from.
-    """
-    daemons_list = daemons_list or []
-    f_kwargs = {'node_id': node_id,
-                'daemons_list': daemons_list}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes)
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_stats_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False,
                          date: str = None) -> ConnexionResponse:
     """Get a specified node's stats.

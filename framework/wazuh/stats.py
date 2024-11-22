@@ -4,13 +4,9 @@
 
 import datetime
 
-from wazuh.core import common
-from wazuh.core import exception
-from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.exception import WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.stats import get_daemons_stats_, get_daemons_stats_socket, hourly_, totals_, weekly_
+from wazuh.core.stats import get_daemons_stats_, hourly_, totals_, weekly_
 from wazuh.rbac.decorators import expose_resources
 
 node_id = get_node().get('node')
@@ -79,40 +75,6 @@ def weekly() -> AffectedItemsWazuhResult:
     result.affected_items = weekly_()
     result.total_affected_items = len(result.affected_items)
 
-    return result
-
-
-@expose_resources(actions=['cluster:read'],
-                  resources=[f'node:id:{node_id}'])
-async def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
-    """Get statistical information from the specified daemons.
-    If the list is empty, the stats from all daemons will be retrieved.
-
-    Parameters
-    ----------
-    daemons_list : list
-        List of the daemons to get statistical information from.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Dictionary with the stats of the input file.
-    """
-    daemon_socket_mapping = {'wazuh-remoted': common.REMOTED_SOCKET,
-                             'wazuh-analysisd': common.ANALYSISD_SOCKET,
-                             'wazuh-db': common.WDB_SOCKET}
-    result = AffectedItemsWazuhResult(all_msg='Statistical information for each daemon was successfully read',
-                                      some_msg='Could not read statistical information for some daemons',
-                                      none_msg='Could not read statistical information for any daemon')
-
-    for daemon in daemons_list or daemon_socket_mapping.keys():
-        try:
-            res = await get_daemons_stats_socket(daemon_socket_mapping[daemon])
-            result.affected_items.append(res)
-        except WazuhException as e:
-            result.add_failed_item(id_=daemon, error=e)
-
-    result.total_affected_items = len(result.affected_items)
     return result
 
 

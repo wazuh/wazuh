@@ -336,20 +336,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /cluster/{node_id}/daemons/stats
-
-stages:
-  - name: Try to get all daemons' statistics from a specified node (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /cluster/{node_id}/stats
 
 stages:

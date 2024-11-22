@@ -189,7 +189,6 @@ get_rbac_actions:
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
-          - GET /cluster/{node_id}/daemons/stats
           - GET /cluster/{node_id}/stats
           - GET /cluster/{node_id}/stats/hourly
           - GET /cluster/{node_id}/stats/weekly
