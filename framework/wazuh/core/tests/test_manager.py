@@ -221,13 +221,6 @@ def test_parse_execd_output(error_flag, error_msg):
             parse_execd_output(json_response)
 
 
-@patch('wazuh.core.manager.configuration.api_conf', new={'experimental_features': True})
-def test_get_api_config():
-    """Checks that get_api_config method is returning current api_conf dict."""
-    result = get_api_conf()
-    assert result == {'experimental_features': True}
-
-
 @pytest.mark.parametrize('update_check', (True, False))
 @pytest.mark.parametrize('last_check_date', (None, datetime.now()))
 def test_get_update_information_template(last_check_date, update_check, installation_uid):

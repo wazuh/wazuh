@@ -3,11 +3,11 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import Wazuh
-from wazuh.core import common, configuration
+from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
+from wazuh.core.manager import status, get_update_information_template, get_ossec_logs, \
     get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array
@@ -130,13 +130,6 @@ def ossec_log_summary() -> AffectedItemsWazuhResult:
     return result
 
 
-_get_config_default_result_kwargs = {
-    'all_msg': f"API configuration was successfully read{' in all specified nodes' if node_id != 'manager' else ''}",
-    'some_msg': 'Not all API configurations could be read',
-    'none_msg': f"Could not read API configuration{' in any node' if node_id != 'manager' else ''}",
-    'sort_casting': ['str']
-}
-
 _restart_default_result_kwargs = {
     'all_msg': f"Restart request sent to {'all specified nodes' if node_id != 'manager' else ''}",
     'some_msg': "Could not send restart request to some specified nodes",
@@ -201,7 +194,7 @@ def validation() -> AffectedItemsWazuhResult:
     return result
 
 
-# TODO(26555) - To be removed
+# TODO(26555): Adapt function to the new configuration
 @expose_resources(actions=['cluster:read'],
                   resources=[f'node:id:{node_id}'])
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
@@ -257,7 +250,7 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     return result
 
 
-# TODO(26555) - To be removed
+# TODO(26555): Adapt function to the new configuration
 @expose_resources(actions=['cluster:update_config'],
                   resources=[f'node:id:{node_id}'])
 def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
