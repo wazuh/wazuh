@@ -355,31 +355,6 @@ stages:
           total_failed_items: 1
 
 ---
-test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
-
-stages:
-
-  - name: Try to show the config of analisys/global through a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      <<: *permission_denied
-
-  - name: Try to show the config of analisys/global through a worker
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/analysis/global"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-    response:
-      status_code: 200
-
----
 test_name: GET /cluster/{node_id}/info
 
 stages:

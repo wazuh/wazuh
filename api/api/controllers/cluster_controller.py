@@ -487,49 +487,6 @@ async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = Fa
     return json_response(data, pretty=pretty)
 
 
-async def get_node_config(node_id: str, component: str, wait_for_complete: bool = False, pretty: bool = False,
-                          **kwargs: dict) -> ConnexionResponse:
-    """Get active configuration in node node_id [on demand]
-
-    Parameters
-    ----------
-    node_id : str
-        Node ID.
-    component : str
-        Filters by specified component.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'node_id': node_id,
-                'component': component,
-                'config': kwargs.get('configuration', None)
-                }
-
-    nodes = raise_if_exc(await get_system_nodes())
-    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
-
-    dapi = DistributedAPI(f=manager.get_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def update_configuration(node_id: str, body: bytes, pretty: bool = False,
                                wait_for_complete: bool = False) -> ConnexionResponse:
     """Update Wazuh configuration (ossec.conf) in node node_id.

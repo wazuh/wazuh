@@ -191,7 +191,6 @@ get_rbac_actions:
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
-          - GET /cluster/{node_id}/configuration/{component}/{configuration}
           - GET /manager/status
           - GET /manager/info
           - GET /manager/configuration
