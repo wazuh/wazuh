@@ -19,6 +19,7 @@
 #include "base/utils/timeUtils.hpp"
 #include "databaseFeedManager.hpp"
 #include "descriptionsHelper.hpp"
+#include "fieldAlertHelper.hpp"
 #include "scanContext.hpp"
 
 /**
@@ -179,17 +180,18 @@ public:
                         }
 
                         // Status date
-                        json["classification"] = description.classification;
+                        json["classification"] = FieldAlertHelper::fillEmptyOrNegative(description.classification);
                         json["description"] = description.description;
                         json["detected_at"] = base::utils::time::getCurrentISO8601();
                         json["enumeration"] = "CVE";
                         json["id"] = cve;
                         json["published_at"] = description.datePublished;
                         json["reference"] = description.reference;
-                        json["score"]["base"] = base::utils::numeric::floatToDoubleRound(description.scoreBase, 2);
-                        json["score"]["version"] = description.scoreVersion;
-                        json["severity"] = base::utils::string::toSentenceCase(
-                            std::string(description.severity.data(), description.severity.size()));
+                        json["score"]["base"] = FieldAlertHelper::fillEmptyOrNegative(
+                            base::utils::numeric::floatToDoubleRound(description.scoreBase, 2));
+                        json["score"]["version"] = FieldAlertHelper::fillEmptyOrNegative(description.scoreVersion);
+                        json["severity"] = FieldAlertHelper::fillEmptyOrNegative(base::utils::string::toSentenceCase(
+                            std::string(description.severity.data(), description.severity.size())));
                         json["source"] = vulnerabilitySource;
 
                         // Alert data
