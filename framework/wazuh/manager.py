@@ -137,36 +137,6 @@ _get_config_default_result_kwargs = {
     'sort_casting': ['str']
 }
 
-
-def get_api_config() -> AffectedItemsWazuhResult:
-    """Return current API configuration.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Current API configuration of the manager.
-    """
-    result = AffectedItemsWazuhResult(**_get_config_default_result_kwargs)
-
-    try:
-        api_config = {'node_name': node_id,
-                      'node_api_config': get_api_conf()}
-        result.affected_items.append(api_config)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
-_update_config_default_result_kwargs = {
-    'all_msg': f"API configuration was successfully updated{' in all specified nodes' if node_id != 'manager' else ''}. "
-               f"Settings require restarting the API to be applied.",
-    'some_msg': 'Not all API configuration could be updated.',
-    'none_msg': f"API configuration could not be updated{' in any node' if node_id != 'manager' else ''}.",
-    'sort_casting': ['str']
-}
-
 _restart_default_result_kwargs = {
     'all_msg': f"Restart request sent to {'all specified nodes' if node_id != 'manager' else ''}",
     'some_msg': "Could not send restart request to some specified nodes",
@@ -230,39 +200,6 @@ def validation() -> AffectedItemsWazuhResult:
 
     return result
 
-
-@expose_resources(actions=['cluster:read'],
-                  resources=[f'node:id:{node_id}'])
-def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
-    """Wrapper for get_active_configuration.
-
-    Parameters
-    ----------
-    component : str
-        Selected component.
-    config : str
-        Configuration to get, written on disk.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    result = AffectedItemsWazuhResult(all_msg=f"Active configuration was successfully read"
-                                              f"{' in specified node' if node_id != 'manager' else ''}",
-                                      some_msg='Could not read active configuration in some nodes',
-                                      none_msg=f"Could not read active configuration"
-                                               f"{' in specified node' if node_id != 'manager' else ''}"
-                                      )
-
-    try:
-        data = configuration.get_active_configuration(component=component, configuration=config)
-        len(data.keys()) > 0 and result.affected_items.append(data)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
 
 # TODO(26555) - To be removed
 @expose_resources(actions=['cluster:read'],

@@ -14,10 +14,10 @@ from pathlib import Path
 from os import listdir, path, remove
 from typing import List
 
-from wazuh.core import common, configuration, stats
+from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
+from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
@@ -26,7 +26,7 @@ from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
     get_date_from_timestamp, get_group_file_path, GROUP_FILE_EXT
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
+from wazuh.core.wazuh_socket import WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 
 detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
@@ -1057,37 +1057,6 @@ class Agent:
             raise WazuhInternalError(1735, extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}")
 
         return configuration.get_active_configuration(agent_id=self.id, component=component, configuration=config)
-
-    def get_stats(self, component: str) -> dict:
-        """Read the agent's component stats.
-
-        Parameters
-        ----------
-        component : str
-            Name of the component to get stats from.
-
-        Raises
-        ------
-        WazuhInternalError(1015)
-            Agent version is null.
-        WazuhInternalError(1735)
-            Agent version is not compatible with this feature.
-
-        Returns
-        -------
-        dict
-            Object with component's stats.
-        """
-        # Check if agent version is compatible with this feature
-        self.load_info_from_db()
-        if self.version is None:
-            raise WazuhInternalError(1015)
-        agent_version = WazuhVersion(self.version.split(" ")[1])
-        required_version = WazuhVersion(AGENT_COMPONENT_STATS_REQUIRED_VERSION.get(component))
-        if agent_version < required_version:
-            raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
-
-        return stats.get_daemons_stats_from_socket(self.id, component)
 
 
 def unify_wazuh_upgrade_version_format(upgrade_version: str) -> str:

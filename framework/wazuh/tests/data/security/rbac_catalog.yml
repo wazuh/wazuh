@@ -191,20 +191,6 @@ get_rbac_actions:
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
-          - GET /manager/status
-          - GET /manager/info
-          - GET /manager/configuration
-          - GET /manager/daemons/stats
-          - GET /manager/stats
-          - GET /manager/stats/hourly
-          - GET /manager/stats/weekly
-          - GET /manager/stats/analysisd
-          - GET /manager/stats/remoted
-          - GET /manager/logs
-          - GET /manager/logs/summary
-          - PUT /manager/restart
-          - GET /manager/configuration/validation
-          - GET /manager/configuration/{component}/{configuration}
       cluster:status:
         description: Check Wazuh's cluster general status
         resources:
@@ -229,7 +215,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/{node_id}/configuration
-          - PUT /manager/configuration
       cluster:restart:
         description: Restart Wazuh's cluster nodes
         resources:
@@ -242,7 +227,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
-          - PUT /manager/restart
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:

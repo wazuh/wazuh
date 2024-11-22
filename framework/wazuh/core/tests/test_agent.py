@@ -1114,27 +1114,6 @@ def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
         agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
 
 
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"global":{}, "interval":{}}}'
-    result = agent.get_stats('logcollector')
-    assert result == {'global': {}, 'interval': {}}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method raises expected exception when the agent's version is lower than required."""
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
-        agent.get_stats('logcollector')
-
-
 @pytest.mark.parametrize('agents_list, versions_list', [
     (['001', '002', '003', '004'],
      [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
