@@ -407,7 +407,7 @@ utils::rocksdb::RocksDBWrapper& DatabaseFeedManager::getCVEDatabase()
 
 // LCOV_EXCL_STOP
 
-bool DatabaseFeedManager::getVulnerabiltyDescriptiveInformation(
+bool DatabaseFeedManager::getVulnerabilityDescriptiveInformation(
     const std::string& cveId,
     const std::string& subShortName,
     FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)

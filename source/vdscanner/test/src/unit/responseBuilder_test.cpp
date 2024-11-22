@@ -291,7 +291,7 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS2)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
+    auto mockgetVulnerabilityDescriptiveInformation =
         [&](const std::string& cveId,
             const std::string& subShortName,
             FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
@@ -304,8 +304,8 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS2)
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
@@ -387,7 +387,7 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS3)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
+    auto mockgetVulnerabilityDescriptiveInformation =
         [&](const std::string& cveId,
             const std::string& subShortName,
             FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
@@ -400,8 +400,8 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS3)
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
@@ -522,7 +522,7 @@ TEST_F(ResponseBuilderTest, TestSuccessfulOSResponseCVSS3)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
+    auto mockgetVulnerabilityDescriptiveInformation =
         [&](const std::string& cveId,
             const std::string& subShortName,
             FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
@@ -535,8 +535,8 @@ TEST_F(ResponseBuilderTest, TestSuccessfulOSResponseCVSS3)
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
@@ -545,8 +545,6 @@ TEST_F(ResponseBuilderTest, TestSuccessfulOSResponseCVSS3)
     // Mock one vulnerability
     scanContext->m_elements[CVEID] = R"({})"_json;
     scanContext->m_matchConditions[CVEID] = {"1.0.0", MatchRuleCondition::Equal};
-
-    std::cout << scanContext->m_vulnerabilitySource.first << std::endl;
 
     TResponseBuilder<MockDatabaseFeedManager, ScanContext> responseBuilder(spDatabaseFeedManagerMock);
 
@@ -620,7 +618,7 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseNonDefaultCna)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
+    auto mockgetVulnerabilityDescriptiveInformation =
         [&](const std::string& cveId,
             const std::string& subShortName,
             FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
@@ -633,8 +631,8 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseNonDefaultCna)
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
@@ -717,7 +715,7 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseUnderEvaluation)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
+    auto mockgetVulnerabilityDescriptiveInformation =
         [&](const std::string& cveId,
             const std::string& subShortName,
             FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
@@ -730,8 +728,8 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseUnderEvaluation)
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
@@ -811,7 +809,7 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseDefaultValues)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
+    auto mockgetVulnerabilityDescriptiveInformation =
         [&](const std::string& cveId,
             const std::string& subShortName,
             FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
@@ -824,8 +822,8 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseDefaultValues)
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
