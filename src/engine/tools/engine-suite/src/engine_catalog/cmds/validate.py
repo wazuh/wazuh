@@ -20,8 +20,7 @@ def run(args, resource_handler: rs.ResourceHandler):
     try:
         resource_handler.validate_catalog_file(api_socket, '', name, content, namespace, inFormat)
     except Exception as e:
-        print(f'Error updating asset: {e}')
-        exit(1)
+        sys.exit(f'Error validating asset: {e}')
 
     return 0
 

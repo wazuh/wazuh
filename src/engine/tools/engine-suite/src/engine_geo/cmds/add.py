@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 from google.protobuf.json_format import ParseDict
 
 from api_communication.client import APIClient
@@ -17,7 +18,7 @@ def run(args):
     client = APIClient(api_socket)
 
     request = egeo.DbPost_Request()
-    request.path = path
+    request.path = Path(path).resolve().as_posix()
     request.type = type
 
     # Send the request
