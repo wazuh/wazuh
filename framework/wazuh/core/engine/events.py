@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 
 from wazuh.core.engine.base import APPLICATION_JSON, APPLICATION_NDJSON, BaseModule
 from wazuh.core.engine.models.base import ErrorResponse
-from wazuh.core.exception import WazuhEngineError
+from wazuh.core.exception import WazuhEngineError, WazuhError
 
 
 class EventsModule(BaseModule):
@@ -18,6 +18,11 @@ class EventsModule(BaseModule):
         ----------
         event_stream : AsyncGenerator[bytes, None]
             Events as a byte stream.
+        
+        Raises
+        ------
+        WazuhError(2710)
+            Invalid request error.
         """
         try:
             response = await self._client.post(
@@ -29,8 +34,9 @@ class EventsModule(BaseModule):
                 }
             )
 
-            if not response.is_success:
-                return ErrorResponse(**response.json())
+            if response.is_error:
+                error = ErrorResponse(**response.json())
+                raise WazuhError(2710, extra_message=': '.join(error.error))
 
         except RequestError as exc:
             raise WazuhEngineError(2803, extra_message=str(exc))

@@ -53,6 +53,7 @@ class OS:
     """Agent operating system information."""
     name: str = None
     platform: str = None
+    version: str = None
 
 
 @dataclass

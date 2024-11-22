@@ -60,7 +60,7 @@ async def test_post_stateless_events(send_stateless_events_mock):
     response = await post_stateless_events(request)
 
     send_stateless_events_mock.assert_called_once_with(request)
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_204_NO_CONTENT
 
 
 @pytest.mark.asyncio

@@ -1,9 +1,9 @@
 from typing import List
 
 from fastapi import Request
+from starlette.requests import ClientDisconnect
 
 from comms_api.models.events import StatefulEvents
-from wazuh.core.engine.base import APPLICATION_JSON
 from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer import get_indexer_client
@@ -51,14 +51,13 @@ async def send_stateless_events(request: Request) -> None:
     Raises
     ------
     WazuhError(2708)
-        Invalid request headers.
+        If the client closed the request before the server could process the stream.
     """
-    if request.headers.get('Content-Type') != APPLICATION_JSON or \
-            request.headers.get('Transfer-Encoding') != 'chunked':
+    try:
+        async with get_engine_client() as engine_client:
+            await engine_client.events.send(request.stream())
+    except ClientDisconnect:
         raise WazuhError(2708)
-
-    async with get_engine_client() as engine_client:
-        await engine_client.events.send(request.stream())
 
 
 async def parse_stateful_events(request: Request) -> StatefulEvents:
@@ -69,49 +68,48 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
     request : Request
         Incoming HTTP request.
     
-    Raises
-    ------
-    WazuhError(2708)
-        Invalid request body structure.
-    
     Returns
     -------
     StatefulEvents
         Object containing the agent metadata, headers and events.
+    
+    Raises
+    ------
+    WazuhError(2708)
+        If the client closed the request before the server could process the stream.
     """
-    if request.headers.get('Content-Type') != 'application/json' or \
-            request.headers.get('Transfer-Encoding') != 'chunked':
-        raise WazuhError(2708)
-
     i: int = 0
     headers: List[Header] = []
     events = []
 
-    async for chunk in request.stream():
-        if len(chunk) == 0:
-            continue
-
-        parts = chunk.splitlines()
-
-        if len(parts) < 2:
-            raise WazuhError(2709)
-
-        for part in parts:
-            if len(part) == 0:
+    try:
+        async for chunk in request.stream():
+            if len(chunk) == 0:
                 continue
 
-            if i == 0:
-                agent_metadata = AgentMetadata.model_validate_json(part)
-            elif i % 2 == 0:
-                events.append(StatefulEvent.model_validate_json(b'{"data": %b}' % part))
-            else:
-                header = Header.model_validate_json(part)
-                headers.append(header)
-                if header.operation == Operation.DELETE:
-                    # Skip the counter increment, we don't expect event data after this header
+            parts = chunk.splitlines()
+
+            if len(parts) < 2:
+                raise WazuhError(2709)
+
+            for part in parts:
+                if len(part) == 0:
                     continue
 
-            i += 1
+                if i == 0:
+                    agent_metadata = AgentMetadata.model_validate_json(part)
+                elif i % 2 == 0:
+                    events.append(StatefulEvent.model_validate_json(b'{"data": %b}' % part))
+                else:
+                    header = Header.model_validate_json(part)
+                    headers.append(header)
+                    if header.operation == Operation.DELETE:
+                        # Skip the counter increment, we don't expect event data after this header
+                        continue
+
+                i += 1
+    except ClientDisconnect:
+        raise WazuhError(2708)
 
     return StatefulEvents(
         agent_metadata=agent_metadata,

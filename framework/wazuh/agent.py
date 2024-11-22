@@ -366,9 +366,10 @@ async def add_agent(
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
-    for group in groups:
-        if not Agent.group_exists(group):
-            raise WazuhError(1710, extra_message=group)
+    if groups is not None:
+        for group in groups:
+            if not Agent.group_exists(group):
+                raise WazuhError(1710, extra_message=group)
 
     async with get_indexer_client() as indexer_client:
         new_agent = await indexer_client.agents.create(

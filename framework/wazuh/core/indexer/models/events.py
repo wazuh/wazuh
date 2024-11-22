@@ -11,15 +11,15 @@ from wazuh.core.indexer.models.agent import Host as AgentHost
 from wazuh.core.indexer.models.commands import Result
 
 FIM_INDEX = 'wazuh-states-fim'
-INVENTORY_NETWORK_INDEX = 'wazuh-states-inventory-network'
+INVENTORY_NETWORKS_INDEX = 'wazuh-states-inventory-networks'
 INVENTORY_PACKAGES_INDEX = 'wazuh-states-inventory-packages'
 INVENTORY_PROCESSES_INDEX = 'wazuh-states-inventory-processes'
 INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
 SCA_INDEX = 'wazuh-states-sca'
 VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
-INVENTORY_NETWORK_TYPE = 'network'
-INVENTORY_PACKAGES_TYPE = 'package'
-INVENTORY_PROCESSES_TYPE = 'process'
+INVENTORY_NETWORKS_TYPE = 'networks'
+INVENTORY_PACKAGES_TYPE = 'packages'
+INVENTORY_PROCESSES_TYPE = 'processes'
 INVENTORY_SYSTEM_TYPE = 'system'
 
 
@@ -292,8 +292,8 @@ def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
             return INVENTORY_PACKAGES_INDEX
         if type == INVENTORY_PROCESSES_TYPE:
             return INVENTORY_PROCESSES_INDEX
-        if type == INVENTORY_NETWORK_TYPE:
-            return INVENTORY_NETWORK_INDEX
+        if type == INVENTORY_NETWORKS_TYPE:
+            return INVENTORY_NETWORKS_INDEX
         if type == INVENTORY_SYSTEM_TYPE:
             return INVENTORY_SYSTEM_INDEX
 
