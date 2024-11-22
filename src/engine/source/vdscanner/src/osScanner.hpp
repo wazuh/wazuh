@@ -18,6 +18,8 @@
 #include "scannerHelper.hpp"
 #include "versionMatcher/versionMatcher.hpp"
 
+auto constexpr OS_SCANNER_CNA {"nvd"};
+
 /**
  * @brief OsScanner class.
  * This class is in charge of scanning the OS for vulnerabilities.
@@ -254,7 +256,9 @@ public:
                 {
                     PackageData package = {.name = osCPE.product};
 
-                    m_databaseFeedManager->getVulnerabilitiesCandidates("nvd", package, vulnerabilityScan);
+                    data->m_vulnerabilitySource = std::make_pair(OS_SCANNER_CNA, OS_SCANNER_CNA);
+
+                    m_databaseFeedManager->getVulnerabilitiesCandidates(OS_SCANNER_CNA, package, vulnerabilityScan);
 
                     if (data->osPlatform() == "windows")
                     {
