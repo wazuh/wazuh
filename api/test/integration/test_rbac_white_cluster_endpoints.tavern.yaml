@@ -1,35 +1,4 @@
 ---
-test_name: /cluster/local/config
-
-stages:
-
-  - name: Get cluster config
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - node_name: !anystr
-              node_type: !anystr
-              port: !anyint
-              bind_addr: !anystr
-              nodes: !anything
-              hidden: !anystr
-              certfile: !anystr
-              keyfile: !anystr
-              keyfile_password: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
----
 test_name: GET /cluster/healthcheck
 
 stages:

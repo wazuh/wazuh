@@ -1101,48 +1101,6 @@ components:
       - stopped
       - running
 
-    ClusterLocalConfig:
-      type: object
-      properties:
-        data:
-          properties:
-            node_name:
-              description: "Node name"
-              type: string
-            node_type:
-              description: "Node type"
-              type: string
-              enum:
-              - master
-              - worker
-            key:
-              description: "Cluster key used to encrypt messages"
-              type: string
-            port:
-              description: "Port used by the **master** node to communicate with workers"
-              type: integer
-            bind_addr:
-              description: "Network interface used by the **master** to listen to incoming connections"
-              type: string
-            nodes:
-              description: "List of cluster master nodes. This list is used by **worker** nodes to connect
-              to the master"
-              type: array
-              items:
-                type: string
-            hidden:
-              description: "Whether to hide the cluster information in the alerts"
-              type: string
-            certfile:
-              description: "Path to the X.509 certificate file."
-              type: string
-            keyfile:
-              description: "Path to the certificate private key file."
-              type: string
-            keyfile_password:
-              description: "Private key encryption password."
-              type: string
-
     ClusterStatus:
       type: object
       properties:
@@ -5437,57 +5395,6 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /cluster/local/config:
-    get:
-      tags:
-        - Cluster
-      summary: "Get local node config"
-      description: "Return the current node cluster configuration"
-      operationId: api.controllers.cluster_controller.get_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Cluster configuration"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ClusterLocalConfig'
-              example:
-                data:
-                  affected_items:
-                    - node_name: master-node
-                      node_type: master
-                      port: 1516
-                      bind_addr: localhost
-                      nodes:
-                        - wazuh-master
-                      hidden: "no"
-                      cafile: "/var/wazuh_server/etc/sslmanager.ca"
-                      certfile: "/var/wazuh_server/etc/sslmanager.cert"
-                      keyfile: "/var/wazuh_server/etc/sslmanager.key"
-                      keyfile_password: ""
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected information was returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

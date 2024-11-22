@@ -1,21 +1,4 @@
 ---
-test_name: /cluster/local/config
-
-stages:
-
-  - name: Get cluster config
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response: &permission_denied
-      status_code: 403
-      json:
-        error: 4000
-
----
 test_name: GET /cluster/healthcheck
 
 stages:
