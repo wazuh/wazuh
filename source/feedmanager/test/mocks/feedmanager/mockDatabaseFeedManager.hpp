@@ -99,9 +99,10 @@ public:
      *
      * @note This method is intended for testing purposes and does not perform any real action.
      */
-    MOCK_METHOD(void,
+    MOCK_METHOD(bool,
                 getVulnerabiltyDescriptiveInformation,
-                (const std::string_view cveId,
+                (const std::string& cveId,
+                 const std::string& subShortName,
                  FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer),
                 ());
 

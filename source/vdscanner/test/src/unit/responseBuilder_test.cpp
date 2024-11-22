@@ -292,16 +292,19 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS2)
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
     auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
         .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
@@ -385,16 +388,19 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS3)
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
     auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
         .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
@@ -517,16 +523,19 @@ TEST_F(ResponseBuilderTest, TestSuccessfulOSResponseCVSS3)
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
     auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
         .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
@@ -612,16 +621,19 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseNonDefaultCna)
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
     auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
         .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
@@ -706,16 +718,19 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseUnderEvaluation)
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
     auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _, _))
         .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
     EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 

@@ -536,7 +536,7 @@ public:
      *
      * @note Use @see VulnerabilitySource enum to access each field
      *
-     * @return Pair with CNA base name and CNA expanded name.
+     * @return Pair with CNA/ADP base name and CNA/ADP expanded name.
      */
     std::pair<std::string, std::string> m_vulnerabilitySource = std::make_pair(DEFAULT_CNA, DEFAULT_CNA);
 
