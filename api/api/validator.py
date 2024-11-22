@@ -7,7 +7,6 @@ import re
 from types import MappingProxyType
 from typing import Dict, List
 
-from defusedxml import ElementTree as ET
 from jsonschema import Draft4Validator
 from uuid6 import UUID
 
@@ -275,29 +274,6 @@ def check_exp(exp: str, regex: re.Pattern) -> bool:
     if not isinstance(exp, str):
         return True
     return regex.match(exp) is not None
-
-
-def check_xml(xml_string: str) -> bool:
-    """Function to check if an XML string is correct.
-
-    Parameters
-    ----------
-    xml_string : str
-        XML string to check.
-
-    Returns
-    -------
-    bool
-        True if the XML is OK. False otherwise.
-    """
-    try:
-        ET.fromstring(xml_string)
-    except ET.ParseError:
-        return False
-    except Exception:
-        return False
-
-    return True
 
 
 def allowed_fields(filters: Dict) -> List:
