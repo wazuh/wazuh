@@ -30,8 +30,8 @@ namespace FieldAlertHelper
 template<typename T>
 nlohmann::json fillEmptyOrNegative(T&& field)
 {
-    if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, std::string_view>
-                  || std::is_same_v<T, std::string>)
+    if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>,
+                                 std::string_view> || std::is_same_v<T, std::string>)
     {
         // Return "-" if the string is empty, otherwise return the original string
         return field.empty() ? "-" : std::forward<T>(field);
@@ -55,8 +55,8 @@ nlohmann::json fillEmptyOrNegative(T&& field)
     else
     {
         // Compile-time check to ensure unsupported types are caught early
-        static_assert(std::is_arithmetic_v<std::remove_cv_t<std::remove_reference_t<T>>>
-                          || std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, std::string>,
+        static_assert(std::is_arithmetic_v<std::remove_cv_t<std::remove_reference_t<
+                              T>>> || std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, std::string>,
                       "Unsupported type for fillEmptyOrNegative");
     }
 }
