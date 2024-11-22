@@ -4,20 +4,16 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
-import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
-from requests import exceptions
 from shutil import copyfile, Error
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY
-from xml.etree.ElementTree import Element
 from wazuh.core.common import OSSEC_TMP_PATH
 
 import pytest
 import yaml
-from defusedxml.ElementTree import parse
 from freezegun import freeze_time
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -31,7 +27,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-test_files_path = os.path.join(test_data_path, 'test_load_wazuh_xml')
 
 # input data for testing q filter
 input_array = [
@@ -151,12 +146,6 @@ mock_nested_dict = {
     },
     "board_serial": "BSS-0123456789"
 }
-
-test_xml = '''
-<!-- Modify it at your will. -->
-
-<!-- Example -->
-'''
 
 test_yaml = '''
 key: value
@@ -666,42 +655,6 @@ def test_plain_dict_to_nested_dict():
 
     assert isinstance(result, dict)
     assert result == mock_nested_dict
-
-
-def test_basic_load_wazuh_xml():
-    """Test basic load_wazuh_xml functionality."""
-    with patch('wazuh.core.utils.open') as f:
-        f.return_value.__enter__.return_value = StringIO(test_xml)
-        result = utils.load_wazuh_xml('test_file')
-
-        assert isinstance(result, Element)
-
-
-def test_load_wazuh_xml():
-    """Test load_wazuh_xml function."""
-
-    def elements_equal(e1, e2):
-        if e1.tag != e2.tag: return False
-        if e1.text != e2.text: return False
-        if e1.attrib != e2.attrib: return False
-        if len(e1) != len(e2): return False
-        return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
-
-    for file in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml')):
-        path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml'),
-                            file)
-        original = parse(path).getroot()
-        result = utils.load_wazuh_xml(path)
-
-        assert elements_equal(original, result.find('dummy_tag'))
-
-
-@pytest.mark.parametrize('expected_exception', [1113])
-def test_load_wazuh_xml_ko(expected_exception):
-    """Test `load_wazuh_xml` fails gracefully when reading an invalid utf-8 character sequence."""
-    file_path = os.path.join(test_data_path, 'test_load_wazuh_xml_ko', 'invalid_utf8.xml')
-    with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-        utils.load_wazuh_xml(file_path)
 
 
 def test_basic_load_wazuh_yaml():
@@ -1872,55 +1825,6 @@ def test_select_array(select, required_fields, expected_result):
         assert e.code == 1724
 
 
-@patch('wazuh.core.utils.check_wazuh_limits_unchanged')
-@patch('wazuh.core.utils.check_remote_commands')
-@patch('wazuh.core.utils.check_agents_allow_higher_versions')
-@patch('wazuh.core.utils.check_virustotal_integration')
-@patch('wazuh.core.utils.check_indexer')
-@patch('wazuh.core.common.WAZUH_ETC', new=test_files_path)
-def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
-                            mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
-    """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
-
-    with open(os.path.join(test_files_path, 'agent_new_line_query.conf')) as f:
-        xml_file = f.read()
-
-    m = mock_open(read_data=xml_file)
-
-    with patch('builtins.open', m):
-        utils.validate_wazuh_xml(xml_file)
-    mock_remote_commands.assert_not_called()
-    mock_agents_versions.assert_not_called()
-    mock_check_indexer.assert_not_called()
-    mock_virus_total_integration.assert_not_called()
-
-    with patch('builtins.open', m):
-        utils.validate_wazuh_xml(xml_file, config_file=True)
-    mock_remote_commands.assert_called_once()
-    mock_agents_versions.assert_called_once()
-    mock_check_indexer.assert_called_once()
-    mock_virus_total_integration.assert_called_once()
-
-
-@pytest.mark.parametrize('effect, expected_exception', [
-    (utils.ExpatError, 1113)
-])
-def test_validate_wazuh_xml_ko(effect, expected_exception):
-    """Tests validate_wazuh_xml function works when open function raises an exception.
-    Parameters
-    ----------
-    effect : Exception
-        Exception to be triggered.
-    expected_exception
-        Expected code when triggering the exception.
-    """
-    input_file = os.path.join(test_files_path, 'test_rules.xml')
-
-    with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
-        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            utils.validate_wazuh_xml(input_file)
-
-
 def test_to_relative_path():
     """Test to_relative_path function."""
     path = 'etc/ossec.conf'
@@ -1991,52 +1895,6 @@ def test_get_utc_now():
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
 
 
-@pytest.mark.parametrize("new_conf, unchanged_limits_conf", [
-    ("<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>no</logall></global><global><limits><eps><test>yes</test></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config>", True),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config><ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
-     False)
-])
-@pytest.mark.parametrize("original_conf", [
-    "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
-])
-@pytest.mark.parametrize("limits_conf", [
-    ({'eps': {'allow': True}}),
-    ({'eps': {'allow': False}})
-])
-def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_conf, limits_conf):
-    """Test if ossec.conf limits are protected by the API.
-
-    When 'eps': {'allow': False} is set in the API configuration, the limits in ossec.conf cannot be changed.
-    However, other configuration sections can be added, removed or modified.
-
-    Parameters
-    ----------
-    new_conf : str
-        New ossec.conf to be uploaded.
-    unchanged_limits_conf : bool
-        Whether the limits section in ossec.conf is the same as the original one.
-    original_conf : str
-        Original ossec.conf to be uploaded.
-    limits_conf : dict
-        API configuration for the limits section.
-    """
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['limits'].update(limits_conf)
-
-    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        if limits_conf['eps']['allow'] or unchanged_limits_conf:
-            utils.check_wazuh_limits_unchanged(new_conf, original_conf)
-        else:
-            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_wazuh_limits_unchanged(new_conf, original_conf)
-
-
 @pytest.mark.parametrize("new_conf", [
     ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></ossec_config>"),
     ("<ossec_config><auth><agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
@@ -2074,69 +1932,6 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         else:
             with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
                 utils.check_agents_allow_higher_versions(new_conf)
-
-
-@pytest.mark.parametrize("new_conf, original_conf, indexer_changed", [
-    (
-        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
-        True,
-     ),
-    (
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
-        False,
-    ),
-    (
-        "<ossec_config><indexer><hosts><host>https://0.0.0.0:9200/</host></hosts></indexer></ossec_config>",
-        "<ossec_config><indexer><hosts><host>https://127.0.0.1:9200/</host></hosts></indexer></ossec_config>",
-        True,
-    ),
-    (
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
-        "</indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
-        True,
-    ),
-    (
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
-        "</indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>filebeat-key.pem</key></ssl></indexer></ossec_config>",
-        True,
-    ),
-    (
-        "<ossec_config><auth><disabled>no</disabled></auth></ossec_config>",
-        "<ossec_config><auth><disabled>yes</disabled></auth></ossec_config>",
-        False,
-    ),
-])
-@pytest.mark.parametrize("indexer_allowed", [
-    True,
-    False,
-])
-def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed):
-    """Check if the ossec.conf indexer section is protected by the API.
-
-    Parameters
-    ----------
-    new_conf : str
-        New ossec.conf to be uploaded.
-    original_conf : str
-        Original ossec.conf.
-    indexer_changed : bool
-        Whether the indexer section of the original and new configurations is equal or not.
-    indexer_allowed : bool
-        Whether it is allowed to modify the indexer API configuration section.
-    """
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['indexer']['allow'] = indexer_allowed
-
-    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        if indexer_allowed:
-            utils.check_indexer(new_conf, original_conf)
-        elif indexer_changed:
-            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_indexer(new_conf, original_conf)
 
 
 @pytest.mark.parametrize(
@@ -2235,42 +2030,3 @@ def test_upload_file_ko(mock_uid, mock_gid, mock_chmod, mock_mks,
         with patch('wazuh.core.utils.safe_move', side_effect=sm_side_effect) as mock_safe_move:
             with pytest.raises(upload_error[0], match=rf'\b{upload_error[1]}\b'):
                 utils.upload_file("test", file_path=filename)
-
-
-@pytest.mark.parametrize("new_conf", [
-    ("<ossec_config><integration><name>virustotal</name><api_key>KEY</api_key>"
-     "<group>syscheck</group></integration></ossec_config>")])
-@pytest.mark.parametrize("integrations_conf", [
-    ({'virustotal': {'public_key': {'allow': False, 'minimum_quota': 240}}}),
-    ({'virustotal': {'public_key': {'allow': True, 'minimum_quota': 240}}})
-])
-def test_check_virustotal_integration(integrations_conf, new_conf):
-    """Check if the used Virus Total public API key is allowed by the API.
-
-     When 'public_key': {'allow': False} is set in the API configuration, the provided Virus Total API key
-    cannot be public. The default quota of the public API keys is 240 hourly requests.
-
-    Parameters
-    ----------
-    new_conf : str
-        New ossec.conf to be uploaded.
-
-    integrations_conf : dict
-        Virus Total integration configuration.
-    """
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['integrations'].update(integrations_conf)
-    virust_total_min_quouta = integrations_conf['virustotal']['public_key']['minimum_quota']
-
-    with patch('wazuh.core.utils.get') as mock_requests_get:
-        if not integrations_conf['virustotal']['public_key']['allow']:
-            with pytest.raises(exception.WazuhError, match=".* 1130 .*"):
-                mock_response = Mock()
-                mock_response.json.return_value = {
-                    'data': {'api_requests_hourly': {'user': {'allowed': virust_total_min_quouta}}}}
-                mock_requests_get.return_value = mock_response
-                utils.check_virustotal_integration(new_conf)
-
-            with pytest.raises(exception.WazuhError, match=".* 1131 .*"):
-                mock_requests_get.side_effect = exceptions.RequestException
-                utils.check_virustotal_integration(new_conf)

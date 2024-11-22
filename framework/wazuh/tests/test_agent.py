@@ -16,6 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        # TODO: Fix in #26725
         with patch('wazuh.core.utils.load_wazuh_xml'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
@@ -328,7 +329,7 @@ async def test_agent_add_agent(
         type=type,
         version=version,
         groups=groups,
-        
+
     )
 
     assert result.dikt['data'].id == new_agent.id
