@@ -227,7 +227,7 @@ public:
         {
             if (!cvssData.data || cvssData.data->scoreBase() < 0.01f || cvssData.data->severity()->str().empty())
             {
-                LOG_DEBUG("Unreliable information for '{}' from %s source.", cve.c_str(), cvssSource.c_str());
+                LOG_DEBUG("Unreliable information for '{}' from {} source.", cve.c_str(), cvssSource.c_str());
                 return false;
             }
 
