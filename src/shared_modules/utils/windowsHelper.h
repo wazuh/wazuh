@@ -30,7 +30,6 @@
 #include "encodingWindowsHelper.h"
 #include "timeHelper.h"
 
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wreturn-type"
