@@ -35,23 +35,23 @@ def test_ssl_config_fails_without_values(init_values):
 @pytest.mark.parametrize("init_values,expected", [
     (
         {},
-        {"use_ssl": False, "key": "", "cert": "", "ca": [""]}
+        {"use_ssl": False, "key": "", "certificate": "", "certificate_authorities": [""]}
     ),
     (
         {"use_ssl": True},
-        {"use_ssl": True, "key": "", "cert": "", "ca": [""]}
+        {"use_ssl": True, "key": "", "certificate": "", "certificate_authorities": [""]}
     ),
     (
         {"use_ssl": True, "key": "key_example"},
-        {"use_ssl": True, "key": "key_example", "cert": "", "ca": [""]}
+        {"use_ssl": True, "key": "key_example", "certificate": "", "certificate_authorities": [""]}
     ),
     (
-        {"use_ssl": True, "key": "key_example", "cert": "cert_example"},
-        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": [""]}
+        {"use_ssl": True, "key": "key_example", "certificate": "cert_example"},
+        {"use_ssl": True, "key": "key_example", "certificate": "cert_example", "certificate_authorities": [""]}
     ),
     (
-        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": ["ca_example"]},
-        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": ["ca_example"]}
+        {"use_ssl": True, "key": "key_example", "certificate": "cert_example", "certificate_authorities": ["ca_example"]},
+        {"use_ssl": True, "key": "key_example", "certificate": "cert_example", "certificate_authorities": ["ca_example"]}
     )
 ])
 def test_indexer_ssl_config_default_values(init_values, expected):
@@ -60,8 +60,8 @@ def test_indexer_ssl_config_default_values(init_values, expected):
 
     assert ssl_config.use_ssl == expected["use_ssl"]
     assert ssl_config.key == expected["key"]
-    assert ssl_config.cert == expected["cert"]
-    assert ssl_config.ca == expected["ca"]
+    assert ssl_config.certificate == expected["certificate"]
+    assert ssl_config.certificate_authorities == expected["certificate_authorities"]
 
 
 @pytest.mark.parametrize("init_values,expected", [

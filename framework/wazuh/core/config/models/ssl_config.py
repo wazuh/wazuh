@@ -43,15 +43,15 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         Whether to use SSL for the indexer. Default is False.
     key : str
         The path to the SSL key file. Default is an empty string.
-    cert : str
+    certificate : str
         The path to the SSL certificate file. Default is an empty string.
-    ca : str
+    certificate_authorities : str
         The path to the CA certificate file. Default is an empty string.
     """
     use_ssl: bool = False
     key: str = ""
-    cert: str = ""
-    ca: List[str] = Field(default=[""], min_length=1)
+    certificate: str = ""
+    certificate_authorities: List[str] = Field(default=[""], min_length=1)
 
 
 class APISSLConfig(WazuhConfigBaseModel):

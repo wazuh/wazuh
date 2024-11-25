@@ -26,7 +26,7 @@ class IndexerConfig(WazuhConfigBaseModel):
     ----------
     hosts : List[IndexerNode]
         List of nodes configuration.
-    user : str
+    username : str
         The username for indexer authentication.
     password : str
         The password for indexer authentication.
@@ -34,7 +34,7 @@ class IndexerConfig(WazuhConfigBaseModel):
         SSL configuration for the indexer. Default is an instance of IndexerSSLConfig.
     """
     hosts: List[IndexerNode] = Field(min_length=1)
-    user: str
+    username: str
     password: str
     ssl: IndexerSSLConfig = IndexerSSLConfig()
 

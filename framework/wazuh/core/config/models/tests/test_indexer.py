@@ -9,12 +9,12 @@ from wazuh.core.config.models.ssl_config import IndexerSSLConfig
     (
         {
             "hosts": [{"host": "localhost", "port": 9200}],
-            "user": "user_example",
+            "username": "user_example",
             "password": "password_example"
         },
         {
             "hosts": [{"host": "localhost", "port": 9200}],
-            "user": "user_example",
+            "username": "user_example",
             "password": "password_example",
             "ssl": IndexerSSLConfig()
         }
@@ -22,15 +22,15 @@ from wazuh.core.config.models.ssl_config import IndexerSSLConfig
     (
         {
             "hosts": [{"host": "example", "port": 5000}],
-            "user": "another_user",
+            "username": "another_user",
             "password": "another_password",
-            "ssl": IndexerSSLConfig(use_ssl=True, key="key_example", cert="cert_example")
+            "ssl": IndexerSSLConfig(use_ssl=True, key="key_example", certificate="cert_example")
         },
         {
             "hosts": [{"host": "example", "port": 5000}],
-            "user": "another_user",
+            "username": "another_user",
             "password": "another_password",
-            "ssl": IndexerSSLConfig(use_ssl=True, key="key_example", cert="cert_example")
+            "ssl": IndexerSSLConfig(use_ssl=True, key="key_example", certificate="cert_example")
         }
     )
 ])
@@ -39,7 +39,7 @@ def test_indexer_config_default_values(init_values, expected):
     config = IndexerConfig(**init_values)
 
     assert config.model_dump()["hosts"] == expected["hosts"]
-    assert config.user == expected["user"]
+    assert config.username == expected["username"]
     assert config.password == expected["password"]
     assert config.ssl == expected["ssl"]
 
@@ -49,7 +49,7 @@ def test_indexer_config_default_values(init_values, expected):
     ({"hosts": []}),
     ({"hosts": [{"host": "localhost"}]}),
     ({"hosts": [{"host": "localhost", "port": 5000}]}),
-    ({"hosts": [{"host": "localhost", "port": 5000}], "user": "user_example"}),
+    ({"hosts": [{"host": "localhost", "port": 5000}], "username": "user_example"}),
 ])
 def test_indexer_config_fails_without_values(init_values):
     """Check the correct behavior of the `IndexerConfig` class validations."""

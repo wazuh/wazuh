@@ -12,11 +12,11 @@ indexer:
   hosts:
     - host: localhost
       port: 9200
-  user: admin
+  username: admin
   password: admin
   ssl:
     use_ssl: true
     key: <PATH_TO_KEY_FILE>
-    cert: <PATH_TO_CERT_FILE>
-    ca:
+    certificate: <PATH_TO_CERT_FILE>
+    certificate_authorities:
       - <PATH_TO_CA_FILE>
