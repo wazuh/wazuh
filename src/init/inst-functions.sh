@@ -31,6 +31,8 @@ InstallCommon()
 
   ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
+  # Folder for temporary files
+  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}tmp/wazuh-server
   # Folder for the engine api socket
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-engine
   # Folder for persistent databases (vulnerability scanner, ruleset, connector).
