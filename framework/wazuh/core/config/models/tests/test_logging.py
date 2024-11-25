@@ -4,7 +4,28 @@ import pytest
 from pydantic import ValidationError
 
 from wazuh.core.config.models.logging import LoggingFormat, LoggingLevel, LoggingConfig, \
-    APILoggingLevel, LogFileMaxSizeConfig, RotatedLoggingConfig
+    APILoggingLevel, LogFileMaxSizeConfig, RotatedLoggingConfig, EngineLoggingLevel, EngineLoggingConfig
+
+
+@pytest.mark.parametrize("init_values, expected", [
+    ({}, EngineLoggingLevel.info),
+    ({"level": "trace"}, EngineLoggingLevel.trace)
+])
+def test_engine_logging_config_default_values(init_values, expected):
+    """Check the correct initialization of the `EngineLoggingConfig` class."""
+    config = EngineLoggingConfig(**init_values)
+
+    assert config.level == expected
+
+
+@pytest.mark.parametrize("value", [
+    "info1",
+    ""
+])
+def test_logging_config_invalid_values(value):
+    """Check the correct behavior of the `EngineLoggingConfig` class validations."""
+    with pytest.raises(ValidationError):
+        _ = EngineLoggingConfig(**{"level": value})
 
 
 @pytest.mark.parametrize("init_values, expected", [

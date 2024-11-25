@@ -2,7 +2,7 @@ from pydantic import FilePath, PositiveInt, PositiveFloat
 
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.config.models.base import WazuhConfigBaseModel
-from wazuh.core.config.models.logging import LoggingConfig
+from wazuh.core.config.models.logging import EngineLoggingConfig
 
 
 class EngineClientConfig(WazuhConfigBaseModel):
@@ -36,4 +36,4 @@ class EngineConfig(WazuhConfigBaseModel):
     """
     tzdv_automatic_update: bool = False
     client: EngineClientConfig = EngineClientConfig()
-    logging: LoggingConfig = LoggingConfig()
+    logging: EngineLoggingConfig = EngineLoggingConfig()
