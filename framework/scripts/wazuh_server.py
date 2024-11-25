@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from wazuh.core.common import BIN_ROOT, WAZUH_SHARE, WAZUH_LOG
+from wazuh.core.common import WAZUH_SHARE, WAZUH_LOG
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
@@ -25,7 +25,7 @@ SERVER_DAEMON_NAME = 'wazuh-server'
 COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / 'wazuh_comms_apid.py'
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
 EMBEDDED_PYTHON_PATH = WAZUH_SHARE / 'framework' / 'python' / 'bin' / 'python3'
-ENGINE_BINARY_PATH = BIN_ROOT / 'wazuh-engine'
+ENGINE_BINARY_PATH = WAZUH_SHARE / 'bin' / 'wazuh-engine'
 ENGINE_DAEMON_NAME = 'wazuh-engined'
 MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
