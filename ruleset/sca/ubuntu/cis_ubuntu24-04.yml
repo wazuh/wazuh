@@ -4925,8 +4925,8 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - "c:systemctl show systemd-journald.service -> r:^LoadState=loaded"
-      - "c:systemctl show systemd-journald.service -> r:^ActiveState=active"
+      - "c:systemctl is-enabled systemd-journald.service -> r:static"
+      - "c:systemctl is-active systemd-journald.service -> r:active"
 
   # 6.1.1.2 Ensure journald log file access is configured. (Manual) - Not Implemented
 
@@ -4957,19 +4957,7 @@ checks:
       - 'f:/etc/systemd/journald.conf -> r:^RuntimeKeepFree\s*\t*=\s*\t*\d+'
       - 'f:/etc/systemd/journald.conf -> r:^MaxFileSec\s*\t*=\s*\t*\d+'
 
-  # 6.1.1.4 Ensure only one logging system is in use. (Automated)
-   - id: 18714
-     title: "Ensure only one logging system is in use."
-     description: "Best practices recommend that a single centralized logging system be used for log management, choose a single service either rsyslog - OR - journald to be used as a single centralized logging system."
-     rationale: "Configuring only one logging service either rsyslog - OR - journald avoids redundancy, optimizes resources, simplifies configuration and management, and ensures consistency."
-     remediation: "Run the following command to install systemd-journal-remote: # apt install systemd-journal-remote."
-     impact: "Transitioning from one logging service to another can be complex and time consuming, it involves reconfiguration and may result in data loss if not managed and reconfigured correctly."
-     compliance:
-       - cis: ["6.1.1.4"]
-     condition: all
-     rules:
-      - 'c:sh -c "systemctl show rsyslog.service systemd-journald.service | grep -cE \"^ActiveState=active\"" -> n:^(\p*\d+) compare >= 1'
-      - 'c:sh -c "systemctl show rsyslog.service systemd-journald.service | grep -cE \"^LoadState=loaded\"" -> n:^(\p*\d+) compare >= 1'
+  # 6.1.1.4 Ensure only one logging system is in use. (Automated) - Not Implemented
 
   # 6.1.2.1.1 Ensure systemd-journal-remote is installed. (Automated)
    - id: 18715
@@ -5041,8 +5029,8 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - "c:systemctl show systemd-journal-upload.service -> r:^LoadState=loaded"
-      - "c:systemctl show systemd-journal-upload.service -> r:^ActiveState=active"
+      - "c:systemctl is-enabled systemd-journal-upload.service -> r:enabled"
+      - "c:systemctl is-active systemd-journal-upload.service -> r:active"
 
   # 6.1.2.1.4 Ensure systemd-journal-remote service is not in use. (Automated)
    - id: 18718
@@ -5064,7 +5052,8 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "not c:systemctl show systemd-journal-remote.socket systemd-journal-remote.service -> r:^LoadState=loaded|^ActiveState=active"
+      - "not c:systemctl is-enabled systemd-journal-remote.socket systemd-journal-remote.service -> r:^enabled"
+      - "not c:systemctl is-active systemd-journal-remote.socket systemd-journal-remote.service -> r:^active"
 
   # 6.1.2.2 Ensure journald ForwardToSyslog is disabled. (Automated)
    - id: 18719
@@ -5181,8 +5170,8 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - "c:systemctl show rsyslog.service -> r:^LoadState=loaded"
-      - "c:systemctl show rsyslog.service -> r:^ActiveState=active"
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
+      - "c:systemctl is-active rsyslog.service -> r:^active"
 
   # 6.1.3.3 Ensure journald is configured to send logs to rsyslog. (Automated)
    - id: 18724
@@ -5206,7 +5195,8 @@ checks:
        - soc_2: ["PL1.4"]
      condition: any
      rules:
-      - "c:systemctl show rsyslog.service -> r:^ActiveState=active"
+      - "c:systemctl show systemd-journald.service -> r:^LoadState=loaded|^ActiveState=active"
+      - "c:systemctl show rsyslog.service -> r:^LoadState=loaded|^ActiveState=active"
       - 'f:/etc/systemd/journald.conf -> r:^ForwardToSyslog\s*\t*=\s*\t*yes'
 
   # 6.1.3.4 Ensure rsyslog log file creation mode is configured. (Automated)
@@ -5233,7 +5223,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:cat /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
 
   # 6.1.3.5 Ensure rsyslog logging is configured. (Manual) - Not Implemented
 
@@ -5260,7 +5251,8 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - 'c:grep -Rh ^*.* /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^*.* action\.+target='
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^*.* action\.+target='
+      - 'f:/etc/rsyslog.conf -> r:^*.* action\.+target='
 
   # 6.1.3.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
    - id: 18727
@@ -5284,8 +5276,10 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - 'c:cat /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> r:^module\( && r:load= && r:imtcp'
-      - 'c:cat /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> r:^input\( && r:type= && r:imtcp && r:port= && r:514'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*module\(load="imtcp"\)'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*module\(load="imtcp"\)'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*input\(type="imtcp" port="514"\)'
 
   # 6.1.3.8 Ensure logrotate is configured. (Manual) - Not Implemented
 
