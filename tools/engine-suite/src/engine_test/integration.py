@@ -1,6 +1,8 @@
 import json
 import yaml
 import sys
+
+# Todo: Use the shared Dumper class after CLI is merged
 try:
     from yaml import CDumper as BaseDumper
 except ImportError:

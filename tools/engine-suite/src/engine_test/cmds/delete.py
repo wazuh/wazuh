@@ -1,19 +1,25 @@
-from engine_test.crud_integration import CrudIntegration
-from engine_test.command import Command
+import argparse
+import sys
 
-class DeleteCommand(Command):
-    def __init__(self):
-        pass
+from engine_test.conf.integration import Formats, IntegrationConf
+from engine_test.conf.store import ConfigDatabase
 
-    def run(self, args):
-        super().run(args)
-        integration = CrudIntegration()
-        try:
-            integration.delete_integration(args['integration-name'])
-        except Exception as ex:
-            print(ex)
+def run(args):
 
-    def configure(self, subparsers):
-        parser_list = subparsers.add_parser("delete", help='Delete integration')
-        parser_list.add_argument('integration-name', type=str, help=f'Integration name')
-        parser_list.set_defaults(func=self.run)
+    try:
+        # Get the configuration database
+        db = ConfigDatabase(args['config_file'])
+
+        # Remove integration configuration
+        db.remove_integration(args['integration-name'])
+
+    except Exception as e:
+        sys.exit(f"Error deletting integration configuration: {e}")
+
+
+def configure(subparsers):
+
+    parser = subparsers.add_parser("delete", help='Delete integration configuration')
+    parser.add_argument('integration-name', type=str, help=f'Integration name')
+
+    parser.set_defaults(func=run)
