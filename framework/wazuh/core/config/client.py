@@ -145,9 +145,9 @@ class CentralizedConfig:
         return cls._config.server.get_internal_config()
 
     @classmethod
-    def get_config_dict(cls, sections: Optional[List[ConfigSections]] = None) -> dict:
+    def get_config_json(cls, sections: Optional[List[ConfigSections]] = None) -> str:
         """
-        Retrieve the current configuration as a dictionary, optionally filtered by specified sections.
+        Retrieve the current configuration as a JSON str, optionally filtered by specified sections.
 
         Parameters
         ----------
@@ -162,13 +162,10 @@ class CentralizedConfig:
         if cls._config is None:
             cls.load()
 
-        non_default_values = cls._config.model_dump(exclude_defaults=True)
         if sections is None:
-            return non_default_values
+            return cls._config.model_dump_json()
         else:
-            filtered_config = {section.value: non_default_values[section.value]
-                               for section in sections if section.value in non_default_values}
-            return filtered_config
+            return cls._config.model_dump_json(include=[section.value for section in sections])
 
     @classmethod
     def update_security_conf(cls, config: dict):

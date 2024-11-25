@@ -29,6 +29,6 @@ async def get_config(sections: Optional[str] = Query(default=None)) -> Response:
             )
     else:
         validated_sections = None
-    config = CentralizedConfig.get_config_dict(sections=validated_sections)
+    config = CentralizedConfig.get_config_json(sections=validated_sections)
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content=config)
+    return Response(status_code=status.HTTP_200_OK, content=config)
