@@ -93,19 +93,22 @@ class AgentForce(Model):
 class OS(Model):
     """Agent OS model."""
 
-    def __init__(self, name: str = None, platform: str = None):
+    def __init__(self, name: str = None, platform: str = None, version: str = None):
         self.swagger_types = {
             'name': str,
-            'platform': str
+            'platform': str,
+            'version': str
         }
 
         self.attribute_map = {
             'name': 'name',
-            'platform': 'platform'
+            'platform': 'platform',
+            'version': 'version'
         }
 
         self._name = name
         self._platform = platform
+        self.version = version
 
     @property
     def name(self) -> str:
@@ -122,6 +125,14 @@ class OS(Model):
     @platform.setter
     def platform(self, platform: str):
         self._platform = platform
+        
+    @property
+    def version(self) -> str:
+        return self.version
+
+    @version.setter
+    def version(self, version: str):
+        self.version = version
 
 
 class Host(Model):
