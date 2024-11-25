@@ -29,6 +29,27 @@ class APILoggingLevel(str, Enum):
     critical = "critical"
 
 
+class EngineLoggingLevel(str, Enum):
+    """Enum representing the different levels of logging verbosity for the Engine."""
+    trace = "trace"
+    debug = "debug"
+    info = "info"
+    warning = "warning"
+    error = "error"
+    critical = "critical"
+
+
+class EngineLoggingConfig(WazuhConfigBaseModel):
+    """Configuration for Engine logging levels.
+
+    Parameters
+    ----------
+    level : EngineLoggingLevel
+        The logging level. Default is "info".
+    """
+    level: EngineLoggingLevel = EngineLoggingLevel.info
+
+
 class LoggingConfig(WazuhConfigBaseModel):
     """Configuration for logging levels.
 
