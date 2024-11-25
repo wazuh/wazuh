@@ -1,8 +1,6 @@
 import argparse
-import json
 import sys
 
-# from engine_test.crud_integration import CrudIntegration
 from engine_test.conf.integration import Formats, IntegrationConf
 from engine_test.conf.store import ConfigDatabase
 
@@ -20,15 +18,16 @@ def check_positive(value):
 
 def check_args(args):
 
-    # Windows ignores module and provider, are automatically set
+    # Windows ignores module are automatically set to windows-eventchannel
     if args['format'] == Formats.WINDOWS_EVENTCHANNEL.value:
-        if args['module'] != None or args['provider'] != None:
-            print(
-                f"Ignoring module and provider for windows-eventchannel format, are automatically set")
+        if args['module'] != None:
+            print(f"Argument -m/--module is ignored for format {
+                  args['format']}, setting to windows-eventchannel")
+            args['module'] = 'windows-eventchannel'
+
 
         # TODO: Move to constant in shared module
         args['module'] = 'windows-eventchannel'
-        args['provider'] = 'auto'  # Read from event channel event
 
     # If multi-line format, lines are required
     if args['format'] == Formats.MULTI_LINE.value:
@@ -71,7 +70,7 @@ def configure(subparsers):
 
     parser.add_argument('-i', '--integration-name', type=str,
                         help=f'Integration to test name', dest='integration_name', required=True)
-    parser.add_argument('-f', '--format', help=f'Format in which events should be handled in engine-test.',
+    parser.add_argument('-f', '--format', help=f'Format in which events should be handled by engine-test.',
                         choices=Formats.get_formats(), dest='format', required=True)
     parser.add_argument(
         '-m', '--module', help='Name of the module this data is coming from (i.g. apache-error, apache-access, eventchannel, journald, macos-uls)', dest='module')

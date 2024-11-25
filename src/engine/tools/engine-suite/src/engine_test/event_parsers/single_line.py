@@ -2,9 +2,6 @@ class SingleLineParser:
     def __init__(self):
         pass
 
-    def format_event(self, event):
+    def split_events(self, events: list[str]) -> list[str]:
         # To remove \n of event(s) from file
-        return event.strip()
-
-    def get_events(self, events):
-        return events
+        return [event.strip() for event in events]

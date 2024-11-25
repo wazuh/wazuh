@@ -1,19 +1,14 @@
 import json
-from engine_test.event_format import EventFormat, Formats
 
-class MultilineFormat(EventFormat):
-    def __init__(self, integration, args, lines):
-        super().__init__(integration, args)
-        self.config['queue'] = Formats.MULTI_LINE.value['queue']
+class MultilineParser():
+    def __init__(self, event_lines: int):
+        self.maxLines : int = event_lines
 
-        # Quantity of lines to group an event
-        self.config['lines'] = lines
+        if self.maxLines < 0:
+            raise ValueError("The number of lines must be greater than 0.")
 
-    def format_event(self, event):
-        return event
+    def split_events(self, events: list[str]) -> list[str]:
 
-    def get_events(self, events):
-        maxLines = int(self.config['lines'])
         events_formated = []
 
         for event in events:
@@ -21,14 +16,10 @@ class MultilineFormat(EventFormat):
             lines = event.strip().splitlines()
 
             # group lines into chunks of maximum size maxLines
-            chunks = [lines[i:i + maxLines] for i in range(0, len(lines), maxLines)]
+            chunks = [lines[i:i + self.maxLines] for i in range(0, len(lines), self.maxLines)]
 
             # join the lines of each chunk into a single formatted event,
-            # but only if the chunk has exactly maxLines lines
-            events_formated.extend([' '.join(chunk) for chunk in chunks if len(chunk) == maxLines])
+            # but only if the chunk has exactly self.maxLines lines
+            events_formated.extend([' '.join(chunk) for chunk in chunks if len(chunk) == self.maxLines])
 
         return events_formated
-
-
-    def is_multiline(self):
-        return Formats.MULTI_LINE.value['multiline']

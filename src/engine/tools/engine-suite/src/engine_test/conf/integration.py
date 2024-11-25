@@ -100,7 +100,7 @@ class IntegrationConf:
         instance.template.from_template(template_data)
 
         return instance
-    
+
     def get_template(self) -> TesterMessageTemplate:
         '''
         Returns the template of the integration.
