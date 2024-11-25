@@ -46,21 +46,20 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         Whether to use SSL for the indexer. Default is False.
     key : str
         The path to the SSL key file. Default is an empty string.
-    cert : str
+    certificate : str
         The path to the SSL certificate file. Default is an empty string.
-    ca : str
+    certificate_authorities : str
         The path to the CA certificate file. Default is an empty string.
     verify_certificates : bool
         Whether to verify the server TLS certificates or not. Default is True.
     """
     use_ssl: bool = False
-    key: str = ''
-    cert: str = ''
-    ca: List[str] = Field(default=[''], min_length=1)
+    key: str = ""
+    certificate: str = ""
+    certificate_authorities: List[str] = Field(default=[""], min_length=1)
     verify_certificates: bool = True
 
-
-    @field_validator('key', 'cert')
+    @field_validator('key', 'certificate')
     @classmethod
     def validate_ssl_files(cls, path: str, info: ValidationInfo) -> str:
         """Validate that the SSL files exist.
@@ -91,7 +90,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         
         return path
 
-    @field_validator('ca')
+    @field_validator('certificate_authorities')
     @classmethod
     def validate_cs_files(cls, paths: List[str], info: ValidationInfo) -> List[str]:
         """Validate that the SSL certificate authorities files exist.

@@ -25,9 +25,9 @@ mock_config_data = {
     },
     "indexer": {
         "hosts": [{"host": "localhost", "port": 9200}],
-        "user": "admin",
+        "username": "admin",
         "password": "password",
-        "ssl": {"use_ssl": False, "key": "", "cert": "", "ca": [""]}
+        "ssl": {"use_ssl": False, "key": "", "certificate": "", "certificate_authorities": [""]}
     },
     "engine": {},
     "management_api": {},

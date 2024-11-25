@@ -5,7 +5,7 @@ from wazuh.core.config.models.central_config import Config, EngineConfig, Manage
 
 @pytest.mark.parametrize("init_values, expected", [
     ({
-        "indexer": {"hosts": [{"host": "localhost", "port": 9200}], "user": "user_example", "password": "password_example"},
+        "indexer": {"hosts": [{"host": "localhost", "port": 9200}], "username": "user_example", "password": "password_example"},
         "server": {"nodes": ["master"], "node": {"name": "example", "type": "master", "ssl":
             {"key": "value", "cert": "value", "ca": "value"}}}
      },
@@ -13,7 +13,7 @@ from wazuh.core.config.models.central_config import Config, EngineConfig, Manage
         "node": {"name": "example", "type": "master", "ssl": {"key": "value", "cert": "value", "ca": "value"}},
         "server": {"nodes": ["master"], "port": 1516, "bind_addr": "localhost", "hidden": False, "update_check": False,
                    "logging.level": "info"},
-        "indexer": {"hosts": [{"host": "localhost", "port": 9200}], "user": "user_example", "password": "password_example"},
+        "indexer": {"hosts": [{"host": "localhost", "port": 9200}], "username": "user_example", "password": "password_example"},
         "engine": {},
         "management_api": {},
         "communications_api": {}
