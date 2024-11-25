@@ -62,14 +62,13 @@ import sys
 
 import pytest
 
-if sys.platform == WINDOWS:
+if sys.platform == "win32":
     import win32con
     from win32con import KEY_WOW64_64KEY
 
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim import configuration
 from wazuh_testing.modules.fim.patterns import (IGNORING_DUE_TO_INVALID_NAME,
@@ -97,7 +96,7 @@ test_configuration = load_configuration_template(
 # Set configurations required by the fixtures.
 local_internal_options = {
     configuration.SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
-if sys.platform == WINDOWS:
+if sys.platform == "win32":
     local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
 # Valid UTF-8 filename test cases with actual symbols, diacritics, and multi-language characters
@@ -223,7 +222,7 @@ def test_surrogate_range_should_trigger_warning_3(test_configuration, test_metad
     assert monitor.callback_result
 
 
-@pytest.mark.skipif(sys.platform == WINDOWS, reason="POSIX-specific test")
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_invalid_lead_byte_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                                             truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
@@ -243,7 +242,7 @@ def test_invalid_lead_byte_should_trigger_warning_posix(test_configuration, test
     assert monitor.callback_result
 
 
-@pytest.mark.skipif(sys.platform == WINDOWS, reason="POSIX-specific test")
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_out_of_range_sequence_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                                             truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
@@ -262,7 +261,7 @@ def test_out_of_range_sequence_should_trigger_warning_posix(test_configuration, 
     assert monitor.callback_result
 
 
-@pytest.mark.skipif(sys.platform == WINDOWS, reason="POSIX-specific test")
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_5_byte_sequence_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
@@ -281,7 +280,7 @@ def test_5_byte_sequence_should_trigger_warning_posix(test_configuration, test_m
     monitor.start(generate_callback(IGNORING_DUE_TO_INVALID_NAME))
     assert monitor.callback_result
 
-@pytest.mark.skipif(sys.platform == WINDOWS, reason="POSIX-specific test")
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific test")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_6_byte_sequence_should_trigger_warning_posix(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                                           truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring) -> None:
