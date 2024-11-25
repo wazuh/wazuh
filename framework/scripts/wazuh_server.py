@@ -35,6 +35,7 @@ MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
 CLUSTER_LOG = WAZUH_LOG / 'cluster.log'
 
+
 #
 # Aux functions
 #
@@ -131,17 +132,21 @@ def start_daemons(background_mode: bool, root: bool):
     root : bool
         Whether the script is running as root or not.
     """
-    daemons = {
-        ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', 'start'],
-        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
+
+    daemons = [
+        {'name': ENGINE_DAEMON_NAME, 'args': [ENGINE_BINARY_PATH, 'server', 'start']},
+        {'name': COMMS_API_DAEMON_NAME,
+         'args': [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
             + (['-r'] if root else [])
-            + (['-d'] if background_mode else []),
-        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
+            + (['-d'] if background_mode else [])},
+        {'name': MANAGEMENT_API_DAEMON_NAME,
+         'args': [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
             + (['-r'] if root else [])
-            + (['-d'] if background_mode else []),
-    }
-    for name, args in daemons.items():
-        start_daemon(background_mode, name, args)
+            + (['-d'] if background_mode else [])},
+    ]
+
+    for daemon in daemons:
+        start_daemon(background_mode, daemon['name'], daemon['args'])
 
 
 def shutdown_daemon(name: str):
@@ -217,8 +222,8 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     )
 
     tasks = [my_server, my_local_server]
-    #TODO(25554) - Delete in future Issue including references to HAPROXY
-    #if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
+    # TODO(25554) - Delete in future Issue including references to HAPROXY
+    # if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
     #    tasks.append(HAPHelper)
     await asyncio.gather(*[task.start() for task in tasks])
 
