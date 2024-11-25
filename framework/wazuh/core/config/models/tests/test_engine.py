@@ -3,7 +3,8 @@ from unittest.mock import patch
 from pydantic import ValidationError
 from pathlib import PosixPath
 
-from wazuh.core.config.models.engine import EngineClientConfig, EngineConfig, DEFAULT_ENGINE_SOCKET_PATH
+from wazuh.core.common import ENGINE_SOCKET
+from wazuh.core.config.models.engine import EngineClientConfig, EngineConfig
 
 valid_socket_path = "/var/wazuh/queue/example.sock"
 valid_retries = 5
@@ -13,7 +14,7 @@ valid_timeout = 20.0
 @pytest.mark.parametrize("init_values, expected", [
     ({"api_socket_path": valid_socket_path, "retries": valid_retries, "timeout": valid_timeout},
      {"api_socket_path": valid_socket_path, "retries": valid_retries, "timeout": valid_timeout}),
-    ({}, {"api_socket_path": DEFAULT_ENGINE_SOCKET_PATH, "retries": 3, "timeout": 10.0}),
+    ({}, {"api_socket_path": ENGINE_SOCKET, "retries": 3, "timeout": 10.0}),
 ])
 @patch('pathlib.Path.is_file', return_value=True)
 def test_engine_client_config_default_values(mock_is_file, init_values, expected):
