@@ -4,7 +4,6 @@ import uvicorn
 from fastapi import APIRouter, FastAPI
 
 from comms_api.core.unix_server.commands import post_commands
-from comms_api.core.unix_server.config import get_config
 from comms_api.core.commands import CommandsManager
 from wazuh.core import common
 
@@ -22,7 +21,6 @@ def start_unix_server(commands_manager: CommandsManager):
     """
     router = APIRouter(prefix='/api/v1')
     router.add_api_route('/commands', post_commands, methods=['POST'])
-    router.add_api_route('/config', get_config, methods=['GET'])
 
     app = FastAPI()
     app.include_router(router)

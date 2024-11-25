@@ -22,6 +22,7 @@ from wazuh.core.cluster.cluster import clean_up
 from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.cluster.unix_server.server import start_unix_server
 from wazuh.core.config.models.server import ServerConfig
 
 
@@ -386,6 +387,8 @@ def start():
         main_function = worker_main
 
     try:
+
+        start_unix_server()
         start_daemons(args.daemon, args.root)
 
         asyncio.run(main_function(args, server_config, main_logger))
