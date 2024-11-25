@@ -3,85 +3,87 @@ import logging
 import signal
 from multiprocessing import Queue, Process, Event
 from multiprocessing.managers import DictProxy, SyncManager
-from typing import Optional, Any
+from typing import Any
 
 
 logger = logging.getLogger('wazuh-comms-api')
 
 
-class Message:
-    """Message for the MuxDemuxQueue with an associated unique identifier.
+class Item:
+    """Item for the MuxDemuxQueue with an associated unique identifier.
 
     Parameters
     ----------
-    uid : int
-        Unique identifier for the message.
-    msg : dict
-        Message content as a dictionary.
+    id : int
+        Unique identifier for the item.
+    operation : str
+        Kind of operation to perform. Can be either 'create', 'delete' or 'update'.
+    content : dict
+        Item content as a dictionary. Can be either a stateful event, a response from OpenSearch or None.
+    index_name : str
+        Name of the index the item should be created in. Should be set when inserting an item to the mux_queue only.
     """
-    def __init__(self, uid: int, msg: dict):
-        self.uid = uid
-        self.msg = msg
+    def __init__(self, id: int, operation: str, content: dict = None, index_name: str = None):
+        self.id = id
+        self.content = content
+        self.operation = operation
+        self.index_name = index_name
 
 
 class MuxDemuxQueue:
-    """Class for managing messages between mux and demux components.
+    """Class for managing items between mux and demux components.
 
     Parameters
     ----------
     proxy_dict : DictProxy
         Dictionary-like proxy for managing responses.
     mux_queue : Queue
-        Queue for multiplexing messages.
+        Queue for multiplexing items.
     demux_queue : Queue
-        Queue for demultiplexing messages.
+        Queue for demultiplexing items.
     """
     def __init__(self, proxy_dict: DictProxy, mux_queue: Queue, demux_queue: Queue):
         self.responses = proxy_dict
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
 
-    def send_to_mux(self, uid: int, msg: dict):
-        """Put a message into the mux queue with an associated unique identifier.
+    def send_to_mux(self, item: Item):
+        """Put a item into the mux queue with an associated unique identifier.
 
         Parameters
         ----------
-        uid : int
-            Unique identifier of the message.
-        msg : dict
-            Message content to be put into the mux queue.
+        item : Item
+            Item to be put into the mux queue.
         """
-        msg = Message(uid=uid, msg=msg)
-        self.mux_queue.put(msg)
+        self.mux_queue.put(item)
 
-    def receive_from_mux(self, block: bool = True) -> Message:
-        """Retrieve a message from the mux queue. If the queue
+    def receive_from_mux(self, block: bool = True) -> Item:
+        """Retrieve a item from the mux queue. If the queue
         is empty and block is False it raises a queue.Empty error.
 
         Returns
         -------
-        Message
-            Message retrieved from the mux queue.
+        Item
+            Item retrieved from the mux queue.
         """
-        message = self.mux_queue.get(block=block)
-        return message
+        return self.mux_queue.get(block=block)
 
-    def send_to_demux(self, msg: Message):
-        """Put a message into the demux queue.
+    def send_to_demux(self, item: Item):
+        """Put a item into the demux queue.
 
         Parameters
         ----------
-        msg : Message
-            Message to be put into the demux queue.
+        item : Item
+            Item to be put into the demux queue.
         """
-        self.demux_queue.put(msg)
+        self.demux_queue.put(item)
 
-    def is_response_pending(self, uid: int) -> bool:
+    def is_response_pending(self, item_id: int) -> bool:
         """Check if a response is available for a given unique identifier.
 
         Parameters
         ----------
-        uid : int
+        item_id : int
             Unique identifier to check.
 
         Returns
@@ -89,45 +91,44 @@ class MuxDemuxQueue:
         bool
             True if response is available, False otherwise.
         """
-        return uid not in self.responses
+        return item_id not in self.responses
 
-    def receive_from_demux(self, uid: int) -> Optional[dict]:
+    def receive_from_demux(self, item_id: int) -> dict:
         """Retrieve and remove a response from the dictionary for a given unique identifier.
 
         Parameters
         ----------
-        uid : int
+        item_id : int
             Unique identifier of the response.
 
         Returns
         -------
-        Optional[dict]
-            Indexer response if available, None otherwise.
+        dict
+            Indexer response.
         """
-        if not self.is_response_pending(uid):
-            response = self.responses[uid]
-            del self.responses[uid]
-            return response
+        response = self.responses[item_id]
+        del self.responses[item_id]
+        return response
 
-    def internal_response_from_demux(self) -> Message:
-        """Retrieve a message from the demux queue.
+    def internal_get_response_from_demux(self) -> Item:
+        """Retrieve an item from the demux queue.
 
         Returns
         -------
-        Message
-            Message retrieved from the demux queue.
+        Item
+            Item retrieved from the demux queue.
         """
         return self.demux_queue.get()
 
-    def internal_store_response(self, msg: Message):
-        """Update the responses dictionary with the message content.
+    def internal_store_response(self, item: Item):
+        """Update the responses dictionary with the item content.
 
         Parameters
         ----------
-        msg : Message
-            Message whose content will be added to the response dictionary.
+        item : Item
+            Item whose content will be added to the response dictionary.
         """
-        self.responses[msg.uid] = msg.msg
+        self.responses[item.id] = item.content
 
 
 class MuxDemuxRunner(Process):
@@ -135,7 +136,7 @@ class MuxDemuxRunner(Process):
     signals for graceful shutdown and processing items from the queue.
 
     The MuxDemuxRunner class runs as a separate process to manage the `MuxDemuxQueue`. It listens
-    for termination signals (SIGTERM, SIGINT) to initiate a graceful shutdown, and continuously
+    for termination signals to initiate a graceful shutdown, and continuously
     processes items from the queue, storing them as responses if they are of the correct type.
     """
 
@@ -145,7 +146,7 @@ class MuxDemuxRunner(Process):
         self._shutdown_event = Event()
 
     def _handle_signal(self, signum: int, frame: Any):
-        """Handle termination signals (SIGTERM, SIGINT) by setting the shutdown event.
+        """Handle termination signals by setting the shutdown event.
 
         Parameters
         ----------
@@ -154,7 +155,8 @@ class MuxDemuxRunner(Process):
         frame : Any
             Current stack frame (unused).
         """
-        logger.info(f'MuxDemuxQueue pid {os.getpid()} - received signal {signal.Signals(signum).name}')
+        signal_name = signal.Signals(signum).name
+        logger.info(f'MuxDemuxQueue (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
         self._shutdown_event.set()
 
     def run(self) -> None:
@@ -163,20 +165,19 @@ class MuxDemuxRunner(Process):
 
         This method registers signal handlers for SIGTERM and SIGINT to gracefully terminate the
         process. It continuously checks the queue for new items, and stores responses if the items
-        are of type `Message`. On encountering an exception, it logs the error and checks the
+        are of type `Item`. On encountering an exception, it logs the error and checks the
         shutdown status to decide whether to continue or terminate.
         """
         signal.signal(signal.SIGTERM, self._handle_signal)
-        signal.signal(signal.SIGINT, self._handle_signal)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         while not self._shutdown_event.is_set():
             try:
-                item = self.queue.internal_response_from_demux()
-                if isinstance(item, Message):
+                item = self.queue.internal_get_response_from_demux()
+                if isinstance(item, Item):
                     self.queue.internal_store_response(item)
             except Exception as e:
                 if self._shutdown_event.is_set():
-                    logger.info(f'MuxDemuxQueue pid {os.getpid()} - shutting down')
                     return
                 else:
                     logger.error(f'Error with MuxDemuxQueue run: {e}', exc_info=True)

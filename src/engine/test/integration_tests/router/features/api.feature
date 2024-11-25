@@ -77,6 +77,22 @@ Feature: Router Routes API Management
     And I send a request to get the list of routes
     Then I should receive a list with size equal to "3"
 
+  Scenario: Check that last update is zero when state is disabled
+    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
+    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
+    When I send a request to get the route "default"
+    Then I should receive a route with state "ENABLED"
+    AND I should receive a route with last update different to 0
+    When I send a request to delete the filter "filter/allow-all/0"
+    Then I send a restart to server
+    When I send a request to get the route "default"
+    Then I should receive a route with state "DISABLED"
+    AND I should receive a route with last update equal to 0
+    When I send a request to create the filter "filter/allow-all/0"
+    Then I send a restart to server
+    When I send a request to get the route "default"
+    Then I should receive a route with state "ENABLED"
+
   Scenario: Change sync of specific route via API
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
     And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"

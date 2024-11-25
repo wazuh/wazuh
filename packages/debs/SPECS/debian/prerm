@@ -1,0 +1,31 @@
+#!/bin/sh
+# prerm script for wazuh-server
+
+set -e
+
+case "$1" in
+    upgrade|deconfigure)
+    ;;
+
+    remove)
+      # Stop the services before uninstalling the package
+      # Check for systemd
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-server > /dev/null 2>&1; then
+          systemctl stop wazuh-server > /dev/null 2>&1
+      # Check for SysV
+      elif command -v service > /dev/null 2>&1 && service wazuh-server status 2>/dev/null | grep "running" > /dev/null 2>&1; then
+          service wazuh-server stop > /dev/null 2>&1
+      fi
+    ;;
+
+    failed-upgrade)
+    ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 0
+    ;;
+
+esac
+
+exit 0

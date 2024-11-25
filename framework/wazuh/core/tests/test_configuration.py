@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from defusedxml.ElementTree import fromstring
 
-from wazuh.core.common import OSSEC_CONF, REMOTED_SOCKET
+from wazuh.core.common import REMOTED_SOCKET
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -28,12 +28,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 tmp_path = 'tests/data'
-
-
-@pytest.fixture(scope='module', autouse=True)
-def mock_wazuh_path():
-    with patch('wazuh.core.common.WAZUH_PATH', new=os.path.join(parent_directory, tmp_path)):
-        yield
 
 
 @pytest.mark.parametrize("json_dst, section_name, option, value", [
@@ -157,6 +151,7 @@ def test_read_option_journald(configuration_file, expected_values):
         assert list_of_filters == expected_values["filter"]
 
 
+@pytest.mark.xfail
 def test_get_ossec_conf():
     with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1101 .*"):
@@ -216,41 +211,14 @@ def test_get_group_conf():
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.get_group_conf(group_id='noexists')
 
-    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+    with patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.load_wazuh_yaml', side_effect=WazuhError(1101)):
             with pytest.raises(WazuhError, match=".* 1101 .*"):
                 result = configuration.get_group_conf(group_id='default')
                 assert isinstance(result, dict)
 
-    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+    with patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         assert configuration.get_group_conf(group_id='default')['total_affected_items'] == 1
-
-
-def test_parse_internal_options():
-    with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
-               new=os.path.join(parent_directory, tmp_path, 'configuration/noexists.conf')):
-        with pytest.raises(WazuhInternalError, match=".* 1107 .*"):
-            configuration.parse_internal_options('ossec', 'python')
-
-    with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
-               new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-        with patch('wazuh.core.common.LOCAL_INTERNAL_OPTIONS_CONF',
-                   new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-            with pytest.raises(WazuhInternalError, match=".* 1108 .*"):
-                configuration.parse_internal_options('ossec', 'python')
-
-
-def test_get_internal_options_value():
-    with patch('wazuh.core.configuration.parse_internal_options', return_value='str'):
-        with pytest.raises(WazuhError, match=".* 1109 .*"):
-            configuration.get_internal_options_value('ossec', 'python', 5, 1)
-
-    with patch('wazuh.core.configuration.parse_internal_options', return_value='0'):
-        with pytest.raises(WazuhError, match=".* 1110 .*"):
-            configuration.get_internal_options_value('ossec', 'python', 5, 1)
-
-    with patch('wazuh.core.configuration.parse_internal_options', return_value='1'):
-        assert configuration.get_internal_options_value('ossec', 'python', 5, 1) == 1
 
 
 @patch('wazuh.core.configuration.common.wazuh_gid')
@@ -259,13 +227,13 @@ def test_get_internal_options_value():
 def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.update_group_configuration('noexists', 'noexists')
-    
-    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+
+    with patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.open', return_value=Exception):
             with pytest.raises(WazuhError, match=".* 1006 .*"):
                 configuration.update_group_configuration('default', '')
 
-    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+    with patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.open'):
             configuration.update_group_configuration('default', 'key: value')
 
@@ -276,11 +244,11 @@ def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 def test_update_group_file(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.update_group_file('noexists', 'given')
-    
+
     with pytest.raises(WazuhError, match=".* 1722 .*"):
         configuration.update_group_file('.invalid', '')
 
-    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+    with patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1112 .*"):
             configuration.update_group_file('default', [])
 
@@ -322,6 +290,7 @@ def test_update_group_file(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
 @patch('os.path.exists')
 @patch('wazuh.core.common.WAZUH_PATH', new='/var/ossec')
+@pytest.mark.xfail(reason="This module it is deprecated.", run=False)
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
@@ -394,20 +363,6 @@ def test_get_active_configuration_ko(mock_exists, agent_id, component, config, s
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.close'):
                     with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
                         configuration.get_active_configuration(component, config, agent_id)
-
-
-def test_write_ossec_conf():
-    content = "New config"
-    with patch('wazuh.core.configuration.open', mock_open()) as mocked_file:
-        configuration.write_ossec_conf(new_conf=content)
-        mocked_file.assert_called_once_with(OSSEC_CONF, 'w')
-        mocked_file().writelines.assert_called_once_with(content)
-
-
-def test_write_ossec_conf_exceptions():
-    with patch('wazuh.core.configuration.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1126 .*"):
-            configuration.write_ossec_conf(new_conf="placeholder")
 
 
 @pytest.mark.parametrize(

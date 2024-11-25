@@ -7,7 +7,7 @@ import os
 import sqlite3
 import sys
 from copy import copy
-from unittest.mock import AsyncMock, patch, mock_open, call
+from unittest.mock import AsyncMock, patch, call
 
 import pytest
 from shutil import rmtree
@@ -710,7 +710,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @pytest.mark.asyncio
 @patch('wazuh.core.agent.remove')
 @patch('wazuh.core.agent.path.exists', return_value=True)
-@patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.indexer.Indexer._get_opensearch_client')
 @patch('wazuh.core.indexer.Indexer.connect')
 @patch('wazuh.core.indexer.Indexer.close')
@@ -982,8 +982,8 @@ async def test_agent_get_agent_groups(create_indexer_mock):
 @patch('wazuh.core.indexer.Indexer.close')
 @patch('wazuh.core.indexer.agent.AgentsIndex.remove_agents_from_group')
 @patch('wazuh.core.indexer.agent.AgentsIndex.add_agents_to_group')
-async def test_agent_set_agent_group_relationship(add_agents_to_group_mock, remove_agents_from_group_mock, 
-                                                  close_mock, connect_mock, get_opensearch_client_mock, remove, 
+async def test_agent_set_agent_group_relationship(add_agents_to_group_mock, remove_agents_from_group_mock,
+                                                  close_mock, connect_mock, get_opensearch_client_mock, remove,
                                                   override, expected_mode):
     """Test if set_agent_group_relationship() uses the correct command to create/remove the relationship between
     an agent and a group.
@@ -1032,8 +1032,8 @@ async def test_agent_set_agent_group_relationship_ko(get_client_mock):
 @patch('wazuh.core.indexer.Indexer.connect')
 @patch('wazuh.core.indexer.Indexer.close')
 @patch('wazuh.core.indexer.agent.AgentsIndex.get')
-async def test_agent_unset_single_group_agent(get_agent_mock, close_mock, connect_mock, get_os_client_mock, 
-                                              group_exists_mock, set_agent_group_mock, agent_id, group_id, force, 
+async def test_agent_unset_single_group_agent(get_agent_mock, close_mock, connect_mock, get_os_client_mock,
+                                              group_exists_mock, set_agent_group_mock, agent_id, group_id, force,
                                               previous_groups):
     """Test if unset_single_group_agent() returns expected message and removes group from agent.
 
@@ -1160,17 +1160,21 @@ def test_send_restart_command(wq_mock, wq_send_msg, agents_list, versions_list):
             wq_send_msg.assert_called_with(expected_msg, agent_id)
 
 
-def test_get_agents_info():
+@patch('wazuh.core.indexer.create_indexer')
+async def test_get_agents_info(create_indexer_mock):
     """Test that get_agents_info() returns expected agent IDs"""
     reset_context_cache()
-    with open(os.path.join(test_data_path, 'client.keys')) as f:
-        client_keys = ''.join(f.readlines())
+
+    agents = []
+    for i in range(1, 11):
+        agents.append(IndexerAgent(id=str(i).zfill(3)))
 
     expected_result = {'001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
+    agents_search_mock = AsyncMock(return_value=agents)
+    create_indexer_mock.return_value.agents.search = agents_search_mock
 
-    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys)) as m:
-        result = get_agents_info()
-        assert result == expected_result
+    result = await get_agents_info()
+    assert result == expected_result
 
 
 def test_get_groups():
@@ -1178,7 +1182,7 @@ def test_get_groups():
     expected_result = {'group-1', 'group-2'}
     shared = os.path.join(test_data_path, 'shared')
 
-    with patch('wazuh.core.common.SHARED_PATH', new=shared):
+    with patch('wazuh.core.common.WAZUH_SHARED', new=shared):
         try:
             os.makedirs(shared)
             for group in list(expected_result):
@@ -1191,32 +1195,41 @@ def test_get_groups():
             rmtree(shared)
 
 
-@pytest.mark.parametrize('group, wdb_response, expected_agents', [
-    ('default', [('due', '[1,2]'), ('ok', '[3,4]')], {'001', '002', '003', '004'}),
-    ('test_group', [('ok', '[1,2,3,999]')], {'001', '002', '003'}),
-    ('*', [('due', '[{"data": [{"id": 1}, {"id": 2}]}]'), ('ok', '[{"data": [{"id": 3}, {"id": 4}]}]')],
-     {'001', '002', '003', '004'}),
-    ('*', [('ok', '[{"data": [{"id": 1}, {"id": 2}, {"id": 999}]}]')], {'001', '002'})
+@pytest.mark.parametrize('group, group_agents, expected_agents', [
+    ('default', [IndexerAgent(id='001'), IndexerAgent(id='002')], {'001', '002'}),
+    ('test_group', [IndexerAgent(id='005')], {'005'}),
+    ('*', [], {'001', '002', '003', '004', '005'}),
 ])
-@patch('socket.socket.connect')
-def test_expand_group(socket_mock, group, wdb_response, expected_agents):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_expand_group(create_indexer_mock, group, group_agents, expected_agents):
     """Test that expand_group() returns expected agent IDs.
 
     Parameters
     ----------
     group : str
         Name of the group to be expanded.
-    wdb_response: list
-        Mock return values for the `WazuhDBConnection.send` method.
+    group_agents: list
+        Mock return values for the `AgentsIndex.get_group_agents` method.
     expected_agents : set
         Expected agent IDs for the selected group.
     """
-    # Clear and set get_agents_info cache
+    # Clear get_agents_info cache
     reset_context_cache()
-    test_get_agents_info()
 
-    with patch('wazuh.core.wdb.WazuhDBConnection.send', side_effect=wdb_response):
-        assert expand_group(group) == expected_agents, 'Agent IDs do not match with the expected result'
+    agents = []
+    for i in range(1, 6):
+        agents.append(IndexerAgent(id=str(i).zfill(3)))
+
+    agents_search_mock = AsyncMock(return_value=agents)
+    create_indexer_mock.return_value.agents.search = agents_search_mock
+
+    if group == '*':
+        assert await expand_group(group) == await get_agents_info()
+
+    agents_in_group_mock = AsyncMock(return_value=group_agents)
+    create_indexer_mock.return_value.agents.get_group_agents = agents_in_group_mock
+
+    assert await expand_group(group) == expected_agents
 
 
 @pytest.mark.parametrize('system_resources, permitted_resources, filters, expected_result', [
@@ -1244,48 +1257,3 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     result['filters']['rbac_ids'] = set(result['filters']['rbac_ids'])
     expected_result['filters']['rbac_ids'] = set(expected_result['filters']['rbac_ids'])
     assert result == expected_result
-
-
-@pytest.mark.parametrize('eligible_agents, expected_calls, task_manager_error', [
-    ([1, 2, 3, 4],
-     [
-         call(command='test', agents_chunk=[1, 2, 3, 4], wpk_repo=None, version=None, force=None, use_http=None,
-              package_type=None, file_path=None, installer=None, get_result=None)
-     ],
-     False),
-    ([i for i in range(16)],
-     [
-         call(command='test', agents_chunk=[i for i in range(10)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
-         call(command='test', agents_chunk=[i for i in range(10, 16)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
-     ],
-     False),
-    ([i for i in range(13)],
-     [
-         call(command='test', agents_chunk=[i for i in range(5)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
-         call(command='test', agents_chunk=[i for i in range(5, 10)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
-         call(command='test', agents_chunk=[i for i in range(10, 13)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
-     ],
-     True)
-])
-@patch('wazuh.core.agent.core_upgrade_agents')
-def test_create_upgrade_tasks(mock_upgrade, eligible_agents, expected_calls, task_manager_error):
-    """Test that the create_upgrade_tasks function and its recursive behaviour work properly.
-
-    Parameters
-    ----------
-    eligible_agents : list
-        List of eligible agents used in the create_upgrade_tasks function.
-    expected_calls : list
-        List of calls expected for the core_upgrade_agents function.
-    task_manager_error : bool
-        Boolean variable that indicates whether the mocked function returns a task communication error or not.
-    """
-    mock_upgrade.side_effect = [{'data': [{'error': 0 if not task_manager_error else 4}]},
-                                {'data': [{'error': 0}]}, {'data': [{'error': 0}]}, {'data': [{'error': 0}]}]
-    create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test')
-    mock_upgrade.assert_has_calls(expected_calls, any_order=False)

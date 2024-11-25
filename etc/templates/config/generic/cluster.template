@@ -2,11 +2,10 @@
     <name>wazuh</name>
     <node_name>node01</node_name>
     <node_type>master</node_type>
-    <key></key>
     <port>1516</port>
-    <bind_addr>0.0.0.0</bind_addr>
+    <bind_addr>localhost</bind_addr>
     <nodes>
-        <node>NODE_IP</node>
+        <node>127.0.0.1</node>
     </nodes>
     <hidden>no</hidden>
     <disabled>yes</disabled>

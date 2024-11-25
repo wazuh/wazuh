@@ -1,5 +1,4 @@
 import engine_pb2 as _engine_pb2
-from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -32,8 +31,8 @@ class Result(_message.Message):
     ASSET_TRACES_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_FIELD_NUMBER: _ClassVar[int]
     asset_traces: _containers.RepeatedCompositeFieldContainer[Result.AssetTrace]
-    output: _struct_pb2.Value
-    def __init__(self, output: _Optional[_Union[_struct_pb2.Value, _Mapping]] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
+    output: str
+    def __init__(self, output: _Optional[str] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
 
 class RunPost_Request(_message.Message):
     __slots__ = ["asset_trace", "location", "message", "name", "namespaces", "queue", "trace_level"]

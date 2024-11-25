@@ -58,15 +58,6 @@
   effect: deny
 
 - actions:
-  - agent:upgrade
-  resources:
-  - agent:id:005
-  - agent:id:006
-  - agent:id:007
-  - agent:id:008
-  effect: allow
-
-- actions:
   - group:read
   - group:update_config
   - group:modify_assignments

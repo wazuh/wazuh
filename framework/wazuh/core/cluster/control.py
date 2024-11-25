@@ -2,14 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from typing import List
 import json
 
+from api.models.order_model import Order
 from wazuh import WazuhInternalError
 from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
-from wazuh.core.exception import WazuhError
 from wazuh.core.utils import filter_array_by_query
 
 
@@ -181,28 +182,29 @@ async def get_system_nodes():
         result = await get_nodes(lc)
         return [node['name'] for node in result['items']]
     except WazuhInternalError as e:
-        if e.code == 3012:
-            return WazuhError(3013)
         raise e
 
 
-async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
-    """Retrieve custom ruleset integrity.
+async def distribute_orders(lc: local_client.LocalClient, orders: List[Order]) -> None:
+    """Send the `dist_orders` command to the local server.
 
     Parameters
     ----------
     lc : LocalClient
         LocalClient instance.
-
-    Returns
-    -------
-    dict
-        Dictionary with results
+    orders : List[Order]
+        Orders list.
+    
+    Raises
+    ------
+    Exception
+        Local server request exception.
     """
-    response = await lc.execute(command=b"get_hash", data=b"")
-    result = json.loads(response, object_hook=as_wazuh_object)
+    response = await lc.execute(command=b'dist_orders', data=json.dumps(orders).encode())
+    # Successful response is a string message
+    if isinstance(response, str):
+        return
 
+    result = json.loads(response, object_hook=as_wazuh_object)
     if isinstance(result, Exception):
         raise result
-
-    return result

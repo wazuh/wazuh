@@ -101,7 +101,7 @@ async def get_configuration(pretty: bool = False, wait_for_complete: bool = Fals
     section : str
         Indicates the wazuh configuration section
     field : str
-        Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+        Indicates a section child.
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `False`
     distinct : bool

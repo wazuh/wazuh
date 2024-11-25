@@ -296,27 +296,23 @@ void runStart(ConfHandler confManager)
         }
 
         // Indexer Connector
-        {
-            nlohmann::json indexerConfig;
-            // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available
-            indexerConfig["name"] = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-basic-index");
-            indexerConfig["hosts"] =
-                nlohmann::json::array({getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")});
-            indexerConfig["username"] = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin");
-            indexerConfig["password"] = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+");
-
-            // SSL configuration
-            nlohmann::json ssl;
-            ssl["certificate_authorities"] = getEnvOrDefault("WENGINE_ICONNECTOR_CA", "");
-            ssl["certificate"] = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", "");
-            ssl["key"] = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "");
-            if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
-            {
-                indexerConfig["ssl"] = ssl;
-            }
+        { // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available.
+            // IndexerConnector configuration.
+            IndexerConnectorOptions indexerConnectorOptions {
+                .name = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-basic-index"),
+                .hosts = {getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")},
+                .username = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin"),
+                .password = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+"),
+                .sslOptions = {.cacert = {getEnvOrDefault("WENGINE_ICONNECTOR_CA", "")},
+                               .cert = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", ""),
+                               .key = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "")},
+                .timeout = static_cast<uint32_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_TIMEOUT", "60000"))),
+                .workingThreads =
+                    static_cast<uint8_t>(std::stoul(getEnvOrDefault("WENGINE_ICONNECTOR_WORKING_THREADS", "1"))),
+                .databasePath = getEnvOrDefault("WENGINE_ICONNECTOR_DB_PATH", cmd::ENGINE_INDEXER_CONNECTOR_QUEUE)};
 
             // Create connector and wait until the connection is established.
-            iConnector = std::make_shared<IndexerConnector>(indexerConfig);
+            iConnector = std::make_shared<IndexerConnector>(indexerConnectorOptions);
         }
 
         // Builder and registry
@@ -616,22 +612,53 @@ void runStart(ConfHandler confManager)
                                   });
 
             LOG_DEBUG("API Server configured.");
-
+            // clang-format off
             /**
              * @api {post} /events/stateless Receive Events for Security Policy Processing
              * @apiName ReceiveEvents
              * @apiGroup Events
-             * @apiVersion 0.1.0-alpha
+             * @apiVersion 0.1.1-alpha
              *
              * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
-             * accepts a JSON payload representing the event details.
+             * accepts a NDJSON payload where each line represents an object.
+             * @apiHeader {String} Content-Type=application/x-ndjson The content type of the request.
              *
-             * @apiBody {Object} wazuh Details about the Wazuh event processing.
-             * @apiBody {Number} wazuh.queue Queue number where the event will be processed (range: 1-127).
-             * @apiBody {String} wazuh.location Location description in the format "(agent ID) (agent-name)
-             * any->/path/to/source".
-             * @apiBody {Object} event Details of the event itself.
-             * @apiBody {String} event.original The original message collected from the agent.
+             * @apiBody (Agent Information) {Object} agent Agent information.
+             * @apiBody (Agent Information) {String} agent.id Unique identifier for the agent.
+             * @apiBody (Agent Information) {String} agent.name Name of the agent.
+             * @apiBody (Agent Information) {String} agent.type Type of agent, e.g., "endpoint".
+             * @apiBody (Agent Information) {String} agent.version Version of the agent software.
+             * @apiBody (Agent Information) {Array} agent.groups Array of groups the agent belongs to. (e.g ["group1", "group2"])
+             * @apiBody (Agent Information) {Object} agent.host Host information.
+             * @apiBody (Agent Information) {String} agent.host.hostname Hostname of the agent.
+             * @apiBody (Agent Information) {Object} agent.host.os Operating system information.
+             * @apiBody (Agent Information) {String} agent.host.os.name Operating system name, e.g., "Amazon Linux 2".
+             * @apiBody (Agent Information) {String} agent.host.os.plataform Operating system platform, e.g., "Linux".
+             * @apiBody (Agent Information) {Array} agent.host.ip Array of IP addresses of the agent. (e.g ["192.168.1.2"])
+             * @apiBody (Agent Information) {String} agent.host.architecture Architecture of the agent, e.g., "x86_64".
+             *
+             * @apiBody (Module Information) {Object} module Module information.
+             * @apiBody (Module Information) {String} module.module Name of the module, e.g., "logcollector" or "inventory".
+             * @apiBody (Module Information) {String} module.type Type of module, e.g., "file" or "package".
+             *
+             * @apiBody (Log Information) {Object} log Log information.
+             * @apiBody (Log Information) {Object} log.file File information.
+             * @apiBody (Log Information) {String} log.file.path Path to the file, "/path/to/source". Exist only if is recolected from a file.
+             * @apiBody (Log Information) {Object} base The base field set contains all fields which are at the root of the events.
+             * @apiBody (Log Information) {String} base.tags List of keywords used to tag each event. (e.g ["production", "env2"])
+             * @apiBody (Log Information) {Object} event Details of the event itself.
+             * @apiBody (Log Information) {String} event.original The original message collected from the agent.
+             * @apiBody (Log Information) {String} event.created Timestamp when an event is recollected in '%Y-%m-%dT%H:%M:%SZ' format.
+             * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g. apache, eventchannel,
+             * journald, etc)
+             * @apiBody (Log Information) {String} event.provider Source of the event. (e.g channel, file, journald unit, etc)
+             *
+             * @apiExample {ndjson} Request-Example:
+             *     {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}}
+             *     {"module": "logcollector", "type": "file"}
+             *     {"log": {"file": {"path": "/var/log/apache2/access.log"}}, "base": {"tags": ["production-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z", "module": "apache-access", "provider": "file"}}
+             *     {"module": "inventory", "type": "package"}
+             *     {"base": {"tags": ["string"]}, "event": {"original": "string", "ingested": "string", "module": "string", "provider": "string"}}
              *
              * @apiSuccessExample Success-Response:
              *     HTTP/1.1 204 No Content
@@ -646,13 +673,14 @@ void runStart(ConfHandler confManager)
              *       "code": 400
              *     }
              */
+            // clang-format on
             g_apiServer->addRoute(apiserver::Method::POST,
                                   "/events/stateless",
                                   [orchestrator](const auto& req, auto& res)
                                   {
                                       try
                                       {
-                                          orchestrator->postEvent(std::make_shared<json::Json>(req.body.c_str()));
+                                          orchestrator->postRawNdjson(std::string(req.body));
                                           res.status = httplib::StatusCode::NoContent_204;
                                       }
                                       catch (const std::runtime_error& e)
@@ -705,7 +733,7 @@ void runStart(ConfHandler confManager)
     // Start server
     try
     {
-        g_apiServer->start(getExecutablePath() + "/sockets/engine.sock");
+        g_apiServer->start(ENGINE_SRV_SOCK);
         server->start();
     }
     catch (const std::exception& e)

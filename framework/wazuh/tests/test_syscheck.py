@@ -73,6 +73,7 @@ test_result = [
 @patch('wazuh.syscheck.WazuhQueue._connect')
 @patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
 @patch('wazuh.syscheck.WazuhQueue.close')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agent_exit_mock,
                       agent_list, failed_items, status_list, expected_result):
     """Test function `run` from syscheck module.
@@ -111,6 +112,7 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agen
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.close')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list,
                         agent_version):
     """Test function `clear` from syscheck module.
@@ -152,6 +154,7 @@ def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_l
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
 @patch('wazuh.core.wdb.WazuhDBConnection.close')
+@pytest.mark.skip('Remove tested function or update it to use the indexer.')
 def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, agent_list, expected_result,
                                   agent_info_list, agent_version, expected_version_errcode):
     """Test function `clear` from syscheck module.

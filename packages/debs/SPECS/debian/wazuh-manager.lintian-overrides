@@ -1,0 +1,9 @@
+wazuh-server: embedded-library
+wazuh-server: embedded-zlib
+wazuh-server: possible-gpl-code-linked-with-openssl
+wazuh-server: new-package-should-close-itp-bug
+wazuh-server: possibly-insecure-handling-of-tmp-files-in-maintainer-script
+wazuh-server: non-standard-dir-in-var
+wazuh-server: file-in-unusual-dir
+wazuh-server: hardening-no-fortify-functions
+wazuh-server: hardening-no-relro

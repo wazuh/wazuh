@@ -1,7 +1,0 @@
-[
-    "Translation for package 'VMware Tools' on platform 'windows' found in Level 2 cache.",
-    "Initiating a vulnerability scan for package 'tools' (win) (vmware) with CVE Numbering Authorities (CNA) 'nvd' on Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'tools' is vulnerable to 'CVE-2014-4199' due to default status. - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'tools' is vulnerable to 'CVE-2014-4200' due to default status. - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'tools', is vulnerable to 'CVE-2018-6969'. Current version: '9.4.5.23787635' (less than '10.3.0' or equal to ''). - Agent '' (ID: '001', Version: '')."
-]

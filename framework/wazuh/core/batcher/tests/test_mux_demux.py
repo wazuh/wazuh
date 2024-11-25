@@ -1,9 +1,7 @@
-import pytest
 from queue import Queue
-from multiprocessing import Process
-from multiprocessing.managers import SyncManager
+from unittest.mock import call, patch, Mock
 
-from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message, MuxDemuxManager
+from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, MuxDemuxManager
 
 
 def test_send_to_mux():
@@ -15,16 +13,16 @@ def test_send_to_mux():
         demux_queue=Queue()
     )
 
-    expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
-    expected_msg = "test message"
+    expected_item_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
+    expected_content = "test"
 
-    queue.send_to_mux(expected_uid, expected_msg)
+    queue.send_to_mux(Item(id=expected_item_id, content=expected_content, operation='create'))
 
     assert not mux_queue.empty()
     result = mux_queue.get()
 
-    assert result.uid == expected_uid
-    assert result.msg == expected_msg
+    assert result.id == expected_item_id
+    assert result.content == expected_content
 
 
 def test_receive_from_mux():
@@ -36,16 +34,16 @@ def test_receive_from_mux():
         demux_queue=Queue()
     )
 
-    expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
-    expected_msg = "test message"
+    expected_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
+    expected_content = "test"
 
-    mux_queue.put(Message(expected_uid, expected_msg))
+    mux_queue.put(Item(id=expected_id, content=expected_content, operation='create'))
 
     result = queue.receive_from_mux()
 
     assert mux_queue.empty()
-    assert result.uid == expected_uid
-    assert result.msg == expected_msg
+    assert result.id == expected_id
+    assert result.content == expected_content
 
 
 def test_send_to_demux():
@@ -57,16 +55,16 @@ def test_send_to_demux():
         demux_queue=demux_queue
     )
 
-    expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
-    expected_msg = "test message"
+    expected_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
+    expected_content = "test"
 
-    queue.send_to_demux(Message(expected_uid, expected_msg))
+    queue.send_to_demux(Item(id=expected_id, content=expected_content, operation='create'))
 
     assert not demux_queue.empty()
     result = demux_queue.get()
 
-    assert result.uid == expected_uid
-    assert result.msg == expected_msg
+    assert result.id == expected_id
+    assert result.content == expected_content
 
 
 def test_is_response_pending():
@@ -104,8 +102,8 @@ def test_receive_from_demux():
     assert example_uid not in dict_test
 
 
-def test_get_response_from_demux():
-    """Check that the `internal_response_from_demux` method works as expected."""
+def test_internal_get_response_from_demux():
+    """Check that the `internal_get_response_from_demux` method works as expected."""
     demux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
@@ -113,19 +111,19 @@ def test_get_response_from_demux():
         demux_queue=demux_queue
     )
 
-    expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
-    expected_msg = "test message"
+    expected_id = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
+    expected_content = "test"
 
-    demux_queue.put(Message(expected_uid, expected_msg))
+    demux_queue.put(Item(id=expected_id, content=expected_content, operation='create'))
 
-    result = queue.internal_response_from_demux()
+    result = queue.internal_get_response_from_demux()
 
     assert demux_queue.empty()
-    assert result.uid == expected_uid
-    assert result.msg == expected_msg
+    assert result.id == expected_id
+    assert result.content == expected_content
 
 
-def test_store_response():
+def test_internal_store_response():
     """Check that the `internal_store_response` method works as expected."""
     dict_test = dict()
     queue = MuxDemuxQueue(
@@ -137,28 +135,58 @@ def test_store_response():
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     example_value = "test"
 
-    queue.internal_store_response(Message(example_uid, example_value))
+    queue.internal_store_response(Item(id=example_uid, content=example_value, operation='create'))
 
     assert example_uid in dict_test
     assert dict_test[example_uid] == example_value
 
 
-def test_mux_demux_manager_initialization():
+@patch('framework.wazuh.core.batcher.mux_demux.SyncManager')
+@patch('framework.wazuh.core.batcher.mux_demux.MuxDemuxRunner')
+def test_mux_demux_manager_initialization(mux_demux_runner_mock, sync_manager_mock):
     """Check that the `MuxDemuxManager.__init___` method works as expected."""
-    manager = MuxDemuxManager()
-    assert isinstance(manager.get_manager(), SyncManager)
-    assert isinstance(manager.get_queue_process(), Process)
+    manager_mock = Mock()
+    sync_manager_mock.return_value = manager_mock
 
-    assert manager.get_queue_process().is_alive()
-    manager.shutdown()
+    runner_mock = Mock()
+    mux_demux_runner_mock.return_value = runner_mock
+
+    MuxDemuxManager()
+
+    manager_mock.assert_has_calls([
+        call.start(),
+        call.dict(),
+        call.Queue(),
+        call.Queue(),
+        call.MuxDemuxQueue(manager_mock.dict(), manager_mock.Queue(), manager_mock.Queue()),
+    ])
+    runner_mock.assert_has_calls([
+        call.start(),
+    ])
 
 
-def test_mux_demux_manager_shutdown():
+@patch('framework.wazuh.core.batcher.mux_demux.SyncManager')
+@patch('framework.wazuh.core.batcher.mux_demux.MuxDemuxRunner')
+def test_mux_demux_manager_shutdown(mux_demux_runner_mock, sync_manager_mock):
     """Check that the `shutdown` method works as expected."""
+    manager_mock = Mock()
+    sync_manager_mock.return_value = manager_mock
+
+    runner_mock = Mock()
+    mux_demux_runner_mock.return_value = runner_mock
+
     manager = MuxDemuxManager()
     manager.shutdown()
 
-    assert not manager.get_queue_process().is_alive()
-    with pytest.raises(AssertionError) as err:
-        manager.get_manager().list()
-    assert str(err.value) == "server not yet started"
+    manager_mock.assert_has_calls([
+        call.start(),
+        call.dict(),
+        call.Queue(),
+        call.Queue(),
+        call.MuxDemuxQueue(manager_mock.dict(), manager_mock.Queue(), manager_mock.Queue()),
+        call.shutdown()
+    ])
+    runner_mock.assert_has_calls([
+        call.start(),
+        call.terminate()
+    ])

@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import errno
-import glob
 import hashlib
 import json
 import operator
@@ -19,7 +18,6 @@ from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
 import psutil
-from pyexpat import ExpatError
 from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
@@ -27,10 +25,9 @@ from signal import signal, alarm, SIGALRM, SIGKILL
 import yaml
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
-from defusedxml.minidom import parseString
 
 import wazuh.core.results as results
-from api import configuration
+import api.configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -60,8 +57,9 @@ def assign_wazuh_ownership(filepath: str):
         os.stat(filepath).st_uid != common.wazuh_uid():
         os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
 
+
 def clean_pid_files(daemon: str) -> None:
-    """Check the existence of '.pid' files for a specified daemon.
+    """Clean the '.pid' files for a specified daemon and kill their process group.
 
     Parameters
     ----------
@@ -69,7 +67,7 @@ def clean_pid_files(daemon: str) -> None:
         Daemon's name.
     """
     regex = rf'{daemon}[\w_]*-(\d+).pid'
-    for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
+    for pid_file in os.listdir(common.WAZUH_RUN):
         if match := re.match(regex, pid_file):
             try:
                 pid = int(match.group(1))
@@ -77,15 +75,16 @@ def clean_pid_files(daemon: str) -> None:
                 command = process.cmdline()[-1]
 
                 if daemon.replace('-', '_') in command:
-                    os.kill(pid, SIGKILL)
+                    pgid = os.getpgid(pid)
+                    os.killpg(pgid, SIGKILL)
                     print(f"{daemon}: Orphan child process {pid} was terminated.")
                 else:
-                    print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+                    print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_RUN}...")
 
             except (OSError, psutil.NoSuchProcess):
-                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
+                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_RUN}...')
             finally:
-                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
+                os.remove(path.join(common.WAZUH_RUN, pid_file))
 
 
 def find_nth(string: str, substring: str, n: int) -> int:
@@ -182,7 +181,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
     """
     if not array:
         return {'items': [], 'totalItems': 0}
-    
+
     if isinstance(filters, dict) and len(filters.keys()) > 0:
         new_array = []
         for element in array:
@@ -376,7 +375,7 @@ def get_values(o: object, fields: list = None) -> list:
     strings = []
 
     try:
-        obj = o.to_dict()  # Rule, Decoder, Agent...
+        obj = o.to_dict()  # Agent...
     except:
         obj = o
 
@@ -652,39 +651,6 @@ def chown_r(file_path: str, uid: int, gid: int):
                 chown_r(item_path, uid, gid)
 
 
-def delete_wazuh_file(full_path: str) -> bool:
-    """Delete a Wazuh file.
-
-    Parameters
-    ----------
-    full_path : str
-        Full path of the file to delete.
-
-    Raises
-    ------
-    WazuhError(1906)
-        File does not exist.
-    WazuhError(1907)
-        File could not be deleted.
-
-    Returns
-    -------
-    bool
-        True if success.
-    """
-    if not full_path.startswith(common.WAZUH_PATH) or '..' in full_path:
-        raise WazuhError(1907)
-
-    if path.exists(full_path):
-        try:
-            remove(full_path)
-            return True
-        except IOError:
-            raise WazuhError(1907)
-    else:
-        raise WazuhError(1906)
-
-
 def safe_move(source: str, target: str, ownership: tuple = None, time: tuple = None, permissions: int = None):
     """Move a file even between filesystems
 
@@ -888,7 +854,7 @@ def check_remote_commands(data: str):
     data : str
         Configuration file
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
 
     def check_section(command_regex, section, split_section):
         try:
@@ -958,7 +924,7 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
 
         return matched_configurations
 
-    limits_configuration = configuration.api_conf['upload_configuration']['limits']
+    limits_configuration = api.configuration.hardcoded_api_config['upload_configuration']['limits']
     for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
         new_limits = xml_to_dict(new_conf, disabled_limit)
         original_limits = xml_to_dict(original_conf, disabled_limit)
@@ -975,7 +941,7 @@ def check_agents_allow_higher_versions(data: str):
     data : str
         Configuration file content.
     """
-    blocked_configurations = configuration.api_conf['upload_configuration']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
 
     def check_section(agents_regex, split_section):
         try:
@@ -1054,7 +1020,7 @@ def check_indexer(new_conf: str, original_conf: str):
 
         return matched_configurations
 
-    upload_configuration = configuration.api_conf['upload_configuration']
+    upload_configuration = api.configuration.hardcoded_api_config['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:
         new_indexer = xml_to_dict(new_conf)
@@ -1099,7 +1065,7 @@ def check_virustotal_integration(new_conf: str):
                         keys.append(api_key_section.text.strip())
         return keys
 
-    blocked_configurations = configuration.api_conf['upload_configuration']['integrations']['virustotal']
+    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']['integrations']['virustotal']
 
     if not blocked_configurations['public_key']['allow']:
         minimum_quota = blocked_configurations['public_key']['minimum_quota']
@@ -1119,7 +1085,7 @@ def check_virustotal_integration(new_conf: str):
 
 def validate_wazuh_configuration(data: str):
     """Check that the Wazuh configuration provided is valid.
-    
+
     Parameters
     ----------
     data : str
@@ -1177,21 +1143,21 @@ def load_wazuh_xml(xml_path, data=None):
 
 def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
     """Load Wazuh YAML configuration files.
-    
+
     Parameters
     ----------
     filepath : str
         File path.
     data : str
         YAML formatted string.
-    
+
     Raises
     ------
     WazuhError(1006)
         File does not exist or lack of permissions.
     WazuhError(1132)
         Invalid YAML syntax.
-    
+
     Returns
     -------
     dict
@@ -1216,18 +1182,18 @@ def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
 
 def get_group_file_path(group_id: str) -> str:
     """Returns the path to the group configuration file.
-    
+
     Parameters
     ----------
     group_id : str
         Group ID.
-        
+
     Returns
     -------
     str
         Group configuration file path.
     """
-    return path.join(common.SHARED_PATH, group_id+GROUP_FILE_EXT)
+    return path.join(common.WAZUH_SHARED, group_id+GROUP_FILE_EXT)
 
 
 class WazuhVersion:
@@ -1881,7 +1847,7 @@ class WazuhDBQuery(object):
             repeat_close = 1
             if curr_level > level:
                 repeat_close += curr_level - level
-            
+
             self.query += ')' * repeat_close
             self.query += ' {} '.format(q_filter['separator'])
             curr_level = level
@@ -2098,261 +2064,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
                 'fields': set(self.filter_fields)
             }
         self.select = self.select & self.filter_fields['fields']
-
-
-@common.context_cached('system_rules')
-def expand_rules() -> set:
-    """Return all ruleset rule files in the system.
-
-    Returns
-    -------
-    set
-        Rule files.
-    """
-    folders = [common.RULES_PATH, common.USER_RULES_PATH]
-    rules = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.RULES_EXTENSION), files):
-                rules.add(f)
-
-    return rules
-
-
-@common.context_cached('system_decoders')
-def expand_decoders() -> set:
-    """Return all ruleset decoder files in the system.
-
-    Returns
-    -------
-    set
-        Decoder files.
-    """
-    folders = [common.DECODERS_PATH, common.USER_DECODERS_PATH]
-    decoders = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.DECODERS_EXTENSION), files):
-                decoders.add(f)
-
-    return decoders
-
-
-@common.context_cached('system_lists')
-def expand_lists() -> set:
-    """Return all cdb list files in the system.
-
-    Returns
-    -------
-    set
-        CDB list files.
-    """
-    folders = [common.LISTS_PATH, common.USER_LISTS_PATH]
-    lists = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.LISTS_EXTENSION), files):
-                # List files do not have an extension at the moment
-                if '.' not in f:
-                    lists.add(f)
-
-    return lists
-
-
-def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
-    """Add a detail with attributes (i.e. regex with negate or type).
-
-    Parameters
-    ----------
-    detail : str
-        Name of the detail.
-    value : str
-        Detail value.
-    attribs : dict
-        Dictionary with the XML attributes.
-    details : dict
-        Dictionary with all the current details.
-    """
-    if detail in details:
-        new_pattern = details[detail]['pattern'] + value
-        details[detail].clear()
-        details[detail]['pattern'] = new_pattern
-    else:
-        details[detail] = dict()
-        details[detail]['pattern'] = value
-
-    details[detail].update(attribs)
-
-
-def validate_wazuh_xml(content: str, config_file: bool = False):
-    """Validate Wazuh XML files (rules, decoders and ossec.conf)
-
-    Parameters
-    ----------
-    content : str
-        File content.
-    config_file : bool
-        Validate remote commands if True.
-
-    Raises
-    ------
-    WazuhError(1113)
-        XML syntax error.
-    """
-    # -- characters are not allowed in XML comments
-    content = replace_in_comments(content, '--', '%wildcard%')
-
-    # Create temporary file for parsing xml input
-    try:
-        # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
-        # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-        indent = '  '  # indent parameter for toprettyxml function
-        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
-        # Revert xml.dom replacings
-        # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-            .replace("&gt;", ">").replace('&apos;', "'")
-        # Delete two first spaces of each line
-        final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
-
-        # Check if remote commands are allowed if it is a configuration file
-        if config_file:
-            check_remote_commands(final_xml)
-            check_agents_allow_higher_versions(final_xml)
-            check_virustotal_integration(final_xml)
-            with open(common.OSSEC_CONF, 'r') as f:
-                current_xml = f.read()
-            check_indexer(final_xml, current_xml)
-            check_wazuh_limits_unchanged(final_xml, current_xml)
-        # Check xml format
-        load_wazuh_xml(xml_path='', data=final_xml)
-    except ExpatError:
-        raise WazuhError(1113)
-    except WazuhError as e:
-        raise e
-    except Exception as e:
-        raise WazuhError(1113, str(e))
-
-
-def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):
-    """Upload files (rules, lists, decoders and ossec.conf).
-
-    Parameters
-    ----------
-    content: str
-        Content of the XML file.
-    file_path: str
-        Destination of the new XML file.
-    check_xml_formula_values: bool
-        Check formula values in the resulting XML if true.
-
-    Raises
-    ------
-    WazuhInternalError(1005)
-        Error reading file.
-    WazuhInternalError(1016)
-        Error moving file.
-    WazuhError(1006)
-        Permision error accessing File or Directory.
-
-    Returns
-    -------
-    WazuhResult
-        Confirmation message.
-    """
-
-    def escape_formula_values(xml_string):
-        """Prepend with a single quote possible formula injections."""
-        formula_characters = ('=', '+', '-', '@')
-        et = fromstring(f'<root>{xml_string}</root>')
-        full_preprend, beginning_preprend = list(), list()
-        for node in et.iter():
-            if node.tag and node.tag.startswith(formula_characters):
-                full_preprend.append(node.tag)
-            if node.text and node.text.startswith(formula_characters) and ("'" in node.text or '"' in node.text):
-                beginning_preprend.append(node.text)
-
-        for text in full_preprend:
-            xml_string = re.sub(f'<{re.escape(text)}>', f"<'{text}'>", xml_string)
-            xml_string = re.sub(f'</{re.escape(text)}>', f"</'{text}'>", xml_string)
-
-        for text in beginning_preprend:
-            xml_string = re.sub(f'>{re.escape(text)}<', f">'{text}<", xml_string)
-
-        return xml_string
-
-    # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.OSSEC_TMP_PATH)
-    try:
-        with open(handle, 'w') as tmp_file:
-            final_file = escape_formula_values(content) if check_xml_formula_values else content
-            tmp_file.write(final_file)
-        chmod(tmp_file_path, 0o660)
-    except IOError as exc:
-        raise WazuhInternalError(1005) from exc
-
-    # Move temporary file to group folder
-    try:
-        new_conf_path = path.join(common.WAZUH_PATH, file_path)
-        safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
-    except PermissionError as exc:
-        raise WazuhError(1006) from exc
-    except Error as exc:
-        raise WazuhInternalError(1016) from exc
-
-    return results.WazuhResult({'message': 'File was successfully updated'})
-
-
-def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: callable):
-    """Try to delete a file doing a backup beforehand.
-
-    Parameters
-    ----------
-    backup_file : str
-        Name of the backup file.
-    abs_path : str
-        Absolute path of the file to delete.
-    delete_function : callable
-        Function that will be used to delete the file.
-
-    Raises
-    ------
-    WazuhError(1019)
-        If there is any `IOError` while doing the backup.
-    """
-    try:
-        full_copy(abs_path, backup_file)
-    except IOError:
-        raise WazuhError(1019)
-    delete_function(filename=path.basename(abs_path))
-
-
-def replace_in_comments(original_content, to_be_replaced, replacement):
-    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
-    for comment in xml_comment.finditer(original_content):
-        good_comment = comment.group(2).replace(to_be_replaced, replacement)
-        original_content = original_content.replace(comment.group(2), good_comment)
-    return original_content
-
-
-def to_relative_path(full_path: str, prefix: str = common.WAZUH_PATH) -> str:
-    """Return a relative path from the Wazuh base directory.
-
-    Parameters
-    ----------
-    full_path : str
-        Absolute path.
-    prefix : str, opt
-        Prefix to strip from the absolute path. Default `common.WAZUH_PATH`
-
-    Returns
-    -------
-    str
-        Relative path to `full_path` from `prefix`.
-    """
-    return path.relpath(full_path, prefix)
 
 
 def clear_temporary_caches():

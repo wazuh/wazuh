@@ -1,23 +1,9 @@
 from typing import List
-from typing_extensions import Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 
-from wazuh.core.indexer.models.commands import Command, Result, Status
+from wazuh.core.indexer.models.commands import Command
 
 
 class Commands(BaseModel):
     commands: List[Command]
-
-
-class CommandsResults(BaseModel):
-    results: List[Result]
-
-    @model_validator(mode='after')
-    def check_status(self) -> Self:
-        """Check that the result status is not pending or sent."""
-        for result in self.results:
-            if result.status not in (Status.COMPLETED, Status.FAILED):
-                raise ValueError(f"invalid status, it must be '{Status.COMPLETED}' or '{Status.FAILED}'")
-
-        return self

@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Union
 
 from wazuh.core.cluster import __version__
-from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE
+from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE, WAZUH_SERVER_YML
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
@@ -26,8 +26,8 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `WAZUH_HOME/logs/ossec.log`, `WAZUH_HOME/logs/cluster.log` and '
-                              '`WAZUH_HOME/logs/api.log` to get more information about the error'},
+               'remediation': 'Please, check `/var/log/wazuh-server/cluster.log` and '
+                              '`/var/log/wazuh-server/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in JSON',
@@ -73,7 +73,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
         1107: 'Internal options file not found',
-        1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
         1112: {'message': 'Empty files are not supported',
@@ -86,18 +85,11 @@ class WazuhException(Exception):
         1115: {'message': 'Error executing verify-agent-conf',
                'remediation': 'Please, check your configuration file and try again'
                },
-        1116: {'message': "Requested component configuration does not exist",
-               'remediation': f"Please, visit the official documentation (https://documentation.wazuh.com/"
-                              f"{DOCU_VERSION}/user-manual/api/reference.html#operation/"
-                              f"api.controllers.agents_controller.get_agent_config) to check available component "
-                              f"configurations"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
         1121: {'message': "Error connecting with socket",
                'remediation': "Please ensure the selected module is running and properly configured"},
-        1122: {'message': 'Experimental features are disabled',
-               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml'},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
@@ -130,55 +122,6 @@ class WazuhException(Exception):
                               ' protection in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1132: {'message': 'YAML syntax error', 'remediation': 'Please, ensure file content has correct YAML'},
-        # Rule: 1200 - 1299
-        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1201: {'message': 'Error reading rule files',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
-               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
-               },
-        1203: {'message': 'Error in argument \'level\'',
-               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
-               },
-        1205: {'message': 'Requirement not valid',
-               'remediation': 'Please indicate one of the following values:'
-               },
-
-        1207: {'message': 'Error reading rule files, wrong permissions',
-               'remediation': 'Please, check your permissions over the file'
-               },
-        1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about how to configure the rules'
-               },
-        1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
-                          'be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-        },
-        1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the rules'
-        },
-        1211: {'message': 'Invalid relative directory. A \'rule_dir\' tag is declared in ossec.conf '
-                          'ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the rules'
-               },
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -212,54 +155,6 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-        1413: {'message': 'Error reading rules file'},
-        1414: {'message': 'Error reading rules file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1415: {'message': 'Rules file not found',
-               'remediation': 'Please, use GET /rules/files to list all available rules'
-               },
-
-        # Decoders: 1500 - 1599
-        1500: {'message': 'Error reading decoders from ossec.conf',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/custom.html)'
-                              'to get more information on adding or modifying existing decoders'
-               },
-        1501: {'message': 'Error reading decoders file'
-               },
-        1502: {'message': 'Error reading decoders file',
-               'remediation': 'Please, make sure you have read permissions on the file'
-               },
-        1503: {'message': 'Decoders file not found',
-               'remediation': 'Please, use GET /decoders/files to list all available decoders'
-               },
-        1504: {'message': 'The decoder does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1505: {'message': 'Invalid relative directory. A \'decoder_dir\' '
-                          'tag must be declared in ossec.conf ruleset section.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
-        1506: {'message': 'Uploading, updating or deleting default decoders is not allowed.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
-                              ' to get more information about the decoders'
-               },
-        1507: {'message': 'Invalid relative directory. A \'decoder_dir\' tag is declared '
-                          'in ossec.conf ruleset section, but the directory does not exist.',
-               'remediation': f'Please, visit the official documentation'
-                               '(https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
-                              ' to get more information about the decoders'
-               },
 
         # Syscheck/AR: 1600 - 1699
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
@@ -362,26 +257,14 @@ class WazuhException(Exception):
                },
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
-
-        # CDB List: 1800 - 1899
-        1800: {'message': 'Bad format in CDB list {path}'},
-        1801: {'message': 'Wrong \'path\' parameter',
-               'remediation': 'Please, provide a correct path'},
-        1802: {'message': 'Lists file not found',
-               'remediation': 'Please, use `GET /lists/files` to find all available lists'},
-        1803: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you have read permissions over the file'
+        1761: {'message': 'Error sending request to the indexer',
+               'remediation': 'Please check the request body and try again'
                },
-        1804: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you provide a correct filepath'
-               },
-        1805: {'message': 'File with the same name already exists in a subdirectory.',
-               'remediation': 'Please, make sure to use a name which is not repeated. '
-               },
-        1806: {'message': 'Error trying to create CDB list file.'
-               },
-        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                          'The error message will be the output of upgrade module'},
+        1762: 'Error sending command to the commands manager',
+        1763: "Invalid inventory module type. It must be 'network', 'package', 'process' or 'system'",
+        1764: "Invalid User-Agent HTTP header value. It must follow the format '<name> <type> <version>'",
+        1765: "Invalid module name. It must be 'fim', 'sca', 'inventory', 'command' or 'vulnerability'",
+        1766: {'message': 'The agent already belongs to the group'},
 
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'
@@ -415,21 +298,6 @@ class WazuhException(Exception):
                           'are not granted',
                'remediation': 'Please, ensure /proc exists and permissions are granted'},
 
-        # Database:
-        2000: {'message': 'No such database file'},
-        2001: {'message': 'Incompatible version of SQLite'},
-        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
-        2003: {'message': 'Error in wazuhdb request',
-               'remediation': 'Make sure the request is correct'},
-        2004: {'message': 'Database query not valid'},
-        2005: {'message': 'Could not connect to wdb socket'},
-        2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
-        2007: {'message': 'Error retrieving data from Wazuh DB'},
-        2008: {'message': 'Corrupted RBAC database',
-               'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
-        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
-        2010: {'message': 'The requested read operation did not complete fully'},
-
         # External services
         2100: {'message': 'Error in CTI service request'},
 
@@ -447,11 +315,16 @@ class WazuhException(Exception):
         2705: {'message': 'Invalid file name, it must not contain directories'},
         2706: {'message': 'Invalid authentication token'},
         2707: {'message': 'Authentication token expired'},
+        2708: {'message': 'The client disconnected during the stream processing'},
+        2709: {'message': 'Invalid stateful events request body. It must contain the agent metadata, headers and '
+               'events objects separated by newlines'},
+        2710: {'message': 'Invalid stateless events request'},
 
         # Engine API client
         2800: {'message': 'The engine client connection timeout has been exceeded'},
         2801: {'message': 'Invalid request URL scheme'},
         2802: {'message': 'Invalid unix socket path'},
+        2803: {'message': 'Error sending HTTP request'},
 
         # Cluster
         3000: 'Cluster',
@@ -466,20 +339,15 @@ class WazuhException(Exception):
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
-        3007: 'Client.keys file received in master node',
-        3009: {'message': 'Error executing distributed API request',
-               'remediation': ''},
-        3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
+        3007: {'message': 'Could not start the server',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-                              ' to get more information about how to configure a cluster'
-               },
+                              ' to get more information about how to configure a cluster'},
+        3009: {'message': 'Error executing distributed API request',
+               'remediation': ''},
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3018: 'Error sending request',
-        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, '
-              'try again in the master node: {MASTER_IP}',
         3020: {'message': 'Timeout sending request',
                'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
@@ -489,11 +357,6 @@ class WazuhException(Exception):
                'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
                               'connection errors. Restart the `wazuh-manager` service.'},
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
-        3025: {'message': "Could not decrypt message",
-               'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
-                              f"ossec-conf/cluster.html#key)"
-                              ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
         3028: {'message': "Worker node ID already exists",
@@ -504,28 +367,22 @@ class WazuhException(Exception):
                "remediation": f"Check and fix the [worker name](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service in the node"},
-        3030: {'message': 'Worker does not belong to the same cluster',
-               'remediation': f"Change the [cluster name](https://documentation.wazuh.com/{DOCU_VERSION}/"
-                              f"user-manual/reference/ossec-conf/cluster.html#name)"
-                              " in the worker configuration to match the master's and restart the `wazuh-manager` "
-                              "service"},
         3031: {'message': "Worker and master versions are not the same",
                'remediation': f"[Update](https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3034: "Error sending file. File not found.",
-        3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
-        3037: 'Error while processing Agent-info chunks',
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
+        3041: 'Error while sending orders to the Communications API unix server',
 
         # HAProxy Helper exceptions
         3041: "Server status check timed out after adding new servers",
         3042: "User configuration is not valid",
         3043: "Could not initialize Proxy API",
-        3044: "Could not connect to the HAProxy dataplane API",
+        3044: "Could not connect to the HAProxy Dataplane API",
         3045: "Could not connect to HAProxy",
         3046: "Invalid credentials for the Proxy API",
         3047: "Invalid HAProxy Dataplane API specification configured",
@@ -606,9 +463,7 @@ class WazuhException(Exception):
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
         6001: {'message': 'Maximum number of requests per minute reached',
-               'remediation': f'This limit can be changed in api.yaml file. More information here: https:/'
-                              f'/documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html#'
-                              f'configuration-file'},
+               'remediation': f'This limit can be changed in the {WAZUH_SERVER_YML} file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'

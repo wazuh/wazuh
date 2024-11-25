@@ -331,7 +331,7 @@ def to_relative_path(full_path: str) -> str:
     str
         Relative path from Wazuh base directory.
     """
-    return os.path.relpath(full_path, common.WAZUH_PATH)
+    return os.path.relpath(full_path, common.WAZUH_SHARE)
 
 
 def _create_problem(exc: Exception, code: int = None):

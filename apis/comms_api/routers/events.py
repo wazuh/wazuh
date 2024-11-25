@@ -1,25 +1,23 @@
-from fastapi import APIRouter, Depends, Response
-from fastapi import status, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from comms_api.authentication.authentication import JWTBearer
-from comms_api.core.events import create_stateful_events, send_stateless_events
-from comms_api.models.events import StatefulEvents, StatelessEvents
-from comms_api.routers.exceptions import HTTPError
+from comms_api.core.events import create_stateful_events, send_stateless_events, parse_stateful_events
+from comms_api.models.events import StatefulEventsResponse
+from comms_api.routers.exceptions import HTTPError, validation_exception_handler
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhEngineError, WazuhError
+from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhIndexerError
 
 
 @timeout(30)
-async def post_stateful_events(request: Request, events: StatefulEvents) -> JSONResponse:
+async def post_stateful_events(request: Request) -> StatefulEventsResponse:
     """Handle posting stateful events.
 
     Parameters
     ----------
     request : Request
         Incoming HTTP request.
-    events : StatefulEvents
-        Events to post.
 
     Raises
     ------
@@ -32,20 +30,25 @@ async def post_stateful_events(request: Request, events: StatefulEvents) -> JSON
         Response from the Indexer.
     """
     try:
-        response = await create_stateful_events(events, request.app.state.batcher_queue)
-        return JSONResponse(response)
+        events = await parse_stateful_events(request)
+        results = await create_stateful_events(events, request.app.state.batcher_queue)
+        return StatefulEventsResponse(results=results)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)
+    except WazuhIndexerError as exc:
+        raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except ValidationError as exc:
+        return await validation_exception_handler(request, RequestValidationError(exc.errors()))
 
 
 @timeout(10)
-async def post_stateless_events(events: StatelessEvents) -> Response:
+async def post_stateless_events(request: Request) -> Response:
     """Post stateless events handler.
 
     Parameters
     ----------
-    events : StatelessEvents
-        Stateless events list.
+    request : Request
+        Incoming HTTP request.
 
     Raises
     ------
@@ -58,8 +61,10 @@ async def post_stateless_events(events: StatelessEvents) -> Response:
         HTTP OK empty response.
     """
     try:
-        await send_stateless_events(events)
-        return Response(status_code=status.HTTP_200_OK)
+        await send_stateless_events(request)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except WazuhError as exc:
+        raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)
     except WazuhEngineError as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

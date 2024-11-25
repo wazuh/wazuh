@@ -2,7 +2,7 @@ import os
 
 from wazuh.core.exception import WazuhCommsAPIError
 
-# TODO(#25121): get actual directory path or take ir from the configuration
+# TODO(#25121): get actual directory path
 DIR = '/files'
 
 

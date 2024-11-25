@@ -22,10 +22,7 @@ relationships:
         - security_all
         - cluster_all
         - ciscat_read
-        - decoders_all
-        - lists_all
         - rootcheck_all
-        - rules_all
         - mitre_read
         - sca_read
         - syscheck_all
@@ -33,6 +30,7 @@ relationships:
         - logtest_all
         - task_status
         - events_ingest
+        - orders_send
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin
@@ -42,10 +40,7 @@ relationships:
         - agents_read
         - ciscat_read
         - cluster_read
-        - decoders_read
-        - lists_read
         - rootcheck_read
-        - rules_read
         - mitre_read
         - sca_read
         - syscheck_read

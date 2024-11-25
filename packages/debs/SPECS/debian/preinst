@@ -1,0 +1,43 @@
+#!/bin/sh
+# preinst script for Wazuh
+
+set -e
+
+# configuration variables
+DIR="/var/wazuh-server"
+WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
+VERSION="$2"
+MAJOR=$(echo "$VERSION" | cut -dv -f2 | cut -d. -f1)
+
+# environment configuration
+if [ ! -d ${WAZUH_TMP_DIR} ]; then
+    mkdir -p ${WAZUH_TMP_DIR}
+else
+    rm -rf ${WAZUH_TMP_DIR}
+    mkdir -p ${WAZUH_TMP_DIR}
+fi
+
+case "$1" in
+    install|upgrade)
+        if [ "$1" = "upgrade" ]; then
+            if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-server > /dev/null 2>&1; then
+                systemctl stop wazuh-server.service > /dev/null 2>&1
+                touch ${WAZUH_TMP_DIR}/wazuh.restart
+            elif command -v service > /dev/null 2>&1 && service wazuh-server status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
+                service wazuh-server stop > /dev/null 2>&1
+                touch ${WAZUH_TMP_DIR}/wazuh.restart
+            fi
+        fi
+    ;;
+
+    abort-upgrade)
+    ;;
+
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 0
+    ;;
+
+esac
+
+exit 0

@@ -87,10 +87,12 @@ assignees: ''
 -->
 
 <!-- Uncomment for AGENT issue
+**Agent**
+
 - [ ] Smoke test that the package works, including installation, upgrade, and its related tier functionality.
+- [ ] Check the default settings of previous versions, and adapt them to the new OS version if necessary.
 - [ ] Add support for the new OS to the GitHub Actions package builder.
 
-**Agent**
 Requested testing code:
 :white_circle: Requested.
 :black_circle: Not requested.

@@ -24,7 +24,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
-
+from wazuh.core.config.client import CentralizedConfig
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
@@ -35,6 +35,8 @@ ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
 USER_AGENT_KEY = 'user-agent'
+DEFAULT_TIMEOUT = 10.0
+
 
 class LoggingFormat(Enum):
     plain = "plain"
@@ -265,7 +267,10 @@ def get_api_conf() -> dict:
     dict
         API configuration.
     """
-    return copy.deepcopy(configuration.api_conf)
+    management_api_conf = CentralizedConfig.get_management_api_config()
+    comms_api_conf = CentralizedConfig.get_comms_api_config()
+    return copy.deepcopy({"management_api": management_api_conf.model_dump(exclude_defaults=True),
+                          "comms_api": comms_api_conf.model_dump(exclude_defaults=True)})
 
 
 def _get_ssl_context() -> ssl.SSLContext:
@@ -335,7 +340,7 @@ async def query_update_check_service(installation_uid: str) -> dict:
         last_check_date=get_utc_now()
     )
 
-    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
+    async with httpx.AsyncClient(verify=_get_ssl_context(), timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
         try:
             response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
             response_data = response.json()

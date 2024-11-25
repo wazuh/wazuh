@@ -39,12 +39,8 @@ _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
-_cdb_filename_path = re.compile(r'^[\-\w]+$')
-_xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
-_xml_filename = re.compile(r'^[\w\-]+\.xml(,[\w\-]+\.xml)*$')
 _query_param = re.compile(r"^[\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+(?:[;,][\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}-[\d]{1,2}$')
-_get_dirnames_path = re.compile(r'^(((etc|ruleset)/(decoders|rules)[\w\-/]*)|(etc/lists[\w\-/]*))$')
 _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
@@ -320,7 +316,7 @@ def allowed_fields(filters: Dict) -> List:
     return [field for field in filters]
 
 
-def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = True) -> bool:
+def is_safe_path(path: str, basedir: str = common.WAZUH_ETC, relative: bool = True) -> bool:
     """Check if a path is correct.
 
     Parameters
@@ -411,11 +407,6 @@ def format_numbers(value):
 @Draft4Validator.FORMAT_CHECKER.checks("numbers_or_all")
 def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("cdb_filename_path")
-def format_cdb_filename_path(value):
-    return check_exp(value, _cdb_filename_path)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("xml_filename")
@@ -523,12 +514,13 @@ def format_group_names(value):
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)
 
-@Draft4Validator.FORMAT_CHECKER.checks("uuid7")
-def format_uuid7(value):
+
+@Draft4Validator.FORMAT_CHECKER.checks("uuid4")
+def format_uuid4(value):
     ret_val = True
     try:
         uuid = UUID(value)
-        if uuid.version != 7:
+        if uuid.version != 4:
             ret_val = False
     except ValueError:
         ret_val = False

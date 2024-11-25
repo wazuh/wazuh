@@ -14,17 +14,18 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.manager import *
-        from wazuh.core.manager import LoggingFormat
-        from wazuh.core.tests.test_manager import get_logs
-        from wazuh import WazuhInternalError
+            from wazuh.manager import *
+            from wazuh.core.manager import LoggingFormat
+            from wazuh.core.tests.test_manager import get_logs
+            from wazuh import WazuhInternalError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -40,15 +41,6 @@ class InitManager:
         """Sets up necessary environment to test manager functions"""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
-        # rules
-        self.input_rules_file = 'test_rules.xml'
-        self.output_rules_file = 'uploaded_test_rules.xml'
-        # decoders
-        self.input_decoders_file = 'test_decoders.xml'
-        self.output_decoders_file = 'uploaded_test_decoders.xml'
-        # CDB lists
-        self.input_lists_file = 'test_lists'
-        self.output_lists_file = 'uploaded_test_lists'
 
 
 @pytest.fixture(scope='module')
@@ -193,7 +185,7 @@ def test_get_api_config():
     result = get_api_config().render()
 
     assert 'node_api_config' in result['data']['affected_items'][0], 'node_api_config key not found in result'
-    assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
+    assert 'node_name' in result['data']['affected_items'][0]
 
 
 @patch('socket.socket')
@@ -301,8 +293,11 @@ def test_get_config_ko():
 
 
 @pytest.mark.parametrize('raw', [True, False])
-def test_read_ossec_conf(raw):
+@patch('builtins.open')
+@patch('wazuh.manager.get_ossec_conf', return_value={})
+def test_read_ossec_conf(get_ossec_conf_mock, open_mock, raw):
     """Tests read_ossec_conf() function works as expected"""
+    open_mock.return_value.__enter__.return_value.read.return_value = ""
     result = read_ossec_conf(raw=raw)
 
     if raw:

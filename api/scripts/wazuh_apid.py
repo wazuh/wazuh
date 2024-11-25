@@ -9,6 +9,11 @@ import os
 import signal
 import sys
 import warnings
+from functools import partial
+
+from wazuh.core.common import WAZUH_SERVER_YML
+from wazuh.core.config.models.central_config import ManagementAPIConfig
+from wazuh.core.config.models.ssl_config import APISSLConfig
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
@@ -49,28 +54,28 @@ def spawn_authentication_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def configure_ssl(params):
+def configure_ssl(params: dict, config: APISSLConfig):
     """Configure https files and permission, and set the uvicorn dictionary configuration keys.
 
     Parameters
     ----------
-    uvicorn_params : dict
+    params : dict
         uvicorn parameter configuration dictionary.
+    config : APISSLConfig
+        Configuration for SSL
     """
-    from api.constants import CONFIG_FILE_PATH
 
     try:
         # Generate SSL if it does not exist and HTTPS is enabled
-        if not os.path.exists(api_conf['https']['key']) \
-                or not os.path.exists(api_conf['https']['cert']):
+        if not os.path.exists(config.key) or not os.path.exists(config.cert):
             logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
                         'Attempting to generate them')
-            private_key = generate_private_key(api_conf['https']['key'])
+            private_key = generate_private_key(config.key)
             logger.info(
-                f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}")
-            generate_self_signed_certificate(private_key, api_conf['https']['cert'])
+                f"Generated private key file in {config.key}")
+            generate_self_signed_certificate(private_key, config.cert)
             logger.info(
-                f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
+                f"Generated certificate file in {config.cert}")
 
         # Load SSL context
         allowed_ssl_protocols = {
@@ -81,7 +86,7 @@ def configure_ssl(params):
             'auto': ssl.PROTOCOL_TLS_SERVER
         }
 
-        config_ssl_protocol = api_conf['https']['ssl_protocol']
+        config_ssl_protocol = config.ssl_protocol
         ssl_protocol = allowed_ssl_protocols[config_ssl_protocol.lower()]
 
         with warnings.catch_warnings():
@@ -90,21 +95,21 @@ def configure_ssl(params):
                 logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
 
         # Check and assign ownership to wazuh user for server.key and server.crt files
-        utils.assign_wazuh_ownership(api_conf['https']['key'])
-        utils.assign_wazuh_ownership(api_conf['https']['cert'])
+        utils.assign_wazuh_ownership(config.key)
+        utils.assign_wazuh_ownership(config.cert)
 
         params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
 
-        if api_conf['https']['use_ca']:
+        if config.use_ca:
             params['ssl_cert_reqs'] = ssl.CERT_REQUIRED
-            params['ssl_ca_certs'] = api_conf['https']['ca']
+            params['ssl_ca_certs'] = config.ca
 
-        params['ssl_certfile'] = api_conf['https']['cert']
-        params['ssl_keyfile'] = api_conf['https']['key']
+        params['ssl_certfile'] = config.cert
+        params['ssl_keyfile'] = config.key
 
         # Load SSL ciphers if any has been specified
-        if api_conf['https']['ssl_ciphers']:
-            params['ssl_ciphers'] = api_conf['https']['ssl_ciphers'].upper()
+        if config.ssl_ciphers != "":
+            params['ssl_ciphers'] = config.ssl_ciphers.upper()
 
     except ssl.SSLError as exc:
         error = APIError(
@@ -124,13 +129,13 @@ def configure_ssl(params):
         else:
             msg = f'Wazuh API SSL ERROR. Please, ensure ' \
                     f'if path to certificates is correct in the configuration ' \
-                    f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
+                    f'file {WAZUH_SERVER_YML}'
             print(msg)
             logger.error(msg)
             raise exc from exc
 
 
-def start(params: dict):
+def start(params: dict, config: ManagementAPIConfig):
     """Run the Wazuh API.
 
     If another Wazuh API is running, this function will fail because uvicorn server will
@@ -142,6 +147,8 @@ def start(params: dict):
     ----------
     params : dict
         uvicorn parameter configuration dictionary.
+    config : ManagementAPIConfig
+        API Configuration.
     """
     try:
         check_database_integrity()
@@ -168,38 +175,35 @@ def start(params: dict):
     app.add_api('spec.yaml',
                 arguments={
                     'title': 'Wazuh API',
-                    'protocol': 'https' if api_conf['https']['enabled'] else 'http',
-                    'host': params['host'],
-                    'port': params['port']},
+                    'protocol': 'https',
+                    'host': config.host,
+                    'port': config.port},
                 strict_validation=True,
                 validate_responses=False
                 )
 
     # Maximum body size that the API can accept (bytes)
-    if api_conf['access']['max_request_per_minute'] > 0:
+    if config.access.max_request_per_minute > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware)
-    if api_conf['max_upload_size']:
-        app.add_middleware(ContentSizeLimitMiddleware, max_content_size=api_conf['max_upload_size'])
-        app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
+
+    app.add_middleware(ContentSizeLimitMiddleware, max_content_size=config.max_upload_size)
+    app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
 
     # Enable CORS
-    if api_conf['cors']['enabled']:
+    if config.cors.enabled:
         app.add_middleware(
             CORSMiddleware,
             position=MiddlewarePosition.BEFORE_EXCEPTION,
-            allow_origins=api_conf['cors']['source_route'],
-            expose_headers=api_conf['cors']['expose_headers'],
-            allow_headers=api_conf['cors']['allow_headers'],
-            allow_credentials=api_conf['cors']['allow_credentials'],
+            allow_origins=config.cors.source_route,
+            expose_headers=config.cors.expose_headers,
+            allow_headers=config.cors.allow_headers,
+            allow_credentials=config.cors.allow_credentials,
         )
 
-    # Display warning if using deprecated cache API configuration
-    if api_conf.get('cache', {}).get('enabled', {}):
-        logger.warning(CACHE_DELETED_MESSAGE.format(release="4.9.0"))
 
     # Add error handlers to format exceptions
     app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)
@@ -208,12 +212,8 @@ def start(params: dict):
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
     app.add_error_handler(403, error_handler.problem_error_handler)
 
-    # API configuration logging
-    logger.debug(f'Loaded API configuration: {api_conf}')
-    logger.debug(f'Loaded security API configuration: {security_conf}')
 
     # Start uvicorn server
-
     try:
         uvicorn.run(app, **params)
 
@@ -232,33 +232,11 @@ def print_version():
     print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))
 
 
-def test_config(config_file: str):
-    """Make an attempt to read the API config file. Exits with 0 code if successful, 1 otherwise.
-
-    Arguments
-    ---------
-    config_file : str
-        Path of the file
-    """
-    try:
-        read_yaml_config(config_file=config_file)
-    except Exception as exc:
-        print(f"Configuration not valid. ERROR: {exc}")
-        sys.exit(1)
-    sys.exit(0)
-
 
 def version():
     """Print API version and exits with 0 code. """
     print_version()
     sys.exit(0)
-
-
-def exit_handler(signum, frame):
-    """Try to kill API child processes and remove their PID files."""
-    api_pid = os.getpid()
-    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, api_pid, logger)
-    pyDaemonModule.delete_pid(API_MAIN_PROCESS, api_pid)
 
 
 def add_debug2_log_level_and_error():
@@ -290,24 +268,15 @@ if __name__ == '__main__':
                         action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version",
                         action='store_true', dest="version")
-    parser.add_argument('-t', help="Test configuration",
-                        action='store_true', dest='test_config')
     parser.add_argument('-r', help="Run as root",
                         action='store_true', dest='root')
-    parser.add_argument('-c', help="Configuration file to use",
-                        type=str, metavar='config', dest='config_file')
     parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.",
                         action='count',
                         dest='debug_level')
     args = parser.parse_args()
 
-    from api.configuration import read_yaml_config
     if args.version:
         version()
-        sys.exit(0)
-
-    elif args.test_config:
-        test_config(args.config_file)
         sys.exit(0)
 
     import asyncio
@@ -315,7 +284,6 @@ if __name__ == '__main__':
     import logging.config
     import ssl
 
-    import jwt
     import uvicorn
     from connexion import AsyncApp
     from connexion.exceptions import HTTPException, ProblemException, Unauthorized
@@ -326,12 +294,14 @@ if __name__ == '__main__':
     from starlette.middleware.cors import CORSMiddleware
     from wazuh.core import common, pyDaemonModule, utils
     from wazuh.rbac.orm import check_database_integrity
+    from wazuh.core.config.client import CentralizedConfig
+    from wazuh.core.config.models.management_api import ManagementAPIConfig
 
     from api import __path__ as api_path
     from api import error_handler
     from api.alogging import set_logging
     from api.api_exception import APIError, ExpectFailedException
-    from api.configuration import api_conf, generate_private_key, generate_self_signed_certificate, security_conf
+    from api.configuration import generate_private_key, generate_self_signed_certificate
     from api.constants import API_LOG_PATH
     from api.middlewares import (
         CheckBlockedIP,
@@ -345,23 +315,23 @@ if __name__ == '__main__':
     from api.util import to_relative_path
 
     try:
-        if args.config_file is not None:
-            api_conf.update(read_yaml_config(config_file=args.config_file))
-    except APIError as e:
-        print(f"Error when trying to start the Wazuh API. {e}")
+        CentralizedConfig.load()
+    except Exception as e:
+        print(f"Error when trying to load the configuration. {e}")
         sys.exit(1)
+    management_config = CentralizedConfig.get_management_api_config()
 
     # Configure uvicorn parameters dictionary
     uvicorn_params = {}
-    uvicorn_params['host'] = api_conf['host']
-    uvicorn_params['port'] = api_conf['port']
+    uvicorn_params['host'] = management_config.host
+    uvicorn_params['port'] = management_config.port
     uvicorn_params['loop'] = 'uvloop'
     uvicorn_params['server_header'] = False
 
     # Set up logger file
     try:
         uvicorn_params['log_config'] = set_logging(log_filepath=API_LOG_PATH,
-                                                   log_level=api_conf['logs']['level'].upper(),
+                                                   logging_config=management_config.logging,
                                                    foreground_mode=args.foreground)
     except APIError as api_log_error:
         print(f"Error when trying to start the Wazuh API. {api_log_error}")
@@ -378,21 +348,7 @@ if __name__ == '__main__':
     logging.config.dictConfig(uvicorn_params['log_config'])
     logger = logging.getLogger('wazuh-api')
 
-    # Check deprecated options. To delete after expected versions
-    if 'use_only_authd' in api_conf:
-        del api_conf['use_only_authd']
-        logger.warning(
-            "'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
-
-    if 'path' in api_conf['logs']:
-        del api_conf['logs']['path']
-        logger.warning(
-            "Log 'path' option was deprecated on v4.3.0. Default path will always be used: "
-            f"{API_LOG_PATH}.<log_format>")
-
-    # Configure ssl files
-    if api_conf['https']['enabled']:
-        configure_ssl(uvicorn_params)
+    configure_ssl(uvicorn_params, management_config.ssl)
 
     # Check for unused PID files
     utils.clean_pid_files(API_MAIN_PROCESS)
@@ -405,7 +361,7 @@ if __name__ == '__main__':
 
     # Drop privileges to wazuh
     if not args.root:
-        if api_conf['drop_privileges']:
+        if management_config.drop_privileges:
             os.setgid(common.wazuh_gid())
             os.setuid(common.wazuh_uid())
     else:
@@ -414,9 +370,9 @@ if __name__ == '__main__':
     pid = os.getpid()
     pyDaemonModule.create_pid(API_MAIN_PROCESS, pid)
 
-    signal.signal(signal.SIGTERM, exit_handler)
+    signal.signal(signal.SIGTERM, partial(pyDaemonModule.exit_handler, process_name=API_MAIN_PROCESS, logger=logger))
     try:
-        start(uvicorn_params)
+        start(uvicorn_params, config=management_config)
     except APIError as e:
         print(f"Error when trying to start the Wazuh API. {e}")
         sys.exit(1)

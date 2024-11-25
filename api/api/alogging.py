@@ -8,8 +8,9 @@ import json
 import re
 from pythonjsonlogger import jsonlogger
 
-from api.configuration import api_conf
 from api.api_exception import APIError
+
+from wazuh.core.config.models.logging import RotatedLoggingConfig
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
@@ -19,6 +20,8 @@ logger = logging.getLogger('wazuh-api')
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
 WARNING = 'WARNING'
+INFO = 'INFO'
+
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
@@ -82,7 +85,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         log_record['data'] = record.message
 
 
-def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> dict:
+def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_mode: bool = False) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -91,10 +94,10 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
     
     Parameters
     ----------
-    log_path : str
+    log_filepath : str
         Log file path.
-    log_level :  str
-        Logger Log level.
+    logging_config :  RotatedLoggingConfig
+        Logger configuration.
     foreground_mode : bool
         Log output to console streams when true
         else Log output to file.
@@ -108,6 +111,7 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
     log_config_dict : dict
         Logging configuration dictionary.
     """
+    log_level = logging_config.get_level()
     handlers = {
         'plainfile': None, 
         'jsonfile': None,
@@ -115,13 +119,13 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
     if foreground_mode:
         handlers.update({'console': {}})
 
-    if 'json' in api_conf['logs']['format']:
+    if 'json' in logging_config.format:
         handlers["jsonfile"] = {
             'filename': f"{log_filepath}.json",
             'formatter': 'json',
             'filters': ['json-filter'],
         }
-    if 'plain' in api_conf['logs']['format']:
+    if 'plain' in logging_config.format:
         handlers["plainfile"] = {
             'filename': f"{log_filepath}.log",
             'formatter': 'log',
@@ -183,7 +187,7 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
         },
         "loggers": {
             "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
-            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False},
+            "start-stop-api": {"handlers": hdls, "level": INFO, "propagate": False},
             "wazuh-comms-api": {"handlers": hdls, "level": log_level, "propagate": False}
         }
     }
@@ -191,8 +195,8 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
     # configure file handlers
     for handler, d in handlers.items():
         if d and 'filename' in d:
-            if api_conf['logs']['max_size']['enabled']:
-                max_size = APILoggerSize(api_conf['logs']['max_size']['size']).size
+            if logging_config.max_size.enabled:
+                max_size = APILoggerSize(logging_config.max_size.size).size
                 d.update({
                     'class':'wazuh.core.wlogging.SizeBasedFileRotatingHandler',
                     'maxBytes': max_size,
@@ -211,9 +215,9 @@ def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> di
     log_config_dict['loggers']['uvicorn.access'] = {'level': WARNING}
 
     # Configure the gunicorn loggers. They will be created by the gunicorn process.
-    log_config_dict['loggers']['gunicorn'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
-    log_config_dict['loggers']['gunicorn.error'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
-    log_config_dict['loggers']['gunicorn.access'] = {'level': WARNING}
+    log_config_dict['loggers']['gunicorn'] = {'handlers': hdls, 'level': INFO, 'propagate': False}
+    log_config_dict['loggers']['gunicorn.error'] = {'handlers': hdls, 'level': INFO, 'propagate': False}
+    log_config_dict['loggers']['gunicorn.access'] = {'level': INFO}
 
     return log_config_dict
 

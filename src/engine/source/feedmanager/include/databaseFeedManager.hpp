@@ -12,27 +12,22 @@
 #ifndef _DATABASE_FEED_MANAGER_HPP
 #define _DATABASE_FEED_MANAGER_HPP
 
-#include "base/lruCache.hpp"
-#include "base/utils/rocksDBWrapper.hpp"
-#include "packageTranslation_generated.h"
-#include "vulnerabilityCandidate_generated.h"
-#include "vulnerabilityDescription_generated.h"
-#include "vulnerabilityRemediations_generated.h"
 #include <functional>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <regex>
 #include <shared_mutex>
 #include <string>
 #include <vector>
 
-constexpr auto DATABASE_PATH {"queue/vd/feed"};
-constexpr auto OFFSET_TRANSACTION_SIZE {1000};
-constexpr auto EMPTY_KEY {""};
-constexpr auto TRANSLATIONS_COLUMN {"translation"};
-constexpr auto VENDOR_MAP_COLUMN {"vendor_map"};
-constexpr auto OS_CPE_RULES_COLUMN {"oscpe_rules"};
-constexpr auto CNA_MAPPING_COLUMN {"cna_mapping"};
+#include <nlohmann/json.hpp>
+
+#include <base/lruCache.hpp>
+#include <base/utils/rocksDBWrapper.hpp>
+
+#include "packageTranslation_generated.h"
+#include "vulnerabilityCandidate_generated.h"
+#include "vulnerabilityDescription_generated.h"
+#include "vulnerabilityRemediations_generated.h"
 
 /**
  * @brief Scanning package data struct.

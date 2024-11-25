@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import ast
 import json
 import re
 import subprocess
@@ -238,7 +238,7 @@ def test_validate_data_dict_field(response, fields_dict):
 
         for element in field_list:
             try:
-                assert (isinstance(element[key], eval(value)) for key, value in dikt.items())
+                assert (isinstance(element[key], ast.literal_eval(value)) for key, value in dikt.items())
             except KeyError:
                 assert len(element) == 1
                 assert isinstance(element['count'], int)
@@ -312,32 +312,6 @@ def test_validate_mitre(response, data, index=0):
             if isinstance(v, str):
                 v = v.replace('\\"', '"')  # Remove \\ characters used to escape "
             assert v == response.json()['data']['affected_items'][index][k]
-
-
-def test_validate_restart_by_node(response, data):
-    data = json.loads(data.replace("'", '"'))
-    affected_items = list()
-    for item in data['affected_items']:
-        if item['status'] == 'active':
-            affected_items.append(item['id'])
-    assert response.json()['data']['affected_items'] == affected_items
-    assert not response.json()['data']['failed_items']
-    healthcheck_agent_restart(response, affected_items)
-
-
-def test_validate_restart_by_node_rbac(response, permitted_agents):
-    data = response.json().get('data', None)
-    if data:
-        if data['affected_items']:
-            healthcheck_agent_restart(response, data['affected_items'])
-            for agent in data['affected_items']:
-                assert agent in permitted_agents
-        else:
-            assert data['total_affected_items'] == 0
-    else:
-        assert response.status_code == 403
-        assert response.json()['error'] == 4000
-        assert 'agent:id' in response.json()['detail']
 
 
 def test_validate_auth_context(response, expected_roles=None):
@@ -486,7 +460,7 @@ def check_agent_active_status(agents_list):
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
 
         # Transform string representation of list to list and save agents id
-        id_active_agents = [agent['id'] for agent in eval(output)]
+        id_active_agents = [agent['id'] for agent in ast.literal_eval(output)]
 
         if all(a in id_active_agents for a in agents_list):
             break

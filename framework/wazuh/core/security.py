@@ -7,12 +7,8 @@ from functools import lru_cache
 
 import yaml
 
-import api.middlewares as middlewares
 from api import __path__ as api_path
-from api.authentication import change_keypair
-from api.constants import SECURITY_CONFIG_PATH
-from cryptography.hazmat.primitives.asymmetric import ec
-from wazuh import WazuhInternalError, WazuhError
+from wazuh.core.authentication import generate_keypair
 from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
@@ -24,36 +20,6 @@ SORT_FIELDS_GET_USERS = ['id', 'username']
 def load_spec():
     with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r', encoding='utf-8') as stream:
         return yaml.safe_load(stream)
-
-
-def update_security_conf(new_config: dict):
-    """Update dict and write it in the configuration file.
-
-    Parameters
-    ----------
-    new_config : dict
-        Dictionary with the new configuration.
-
-    Raises
-    ------
-    WazuhInternalError(1005)
-        Error reading security conf file.
-    WazuhError(4021)
-        No new_config provided.
-    """
-    if new_config:
-        try:
-            with open(SECURITY_CONFIG_PATH, 'w+') as f:
-                yaml.dump(new_config, f)
-        except IOError:
-            raise WazuhInternalError(1005)
-    else:
-        raise WazuhError(4021)
-    if 'max_login_attempts' in new_config.keys():
-        middlewares.ip_stats = dict()
-        middlewares.ip_block = set()
-    if 'max_request_per_minute' in new_config.keys():
-        middlewares.request_counter = 0
 
 
 def check_relationships(roles: list = None) -> set:
@@ -116,7 +82,7 @@ def revoke_tokens() -> dict:
     dict
         Confirmation message.
     """
-    change_keypair(ec.SECP521R1())
+    generate_keypair()
     with TokenManager() as tm:
         tm.delete_all_rules()
 

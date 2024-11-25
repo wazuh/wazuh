@@ -12,11 +12,14 @@
 #ifndef _THREAD_EVENT_DISPATCHER_HPP
 #define _THREAD_EVENT_DISPATCHER_HPP
 
-#include "rocksDBQueue.hpp"
-#include "threadSafeQueue.hpp"
 #include <atomic>
 #include <iostream>
 #include <thread>
+
+#include <base/logging.hpp>
+
+#include "rocksDBQueue.hpp"
+#include "threadSafeQueue.hpp"
 
 constexpr auto UNLIMITED_QUEUE_SIZE = 0;
 static const unsigned int SINGLE_THREAD = 1;
@@ -27,6 +30,14 @@ enum class ThreadEventDispatcherType
 {
     SINGLE_THREADED_ORDERED,
     MULTI_THREADED_UNORDERED
+};
+
+struct ThreadEventDispatcherParams
+{
+    const std::string& dbPath;
+    const uint64_t bulkSize = 1;
+    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE;
+    const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED;
 };
 
 /**
@@ -46,22 +57,15 @@ template<typename T,
 class TThreadEventDispatcher
 {
 public:
-    explicit TThreadEventDispatcher(
-        Functor functor,
-        const std::string& dbPath,
-        const uint64_t bulkSize = 1,
-        const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-        const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
+    explicit TThreadEventDispatcher(Functor functor, const ThreadEventDispatcherParams& threadEventDispatcherParams)
         : m_functor {std::move(functor)}
-        , m_maxQueueSize {maxQueueSize}
-        , m_bulkSize {bulkSize}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_dispatcherType {dispatcherType}
+        , m_maxQueueSize {threadEventDispatcherParams.maxQueueSize}
+        , m_bulkSize {threadEventDispatcherParams.bulkSize}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(threadEventDispatcherParams.dbPath))}
+        , m_dispatcherType {threadEventDispatcherParams.dispatcherType}
     {
         const auto threadsAmount =
             m_dispatcherType == ThreadEventDispatcherType::MULTI_THREADED_UNORDERED ? MULTI_THREAD : SINGLE_THREAD;
-
-        m_threads.reserve(threadsAmount);
 
         for (unsigned int i = 0; i < threadsAmount; ++i)
         {
@@ -70,15 +74,11 @@ public:
         }
     }
 
-    explicit TThreadEventDispatcher(
-        const std::string& dbPath,
-        const uint64_t bulkSize = 1,
-        const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-        const ThreadEventDispatcherType dispatcherType = ThreadEventDispatcherType::SINGLE_THREADED_ORDERED)
-        : m_maxQueueSize {maxQueueSize}
-        , m_bulkSize {bulkSize}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
-        , m_dispatcherType {dispatcherType}
+    explicit TThreadEventDispatcher(const ThreadEventDispatcherParams& threadEventDispatcherParams)
+        : m_maxQueueSize {threadEventDispatcherParams.maxQueueSize}
+        , m_bulkSize {threadEventDispatcherParams.bulkSize}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(threadEventDispatcherParams.dbPath))}
+        , m_dispatcherType {threadEventDispatcherParams.dispatcherType}
     {
     }
 
@@ -202,7 +202,7 @@ private:
         catch (const std::exception& ex)
         {
             // Log the error if an exception occurs
-            std::cerr << "Dispatch handler error: " << ex.what() << "\n";
+            LOG_ERROR("Dispatch handler error: {}", ex.what());
         }
     }
 

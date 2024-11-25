@@ -1,4 +1,3 @@
-import os
 import random
 from asyncio import sleep
 from contextlib import asynccontextmanager
@@ -8,23 +7,14 @@ from typing import AsyncIterator
 from opensearchpy import AsyncOpenSearch
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
-from wazuh.core.indexer.commands import CommandsIndex
+from wazuh.core.indexer.commands import CommandsManager
 from wazuh.core.indexer.events import EventsIndex
+from wazuh.core.config.client import CentralizedConfig
 
 logger = getLogger('wazuh')
 
 HOST_KEY = 'host'
 PORT_KEY = 'port'
-
-# This constants are temporary until we have a centralized configration
-
-INDEXER_HOST = os.getenv('INDEXER_HOST', '')
-INDEXER_USER = os.getenv('INDEXER_USER', '')
-INDEXER_PASSWORD = os.getenv('INDEXER_PASSWORD', '')
-INDEXER_USE_SSL = os.getenv('INDEXER_USE_SSL', 'True') == 'True'
-INDEXER_CLIENT_CERT_PATH = os.getenv('INDEXER_CLIENT_CERT_PATH', '')
-INDEXER_CLIENT_KEY_PATH = os.getenv('INDEXER_CLIENT_KEY_PATH', '')
-INDEXER_CA_CERTS_PATH = os.getenv('INDEXER_CA_CERTS_PATH', '')
 
 
 class Indexer:
@@ -54,10 +44,10 @@ class Indexer:
 
         self._client = self._get_opensearch_client()
 
-        # Register index clients here
+        # Register indices and plugins clients here
         self.agents = AgentsIndex(client=self._client)
-        self.commands = CommandsIndex(client=self._client)
         self.events = EventsIndex(client=self._client)
+        self.commands_manager = CommandsManager(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """Get a new OpenSearch client instance.
@@ -166,14 +156,17 @@ async def create_indexer(
 async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
 
+    indexer_config = CentralizedConfig.get_indexer_config()
+
     client = await create_indexer(
-        host=INDEXER_HOST,
-        user=INDEXER_USER,
-        password=INDEXER_PASSWORD,
-        use_ssl=INDEXER_USE_SSL,
-        client_cert_path=INDEXER_CLIENT_CERT_PATH,
-        client_key_path=INDEXER_CLIENT_KEY_PATH,
-        ca_certs_path=INDEXER_CA_CERTS_PATH,
+        host=indexer_config.host,
+        port=indexer_config.port,
+        user=indexer_config.user,
+        password=indexer_config.password,
+        use_ssl=indexer_config.ssl.use_ssl,
+        client_cert_path=indexer_config.ssl.cert,
+        client_key_path=indexer_config.ssl.key,
+        ca_certs_path=indexer_config.ssl.ca,
         retries=1
     )
 

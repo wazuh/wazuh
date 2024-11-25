@@ -9,6 +9,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+pytest.skip("This module it is deprecated.", allow_module_level=True)
+
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.exception import WazuhError

@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 import "engine.proto";
-import "google/protobuf/struct.proto"; // For Value
 
 package com.wazuh.api.engine.tester;
 
@@ -51,7 +50,7 @@ message Result
         bool success = 2;           // If the asset was successfully decoded
         repeated string traces = 3; // Traces of the asset
     }
-    google.protobuf.Value output = 1;     // test output
+    string output = 1;                    // JSON output of the event
     repeated AssetTrace asset_traces = 2; // Asset traces
 }
 

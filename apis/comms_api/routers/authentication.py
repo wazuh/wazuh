@@ -6,7 +6,7 @@ from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhInternalError, WazuhIndexerError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.models.agent import Agent, Status
 from wazuh.core.utils import get_utc_now
 
 
@@ -38,7 +38,7 @@ async def authentication(credentials: Credentials) -> TokenResponse:
 
             token = generate_token(credentials.uuid)
 
-            body = Agent(last_login=get_utc_now())
+            body = Agent(last_login=get_utc_now(), status=Status.ACTIVE)
             await indexer_client.agents.update(credentials.uuid, body)
     except WazuhIndexerError as exc:
         raise HTTPError(message=f'Couldn\'t connect to the indexer: {str(exc)}', status_code=status.HTTP_403_FORBIDDEN)

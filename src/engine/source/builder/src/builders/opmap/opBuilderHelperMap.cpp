@@ -859,7 +859,7 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
         }
         std::stringstream ss;
         ss << refStrHEX.value();
-        int result;
+        std::int64_t result;
         ss >> std::hex >> result;
         if (ss.fail() || !ss.eof())
         {
@@ -1547,6 +1547,7 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
     const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a number", name, epochRef.dotPath());
     const auto failureTrace3 =
         fmt::format("{} -> Reference '{}' does not hold a valid integer epoch number", name, epochRef.dotPath());
+    const auto failureTrace4 = fmt::format("{} -> Epoch number is too large", name);
 
     // Return Op
     return [=, runState = buildCtx->runState(), refPath = epochRef.jsonPath()](base::ConstEvent event) -> MapResult
@@ -1557,13 +1558,18 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
             RETURN_FAILURE(runState, json::Json {}, failureTrace1);
         }
 
-        const auto epoch = event->getIntAsInt64(refPath);
+        const auto epoch = event->getNumberAsDouble(refPath);
         if (!epoch.has_value())
         {
             RETURN_FAILURE(runState, json::Json {}, failureTrace2);
         }
 
-        date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {epoch.value()}};
+        if (epoch.value() > (double)std::numeric_limits<int64_t>::max())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace4);
+        }
+
+        date::sys_time<std::chrono::duration<double>> tp {std::chrono::duration<double> {epoch.value()}};
         auto result = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
         if (result.empty())
         {

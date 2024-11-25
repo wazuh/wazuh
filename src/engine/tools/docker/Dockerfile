@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* 
 	&& localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 
 ENV LANG=en_US.utf8
-ENV REINSTALL_CMAKE_VERSION_FROM_SOURCE="3.24.4"
+ENV REINSTALL_CMAKE_VERSION_FROM_SOURCE="3.30.5"
 
 # Engine specific environment variables
 ENV WAZUH_ROOT=/root/wazuh
@@ -15,7 +15,7 @@ ENV ENGINE_BUILD=$ENGINE_SRC/build
 # Force use the specific commit of master to aviod breaking changes like:
 # - Python packages
 # - Engine configuration and CLI
-ENV ENGINE_COMMIT_ID=3a5d73791803009da3f757cd5849a26536ad9986
+ENV ENGINE_COMMIT_ID=3fd4d415a8e7a185a5e1f58b5197ed0fd0c112d2
 ENV ENGINE_PRESET=release
 ENV ENGINE_ON_BACKGROUND=1
 ENV MM_LICENCE_KEY=
@@ -54,9 +54,8 @@ COPY scripts/reinstall-cmake.sh /tmp/reinstall-cmake.sh
 RUN chmod +x /tmp/reinstall-cmake.sh && /tmp/reinstall-cmake.sh ${REINSTALL_CMAKE_VERSION_FROM_SOURCE}
 
 # Build, install engine and tools
-RUN mkdir -p /var/ossec/etc/
-COPY mmdbs/GeoLite2-City.mmdb /var/ossec/etc/GeoLite2-City.mmdb
-COPY mmdbs/GeoLite2-ASN.mmdb /var/ossec/etc/GeoLite2-ASN.mmdb
+COPY mmdbs/GeoLite2-City.mmdb /tmp/GeoLite2-City.mmdb
+COPY mmdbs/GeoLite2-ASN.mmdb /tmp/GeoLite2-ASN.mmdb
 COPY scripts/build-and-install-engine.sh /tmp/build-and-install-engine.sh
 RUN chmod +x /tmp/build-and-install-engine.sh && /tmp/build-and-install-engine.sh
 

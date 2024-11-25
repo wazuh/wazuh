@@ -59,9 +59,12 @@ target_include_directories(database_feed PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/incl
 add_dependencies(database_feed compile_schemas)
 
 target_link_libraries(database_feed
+        PUBLIC
+        base
+        PRIVATE
         flatbuffers::flatbuffers
         RocksDB::rocksdb
-        base
+        filesystem
         )
 
 

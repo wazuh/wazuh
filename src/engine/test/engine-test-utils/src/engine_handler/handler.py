@@ -60,7 +60,7 @@ class EngineHandler:
 
         return True
 
-    def start(self) -> None:
+    def start(self, log_file_path: str = "") -> None:
         """Starts the engine process
 
         Raises:
@@ -68,7 +68,16 @@ class EngineHandler:
         """
 
         command = f"{self.binary_path} --config {self.configuration_path} server start"
-        self.process = subprocess.Popen(shlex.split(command))
+
+        if log_file_path:
+            with open(log_file_path, "w") as log_file:
+                self.process = subprocess.Popen(
+                    shlex.split(command),
+                    stdout=log_file,
+                    stderr=log_file
+                )
+        else:
+            self.process = subprocess.Popen(shlex.split(command))
 
         # Check if the process has started successfully
         if self.process.returncode is not None and self.process.returncode != 0:
