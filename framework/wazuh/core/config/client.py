@@ -136,6 +136,14 @@ class CentralizedConfig:
         return cls._config.server.get_internal_config()
 
     @classmethod
+    def get_config_dic(cls) -> dict:
+        if cls._config is None:
+            cls.load()
+
+        non_default_values = cls._config.model_dump(exclude_defaults=True)
+        return non_default_values
+
+    @classmethod
     def update_security_conf(cls, config: dict):
         """Update the security configuration with the provided values.
 
