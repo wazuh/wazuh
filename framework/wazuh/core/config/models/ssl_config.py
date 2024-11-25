@@ -1,6 +1,9 @@
 from enum import Enum
+from typing import List
+from pydantic import Field
 
 from wazuh.core.config.models.base import WazuhConfigBaseModel
+
 
 class SSLProtocol(str, Enum):
     """Enum representing supported SSL/TLS protocols."""
@@ -48,7 +51,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
     use_ssl: bool = False
     key: str = ""
     cert: str = ""
-    ca: str = ""
+    ca: List[str] = Field(default=[""], min_length=1)
 
 
 class APISSLConfig(WazuhConfigBaseModel):
@@ -62,7 +65,7 @@ class APISSLConfig(WazuhConfigBaseModel):
         The path to the SSL certificate file.
     use_ca : bool
         Whether to use a CA certificate. Default is False.
-    ca : str
+    ca : List[str]
         The path to the CA certificate file. Default is an empty string.
     ssl_protocol : Literal["TLS", "TLSv1", "TLSv1.1", "TLSv1.2", "auto"]
         The SSL protocol to use. Default is "auto".

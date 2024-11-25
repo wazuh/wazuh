@@ -159,14 +159,14 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     indexer_config = CentralizedConfig.get_indexer_config()
 
     client = await create_indexer(
-        host=indexer_config.host,
-        port=indexer_config.port,
+        host=indexer_config.hosts[0].host,
+        port=indexer_config.hosts[0].port,
         user=indexer_config.user,
         password=indexer_config.password,
         use_ssl=indexer_config.ssl.use_ssl,
         client_cert_path=indexer_config.ssl.cert,
         client_key_path=indexer_config.ssl.key,
-        ca_certs_path=indexer_config.ssl.ca,
+        ca_certs_path=indexer_config.ssl.ca[0],
         retries=1
     )
 

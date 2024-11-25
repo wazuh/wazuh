@@ -35,23 +35,23 @@ def test_ssl_config_fails_without_values(init_values):
 @pytest.mark.parametrize("init_values,expected", [
     (
         {},
-        {"use_ssl": False, "key": "", "cert": "", "ca": ""}
+        {"use_ssl": False, "key": "", "cert": "", "ca": [""]}
     ),
     (
         {"use_ssl": True},
-        {"use_ssl": True, "key": "", "cert": "", "ca": ""}
+        {"use_ssl": True, "key": "", "cert": "", "ca": [""]}
     ),
     (
         {"use_ssl": True, "key": "key_example"},
-        {"use_ssl": True, "key": "key_example", "cert": "", "ca": ""}
+        {"use_ssl": True, "key": "key_example", "cert": "", "ca": [""]}
     ),
     (
         {"use_ssl": True, "key": "key_example", "cert": "cert_example"},
-        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": ""}
+        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": [""]}
     ),
     (
-        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": "ca_example"},
-        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": "ca_example"}
+        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": ["ca_example"]},
+        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": ["ca_example"]}
     )
 ])
 def test_indexer_ssl_config_default_values(init_values, expected):
