@@ -23,7 +23,6 @@ def parse_args():
 
     # dest used because of bug: https://bugs.python.org/issue29298
     subparsers = parser.add_subparsers(title='subcommands', required=True, dest='subcommand')
-
  
     configure_run(subparsers)
     configure_add(subparsers)

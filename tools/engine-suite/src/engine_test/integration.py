@@ -11,6 +11,8 @@ from google.protobuf.json_format import MessageToDict
 from engine_test.input_collector import InputEventCollector
 
 from engine_test.event_parsers.single_line import SingleLineParser
+from engine_test.event_parsers.multi_line import MultilineParser
+from engine_test.event_parsers.eventchannel import EventChannelParser
 
 from engine_test.conf.integration import Formats, IntegrationConf
 
@@ -35,7 +37,7 @@ class Integration():
         self.iconf: IntegrationConf = integration
 
         # Get the format of integration
-        self.event_parser = self.get_parser(self.iconf.format)
+        self.event_parser = self.get_parser(self.iconf)
 
         # Client to API TEST
         self.api_client = ApiConnector(args)
@@ -48,22 +50,21 @@ class Integration():
             while True:
                 try:
                     events = []
-                    # Get the events
+                    # Collect the events
                     events = InputEventCollector.collect(Formats.is_collected_as_multiline(self.iconf.format))
-                    # Split the events
-                    events = self.event_parser.get_events(events)
-                    # Format each event
-                    events = [self.event_parser.format_event(event) for event in events]
+                    # Parse the events, split them
+                    events = self.event_parser.split_events(events)
                     # Remove invalid events
                     events = list(filter(None, events))
                     # Create ndjson events and add the header to each event
                     events = [json_header + self.iconf.get_template().get_event(event) for event in events]
 
-
+                    # Process the events
                     if len(events) > 0:
                         for event in events:
                             response = self.process_event(event)
                             events_parsed.append(response)
+
                 except KeyboardInterrupt as ex:
                     break
 
@@ -146,10 +147,14 @@ class Integration():
         except Exception as ex:
             print("Failed to register the output file. Error: {}".format(ex))
 
-    def get_parser(self, format : Formats):
+    def get_parser(self, iconf : IntegrationConf):
         try:
-            if format == Formats.SINGLE_LINE:
+            if iconf.format == Formats.SINGLE_LINE:
                 return SingleLineParser()
+            elif iconf.format == Formats.MULTI_LINE:
+                return MultilineParser(iconf.lines)
+            elif iconf.format == Formats.WINDOWS_EVENTCHANNEL:
+                return EventChannelParser()
             else:
                 raise Exception(f"Invalid format: {format}")
         except Exception as ex:
