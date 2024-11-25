@@ -127,3 +127,16 @@ class ConfigDatabase:
         data = self.db[name]
 
         return IntegrationConf.from_tuple(name, data)
+
+    def get_all_integrations(self) -> dict[str, IntegrationConf]:
+        '''
+        Get all integrations from the configuration database.
+
+        Returns:
+        dict[str, IntegrationConf]: Dictionary of integration name and configuration
+        '''
+        data : dict[str, IntegrationConf] = {}
+
+        for name, strdata in self.db.items():
+            data[name] = IntegrationConf.from_tuple(name, strdata)
+        return data

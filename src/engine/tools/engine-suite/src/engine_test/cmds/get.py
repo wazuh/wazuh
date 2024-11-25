@@ -1,25 +1,29 @@
-import json
+import sys, json
 
-from engine_test.crud_integration import CrudIntegration
-from engine_test.command import Command
+from engine_test.conf.store import ConfigDatabase
 
-class GetCommand(Command):
-    def __init__(self):
-        pass
+def run(args):
 
-    def run(self, args):
-        super().run(args)
-        integration = CrudIntegration()
-        try:
-            result = integration.get_integration(args['integration-name'])
-            if result == None:
-                print ("Integration not found!")
-            else:
-                print(json.dumps(result, indent=4, sort_keys=True, separators=(',', ': ')) + "\n")
-        except Exception as ex:
-            print(ex)
+    try:
+        # Get the configuration database
+        db = ConfigDatabase(args['config_file'])
 
-    def configure(self, subparsers):
-        parser_list = subparsers.add_parser("get", help='Get integration')
-        parser_list.add_argument('integration-name', type=str, help=f'Integration name')
-        parser_list.set_defaults(func=self.run)
+        # Get integration configuration
+        iconf = db.get_integration(args['integration-name'])
+
+        _, dump = iconf.dump_as_tuple()
+
+        # TODO Use the print yml o json if -j is passed, print shared cli
+        print(json.dumps(dump, indent=4, separators=(',', ': ')))
+    except Exception as e:
+        sys.exit(f"Error getting integration configuration: {e}")
+
+
+def configure(subparsers):
+
+    parser = subparsers.add_parser("get", help='Get integration configuration')
+    parser.add_argument('-j', '--json', action='store_true', help=f'Output in JSON format (default is YAML)')
+
+    parser.add_argument('integration-name', type=str, help=f'Integration name')
+
+    parser.set_defaults(func=run)
