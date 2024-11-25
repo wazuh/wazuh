@@ -36,12 +36,12 @@ def test_ssl_config_fails_without_values(init_values):
 
 @pytest.mark.parametrize('init_values,expected', [
     (
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': False},
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': False}
+        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': ['ca_example'], 'verify_certificates': False},
+        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': ['ca_example'], 'verify_certificates': False}
     ),
     (
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': True},
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': True}
+        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': ['ca_example'], 'verify_certificates': True},
+        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': ['ca_example'], 'verify_certificates': True}
     )
 ])
 @patch('os.path.isfile', return_value=True)

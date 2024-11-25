@@ -1,5 +1,7 @@
 import os
 from enum import Enum
+from typing import List
+from pydantic import Field
 
 from pydantic import field_validator, ValidationInfo
 
@@ -54,10 +56,11 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
     use_ssl: bool = False
     key: str = ''
     cert: str = ''
-    ca: str = ''
+    ca: List[str] = Field(default=[''], min_length=1)
     verify_certificates: bool = True
 
-    @field_validator('key', 'cert', 'ca')
+
+    @field_validator('key', 'cert')
     @classmethod
     def validate_ssl_files(cls, path: str, info: ValidationInfo) -> str:
         """Validate that the SSL files exist.
@@ -88,6 +91,38 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         
         return path
 
+    @field_validator('ca')
+    @classmethod
+    def validate_cs_files(cls, paths: List[str], info: ValidationInfo) -> List[str]:
+        """Validate that the SSL certificate authorities files exist.
+
+        Parameters
+        ----------
+        paths : List[str]
+            Paths to the SSL certificate authorities.
+        info : ValidationInfo
+            Validation context information.
+
+        Raises
+        ------
+        ValueError
+            Invalid SSL file path.
+
+        Returns
+        ------
+        List[str]
+            SSL Certificate Authorities paths.
+        """
+        if info.data['use_ssl']:
+            for path in paths:
+                if path == '':
+                    raise ValueError(f'{info.field_name}: missing certificate file')
+
+                if not os.path.isfile(path):
+                    raise ValueError(f"{info.field_name}: the file '{path}' does not exist")
+
+        return paths
+
 
 class APISSLConfig(WazuhConfigBaseModel):
     """Configuration for API SSL settings.
@@ -100,7 +135,7 @@ class APISSLConfig(WazuhConfigBaseModel):
         The path to the SSL certificate file.
     use_ca : bool
         Whether to use a CA certificate. Default is False.
-    ca : str
+    ca : List[str]
         The path to the CA certificate file. Default is an empty string.
     ssl_protocol : Literal["TLS", "TLSv1", "TLSv1.1", "TLSv1.2", "auto"]
         The SSL protocol to use. Default is "auto".

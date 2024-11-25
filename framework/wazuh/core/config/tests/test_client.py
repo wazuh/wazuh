@@ -24,11 +24,10 @@ mock_config_data = {
         "cti": {},
     },
     "indexer": {
-        "host": "localhost",
-        "port": 9200,
+        "hosts": [{"host": "localhost", "port": 9200}],
         "user": "admin",
         "password": "password",
-        "ssl": {"use_ssl": False, "key": "", "cert": "", "ca": ""}
+        "ssl": {"use_ssl": False, "key": "", "cert": "", "ca": [""]}
     },
     "engine": {},
     "management_api": {},

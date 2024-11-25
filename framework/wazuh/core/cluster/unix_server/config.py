@@ -1,11 +1,11 @@
-from fastapi import Response, status, Query, HTTPException
+from fastapi import Response, status, HTTPException
 from starlette.responses import JSONResponse
 from typing import Optional
 
 from wazuh.core.config.client import CentralizedConfig, ConfigSections
 
 
-async def get_config(sections: Optional[str] = Query(default=None)) -> Response:
+async def get_config(sections: Optional[str] = None) -> Response:
     """Retrieve the current configuration from the Server.
 
     Parameters
@@ -18,7 +18,7 @@ async def get_config(sections: Optional[str] = Query(default=None)) -> Response:
     JSONResponse
         HTTP OK response with the configuration as content.
     """
-    if sections:
+    if sections is not None:
         section_list = sections.split(",")
         try:
             validated_sections = [ConfigSections(section) for section in section_list]
