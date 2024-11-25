@@ -108,7 +108,7 @@ class OS(Model):
 
         self._name = name
         self._platform = platform
-        self.version = version
+        self._version = version
 
     @property
     def name(self) -> str:
@@ -128,11 +128,11 @@ class OS(Model):
         
     @property
     def version(self) -> str:
-        return self.version
+        return self._version
 
     @version.setter
     def version(self, version: str):
-        self.version = version
+        self._version = version
 
 
 class Host(Model):
