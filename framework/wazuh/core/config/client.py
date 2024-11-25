@@ -1,6 +1,7 @@
 import yaml
 import os
-from typing import Optional
+from typing import Optional, List
+from enum import Enum
 from pydantic import ValidationError
 
 from wazuh import WazuhInternalError
@@ -10,6 +11,14 @@ from wazuh.core.config.models.management_api import RBACMode
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
                                                      ManagementAPIConfig, ServerConfig,
                                                      IndexerConfig, EngineConfig)
+
+
+class ConfigSections(str, Enum):
+    SERVER = "server"
+    INDEXER = "indexer"
+    ENGINE = "engine"
+    MANAGEMENT_API = "management_api"
+    COMMUNICATIONS_API = "communications_api"
 
 
 class CentralizedConfig:
@@ -136,12 +145,30 @@ class CentralizedConfig:
         return cls._config.server.get_internal_config()
 
     @classmethod
-    def get_config_dic(cls) -> dict:
+    def get_config_dict(cls, sections: Optional[List[ConfigSections]] = None) -> dict:
+        """
+        Retrieve the current configuration as a dictionary, optionally filtered by specified sections.
+
+        Parameters
+        ----------
+        sections : Optional[List[ConfigSections]]
+            List of configuration sections to retrieve. If None, all sections are included.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration values.
+        """
         if cls._config is None:
             cls.load()
 
         non_default_values = cls._config.model_dump(exclude_defaults=True)
-        return non_default_values
+        if sections is None:
+            return non_default_values
+        else:
+            filtered_config = {section.value: non_default_values[section.value]
+                               for section in sections if section.value in non_default_values}
+            return filtered_config
 
     @classmethod
     def update_security_conf(cls, config: dict):
