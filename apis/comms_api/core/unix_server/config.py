@@ -1,4 +1,5 @@
 from fastapi import Request, Response, status
+from starlette.responses import JSONResponse
 
 from wazuh.core.config.client import CentralizedConfig
 
@@ -13,9 +14,9 @@ async def get_config(request: Request) -> Response:
 
     Returns
     -------
-    Response
+    JSONResponse
         HTTP OK response with the configuration as content.
     """
     config = CentralizedConfig.get_config_dic()
 
-    return Response(status_code=status.HTTP_200_OK, content=config)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=config)
