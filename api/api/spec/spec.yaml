@@ -1219,6 +1219,8 @@ components:
                   type: string
                 platform:
                   type: string
+                version:
+                  type: string
       required:
       - id
       - name
@@ -6447,8 +6449,9 @@ paths:
                 ip:
                   - 127.0.0.1
                 os:
-                  name: Debian 12 "Bookworm"
+                  name: Debian
                   platform: Linux
+                  version: 12 "Bookworm"
       responses:
         '201':
           description: "Empty response indicating the agent was registered successfully"
