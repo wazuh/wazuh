@@ -23,7 +23,8 @@
     "yaml-cpp",
     "cpp-httplib",
     "liblzma",
-    "libarchive"
+    "libarchive",
+    "openssl"
   ],
   "overrides": [
     {
@@ -121,6 +122,10 @@
     {
       "name": "libarchive",
       "version": "3.7.7#0"
+    },
+    {
+      "name": "openssl",
+      "version": "3.1.0#0"
     }
   ]
 }
