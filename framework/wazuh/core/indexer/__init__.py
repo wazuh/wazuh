@@ -13,6 +13,7 @@ from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.commands import CommandsManager
 from wazuh.core.indexer.events import EventsIndex
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 logger = getLogger('wazuh')
 
@@ -120,10 +121,9 @@ async def create_indexer(
     user: str = '',
     password: str = '',
     port: int = 9200,
-    verify_certs: bool = True,
+    ssl: IndexerSSLConfig = None,
     retries: int = 5,
     backoff_in_seconds: int = 1,
-    **kwargs,
 ) -> Indexer:
     """Create and initialize the Indexer instance implementing a retry with backoff mechanism.
 
@@ -137,8 +137,8 @@ async def create_indexer(
         Password of the Wazuh Indexer to authenticate with.
     port : int, optional
         Port of the Wazuh Indexer to connect with, by default 9200.
-    verify_certs : bool
-        Verify server TLS certificates.
+    ssl : IndexerSSLConfig
+        SSL configuration parameters.
     retries : int, optional
         Number of retries, by default 5.
     backoff_in_seconds : int, optional
@@ -149,8 +149,17 @@ async def create_indexer(
     Indexer
         The new Indexer instance.
     """
-
-    indexer = Indexer(host, user, password, port, verify_certs=verify_certs, **kwargs)
+    indexer = Indexer(
+        host=host,
+        user=user,
+        password=password,
+        port=port,
+        use_ssl=ssl.use_ssl,
+        client_cert_path=ssl.cert,
+        client_key_path=ssl.key,
+        ca_certs_path=ssl.ca,
+        verify_certs=ssl.verify_certificates,
+    )
     retries_count = 0
     while True:
         try:
@@ -171,23 +180,16 @@ async def create_indexer(
 @asynccontextmanager
 async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
-
     indexer_config = CentralizedConfig.get_indexer_config()
-    if indexer_config.ssl.use_ssl:
-        paths = [indexer_config.ssl.key, indexer_config.ssl.cert, indexer_config.ssl.ca]
-        for path in paths:
-            validate_file_exists(path)
+    if indexer_config.ssl is None:
+        indexer_config.ssl = IndexerSSLConfig(use_ssl=False, cert='', key='', ca='')
 
     client = await create_indexer(
         host=indexer_config.host,
         port=indexer_config.port,
         user=indexer_config.user,
         password=indexer_config.password,
-        use_ssl=indexer_config.ssl.use_ssl,
-        client_cert_path=indexer_config.ssl.cert,
-        client_key_path=indexer_config.ssl.key,
-        ca_certs_path=indexer_config.ssl.ca,
-        verify_certs=indexer_config.ssl.verify_certificates,
+        ssl=indexer_config.ssl,
         retries=1
     )
 
@@ -195,18 +197,3 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         yield client
     finally:
         await client.close()
-
-
-def validate_file_exists(path: str) -> None:
-    """Validate that the configuration file exists.
-    
-    Raises
-    ------
-    WazuhIndexerError(2201)
-        Invalid indexer credentials exception.
-    """
-    if path == '':
-        raise WazuhIndexerError(2201, extra_message=f'Empty file path')
-
-    if not os.path.isfile(path):
-        raise WazuhIndexerError(2201, extra_message=f"The file '{path}' does not exist")
