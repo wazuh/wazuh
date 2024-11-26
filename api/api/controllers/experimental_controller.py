@@ -9,7 +9,6 @@ from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.ciscat as ciscat
-import wazuh.rootcheck as rootcheck
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 from api import configuration
@@ -32,45 +31,6 @@ def check_experimental_feature_value(func):
             return await func(*args, **kwargs)
 
     return wrapper
-
-
-@check_experimental_feature_value
-async def clear_rootcheck_database(pretty: bool = False, wait_for_complete: bool = False,
-                                   agents_list: list = None) -> ConnexionResponse:
-    """Clear the rootcheck database for all the agents or a list of them.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agents_list : list
-        List of agent's IDs.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
-    if 'all' in agents_list:
-        agents_list = '*'
-
-    f_kwargs = {'agent_list': agents_list}
-
-    dapi = DistributedAPI(f=rootcheck.clear,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
 
 
 @check_experimental_feature_value

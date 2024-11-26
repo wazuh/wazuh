@@ -135,48 +135,6 @@ default_policies:
           - agent:id:*
         effect: allow
 
-  mitre_read:
-    description: Allow read MITRE database information.
-    policies:
-      mitre:
-        actions:
-          - mitre:read
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  rootcheck_read:
-    description: Allow read rootcheck information.
-    policies:
-      rootcheck:
-        actions:
-          - rootcheck:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  rootcheck_all:
-    description: Allow read, run and clear rootcheck information.
-    policies:
-      rootcheck:
-        actions:
-          - rootcheck:clear
-          - rootcheck:read
-          - rootcheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
-  sca_read:
-    description: Allow read agent's sca information.
-    policies:
-      sca:
-        actions:
-          - sca:read
-        resources:
-          - agent:id:*
-        effect: allow
-
   syscheck_read:
     description: Allow read syscheck information
     policies:

@@ -65,8 +65,7 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
     select_key : str
         Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
     flag_nested_key_list : bool
-        Flag used to indicate that the nested key contains a list. Used to test endpoints like
-        GET /sca/{agent_id}/checks/{policy_id}.
+        Flag used to indicate that the nested key contains a list.
     """
     main_keys = set()
     nested_keys = dict()
@@ -293,25 +292,6 @@ def test_save_token_raw_format(response):
 
 def test_save_response_data(response):
     return Box({'response_data': response.json()['data']})
-
-
-def test_save_response_data_mitre(response, fields):
-    response = response.json()['data']
-    fields_response = list()
-    for r in response['affected_items']:
-        fields_response.append({k: r[k] for k in fields})
-
-    return Box({'response_data': fields_response})
-
-
-def test_validate_mitre(response, data, index=0):
-    data = data.replace('"', '\\"')  # Escape " character in data
-    data = json.loads(data.replace("'", '"'))
-    for element in data:
-        for k, v in element.items():
-            if isinstance(v, str):
-                v = v.replace('\\"', '"')  # Remove \\ characters used to escape "
-            assert v == response.json()['data']['affected_items'][index][k]
 
 
 def test_validate_auth_context(response, expected_roles=None):
