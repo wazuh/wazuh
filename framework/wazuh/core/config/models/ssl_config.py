@@ -44,11 +44,14 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         The path to the SSL certificate file. Default is an empty string.
     ca : str
         The path to the CA certificate file. Default is an empty string.
+    verify_certificates : bool
+        Whether to verify the server TLS certificates or not. Default is True.
     """
     use_ssl: bool = False
     key: str = ""
     cert: str = ""
     ca: str = ""
+    verify_certificates: bool = True
 
 
 class APISSLConfig(WazuhConfigBaseModel):

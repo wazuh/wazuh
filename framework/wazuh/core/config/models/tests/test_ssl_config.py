@@ -52,6 +52,10 @@ def test_ssl_config_fails_without_values(init_values):
     (
         {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": "ca_example"},
         {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": "ca_example"}
+    ),
+    (
+        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": "ca_example", "verify_certificates": True},
+        {"use_ssl": True, "key": "key_example", "cert": "cert_example", "ca": "ca_example", "verify_certificates": True}
     )
 ])
 def test_indexer_ssl_config_default_values(init_values, expected):
@@ -62,6 +66,7 @@ def test_indexer_ssl_config_default_values(init_values, expected):
     assert ssl_config.key == expected["key"]
     assert ssl_config.cert == expected["cert"]
     assert ssl_config.ca == expected["ca"]
+    assert ssl_config.verify_certificates == expected["verify_certificates"]
 
 
 @pytest.mark.parametrize("init_values,expected", [

@@ -127,6 +127,7 @@ async def create_indexer(
     user: str = '',
     password: str = '',
     port: int = 9200,
+    verify_certs: bool = True,
     retries: int = 5,
     backoff_in_seconds: int = 1,
     **kwargs,
@@ -142,7 +143,9 @@ async def create_indexer(
     password : str, optional
         Password of the Wazuh Indexer to authenticate with.
     port : int, optional
-        Port of the Wazuh Indexer to connect with, by default 9200
+        Port of the Wazuh Indexer to connect with, by default 9200.
+    verify_certs : bool
+        Verify server TLS certificates.
     retries : int, optional
         Number of retries, by default 5.
     backoff_in_seconds : int, optional
@@ -154,7 +157,7 @@ async def create_indexer(
         The new Indexer instance.
     """
 
-    indexer = Indexer(host, user, password, port, **kwargs)
+    indexer = Indexer(host, user, password, port, verify_certs=verify_certs, **kwargs)
     retries_count = 0
     while True:
         try:
@@ -191,6 +194,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         client_cert_path=indexer_config.ssl.cert,
         client_key_path=indexer_config.ssl.key,
         ca_certs_path=indexer_config.ssl.ca,
+        verify_certs=indexer_config.ssl.verify_certificates,
         retries=1
     )
 
