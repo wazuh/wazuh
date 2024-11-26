@@ -5,6 +5,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <base/behaviour.hpp>
+#include <base/json.hpp>
 #include <base/logging.hpp>
 
 namespace api::test
@@ -40,8 +41,8 @@ template<typename IHandler, typename MockHandler>
 void handlerTest(ReqGetter& reqGetter,
                  HandlerGetter<IHandler>& handlerGetter,
                  ResGetter& resGetter,
-                 const std::shared_ptr<IHandler>& handler,
-                 const std::shared_ptr<MockHandler>& mockHandler,
+                 std::shared_ptr<IHandler>& handler,
+                 std::shared_ptr<MockHandler>& mockHandler,
                  Mocker<MockHandler>& mocker)
 {
     auto request = reqGetter();
@@ -55,6 +56,17 @@ void handlerTest(ReqGetter& reqGetter,
 
     EXPECT_EQ(response.status, expectedResponse.status);
     EXPECT_EQ(response.body, expectedResponse.body);
+
+    // Expired handler test
+    handler.reset();
+    mockHandler.reset();
+    httplib::Response expiredResponse;
+    ASSERT_NO_THROW(routeHandler(request, expiredResponse));
+    auto expectedExpiredResponse = adapter::getError(
+        adapter::getHandler<adapter::eEngine::GenericStatus_Response>(std::weak_ptr<IHandler> {handler}));
+    EXPECT_EQ(expiredResponse.status, expectedExpiredResponse.status);
+    // TODO: find a way to compare the body problem is response type may be different than GenericStatus_Response
+    // EXPECT_EQ(expiredResponse.body, expectedExpiredResponse.body);
 }
 
 } // namespace api::test
