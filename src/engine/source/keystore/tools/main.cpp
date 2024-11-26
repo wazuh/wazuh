@@ -12,11 +12,19 @@
 #include <functional>
 #include <iostream>
 
+#include <base/logging.hpp>
+
 #include "keyStore.hpp"
 #include "testtoolArgsParser.hpp"
 
 int main(int argc, char* argv[])
 {
+    // Logging init
+    logging::LoggingConfig logConfig;
+    logConfig.level = logging::strToLevel("debug");
+
+    logging::start(logConfig);
+
     try
     {
         CmdLineArgs args(argc, argv);

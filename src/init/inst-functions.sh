@@ -172,10 +172,16 @@ InstallEngine()
   installEngineStore
 }
 
+InstallKeystore()
+{
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} engine/build/source/keystore/wazuh-keystore ${INSTALLDIR}usr/share/wazuh-server/bin/wazuh-keystore
+}
+
 InstallWazuh()
 {
   InstallCommon
   InstallEngine
+  InstallKeystore
   InstallPython
   InstallPythonDependencies
   InstallServer
@@ -189,6 +195,16 @@ BuildEngine()
   cmake --preset=relwithdebinfo --no-warn-unused-cli
   # Compile only the engine
   cmake --build build --target main -j $(nproc)
+
+  cd ..
+}
+
+BuildKeystore()
+{
+  cd engine
+
+  # Compile only the engine
+  cmake --build build --target wazuh-keystore -j $(nproc)
 
   cd ..
 }

@@ -88,6 +88,7 @@ cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine ${RPM_BUILD_ROOT}
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-keystore ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
 cp -pr %{_localstatedir}var/lib/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/
 cp -pr %{_localstatedir}var/log/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/log/
@@ -172,6 +173,7 @@ if [ $1 = 0 ];then
 
   # Remove lingering folders and files
   rm -rf %{_localstatedir}usr/bin/wazuh-engine
+  rm -rf %{_localstatedir}usr/bin/wazuh-keystore
   rm -rf %{_localstatedir}usr/bin/wazuh-apid
   rm -rf %{_localstatedir}usr/bin/wazuh-comms-apid
   rm -rf %{_localstatedir}usr/bin/wazuh-server
@@ -260,6 +262,7 @@ rm -fr %{buildroot}
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
+%attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-keystore
 # This will be correctly added in #26936
 %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/bin/rbac_control
 %attr(640, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/tmp/vd_1.0.0_vd_4.10.0.tar.xz

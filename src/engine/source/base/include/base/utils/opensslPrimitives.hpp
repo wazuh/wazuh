@@ -27,9 +27,15 @@ protected:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-    inline int RSA_size(const RSA* rsa) { return ::RSA_size(rsa); }
+    inline int RSA_size(const RSA* rsa)
+    {
+        return ::RSA_size(rsa);
+    }
 
-    inline void RSA_free(RSA* r) { return ::RSA_free(r); }
+    inline void RSA_free(RSA* r)
+    {
+        return ::RSA_free(r);
+    }
 
     inline int RSA_public_encrypt(int flen, const unsigned char* from, unsigned char* to, RSA* rsa, int padding)
     {
@@ -56,23 +62,50 @@ protected:
         return ::PEM_read_X509(out, x, cb, u);
     }
 
-    inline void X509_free(X509* a) { return ::X509_free(a); }
+    inline void X509_free(X509* a)
+    {
+        return ::X509_free(a);
+    }
 
-    inline EVP_PKEY* X509_get_pubkey(X509* x) { return ::X509_get_pubkey(x); }
+    inline EVP_PKEY* X509_get_pubkey(X509* x)
+    {
+        return ::X509_get_pubkey(x);
+    }
 
-    inline void EVP_PKEY_free(EVP_PKEY* pkey) { return ::EVP_PKEY_free(pkey); }
+    inline void EVP_PKEY_free(EVP_PKEY* pkey)
+    {
+        return ::EVP_PKEY_free(pkey);
+    }
 
-    inline rsa_st* EVP_PKEY_get1_RSA(EVP_PKEY* pkey) { return ::EVP_PKEY_get1_RSA(pkey); }
+    inline rsa_st* EVP_PKEY_get1_RSA(EVP_PKEY* pkey)
+    {
+        return ::EVP_PKEY_get1_RSA(pkey);
+    }
 
-    inline int EVP_PKEY_get_base_id(const EVP_PKEY* pkey) { return ::EVP_PKEY_get_base_id(pkey); }
+    inline int EVP_PKEY_get_base_id(const EVP_PKEY* pkey)
+    {
+        return ::EVP_PKEY_get_base_id(pkey);
+    }
 
-    inline int RAND_bytes(unsigned char* buf, int num) { return ::RAND_bytes(buf, num); }
+    inline int RAND_bytes(unsigned char* buf, int num)
+    {
+        return ::RAND_bytes(buf, num);
+    }
 
-    inline EVP_CIPHER_CTX* EVP_CIPHER_CTX_new() { return ::EVP_CIPHER_CTX_new(); }
+    inline EVP_CIPHER_CTX* EVP_CIPHER_CTX_new()
+    {
+        return ::EVP_CIPHER_CTX_new();
+    }
 
-    inline void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX* ctx) { return ::EVP_CIPHER_CTX_free(ctx); }
+    inline void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX* ctx)
+    {
+        return ::EVP_CIPHER_CTX_free(ctx);
+    }
 
-    inline const EVP_CIPHER* EVP_aes_256_cbc() { return ::EVP_aes_256_cbc(); }
+    inline const EVP_CIPHER* EVP_aes_256_cbc()
+    {
+        return ::EVP_aes_256_cbc();
+    }
 
     inline int EVP_EncryptInit_ex(
         EVP_CIPHER_CTX* ctx, const EVP_CIPHER* type, ENGINE* impl, const unsigned char* key, const unsigned char* iv)
@@ -108,9 +141,15 @@ protected:
 
     const int AES_BLOCK_LENGTH = AES_BLOCK_SIZE;
 
-    inline unsigned long ERR_get_error(void) { return ::ERR_get_error(); }
+    inline unsigned long ERR_get_error(void)
+    {
+        return ::ERR_get_error();
+    }
 
-    inline const char* ERR_reason_error_string(unsigned long e) { return ::ERR_reason_error_string(e); }
+    inline const char* ERR_reason_error_string(unsigned long e)
+    {
+        return ::ERR_reason_error_string(e);
+    }
 #pragma GCC diagnostic pop
 };
 

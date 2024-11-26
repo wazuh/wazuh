@@ -26,6 +26,12 @@ int main(int argc, char* argv[])
     std::string value;
     std::string valuePath;
 
+    // Logging init
+    logging::LoggingConfig logConfig;
+    logConfig.level = logging::strToLevel("debug");
+
+    logging::start(logConfig);
+
     try
     {
         // Define current working directory
