@@ -423,8 +423,8 @@ def test_get_script_arguments(command, expected_args):
 @patch('scripts.wazuh_server.os.chown')
 @patch('scripts.wazuh_server.os.path.exists', return_value=True)
 @patch('builtins.print')
-def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, getpid_mock, exit_mock):
-    """Check and set the behavior of wazuh_server main function."""
+def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, getpid_mock, exit_mock):
+    """Check and set the behavior of the `start` function."""
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import common, pyDaemonModule
 
@@ -458,7 +458,7 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
 
         with patch.object(wazuh_server.cluster_utils, 'read_config', side_effect=Exception):
             with pytest.raises(SystemExit):
-                wazuh_server.main()
+                wazuh_server.start()
             main_logger_mock.assert_called_once()
             main_logger_mock.reset_mock()
             path_exists_mock.assert_any_call(wazuh_server.CLUSTER_LOG)
@@ -469,14 +469,14 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
 
         with patch('wazuh.core.cluster.cluster.check_cluster_config', side_effect=IndexError):
             with pytest.raises(SystemExit):
-                wazuh_server.main()
+                wazuh_server.start()
             main_logger_mock.assert_called_once()
             exit_mock.assert_called_once_with(1)
             exit_mock.reset_mock()
 
         with patch('wazuh.core.cluster.cluster.check_cluster_config', return_value=None):
             with pytest.raises(SystemExit):
-                wazuh_server.main()
+                wazuh_server.start()
             main_logger_mock.assert_called_once()
             exit_mock.assert_called_once_with(0)
             main_logger_mock.reset_mock()
@@ -495,7 +495,7 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                 patch.object(wazuh_server.pyDaemonModule, 'create_pid') as create_pid_mock, \
                 patch.object(wazuh_server.pyDaemonModule, 'delete_child_pids'), \
                 patch.object(wazuh_server.pyDaemonModule,'delete_pid') as delete_pid_mock:
-                wazuh_server.main()
+                wazuh_server.start()
                 main_logger_mock.assert_any_call(
                     "Unhandled exception: name 'cluster_items' is not defined")
                 main_logger_mock.reset_mock()
@@ -523,16 +523,16 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                 start_daemons_mock.assert_called_once()
 
                 args.foreground = True
-                wazuh_server.main()
+                wazuh_server.start()
                 print_mock.assert_called_once_with('Starting cluster in foreground (pid: 543)')
 
                 wazuh_server.cluster_items = {}
                 with patch('scripts.wazuh_server.master_main', side_effect=KeyboardInterrupt('TESTING')):
-                    wazuh_server.main()
+                    wazuh_server.start()
                     main_logger_info_mock.assert_any_call('SIGINT received. Shutting down...')
 
                 with patch('scripts.wazuh_server.master_main', side_effect=MemoryError('TESTING')):
-                    wazuh_server.main()
+                    wazuh_server.start()
                     main_logger_mock.assert_any_call(
                         "Directory '/tmp' needs read, write & execution "
                         "permission for 'wazuh' user")

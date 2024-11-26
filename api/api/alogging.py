@@ -85,7 +85,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         log_record['data'] = record.message
 
 
-def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_mode: bool = False) -> dict:
+def set_logging(log_filepath, logging_config: RotatedLoggingConfig, background_mode: bool = False) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -98,9 +98,8 @@ def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_m
         Log file path.
     logging_config :  RotatedLoggingConfig
         Logger configuration.
-    foreground_mode : bool
-        Log output to console streams when true
-        else Log output to file.
+    background_mode : bool
+        Log output to file when true, else log output to standard streams.
 
     Raise
     -----
@@ -115,9 +114,10 @@ def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_m
     handlers = {
         'plainfile': None, 
         'jsonfile': None,
+        'console': {}
     }
-    if foreground_mode:
-        handlers.update({'console': {}})
+    if background_mode:
+        handlers.pop('console')
 
     if 'json' in logging_config.format:
         handlers["jsonfile"] = {
