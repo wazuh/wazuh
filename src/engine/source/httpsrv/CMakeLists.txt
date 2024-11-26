@@ -36,8 +36,6 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 add_executable(httpsrv_utest
     ${UNIT_SRC_DIR}/server_test.cpp
-    ${UNIT_SRC_DIR}/protoHelper_test.cpp
-    ${TEST_SRC_DIR}/generic_request.pb.cc
 )
 target_include_directories(httpsrv_utest
     PRIVATE
