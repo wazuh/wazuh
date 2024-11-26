@@ -295,7 +295,7 @@ def get_script_arguments() -> argparse.Namespace:
         Arguments passed to the script.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-V', '--version', help='Print version', action='store_true', dest='version')
+    parser.add_argument('-v', '--version', help='Print version', action='store_true', dest='version')
 
     subparsers = parser.add_subparsers(title='subcommands', help='Management operations')
 
