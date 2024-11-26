@@ -1,10 +1,13 @@
+import os
 import random
+import ssl
 from asyncio import sleep
 from contextlib import asynccontextmanager
 from logging import getLogger
 from typing import AsyncIterator
 
 from opensearchpy import AsyncOpenSearch
+from opensearchpy.exceptions import TransportError, ImproperlyConfigured
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.commands import CommandsManager
@@ -56,6 +59,11 @@ class Indexer:
         ------
         WazuhIndexerError
             In case authentication is not provided.
+        
+        Raises
+        ------
+        WazuhIndexerError(2201)
+            In case of no authentication credentials were specified.
 
         Returns
         -------
@@ -70,11 +78,16 @@ class Indexer:
             'ca_certs': self.ca_certs,
         }
 
+        auth_set = False
         if all([self.user, self.password]):
             parameters.update({'http_auth': (self.user, self.password)})
-        elif all([self.client_cert, self.client_key]):
+            auth_set = True
+
+        if all([self.client_cert, self.client_key]):
             parameters.update({'client_cert': self.client_cert, 'client_key': self.client_key})
-        else:
+            auth_set = True
+        
+        if not auth_set:
             raise WazuhIndexerError(
                 2201,
                 extra_message=(
@@ -90,11 +103,18 @@ class Indexer:
 
         Raises
         ------
-        WazuhIndexerError
+        WazuhIndexerError(2200)
             In case of errors communicating with the Wazuh Indexer.
         """
-        if not (await self._client.ping()):
-            raise WazuhIndexerError(2200)
+        try:
+            return await self._client.info()
+        except ssl.SSLError as e:
+            raise WazuhIndexerError(2200, extra_message=e.reason)
+        except TransportError as e:
+            raise WazuhIndexerError(2200, extra_message=e.error)
+        except ImproperlyConfigured as e:
+            raise WazuhIndexerError(2200, extra_message=f'{e}. Check your indexer configuration and SSL certificates')
+
 
     async def close(self) -> None:
         """Close the Wazuh Indexer client."""
@@ -157,6 +177,10 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
 
     indexer_config = CentralizedConfig.get_indexer_config()
+    if indexer_config.ssl.use_ssl:
+        paths = [indexer_config.ssl.key, indexer_config.ssl.cert, indexer_config.ssl.ca]
+        for path in paths:
+            validate_file_exists(path)
 
     client = await create_indexer(
         host=indexer_config.host,
@@ -174,3 +198,15 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         yield client
     finally:
         await client.close()
+
+
+def validate_file_exists(path: str) -> None:
+    """Validate that the configuration file exists.
+    
+    Raises
+    ------
+    WazuhIndexerError(2200)
+        Couldn't connect to the indexer exception.
+    """
+    if not os.path.isfile(path):
+        raise WazuhIndexerError(2200, extra_message=f"The file '{path}' does not exist")
