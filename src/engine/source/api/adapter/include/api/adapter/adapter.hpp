@@ -31,6 +31,34 @@ struct Error
  */
 template<typename Req>
 using ReqOrError = std::variant<Req, Error>;
+template<typename Res>
+using ResOrError = ReqOrError<Res>;
+
+/**
+ * @brief Get the Error Response object
+ *
+ * @tparam Res Result type
+ * @param res The response
+ * @return httplib::Response
+ */
+template<typename Res>
+httplib::Response getError(const ResOrError<Res>& res)
+{
+    return std::get<Error>(res).res;
+}
+
+/**
+ * @brief Get the result object
+ *
+ * @tparam Res Result type
+ * @param res The result or error
+ * @return Res
+ */
+template<typename Res>
+Res getRes(const ResOrError<Res>& res)
+{
+    return std::get<Res>(res);
+}
 
 /**
  * @brief Check if the response is an error.
@@ -232,6 +260,25 @@ inline Res parseResponse(const httplib::Response& res)
     }
 
     return Res {};
+}
+
+/**
+ * @brief Get the Handler object from a weak pointer or return an error response.
+ *
+ * @tparam Res The response type
+ * @tparam IHandler The handler type
+ * @param weakHandler The weak handler
+ * @return ResOrError<std::shared_ptr<IHandler>>
+ */
+template<typename Res, typename IHandler>
+ResOrError<std::shared_ptr<IHandler>> getHandler(const std::weak_ptr<IHandler>& weakHandler)
+{
+    if (auto handler = weakHandler.lock())
+    {
+        return handler;
+    }
+
+    return Error {internalErrorResponse<Res>("API endpoint is not available")};
 }
 
 } // namespace api::adapter
