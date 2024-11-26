@@ -3102,7 +3102,7 @@ checks:
     regex_type: pcre2
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\s*\t*\$FileCreateMode 0[046][04]0'
-      - 'not d:/etc/rsyslog.d -> r:\.*.conf -> r:^\s*\t*\$FileCreateMode (?!0[046][04]0)'
+      - 'not d:/etc/rsyslog.d -> r:.*.conf -> r:^\s*\t*\$FileCreateMode (?!0[046][04]0)'
 
   # 4.2.2.5 Ensure logging is configured (Manual) - Not implemented
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not implemented
