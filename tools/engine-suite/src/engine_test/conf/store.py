@@ -14,7 +14,7 @@ class ConfigDatabase:
     '''
     config_file = DEFAULT_CONFIG_FILE  # Default config file
 
-    def __init__(self, db_path=DEFAULT_CONFIG_FILE):
+    def __init__(self, db_path=DEFAULT_CONFIG_FILE, create=False):
         '''
         Constructor for ConfigStore
 
@@ -22,7 +22,30 @@ class ConfigDatabase:
         config_file (str): Path to the configuration file
         '''
         self.config_file = db_path
+        if create or db_path == DEFAULT_CONFIG_FILE:
+            self._create_dbstorage()
+
         self._load_db()
+
+    def _create_dbstorage(self):
+        '''
+        Create the configuration file if it does not exist
+        '''
+        try:
+           if not os.path.exists(self.config_file):
+                with open(self.config_file, 'w') as f:
+                     f.write('{}')
+                # Set 640 permissions
+                os.chmod(self.config_file, 0o640)
+                if self.config_file == DEFAULT_CONFIG_FILE:
+                    try:
+                        import grp
+                        gid = grp.getgrnam("wazuh").gr_gid
+                        os.chown(self.config_file, -1, gid)
+                    except Exception as e:
+                        print(f"Warning: wazuh group cannot be set for {self.config_file}. Error: {e}")
+        except Exception as e:
+            raise Exception(f"Error creating configuration file. Error: {e}")
 
     def _load_db(self):
         '''
@@ -30,7 +53,7 @@ class ConfigDatabase:
         '''
 
         try:
-            with open(self._get_config_file(), 'r') as f:
+            with open(self.config_file, 'r') as f:
                 self.db = json.load(f)
         except json.JSONDecodeError as e:
             raise Exception(
@@ -42,41 +65,12 @@ class ConfigDatabase:
         '''
 
         try:
-            with open(self._get_config_file(), 'w') as f:
+            with open(self.config_file, 'w') as f:
                 json.dump(self.db, f, indent=2, separators=(',', ': '))
         except PermissionError as e:
             raise Exception(
                 f"Error: Cannot write configuration file. Error: {e}")
 
-    def _get_config_file(self):
-        '''
-        Get the configuration file path
-        '''
-
-        # If is default and not exists, create it
-        if self.config_file == DEFAULT_CONFIG_FILE and not os.path.exists(self.config_file):
-            try:
-                with open(self.config_file, 'w') as f:
-                    f.write('{}')
-                # Set 640 permissions and owner if possible
-                os.chmod(self.config_file, 0o640)
-                try:
-                    import grp
-                    # TODO Move to shared module
-                    gid = grp.getgrnam("wazuh").gr_gid
-                    os.chown(self.config_file, -1, gid)
-                except ImportError as e:
-                    print(f"Warning: wazuh group cannot be set for {
-                          self.config_file}. Error: {e}")
-                except KeyError as e:
-                    print(f"Warning: wazuh group cannot be set for {
-                          self.config_file}. Error: {e}")
-            except PermissionError as e:
-                raise Exception(
-                    f"Cannot create configuration file. Error: {e}")
-        # TODO add param to force creation if not exists
-
-        return self.config_file
 
     def add_integration(self, integration: IntegrationConf):
         '''

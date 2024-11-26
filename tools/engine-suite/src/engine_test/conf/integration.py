@@ -23,7 +23,7 @@ class Formats(Enum):
             return Formats.MULTI_LINE
         if format == Formats.WINDOWS_EVENTCHANNEL.value:
             return Formats.WINDOWS_EVENTCHANNEL
-        return None
+        raise ValueError(f"Invalid format: {format}")
 
     def enum_to_str(format) -> str:
         return format.value
@@ -62,10 +62,6 @@ class IntegrationConf:
         # Create template
         self.template = TesterMessageTemplate(provider, module, date)
 
-        # If provider is not `file` then remove log.file.path
-        if provider != "file":
-            self.template.remove_field(SubTempleType.EVENT, "log.file.path")
-
     def dump_as_tuple(self) -> tuple:
         '''
         Dumps the configuration as pair integration name and data.
@@ -97,7 +93,7 @@ class IntegrationConf:
         instance = IntegrationConf(name, format.value, module, provider, date, lines)
 
         # Restore the full template data
-        instance.template.from_template(template_data)
+        instance.template.reload_template(template_data)
 
         return instance
 

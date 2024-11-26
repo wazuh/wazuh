@@ -7,6 +7,7 @@ from engine_test.cmds.run import configure as configure_run
 from engine_test.cmds.get import configure as configure_get
 from engine_test.cmds.list import configure as configure_list
 from engine_test.cmds.delete import configure as configure_delete
+from engine_test.cmds.create import configure as configure_create
 from engine_test.conf.store import DEFAULT_CONFIG_FILE
 from engine_test.cmds.session import configure as configure_session
 
@@ -29,6 +30,7 @@ def parse_args():
     configure_get(subparsers)
     configure_list(subparsers)
     configure_delete(subparsers)
+    configure_create(subparsers)
 
     # Session commands
     configure_session(subparsers)

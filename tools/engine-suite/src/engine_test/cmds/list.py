@@ -1,8 +1,10 @@
 import argparse
-import sys, json
+import sys
+import json
 
 from engine_test.conf.integration import Formats, IntegrationConf
 from engine_test.conf.store import ConfigDatabase
+
 
 def run(args):
 
@@ -11,8 +13,7 @@ def run(args):
         db = ConfigDatabase(args['config_file'])
 
         # Get all integration from the database
-        iconfArray : dict[str, IntegrationConf] = db.get_all_integrations()
-
+        iconfArray: dict[str, IntegrationConf] = db.get_all_integrations()
 
         # if detailed output is requested
         dump = {}
@@ -21,8 +22,7 @@ def run(args):
                 name, data = iconf.dump_as_tuple()
                 dump[name] = data
         else:
-            dump : list[str] = list(iconfArray.keys())
-
+            dump: list[str] = list(iconfArray.keys())
 
         # TODO Use the print yml o json if -j is passed, print shared cli
         print(json.dumps(dump, indent=4, separators=(',', ': ')))

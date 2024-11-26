@@ -4,6 +4,7 @@ import sys
 from engine_test.conf.integration import Formats, IntegrationConf
 from engine_test.conf.store import ConfigDatabase
 
+
 def run(args):
 
     try:

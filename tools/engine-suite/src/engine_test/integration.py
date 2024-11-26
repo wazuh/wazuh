@@ -12,9 +12,10 @@ from google.protobuf.json_format import MessageToDict
 
 from engine_test.input_collector import InputEventCollector
 
-from engine_test.event_parsers.single_line import SingleLineParser
-from engine_test.event_parsers.multi_line import MultilineParser
-from engine_test.event_parsers.eventchannel import EventChannelParser
+from engine_test.event_splitters.base_splitter import SplitterEvent
+from engine_test.event_splitters.single_line import SingleLineSplitter
+from engine_test.event_splitters.multi_line import MultilineSplitter
+from engine_test.event_splitters.eventchannel import EventChannelSplitter
 
 from engine_test.conf.integration import Formats, IntegrationConf
 
@@ -33,19 +34,28 @@ class EngineDumper(BaseDumper): # TODO Use the shared Dumper class
         return super(EngineDumper, self).represent_scalar(tag, value, style)
 
 
-class Integration():
+class IntegrationTester():
+    '''
+    Class to test the integration with the API
+    '''
     def __init__(self, args: dict, integration: IntegrationConf):
+        '''
+        Receive the arguments and the integration configuration
+        '''
         self.args = args
         self.iconf: IntegrationConf = integration
 
         # Get the format of integration
-        self.event_parser = self.get_parser(self.iconf)
+        self.event_parser = self.get_splitter(self.iconf)
 
         # Client to API TEST
         self.api_client = ApiConnector(args)
         self.api_client.create_session()
 
     def run(self):
+        '''
+        Run the integration test
+        '''
         events_parsed = []
         json_header = self.iconf.get_template().get_header() + "\n"
         try:
@@ -82,6 +92,9 @@ class Integration():
             self.api_client.delete_session()
 
     def process_event(self, event):
+        '''
+        Process the event through the API and return the response
+        '''
 
         # Get the values to send
         response : api_tester.RunPost_Response()
@@ -149,14 +162,17 @@ class Integration():
         except Exception as ex:
             print("Failed to register the output file. Error: {}".format(ex))
 
-    def get_parser(self, iconf : IntegrationConf):
+    def get_splitter(self, iconf : IntegrationConf) -> SplitterEvent:
+        '''
+        Get the parser according to the integration configuration
+        '''
         try:
             if iconf.format == Formats.SINGLE_LINE:
-                return SingleLineParser()
+                return SingleLineSplitter()
             elif iconf.format == Formats.MULTI_LINE:
-                return MultilineParser(iconf.lines)
+                return MultilineSplitter(iconf.lines)
             elif iconf.format == Formats.WINDOWS_EVENTCHANNEL:
-                return EventChannelParser()
+                return EventChannelSplitter()
             else:
                 raise Exception(f"Invalid format: {format}")
         except Exception as ex:
