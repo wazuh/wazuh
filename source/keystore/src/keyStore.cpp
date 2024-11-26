@@ -17,7 +17,7 @@
 #include "keyStore.hpp"
 
 // Database constants, based on the keystore path.
-constexpr auto DATABASE_PATH {"queue/keystore"};
+constexpr auto DATABASE_PATH {"/var/lib/wazuh-server/keystore"};
 
 // File constants, used in the version 1 of the keystore, currently in use only for the upgrade to version 2, that uses
 // AES 256 encryption, without the need of the private key file.
