@@ -55,8 +55,12 @@ class IndexerConfig(WazuhConfigBaseModel):
             List of strings in the format 'https://<host>:<port>'.
         """
         final_list = []
+        if self.ssl.use_ssl:
+            prefix = 'https://'
+        else:
+            prefix = 'http://'
 
         for node in hosts:
-            final_list.append(f'https://{node.host}:{node.port}')
+            final_list.append(f'{prefix}{node.host}:{node.port}')
 
         return final_list
