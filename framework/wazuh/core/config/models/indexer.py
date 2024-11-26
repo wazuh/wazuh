@@ -43,6 +43,6 @@ class IndexerConfig(WazuhConfigBaseModel):
         final_list = []
 
         for node in hosts:
-            final_list.append(f'{node.host}:{node.port}')
+            final_list.append(f'https://{node.host}:{node.port}')
 
         return final_list
