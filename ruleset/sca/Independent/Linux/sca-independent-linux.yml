@@ -1,1 +1,28 @@
+# Security Configuration Assessment
+# CIS Checks for Distribution Independent Linux
+# Copyright (C) 2015, Wazuh Inc.
 #
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# SCA policy for Distribution Independent Linux based on Center for Internet Security Distribution Independent Linux Benchmark v2.0.0 - 07-16-2019
+
+policy:
+  id: "sca-independent-linux"
+  file: "sca-independent-linux.yml"
+  name: "CIS Distribution Independent Linux Benchmark v2.0.0."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Distribution Independent Linux based on CIS benchmark for Distribution Independent Linux v2.0.0."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check Linux version."
+  description: "Requirements for running the SCA scan against Linux OS"
+  condition: all
+  rules:
+    - "f:/proc/sys/kernel/ostype -> Linux"
+
+checks:
+  # 1 Initial Setup
