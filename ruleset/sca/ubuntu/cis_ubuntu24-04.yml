@@ -6236,6 +6236,7 @@ checks:
      condition: all
      rules:
       - "c:dpkg-query -s aide -> r:^Status: install ok installed"
+      - "c:dpkg-query -s aide-common -> r:^Status: install ok installed"
 
   # 6.3.2 Ensure filesystem integrity is regularly checked. (Automated)
    - id: 18765
@@ -6307,10 +6308,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/passwd -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/passwd -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/passwd -> n:^\d\d(\d)$ compare <= 4'
-      - 'c:stat -Lc "%U %G" /etc/passwd -> r:^root root$'
+      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.2 Ensure permissions on /etc/passwd- are configured. (Automated)
    - id: 18768
@@ -6334,10 +6332,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/passwd- -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/passwd- -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/passwd- -> n:^\d\d(\d)$ compare <= 4'
-      - 'c:stat -Lc "%U %G" /etc/passwd- -> r:^root root$'
+      - 'c:stat /etc/passwd- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.3 Ensure permissions on /etc/group are configured. (Automated)
    - id: 18769
@@ -6361,10 +6356,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/group -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/group -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/group -> n:^\d\d(\d)$ compare <= 4'
-      - 'c:stat -Lc "%U %G" /etc/group -> r:^root root$'
+      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.4 Ensure permissions on /etc/group- are configured. (Automated)
    - id: 18770
@@ -6388,10 +6380,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/group- -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/group- -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/group- -> n:^\d\d(\d)$ compare <= 4'
-      - 'c:stat -Lc "%U %G" /etc/group- -> r:^root root$'
+      - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
    - id: 18771
@@ -6415,10 +6404,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/shadow -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/shadow -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/shadow -> n:^\d\d(\d)$ compare <= 0'
-      - 'c:stat -Lc "%U %G" /etc/shadow -> r:^root root$|^root shadow$'
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
    - id: 18772
@@ -6442,10 +6429,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/shadow- -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/shadow- -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/shadow- -> n:^\d\d(\d)$ compare <= 0'
-      - 'c:stat -Lc "%U %G" /etc/shadow- -> r:^root root$|^root shadow$'
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
    - id: 18773
@@ -6469,10 +6454,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/gshadow -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/gshadow -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/gshadow -> n:^\d\d(\d)$ compare <= 0'
-      - 'c:stat -Lc "%U %G" /etc/gshadow -> r:^root root$|^root shadow$'
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
    - id: 18774
@@ -6496,10 +6479,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/gshadow- -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/gshadow- -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/gshadow- -> n:^\d\d(\d)$ compare <= 0'
-      - 'c:stat -Lc "%U %G" /etc/gshadow- -> r:^root root$|^root shadow$'
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
   # 7.1.9 Ensure permissions on /etc/shells are configured. (Automated)
    - id: 18775
@@ -6523,10 +6504,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/shells -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/shells -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/shells -> n:^\d\d(\d)$ compare <= 4'
-      - 'c:stat -Lc "%U %G" /etc/shells -> r:^root root$'
+      - 'c:stat /etc/shells -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.10 Ensure permissions on /etc/security/opasswd are configured. (Automated)
    - id: 18776
@@ -6550,10 +6528,8 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -Lc "%a" /etc/security/opasswd -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/security/opasswd -> n:^\d(\d)\d$ compare <= 0'
-      - 'c:stat -Lc "%a" /etc/security/opasswd -> n:^\d\d(\d)$ compare <= 0'
-      - 'c:stat -Lc "%U %G" /etc/security/opasswd -> r:^root root$'
+      - 'c:stat /etc/security/opasswd -> r:Access:\s*\(0600/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/security/opasswd.old -> r:Access:\s*\(0600/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented
@@ -6624,7 +6600,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:sh -c "echo \"$(awk -F: ''{print $4}'' /etc/passwd | sort -u)\" | grep -Fcxv \"$(awk -F: ''{print $3}'' /etc/group | sort -u)\"" -> n:^(\p*\d+)$ compare == 0'
+      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\d+:$'
 
   # 7.2.4 Ensure shadow group is empty. (Automated)
    - id: 18780
