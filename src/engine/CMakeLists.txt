@@ -196,6 +196,9 @@ find_and_create_imported_target("date" "date::date-tz")
 find_and_create_imported_target("liblzma" "liblzma::liblzma")
 find_and_create_imported_target_ex("LibArchive" "LibArchive::LibArchive")
 
+find_and_create_imported_target_ex("OpenSSL" "OpenSSL::SSL")
+find_and_create_imported_target_ex("OpenSSL" "OpenSSL::Crypto")
+
 ####################################################################################################
 # Targets
 ####################################################################################################
@@ -231,6 +234,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
+add_subdirectory(${ENGINE_SOURCE_DIR}/keystore)
 
 target_link_libraries(main
     base
