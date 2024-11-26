@@ -40,6 +40,20 @@ class IndexerConfig(WazuhConfigBaseModel):
 
     @field_serializer('hosts', when_used='json')
     def convert_hosts_to_str(self, hosts: List[IndexerNode], _info) -> List[str]:
+        """Convert the list of IndexerNode objects to a list of strings for JSON serialization.
+
+        Parameters
+        ----------
+        hosts : List[IndexerNode]
+            List of IndexerNode objects to be converted.
+        _info : SerializationInfo
+            Additional serialization context (provided by Pydantic).
+
+        Returns
+        -------
+        List[str]
+            List of strings in the format 'https://<host>:<port>'.
+        """
         final_list = []
 
         for node in hosts:
