@@ -1,4 +1,7 @@
-class SingleLineParser:
+from engine_test.event_splitters.base_splitter import SplitterEvent
+
+
+class SingleLineSplitter(SplitterEvent):
     def __init__(self):
         pass
 

@@ -1,6 +1,7 @@
-import json
 
-class MultilineParser():
+from engine_test.event_splitters.base_splitter import SplitterEvent
+
+class MultilineSplitter(SplitterEvent):
     def __init__(self, event_lines: int):
         self.maxLines : int = event_lines
 

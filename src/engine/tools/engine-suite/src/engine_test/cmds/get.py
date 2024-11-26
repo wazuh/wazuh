@@ -1,6 +1,8 @@
-import sys, json
+import sys
+import json
 
 from engine_test.conf.store import ConfigDatabase
+
 
 def run(args):
 

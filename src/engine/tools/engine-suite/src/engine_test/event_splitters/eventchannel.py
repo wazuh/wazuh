@@ -1,7 +1,12 @@
 import re
 from lxml import etree as ET
 
-class EventChannelParser():
+from engine_test.event_splitters.base_splitter import SplitterEvent
+
+class EventChannelSplitter(SplitterEvent):
+    '''
+    Class to split the events from the EventChannel.
+    '''
     def __init__(self):
         pass
 
@@ -20,6 +25,9 @@ class EventChannelParser():
             return None
 
     def split_events(self, events: list[str]) -> list[str]:
+        '''
+        Split the raw input events into a list of events.
+        '''
         event_list = []
         # to remove the XML header if it exists
         xml_header_regex = re.compile(r'<\?xml.*?\?>\s*')

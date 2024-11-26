@@ -67,14 +67,12 @@ class TesterMessageTemplate:
             "log": {"file": {"path": "$OPTIONAL_IF_PROVIDER_IS_FILE"}}
         }
 
-    @staticmethod
-    def from_template(template_dict):
+    def reload_template(self, template_dict):
         '''
-        Creates a TesterMessageTemplate from a dictionary.
+        Reloads the template from a dictionary.
         '''
-        instance = TesterMessageTemplate("", "")
-        instance._load_template(template_dict)
-        return instance
+        self._load_template(template_dict)
+
 
     def dump_template(self) -> dict:
         '''
@@ -91,17 +89,26 @@ class TesterMessageTemplate:
         self._event_template = template_dict['event']
 
     def get_header(self):
+        '''
+        Returns the header as a JSON string of one line.
+        '''
         return json.dumps(self._header_template, separators=(',', ':'))
 
     def get_event(self, event: str):
+        '''
+        Returns the event as a JSON string of one line, according to the template.
+        '''
         _event_template = copy.deepcopy(self._event_template)
         _event_template['event']['original'] = event
         if _event_template['event']['ingested'].lower() == "auto":
-            _event_template['event']['ingested'] = datetime.datetime.now(
-                datetime.timezone.utc).strftime(self.TIME_FORMAT)
+            _event_template['event']['ingested'] = datetime.datetime.now(datetime.timezone.utc).strftime(self.TIME_FORMAT)
         return json.dumps(_event_template, separators=(',', ':'))
 
-    def update_field(self, sub_template: SubTempleType, field_path, value):
+    def _update_field(self, sub_template: SubTempleType, field_path, value):
+        '''
+        Updates a field in the template, given the path and the value.
+        If the field does not exist, it will be created.
+        '''
         json_object = getattr(self, sub_template.value)
         keys = field_path.split('.')
         for key in keys[:-1]:
@@ -109,9 +116,15 @@ class TesterMessageTemplate:
         json_object[keys[-1]] = value
 
     def add_field(self, sub_template: SubTempleType, field_path, value):
-        self.update_field(sub_template, field_path, value)
+        '''
+        Adds a field to the template, given the path and the value.
+        '''
+        self._update_field(sub_template, field_path, value)
 
     def remove_field(self, sub_template: SubTempleType, field_path):
+        '''
+        Removes a field from the template, given the path.
+        '''
         json_object = getattr(self, sub_template.value)
 
         keys = field_path.split('.')
@@ -138,18 +151,3 @@ class TesterMessageTemplate:
                 key_to_remove = list(parent.keys())[list(parent.values()).index(current)]
                 del parent[key_to_remove]
             current = parent
-
-
-
-    def _get_nested_dict(self, base_dict, keys, should_create=True):
-        for key in keys:
-            if should_create:
-                # Use setdefault to handle non-existent keys gracefully
-                base_dict = base_dict.setdefault(key, {})
-            else:
-                if key in base_dict:
-                    base_dict = base_dict[key]
-                else:
-                    raise KeyError(
-                        f"Field '{key}' does not exist in the path.")
-        return base_dict
