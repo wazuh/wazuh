@@ -48,15 +48,16 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         The path to the SSL key file. Default is an empty string.
     certificate : str
         The path to the SSL certificate file. Default is an empty string.
-    certificate_authorities : str
-        The path to the CA certificate file. Default is an empty string.
+    certificate_authorities : List[str]
+        List of paths to the CA certificate file. Default is a list containing one empty string.
     verify_certificates : bool
         Whether to verify the server TLS certificates or not. Default is True.
+
     """
     use_ssl: bool = False
-    key: str = ""
-    certificate: str = ""
-    certificate_authorities: List[str] = Field(default=[""], min_length=1)
+    key: str = ''
+    certificate: str = ''
+    certificate_authorities: List[str] = Field(default=[''], min_length=1)
     verify_certificates: bool = True
 
     @field_validator('key', 'certificate')
@@ -134,7 +135,7 @@ class APISSLConfig(WazuhConfigBaseModel):
         The path to the SSL certificate file.
     use_ca : bool
         Whether to use a CA certificate. Default is False.
-    ca : List[str]
+    ca : str
         The path to the CA certificate file. Default is an empty string.
     ssl_protocol : Literal["TLS", "TLSv1", "TLSv1.1", "TLSv1.2", "auto"]
         The SSL protocol to use. Default is "auto".

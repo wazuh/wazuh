@@ -2,7 +2,8 @@ from fastapi import Response, status, HTTPException
 from starlette.responses import JSONResponse
 from typing import Optional
 
-from wazuh.core.config.client import CentralizedConfig, ConfigSections
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.central_config import ConfigSections
 
 
 async def get_config(sections: Optional[str] = None) -> Response:

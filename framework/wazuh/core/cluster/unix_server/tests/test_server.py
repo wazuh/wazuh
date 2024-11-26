@@ -10,7 +10,7 @@ from wazuh.core.cluster.unix_server.config import get_config
 @patch('wazuh.core.cluster.unix_server.server.APIRouter')
 @patch('wazuh.core.cluster.unix_server.server.Thread')
 def test_start_unix_server(mock_thread, router_mock, fastapi_mock):
-    """Validate that `start_unix_server` works as expected."""
+    """Validate that `start_unix_server` function works as expected."""
     start_unix_server()
 
     router_mock.assert_has_calls([

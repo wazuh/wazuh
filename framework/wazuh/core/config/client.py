@@ -1,7 +1,6 @@
 import yaml
 import os
 from typing import Optional, List
-from enum import Enum
 from pydantic import ValidationError
 
 from wazuh import WazuhInternalError
@@ -10,16 +9,7 @@ from wazuh.core.config.models.server import ServerSyncConfig
 from wazuh.core.config.models.management_api import RBACMode
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
                                                      ManagementAPIConfig, ServerConfig,
-                                                     IndexerConfig, EngineConfig)
-
-
-class ConfigSections(str, Enum):
-    """Enum representing the different sections of the CentralizedConfig."""
-    SERVER = "server"
-    INDEXER = "indexer"
-    ENGINE = "engine"
-    MANAGEMENT_API = "management_api"
-    COMMUNICATIONS_API = "communications_api"
+                                                     IndexerConfig, EngineConfig, ConfigSections)
 
 
 class CentralizedConfig:
@@ -157,8 +147,8 @@ class CentralizedConfig:
 
         Returns
         -------
-        dict
-            A dictionary containing the configuration values.
+        str
+            A string containing the configuration values in JSON.
         """
         if cls._config is None:
             cls.load()

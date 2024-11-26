@@ -50,10 +50,10 @@ def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expect
     ssl_config = IndexerSSLConfig(**init_values)
 
     assert ssl_config.use_ssl == expected['use_ssl']
-    assert ssl_config.use_ssl == expected["use_ssl"]
-    assert ssl_config.key == expected["key"]
-    assert ssl_config.certificate == expected["certificate"]
-    assert ssl_config.certificate_authorities == expected["certificate_authorities"]
+    assert ssl_config.use_ssl == expected['use_ssl']
+    assert ssl_config.key == expected['key']
+    assert ssl_config.certificate == expected['certificate']
+    assert ssl_config.certificate_authorities == expected['certificate_authorities']
     assert ssl_config.verify_certificates == expected['verify_certificates']
 
 

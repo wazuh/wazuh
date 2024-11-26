@@ -44,7 +44,7 @@ def patch_load():
 
 
 async def test_get_config_all_sections(patch_load):
-    """Verify that the `get_config` funcion works as expected with None sections specified."""
+    """Verify that the `get_config` function works as expected with no sections specified."""
     expected = CentralizedConfig._config.model_dump_json()
     got = await get_config()
 

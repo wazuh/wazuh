@@ -6,8 +6,7 @@ from fastapi import APIRouter, FastAPI
 from wazuh.core.cluster.unix_server.config import get_config
 from wazuh.core import common
 
-
-SERVER_UNIX_SOCKET_PATH = common.WAZUH_RUN / 'server.sock'
+SERVER_UNIX_SOCKET_PATH = common.WAZUH_RUN / 'config-server.sock'
 
 
 def start_unix_server():
