@@ -149,6 +149,9 @@ async def create_indexer(
     Indexer
         The new Indexer instance.
     """
+    if ssl is None:
+        ssl = IndexerSSLConfig(use_ssl=False, cert='', key='', ca='')
+
     indexer = Indexer(
         host=host,
         user=user,
@@ -181,15 +184,13 @@ async def create_indexer(
 async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
     indexer_config = CentralizedConfig.get_indexer_config()
-    if indexer_config.ssl is None:
-        indexer_config.ssl = IndexerSSLConfig(use_ssl=False, cert='', key='', ca='')
 
     client = await create_indexer(
         host=indexer_config.host,
         port=indexer_config.port,
         user=indexer_config.user,
         password=indexer_config.password,
-        ssl=indexer_config.ssl,
+        ssl=indexer_config.ssl if indexer_config.ssl else None,
         retries=1
     )
 

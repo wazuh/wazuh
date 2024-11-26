@@ -2,13 +2,15 @@ from unittest import mock
 
 import pytest
 from opensearchpy import AsyncOpenSearch
+from opensearchpy.exceptions import TransportError
+
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer import Indexer, create_indexer, get_indexer_client
 
 
 @pytest.fixture
 def indexer_instance_with_mocked_client() -> Indexer:
-    indexer_instance = Indexer(host='test', user='user_test', password='password_test')
+    indexer_instance = Indexer(host='test', user='user_test', password='password_test', use_ssl=False)
     indexer_instance._client = mock.AsyncMock()
     return indexer_instance
 
@@ -17,8 +19,9 @@ class TestIndexer:
     @pytest.mark.parametrize(
         'params',
         [
-            {'user': 'user_test', 'password': 'password_test'},
-            {'client_cert_path': '/tmp/client.pem', 'client_key_path': '/tmp/client-key.pem'},
+            {'user': 'user_test', 'password': 'password_test', 'use_ssl': False},
+            {'user': 'user_test', 'password': 'password_test', 'client_cert_path': '/tmp/client.pem', 
+             'client_key_path': '/tmp/client-key.pem'},
         ],
     )
     def test_indexer_init(self, params: dict):
@@ -45,15 +48,15 @@ class TestIndexer:
     async def test_connect(self, indexer_instance_with_mocked_client):
         """Check the correct function of `connect` method."""
 
-        indexer_instance_with_mocked_client._client.ping.return_value = True
+        indexer_instance_with_mocked_client._client.info.return_value = True
         await indexer_instance_with_mocked_client.connect()
 
-        indexer_instance_with_mocked_client._client.ping.assert_called_once()
+        indexer_instance_with_mocked_client._client.info.assert_called_once()
 
     async def test_connect_ko(self, indexer_instance_with_mocked_client):
         """Check the correct raise of `connect` method."""
 
-        indexer_instance_with_mocked_client._client.ping.return_value = False
+        indexer_instance_with_mocked_client._client.info.side_effect = TransportError('', '')
 
         with pytest.raises(WazuhIndexerError, match='.*2200.*'):
             await indexer_instance_with_mocked_client.connect()
@@ -75,7 +78,17 @@ async def test_create_indexer(indexer_mock: mock.AsyncMock):
     password = 'password_test'
 
     instance_mock = await create_indexer(host=host, user=user, password=password)
-    indexer_mock.assert_called_once_with(host=host, user=user, password=password, port=9200)
+    indexer_mock.assert_called_once_with(
+        host=host,
+        user=user,
+        password=password,
+        port=9200,
+        use_ssl=False,
+        client_cert_path='',
+        client_key_path='',
+        ca_certs_path='',
+        verify_certs=True,
+    )
     instance_mock.connect.assert_called_once()
 
 
