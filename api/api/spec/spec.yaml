@@ -4,8 +4,7 @@ info:
     The Wazuh API is an open-source RESTful API that allows for interaction with the Wazuh manager from a web browser,
     command line tools like cURL or any script or program that can make web requests. The Wazuh WUI relies on this
     heavily and Wazuh’s goal is to accommodate complete remote management of the Wazuh infrastructure via the Wazuh WUI.
-    Use the Wazuh API to easily perform everyday actions like adding an agent, restarting the manager(s) or agent(s)
-    or looking up syscheck details.
+    Use the Wazuh API to easily perform everyday actions like adding an agent, restarting the manager(s) or agent(s).
 
     # Authentication
 
@@ -82,15 +81,6 @@ x-rbac-catalog:
     'user:id':
       description: "Reference security users via its id (i.e. user:id:1)"
   actions:
-    'active-response:command':
-      description: "Execute active response commands in the agents"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['active-response:command']
-        resources: ['agent:id:001', 'agent:group:atlantic']
-        effect: "allow"
     'agent:create':
       description: "Create new agents"
       resources:
@@ -224,14 +214,6 @@ x-rbac-catalog:
         actions: ['cluster:status']
         resources: ['*:*:*']
         effect: "allow"
-    'logtest:run':
-      description: "Run logtest tool or end a logtest session"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'logtest:run' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
     'security:create':
       description: "Create new system security resources"
       resources:
@@ -303,49 +285,6 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['security:update_config']
-        resources: ['*:*:*']
-        effect: "allow"
-    'syscheck:read':
-      description: "Access information from agents syscheck database"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['syscheck:read']
-        resources: ['agent:id:011', 'agent:group:us-west']
-        effect: "allow"
-    'syscheck:clear':
-      description: "Clear the agents syscheck database"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['syscheck:clear']
-        resources: ['agent:id:*']
-        effect: "deny"
-    'syscheck:run':
-      description: "Run agents syscheck scan"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['syscheck:run']
-        resources: ['agent:id:*']
-        effect: "allow"
-    'task:status':
-      description: "Access task's status information"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['task:status']
-        resources: ['*:*:*']
-        effect: "deny"
-    'event:ingest':
-      description: "Ingest events"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['event:ingest']
         resources: ['*:*:*']
         effect: "allow"
     'order:send':
@@ -749,19 +688,6 @@ components:
               items:
                 $ref: '#/components/schemas/GroupFiles'
 
-    AllItemsResponseSyscheckResult:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/SyscheckDatabase'
-
     AllItemsResponseLastScan:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -857,29 +783,6 @@ components:
           description: "Server hostname"
         timestamp:
           type: string
-
-    ## Active-response models
-    ActiveResponseBody:
-      type: object
-      properties:
-        arguments:
-          description: "Command arguments"
-          type: array
-          items:
-            type: string
-        command:
-          description: "Command running in the agent. If this value starts with `!`, then it refers to a script name
-          instead of a command name"
-          type: string
-          format: active_response_command
-        alert:
-          type: object
-          properties:
-            data:
-              description: "Alert data depending on the active response command executed"
-              type: object
-      required:
-        - command
 
     ## Agents models
     Agent:
@@ -1304,27 +1207,6 @@ components:
               enum:
               - "yes"
               - "no"
-
-    # Logtest models
-    LogtestRequest:
-      type: object
-      required:
-        - event
-        - log_format
-        - location
-      properties:
-        token:
-          type: string
-          description: "Token for the logtest session"
-        log_format:
-          type: string
-          description: "Allowed values: syslog, json, snort-full, squid, eventlog, eventchannel, audit, mysql_log, postgresql_log, nmapg, iis, command, full_command, djb-multilog, multi-line"
-        location:
-          type: string
-          description: "Path string"
-        event:
-          type: string
-          description: "Event to look for"
 
     # Security models
     Role_id:
@@ -3656,66 +3538,6 @@ components:
           format: date-time
           description: "When the last scan started"
 
-    # Syscheck models
-    SyscheckDatabase:
-      type: object
-      properties:
-        changes:
-          type: integer
-          format: int32
-          description: "Number of changes applied"
-        sha1:
-          type: string
-          format: hash_or_empty
-          description: "SHA1 checksum of the file"
-        file:
-          type: string
-          description: "File name that raised the alert"
-        md5:
-          type: string
-          format: hash_or_empty
-          description: "MD5 checksum of the file"
-        inode:
-          type: integer
-          format: int32
-          description: "Inode of the file. Only available in Linux agents"
-        uid:
-          type: string
-          format: numbers_or_empty
-          description: "UID of the file"
-        date:
-          type: string
-          format: date-time
-          description: "Date when the alert was raised"
-        perm:
-          type: string
-          format: names_or_empty
-          description: "File permissions"
-        gname:
-          type: string
-          format: names_or_empty
-          description: "Group name. Only available in Linux agents"
-        uname:
-          type: string
-          format: names_or_empty
-          description: "User name of the file"
-        size:
-          type: integer
-          format: int64
-          description: "File size in bytes"
-        gid:
-          type: string
-          format: numbers_or_empty
-          description: "GID of the file. Only available in Linux agents"
-        mtime:
-          type: string
-          format: date-time_or_empty
-          description: "Last modification date of the file"
-        sha256:
-          type: string
-          format: hash_or_empty
-          description: "SHA256 checksum of the file"
-
     # Orders models
     Order:
       type: object
@@ -4562,14 +4384,6 @@ components:
       schema:
         type: integer
         minimum: 0
-    tasks_list:
-      in: query
-      name: 'tasks_list'
-      description: "List of task IDs (separated by comma)"
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Task_id'
     reason:
       in: query
       name: reason
@@ -4627,14 +4441,6 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
-    logtest_token:
-      in: path
-      name: token
-      description: "Token of the logtest saved session"
-      required: true
-      schema:
-        type: string
-        format: alphanumeric
     allow_run_as:
       in: query
       name: allow_run_as
@@ -4784,51 +4590,6 @@ components:
           - error
           - info
           - warning
-    filetype:
-      in: query
-      name: type
-      description: "Filter by file type. Registry_key and registry_value types are only available in Windows agents"
-      schema:
-        type: string
-        enum:
-        - file
-        - registry_key
-        - registry_value
-    summary:
-      in: query
-      name: summary
-      description: "Return a summary grouping by filename"
-      schema:
-        type: boolean
-        default: false
-    md5:
-      in: query
-      name: md5
-      description: "Filter files with the specified MD5 checksum"
-      schema:
-        type: string
-        format: hash
-    sha1:
-      in: query
-      name: sha1
-      description: "Filter files with the specified SHA1 checksum"
-      schema:
-        type: string
-        format: hash
-    sha256:
-      in: query
-      name: sha256
-      description: "Filter files with the specified SHA256 checksum"
-      schema:
-        type: string
-        format: hash
-    hashfilter:
-      in: query
-      name: hash
-      description: "Filter files with the specified hash (md5, sha256 or sha1)"
-      schema:
-        type: string
-        format: hash
     distinct:
       in: query
       name: distinct
@@ -4850,15 +4611,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    syscheck_arch:
-      in: query
-      name: arch
-      description: "Filter by architecture"
-      schema:
-        type: string
-        enum:
-        - '[x32]'
-        - '[x64]'
     older_than:
       in: query
       name: older_than
@@ -4943,16 +4695,12 @@ components:
 tags:
   - name: API Info
     description: "Wazuh API information"
-  - name: Active-response
-    description: "Agents Active Response"
   - name: Agents
     description: "Agents management related operations"
   - name: Cluster
     description: "Wazuh cluster and nodes management"
   - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: Logtest
-    description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
     description: "Wazuh manager management"
   - name: Overview
@@ -4961,10 +4709,6 @@ tags:
     description: "Policy monitoring"
   - name: Security
     description: "Roles administration and user authentication management"
-  - name: Syscheck
-    description: "File integrity monitoring"
-  - name: Tasks
-    description: "Tasks information"
   - name: Events
     description: "Ingestion endpoints"
 
@@ -4999,56 +4743,6 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
-
-  /active-response:
-    put:
-      tags:
-        - Active-response
-      summary: "Run command"
-      description: "Run an Active Response command on all agents or a list of them"
-      operationId: api.controllers.active_response_controller.run_command
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/active-response:command'
-      parameters:
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ActiveResponseBody'
-      responses:
-        '200':
-          description: "Command sent to agents"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - "001"
-                    - "002"
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: 'AR command was sent to all agents'
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /agents:
     delete:
@@ -7626,120 +7320,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-  /logtest:
-    put:
-      tags:
-        - Logtest
-      summary: "Run logtest"
-      description: "Run logtest tool to check if a specified log raises any alert among other information"
-      operationId: api.controllers.logtest_controller.run_logtest_tool
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/logtest:run'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        description: "Run logtest with the parameters below"
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogtestRequest'
-      responses:
-        '200':
-          description: "Successfully run the logtest tool"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                error: 0
-                data:
-                  messages:
-                    - "INFO: (7202): Session initialized with token '8cd2d6d1'"
-                  token: 8cd2d6d1
-                  output:
-                    timestamp: 2021-05-27T12:46:03.391000Z
-                    rule:
-                      level: 2
-                      description: "Unknown problem somewhere in the system."
-                      id: 1002
-                      firedtimes: 1
-                      mail: false
-                      groups:
-                        - "syslog"
-                        - "errors"
-                      gpg13:
-                        - 4.3
-                    agent:
-                      name: "wazuh-master"
-                    manager:
-                      name: "wazuh-master"
-                    id: "1622119563.2682664"
-                    cluster:
-                      name: "wazuh"
-                      node: "master-node"
-                    full_log: "ERROR"
-                    decoder: None
-                    location: "/var/log/syslog"
-                  alert: false
-                  codemsg: 1
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /logtest/sessions/{token}:
-    delete:
-      tags:
-        - Logtest
-      summary: "End session"
-      description: "Delete the saved logtest session corresponding to {token}"
-      operationId: api.controllers.logtest_controller.end_logtest_session
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/logtest:run'
-      parameters:
-        - $ref: '#/components/parameters/logtest_token'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Successfully deleted the saved session or no session found"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                error: 0
-                data:
-                  messages:
-                    - "INFO: (7206): The session '573ed2ca' was closed successfully"
-                  codemsg: 0
-
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /manager/status:
     get:
@@ -8993,237 +8573,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /syscheck:
-    put:
-      tags:
-        - Syscheck
-      summary: "Run scan"
-      description: "Run FIM scan in all agents"
-      operationId: api.controllers.syscheck_controller.put_syscheck
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/syscheck:run'
-      parameters:
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-              example:
-                data:
-                  affected_items:
-                    - '001'
-                    - '002'
-                    - '003'
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Syscheck scan was restarted on returned agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /syscheck/{agent_id}:
-    get:
-      tags:
-        - Syscheck
-      summary: "Get results"
-      description: "Return FIM findings in the specified agent"
-      operationId: api.controllers.syscheck_controller.get_syscheck_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/syscheck:read'
-      parameters:
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/full_path_filter'
-        - $ref: '#/components/parameters/syscheck_arch'
-        - $ref: '#/components/parameters/value.name'
-        - $ref: '#/components/parameters/value.type'
-        - $ref: '#/components/parameters/filetype'
-        - $ref: '#/components/parameters/summary'
-        - $ref: '#/components/parameters/md5'
-        - $ref: '#/components/parameters/sha1'
-        - $ref: '#/components/parameters/sha256'
-        - $ref: '#/components/parameters/hashfilter'
-        - $ref: '#/components/parameters/distinct'
-        - $ref: '#/components/parameters/query'
-      responses:
-        '200':
-          description: "Latest syscheck scan result"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseSyscheckResult'
-              example:
-                data:
-                  affected_items:
-                    - changes: 1
-                      date: '2019-11-22T10:24:52Z'
-                      file: "/etc/dpkg/origins/debian"
-                      gid: '0'
-                      gname: root
-                      inode: 1459742
-                      md5: 731423fa8ba067262f8ef37882d1e742
-                      mtime: '2009-02-02T23:06:58Z'
-                      perm: '100644'
-                      sha1: b65f7f2af66c53b51765877bbe91a22bc6fca1e2
-                      sha256: 50f35af8ac4a5df3690991a4b428fa49d56580b0020fcc6e38283b3b1b2e6c74
-                      size: 82
-                      type: file
-                      uid: '0'
-                      uname: root
-                      attributes: ""
-                    - changes: 1
-                      date: '2019-11-22T10:24:56Z'
-                      file: "/etc/sgml/xml-core.cat"
-                      gid: '0'
-                      gname: root
-                      inode: 2896763
-                      md5: 055ba0bd3154c0a58b9bf8a0c9ecf2fa
-                      mtime: '2012-11-07T21:44:21Z'
-                      perm: '100644'
-                      sha1: 3dec5570307472381671ff18bbe4d4be09951690
-                      sha256: 3c46704b553c4b55ce928ffe89badfcfd08a02f0e6558211dfd57d9ae1e72aa4
-                      size: 45
-                      type: file
-                      uid: '0'
-                      uname: root
-                      attributes: ""
-                  total_affected_items: 1433
-                  total_failed_items: 0
-                  failed_items: []
-                message: "FIM findings of the agent were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-        - Syscheck
-      summary: "Clear results"
-      description: "Clear file integrity monitoring scan results for a specified agent. Only available for agents < 3.12.0, it doesn't apply for more recent ones"
-      operationId: api.controllers.syscheck_controller.delete_syscheck_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/syscheck:clear'
-      parameters:
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - '001'
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Syscheck database was cleared on returned agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /syscheck/{agent_id}/last_scan:
-    get:
-      tags:
-        - Syscheck
-      summary: "Get last scan datetime"
-      description: "Return when the last syscheck scan started and ended. If the scan is still in progress the end date
-      will be unknown"
-      operationId: api.controllers.syscheck_controller.get_last_scan_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/syscheck:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Scan dates"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseLastScan'
-              example:
-                data:
-                  affected_items:
-                    - start: '2021-05-28T12:11:33Z'
-                      end: '2021-05-28T12:11:33Z'
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Last syscheck scan of the agent was returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /security/user/authenticate:
     post:
       tags:
@@ -9232,47 +8581,6 @@ paths:
       description: "This method should be called to get an API token. This token will expire after
       auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
-      parameters:
-        - $ref: '#/components/parameters/raw'
-      security:
-        - basicAuth: []
-      responses:
-        '200':
-          description: "Login successful"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/Token'
-              example:
-                data:
-                  token: "<generated_token>"
-                  error: 0
-            text/plain:
-              schema:
-                type: string
-              example: "<generated_token>"
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/InvalidCredentialsResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    get:
-      tags:
-        - Security
-      summary: "Login"
-      deprecated: true
-      description: "This method should be called to get an API token. This token will expire after
-      auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
-      operationId: api.controllers.security_controller.deprecated_login_user
       parameters:
         - $ref: '#/components/parameters/raw'
       security:
@@ -9479,7 +8787,7 @@ paths:
                 $ref: "#/components/schemas/ApiResponse"
               example:
                 data:
-                  syscheck:run:
+                  agent:restart:
                     agent:id:*: allow
                   rbac_mode: black
                 message: "Current user processed policies information was returned"
@@ -9591,18 +8899,6 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
               example:
-                active-response:command:
-                  description: Allow to execute active response commands in the agents
-                  resources:
-                  - "agent:id"
-                  example:
-                    actions:
-                      - active-response:command
-                    resources:
-                      - agent:id:001
-                    effect: allow
-                  related_endpoints:
-                    - PUT /active-response
                 agent:create:
                   description: Create new agents
                   resources:
@@ -11195,119 +10491,6 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /tasks/status:
-    get:
-      tags:
-        - Tasks
-      summary: "List tasks"
-      description: "Returns all available information about the specified tasks"
-      operationId: api.controllers.task_controller.get_tasks_status
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/task:status'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/tasks_list'
-        - $ref: '#/components/parameters/command'
-        - $ref: '#/components/parameters/node'
-        - $ref: '#/components/parameters/module'
-        - $ref: '#/components/parameters/status'
-      responses:
-        '200':
-          description: "Tasks's status"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - message: Success
-                      agent: 2
-                      task_id: 1
-                      node: worker2
-                      module: upgrade_module
-                      command: upgrade
-                      status: In progress
-                      create_time: 2020-11-10T11:55:33Z
-                      update_time: 2020-11-10T11:55:36Z
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All specified task's status were returned"
-                error: 0
-
-  /events:
-    post:
-      tags:
-        - Events
-      summary: "Ingest events"
-      description: |-
-        Send security events to analysisd.
-
-        The endpoint is limited to receiving a max of 30 requests per minute and a max bulk size of 100 events per request.
-      operationId: api.controllers.event_controller.forward_event
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/event:ingest'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-              schema:
-                type: object
-                properties:
-                  events:
-                    description: "Bulk of events"
-                    type: array
-                    items:
-                      type: string
-                required:
-                - events
-              example:
-                events:
-                  - "Event value 1"
-                  - "{\"someKey\": \"Event value 2\"}"
-      responses:
-        '200':
-          description: "Events accepted"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - "Event value 1"
-                    - "{\"someKey\": \"Event value 2\"}"
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All events were forwarded to analisysd"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

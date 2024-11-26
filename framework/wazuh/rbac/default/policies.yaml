@@ -125,28 +125,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  syscheck_read:
-    description: Allow read syscheck information
-    policies:
-      syscheck:
-        actions:
-          - syscheck:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscheck_all:
-    description: Allow read, run and clear syscheck information
-    policies:
-      syscheck:
-        actions:
-          - syscheck:clear
-          - syscheck:read
-          - syscheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
   cluster_all:
     description: Provide full access to all cluster related functionalities.
     policies:
@@ -175,36 +153,6 @@ default_policies:
           - cluster:read
         resources:
           - node:id:*
-        effect: allow
-
-  logtest_all:
-    description: Provide access to all logtest related functionalities.
-    policies:
-      logtest:
-        actions:
-          - logtest:run
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  task_status:
-    description: Provide permissions to check the status of tasks
-    policies:
-      task:
-        actions:
-          - task:status
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  events_ingest:
-    description: Allow ingesting events.
-    policies:
-      resourceless:
-        actions:
-          - event:ingest
-        resources:
-          - '*:*:*'
         effect: allow
 
   orders_send:

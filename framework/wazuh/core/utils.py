@@ -1313,9 +1313,7 @@ class WazuhDBBackend(AbstractDatabaseBackend):
 
     def _render_query(self, query):
         """Render query attending the format."""
-        if self.query_format == 'task':
-            return f'task sql {query}'
-        elif self.query_format == 'global':
+        if self.query_format == 'global':
             return f'global sql {query}'
         else:
             return f'agent {self.agent_id} sql {query}'

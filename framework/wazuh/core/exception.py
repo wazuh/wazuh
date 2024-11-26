@@ -473,12 +473,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
         6005: {'message': 'Maximum number of requests per minute reached'},
-
-        # Logtest
-        7000: {'message': 'Error trying to get logtest response'},
-        7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'},
-
     }
 
     # Reserve agent upgrade custom errors
