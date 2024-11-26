@@ -150,7 +150,7 @@ async def create_indexer(
         The new Indexer instance.
     """
     if ssl is None:
-        ssl = IndexerSSLConfig(use_ssl=False, cert='', key='', ca='')
+        ssl = IndexerSSLConfig(use_ssl=False)
 
     indexer = Indexer(
         host=host,
