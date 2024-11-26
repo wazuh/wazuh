@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from pydantic import ValidationError
 
@@ -42,7 +44,8 @@ def test_ssl_config_fails_without_values(init_values):
         {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': True}
     )
 ])
-def test_indexer_ssl_config_default_values(init_values, expected):
+@patch('os.path.isfile', return_value=True)
+def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expected):
     """Check the correct initialization of the `IndexerSSLConfig` class."""
     ssl_config = IndexerSSLConfig(**init_values)
 

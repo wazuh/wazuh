@@ -1,8 +1,13 @@
+from unittest.mock import patch
+
 import pytest
 from pydantic import ValidationError
 
 from wazuh.core.config.models.indexer import IndexerConfig
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
+
+with patch('os.path.isfile', return_value=True):
+    SSL_CONFIG = IndexerSSLConfig(use_ssl=True, key='key_example', cert='cert_example', ca='ca_example')
 
 
 @pytest.mark.parametrize('init_values,expected', [
@@ -26,14 +31,14 @@ from wazuh.core.config.models.ssl_config import IndexerSSLConfig
             'port': 9300,
             'user': 'another_user',
             'password': 'another_password',
-            'ssl': IndexerSSLConfig(use_ssl=True, key='key_example', cert='cert_example', ca='ca_example')
+            'ssl': SSL_CONFIG
         },
         {
             'host': 'example.com',
             'port': 9300,
             'user': 'another_user',
             'password': 'another_password',
-            'ssl': IndexerSSLConfig(use_ssl=True, key='key_example', cert='cert_example', ca='ca_example')
+            'ssl': SSL_CONFIG
         }
     )
 ])
