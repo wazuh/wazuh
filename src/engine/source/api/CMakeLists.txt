@@ -102,3 +102,6 @@ if(ENGINE_BUILD_TEST)
 )
 gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)
+
+add_subdirectory(adapter)
+add_subdirectory(catalog)
