@@ -14,6 +14,7 @@ from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
 
 
 class ConfigSections(str, Enum):
+    """Enum representing the different sections of the CentralizedConfig."""
     SERVER = "server"
     INDEXER = "indexer"
     ENGINE = "engine"
