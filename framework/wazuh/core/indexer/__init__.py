@@ -78,23 +78,16 @@ class Indexer:
             'ca_certs': self.ca_certs,
         }
 
-        auth_set = False
         if all([self.user, self.password]):
             parameters.update({'http_auth': (self.user, self.password)})
-            auth_set = True
+        else:
+            raise WazuhIndexerError(2201, extra_message="'user' and 'password' are required")
 
-        if all([self.client_cert, self.client_key]):
-            parameters.update({'client_cert': self.client_cert, 'client_key': self.client_key})
-            auth_set = True
-        
-        if not auth_set:
-            raise WazuhIndexerError(
-                2201,
-                extra_message=(
-                    'Some type of authentication must be provided, `user` and `password` for BASIC_HTTP_AUTH '
-                    'or the client certificates `client_cert_path` and `client_key_path`.',
-                )
-            )
+        if self.use_ssl:
+            if all([self.client_cert, self.client_key]):
+                parameters.update({'client_cert': self.client_cert, 'client_key': self.client_key})
+            else:
+                raise WazuhIndexerError(2201, extra_message='SSL certificates paths missing in the configuration')
 
         return AsyncOpenSearch(**parameters)
 
@@ -209,8 +202,11 @@ def validate_file_exists(path: str) -> None:
     
     Raises
     ------
-    WazuhIndexerError(2200)
-        Couldn't connect to the indexer exception.
+    WazuhIndexerError(2201)
+        Invalid indexer credentials exception.
     """
+    if path == '':
+        raise WazuhIndexerError(2201, extra_message=f'Empty file path')
+
     if not os.path.isfile(path):
-        raise WazuhIndexerError(2200, extra_message=f"The file '{path}' does not exist")
+        raise WazuhIndexerError(2201, extra_message=f"The file '{path}' does not exist")
