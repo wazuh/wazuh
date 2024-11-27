@@ -173,15 +173,6 @@
                 ]
             },
             {
-                "name": "manager_controller.py",
-                "tag": "manager",
-                "tests": [
-                    "test_manager_endpoints.tavern.yaml",
-                    "test_rbac_black_manager_endpoints.tavern.yaml",
-                    "test_rbac_white_manager_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "security_controller.py",
                 "tag": "security",
                 "tests": [
@@ -351,11 +342,11 @@
             },
             {
                 "name": "manager.py",
-                "tag": "manager",
+                "tag": "cluster",
                 "tests": [
-                    "test_manager_endpoints.tavern.yaml",
-                    "test_rbac_black_manager_endpoints.tavern.yaml",
-                    "test_rbac_white_manager_endpoints.tavern.yaml"
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_rbac_black_cluster_endpoints.tavern.yaml",
+                    "test_rbac_white_cluster_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -368,17 +359,6 @@
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",
                     "test_security_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "stats.py",
-                "tag": "stats",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
                 ]
             }
         ]
@@ -444,11 +424,11 @@
             },
             {
                 "name": "manager.py",
-                "tag": "manager",
+                "tag": "cluster",
                 "tests": [
-                    "test_manager_endpoints.tavern.yaml",
-                    "test_rbac_black_manager_endpoints.tavern.yaml",
-                    "test_rbac_white_manager_endpoints.tavern.yaml"
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_rbac_black_cluster_endpoints.tavern.yaml",
+                    "test_rbac_white_cluster_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -483,17 +463,6 @@
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",
                     "test_security_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "stats.py",
-                "tag": "stats",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -988,12 +957,10 @@
                 "tests": [
                     "test_rbac_black_agent_endpoints.tavern.yaml",
                     "test_rbac_black_cluster_endpoints.tavern.yaml",
-                    "test_rbac_black_manager_endpoints.tavern.yaml",
                     "test_rbac_black_security_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
                     "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
-                    "test_rbac_white_manager_endpoints.tavern.yaml",
                     "test_rbac_white_security_endpoints.tavern.yaml"
                 ]
             },
@@ -1200,13 +1167,6 @@
                 ]
             },
             {
-                "name": "test_manager_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_manager_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "test_rbac_black_agent_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
@@ -1218,13 +1178,6 @@
                 "tag": "test",
                 "tests": [
                     "test_rbac_black_cluster_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "test_rbac_black_manager_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_black_manager_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -1253,13 +1206,6 @@
                 "tag": "test",
                 "tests": [
                     "test_rbac_white_cluster_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "test_rbac_white_manager_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_white_manager_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -1560,63 +1506,6 @@
         ]
     },
     {
-        "path": "api/test/integration/env/configurations/manager/agent/healthcheck",
-        "files": [
-            {
-                "name": "healthcheck.py",
-                "tag": "healthcheck",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "legacy_healthcheck.py",
-                "tag": "legacy",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "api/test/integration/env/configurations/manager/manager/configuration_files",
-        "files": [
-            {
-                "name": "manager.sh",
-                "tag": "manager",
-                "tests": [
-                    "test_manager_endpoints.tavern.yaml",
-                    "test_rbac_black_manager_endpoints.tavern.yaml",
-                    "test_rbac_white_manager_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "api/test/integration/env/configurations/manager/manager/healthcheck",
-        "files": [
-            {
-                "name": "healthcheck.py",
-                "tag": "healthcheck",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
         "path": "api/test/integration/env/configurations/rbac/agent",
         "files": [
             {
@@ -1650,25 +1539,6 @@
                 "tag": "white",
                 "tests": [
                     "test_rbac_white_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "api/test/integration/env/configurations/rbac/manager",
-        "files": [
-            {
-                "name": "black_config.yaml",
-                "tag": "black",
-                "tests": [
-                    "test_rbac_black_manager_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "white_config.yaml",
-                "tag": "white",
-                "tests": [
-                    "test_rbac_white_manager_endpoints.tavern.yaml"
                 ]
             }
         ]

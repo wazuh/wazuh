@@ -181,14 +181,6 @@ def test_ossec_log_summary(mock_exists, mock_active_logging_format):
                    for item in result.render()['data']['affected_items'])
 
 
-def test_get_api_config():
-    """Checks that get_api_config method is returning current api_conf dict."""
-    result = get_api_config().render()
-
-    assert 'node_api_config' in result['data']['affected_items'][0], 'node_api_config key not found in result'
-    assert 'node_name' in result['data']['affected_items'][0]
-
-
 @patch('socket.socket')
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('wazuh.core.cluster.utils.open')
@@ -274,23 +266,6 @@ def test_validation_ko(mock_validate, exception):
         result = validation()
         assert not result.affected_items
         assert result.total_failed_items == 1
-
-
-@patch('wazuh.core.configuration.get_active_configuration')
-def test_get_config(mock_act_conf):
-    """Tests get_config() method works as expected"""
-    get_config('component', 'config')
-
-    # Assert whether get_active_configuration() method receives the expected parameters.
-    mock_act_conf.assert_called_once_with(component='component', configuration='config')
-
-
-def test_get_config_ko():
-    """Tests get_config() function returns an error"""
-    result = get_config()
-
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1307
 
 
 @pytest.mark.parametrize('raw', [True, False])

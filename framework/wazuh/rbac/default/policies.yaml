@@ -136,7 +136,6 @@ default_policies:
         effect: allow
       nodes:
         actions:
-          - cluster:read_api_config
           - cluster:read
           - cluster:restart
           - cluster:update_config
@@ -149,7 +148,6 @@ default_policies:
     policies:
       nodes:
         actions:
-          - cluster:read_api_config
           - cluster:read
         resources:
           - node:id:*

@@ -182,38 +182,15 @@ get_rbac_actions:
             - node:id:worker3
           effect: deny
         related_endpoints:
-          - GET /cluster/local/info
-          - GET /cluster/local/config
           - GET /cluster/nodes
           - GET /cluster/healthcheck
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
-          - GET /cluster/{node_id}/daemons/stats
-          - GET /cluster/{node_id}/stats
-          - GET /cluster/{node_id}/stats/hourly
-          - GET /cluster/{node_id}/stats/weekly
-          - GET /cluster/{node_id}/stats/analysisd
-          - GET /cluster/{node_id}/stats/remoted
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
-          - GET /cluster/{node_id}/configuration/{component}/{configuration}
-          - GET /manager/status
-          - GET /manager/info
-          - GET /manager/configuration
-          - GET /manager/daemons/stats
-          - GET /manager/stats
-          - GET /manager/stats/hourly
-          - GET /manager/stats/weekly
-          - GET /manager/stats/analysisd
-          - GET /manager/stats/remoted
-          - GET /manager/logs
-          - GET /manager/logs/summary
-          - PUT /manager/restart
-          - GET /manager/configuration/validation
-          - GET /manager/configuration/{component}/{configuration}
       cluster:status:
         description: Check Wazuh's cluster general status
         resources:
@@ -226,20 +203,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/status
-      cluster:read_api_config:
-        description: Check Wazuh's cluster nodes API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - cluster:read_api_config
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: allow
-        related_endpoints:
-          - GET /cluster/api/config
-          - GET /manager/api/config
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:
@@ -252,7 +215,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/{node_id}/configuration
-          - PUT /manager/configuration
       cluster:restart:
         description: Restart Wazuh's cluster nodes
         resources:
@@ -265,7 +227,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
-          - PUT /manager/restart
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:
