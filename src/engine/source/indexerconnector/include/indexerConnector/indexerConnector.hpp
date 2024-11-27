@@ -36,8 +36,6 @@ struct IndexerConnectorOptions
 {
     std::string name;               ///< The name of the index to push the data.
     std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
-    std::string username;           ///< The username to authenticate with OpenSearch.
-    std::string password;           ///< The password to authenticate with OpenSearch.
 
     struct
     {

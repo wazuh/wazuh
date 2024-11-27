@@ -11,11 +11,11 @@ file(GLOB KEYSTORE_SRC
 add_subdirectory(tools)
 
 add_library(keystore STATIC ${KEYSTORE_SRC})
-target_link_libraries(keystore base)
+target_link_libraries(keystore PRIVATE base)
 target_include_directories(keystore PUBLIC include)
 
 add_executable(wazuh-keystore src/main.cpp)
-target_link_libraries(wazuh-keystore keystore OpenSSL::SSL OpenSSL::Crypto RocksDB::rocksdb base)
+target_link_libraries(wazuh-keystore keystore OpenSSL::SSL OpenSSL::Crypto RocksDB::rocksdb base -static-libgcc -static-libstdc++)
 
 # Tests
 if(ENGINE_BUILD_TEST)
