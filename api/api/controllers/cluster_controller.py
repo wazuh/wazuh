@@ -275,6 +275,21 @@ async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_co
     return response
 
 
+async def get_daemon_stats_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False):
+    """Get Wazuh statistical information from the specified daemons of a specified cluster node.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    """
+    raise NotImplementedError
+
+
 async def get_log_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                        limit: int = None, sort: str = None, search: str = None, tag: str = None, level: str = None,
                        q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
