@@ -303,7 +303,7 @@ class WazuhException(Exception):
 
         # Indexer
         2200: {'message': 'Could not connect to the indexer'},
-        2201: {'message': 'Indexer credentials not provided'},
+        2201: {'message': 'Invalid indexer credentials'},
         2202: {'message': 'Command does not exist'},
 
         # Communications API

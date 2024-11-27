@@ -1,15 +1,19 @@
+import os
 import random
+import ssl
 from asyncio import sleep
 from contextlib import asynccontextmanager
 from logging import getLogger
 from typing import AsyncIterator
 
 from opensearchpy import AsyncOpenSearch
+from opensearchpy.exceptions import TransportError, ImproperlyConfigured
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.commands import CommandsManager
 from wazuh.core.indexer.events import EventsIndex
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 logger = getLogger('wazuh')
 
@@ -56,6 +60,11 @@ class Indexer:
         ------
         WazuhIndexerError
             In case authentication is not provided.
+        
+        Raises
+        ------
+        WazuhIndexerError(2201)
+            In case of no authentication credentials were specified.
 
         Returns
         -------
@@ -72,16 +81,14 @@ class Indexer:
 
         if all([self.user, self.password]):
             parameters.update({'http_auth': (self.user, self.password)})
-        elif all([self.client_cert, self.client_key]):
-            parameters.update({'client_cert': self.client_cert, 'client_key': self.client_key})
         else:
-            raise WazuhIndexerError(
-                2201,
-                extra_message=(
-                    'Some type of authentication must be provided, `user` and `password` for BASIC_HTTP_AUTH '
-                    'or the client certificates `client_cert_path` and `client_key_path`.',
-                )
-            )
+            raise WazuhIndexerError(2201, extra_message="'user' and 'password' are required")
+
+        if self.use_ssl:
+            if all([self.client_cert, self.client_key]):
+                parameters.update({'client_cert': self.client_cert, 'client_key': self.client_key})
+            else:
+                raise WazuhIndexerError(2201, extra_message='SSL certificates paths missing in the configuration')
 
         return AsyncOpenSearch(**parameters)
 
@@ -90,11 +97,18 @@ class Indexer:
 
         Raises
         ------
-        WazuhIndexerError
+        WazuhIndexerError(2200)
             In case of errors communicating with the Wazuh Indexer.
         """
-        if not (await self._client.ping()):
-            raise WazuhIndexerError(2200)
+        try:
+            return await self._client.info()
+        except ssl.SSLError as e:
+            raise WazuhIndexerError(2200, extra_message=e.reason)
+        except TransportError as e:
+            raise WazuhIndexerError(2200, extra_message=e.error)
+        except ImproperlyConfigured as e:
+            raise WazuhIndexerError(2200, extra_message=f'{e}. Check your indexer configuration and SSL certificates')
+
 
     async def close(self) -> None:
         """Close the Wazuh Indexer client."""
@@ -107,9 +121,9 @@ async def create_indexer(
     user: str = '',
     password: str = '',
     port: int = 9200,
+    ssl: IndexerSSLConfig = None,
     retries: int = 5,
     backoff_in_seconds: int = 1,
-    **kwargs,
 ) -> Indexer:
     """Create and initialize the Indexer instance implementing a retry with backoff mechanism.
 
@@ -122,7 +136,9 @@ async def create_indexer(
     password : str, optional
         Password of the Wazuh Indexer to authenticate with.
     port : int, optional
-        Port of the Wazuh Indexer to connect with, by default 9200
+        Port of the Wazuh Indexer to connect with, by default 9200.
+    ssl : IndexerSSLConfig
+        SSL configuration parameters.
     retries : int, optional
         Number of retries, by default 5.
     backoff_in_seconds : int, optional
@@ -133,8 +149,20 @@ async def create_indexer(
     Indexer
         The new Indexer instance.
     """
+    if ssl is None:
+        ssl = IndexerSSLConfig(use_ssl=False)
 
-    indexer = Indexer(host, user, password, port, **kwargs)
+    indexer = Indexer(
+        host=host,
+        user=user,
+        password=password,
+        port=port,
+        use_ssl=ssl.use_ssl,
+        client_cert_path=ssl.cert,
+        client_key_path=ssl.key,
+        ca_certs_path=ssl.ca,
+        verify_certs=ssl.verify_certificates,
+    )
     retries_count = 0
     while True:
         try:
@@ -155,7 +183,6 @@ async def create_indexer(
 @asynccontextmanager
 async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
-
     indexer_config = CentralizedConfig.get_indexer_config()
 
     client = await create_indexer(
@@ -163,10 +190,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         port=indexer_config.port,
         user=indexer_config.user,
         password=indexer_config.password,
-        use_ssl=indexer_config.ssl.use_ssl,
-        client_cert_path=indexer_config.ssl.cert,
-        client_key_path=indexer_config.ssl.key,
-        ca_certs_path=indexer_config.ssl.ca,
+        ssl=indexer_config.ssl if indexer_config.ssl else None,
         retries=1
     )
 

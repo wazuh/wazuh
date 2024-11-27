@@ -18,10 +18,10 @@ class IndexerConfig(WazuhConfigBaseModel):
     password : str
         The password for indexer authentication.
     ssl : IndexerSSLConfig, optional
-        SSL configuration for the indexer. Default is an instance of IndexerSSLConfig.
+        SSL configuration for the indexer. Default is None.
     """
     host: str
     port: PositiveInt
     user: str
     password: str
-    ssl: IndexerSSLConfig = IndexerSSLConfig()
+    ssl: IndexerSSLConfig = None

@@ -1,6 +1,10 @@
+import os
 from enum import Enum
 
+from pydantic import field_validator, ValidationInfo
+
 from wazuh.core.config.models.base import WazuhConfigBaseModel
+
 
 class SSLProtocol(str, Enum):
     """Enum representing supported SSL/TLS protocols."""
@@ -44,11 +48,45 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         The path to the SSL certificate file. Default is an empty string.
     ca : str
         The path to the CA certificate file. Default is an empty string.
+    verify_certificates : bool
+        Whether to verify the server TLS certificates or not. Default is True.
     """
     use_ssl: bool = False
-    key: str = ""
-    cert: str = ""
-    ca: str = ""
+    key: str = ''
+    cert: str = ''
+    ca: str = ''
+    verify_certificates: bool = True
+
+    @field_validator('key', 'cert', 'ca')
+    @classmethod
+    def validate_ssl_files(cls, path: str, info: ValidationInfo) -> str:
+        """Validate that the SSL files exist.
+        
+        Parameters
+        ----------
+        path : str
+            Path to the SSL certificate/key.
+        info : ValidationInfo
+            Validation context information.
+        
+        Raises
+        ------
+        ValueError
+            Invalid SSL file path.
+
+        Returns
+        ------
+        str
+            SSL certificate/key path.
+        """
+        if info.data['use_ssl']:
+            if path == '':
+                raise ValueError(f'{info.field_name}: missing certificate file')
+
+            if not os.path.isfile(path):
+                raise ValueError(f"{info.field_name}: the file '{path}' does not exist")
+        
+        return path
 
 
 class APISSLConfig(WazuhConfigBaseModel):
