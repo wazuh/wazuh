@@ -105,3 +105,4 @@ endif(ENGINE_BUILD_TEST)
 
 add_subdirectory(adapter)
 add_subdirectory(catalog)
+add_subdirectory(geo)
