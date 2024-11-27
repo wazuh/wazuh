@@ -58,7 +58,7 @@ set(MMDB_PATH_TEST ${TEST_SRC_DIR}/testdb.mmdb)
 
 add_library(geo_mocks INTERFACE)
 target_include_directories(geo_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(geo_mocks INTERFACE geo::igeo)
+target_link_libraries(geo_mocks INTERFACE geo::igeo GTest::gmock)
 add_library(geo::mocks ALIAS geo_mocks)
 
 add_executable(geo_utest
