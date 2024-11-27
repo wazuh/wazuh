@@ -120,16 +120,6 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
             indexerConnectorOptions.sslOptions.key = config.at("ssl").at("key").get_ref<const std::string&>();
         }
     }
-
-    if (config.contains("username"))
-    {
-        indexerConnectorOptions.username = config.at("username");
-    }
-
-    if (config.contains("password"))
-    {
-        indexerConnectorOptions.password = config.at("password");
-    }
 }
 
 int main(const int argc, const char* argv[])
