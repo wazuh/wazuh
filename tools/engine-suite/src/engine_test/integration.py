@@ -15,6 +15,7 @@ from engine_test.input_collector import InputEventCollector
 from engine_test.event_splitters.base_splitter import SplitterEvent
 from engine_test.event_splitters.single_line import SingleLineSplitter
 from engine_test.event_splitters.multi_line import MultilineSplitter
+from engine_test.event_splitters.dynamic_multi_line import DynamicMultilineSplitter
 from engine_test.event_splitters.eventchannel import EventChannelSplitter
 
 from engine_test.conf.integration import Formats, IntegrationConf
@@ -23,6 +24,7 @@ from engine_test.api_connector import ApiConnector
 
 from api_communication.proto import tester_pb2 as api_tester
 
+# TODO Use the shared Dumper class after cli is merged, change name to this file
 class EngineDumper(BaseDumper): # TODO Use the shared Dumper class
     def represent_scalar(self, tag, value, style=None):
         # If the value contains a single quote, force double quotes
@@ -171,6 +173,8 @@ class IntegrationTester():
                 return SingleLineSplitter()
             elif iconf.format == Formats.MULTI_LINE:
                 return MultilineSplitter(iconf.lines)
+            elif iconf.format == Formats.DYNAMIC_MULTI_LINE:
+                return DynamicMultilineSplitter()
             elif iconf.format == Formats.WINDOWS_EVENTCHANNEL:
                 return EventChannelSplitter()
             else:

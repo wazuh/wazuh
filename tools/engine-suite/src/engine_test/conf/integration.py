@@ -8,6 +8,7 @@ class Formats(Enum):
     '''
     SINGLE_LINE = "single-line"
     MULTI_LINE = "multi-line"
+    DYNAMIC_MULTI_LINE = "dynamic-multi-line"
     WINDOWS_EVENTCHANNEL = "windows-eventchannel"
 
     def get_formats():
@@ -21,6 +22,8 @@ class Formats(Enum):
             return Formats.SINGLE_LINE
         if format == Formats.MULTI_LINE.value:
             return Formats.MULTI_LINE
+        if format == Formats.DYNAMIC_MULTI_LINE.value:
+            return Formats.DYNAMIC_MULTI_LINE
         if format == Formats.WINDOWS_EVENTCHANNEL.value:
             return Formats.WINDOWS_EVENTCHANNEL
         raise ValueError(f"Invalid format: {format}")
@@ -32,6 +35,8 @@ class Formats(Enum):
         if format == Formats.SINGLE_LINE:
             return False
         if format == Formats.MULTI_LINE:
+            return True
+        if format == Formats.DYNAMIC_MULTI_LINE:
             return True
         if format == Formats.WINDOWS_EVENTCHANNEL:
             return True
