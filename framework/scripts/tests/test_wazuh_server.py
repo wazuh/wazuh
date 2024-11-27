@@ -112,14 +112,14 @@ def test_exit_handler(os_getpid_mock):
         original_sig_handler_mock.assert_not_called()
 
 
-@pytest.mark.parametrize("foreground, root", [
+@pytest.mark.parametrize("daemon, root", [
     (True, True),
     (True, False),
     (False, True),
     (False, False),
 ])
 @patch('subprocess.Popen')
-def test_start_daemons(mock_popen, foreground, root):
+def test_start_daemons(mock_popen, daemon, root):
     """Validate that `start_daemons` works as expected."""
     from wazuh.core import pyDaemonModule
 
@@ -141,23 +141,23 @@ def test_start_daemons(mock_popen, foreground, root):
     with patch.object(wazuh_server, 'main_logger') as main_logger_mock, \
         patch.object(wazuh_server.pyDaemonModule, 'get_parent_pid', return_value=pid), \
         patch.object(wazuh_server.pyDaemonModule, 'create_pid'):
-        wazuh_server.start_daemons(foreground, root)
+        wazuh_server.start_daemons(daemon, root)
 
     mock_popen.assert_has_calls([
         call([wazuh_server.ENGINE_BINARY_PATH, 'server', 'start']),
         call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.MANAGEMENT_API_SCRIPT_PATH] + \
-              (['-r'] if root else []) + (['-f'] if foreground else [])),
+              (['-r'] if root else []) + (['-d'] if daemon else [])),
         call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.COMMS_API_SCRIPT_PATH] + \
-              (['-r'] if root else []) + (['-f'] if foreground else [])),
+              (['-r'] if root else []) + (['-d'] if daemon else [])),
     ], any_order=True)
 
-    if foreground:
+    if daemon:
         pid = mock_popen().pid
 
     main_logger_mock.info.assert_has_calls([
-        call(f'Started wazuh-engined (pid: {mock_popen().pid})'),
-        call(f'Started wazuh-apid (pid: {pid})'),
-        call(f'Started wazuh-comms-apid (pid: {pid})'),
+        call('Starting wazuh-engined'),
+        call('Starting wazuh-apid'),
+        call('Starting wazuh-comms-apid'),
     ])
 
 
