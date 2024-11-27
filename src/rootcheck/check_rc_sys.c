@@ -10,6 +10,8 @@
 
 #include "shared.h"
 #include "rootcheck.h"
+#include <errno.h>
+#include <unistd.h>
 
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
@@ -35,6 +37,14 @@ static int read_sys_file(const char *file_name, int do_read)
     os_check_ads(file_name);
 #endif
     if (lstat(file_name, &statbuf) < 0) {
+        // Check if the specified error is that the file no longer exists
+        if (errno == ENOENT) {
+            // Double-check file existence to handle potential race condition
+            if (access(file_name, F_OK) != 0) {
+                // File definitely does not exist, likely removed between checks
+                return 0;
+            }
+        }
 #ifndef WIN32
         const char op_msg_fmt[] = "Anomaly detected in file '%*s'. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.";
         char op_msg[OS_SIZE_1024 + 1];
