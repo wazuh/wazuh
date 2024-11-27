@@ -19,15 +19,9 @@
 // Database constants, based on the keystore path.
 constexpr auto DATABASE_PATH {"/var/lib/wazuh-server/keystore"};
 
-// File constants, used in the version 1 of the keystore, currently in use only for the upgrade to version 2, that uses
-// AES 256 encryption, without the need of the private key file.
-constexpr auto PRIVATE_KEY_FILE {"etc/sslmanager.key"};
-
-// Keystore constants, KS_NAME is used in the logs as tag.
 // KS_VERSION is the current version of the keystore. Used to identify the version of the keystore in the database.
 // KS_VERSION_FIELD is the field used to store the version of the keystore in the database.
-constexpr auto KS_NAME {"keystore"};
-constexpr auto KS_VERSION {"2"};
+constexpr auto KS_VERSION {"1"};
 constexpr auto KS_VERSION_FIELD {"version"};
 
 static void upgrade(utils::rocksdb::RocksDBWrapper& keystoreDB, const std::string& columnFamily)
@@ -39,37 +33,9 @@ static void upgrade(utils::rocksdb::RocksDBWrapper& keystoreDB, const std::strin
     {
         try
         {
-            std::string rawValue;
-
-            // Check if the private key file exists
-            if (!std::filesystem::exists(PRIVATE_KEY_FILE))
-            {
-                throw std::runtime_error("Private key file not found.");
-            }
-
             // Upgrade all keys
             for (const auto& [key, value] : keystoreDB.begin(columnFamily))
             {
-                std::string encryptedRSAValue;
-                std::vector<char> encryptedValue;
-
-                // Get the encrypted RSA value
-                if (keystoreDB.get(key, encryptedRSAValue, columnFamily))
-                {
-                    LOG_INFO("Upgrading '{}' key pair.", key.c_str());
-                }
-
-                // Decrypt the RSA value
-                RSAHelper().rsaDecrypt(PRIVATE_KEY_FILE, encryptedRSAValue, rawValue);
-                LOG_DEBUG("Decryption successful for key: '{}'", key.c_str());
-
-                // Encrypt the value with AES 256
-                EVPHelper().encryptAES256(rawValue, encryptedValue);
-
-                // Insert the key-value pair using AES encryption
-                keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
-
-                LOG_INFO("Key pair '{}' upgraded.", key.c_str());
             }
         }
         catch (const std::exception& exception)
