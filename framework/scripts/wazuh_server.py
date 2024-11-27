@@ -223,11 +223,18 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
         server_config=server_config,
     )
 
-    tasks = [my_server, my_local_server]
+    # initialize server
+    my_server_task = my_server.start()
+    my_local_server_task = my_local_server.start()
+    tasks = [my_server_task, my_local_server_task]
+
+    # Initialize daemons
+    start_daemons(args.daemon, args.root)
+
     # TODO(25554) - Delete in future Issue including references to HAPROXY
     # if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
     #    tasks.append(HAPHelper)
-    await asyncio.gather(*[task.start() for task in tasks])
+    await asyncio.gather(*tasks)
 
 
 #
@@ -267,6 +274,8 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
         )
         task_pool = None
 
+    daemons_initialized = False
+
     while True:
         my_client = worker.Worker(
             performance_test=args.performance_test,
@@ -284,11 +293,22 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
             node=my_client,
             server_config=server_config,
         )
+
         # Spawn pool processes
         if my_client.task_pool is not None:
             my_client.task_pool.map(process_spawn_sleep, range(my_client.task_pool._max_workers))
         try:
-            await asyncio.gather(my_client.start(), my_local_server.start())
+            my_client_task = my_client.start()
+            my_local_server_task = my_local_server.start()
+            tasks = [my_client_task, my_local_server_task]
+
+            # Initialize the daemons one time
+            if not daemons_initialized:
+                # Initialize daemons
+                start_daemons(args.daemon, args.root)
+                daemons_initialized = True
+
+            await asyncio.gather(*tasks)
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
             await asyncio.sleep(server_config.worker.intervals.connection_retry)
@@ -389,8 +409,6 @@ def start():
         main_function = worker_main
 
     try:
-        start_daemons(args.daemon, args.root)
-
         asyncio.run(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
