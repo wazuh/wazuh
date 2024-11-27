@@ -781,7 +781,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/dnf/dnf.conf -> r:^\s*gpgcheck\s*=\s*1'
-      - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck\s*=\s*0'
+      - 'd:/etc/yum.repos.d/ -> \.+ -> !r:^# && !r:^\s*gpgcheck\s*=\s*0'
 
   # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
 

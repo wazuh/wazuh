@@ -4684,7 +4684,9 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
     condition: all
     rules:
-      - 'c:sh -c "grep -iEh ''^\s*\t*-e 2\s*$'' /etc/audit/rules.d/*.rules | tail -1" -> r:^\s*\t*-e 2\s*$'
+      - "d:/etc/audit"
+      - "d:/etc/audit/rules.d -> r:^99-finalize.rules$"
+      - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
 
   # 5.2.3.21 Ensure the running and on disk configuration is the same. (Manual)
   - id: 2694
