@@ -77,6 +77,7 @@ override_dh_install:
 	cp -pr $(INSTALLATION_DIR)var/log/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/log/
 	cp -pr $(INSTALLATION_DIR)usr/share/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/
 	cp -pr $(INSTALLATION_DIR)etc/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)etc/
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib/wazuh-server/keystore/
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
