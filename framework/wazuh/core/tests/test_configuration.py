@@ -208,7 +208,6 @@ def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expec
 
 @pytest.mark.parametrize("error_id, value", [
     (1101, None),
-    (1102, None),
     (1103, None),
     (1106, True)
 ])
@@ -243,7 +242,6 @@ def test_get_cti_url(get_ossec_conf_mock, config, expected):
 
 @pytest.mark.parametrize("error_id, value", [
     (1101, None),
-    (1102, None),
     (1103, None),
     (1106, configuration.DEFAULT_CTI_URL)
 ])

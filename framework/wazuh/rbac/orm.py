@@ -25,7 +25,6 @@ from sqlalchemy.sql.expression import select, delete
 from sqlalchemy.sql import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from api.constants import SECURITY_PATH
 from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES, WAZUH_LIB
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_cache

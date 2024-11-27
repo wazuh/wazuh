@@ -3,13 +3,11 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import ipaddress
-import json
 import re
 import threading
 from base64 import b64encode
 from datetime import datetime, timezone
 from functools import lru_cache
-from json import dumps, loads
 from pathlib import Path
 from os import listdir, path, remove
 from typing import List
@@ -17,7 +15,6 @@ from typing import List
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey

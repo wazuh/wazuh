@@ -17,8 +17,7 @@ from api.models.base_model_ import Body
 from api.models.configuration_model import SecurityConfigurationModel
 from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
                                        RuleModel, UpdateUserModel)
-from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
-                      remove_nones_to_dict)
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from wazuh import security, __version__
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
