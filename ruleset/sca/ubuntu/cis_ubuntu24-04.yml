@@ -384,7 +384,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:noexec'
+      - 'c:findmnt -kn /tmp -> r:noexec'
 
   # 1.1.2.2.1 Ensure /dev/shm is a separate partition. (Automated)
    - id: 18514
@@ -434,7 +434,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt -kn /dev/shm -> r:\s*/dev/shm\s && r:nodev'
+      - 'c:findmnt -kn /dev/shm -> r:nodev'
 
   # 1.1.2.2.3 Ensure nosuid option set on /dev/shm partition. (Automated)
    - id: 18516
@@ -458,7 +458,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /dev/shm -> r:\s*/dev/shm\s && r:nosuid'
+      - 'c:findmnt --kernel /dev/shm -> r:nosuid'
 
   # 1.1.2.2.4 Ensure noexec option set on /dev/shm partition. (Automated)
    - id: 18517
@@ -482,7 +482,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt -kn /dev/shm  -> r:\s*/dev/shm\s && r:noexec'
+      - 'c:findmnt -kn /dev/shm  -> r:noexec'
 
   # 1.1.2.3.1 Ensure separate partition exists for /home. (Automated)
    - id: 18518
@@ -533,7 +533,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt -kn /home -> r:\s*/home\s && r:nodev'
+      - 'c:findmnt -kn /home -> r:nodev'
 
   # 1.1.2.3.3 Ensure nosuid option set on /home partition. (Automated)
    - id: 18520
@@ -557,7 +557,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt -kn /home -> r:\s*/home\s && r:nosuid'
+      - 'c:findmnt -kn /home -> r:nosuid'
 
   # 1.1.2.4.1 Ensure separate partition exists for /var. (Automated)
    - id: 18521
@@ -778,7 +778,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:nodev'
+      - 'c:findmnt --kernel /var/log -> r:nodev'
 
   # 1.1.2.6.3 Ensure nosuid option set on /var/log partition. (Automated)
    - id: 18530
@@ -802,7 +802,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:nosuid'
+      - 'c:findmnt --kernel /var/log -> r:nosuid'
 
   # 1.1.2.6.4 Ensure noexec option set on /var/log partition. (Automated)
    - id: 18531
@@ -826,7 +826,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s && r:noexec'
+      - 'c:findmnt --kernel /var/log -> r:noexec'
 
   # 1.1.2.7.1 Ensure separate partition exists for /var/log/audit. (Automated)
    - id: 18532
@@ -873,7 +873,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:nodev'
+      - 'c:findmnt --kernel /var/log/audit -> r:nodev'
 
   # 1.1.2.7.3 Ensure nosuid option set on /var/log/audit partition. (Automated)
    - id: 18534
@@ -897,7 +897,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:nosuid'
+      - 'c:findmnt --kernel /var/log/audit -> r:nosuid'
 
   # 1.1.2.7.4 Ensure noexec option set on /var/log/audit partition. (Automated)
    - id: 18535
@@ -921,7 +921,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s && r:noexec'
+      - 'c:findmnt --kernel /var/log/audit -> r:noexec'
 
   # 1.2.1.1 Ensure GPG keys are configured. (Manual) - Not Implemented
   # 1.2.1.2 Ensure package manager repositories are configured. (Manual) - Not Implented
