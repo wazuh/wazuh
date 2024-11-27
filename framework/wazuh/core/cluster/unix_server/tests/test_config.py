@@ -8,30 +8,30 @@ from wazuh.core.config.models.central_config import Config
 
 
 mock_config_data = {
-    "server": {
-        "port": 1516,
-        "bind_addr": "0.0.0.0",
-        "nodes": ["node1"],
-        "node": {
-            "name": "example",
-            "type": "master",
-            "ssl": {"key": "value", "cert": "value", "ca": "value"}
+    'server': {
+        'port': 1516,
+        'bind_addr': '0.0.0.0',
+        'nodes': ['node1'],
+        'node': {
+            'name': 'example',
+            'type': 'master',
+            'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}
         },
-        "worker": {},
-        "master": {},
-        "communications": {},
-        "logging": {"level": "debug2"},
-        "cti": {},
+        'worker': {},
+        'master': {},
+        'communications': {},
+        'logging': {'level': 'debug2'},
+        'cti': {},
     },
-    "indexer": {
-        "hosts": [{"host": "localhost", "port": 9200}],
-        "username": "admin",
-        "password": "password",
-        "ssl": {"use_ssl": False, "key": "", "certificate": "", "certificate_authorities": [""]}
+    'indexer': {
+        'hosts': [{'host': 'localhost', 'port': 9200}],
+        'username': 'admin',
+        'password': 'password',
+        'ssl': {'use_ssl': False, 'key': "", 'certificate': "", 'certificate_authorities': [""]}
     },
-    "engine": {},
-    "management_api": {},
-    "communications_api": {}
+    'engine': {},
+    'management_api': {},
+    'communications_api': {}
 }
 
 
@@ -52,7 +52,7 @@ async def test_get_config_all_sections(patch_load):
     assert expected == got.body.decode('utf-8')
 
 
-@pytest.mark.parametrize("sections", [
+@pytest.mark.parametrize('sections', [
     (['engine']),
     (['engine', 'indexer']),
     (['communications_api']),
@@ -69,7 +69,7 @@ async def test_get_config_valid_sections(patch_load, sections):
     assert expected == got.body.decode('utf-8')
 
 
-@pytest.mark.parametrize("sections", [
+@pytest.mark.parametrize('sections', [
     'example',
     'engine,err'
 ])

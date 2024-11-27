@@ -10,13 +10,13 @@ from wazuh.core.config.models.central_config import Config, EngineConfig, Manage
             {'key': 'value', 'cert': 'value', 'ca': 'value'}}}
      },
      {
-        "node": {"name": "example", "type": "master", "ssl": {"key": "value", "cert": "value", "ca": "value"}},
-        "server": {"nodes": ["master"], "port": 1516, "bind_addr": "localhost", "hidden": False, "update_check": False,
-                   "logging.level": "info"},
-        "indexer": {"hosts": [{"host": "localhost", "port": 9200}], "username": "user_example", "password": "password_example"},
-        "engine": {},
-        "management_api": {},
-        "communications_api": {}
+        'node': {'name': 'example', 'type': 'master', 'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}},
+        'server': {'nodes': ['master'], 'port': 1516, 'bind_addr': 'localhost', 'hidden': False, 'update_check': False,
+                   'logging.level': 'info'},
+        'indexer': {'hosts': [{'host': 'localhost', 'port': 9200}], 'username': 'user_example', 'password': 'password_example'},
+        'engine': {},
+        'management_api': {},
+        'communications_api': {}
     }),
 ])
 def test_config_default_values(init_values, expected):

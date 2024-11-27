@@ -129,9 +129,9 @@ async def create_indexer(
     Parameters
     ----------
     hosts : List[str]
-        List of hosts of the Wazuh Indexers.
+        Wazuh indexer nodes hosts.
     ports : List[int]
-        List of ports of the Wazuh Indexers to connect with.
+        Wazuh indexer nodes ports.
     user : str, optional
         User of the Wazuh Indexer to authenticate with.
     password : str, optional

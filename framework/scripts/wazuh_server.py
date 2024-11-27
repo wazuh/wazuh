@@ -201,8 +201,9 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     """
     from wazuh.core.cluster import local_server, master
 
-    context_tag.set('Master')
-    start_unix_server('Master')
+    tag = 'Master'
+    context_tag.set(tag)
+    start_unix_server(tag)
 
     my_server = master.Master(
         performance_test=args.performance_test,
@@ -256,8 +257,9 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
 
     from wazuh.core.cluster import local_server, worker
 
-    context_tag.set('Worker')
-    start_unix_server('Worker')
+    tag = 'Worker'
+    context_tag.set(tag)
+    start_unix_server(tag)
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
     try:

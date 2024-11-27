@@ -24,12 +24,12 @@ def get_log_config(node: str) -> dict[str, Any]:
         A dictionary containing the logging configuration for Uvicorn.
     """
     log_config = uvicorn.config.LOGGING_CONFIG
-    log_config["formatters"]["default"]["fmt"] = f"%(asctime)s %(levelname)s: [{node}] [Config Server] %(message)s"
-    log_config["formatters"]["default"]["datefmt"] = "%Y/%m/%d %H:%M:%S"
+    log_config['formatters']['default']['fmt'] = f'%(asctime)s %(levelname)s: [{node}] [Config Server] %(message)s'
+    log_config['formatters']['default']['datefmt'] = '%Y/%m/%d %H:%M:%S'
 
-    for handler in log_config["handlers"].values():
-        if "formatter" in handler:
-            handler["formatter"] = "default"
+    for handler in log_config['handlers'].values():
+        if 'formatter' in handler:
+            handler['formatter'] = 'default'
 
     return log_config
 
