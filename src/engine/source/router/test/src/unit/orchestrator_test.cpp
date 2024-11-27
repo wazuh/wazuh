@@ -774,7 +774,6 @@ TEST_F(OrchestratorTest, ingestNameEmptyFailture)
     EXPECT_TRUE(base::isError(result));
 }
 
-
 /**************************************************************************
  * ROUTER EXPECTS CALL
  *************************************************************************/

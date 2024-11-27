@@ -31,7 +31,7 @@ def create_dummy_integration(env_path: Path):
 
     (wazuh_core_test / 'decoders' / 'test-message.yml').write_text("""\
 name: decoder/test-message/0
-check: $wazuh.queue == 49 # "1"
+check: $agent.id == AA11
 """)
 
     (wazuh_core_test / 'filters' /
@@ -49,7 +49,7 @@ def create_other_dummy_integration(env_path: Path):
 
     (other_wazuh_core_test / 'decoders' / 'other-test-message.yml').write_text("""\
 name: decoder/other-test-message/0
-check: $wazuh.queue == 50 # "2"
+check: $agent.id == BB22
 """)
 
     (other_wazuh_core_test / 'manifest.yml').write_text(
@@ -64,7 +64,7 @@ def create_dummy_integration_with_parents(env_path: Path):
 
     (parent_wazuh_core_test / 'decoders' / 'parent-message.yml').write_text("""\
 name: decoder/parent-message/0
-check: $wazuh.queue == 49 # "1"
+check: $agent.id == AA11
 """)
 
     (parent_wazuh_core_test / 'decoders' / 'test-message.yml').write_text("""\

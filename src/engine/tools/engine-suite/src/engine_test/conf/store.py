@@ -31,19 +31,22 @@ class ConfigDatabase:
         '''
         Create the configuration file if it does not exist
         '''
+        use_default : bool = self.config_file == DEFAULT_CONFIG_FILE
         try:
-           if not os.path.exists(self.config_file):
+            if not os.path.exists(self.config_file):
                 with open(self.config_file, 'w') as f:
                      f.write('{}')
                 # Set 640 permissions
                 os.chmod(self.config_file, 0o640)
-                if self.config_file == DEFAULT_CONFIG_FILE:
+                if use_default:
                     try:
                         import grp
                         gid = grp.getgrnam("wazuh").gr_gid
                         os.chown(self.config_file, -1, gid)
                     except Exception as e:
                         print(f"Warning: wazuh group cannot be set for {self.config_file}. Error: {e}")
+            elif not use_default:
+                raise Exception(f"Configuration file already exists: {self.config_file}")
         except Exception as e:
             raise Exception(f"Error creating configuration file. Error: {e}")
 
