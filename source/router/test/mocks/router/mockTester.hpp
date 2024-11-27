@@ -20,19 +20,9 @@ public:
                 ingestTest,
                 (base::Event && event, const ::router::test::Options& opt),
                 (override));
-    MOCK_METHOD(std::future<base::RespOrError<::router::test::Output>>,
-                ingestTest,
-                (std::string_view event, const ::router::test::Options& opt),
-                (override));
     MOCK_METHOD(base::OptError,
                 ingestTest,
                 (base::Event && event,
-                 const ::router::test::Options& opt,
-                 std::function<void(base::RespOrError<::router::test::Output>&&)> callbackFn),
-                (override));
-    MOCK_METHOD(base::OptError,
-                ingestTest,
-                (std::string_view event,
                  const ::router::test::Options& opt,
                  std::function<void(base::RespOrError<::router::test::Output>&&)> callbackFn),
                 (override));

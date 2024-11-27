@@ -715,6 +715,11 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
                                         const test::Options& opt,
                                         std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
 {
+    if (event == nullptr)
+    {
+        return base::Error {"Event cannot be empty"};
+    }
+
     if (auto error = opt.validate(); error)
     {
         return error;
