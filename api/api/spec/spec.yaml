@@ -2708,10 +2708,10 @@ paths:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
                 - type: object
-                    properties:
-                      data:
-                        allOf:
-                          - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
                   data:
                     affected_items:
