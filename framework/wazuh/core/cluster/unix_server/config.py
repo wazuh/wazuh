@@ -26,7 +26,7 @@ async def get_config(sections: Optional[str] = None) -> Response:
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid section(s): {str(e)}",
+                detail={'code': status.HTTP_400_BAD_REQUEST, 'message': f"Invalid section(s): {str(e)}"},
             )
     else:
         validated_sections = None
