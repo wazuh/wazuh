@@ -399,16 +399,6 @@ components:
               unknown-node:
                 error: "The group does not exist"
 
-    UnsupportedMediaTypeResponse:
-      description: "Unsupported media type"
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ApiError'
-          example:
-            title: "Unsupported media type"
-            detail: "Invalid Content-type (application/json), expected ['application/octet-stream']"
-
   schemas:
     ## Common models
     ApiResponse:
@@ -485,31 +475,6 @@ components:
         error:
           type: integer
           format: int32
-
-    ScanIdTime:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-          description: "Scan ID"
-        time:
-          type: string
-          format: date-time
-          description: "Date when the scan was performed"
-
-    ItemAffected:
-      type: object
-      required:
-        - affected_items
-      properties:
-        affected_items:
-          type: array
-          description: "Items that successfully applied the API call action"
-          items:
-            oneOf:
-              - type: string
-              - type: object
 
     AllItemsResponse:
       type: object
@@ -597,19 +562,6 @@ components:
                 $ref: '#/components/schemas/NodeHealthcheck'
         - $ref: '#/components/schemas/AllItemsResponse'
 
-    AllItemsResponseGroupIDs:
-      allOf:
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/GroupID'
-        - $ref: '#/components/schemas/AllItemsResponse'
-
     AllItemsResponseRoles:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -650,32 +602,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/UsersResponse'
-
-    AllItemsResponseGroupFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/GroupFiles'
-
-    AllItemsResponseLastScan:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/LastScan'
 
     AllItemsResponseClusterNodes:
       allOf:
@@ -960,19 +886,6 @@ components:
         - group_id
       example:
         group_id: NewGroup_1
-
-    GroupFiles:
-      type: object
-      properties:
-        filename:
-          type: string
-          description: "File name"
-        hash:
-          type: string
-          description: "File content hash"
-      example:
-        filename: agent.conf
-        hash: ab73af41699f13fdd81903b5f23d8d00
 
     ## Cluster models
     ClusterNodeBasic:
@@ -1595,21 +1508,6 @@ components:
           type: string
           description: "Confirmation message"
 
-    LastScan:
-      type: object
-      properties:
-        end:
-          type: string
-          nullable: true
-          format: date-time
-          description: "Date when the latest scan finished. If it is in progress, or no scans have been run, null will
-          be returned"
-        start:
-          type: string
-          nullable: true
-          format: date-time
-          description: "Date when the latest scan started. If no scans have been run, null will be returned"
-
     NewVersions:
       type: object
       properties:
@@ -1816,20 +1714,6 @@ components:
         type: string
         format: names
         maxLength: 128
-    benchmark:
-      in: query
-      name: benchmark
-      description: "Filter by benchmark type"
-      schema:
-        type: string
-        format: alphanumeric
-    command:
-      in: query
-      name: command
-      description: "Filter by command"
-      schema:
-        type: string
-        format: symbols_alphanumeric_param
     description:
       in: query
       name: description
@@ -1837,20 +1721,6 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
-    directory:
-      in: query
-      name: directory
-      description: "Filter by directory"
-      schema:
-        type: string
-    downloadFile:
-      in: path
-      name: filename
-      required: True
-      description: "Filename to download"
-      schema:
-        type: string
-        format: alphanumeric
     error:
       in: query
       name: error
@@ -2838,9 +2708,10 @@ paths:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
                 - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/ItemAffected'
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
                   data:
                     affected_items:
