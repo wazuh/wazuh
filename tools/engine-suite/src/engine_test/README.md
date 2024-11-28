@@ -12,7 +12,13 @@
     4. [engine-test run](#engine-test-run)
 
 ## Summary
-The `engine-suite` python package contains various scripts to help developing content for the Engine.
+The `engine-test` tool, is used to test integrations, it allows test a policy,
+simulate an agent and send events to the engine. The tool allows to simulate the
+data sent by an agent, for this it makes use of a specific configuration to fill
+in the agent's metadata. This configuration is called integration configuration,
+and it contains information about how the log was collected (metadata). Then the
+use of the interactive console to send logs along with that metadata, simulating
+the agent's log sending.
 
 # Directory structure
 

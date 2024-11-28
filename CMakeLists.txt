@@ -222,7 +222,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/yml)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
-add_subdirectory(${ENGINE_SOURCE_DIR}/cmds)
 add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
@@ -233,8 +232,33 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
 
-#TODO isolate rxcpp
-target_link_libraries(main base cmds api CLI11::CLI11)
+target_link_libraries(main
+    base
+    conf
+    yml
+    defs
+    builder
+    #bk::taskf
+    bk::rx
+    server
+    router::router
+    store
+    api
+    libuv::uv_a
+    kvdb
+    eMessages
+    metrics
+    geo
+    schemf
+    wdb
+    sockiface
+    rbac
+    geo::igeo
+    vdscanner
+    apiserver
+    indexerconnector
+)
+
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
 if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(main -static-libgcc -static-libstdc++)

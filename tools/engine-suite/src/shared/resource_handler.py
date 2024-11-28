@@ -19,9 +19,24 @@ class Format(Enum):
     YML = auto()
     TEXT = auto()
 
+def StringToFormat(string: str) -> Format:
+
+    if string == 'json':
+        return Format.JSON
+    if string == 'yml' or string == 'yaml':
+        return Format.YML
+    if string == 'text':
+        return Format.TEXT
+
+    raise Exception(f'Format {string} not supported')
+
 class ResourceHandler:
     def __init__(self):
         self._files = files('engine-suite')
+
+    ############################################################################
+    #                          File operations
+    ############################################################################
 
     def _read_json(self, content: str) -> dict:
         read = {}
@@ -126,6 +141,50 @@ class ResourceHandler:
 
         self._write_file(pure_path, content, format)
 
+    def save_plain_text_file(self, path_str: str, name: str, content: str):
+        path = Path(path_str)
+        path.mkdir(parents=True, exist_ok=True)
+        pure_path = PurePath(path / name)
+        Path(pure_path).write_text(content)
+
+    def read_plain_text_file(self, path_str: str) -> str:
+        path = Path(path_str)
+        with path.open(mode='r') as fid:
+            content = fid.read()
+        if not content:
+            raise Exception(f'Failed to read plain text {full_name}')
+        return content
+
+    def create_dir(self, path_str: str):
+        path = Path(path_str)
+        path.mkdir(parents=True, exist_ok=False)
+
+    def create_file(self, path_str: str, content: str = ""):
+        path = Path(path_str)
+        path.write_text(content)
+
+    def walk_dir(self, path_str: str, function, recursive: bool = False):
+        path = Path(path_str)
+        if path.exists():
+            if recursive:
+                for entry in path.rglob('*'):
+                    if entry.is_file():
+                        function(entry)
+            else:
+                for entry in path.iterdir():
+                    if entry.is_file():
+                        function(entry)
+
+    def current_dir_name(self) -> str:
+        return str(Path.cwd().name)
+
+    def cwd(self) -> str:
+        return str(Path.cwd())
+
+    ############################################################################
+    #                          Catalog operations
+    ############################################################################
+
     def _base_catalog_command(self, path: str, type: str, name: str, content: str, namespace: str, format: Format, command: str):
         format_str = ''
         if format is Format.JSON:
@@ -176,7 +235,7 @@ class ResourceHandler:
 
     def validate_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):
         self._base_catalog_command(
-            path, type, name, yaml.dump(content, sort_keys=False), namespace, format, 'validate')
+            path, type, name, content, namespace, format, 'validate')
 
     def update_catalog_file(self, path: str, type: str, name: str, content: dict, namespace: str, format: Format):
         self._base_catalog_command(
@@ -312,46 +371,6 @@ class ResourceHandler:
 
         return assets
 
-    def save_plain_text_file(self, path_str: str, name: str, content: str):
-        path = Path(path_str)
-        path.mkdir(parents=True, exist_ok=True)
-        pure_path = PurePath(path / name)
-        Path(pure_path).write_text(content)
-
-    def read_plain_text_file(self, path_str: str) -> str:
-        path = Path(path_str)
-        with path.open(mode='r') as fid:
-            content = fid.read()
-        if not content:
-            raise Exception(f'Failed to read plain text {full_name}')
-        return content
-
-    def create_dir(self, path_str: str):
-        path = Path(path_str)
-        path.mkdir(parents=True, exist_ok=False)
-
-    def create_file(self, path_str: str, content: str = ""):
-        path = Path(path_str)
-        path.write_text(content)
-
-    def walk_dir(self, path_str: str, function, recursive: bool = False):
-        path = Path(path_str)
-        if path.exists():
-            if recursive:
-                for entry in path.rglob('*'):
-                    if entry.is_file():
-                        function(entry)
-            else:
-                for entry in path.iterdir():
-                    if entry.is_file():
-                        function(entry)
-
-    def current_dir_name(self) -> str:
-        return str(Path.cwd().name)
-
-    def cwd(self) -> str:
-        return str(Path.cwd())
-
     def _get_all_namespaces(self, api_socket: str):
         request = {'version': 1, 'command': 'catalog.namespaces/get', 'origin': {
             'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {}}
@@ -382,6 +401,10 @@ class ResourceHandler:
             raise Exception(
                 f'{resp_message["data"]["error"]}')
         return resp_message
+
+    ############################################################################
+    #                          KVDB operations
+    ############################################################################
 
     def _base_command_kvdb(self, api_socket: str, name: str, path: str, subcommand):
         request = {'version': 1, 'command': 'kvdb.manager/' + subcommand, 'origin': {
@@ -518,7 +541,11 @@ class ResourceHandler:
     def get_store_integration(self, path: str, name: str, namespace: str):
         return self.get_catalog_file(path, 'integration', f'integration/{name}/0', namespace, Format.JSON)
 
-    def _base_store_command(self, path: str, policy: str, namespaces: List[str], command: str):
+    ############################################################################
+    #                          Policy operations: Store
+    ############################################################################
+
+    def _base_policy_store_command(self, path: str, policy: str, namespaces: List[str], command: str):
         request = {'version': 1, 'command': 'policy.store/' + command, 'origin': {
             'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'policy': policy, 'namespaces': namespaces}}
         request_raw = json.dumps(request)
@@ -537,12 +564,6 @@ class ResourceHandler:
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
-        # Change post for update and put for add
-        if command == 'post':
-            command = 'add'
-        elif command == 'put':
-            command = 'update'
-
         if not len(resp_message):
             raise Exception(
                 f'Store command [{command}] received an empty response.')
@@ -558,8 +579,18 @@ class ResourceHandler:
                 f'{response["data"]["error"]}')
         return response
 
-    def _delete_asset(self, path: str, policy: str):
-        self._base_store_command(path, policy, [], 'delete')
+    def policy_store_delete(self, path: str, policy: str):
+        self._base_policy_store_command(path, policy, [], 'delete')
+
+    def policy_store_add(self, path: str, policy: str):
+        self._base_policy_store_command(path, policy, [], 'post')
+
+    def policy_store_get(self, path: str, policy: str, namespaces: List[str]):
+        return self._base_policy_store_command(path, policy, namespaces, 'get')
+
+    ############################################################################
+    #                          Policy operations: Asset
+    ############################################################################
 
     def _base_asset_command(self, path: str, policy: str, namespace: str, asset: str, command: str):
         request = {'version': 1, 'command': 'policy.asset/' + command, 'origin': {
@@ -579,12 +610,6 @@ class ResourceHandler:
 
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
-
-        # Change post for update and put for add
-        if command == 'post':
-            command = 'add'
-        elif command == 'put':
-            command = 'update'
 
         if not len(resp_message):
             raise Exception(
@@ -641,7 +666,7 @@ class ResourceHandler:
                 f'{response["data"]["error"]}')
         return response
 
-    def _get_policies_command(self, path: str):
+    def get_policies_command(self, path: str):
         request = {'version': 1, 'command': 'policy.policies/get', 'origin': {
             'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {}}
         request_raw = json.dumps(request)
