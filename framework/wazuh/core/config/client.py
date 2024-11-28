@@ -1,6 +1,6 @@
 import yaml
 import os
-from typing import Optional
+from typing import Optional, List
 from pydantic import ValidationError
 
 from wazuh import WazuhInternalError
@@ -9,7 +9,7 @@ from wazuh.core.config.models.server import ServerSyncConfig
 from wazuh.core.config.models.management_api import RBACMode
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
                                                      ManagementAPIConfig, ServerConfig,
-                                                     IndexerConfig, EngineConfig)
+                                                     IndexerConfig, EngineConfig, ConfigSections)
 
 
 class CentralizedConfig:
@@ -134,6 +134,29 @@ class CentralizedConfig:
             cls.load()
 
         return cls._config.server.get_internal_config()
+
+    @classmethod
+    def get_config_json(cls, sections: Optional[List[ConfigSections]] = None) -> str:
+        """
+        Retrieve the current configuration as a JSON str, optionally filtered by specified sections.
+
+        Parameters
+        ----------
+        sections : Optional[List[ConfigSections]]
+            List of configuration sections to retrieve. If None, all sections are included.
+
+        Returns
+        -------
+        str
+            A string containing the configuration values in JSON.
+        """
+        if cls._config is None:
+            cls.load()
+
+        if sections is None:
+            return cls._config.model_dump_json()
+        else:
+            return cls._config.model_dump_json(include=[section.value for section in sections])
 
     @classmethod
     def update_security_conf(cls, config: dict):

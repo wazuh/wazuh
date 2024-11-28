@@ -22,6 +22,7 @@ from wazuh.core.cluster.cluster import clean_up
 from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.cluster.unix_server.server import start_unix_server
 from wazuh.core.config.models.server import ServerConfig
 
 
@@ -34,6 +35,7 @@ ENGINE_DAEMON_NAME = 'wazuh-engined'
 MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
 CLUSTER_LOG = WAZUH_LOG / 'cluster.log'
+
 
 #
 # Aux functions
@@ -131,15 +133,17 @@ def start_daemons(background_mode: bool, root: bool):
     root : bool
         Whether the script is running as root or not.
     """
+
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', 'start'],
-        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
-            + (['-r'] if root else [])
-            + (['-d'] if background_mode else []),
         COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
             + (['-r'] if root else [])
             + (['-d'] if background_mode else []),
+        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
+            + (['-r'] if root else [])
+            + (['-d'] if background_mode else []),
     }
+
     for name, args in daemons.items():
         start_daemon(background_mode, name, args)
 
@@ -195,7 +199,9 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     """
     from wazuh.core.cluster import local_server, master
 
-    context_tag.set('Master')
+    tag = 'Master'
+    context_tag.set(tag)
+    start_unix_server(tag)
 
     my_server = master.Master(
         performance_test=args.performance_test,
@@ -216,11 +222,18 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
         server_config=server_config,
     )
 
-    tasks = [my_server, my_local_server]
-    #TODO(25554) - Delete in future Issue including references to HAPROXY
-    #if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
+    # initialize server
+    my_server_task = my_server.start()
+    my_local_server_task = my_local_server.start()
+    tasks = [my_server_task, my_local_server_task]
+
+    # Initialize daemons
+    start_daemons(args.daemon, args.root)
+
+    # TODO(25554) - Delete in future Issue including references to HAPROXY
+    # if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
     #    tasks.append(HAPHelper)
-    await asyncio.gather(*[task.start() for task in tasks])
+    await asyncio.gather(*tasks)
 
 
 #
@@ -242,7 +255,9 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
 
     from wazuh.core.cluster import local_server, worker
 
-    context_tag.set('Worker')
+    tag = 'Worker'
+    context_tag.set(tag)
+    start_unix_server(tag)
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
     try:
@@ -258,6 +273,8 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
             'The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.'
         )
         task_pool = None
+
+    daemons_initialized = False
 
     while True:
         my_client = worker.Worker(
@@ -276,11 +293,22 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
             node=my_client,
             server_config=server_config,
         )
+
         # Spawn pool processes
         if my_client.task_pool is not None:
             my_client.task_pool.map(process_spawn_sleep, range(my_client.task_pool._max_workers))
         try:
-            await asyncio.gather(my_client.start(), my_local_server.start())
+            my_client_task = my_client.start()
+            my_local_server_task = my_local_server.start()
+            tasks = [my_client_task, my_local_server_task]
+
+            # Initialize the daemons one time
+            if not daemons_initialized:
+                # Initialize daemons
+                start_daemons(args.daemon, args.root)
+                daemons_initialized = True
+
+            await asyncio.gather(*tasks)
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
             await asyncio.sleep(server_config.worker.intervals.connection_retry)
@@ -381,8 +409,6 @@ def start():
         main_function = worker_main
 
     try:
-        start_daemons(args.daemon, args.root)
-
         asyncio.run(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')

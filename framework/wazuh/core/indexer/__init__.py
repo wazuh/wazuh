@@ -1,10 +1,9 @@
-import os
 import random
 import ssl
 from asyncio import sleep
 from contextlib import asynccontextmanager
 from logging import getLogger
-from typing import AsyncIterator
+from typing import AsyncIterator, List
 
 from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import TransportError, ImproperlyConfigured
@@ -26,20 +25,20 @@ class Indexer:
 
     def __init__(
         self,
-        host: str,
+        hosts: List[str],
+        ports: List[int],
         user: str = '',
         password: str = '',
-        port: int = 9200,
         use_ssl: bool = True,
         client_cert_path: str = '',
         client_key_path: str = '',
         verify_certs: bool = True,
         ca_certs_path: str = '',
     ) -> None:
-        self.host = host
+        self.hosts = hosts
         self.user = user
         self.password = password
-        self.port = port
+        self.ports = ports
         self.use_ssl = use_ssl
         self.client_cert = client_cert_path
         self.client_key = client_key_path
@@ -72,7 +71,7 @@ class Indexer:
             The created instance.
         """
         parameters = {
-            'hosts': [{HOST_KEY: self.host, PORT_KEY: self.port}],
+            'hosts': [{HOST_KEY: host, PORT_KEY: port} for (host, port) in zip(self.hosts, self.ports)],
             'http_compress': True,
             'use_ssl': self.use_ssl,
             'verify_certs': self.verify_certs,
@@ -117,10 +116,10 @@ class Indexer:
 
 
 async def create_indexer(
-    host: str,
+    hosts: List[str],
+    ports: List[int],
     user: str = '',
     password: str = '',
-    port: int = 9200,
     ssl: IndexerSSLConfig = None,
     retries: int = 5,
     backoff_in_seconds: int = 1,
@@ -129,14 +128,14 @@ async def create_indexer(
 
     Parameters
     ----------
-    host : str
-        Location of the Wazuh Indexer.
+    hosts : List[str]
+        Wazuh indexer nodes hosts.
+    ports : List[int]
+        Wazuh indexer nodes ports.
     user : str, optional
         User of the Wazuh Indexer to authenticate with.
     password : str, optional
         Password of the Wazuh Indexer to authenticate with.
-    port : int, optional
-        Port of the Wazuh Indexer to connect with, by default 9200.
     ssl : IndexerSSLConfig
         SSL configuration parameters.
     retries : int, optional
@@ -153,16 +152,17 @@ async def create_indexer(
         ssl = IndexerSSLConfig(use_ssl=False)
 
     indexer = Indexer(
-        host=host,
+        hosts=hosts,
+        ports=ports,
         user=user,
         password=password,
-        port=port,
         use_ssl=ssl.use_ssl,
-        client_cert_path=ssl.cert,
+        client_cert_path=ssl.certificate,
         client_key_path=ssl.key,
-        ca_certs_path=ssl.ca,
+        ca_certs_path=ssl.certificate_authorities[0],
         verify_certs=ssl.verify_certificates,
     )
+
     retries_count = 0
     while True:
         try:
@@ -184,11 +184,16 @@ async def create_indexer(
 async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
     indexer_config = CentralizedConfig.get_indexer_config()
+    list_of_hosts = []
+    list_of_ports = []
+    for instance in indexer_config.hosts:
+        list_of_hosts.append(instance.host)
+        list_of_ports.append(instance.port)
 
     client = await create_indexer(
-        host=indexer_config.host,
-        port=indexer_config.port,
-        user=indexer_config.user,
+        hosts=list_of_hosts,
+        ports=list_of_ports,
+        user=indexer_config.username,
         password=indexer_config.password,
         ssl=indexer_config.ssl if indexer_config.ssl else None,
         retries=1

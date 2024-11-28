@@ -9,24 +9,45 @@ from wazuh.core.config.models.base import WazuhConfigBaseModel
 
 class LoggingFormat(str, Enum):
     """Enum representing the available logging formats."""
-    plain = "plain"
-    json = "json"
+    plain = 'plain'
+    json = 'json'
 
 
 class LoggingLevel(str, Enum):
     """Enum representing the different levels of logging verbosity."""
-    info = "info"
-    debug = "debug"
-    debug2 = "debug2"
+    info = 'info'
+    debug = 'debug'
+    debug2 = 'debug2'
 
 
 class APILoggingLevel(str, Enum):
     """Enum representing the different levels of logging verbosity for an API."""
-    debug = "debug"
-    info = "info"
-    warning = "warning"
-    error = "error"
-    critical = "critical"
+    debug = 'debug'
+    info = 'info'
+    warning = 'warning'
+    error = 'error'
+    critical = 'critical'
+
+
+class EngineLoggingLevel(str, Enum):
+    """Enum representing the different levels of logging verbosity for the Engine."""
+    trace = 'trace'
+    debug = 'debug'
+    info = 'info'
+    warning = 'warning'
+    error = 'error'
+    critical = 'critical'
+
+
+class EngineLoggingConfig(WazuhConfigBaseModel):
+    """Configuration for Engine logging levels.
+
+    Parameters
+    ----------
+    level : EngineLoggingLevel
+        The logging level. Default is "info".
+    """
+    level: EngineLoggingLevel = EngineLoggingLevel.info
 
 
 class LoggingConfig(WazuhConfigBaseModel):

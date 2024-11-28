@@ -36,12 +36,12 @@ def test_ssl_config_fails_without_values(init_values):
 
 @pytest.mark.parametrize('init_values,expected', [
     (
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': False},
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': False}
+        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': False},
+        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': False}
     ),
     (
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': True},
-        {'use_ssl': True, 'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'verify_certificates': True}
+        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': True},
+        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': True}
     )
 ])
 @patch('os.path.isfile', return_value=True)
@@ -50,9 +50,10 @@ def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expect
     ssl_config = IndexerSSLConfig(**init_values)
 
     assert ssl_config.use_ssl == expected['use_ssl']
+    assert ssl_config.use_ssl == expected['use_ssl']
     assert ssl_config.key == expected['key']
-    assert ssl_config.cert == expected['cert']
-    assert ssl_config.ca == expected['ca']
+    assert ssl_config.certificate == expected['certificate']
+    assert ssl_config.certificate_authorities == expected['certificate_authorities']
     assert ssl_config.verify_certificates == expected['verify_certificates']
 
 
