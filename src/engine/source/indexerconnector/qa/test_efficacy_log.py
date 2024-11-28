@@ -11,6 +11,8 @@ from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 TEMPLATE_PATH='engine/source/indexerconnector/qa/test_data/template.json'
+OPENSEARCH_PASSWORD='WazuhTest99$'
+KEYSTORE_PATH='./keystore'
 
 def init_template_and_index():
     with open(TEMPLATE_PATH, 'r') as template_file:
@@ -27,7 +29,7 @@ def init_opensearch():
     env_vars = {
         'discovery.type': 'single-node',
         'plugins.security.disabled': 'true',
-        'OPENSEARCH_INITIAL_ADMIN_PASSWORD': 'WazuhTest99$',
+        'OPENSEARCH_INITIAL_ADMIN_PASSWORD': OPENSEARCH_PASSWORD,
     }
     client.containers.run("opensearchproject/opensearch", detach=True, ports={'9200/tcp': 9200},
                           environment=env_vars, name='opensearch', stdout=True, stderr=True)
@@ -52,6 +54,34 @@ def opensearch():
     for container in client.containers.list():
         container.stop()
     client.containers.prune()
+
+def run_command(command):
+    """ Runs a command using subprocess.Popen. In case of failure, it logs the error and fails the test.
+
+    Args:
+        command (str): The command to run
+
+    """
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True) as process:
+        stdout, stderr = process.communicate()
+        if process.returncode != 0:
+            LOGGER.error("Error running command: %s", command)
+            LOGGER.error("stdout: %s", stdout.decode())
+            LOGGER.error("stderr: %s", stderr.decode())
+            pytest.fail()
+
+@pytest.fixture(scope='session')
+def wazuh_keystore():
+    # Save credentials in the keystore
+    wazuh_keystore_path = Path("engine/build/source/keystore/", "wazuh-keystore")
+
+    keystore_args = ["-f", "indexer", "-k", "username", "-v", "admin", "-p", KEYSTORE_PATH]
+    kesytore_command = [wazuh_keystore_path] + keystore_args
+    run_command(kesytore_command)
+
+    keystore_args = ["-f", "indexer", "-k", "password", "-v", OPENSEARCH_PASSWORD, "-p", KEYSTORE_PATH]
+    kesytore_command = [wazuh_keystore_path] + keystore_args
+    run_command(kesytore_command)
 
 def test_opensearch_health(opensearch):
     url = 'http://localhost:9200/_cluster/health?wait_for_status=green&timeout=10s'

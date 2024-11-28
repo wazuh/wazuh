@@ -31,15 +31,21 @@ int main(int argc, char* argv[])
         std::string key = args.getKey();
         std::string column = args.getColumnFamily();
         std::string value = args.getValue();
+        std::string keystorePath = args.getKeystorePath();
+
+        if (keystorePath.empty())
+        {
+            keystorePath = KEYSTORE_PATH;
+        }
 
         if (value.empty())
         {
-            Keystore::get(column, key, value);
+            Keystore::get(column, key, value, keystorePath);
             std::cout << value << std::endl;
         }
         else
         {
-            Keystore::put(column, key, value);
+            Keystore::put(column, key, value, keystorePath);
         }
     }
     catch (const std::exception& e)

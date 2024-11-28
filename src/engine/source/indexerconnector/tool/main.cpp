@@ -120,6 +120,11 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
             indexerConnectorOptions.sslOptions.key = config.at("ssl").at("key").get_ref<const std::string&>();
         }
     }
+
+    if (config.contains("keystorePath"))
+    {
+        indexerConnectorOptions.keystorePath = config.at("keystorePath").get_ref<const std::string&>();
+    }
 }
 
 int main(const int argc, const char* argv[])
