@@ -38,15 +38,18 @@ pip3 install ${ENGINE_SRC}/test/helper_tests/engine-helper-test
 
 # Launch the engine and save the PID
 echo "Launching the engine"
-/bin/wazuh-engine server start &
+/usr/share/wazuh-server/bin/wazuh-engine server start &
 echo $! > /tmp/engine.pid
+
 # Check for the socket to be created
-while [ ! -S /run/wazuh-server/engine.socket ]; do
-    sleep 2
+timeout=60
+SECONDS=0
+until [ -s /run/wazuh-server/engine.socket ] || (( SECONDS >= timeout )); do
+    sleep 1
 done
 # Add GeoIP databases
-wazuh-engine geo add /tmp/GeoLite2-City.mmdb city
-wazuh-engine geo add /tmp/GeoLite2-ASN.mmdb asn
+/usr/share/wazuh-server/bin/wazuh-engine geo add /tmp/GeoLite2-City.mmdb city
+/usr/share/wazuh-server/bin/wazuh-engine geo add /tmp/GeoLite2-ASN.mmdb asn
 echo "Stopping the engine"
 kill -SIGTERM $(cat /tmp/engine.pid)
 
