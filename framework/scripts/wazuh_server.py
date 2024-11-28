@@ -134,20 +134,18 @@ def start_daemons(background_mode: bool, root: bool):
         Whether the script is running as root or not.
     """
 
-    daemons = [
-        {'name': ENGINE_DAEMON_NAME, 'args': [ENGINE_BINARY_PATH, 'server', 'start']},
-        {'name': COMMS_API_DAEMON_NAME,
-         'args': [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
+    daemons = {
+        ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', 'start'],
+        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
             + (['-r'] if root else [])
-            + (['-d'] if background_mode else [])},
-        {'name': MANAGEMENT_API_DAEMON_NAME,
-         'args': [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
+            + (['-d'] if background_mode else []),
+        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
             + (['-r'] if root else [])
-            + (['-d'] if background_mode else [])},
-    ]
+            + (['-d'] if background_mode else []),
+    }
 
-    for daemon in daemons:
-        start_daemon(background_mode, daemon['name'], daemon['args'])
+    for name, args in daemons.items():
+        start_daemon(background_mode, name, args)
 
 
 def shutdown_daemon(name: str):

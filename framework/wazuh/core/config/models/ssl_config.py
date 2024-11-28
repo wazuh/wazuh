@@ -60,6 +60,28 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
     certificate_authorities: List[str] = Field(default=[''], min_length=1)
     verify_certificates: bool = True
 
+    @classmethod
+    def _validate_file_path(cls, path: str, field_name: str):
+        """Validate that a single file path is non-empty and points to an existing file.
+
+        Parameters
+        ----------
+        path : str
+            File path to validate.
+        field_name : str
+            Name of the field being validated.
+
+        Raises
+        ------
+        ValueError
+            If the file path is empty or the file does not exist.
+        """
+        if path == '':
+            raise ValueError(f'{field_name}: missing certificate file')
+
+        if not os.path.isfile(path):
+            raise ValueError(f"{field_name}: the file '{path}' does not exist")
+
     @field_validator('key', 'certificate')
     @classmethod
     def validate_ssl_files(cls, path: str, info: ValidationInfo) -> str:
@@ -83,12 +105,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
             SSL certificate/key path.
         """
         if info.data['use_ssl']:
-            if path == '':
-                raise ValueError(f'{info.field_name}: missing certificate file')
-
-            if not os.path.isfile(path):
-                raise ValueError(f"{info.field_name}: the file '{path}' does not exist")
-        
+            cls._validate_file_path(path, info.field_name)
         return path
 
     @field_validator('certificate_authorities')
@@ -115,11 +132,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         """
         if info.data['use_ssl']:
             for path in paths:
-                if path == '':
-                    raise ValueError(f'{info.field_name}: missing certificate file')
-
-                if not os.path.isfile(path):
-                    raise ValueError(f"{info.field_name}: the file '{path}' does not exist")
+                cls._validate_file_path(path, info.field_name)
 
         return paths
 
