@@ -16,9 +16,6 @@
 
 #include "keyStore.hpp"
 
-// Database constants, based on the keystore path.
-constexpr auto DATABASE_PATH {"/var/lib/wazuh-server/keystore"};
-
 // KS_VERSION is the current version of the keystore. Used to identify the version of the keystore in the database.
 // KS_VERSION_FIELD is the field used to store the version of the keystore in the database.
 constexpr auto KS_VERSION {"1"};
@@ -57,13 +54,16 @@ static void upgrade(utils::rocksdb::RocksDBWrapper& keystoreDB, const std::strin
     }
 }
 
-void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
+void Keystore::put(const std::string& columnFamily,
+                   const std::string& key,
+                   const std::string& value,
+                   const std::string& databasePath)
 {
     std::vector<char> encryptedValue;
 
     EVPHelper().encryptAES256(value, encryptedValue);
 
-    auto keystoreDB = utils::rocksdb::RocksDBWrapper(DATABASE_PATH, false);
+    auto keystoreDB = utils::rocksdb::RocksDBWrapper(databasePath, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -86,11 +86,14 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
  * @param key The key to be inserted or updated.
  * @param value The corresponding value to be returned.
  */
-void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value)
+void Keystore::get(const std::string& columnFamily,
+                   const std::string& key,
+                   std::string& value,
+                   const std::string& databasePath)
 {
     std::string encryptedValue;
 
-    auto keystoreDB = utils::rocksdb::RocksDBWrapper(DATABASE_PATH, false);
+    auto keystoreDB = utils::rocksdb::RocksDBWrapper(databasePath, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {

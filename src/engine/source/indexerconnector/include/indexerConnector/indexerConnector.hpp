@@ -36,7 +36,7 @@ struct IndexerConnectorOptions
 {
     std::string name;               ///< The name of the index to push the data.
     std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
-
+    std::string keystorePath;       ///< The path to the keystore.
     struct
     {
         std::vector<std::string> cacert; ///< The list of CA certificates to trust.

@@ -14,6 +14,9 @@
 
 #include <string>
 
+// Database constants, based on the keystore path.
+constexpr auto KEYSTORE_PATH {"/var/lib/wazuh-server/keystore"};
+
 class Keystore final
 {
 
@@ -26,8 +29,12 @@ public:
      * @param columnFamily The target column family.
      * @param key The key to be inserted or updated.
      * @param value The corresponding value.
+     * @param databasePath The path to the database file.
      */
-    static void put(const std::string& columnFamily, const std::string& key, const std::string& value);
+    static void put(const std::string& columnFamily,
+                    const std::string& key,
+                    const std::string& value,
+                    const std::string& databasePath = KEYSTORE_PATH);
 
     /**
      * Get the key value in the specified column family.
@@ -35,8 +42,12 @@ public:
      * @param columnFamily The target column family.
      * @param key The key to be inserted or updated.
      * @param value The corresponding value to be returned.
+     * @param databasePath The path to the database file.
      */
-    static void get(const std::string& columnFamily, const std::string& key, std::string& value);
+    static void get(const std::string& columnFamily,
+                    const std::string& key,
+                    std::string& value,
+                    const std::string& databasePath = KEYSTORE_PATH);
 };
 
 #endif // _KEYSTORE_HPP
