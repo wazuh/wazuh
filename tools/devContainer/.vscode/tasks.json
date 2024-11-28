@@ -56,7 +56,7 @@
 		{
 			"label": "Build clean python venv",
 			"type": "shell",
-			"command": "rm -rf ${env:TMP_PY_VENV}; python -m venv ${env:TMP_PY_VENV};. ${env:TMP_PY_VENV}/bin/activate; pip install behave pyyaml protobuf==4.21",
+			"command": "rm -rf ${env:TMP_PY_VENV}; python -m venv ${env:TMP_PY_VENV};. ${env:TMP_PY_VENV}/bin/activate; pip install behave pyyaml protobuf==4.21 docker lxml",
 			"args": [
 			],
 			"problemMatcher": []

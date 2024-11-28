@@ -45,11 +45,7 @@
                 {
                     "name": "WAZUH_SERVER_API_SOCKET",
                     "value": "/var/ossec/queue/sockets/engine-api"
-                },
-                {
-                    "name": "WAZUH_SERVER_EVENT_SOCKET",
-                    "value": "/var/ossec/queue/sockets/queue"
-                },
+                }
                 */
             ],
             "MIMode": "gdb",
