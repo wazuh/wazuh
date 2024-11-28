@@ -8,7 +8,7 @@ Type=forking
 LimitNOFILE=65536
 
 # TODO: Remove root flag
-ExecStart=/usr/bin/env WAZUH_HOME_TMPusr/share/wazuh-server/bin/wazuh-server start -r
+ExecStart=/usr/bin/env WAZUH_HOME_TMPusr/share/wazuh-server/bin/wazuh-server start -rd
 ExecStop=/usr/bin/env WAZUH_HOME_TMPusr/share/wazuh-server/bin/wazuh-server stop
 
 KillMode=process
