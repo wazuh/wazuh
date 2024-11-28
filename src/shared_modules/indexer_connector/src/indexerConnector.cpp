@@ -116,6 +116,11 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
+static void builderDeleteByQuery(nlohmann::json& bulkData, const std::string& agentId)
+{
+    bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
+}
+
 bool IndexerConnector::abuseControl(const std::string& agentId)
 {
     const auto currentTime = std::chrono::system_clock::now();
@@ -391,9 +396,11 @@ IndexerConnector::IndexerConnector(
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
-            auto url = selector->getNext();
+            // Accumulator for data to be sent to the indexer via bulk requests.
             std::string bulkData;
-            url.append("/_bulk?refresh=wait_for");
+
+            // Accumulator for data to be sent to the indexer via query requests.
+            nlohmann::json queryData;
 
             while (!dataQueue.empty())
             {
@@ -431,6 +438,19 @@ IndexerConnector::IndexerConnector(
                     }
                     m_db->delete_(id);
                 }
+                else if (operation.compare("DELETED_BY_QUERY") == 0)
+                {
+                    logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
+                    if (!noIndex)
+                    {
+                        builderDeleteByQuery(queryData, id);
+                    }
+
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
+                }
                 else
                 {
                     logDebug2(IC_NAME, "Added document for insertion with id: %s.", id.c_str());
@@ -450,25 +470,39 @@ IndexerConnector::IndexerConnector(
                 }
             }
 
-            if (!bulkData.empty())
+            // Send data to the indexer to be processed.
+            const auto processData = [&secureCommunication](const std::string& data, const std::string& url)
             {
-                auto onSuccess = [](const std::string& response)
+                const auto onSuccess = [](const std::string& response)
                 {
                     logDebug2(IC_NAME, "Response: %s", response.c_str());
                 };
 
-                auto onError = [](const std::string& error, const long statusCode)
+                const auto onError = [](const std::string& error, const long statusCode)
                 {
                     logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
                     throw std::runtime_error(error);
                 };
 
-                // Process data.
-                HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url),
-                                                                .data = bulkData,
-                                                                .secureCommunication = secureCommunication},
-                                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                             {});
+                HTTPRequest::instance().post(
+                    RequestParameters {.url = HttpURL(url), .data = data, .secureCommunication = secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                    {});
+            };
+
+            const auto serverUrl = selector->getNext();
+
+            // Depending on the data, send it to the indexer via bulk or query requests.
+            if (!bulkData.empty())
+            {
+                const auto url = serverUrl + "/_bulk?refresh=wait_for";
+                processData(bulkData, url);
+            }
+
+            if (!queryData.empty())
+            {
+                const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
+                processData(queryData.dump(), url);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
