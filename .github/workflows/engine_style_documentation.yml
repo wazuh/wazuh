@@ -95,7 +95,7 @@ jobs:
           cd src/engine
           ERRORS_APIDOC_FILE=apidoc_errors.txt
           ERRORS_OPENAPI_FILE=openapi_errors.txt
-          apidoc -i . -o . -f source/cmds/src/start.cpp 2> ${ERRORS_APIDOC_FILE}
+          apidoc -i . -o . -f source/main.cpp 2> ${ERRORS_APIDOC_FILE}
           npx apidoc-openapi-3-1 2> ${ERRORS_OPENAPI_FILE}
 
           # Check if there are errors
@@ -169,7 +169,7 @@ jobs:
 
             ERRORS_FILE=clang_format_errors.txt
             clang-format $arguments 2> ${ERRORS_FILE}
-            
+
             # Print clanformat version used.
             echo "Clang-format version: $(clang-format --version)"
 

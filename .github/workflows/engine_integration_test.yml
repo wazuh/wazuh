@@ -59,7 +59,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.12
 
     - name: Install dependencies
       # Install behave
@@ -96,7 +96,7 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init -b ${{env.ENGINE_DIR}}/build/main
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init
 
     - name: Integration Test
       run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run

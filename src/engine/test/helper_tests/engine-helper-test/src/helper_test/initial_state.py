@@ -18,8 +18,6 @@ def configure(subparsers):
                                    help="Update configuration, create kvdbs and mmdbs"
                                    )
 
-    parser.add_argument("-b", "--binary", required=True,
-                        help="Path to the binary file")
     parser.add_argument("--mmdb", required=True,
                         help="Directory path where the as and geo databases are located")
     parser.add_argument("--conf", required=True,
@@ -32,7 +30,10 @@ def cpy_conf(env_path: Path, conf_path: Path) -> Path:
     if not conf_path.is_file():
         raise FileNotFoundError(f"File {conf_path} does not exist")
     serv_conf_file = conf_path
-    dest_conf_file = env_path / 'engine' / 'general.conf'
+    dest_conf_file = env_path / 'config.env'
+
+    if dest_conf_file.is_file():
+        dest_conf_file.rename(dest_conf_file.with_suffix('.bak'))
 
     conf_str = serv_conf_file.read_text().replace(PLACEHOLDER, env_path.as_posix())
     dest_conf_file.write_text(conf_str)
@@ -40,18 +41,18 @@ def cpy_conf(env_path: Path, conf_path: Path) -> Path:
     return dest_conf_file
 
 
-def cpy_bin(env_path: Path, bin_path: Path) -> Path:
-    dest_bin_path = env_path / 'bin/wazuh-engine'
-    dest_bin_path.parent.mkdir(parents=True, exist_ok=True)
-
-    return shutil.copy(bin_path, dest_bin_path)
-
-
 def cpy_mmdb(env_path: Path, health_test_path: Path) -> Tuple[Path, Path]:
     mmdb_asn_path = health_test_path / 'testdb-asn.mmdb'
-    dest_mmdb_asn_path = env_path / 'engine' / 'etc' / 'testdb-asn.mmdb'
+    dest_mmdb_asn_path = env_path / 'mmdbs' / 'testdb-asn.mmdb'
     mmdb_city_path = health_test_path / 'testdb-city.mmdb'
-    dest_mmdb_city_path = env_path / 'engine' / 'etc' / 'testdb-city.mmdb'
+    dest_mmdb_city_path = env_path / 'mmdbs' / 'testdb-city.mmdb'
+
+    if not mmdb_asn_path.is_file():
+        raise FileNotFoundError(f"Copy mmdb failed: File {mmdb_asn_path} does not exist")
+    if not mmdb_city_path.is_file():
+        raise FileNotFoundError(f"Copy mmdb failed: File {mmdb_city_path} does not exist")
+
+    dest_mmdb_asn_path.parent.mkdir(parents=True, exist_ok=True)
 
     dest_mmdb_asn_path.write_bytes(mmdb_asn_path.read_bytes())
     dest_mmdb_city_path.write_bytes(mmdb_city_path.read_bytes())
@@ -60,7 +61,7 @@ def cpy_mmdb(env_path: Path, health_test_path: Path) -> Tuple[Path, Path]:
 
 
 def cpy_kvdb(env_path: Path):
-    kvdb_path = env_path / "engine" / "etc" / "kvdb" / "test.json"
+    kvdb_path = env_path / "tmp" / "kvdb_test.json"
     kvdb_path.parent.mkdir(parents=True, exist_ok=True)
     kvdb_path.write_text(
         '{"test": {"key": "value"}, "test_bitmask": {"33": "some_data"}}')
@@ -81,16 +82,12 @@ def load_mmdb(engine_handler: EngineHandler, mmdb_path: Path, mmdb_type: str) ->
     print(f"MMDB file loaded.")
 
 
-def init(env_path: Path, conf_path: Path, mmdb_dir: Path, binary_path: Path):
+def init(env_path: Path, conf_path: Path, mmdb_dir: Path):
     engine_handler: Optional[EngineHandler] = None
 
     print(f"Copying configuration file to {env_path}...")
     config_path = cpy_conf(env_path, conf_path)
     print("Configuration file copied.")
-
-    print(f"Copying binary file to {env_path}...")
-    binary_path = cpy_bin(env_path, binary_path)
-    print("Binary file copied.")
 
     print("Copying MMDB test files...")
     asn_path, city_path = cpy_mmdb(env_path, mmdb_dir)
@@ -99,6 +96,8 @@ def init(env_path: Path, conf_path: Path, mmdb_dir: Path, binary_path: Path):
     print("Creating KVDB...")
     cpy_kvdb(env_path)
     print("KVDB created.")
+
+    binary_path = env_path / 'wazuh-engine'
 
     try:
         print("Starting engine...")
@@ -126,10 +125,9 @@ def run(args):
     env_path = Path(args['environment']).resolve()
     conf_dir = Path(args['conf']).resolve()
     mmdb_dir = Path(args['mmdb']).resolve()
-    bin_path = Path(args['binary']).resolve()
 
     try:
-        init(env_path, conf_dir, mmdb_dir, bin_path)
+        init(env_path, conf_dir, mmdb_dir)
     except Exception as e:
         print(f"An error occurred: {e}")
         sys.exit(1)
