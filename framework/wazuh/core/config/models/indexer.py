@@ -6,7 +6,7 @@ from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 
 class IndexerNode(WazuhConfigBaseModel):
-    """Indexer instance connection configuration
+    """Indexer instance connection configuration.
 
     Parameters
     ----------
