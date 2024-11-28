@@ -20,7 +20,6 @@
 #include <api/tester/handlers.hpp>
 #include <apiserver/apiServer.hpp>
 #include <base/logging.hpp>
-#include <base/parseEvent.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
 #include <conf/conf.hpp>
@@ -662,19 +661,6 @@ int main(int argc, char* argv[])
                                                        confManager.get<int>(conf::key::SERVER_API_QUEUE_SIZE),
                                                        confManager.get<int>(conf::key::SERVER_API_TIMEOUT));
             server->addEndpoint("API", apiEndpointCfg);
-
-            // Event Endpoint
-            auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
-            auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
-            auto eventHandler = std::bind(&router::Orchestrator::pushEvent, orchestrator, std::placeholders::_1);
-            auto eventEndpointCfg =
-                std::make_shared<endpoint::UnixDatagram>(confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET),
-                                                         eventHandler,
-                                                         eventMetricScope,
-                                                         eventMetricScopeDelta,
-                                                         confManager.get<int>(conf::key::SERVER_EVENT_QUEUE_SIZE));
-            server->addEndpoint("EVENT", eventEndpointCfg);
-            LOG_DEBUG("Server configured.");
         }
     }
     catch (const std::exception& e)
