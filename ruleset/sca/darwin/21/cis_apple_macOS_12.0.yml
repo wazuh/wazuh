@@ -33,7 +33,7 @@ checks:
   # 1.1 Ensure All Apple-provided Software Is Current (Automated) - Not Implemented
 
   # 1.2 Ensure Auto Update Is Enabled (Automated)
-  - id: 29000
+  - id: 29001
     title: "Ensure Auto Update Is Enabled."
     description: 'Auto Update verifies that your system has the newest security patches and software updates. If "Automatically check for updates" is not selected background updates for new malware definition files from Apple for XProtect and Gatekeeper will not occur.'
     rationale: "It is important that a system has the newest updates applied so as to prevent unauthorized persons from exploiting identified vulnerabilities."
@@ -50,7 +50,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep AutomaticCheckEnabled" -> r:AutomaticCheckEnabled\s*=\s*1'
 
   # 1.3 Ensure Download New Updates When Available is Enabled (Automated)
-  - id: 29001
+  - id: 29002
     title: "Ensure Download New Updates When Available is Enabled."
     description: 'In the GUI both "Install macOS updates" and "Install app updates from the App Store" are dependent on whether "Download new updates when available" is selected.'
     rationale: "It is important that a system has the newest updates downloaded so that they can be applied."
@@ -65,7 +65,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep AutomaticDownload" -> r:AutomaticDownload\s*=\s*1'
 
   # 1.4 Ensure Installation of App Update Is Enabled (Automated)
-  - id: 29002
+  - id: 29003
     title: "Ensure Installation of App Update Is Enabled."
     description: "Ensure that application updates are installed after they are available from Apple. These updates do not require reboots or admin privileges for end users."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
@@ -79,7 +79,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep AutomaticallyInstallAppUpdates" -> r:AutomaticallyInstallAppUpdates\s*=\s*1'
 
   # 1.5 Ensure System Data Files and Security Updates Are Downloaded Automatically Is Enabled (Automated)
-  - id: 29003
+  - id: 29004
     title: "Ensure System Data Files and Security Updates Are Downloaded Automatically Is Enabled."
     description: "Ensure that system and security updates are installed after they are available from Apple. This setting enables definition updates for XProtect and Gatekeeper. With this setting in place new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
@@ -96,7 +96,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -> r:^1$"
 
   # 1.6 Ensure Install of macOS Updates Is Enabled (Automated)
-  - id: 29004
+  - id: 29005
     title: "Ensure Install of macOS Updates Is Enabled."
     description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off so the admin can call the users first to let them know it's ok to install. A dependable, repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
@@ -118,7 +118,7 @@ checks:
   ############################################################
 
   # 2.1.1 Ensure Bluetooth Is Disabled If No Devices Are Paired (Automated)
-  - id: 29005
+  - id: 29006
     title: "Ensure Bluetooth Is Disabled If No Devices Are Paired."
     description: "Bluetooth devices use a wireless communications system that replaces the cables used by other peripherals to connect to a system. It is by design a peer-to-peer network technology and typically lacks centralized administration and security enforcement infrastructure."
     rationale: "Bluetooth is particularly susceptible to a diverse set of security vulnerabilities involving identity detection, location tracking, denial of service, unintended control and access of data and voice channels, and unauthorized device control and data access."
@@ -132,7 +132,7 @@ checks:
       - "c:system_profiler SPBluetoothDataType -> r:Connected: Yes"
 
   # 2.1.2 Ensure Show Bluetooth Status in Menu Bar Is Enabled (Automated)
-  - id: 29006
+  - id: 29007
     title: "Ensure Show Bluetooth Status in Menu Bar Is Enabled."
     description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
     rationale: 'Enabling "Show Bluetooth status in menu bar" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active.'
@@ -149,7 +149,7 @@ checks:
   # 2.2 Date & Time
   ############################################################
   # 2.2.1 Ensure "Set time and date automatically" Is Enabled (Automated)
-  - id: 29007
+  - id: 29008
     title: 'Ensure "Set time and date automatically" Is Enabled'
     description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries."
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
@@ -163,7 +163,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep forceAutomaticDateAndTime" -> r:forceAutomaticDateAndTime\s*=\s*1'
 
   # 2.2.2 Ensure time set is within appropriate limits (Automated)
-  - id: 29008
+  - id: 29009
     title: "Ensure time set is within appropriate limits."
     description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries. Ensure that time on the computer is within acceptable limits. Truly accurate time is measured within milliseconds. For this audit, a drift under four and a half minutes passes the control check. Since Kerberos is one of the important features of macOS integration into Directory systems the guidance here is to warn you before there could be an impact to operations. From the perspective of accurate time, this check is not strict, so it may be too great for your organization. Your organization can adjust to a smaller offset value as needed. Note: ntpdate has been deprecated with 10.14. sntp replaces that command. NOTE: set the correct network time server in the rules."
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features. Audit check is for more than 4 minutes and 30 seconds ahead or behind."
@@ -181,7 +181,7 @@ checks:
   # 2.3 Desktop & Screen Saver
   ############################################################
   # 2.3.1 Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled (Automated)
-  - id: 29009
+  - id: 29010
     title: "Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled."
     description: "A locking screensaver is one of the standard security controls to limit access to a computer and the current user's session when the computer is temporarily unused or unattended. In macOS the screensaver starts after a value selected in a drop down menu, 10 minutes and 20 minutes are both options and either is acceptable. Any value can be selected through the command line or script but a number that is not reflected in the GUI can be problematic. 20 minutes is the default for new accounts."
     rationale: "Setting an inactivity interval for the screensaver prevents unauthorized persons from viewing a system left unattended for an extensive period of time."
@@ -196,7 +196,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep idleTime" -> n:idleTime\s*=\s*(\d+) compare <= 1200'
 
   # 2.3.2 Ensure Screen Saver Corners Are Secure (Automated)
-  - id: 29010
+  - id: 29011
     title: "Ensure Screen Saver Corners Are Secure."
     description: "Hot Corners can be configured to disable the screen saver by moving the mouse cursor to a corner of the screen."
     rationale: "Setting a hot corner to disable the screen saver poses a potential security risk since an unauthorized person could use this to bypass the login screen and gain access to the system."
@@ -217,7 +217,7 @@ checks:
   # 2.4 Sharing
   ############################################################
   # 2.4.1 Ensure Remote Apple Events Is Disabled (Automated)
-  - id: 29011
+  - id: 29012
     title: "Ensure Remote Apple Events Is Disabled."
     description: "Apple Events is a technology that allows one program to communicate with other programs. Remote Apple Events allows a program on one computer to communicate with a program on a different computer."
     rationale: "Disabling Remote Apple Events mitigates the risk of an unauthorized program gaining access to the system."
@@ -230,7 +230,7 @@ checks:
       - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
 
   # 2.4.2 Ensure Internet Sharing Is Disabled (Automated)
-  - id: 29012
+  - id: 29013
     title: "Ensure Internet Sharing Is Disabled"
     description: "Internet Sharing uses the open source natd process to share an internet connection with other computers and devices on a local network. This allows the Mac to function as a router and share the connection to other, possibly unauthorized, devices."
     rationale: "Disabling Internet Sharing reduces the remote attack surface of the system."
@@ -244,7 +244,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep forceInternetSharingOff" -> r:forceInternetSharingOff\s*=\s*1'
 
   # 2.4.3 Ensure Screen Sharing Is Disabled (Automated)
-  - id: 29013
+  - id: 29014
     title: "Ensure Screen Sharing Is Disabled."
     description: "Screen Sharing allows a computer to connect to another computer on a network and display the computer’s screen. While sharing the computer’s screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer."
     rationale: "Disabling Screen Sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
@@ -257,7 +257,7 @@ checks:
       - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.screensharing\" => true''" -> 1'
 
   # 2.4.4 Ensure Printer Sharing Is Disabled (Automated)
-  - id: 29014
+  - id: 29015
     title: "Ensure Printer Sharing Is Disabled."
     description: "By enabling Printer Sharing the computer is set up as a print server to accept print jobs from other computers. Dedicated print servers or direct IP printing should be used instead."
     rationale: "Disabling Printer Sharing mitigates the risk of attackers attempting to exploit the print server to gain access to the system."
@@ -272,7 +272,7 @@ checks:
       - 'c:sh -c "cupsctl | grep _share_printers | cut -d ''='' -f2" -> 0'
 
   # 2.4.5 Ensure Remote Login Is Disabled (Automated)
-  - id: 29015
+  - id: 29016
     title: "Ensure Remote Login Is Disabled."
     description: "Remote Login allows an interactive terminal connection to a computer."
     rationale: "Disabling Remote Login mitigates the risk of an unauthorized person gaining access to the system via Secure Shell (SSH). While SSH is an industry standard to connect to posix servers, the scope of the benchmark is for Apple macOS clients, not servers. macOS does have an IP based firewall available (pf, ipfw has been deprecated) that is not enabled or configured. There are more details and links in section 7.5. macOS no longer has TCP Wrappers support built-in and does not have strong Brute-Force password guessing mitigations, or frequent patching of openssh by Apple. Most macOS computers are mobile workstations, managing IP based firewall rules on mobile devices can be very resource intensive. All of these factors can be parts of running a hardened SSH server."
@@ -285,7 +285,7 @@ checks:
       - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
 
   # 2.4.6 Ensure DVD or CD Sharing Is Disabled (Automated)
-  - id: 29016
+  - id: 29017
     title: "Ensure DVD or CD Sharing Is Disabled."
     description: "DVD or CD Sharing allows users to remotely access the system's optical drive. While Apple does not ship Macs with built-in optical drives any longer, external optical drives are still recognized when they are connected. In testing the sharing of an external optical drive persists when a drive is reconnected."
     rationale: "Disabling DVD or CD Sharing minimizes the risk of an attacker using the optical drive as a vector for attack and exposure of sensitive data."
@@ -298,7 +298,7 @@ checks:
       - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.ODSAgent\" => true''" -> 1'
 
   # 2.4.7 Ensure Bluetooth Sharing Is Disabled (Automated)
-  - id: 29017
+  - id: 29018
     title: "Ensure Bluetooth Sharing Is Disabled."
     description: "Bluetooth Sharing allows files to be exchanged with Bluetooth enabled devices."
     rationale: "Disabling Bluetooth Sharing minimizes the risk of an attacker using Bluetooth to remotely attack the system."
@@ -312,7 +312,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep PrefKeyServicesEnabled" -> r:PrefKeyServicesEnabled\s*=\s*0|^[^\W]*$'
 
   # 2.4.8 Ensure File Sharing Is Disabled (Automated)
-  - id: 29018
+  - id: 29019
     title: "Ensure File Sharing Is Disabled."
     description: "Server Message Block (SMB), Common Internet File System (CIFS) When Windows (or possibly Linux) computers need to access file shared on a Mac, SMB/CIFS file sharing is commonly used. Apple warns that SMB sharing stores passwords is a less secure fashion than AFP sharing and anyone with system access can gain access to the password for that account. When sharing with SMB, each user that will access the Mac must have SMB enabled."
     rationale: "By disabling file sharing, the remote attack surface and risk of unauthorized access to files stored on the system is reduced."
@@ -325,7 +325,7 @@ checks:
       - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.smbd\" => true''" -> 1'
 
   # 2.4.9 Ensure Remote Management Is Disabled (Automated)
-  - id: 29019
+  - id: 29020
     title: "Ensure Remote Management Is Disabled."
     description: "Remote Management is the client portion of Apple Remote Desktop (ARD). Remote Management can be used by remote administrators to view the current screen, install software, report on, and generally manage client Macs. The screen sharing options in Remote Management are identical to those in the Screen Sharing section. In fact, only one of the two can be configured. If Remote Management is used, refer to the Screen Sharing section above on issues regard screen sharing. Remote Management should only be enabled when a Directory is in place to manage the accounts with access. Computers will be available on port 5900 on a macOS System and could accept connections from untrusted hosts depending on the configuration, definitely a concern for mobile systems."
     rationale: "Remote Management should only be enabled on trusted networks with strong user controls present in a Directory system. Mobile devices without strict controls are vulnerable to exploit and monitoring."
@@ -338,7 +338,7 @@ checks:
       - "not p:/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"
 
   # 2.4.10 Ensure Content Caching Is Disabled (Automated)
-  - id: 29020
+  - id: 29021
     title: "Ensure Content Caching Is Disabled."
     description: "Starting with 10.13 (macOS High Sierra) Apple introduced a service to make it easier to deploy data from Apple, including software updates, where there are bandwidth constraints to the Internet and fewer constraints and greater bandwidth on the local subnet. This capability can be very valuable for organizations that have throttled and possibly metered Internet connections. In heterogeneous enterprise networks with multiple subnets the effectiveness of this capability would be determined on how many Macs were on each subnet at the time new large updates were made available upstream. This capability requires the use of mac OS clients as P2P nodes for updated Apple content. Unless there is a business requirement to manage operational Internet connectivity bandwidth user endpoints should not store content and act as a cluster to provision data."
     rationale: "The main use case for Mac computers is as mobile user endpoints. P2P sharing services should not be enabled on laptops that are using untrusted networks. Content Caching can allow a computer to be a server for local nodes on an untrusted network. While there are certainly logical controls that could be used to mitigate risk they add to the management complexity, since the value of the service is in specific use cases organizations with the use case described above can accept risk as necessary."
@@ -352,7 +352,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep allowContentCaching" -> r:allowContentCaching\s*=\s*0'
 
   # 2.4.11 Ensure AirDrop Is Disabled (Automated)
-  - id: 29021
+  - id: 29022
     title: "Ensure AirDrop Is Disabled."
     description: "AirDrop is Apple's built-in on demand ad hoc file exchange system that is compatible with both macOS and iOS. It uses Bluetooth LE for discovery that limits connectivity to Mac or iOS users that are in close proximity. Depending on the setting it allows everyone or only Contacts to share files when they are nearby to each other. In many ways this technology is far superior to the alternatives. The file transfer is done over a TLS encrypted session, does not require any open ports that are required for file sharing, does not leave file copies on email servers or within cloud storage, and allows for the service to be mitigated so that only people already trusted and added to contacts can interact with you. While there are positives to AirDrop, there are privacy concerns that could expose personal information. For that reason, AirDrop should be disabled, and should only be enabled when needed and disabled afterwards."
     rationale: "AirDrop can allow malicious files to be downloaded from unknown sources. Contacts Only limits may expose personal information to devices in the same area."
@@ -370,7 +370,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep DisableAirDrop" -> r:DisableAirDrop\s*=\s*1'
 
   # 2.4.12 Ensure Media Sharing Is Disabled (Automated)
-  - id: 29022
+  - id: 29023
     title: "Ensure Media Sharing Is Disabled."
     description: "Starting with macOS 10.15 Apple has provided a control to allow a user to share Apple downloaded content on all Apple devices that are signed in with the same Apple ID. This allows a user to share downloaded Movies, Music or TV shows with other controlled macOS, iOS and iPadOS devices as well as photos with Apple TVs. With this capability guest users can also use media downloaded on the computer. The recommended best practice is not to use the computer as a server but to utilize Apple's cloud storage to download and use content stored there if content stored with Apple is used on multiple devices."
     rationale: "Disabling Media Sharing reduces the remote attack surface of the system."
@@ -395,7 +395,7 @@ checks:
   # 2.5.1 Encryption
   ############################################################
   # 2.5.1.1 Ensure FileVault Is Enabled (Automated)
-  - id: 29023
+  - id: 29024
     title: "Ensure FileVault Is Enabled."
     description: "FileVault secures a system's data by automatically encrypting its boot volume and requiring a password or recovery key to access it. FileVault may also be enabled using command line using the fdesetup command. To use this functionality, consult the Der Flounder blog for more details (see references)."
     rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it."
@@ -417,7 +417,7 @@ checks:
   # 2.5.2 Firewall
   ############################################################
   # 2.5.2.1 Ensure Gatekeeper is Enabled (Automated)
-  - id: 29024
+  - id: 29025
     title: "Ensure Gatekeeper is Enabled."
     description: "Gatekeeper is Apple's application allowlisting control that restricts downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization."
     rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
@@ -432,7 +432,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep EnableAssessment" -> r:EnableAssessment\s*=\s*1'
 
   # 2.5.2.2 Ensure Firewall Is Enabled (Automated)
-  - id: 29025
+  - id: 29026
     title: "Ensure Firewall Is Enabled."
     description: "A firewall is a piece of software that blocks unwanted incoming connections to a system. Apple has posted general documentation about the application firewall."
     rationale: "A firewall minimizes the threat of unauthorized users from gaining access to your system while connected to a network or the Internet."
@@ -449,7 +449,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep EnableFirewall" -> r:EnableFirewall\s*=\s*1'
 
   # 2.5.2.3 Ensure Firewall Stealth Mode Is Enabled (Automated)
-  - id: 29026
+  - id: 29027
     title: "Ensure Firewall Stealth Mode Is Enabled."
     description: "While in Stealth mode the computer will not respond to unsolicited probes, dropping that traffic."
     rationale: "Stealth mode on the firewall minimizes the threat of system discovery tools while connected to a network or the Internet."
@@ -465,7 +465,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep EnableStealthMode" -> r:EnableStealthMode\s*=\s*1'
 
   # 2.5.3 Ensure Location Services Is Enabled (Automated)
-  - id: 29027
+  - id: 29028
     title: "Ensure Location Services Is Enabled."
     description: "macOS uses location information gathered through local Wi-Fi networks to enable applications to supply relevant information to users. With the operating system verifying the location, users do not need to change the time or the time zone. The computer will change them based on the user's location. They do not need to specify their location for weather or travel times and even get alerts on travel times to meetings and appointment where location information is supplied. Location Services simplify some processes, for the purpose of asset management and time and log management, with mobile computers. There are some use cases where it is important that the computer not be able to report its exact location. While the general use case is to enable Location Services, it should not be allowed if the physical location of the computer and the user should not be public knowledge."
     rationale: "Location Services are helpful in most use cases and can simplify log and time management where computers change time zones."
@@ -482,7 +482,7 @@ checks:
   # 2.5.4 Audit Location Services Access (Manual) - Not implemented
 
   # 2.5.5 Ensure Sending Diagnostic and Usage Data to Apple Is Disabled (Automated)
-  - id: 29028
+  - id: 29029
     title: "Ensure Sending Diagnostic and Usage Data to Apple Is Disabled."
     description: "Apple provides a mechanism to send diagnostic and analytics data back to Apple to help them improve the platform. Information sent to Apple may contain internal organizational information that should be controlled and not available for processing by Apple. Turn off all Analytics and Improvements sharing. Share Mac Analytics (Share with App Developers dependent on Mac Analytic sharing) - Includes diagnostics, usage and location data. Share iCloud Analytics - Includes iCloud data and usage information."
     rationale: "Organizations should have knowledge of what is shared with the vendor and the setting automatically forwards information to Apple."
@@ -514,7 +514,7 @@ checks:
   # 2.7 Time Machine
   ############################################################
   # 2.7.1 Ensure Backup Up Automatically is Enabled (Automated)
-  - id: 29029
+  - id: 29030
     title: "Ensure Backup Up Automatically is Enabled."
     description: 'Backup solutions are only effective if the backups run on a regular basis. The time to check for backups is before the hard drive fails or the computer goes missing. In order to simplify the user experience so that backups are more likely to occur Time Machine should be on and set to Back Up Automatically whenever the target volume is available. Operational staff should ensure that backups complete on a regular basis and the backups are tested to ensure that file restoration from backup is possible when needed. Backup dates are available even when the target volume is not available in the Time Machine plist. SnapshotDates = ( "2012-08-20 12:10:22 +0000", "2013-02-03 23:43:22 +0000", "2014-02-19 21:37:21 +0000", "2015-02-22 13:07:25 +0000", "2016-08-20 14:07:14 +0000" When the backup volume is connected to the computer more extensive information is available through tmutil. See man tmutil'
     rationale: "Backups should automatically run whenever the backup drive is available."
@@ -530,7 +530,7 @@ checks:
   # 2.7.2 Ensure Time Machine Volumes Are Encrypted (Automated) - Not implemented
 
   # 2.8 Ensure Wake for Network Access Is Disabled (Automated)
-  - id: 29030
+  - id: 29031
     title: "Ensure Wake for Network Access Is Disabled."
     description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer’s shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
@@ -543,7 +543,7 @@ checks:
       - 'c:sh -c "pmset -g | grep -e womp" -> r:0'
 
   # 2.9 Ensure Power Nap Is Disabled (Automated)
-  - id: 29031
+  - id: 29032
     title: "Ensure Power Nap Is Disabled."
     description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. Power Nap allows the system to stay in low power mode, especially while on battery power and periodically connect to previously named networks with stored credentials for user applications to phone home and get updates. This capability requires FileVault to remain unlocked and the use of previously joined networks to be risk accepted based on the SSID without user input. This control has been updated to check the status on both battery and AC Power. The presence of an electrical outlet does not completely correlate with logical and physical security of the device or available networks."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access. The use of Power Nap adds to the risk of compromised physical and logical security. The user should be able to decrypt FileVault and have the applications download what is required when the computer is actively used. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
@@ -556,7 +556,7 @@ checks:
       - 'c:sh -c "pmset -g everything | grep powernap | grep -c 1" -> r:^0$'
 
   # 2.10 Ensure Secure Keyboard Entry terminal.app is Enabled (Automated)
-  - id: 29032
+  - id: 29033
     title: "Ensure Secure Keyboard Entry terminal.app is Enabled."
     description: "Secure Keyboard Entry prevents other applications on the system and/or network from detecting and recording what is typed into Terminal."
     rationale: "Enabling Secure Keyboard Entry minimizes the risk of a key logger from detecting what is entered in Terminal."
@@ -572,7 +572,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep SecureKeyboardEntry" -> r:SecureKeyboardEntry\s*=\s*1'
 
   # 2.11 Ensure EFI Version Is Valid and Checked Regularly (Automated)
-  - id: 29033
+  - id: 29034
     title: "Ensure EFI Version Is Valid and Checked Regularly."
     description: "In order to mitigate firmware attacks Apple has created an automated Firmware check to ensure that the EFI version running is a known good version from Apple. There is also an automated process to check it every seven days."
     rationale: "If the Firmware of a computer has been compromised the Operating System that the Firmware loads cannot be trusted either."
@@ -598,7 +598,7 @@ checks:
   # 3 Logging and Auditing
   ############################################################
   # 3.1 Ensure Security Auditing Is Enabled (Automated)
-  - id: 29034
+  - id: 29035
     title: "Ensure Security Auditing Is Enabled."
     description: "macOS's audit facility, auditd, receives notifications from the kernel when certain system calls, such as open, fork, and exit, are made. These notifications are captured and written to an audit log."
     rationale: "Logs generated by auditd may be useful when investigating a security incident as they may help reveal the vulnerable application and the actions taken by a malicious actor."
@@ -613,7 +613,7 @@ checks:
   # 3.2 Ensure Security Auditing Flags Are Configured Per Local Organizational Requirements (Automated) - Not implemented
 
   # 3.3 Ensure install.log Is Retained for 365 or More Days and No Maximum Size (Automated)
-  - id: 29035
+  - id: 29036
     title: "Ensure install.log Is Retained for 365 or More Days and No Maximum Size."
     description: 'macOS writes information pertaining to system-related events to the file /var/log/install.log and has a configurable retention policy for this file. The default logging setting limits the file size of the logs and the maximum size for all logs. The default allows for an errant application to fill the log files and does not enforce sufficient log retention. The Benchmark recommends a value based on standard use cases. The value should align with local requirements within the organization. The default value has an "all_max" file limitation, no reference to a minimum retention and a less precise rotation argument. The all_max flag control will remove old log entries based only on the size of the log files. Log size can vary widely depending on how verbose installing applications are in their log entries. The decision here is to ensure that logs go back a year and depending on the applications a size restriction could compromise the ability to store a full year. While this Benchmark is not scoring for a rotation flag the default rotation is sequential rather than using a timestamp. Auditors may prefer timestamps in order to simply review specific dates where event information is desired. Please review the File Rotation section in the man page for more information. man asl.conf - The maximum file size limitation string should be removed "all_max=" - An organization appropriate retention should be added "ttl=" - The rotation should be set with timestamps "rotate=utc" or "rotate=local"'
     rationale: "Archiving and retaining install.log for at least a year is beneficial in the event of an incident as it will allow the user to view the various changes to the system along with the date and time they occurred."
@@ -629,7 +629,7 @@ checks:
   # 3.4 Ensure Security Auditing Retention Is Enabled (Automated) - Not implemented
 
   # 3.5 Ensure Access to Audit Records Is Controlled (Automated)
-  - id: 29036
+  - id: 29037
     title: "Ensure Access to Audit Records Is Controlled."
     description: "The audit system on macOS writes important operational and security information that can be both useful for an attacker and a place for an attacker to attempt to obfuscate unwanted changes that were recorded. As part of defense-in-depth the /etc/security/audit_control configuration and the files in /var/audit should be owned only by root with group wheel with read-only rights and no other access allowed. macOS ACLs should not be used for these files."
     rationale: "Audit records should never be changed except by the system daemon posting events. Records may be viewed or extracts manipulated, but the authoritative files should be protected from unauthorized changes."
@@ -645,7 +645,7 @@ checks:
       - "not c:ls -le /var/audit -> r:[-r]{7}r-|[-r]{7}-w|[-r]{7}rw"
 
   # 3.6 Ensure Firewall Logging Is Enabled and Configured (Automated)
-  - id: 29037
+  - id: 29038
     title: "Ensure Firewall Logging Is Enabled and Configured."
     description: 'The socketfilter firewall is what is used when the firewall is turned on in the Security Preference Pane. In order to appropriately monitor what access is allowed and denied logging must be enabled. The logging level must be set to "detailed" to be useful in monitoring connection attempts that the firewall detects. Throttled login is not sufficient for examine firewall connection attempts.'
     rationale: "In order to troubleshoot the successes and failures of a firewall, detailed logging should be enabled."
@@ -666,7 +666,7 @@ checks:
   # 4 Network Configurations
   ############################################################
   # 4.1 Ensure Bonjour Advertising Services Is Disabled (Automated)
-  - id: 29038
+  - id: 29039
     title: "Ensure Bonjour Advertising Services Is Disabled."
     description: "Bonjour is an auto-discovery mechanism for TCP/IP devices which enumerate devices and services within a local subnet. DNS on macOS is integrated with Bonjour and should not be turned off, but the Bonjour advertising service can be disabled."
     rationale: 'Bonjour can simplify device discovery from an internal rogue or compromised host. An attacker could use Bonjour''s multicast DNS feature to discover a vulnerable or poorly- configured service or additional information to aid a targeted attack. Implementing this control disables the continuous broadcasting of "I''m here!" messages. Typical end-user endpoints should not have to advertise services to other computers. This setting does not stop the computer from sending out service discovery messages when looking for services on an internal subnet, if the computer is looking for a printer or server and using service discovery. To block all Bonjour traffic except to approved devices the pf or other firewall would be needed.'
@@ -683,7 +683,7 @@ checks:
   # 4.3 Audit Network Specific Locations (Manual) - Not implemented
 
   # 4.4 Ensure HTTP Server Is Disabled (Automated)
-  - id: 29039
+  - id: 29040
     title: "Ensure HTTP Server Is Disabled."
     description: "macOS used to have a graphical front-end to the embedded Apache web server in the Operating System. Personal web sharing could be enabled to allow someone on another computer to download files or information from the user's computer. Personal web sharing from a user endpoint has long been considered questionable, and Apple has removed that capability from the GUI. Apache however is still part of the Operating System and can be easily turned on to share files and provide remote connectivity to an end-user computer. Web sharing should only be done through hardened web servers and appropriate cloud services."
     rationale: "Web serving should not be done from a user desktop. Dedicated webservers or appropriate cloud storage should be used. Open ports make it easier to exploit the computer."
@@ -696,7 +696,7 @@ checks:
       - 'c:sh -c "launchctl print-disabled system | grep -c ''\"org.apache.httpd\" => true''" -> 1'
 
   # 4.5 Ensure NFS Server Is Disabled (Automated)
-  - id: 29040
+  - id: 29041
     title: "Ensure NFS Server Is Disabled."
     description: "macOS can act as an NFS fileserver. NFS sharing could be enabled to allow someone on another computer to mount shares and gain access to information from the user's computer. File sharing from a user endpoint has long been considered questionable, and Apple has removed that capability from the GUI. NFSD is still part of the Operating System and can be easily turned on to export shares and provide remote connectivity to an end-user computer."
     rationale: "File serving should not be done from a user desktop. Dedicated servers should be used. Open ports make it easier to exploit the computer."
@@ -719,7 +719,7 @@ checks:
   # 5.1.1 Ensure Home Folders Are Secure (Automated) - Not implemented
 
   # 5.1.2 Ensure System Integrity Protection Status (SIPS) Is Enabled (Automated)
-  - id: 29041
+  - id: 29042
     title: "Ensure System Integrity Protection Status (SIPS) Is Enabled."
     description: "System Integrity Protection is a security feature introduced in OS X 10.11 El Capitan. System Integrity Protection restricts access to System domain locations and restricts runtime attachment to system processes. Any attempt to inspect or attach to a system process will fail. Kernel Extensions are now restricted to /Library/Extensions and are required to be signed with a Developer ID."
     rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
@@ -732,7 +732,7 @@ checks:
       - "c:csrutil status -> r:^System Integrity Protection status: enabled."
 
   # 5.1.3 Ensure Apple Mobile File Integrity Is Enabled (Automated)
-  - id: 29042
+  - id: 29043
     title: "Ensure Apple Mobile File Integrity Is Enabled."
     description: "Apple Mobile File Integrity was first released in macOS 10.12, the daemon and service block attempts to run unsigned code. AMFI uses lanchd, code signatures, certificates, entitlements, and provisioning profiles to create a filtered entitlement dictionary for an app. AMFI is the macOS kernel module that enforces code-signing and library validation."
     rationale: "Apple Mobile File Integrity (AMFI) validates that application code is validated."
@@ -750,7 +750,7 @@ checks:
       - 'c:sh -c "nvram -p | grep -c \"amfi_get_out_of_my_way=1\"" -> 0'
 
   # 5.1.4 Ensure Library Validation Is Enabled (Automated)
-  - id: 29043
+  - id: 29044
     title: "Ensure Library Validation Is Enabled."
     description: "Library Validation is a security feature introduced in macOS 10.10 Yosemite. Library Validation protects processes from loading arbitrary libraries. This stops root from loading arbitrary libraries into any process (depending on SIP status),and keeps root from becoming more powerful. Security is strengthened, because some user processes can no longer be fooled to run additional code without root's explicit request, which may grant access to daemons that depend on Library Validation for secure validation of code identity."
     rationale: "Running without Library Validation on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by Library Validation."
@@ -768,7 +768,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep DisableLibraryValidation" -> r:DisableLibraryValidation\s*=\s*0'
 
   # 5.1.5 Ensure Sealed System Volume (SSV) Is Enabled (Automated)
-  - id: 29044
+  - id: 29045
     title: "Ensure Sealed System Volume (SSV) Is Enabled."
     description: "Sealed System Volume is a security feature introduced in macOS 11.0 Big Sur. During system installation, a SHA-256 cryptographic hash is calculated for all immutable system files and stored in a Merkle tree which itself is hashed as the Seal. Both are stored in the metadata of the snapshot created of the System volume. The seal is verified by the boot loader at startup. macOS will not boot if system files have been tampered with. If validation fails, the user will be instructed to reinstall the operating system. During read operations for files located in the Sealed System Volume, a hash is calculated and compared to the value stored in the Merkle tree."
     rationale: "Running without Sealed System Volume on a production system could run the risk of Apple software, that integrates directly with macOS, being modified."
@@ -785,7 +785,7 @@ checks:
       - "c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled"
 
   # 5.1.6 Ensure Appropriate Permissions Are Enabled for System Wide Applications (Automated)
-  - id: 29045
+  - id: 29046
     title: "Ensure Appropriate Permissions Are Enabled for System Wide Applications."
     description: "Applications in the System Applications Directory (/Applications) should be world executable since that is their reason to be on the system. They should not be world-writable and allow any process or user to alter them for other processes or users to then execute modified versions."
     rationale: "Unauthorized modifications of applications could lead to the execution of malicious code."
@@ -798,7 +798,7 @@ checks:
       - 'not c:find /Applications -iname "*.app" -type d -perm -2 -ls -> r:/Applications/'
 
   # 5.1.7 Ensure No World Writable Files Exist in the System Folder (Automated)
-  - id: 29046
+  - id: 29047
     title: "Ensure No World Writable Files Exist in the System Folder."
     description: "Software sometimes insists on being installed in the /System/Volumes/Data/SystemDirectory and have inappropriate world-writable permissions."
     rationale: 'Folders in /System/Volumes/Data/System should not be world-writable. The audit check excludes the "Drop Box" folder that is part of Apple''s default user template.'
@@ -811,7 +811,7 @@ checks:
       - 'not c:find /System/Volumes/Data/System -type d -perm -2 -ls  -> r:\d+\s+/System/Volumes/Data/System'
 
   # 5.1.8 Ensure No World Writable Files Exist in the Library Folder (Automated)
-  - id: 29047
+  - id: 29048
     title: "Ensure No World Writable Files Exist in the Library Folder."
     description: "Software sometimes insists on being installed in the /Library Directory and have inappropriate world-writable permissions."
     rationale: "Folders in /System/Volumes/Data/Library should not be world-writable. The audit check excludes the /System/Volumes/Data/Library/Caches and /System/Volumes/Data/Library/Preferences/Audio/Data folders where the sticky bit is set."
@@ -836,7 +836,7 @@ checks:
   # 5.2.8 Ensure Password History Is Configured (Automated) - Not implemented
 
   # 5.3 Ensure the Sudo Timeout Period Is Set to Zero (Automated)
-  - id: 29048
+  - id: 29049
     title: "Ensure the Sudo Timeout Period Is Set to Zero."
     description: "The sudo command allows the user to run programs as the root user. Working as the root user allows the user an extremely high level of configurability within the system. This control along with the control to use a separate timestamp for each tty limits the window where an unauthorized user, process or attacker could utilize legitimate credentials that are valid for longer than required."
     rationale: "The sudo command stays logged in as the root user for five minutes before timing out and re-requesting a password. This five-minute window should be eliminated since it leaves the system extremely vulnerable. This is especially true if an exploit were to gain access to the system, since they would be able to make changes as a root user."
@@ -849,7 +849,7 @@ checks:
       - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*timestamp_timeout=0'
 
   # 5.4 Ensure a Separate Timestamp Is Enabled for Each User/tty Combo (Automated)
-  - id: 29049
+  - id: 29050
     title: "Ensure a Separate Timestamp Is Enabled for Each User/tty Combo."
     description: "Using tty tickets ensures that a user must enter the sudo password in each Terminal session. With sudo versions 1.8 and higher, introduced in 10.12, the default value is to have tty tickets for each interface so that root access is limited to a specific terminal. The default configuration can be overwritten or not configured correctly on earlier versions of macOS."
     rationale: "In combination with removing the sudo timeout grace period, a further mitigation should be in place to reduce the possibility of a background process using elevated rights when a user elevates to root in an explicit context or tty. Additional mitigation should be in place to reduce the risk of privilege escalation of background processes."
@@ -869,7 +869,7 @@ checks:
   # 5.5 Ensure login keychain is locked when the computer sleeps (Manual) - Not implemented
 
   # 5.6 Ensure the "root" Account Is Disabled (Automated)
-  - id: 29050
+  - id: 29051
     title: 'Ensure the "root" Account Is Disabled'
     description: "The root account is a superuser account that has access privileges to perform any actions and read/write to any file on the computer. With some Linux distros the system administrator may commonly use the root account to perform administrative functions."
     rationale: "Enabling and using the root account puts the system at risk since any successful exploit or mistake while the root account is in use could have unlimited access privileges within the system. Using the sudo command allows users to perform functions as a root user while limiting and password protecting the access privileges. By default the root account is not enabled on a macOS computer. An administrator can escalate privileges using the sudo command (use -s or -i to get a root shell)."
@@ -882,7 +882,7 @@ checks:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
 
   # 5.7 Ensure Automatic Login Is Disabled (Automated)
-  - id: 29051
+  - id: 29052
     title: "Ensure Automatic Login Is Disabled."
     description: "The automatic login feature saves a user's system access credentials and bypasses the login screen. Instead, the system automatically loads to the user's desktop screen."
     rationale: "Disabling automatic login decreases the likelihood of an unauthorized person gaining access to a system."
@@ -900,7 +900,7 @@ checks:
   # 5.9 Ensure system is set to hibernate (Automated) - Not implemented
 
   # 5.10 Require an administrator password to access system-wide preferences (Automated)
-  - id: 29052
+  - id: 29053
     title: "Require an administrator password to access system-wide preferences."
     description: "System Preferences controls system and user settings on a macOS Computer. System Preferences allows the user to tailor their experience on the computer as well as allowing the System Administrator to configure global security settings. Some of the settings should only be altered by the person responsible for the computer."
     rationale: "By requiring a password to unlock system-wide System Preferences the risk is mitigated of a user changing configurations that affect the entire system and requires an admin user to re-authenticate to make changes."
@@ -913,7 +913,7 @@ checks:
       - 'c:sh -c "security authorizationdb read system.preferences | grep -A1 shared | grep false" -> r:<false/>'
 
   # 5.11 Ensure an administrator account cannot login to another user's active and locked session (Automated)
-  - id: 29053
+  - id: 29054
     title: "Ensure an administrator account cannot login to another user's active and locked session."
     description: "macOS has a privilege that can be granted to any user that will allow that user to unlock active user's sessions."
     rationale: "Disabling the admins and/or user's ability to log into another user's active and locked session prevents unauthorized persons from viewing potentially sensitive and/or personal information."
@@ -929,7 +929,7 @@ checks:
       - 'c:sh -c "security authorizationdb read system.login.screensaver | grep -c ''use-login-window-ui''" -> 1'
 
   # 5.12 Ensure a Custom Message for the Login Screen Is Enabled (Automated)
-  - id: 29054
+  - id: 29055
     title: "Ensure a Custom Message for the Login Screen Is Enabled."
     description: "An access warning informs the user that the system is reserved for authorized use only, and that the use of the system may be monitored."
     rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
@@ -943,7 +943,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep LoginwindowText" -> r:LoginwindowText\s*=\s*"\w+'
 
   # 5.13 Ensure a Login Window Banner Exists (Automated)
-  - id: 29055
+  - id: 29056
     title: "Ensure a Login Window Banner Exists."
     description: "A Login window banner warning informs the user that the system is reserved for authorized use only. It enforces an acknowledgment by the user that they have been informed of the use policy in the banner if required. The system recognizes either the .txt and the .rtf formats."
     rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
@@ -958,7 +958,7 @@ checks:
   # 5.14 Ensure Users' Accounts Do Not Have a Password Hint (Automated) - Not implemented
 
   # 5.15 Ensure Fast User Switching Is Disabled (Manual)
-  - id: 29056
+  - id: 29057
     title: "Ensure Fast User Switching Is Disabled."
     description: "Fast user switching allows a person to quickly log in to the computer with a different account. While only a minimal security risk, when a second user is logged in, that user might be able to see what processes the first user is using, or possibly gain other information about the first user. In a large directory environment where it is difficult to limit log in access many valid users can login to other user's assigned computers."
     rationale: "Fast user switching allows multiple users to run applications simultaneously at console. There can be information disclosed about processes running under a different user. Without a specific configuration to save data and log out users can have unsaved data running in a background session that is not obvious."
@@ -977,7 +977,7 @@ checks:
   # 6.1 Accounts Preferences Action Items
   ############################################################
   # 6.1.1 Ensure Login Window Displays as Name and Password Is Enabled (Automated)
-  - id: 29057
+  - id: 29058
     title: "Ensure Login Window Displays as Name and Password Is Enabled."
     description: "The login window prompts a user for his/her credentials, verifies their authorization level and then allows or denies the user access to the system."
     rationale: "Prompting the user to enter both their username and password makes it twice as hard for unauthorized users to gain access to the system since they must discover two attributes."
@@ -991,7 +991,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep SHOWFULLNAME" -> r:SHOWFULLNAME\s*=\s*1'
 
   # 6.1.2 Ensure Show Password Hints Is Disabled (Automated)
-  - id: 29058
+  - id: 29059
     title: "Ensure Show Password Hints Is Disabled."
     description: "Password hints are user-created text displayed when an incorrect password is used for an account."
     rationale: "Password hints make it easier for unauthorized persons to gain access to systems by providing information to anyone that the user provided to assist in remembering the password. This info could include the password itself or other information that might be readily discerned with basic knowledge of the end user."
@@ -1005,7 +1005,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep RetriesUntilHint" -> r:RetriesUntilHint\s*=\s*0'
 
   # 6.1.3 Ensure Guest Account Is Disabled (Automated)
-  - id: 29059
+  - id: 29060
     title: "Ensure Guest Account Is Disabled."
     description: "The guest account allows users access to the system without having to create an account or password. Guest users are unable to make setting changes cannot remotely login to the system. All files, caches, and passwords created by the guest user are deleted upon logging out."
     rationale: "Disabling the guest account mitigates the risk of an untrusted user doing basic reconnaissance and possibly using privilege escalation attacks to take control of the system."
@@ -1020,7 +1020,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep EnableGuestAccount" -> r:EnableGuestAccount\s*=\s*0'
 
   # 6.1.4 Ensure Guest Access to Shared Folders Is Disabled (Automated)
-  - id: 29060
+  - id: 29061
     title: "Ensure Guest Access to Shared Folders Is Disabled."
     description: "Allowing guests to connect to shared folders enables users to access selected shared folders and their contents from different computers on a network."
     rationale: "Not allowing guests to connect to shared folders mitigates the risk of an untrusted user doing basic reconnaissance and possibly use privilege escalation attacks to take control of the system."
@@ -1034,7 +1034,7 @@ checks:
       - 'c:sh -c "profiles -P -o stdout | grep AllowGuestAccess" -> r:AllowGuestAccess\s*=\s*0'
 
   # 6.1.5 Ensure the Guest Home Folder Does Not Exist (Automated)
-  - id: 29061
+  - id: 29062
     title: "Ensure the Guest Home Folder Does Not Exist."
     description: "In the previous two controls the guest account login has been disabled and sharing to guests has been disabled as well. There is no need for the legacy Guest home folder to remain in the file system. When normal user accounts are removed you have the option to archive it, leave it in place or delete. In the case of the guest folder the folder remains in place without a GUI option to remove it. If at some point in the future a Guest account is needed it will be re-created. The presence of the Guest home folder can cause automated audits to fail when looking for compliant settings within all User folders as well. Rather than ignoring the folder's continued existence, it is best removed."
     rationale: "The Guest home folders are unneeded after the Guest account is disabled and could be used inappropriately."
@@ -1047,7 +1047,7 @@ checks:
       - "d:/Users/Guest"
 
   # 6.2 Ensure Show All Filename Extensions Setting is Enabled (Automated)
-  - id: 29062
+  - id: 29063
     title: "Ensure Show All Filename Extensions Setting is Enabled."
     description: "A filename extension is a suffix added to a base filename that indicates the base filename's file format."
     rationale: "Visible filename extensions allow the user to identify the file type and the application it is associated with which leads to quick identification of misrepresented malicious files."
@@ -1060,7 +1060,7 @@ checks:
       - "c:defaults read NSGlobalDomain AppleShowAllExtensions -> r:^1$"
 
   # 6.3 Ensure Automatic Opening of Safe Files in Safari Is Disabled (Automated)
-  - id: 29063
+  - id: 29064
     title: "Ensure Automatic Opening of Safe Files in Safari Is Disabled."
     description: "Safari will automatically run or execute what it considers safe files. This can include installers and other files that execute on the operating system. Safari bases file safety by using a list of filetypes maintained by Apple. The list of files include text, image, video and archive formats that would be run in the context of the OS rather than the browser."
     rationale: "Hackers have taken advantage of this setting via drive-by attacks. These attacks occur when a user visits a legitimate website that has been corrupted. The user unknowingly downloads a malicious file either by closing an infected pop-up or hovering over a malicious banner. An attacker can create a malicious file that will fall within Safari's safe file list that will download and execute without user input."
