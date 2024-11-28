@@ -10,7 +10,7 @@ from wazuh.core.indexer.models.events import Agent, AgentMetadata, SCAEvent, Sta
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 def test_send_event(queue_mock):
-    """Check that the `send_operation` method works as expected."""
+    """Check that the `send_event` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
     agent_metadata = AgentMetadata(agent=Agent(
         id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
@@ -28,9 +28,9 @@ def test_send_event(queue_mock):
         ),
     ))
     header = Header(id='1234', module=Module.SCA, operation=Operation.CREATE)
-    event = StatefulEvent(data=SCAEvent())
+    data = SCAEvent()
 
-    batcher.send_operation(agent_metadata, header, event)
+    batcher.send_event(agent_metadata, header, data)
     queue_mock.send_to_mux.assert_called_once()
 
 

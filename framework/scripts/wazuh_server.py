@@ -93,6 +93,8 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
     args : list
         Start command arguments.
     """
+    main_logger.info(f'Starting {name}')
+
     try:
         p = subprocess.Popen(args)
         pid = p.pid
@@ -107,7 +109,6 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
                 pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         else:
             returncode = p.wait()
-            main_logger.info(returncode)
             if returncode != 0:
                 raise Exception(f'return code {returncode}')
 
@@ -115,9 +116,9 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
             if pid is None:
                 raise Exception('failed during the execution')
 
-        main_logger.info(f'Started {name} (pid: {pid})')
     except subprocess.TimeoutExpired:
         # The command was executed without errors
+        main_logger.info(f'Started {name} (pid: {pid})')
         pass
     except Exception as e:
         main_logger.error(f'Error starting {name}: {e}')

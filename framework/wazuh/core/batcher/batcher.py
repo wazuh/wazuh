@@ -82,7 +82,7 @@ class Batcher:
         try:
             async with get_indexer_client() as indexer_client:
                 bulk_list = create_bulk_list(items=items)
-                response = await indexer_client.events.bulk(data=bulk_list)
+                response = await indexer_client.bulk(data=bulk_list)
 
                 item_ids: List[uuid.UUID] = [item.id for item in items]
                 for response_item, item_id in zip(response["items"], item_ids):

@@ -243,18 +243,16 @@ class Header(BaseModel):
     operation: Operation = None
 
 
-class StatefulEvent(BaseModel):
-    """Stateful event data model."""
-    data: Union[
-        FIMEvent,
-        InventoryNetworkEvent,
-        InventoryPackageEvent,
-        InventoryProcessEvent,
-        InventorySystemEvent,
-        SCAEvent,
-        VulnerabilityEvent,
-        CommandResult
-    ]
+StatefulEvent = Union[
+    FIMEvent,
+    InventoryNetworkEvent,
+    InventoryPackageEvent,
+    InventoryProcessEvent,
+    InventorySystemEvent,
+    SCAEvent,
+    VulnerabilityEvent,
+    CommandResult
+]
 
 
 STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
@@ -297,9 +295,13 @@ def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
         if type == INVENTORY_SYSTEM_TYPE:
             return INVENTORY_SYSTEM_INDEX
 
-        raise WazuhError(1763)
+        raise WazuhError(
+            1763, 
+            extra_message=f"it must be '{INVENTORY_NETWORKS_TYPE}', '{INVENTORY_PACKAGES_TYPE}', " \
+                f"'{INVENTORY_PROCESSES_TYPE}' or '{INVENTORY_SYSTEM_TYPE}'",
+        )
 
     try:
         return STATEFUL_EVENTS_INDICES[module]
     except KeyError:
-        raise WazuhError(1765)
+        raise WazuhError(1765, extra_message="it must be 'fim', 'sca', 'inventory', 'command' or 'vulnerability'")

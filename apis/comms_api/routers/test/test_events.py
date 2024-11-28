@@ -12,9 +12,9 @@ from wazuh.core.indexer.models.events import TaskResult
 
 
 @pytest.mark.asyncio
-@patch('comms_api.routers.events.create_stateful_events')
+@patch('comms_api.routers.events.send_stateful_events')
 @patch('comms_api.routers.events.parse_stateful_events')
-async def test_post_stateful_events(parse_stateful_events_mock, create_stateful_events_mock):
+async def test_post_stateful_events(parse_stateful_events_mock, send_stateful_events_mock):
     """Verify that the `post_stateful_events` handler works as expected."""
     request = Request(scope={
         'type': 'http',
@@ -25,12 +25,12 @@ async def test_post_stateful_events(parse_stateful_events_mock, create_stateful_
     results = [TaskResult(id='123', result='created', status=201)]
     events = []
     parse_stateful_events_mock.return_value = events
-    create_stateful_events_mock.return_value = results
+    send_stateful_events_mock.return_value = results
 
     response = await post_stateful_events(request)
 
     parse_stateful_events_mock.assert_called_once_with(request)
-    create_stateful_events_mock.assert_called_once_with(events, request.app.state.batcher_queue)
+    send_stateful_events_mock.assert_called_once_with(events, request.app.state.batcher_queue)
 
     assert isinstance(response, StatefulEventsResponse)
     assert response.results == results
