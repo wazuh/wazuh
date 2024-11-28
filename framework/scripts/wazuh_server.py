@@ -98,22 +98,19 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
             returncode = p.wait(timeout=2)
             if returncode != 0:
                 raise Exception(f'return code {returncode}')
-
-            if name == ENGINE_DAEMON_NAME:
-                pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         else:
             returncode = p.wait()
             if returncode != 0:
                 raise Exception(f'return code {returncode}')
-
-            pid = pyDaemonModule.get_parent_pid(name)
-            if pid is None:
-                raise Exception('failed during the execution')
-
+            else:
+                pid = pyDaemonModule.get_parent_pid(name)
+                if pid is None:
+                    raise Exception('failed during the execution')
     except subprocess.TimeoutExpired:
         # The command was executed without errors
+        if name == ENGINE_DAEMON_NAME:
+                pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         main_logger.info(f'Started {name} (pid: {pid})')
-        pass
     except Exception as e:
         main_logger.error(f'Error starting {name}: {e}')
 
