@@ -17,49 +17,7 @@ class SSLProtocol(str, Enum):
     auto = "auto"
 
 
-class SSLConfig(WazuhConfigBaseModel):
-    """Configuration for SSL settings specific to the server.
-
-    Parameters
-    ----------
-    key : str
-        The path to the SSL key file.
-    cert : str
-        The path to the SSL certificate file.
-    ca : str
-        The path to the CA certificate file.
-    keyfile_password : str
-        The password for the SSL key file. Default is an empty string.
-    """
-    key: str
-    cert: str
-    ca: str
-    keyfile_password: str = ""
-
-
-class IndexerSSLConfig(WazuhConfigBaseModel):
-    """Configuration for SSL settings specific to the indexer.
-
-    Parameters
-    ----------
-    use_ssl : bool
-        Whether to use SSL for the indexer. Default is False.
-    key : str
-        The path to the SSL key file. Default is an empty string.
-    certificate : str
-        The path to the SSL certificate file. Default is an empty string.
-    certificate_authorities : List[str]
-        List of paths to the CA certificate file. Default is a list containing one empty string.
-    verify_certificates : bool
-        Whether to verify the server TLS certificates or not. Default is True.
-
-    """
-    use_ssl: bool = False
-    key: str = ''
-    certificate: str = ''
-    certificate_authorities: List[str] = Field(default=[''], min_length=1)
-    verify_certificates: bool = True
-
+class ValidateFilePathMixin:
     @classmethod
     def _validate_file_path(cls, path: str, field_name: str):
         """Validate that a single file path is non-empty and points to an existing file.
@@ -82,18 +40,87 @@ class IndexerSSLConfig(WazuhConfigBaseModel):
         if not os.path.isfile(path):
             raise ValueError(f"{field_name}: the file '{path}' does not exist")
 
-    @field_validator('key', 'certificate')
+
+class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
+    """Configuration for SSL settings specific to the server.
+
+    Parameters
+    ----------
+    key : str
+        The path to the SSL key file.
+    cert : str
+        The path to the SSL certificate file.
+    ca : str
+        The path to the CA certificate file.
+    keyfile_password : str
+        The password for the SSL key file. Default is an empty string.
+    """
+    key: str
+    cert: str
+    ca: str
+    keyfile_password: str = ""
+
+    @field_validator('key', 'cert', 'ca')
     @classmethod
     def validate_ssl_files(cls, path: str, info: ValidationInfo) -> str:
         """Validate that the SSL files exist.
-        
+
         Parameters
         ----------
         path : str
             Path to the SSL certificate/key.
         info : ValidationInfo
             Validation context information.
-        
+
+        Raises
+        ------
+        ValueError
+            Invalid SSL file path.
+
+        Returns
+        ------
+        str
+            SSL certificate/key path.
+        """
+        cls._validate_file_path(path, info.field_name)
+        return path
+
+
+class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
+    """Configuration for SSL settings specific to the indexer.
+
+    Parameters
+    ----------
+    use_ssl : bool
+        Whether to use SSL for the indexer. Default is False.
+    key : str
+        The path to the SSL key file. Default is an empty string.
+    certificate : str
+        The path to the SSL certificate file. Default is an empty string.
+    certificate_authorities : List[str]
+        List of paths to the CA certificate file. Default is a list containing one empty string.
+    verify_certificates : bool
+        Whether to verify the server TLS certificates or not. Default is True.
+
+    """
+    use_ssl: bool = False
+    key: str = ''
+    certificate: str = ''
+    certificate_authorities: List[str] = Field(default=[''], min_length=1)
+    verify_certificates: bool = True
+
+    @field_validator('key', 'certificate')
+    @classmethod
+    def validate_ssl_files(cls, path: str, info: ValidationInfo) -> str:
+        """Validate that the SSL files exist.
+
+        Parameters
+        ----------
+        path : str
+            Path to the SSL certificate/key.
+        info : ValidationInfo
+            Validation context information.
+
         Raises
         ------
         ValueError
@@ -161,4 +188,3 @@ class APISSLConfig(WazuhConfigBaseModel):
     ca: str = ""
     ssl_protocol: SSLProtocol = SSLProtocol.auto
     ssl_ciphers: str = ""
-
