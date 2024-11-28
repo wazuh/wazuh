@@ -6,16 +6,12 @@ from subprocess import Popen, PIPE
 import logging
 import os
 import pytest
-import trustme
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 KEYSTORE_BINARY = "./wazuh-keystore"
 KEYSTORE_TESTTOOL_BINARY = "./wazuh-keystore_tool"
-CERTS_PATH = 'etc/'
-PRIVATE_KEY_FILE = "etc/sslmanager.key"
-CERTIFICATE_FILE ="etc/sslmanager.cert"
-KEYSTORE_DB_PATH = "queue/keystore"
+KEYSTORE_DB_PATH = "./keystore"
 
 # Helper methods
 
@@ -43,7 +39,7 @@ def get_password():
     Returns:
         str: The password stored in the keystore stripped of any leading/trailing whitespaces.
     """
-    command = [KEYSTORE_TESTTOOL_BINARY, "-c", "indexer", "-k", "password"]
+    command = [KEYSTORE_TESTTOOL_BINARY, "-c", "indexer", "-k", "password", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     return run_command(command).strip()
 
@@ -53,7 +49,7 @@ def set_password(password):
     Args:
         password (str): The password to set in the keystore.
     """
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-v", f"'{password}'"]
+    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-v", f"'{password}'", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
 
@@ -63,7 +59,7 @@ def set_password_echo(password):
     Args:
         password (str): The password to set in the keystore.
     """
-    command = ["echo",f"'{password}'", "|" , KEYSTORE_BINARY, "-f", "indexer", "-k", "password"]
+    command = ["echo",f"'{password}'", "|" , KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
 
@@ -75,7 +71,7 @@ def set_password_from_file(password):
     """
     with open("password.txt", "w", encoding='utf-8') as f:
         f.write(password)
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-vp", "./password.txt"]
+    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-vp", "./password.txt", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
     os.remove("password.txt")
@@ -88,7 +84,7 @@ def set_password_redirect_file(password):
     """
     with open("password.txt", "w", encoding='utf-8') as f:
         f.write(password)
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password","<","./password.txt"]
+    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password","<","./password.txt", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
     os.remove("password.txt")
@@ -101,7 +97,7 @@ def set_password_cat_file(password):
     """
     with open("password.txt", "w", encoding='utf-8') as f:
         f.write(password)
-    command = ["cat", "./password.txt", "|", KEYSTORE_BINARY, "-f", "indexer", "-k", "password"]
+    command = ["cat", "./password.txt", "|", KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
     os.remove("password.txt")
@@ -109,7 +105,7 @@ def set_password_cat_file(password):
 def clear_password():
     """ This method clears the password stored in the keystore.
     """
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-v", "NOT_USED_PASS"]
+    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-v", "NOT_USED_PASS", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
 
@@ -122,20 +118,9 @@ def setup_teardown():
     """
     # Setup
 
-    # Create certs path
-    os.makedirs(CERTS_PATH, exist_ok=True)
-
-    # Create self-signed certs
-    ca = trustme.CA(key_type=trustme.KeyType.RSA)
-    server_cert = ca.issue_cert("test-host.example.org", key_type=trustme.KeyType.RSA)
-    server_cert.private_key_pem.write_to_path(PRIVATE_KEY_FILE)
-    server_cert.cert_chain_pems[0].write_to_path(CERTIFICATE_FILE)
-
     yield
 
     # Teardown
-    os.remove(CERTIFICATE_FILE)
-    os.remove(PRIVATE_KEY_FILE)
     os.system(f"rm -rf {KEYSTORE_DB_PATH}")
 
 # Tests

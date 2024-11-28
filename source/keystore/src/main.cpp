@@ -25,6 +25,7 @@ int main(int argc, char* argv[])
     std::string key;
     std::string value;
     std::string valuePath;
+    std::string keystorePath;
 
     // Logging init
     logging::LoggingConfig logConfig;
@@ -44,6 +45,12 @@ int main(int argc, char* argv[])
         key = args.getKey();
         value = args.getValue();
         valuePath = args.getValuePath();
+        keystorePath = args.getKeystorePath();
+
+        if (keystorePath.empty())
+        {
+            keystorePath = KEYSTORE_PATH;
+        }
 
         if (value.empty() && valuePath.empty())
         {
@@ -52,7 +59,7 @@ int main(int argc, char* argv[])
 
             if (!valueFromStdin.empty())
             {
-                Keystore::put(family, key, valueFromStdin);
+                Keystore::put(family, key, valueFromStdin, keystorePath);
             }
             else
             {
@@ -61,7 +68,7 @@ int main(int argc, char* argv[])
         }
         else if (!value.empty() && valuePath.empty())
         {
-            Keystore::put(family, key, value);
+            Keystore::put(family, key, value, keystorePath);
         }
         else if (!valuePath.empty() && value.empty())
         {
@@ -74,7 +81,7 @@ int main(int argc, char* argv[])
             std::string content;
             if (std::getline(file, content))
             {
-                Keystore::put(family, key, content);
+                Keystore::put(family, key, content, keystorePath);
             }
             else
             {

@@ -46,6 +46,7 @@ public:
         , m_key {paramValueOf(argc, argv, "-k")}
         , m_value {paramValueOf(argc, argv, "-v", std::make_pair(false, ""))}
         , m_valuePath {paramValueOf(argc, argv, "-vp", std::make_pair(false, ""))}
+        , m_keystorePath {paramValueOf(argc, argv, "-p", std::make_pair(false, ""))}
     {
     }
 
@@ -75,6 +76,13 @@ public:
     const std::string& getValuePath() const { return m_valuePath; }
 
     /**
+     * @brief Get the Keystore path.
+     *
+     * @return std::string Kesytore path.
+     */
+    std::string getKeystorePath() { return m_keystorePath; }
+
+    /**
      * @brief Shows the help to the user.
      */
     static void showHelp()
@@ -88,9 +96,12 @@ public:
             << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
             << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value "
                "option at the time.\n"
+            << "\t-p KEYSTORE_PATH\tSpecifies the path to the keystore. Optional, the default value will be used if "
+               "not provided.\n"
             << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
             << "\nExample:"
             << "\n\t./wazuh-keystore -f indexer -k username -v admin\n"
+            << "\n\t./wazuh-keystore -f indexer -k username -v admin -p /custom/path/to/keystore\n"
             << "\n\t./wazuh-keystore -f indexer -k password -vp /path/to/file.txt\n"
             << "\n\t./wazuh-keystore -f indexer -k password < /path/to/file.txt\n"
             << "\n\techo 'pass' | ./wazuh-keystore -f indexer -k password\n"
@@ -138,6 +149,7 @@ private:
     const std::string m_key;
     const std::string m_value;
     const std::string m_valuePath;
+    const std::string m_keystorePath;
 };
 
 #endif // _CMD_ARGS_PARSER_HPP_
