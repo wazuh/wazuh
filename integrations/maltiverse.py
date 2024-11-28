@@ -60,6 +60,7 @@ import json
 import os
 import socket
 import sys
+import re
 from urllib.parse import urlsplit
 
 try:
@@ -215,6 +216,19 @@ def is_valid_url(url: str) -> bool:
         True if the URL is valid, False otherwise.
     """
     split_url = urlsplit(url)
+
+    valid_schemes = {"http", "https"}
+    if split_url.scheme not in valid_schemes:
+        return False
+
+    netloc_regex = re.compile(r'^[a-zA-Z0-9.-]+(:[0-9]{1,5})?$')
+    if not netloc_regex.match(split_url.netloc):
+        return False
+
+    invalid_chars = set("<>\"'{}|\\^`")
+    if any(char in split_url.path + split_url.query + split_url.fragment for char in invalid_chars):
+        return False
+
     return bool(split_url.scheme and split_url.netloc)
 
 
