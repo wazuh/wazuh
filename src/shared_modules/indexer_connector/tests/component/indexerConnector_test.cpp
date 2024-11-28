@@ -440,6 +440,45 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
 }
 
 /**
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against the
+ * expected one. The publication contains a DELETED_BY_QUERY operation.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
+{
+    // Define the agent IDs
+    std::vector<std::string> agentIds {INDEX_ID_A};
+    nlohmann::json expectedMetadata;
+    expectedMetadata["query"]["bool"]["filter"]["terms"]["agent.id"] = agentIds;
+
+    // Callback that checks the expected data to be published.
+    // The format of the data published is divided in two lines:
+    // First line: JSON data with the metadata (indexer name, index ID)
+    // Second line: Index data. When the operation is DELETED, no data is present.
+    auto callbackCalled {false};
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
+                                   {
+                                       ASSERT_EQ(nlohmann::json::parse(data), expectedMetadata);
+                                       callbackCalled = true;
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Publish content and wait until the publication finishes.
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
  * @brief Test the connection and posterior publication of invalid data to an available server.
  *
  */

@@ -116,6 +116,11 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
+static void builderDeleteByQuery(nlohmann::json& bulkData, const std::string& agentId)
+{
+    bulkData["query"]["bool"]["filter"]["terms"]["agent.id"].push_back(agentId);
+}
+
 bool IndexerConnector::abuseControl(const std::string& agentId)
 {
     const auto currentTime = std::chrono::system_clock::now();
@@ -373,20 +378,28 @@ IndexerConnector::IndexerConnector(
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
-            auto url = selector->getNext();
+            // Accumulator for data to be sent to the indexer via bulk requests.
             std::string bulkData;
-            url.append("/_bulk?refresh=wait_for");
+
+            // Accumulator for data to be sent to the indexer via query requests.
+            nlohmann::json queryData;
 
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data);
-                const auto& id = parsedData.at("id").get_ref<const std::string&>();
-                // If the element should not be indexed, only delete it from the sync database.
-                const bool noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
 
-                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+                // Id is the unique identifier of the element.
+                const auto& id = parsedData.at("id").get_ref<const std::string&>();
+
+                // Operation is the action to be performed on the element.
+                const auto& operation = parsedData.at("operation").get_ref<const std::string&>();
+
+                // If the element should not be indexed, only delete it from the sync database.
+                const auto noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
+
+                if (operation.compare("DELETED") == 0)
                 {
                     if (!noIndex)
                     {
@@ -394,8 +407,22 @@ IndexerConnector::IndexerConnector(
                     }
                     m_db->delete_(id);
                 }
+                else if (operation.compare("DELETED_BY_QUERY") == 0)
+                {
+                    logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
+                    if (!noIndex)
+                    {
+                        builderDeleteByQuery(queryData, id);
+                    }
+
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
+                }
                 else
                 {
+                    logDebug2(IC_NAME, "Added document for insertion with id: %s.", id.c_str());
                     const auto dataString = parsedData.at("data").dump();
                     if (!noIndex)
                     {
@@ -405,21 +432,37 @@ IndexerConnector::IndexerConnector(
                 }
             }
 
+            // Send data to the indexer to be processed.
+            const auto processData = [&secureCommunication](const std::string& data, const std::string& url)
+            {
+                const auto onSuccess = [](const std::string& response)
+                {
+                    logDebug2(IC_NAME, "Response: %s", response.c_str());
+                };
+
+                const auto onError = [](const std::string& error, const long statusCode)
+                {
+                    logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                    throw std::runtime_error(error);
+                };
+
+                HTTPRequest::instance().post(
+                    HttpURL(url), data, onSuccess, onError, "", DEFAULT_HEADERS, secureCommunication);
+            };
+
+            const auto serverUrl = selector->getNext();
+
+            // Depending on the data, send it to the indexer via bulk or query requests.
             if (!bulkData.empty())
             {
-                // Process data.
-                HTTPRequest::instance().post(
-                    HttpURL(url),
-                    bulkData,
-                    [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                    [](const std::string& error, const long statusCode)
-                    {
-                        logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
-                        throw std::runtime_error(error);
-                    },
-                    "",
-                    DEFAULT_HEADERS,
-                    secureCommunication);
+                const auto url = serverUrl + "/_bulk?refresh=wait_for";
+                processData(bulkData, url);
+            }
+
+            if (!queryData.empty())
+            {
+                const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
+                processData(queryData.dump(), url);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
