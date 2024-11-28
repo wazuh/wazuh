@@ -147,7 +147,9 @@ def test_get_by_sha1():
     ('http://example.com/<script>', False),
     ('https://192.168.0.1:invalid', False),
     ('malformed://example.com', False),
-    ('http://', False)
+    ('http://', False),
+    ('https://user:some]password[@host.com', False),
+    ('https://user:some%5Dpassword%5B@host.com', False)
 ])
 def test_is_valid_url(url, expected):
     """Test the `test_is_valid_url` function works as expected."""
