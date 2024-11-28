@@ -17,9 +17,9 @@ To build a Solaris package using vagrant, you need to download this repository c
 
 1. Download this repository, copy the `solaris10` or `solaris11` directory into `package_generation/src` and go to the `package_generation` directory:
     ```bash
-    $ git clone https://github.com/wazuh/wazuh-packages
-    $ cp -r wazuh-packages/solaris/solaris10 wazuh-packages/solaris/package_generation/src
-    $ cd wazuh-packages/solaris/package_generation
+    $ git clone https://github.com/wazuh/wazuh
+    $ cp -r wazuh/packages/solaris/solaris10 wazuh/packages/solaris/package_generation/src
+    $ cd wazuh/packages/solaris/package_generation
     ```
 
 2. Bring the machine up `vagrant [OPTION] ... up solaris10/solaris11`:
