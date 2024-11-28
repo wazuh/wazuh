@@ -424,8 +424,8 @@ def stop():
     try:
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
     except StopIteration:
-        main_logger.error('Wazuh server is not running.')
-        sys.exit(1)
+        main_logger.warning('Wazuh server is not running.')
+        sys.exit(0)
 
     shutdown_server(server_pid)
     os.kill(server_pid, signal.SIGTERM)
