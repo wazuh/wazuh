@@ -16,7 +16,7 @@
 #include "cve5_generated.h"
 #include "vulnerabilityDescription_generated.h"
 
-constexpr auto DESCRIPTIONS_COLUMN {"descriptions_nvd"};
+constexpr auto DESCRIPTIONS_COLUMN {"descriptions"};
 /**
  * @brief UpdateCVEDescription class.
  *

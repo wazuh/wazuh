@@ -42,6 +42,7 @@ add_executable(vdscanner_utest
     ${UNIT_SRC_DIR}/factoryOrchestrator_test.cpp
     ${UNIT_SRC_DIR}/responseBuilder_test.cpp
     ${UNIT_SRC_DIR}/scanContext_test.cpp
+    ${UNIT_SRC_DIR}/descriptionsHelper_test.cpp
 )
 target_compile_definitions(vdscanner_utest PUBLIC FLATBUFFER_SCHEMAS_DIR="${CMAKE_CURRENT_LIST_DIR}/../feedmanager/schemas/")
 target_link_libraries(vdscanner_utest GTest::gmock GTest::gtest_main vdscanner feedmanager::mocks)

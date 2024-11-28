@@ -16,6 +16,14 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
+auto constexpr DEFAULT_CNA {"nvd"};
+
+enum VulnerabilitySource
+{
+    ADP_BASE = 0,
+    ADP_EXPANDED = 1
+};
+
 enum class ScannerType
 {
     Unknown = 0,
@@ -52,9 +60,6 @@ struct MatchCondition
 /**
  * @brief ScanContext structure.
  *
- * @tparam TOsDataCache os data cache type.
- * @tparam TGlobalData global data type.
- * @tparam TRemediationDataCache remediation data cache type.
  */
 struct ScanContext final
 {
@@ -525,6 +530,15 @@ public:
      *
      */
     std::unordered_map<std::string, MatchCondition> m_matchConditions;
+
+    /**
+     * @brief Feed source information.
+     *
+     * @note Use @see VulnerabilitySource enum to access each field
+     *
+     * @return Pair with CNA/ADP base name and CNA/ADP expanded name.
+     */
+    std::pair<std::string, std::string> m_vulnerabilitySource = std::make_pair(DEFAULT_CNA, DEFAULT_CNA);
 
     ScannerType scannerType() const { return m_type; }
 
