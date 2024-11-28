@@ -1,7 +1,6 @@
 {
   "dependencies": [
     "benchmark",
-    "cli11",
     "concurrentqueue",
     "curl",
     "date",
@@ -30,10 +29,6 @@
     {
       "name": "benchmark",
       "version": "1.8.5#0"
-    },
-    {
-      "name": "cli11",
-      "version": "2.2.0#0"
     },
     {
       "name": "concurrentqueue",

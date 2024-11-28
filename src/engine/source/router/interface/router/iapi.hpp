@@ -30,7 +30,6 @@ public:
 
     // Production: Ingest
     virtual void postEvent(base::Event&& event) = 0;
-    virtual base::OptError postStrEvent(std::string_view event) = 0;
 
     /**
      * @brief Post a batch of raw events

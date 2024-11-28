@@ -59,17 +59,17 @@ Feature: Tester API Management
   Scenario: Send events to specific session without debug session via API
     Given I have a policy "policy/wazuh/0" that has an integration called "other-wazuh-core-test" loaded
     And I create a "test" session that points to policy "policy/wazuh/0"
-    When I send a request to send the event "hi! i am an event test!" from "test" session with "NONE" debug "system" namespace, queue "001ASD" and "decoder/other-test-message/0" asset trace
+    When I send a request to send the event "hi! i am an event test!" from "test" session with "NONE" debug "system" namespace, agent.name "001ASD" and "decoder/other-test-message/0" asset trace
     Then I should receive the next output: "{"output":"{\"event\":{\"original\":{\"message\":\"hi! i am an event test!\"}},\"agent\":{\"name\":\"header-agent\",\"id\":\"001ASD\"}}"}"
 
   Scenario: Send events to specific session with low debug via API
     Given I have a policy "policy/wazuh/0" that has an integration called "other-wazuh-core-test" loaded
     And I create a "test" session that points to policy "policy/wazuh/0"
-    When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug "system" namespace, queue "BB22" and "decoder/other-test-message/0" asset trace
+    When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug "system" namespace, agent.name "BB22" and "decoder/other-test-message/0" asset trace
     Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true}],"output":"{\"event\":{\"original\":{\"message\":\"hi! i am an event test!\"}},\"agent\":{\"name\":\"header-agent\",\"id\":\"BB22\"}}"}"
 
   Scenario: Send events to specific session with high debug via API
     Given I have a policy "policy/wazuh/0" that has an integration called "other-wazuh-core-test" loaded
     And I create a "test" session that points to policy "policy/wazuh/0"
-    When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug "system" namespace, queue "BB22" and "decoder/other-test-message/0" asset trace
+    When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug "system" namespace, agent.name "BB22" and "decoder/other-test-message/0" asset trace
     Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $agent.id == BB22] -> Success"]}],"output":"{\"event\":{\"original\":{\"message\":\"hi! i am an event test!\"}},\"agent\":{\"name\":\"header-agent\",\"id\":\"BB22\"}}"}"

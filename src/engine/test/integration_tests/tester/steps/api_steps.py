@@ -198,7 +198,7 @@ def step_impl(context, policy_name: str):
     delete_policy(policy_name)
 
 
-@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug "{namespace}" namespace, queue "{queue_char}" and "{asset_trace}" asset trace')
+@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug "{namespace}" namespace, agent.name "{queue_char}" and "{asset_trace}" asset trace')
 def step_impl(context, message: str, session_name: str, debug_level: str, queue_char: str, namespace: str, asset_trace: str):
     debug_level_to_int = {
         "NONE": 0,

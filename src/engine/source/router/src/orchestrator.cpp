@@ -467,31 +467,6 @@ std::list<prod::Entry> Orchestrator::getEntries() const
     return m_workers.front()->getRouter()->getEntries();
 }
 
-base::OptError Orchestrator::postStrEvent(std::string_view event)
-{
-    if (event.empty())
-    {
-        return base::Error {"Event cannot be empty"};
-    }
-
-    base::OptError err = std::nullopt;
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        this->postEvent(std::move(ev));
-    }
-    catch (const std::exception& e)
-    {
-        err = base::Error {e.what()};
-    }
-
-    if (err)
-    {
-        return err;
-    }
-    return std::nullopt;
-}
-
 void Orchestrator::postRawNdjson(std::string&& batch)
 {
     const std::size_t min_header_size = 2; // Header + subheader
