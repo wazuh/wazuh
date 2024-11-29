@@ -1,8 +1,8 @@
-FROM dev-wazuh-engine
+FROM wazuh-server-builder
 
 ENV DEBIAN_FRONTEND="noninteractive"
 
-RUN apt-get update && apt-get install -y python3 python3-pip vim curl apt-transport-https python3-cryptography sqlite3
+RUN apt-get update && apt-get install -y vim apt-transport-https sqlite3
 
 ADD entrypoint.sh /scripts/entrypoint.sh
 ADD healthcheck.sh /scripts/healthcheck.sh

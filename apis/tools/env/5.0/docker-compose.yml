@@ -1,17 +1,17 @@
 services:
-  wazuh-engine:
+  wazuh-server:
     build:
       context: ../../../../src/engine/tools/docker
       args:
         WAZUH_ROOT: /wazuh
         ENGINE_COMMIT_ID: 286c3c6464e6b960c59b891f706a4300d52c4d04
-    image: dev-wazuh-engine
+    image: wazuh-server-builder
     command: "" # Exit early, the container won't be used
-    container_name: wazuh-engine-builder
+    container_name: wazuh-server-builder
 
   wazuh-manager:
     build:
-      context: ./wazuh-manager
+      context: ./wazuh-server
     image: dev-wazuh-manager
     container_name: wazuh-manager
     hostname: wazuh-manager
@@ -22,10 +22,10 @@ services:
       - ./certs/wazuh-manager.key:/etc/wazuh-server/server.key
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer.key:/etc/wazuh-server/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer.key
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
       # Default configuration
-      - ./wazuh-server.yml:/tmp/wazuh-server.yml
+      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
       - ../../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
       - ../../../../api/scripts:/usr/share/wazuh-server/api/scripts
@@ -44,7 +44,7 @@ services:
       - manager-node
       - manager
     depends_on:
-      - wazuh-engine
+      - wazuh-server
       - wazuh-indexer
 
   wazuh-worker1:
@@ -58,10 +58,10 @@ services:
       - ./certs/wazuh-worker1.key:/etc/wazuh-server/server.key
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer.key:/etc/wazuh-server/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer.key
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
       # Default configuration
-      - ./wazuh-server.yml:/tmp/wazuh-server.yml
+      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
       - ../../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
       - ../../../../api/scripts:/usr/share/wazuh-server/api/scripts
@@ -93,10 +93,10 @@ services:
       - ./certs/wazuh-worker2.key:/etc/wazuh-server/server.key
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer.key:/etc/wazuh-server/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer.key
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
       # Default configuration
-      - ./wazuh-server.yml:/tmp/wazuh-server.yml
+      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
       - ../../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
       - ../../../../api/scripts:/usr/share/wazuh-server/api/scripts
@@ -164,7 +164,6 @@ services:
   #   entrypoint:
   #     - /scripts/entrypoint.sh
   #     - nginx-lb
-  #     - ${WAZUH_VERSION}
   #   depends_on:
   #     - wazuh-manager
   #     - wazuh-worker1
