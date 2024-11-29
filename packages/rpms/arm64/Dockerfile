@@ -81,6 +81,7 @@ RUN scl enable devtoolset-10 " \
 COPY vcpkg.json /build_deps_vcpkg/vcpkg.json
 COPY vcpkg-configuration.json /build_deps_vcpkg/vcpkg-configuration.json
 ENV PATH=$PATH:$VCPKG_ROOT
+ENV PATH=$PATH:$VCPKG_FORCE_SYSTEM_BINARIES
 RUN scl enable devtoolset-10 "cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests"
 
 # Add the scripts to build the RPM package

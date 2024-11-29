@@ -90,7 +90,7 @@ on:
 
 jobs:
   Build-server-packages:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
 

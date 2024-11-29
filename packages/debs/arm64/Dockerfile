@@ -19,7 +19,7 @@ RUN sh /tmp/cmake-3.30.4-linux-aarch64.sh --prefix=/opt/cmake --skip-license
 RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
 RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
 
-# Instalar vcpkg
+# Install vcpkg
 ENV VCPKG_ROOT=/root/vcpkg
 ENV VCPKG_FORCE_SYSTEM_BINARIES=arm
 RUN git clone "https://github.com/microsoft/vcpkg.git" "$VCPKG_ROOT" && \
@@ -28,17 +28,18 @@ RUN git clone "https://github.com/microsoft/vcpkg.git" "$VCPKG_ROOT" && \
     echo "export VCPKG_ROOT=$VCPKG_ROOT" >> ~/.bashrc && \
     echo "export PATH=\$PATH:\$VCPKG_ROOT" >> ~/.bashrc
 
-# Instalar paquetes de vcpkg usando el archivo vcpkg.json
+# Install vcpkg packages using vcpkg json file
 COPY vcpkg.json /build_deps_vcpkg/vcpkg.json
 COPY vcpkg-configuration.json /build_deps_vcpkg/vcpkg-configuration.json
 ENV PATH=$PATH:$VCPKG_ROOT
+ENV PATH=$PATH:$VCPKG_FORCE_SYSTEM_BINARIES
 RUN cd /build_deps_vcpkg && vcpkg install --triplet arm64-linux --feature-flags=manifests
 
-# Agregar script para construir el paquete Debian
+# Add the script to build the Debian package
 ADD build.sh /usr/local/bin/build_package
 RUN chmod +x /usr/local/bin/build_package
 ADD helper_function.sh /usr/local/bin/helper_function.sh
 ADD gen_permissions.sh /tmp/gen_permissions.sh
 
-# Configurar el punto de entrada
+# Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/build_package"]
