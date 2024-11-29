@@ -55,7 +55,7 @@ async def log_request(request: Request, response: Response, start_time: time) ->
 
 
 async def log_request_debug(request: Request, path: str) -> None:
-    """Log request headers and the entire body on endpoints using JSON streaming.
+    """Log request headers and body JSON streams.
 
     Parameters
     ----------
@@ -71,7 +71,7 @@ async def log_request_debug(request: Request, path: str) -> None:
         async for chunk in request.stream():
             body += chunk
         
-        logger.debug(f'Request body: {body.decode()}',  extra={'log_type': 'log'})
+        logger.debug(f'Request body stream: {body.decode()}',  extra={'log_type': 'log'})
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):

@@ -51,6 +51,7 @@ async def test_log_request():
             call(json_info, extra={'log_type': 'json'})
         ])
 
+
 async def test_log_request_debug():
     """Validate that the `log_request_debug` function works as expected."""
     request = Request(scope={
@@ -67,7 +68,7 @@ async def test_log_request_debug():
 
         logger_mock.debug.assert_has_calls([
             call("Request headers: {'content-type': 'application/json'}", extra={'log_type': 'log'}),
-            call(f'Request body: {body}', extra={'log_type': 'log'}),
+            call(f'Request body stream: {body}', extra={'log_type': 'log'}),
         ])
 
 
