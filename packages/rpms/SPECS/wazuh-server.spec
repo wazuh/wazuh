@@ -212,6 +212,9 @@ find %{_localstatedir}etc/wazuh-server -type d -exec chmod 755 {} \; -o -type f 
 # Fix Python permissions
 chmod -R 0750 %{_localstatedir}usr/share/wazuh-server/framework/python/bin
 
+# Fix binaries permissions
+chmod -R 0750 %{_localstatedir}usr/share/wazuh-server/bin
+
 %triggerin -- glibc
 
 %clean
@@ -252,6 +255,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
+# This will be correctly added in #26936
+%attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/rbac_control
 %attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
 
 %config(missingok) %{_initrddir}/wazuh-server
