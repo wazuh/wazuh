@@ -57,7 +57,7 @@ class TesterMessageTemplate:
         }
 
         self._event_template = {
-            "base": {"tags": ["production-server"]},
+            "tags": ["production-server"],
             "event": {
                 "ingested": ingested,
                 "module": module,
