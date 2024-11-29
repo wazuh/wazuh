@@ -16,7 +16,7 @@ IMAGE_ID=$(echo ${IMAGE_ID} | tr '[A-Z]' '[a-z]')
 # Login to GHCR
 echo ${GITHUB_PUSH_SECRET} | docker login https://ghcr.io -u $GITHUB_USER --password-stdin
 
-# Build image for the specified architecture
+# Build image
 echo build -t ${IMAGE_ID} -f ${DOCKERFILE_PATH} ${BUILD_CONTEXT}
 docker build -t ${IMAGE_ID} -f ${DOCKERFILE_PATH} ${BUILD_CONTEXT}
 docker push ${IMAGE_ID}
