@@ -22,7 +22,7 @@ services:
       - ./certs/wazuh-manager.key:/etc/wazuh-server/server.key
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
@@ -58,7 +58,7 @@ services:
       - ./certs/wazuh-worker1.key:/etc/wazuh-server/server.key
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
@@ -93,7 +93,7 @@ services:
       - ./certs/wazuh-worker2.key:/etc/wazuh-server/server.key
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
@@ -131,6 +131,7 @@ services:
       - ./certs/wazuh-indexer.key:/usr/share/opensearch/config/indexer.key
       - ./certs/wazuh-indexer-key.pem:/usr/share/opensearch/config/indexer-key.pem
     environment:
+      - node.name=wazuh-indexer
       - discovery.type=single-node
       - plugins.security.ssl.transport.pemcert_filepath=indexer.pem
       - plugins.security.ssl.transport.pemkey_filepath=indexer-key.pem
@@ -142,7 +143,7 @@ services:
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=SecretPassword1%
       - cluster.blocks.create_index=false
       # Prevent execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
-      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - DISABLE_INSTALL_DEMO_CONFIG=true
 
   nginx-lb:
     build:

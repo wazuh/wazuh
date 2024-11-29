@@ -19,7 +19,7 @@ indexer:
   password: SecretPassword1%
   ssl:
     use_ssl: true
-    key: /etc/wazuh-server/indexer.key
+    key: /etc/wazuh-server/indexer-key.pem
     certificate: /etc/wazuh-server/indexer.pem
     certificate_authorities:
       - /etc/wazuh-server/root-ca.pem
