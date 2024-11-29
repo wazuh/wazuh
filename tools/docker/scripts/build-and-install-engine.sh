@@ -7,7 +7,7 @@
 
 # Clone the Wazuh repository
 
-git clone "https://github.com/wazuh/wazuh.git" ${WAZUH_ROOT}
+git clone "https://github.com/wazuh/wazuh.git" --single-branch ${WAZUH_ROOT}
 
 cd ${WAZUH_ROOT}
 if [ -n "${ENGINE_COMMIT_ID}" ]; then
@@ -22,6 +22,8 @@ USER_NO_STOP="y"                     \
 USER_CA_STORE="/path/to/my_cert.pem" \
 DOWNLOAD_CONTENT="y"                 \
 ./install.sh
+
+cp -rf ${WAZUH_ROOT}/src/engine/build/main /usr/share/wazuh-server/bin/wazuh-engine
 
 # USER_NO_STOP=no USER_LANGUAGE=en ${WAZUH_ROOT}/install.sh
 
@@ -42,7 +44,7 @@ echo "Launching the engine"
 echo $! > /tmp/engine.pid
 
 # Check for the socket to be created
-timeout=60
+timeout=30
 SECONDS=0
 until [ -s /run/wazuh-server/engine.socket ] || (( SECONDS >= timeout )); do
     sleep 1
@@ -63,3 +65,13 @@ engine-test add -i remote-syslog -f remote-syslog -o 127.0.0.1
 
 # TODO Remove after change the `output/file-output-wazuh-core/0` in ruleset
 mkdir -p "/var/ossec/logs/alerts/"
+
+# Cleanup dependencies
+rm -rf /root/.cache
+rm -rf /root/vcpkg
+rm -rf /opt/cmake
+rm -rf /wazuh
+rm -rf /var/lib/wazuh-server/tmp/vd_1.0.0_vd_4.10.0.tar
+rm /tmp/GeoLite2-City.mmdb
+rm /tmp/GeoLite2-ASN.mmdb
+
