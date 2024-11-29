@@ -570,6 +570,23 @@ int main(int argc, char* argv[])
              *
              * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
              * accepts a NDJSON payload where each line represents an object.
+             * 
+             * **Example NDJSON Payload:**
+             * ```
+             * {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}}
+             * {"module": "logcollector", "type": "file"}
+             * {"log": {"file": {"path": "/var/log/apache2/access.log"}}, "tags": ["production-server"], "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z", "module": "apache-access", "provider": "file"}}
+             * {"log":{"file":{"path":"/var/log/apache2/error.log"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","ingested":"2023-12-26T09:22:14.000Z","module":"apache-error","provider":"file"}}
+             * {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","ingested":"2023-12-26T09:22:14.000Z","module":"syslog","provider":"file"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"$CHANEL_NAME","provider":"windows-evenchannel"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"Microsoft-Windows-Security-Auditing","provider":"windows-evenchannel"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"Windows PowerShell","provider":"windows-evenchannel"}}
+             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"$UNIT_NAME","provider":"journald"}}
+             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"ssh.service","provider":"journald"}}
+             * {"module": "inventory", "type": "package"}
+             * {"tags": ["string"], "event": {"original": "string", "ingested": "string", "module": "string", "provider": "string"}}
+             * ```
+             *
              * @apiHeader {String} Content-Type=application/x-ndjson The content type of the request.
              *
              * @apiBody (Agent Information) {Object} agent Agent information.
@@ -593,21 +610,13 @@ int main(int argc, char* argv[])
              * @apiBody (Log Information) {Object} log Log information.
              * @apiBody (Log Information) {Object} log.file File information.
              * @apiBody (Log Information) {String} log.file.path Path to the file, "/path/to/source". Exist only if is recolected from a file.
-             * @apiBody (Log Information) {Object} base The base field set contains all fields which are at the root of the events.
-             * @apiBody (Log Information) {String} base.tags List of keywords used to tag each event. (e.g ["production", "env2"])
+             * @apiBody (Log Information) {String} tags List of keywords used to tag each event. (e.g ["production", "env2"])
              * @apiBody (Log Information) {Object} event Details of the event itself.
              * @apiBody (Log Information) {String} event.original The original message collected from the agent.
              * @apiBody (Log Information) {String} event.created Timestamp when an event is recollected in '%Y-%m-%dT%H:%M:%SZ' format.
              * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g. apache, eventchannel,
              * journald, etc)
              * @apiBody (Log Information) {String} event.provider Source of the event. (e.g channel, file, journald unit, etc)
-             *
-             * @apiExample {ndjson} Request-Example:
-             *     {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}}
-             *     {"module": "logcollector", "type": "file"}
-             *     {"log": {"file": {"path": "/var/log/apache2/access.log"}}, "base": {"tags": ["production-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z", "module": "apache-access", "provider": "file"}}
-             *     {"module": "inventory", "type": "package"}
-             *     {"base": {"tags": ["string"]}, "event": {"original": "string", "ingested": "string", "module": "string", "provider": "string"}}
              *
              * @apiSuccessExample Success-Response:
              *     HTTP/1.1 204 No Content
