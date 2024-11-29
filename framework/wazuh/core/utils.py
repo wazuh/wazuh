@@ -845,66 +845,6 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def check_remote_commands(data: str):
-    """Check if remote commands are allowed. If not, it will check if the found command is in the list of exceptions.
-
-    Parameters
-    ----------
-    data : str
-        Configuration file
-    """
-    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
-
-    def check_section(command_regex, section, split_section):
-        try:
-            for line in command_regex.findall(data)[0].split(split_section):
-                command_matches = re.match(r".*<(command|full_command)>(.*)</(command|full_command)>.*",
-                                           line, flags=re.MULTILINE | re.DOTALL)
-                if command_matches and \
-                        (line.count('<command>') > 1 or
-                         command_matches.group(2) not in
-                         blocked_configurations['remote_commands'][section].get('exceptions', [])):
-                    raise WazuhError(1124)
-        except IndexError:
-            pass
-
-    if not blocked_configurations['remote_commands']['localfile']['allow']:
-        command_section = re.compile(r"<localfile>(.*)</localfile>", flags=re.MULTILINE | re.DOTALL)
-        check_section(command_section, section='localfile', split_section='</localfile>')
-
-    if not blocked_configurations['remote_commands']['wodle_command']['allow']:
-        command_section = re.compile(r"<wodle name=\"command\">(.*)</wodle>", flags=re.MULTILINE | re.DOTALL)
-        check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
-
-
-def check_agents_allow_higher_versions(data: str):
-    """Check if higher version agents are allowed.
-
-    Parameters
-    ----------
-    data : str
-        Configuration file content.
-    """
-    blocked_configurations = api.configuration.hardcoded_api_config['upload_configuration']
-
-    def check_section(agents_regex, split_section):
-        try:
-            for line in agents_regex.findall(data)[0].split(split_section):
-                tag_matches = re.match(r".*<allow_higher_versions>(.*)</allow_higher_versions>.*",
-                                            line, flags=re.MULTILINE | re.DOTALL)
-                if tag_matches and (tag_matches.group(1) == 'yes'):
-                    raise WazuhError(1129)
-        except IndexError:
-            pass
-
-    if not blocked_configurations['agents']['allow_higher_versions']['allow']:
-        remote_section = re.compile(r"<remote>(.*)</remote>", flags=re.MULTILINE | re.DOTALL)
-        check_section(remote_section, split_section='</remote>')
-
-        auth_section = re.compile(r"<auth>(.*)</auth>", flags=re.MULTILINE | re.DOTALL)
-        check_section(auth_section, split_section='</auth>')
-
-
 def validate_wazuh_configuration(data: str):
     """Check that the Wazuh configuration provided is valid.
 

@@ -10,11 +10,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from jsonschema import validate, ValidationError
 
 import wazuh.core.utils as core_utils
-from api.api_exception import APIError
-from api.validator import api_config_schema, security_config_schema
 
 CACHE_DEPRECATED_MESSAGE = 'The `cache` API configuration option was deprecated in {release} and will be removed ' \
                            'in the next minor release.'
@@ -176,14 +173,3 @@ def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate
     os.chmod(certificate_path, 0o400)
 
 
-# Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any
-# change is performed to the configuration.
-try:
-    validate(instance=default_security_configuration, schema=security_config_schema)
-    validate(instance=default_api_configuration, schema=api_config_schema)
-except ValidationError as e:
-    raise APIError(2000, details=e.message) from None
-
-# Configuration - global object
-# TODO(25554) - This is only used as a placeholder for no longer used endpoints
-hardcoded_api_config = default_api_configuration
