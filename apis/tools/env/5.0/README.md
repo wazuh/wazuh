@@ -30,7 +30,7 @@ To generate the certificates for the server and indexer nodes, execute:
 certs/gen_certs.sh
 ```
 
-You should then have the certificates inside the `certs` folder
+You should then have the keys and certificates inside the `certs` folder
 
 ```console
 wazuh@wazuh:~/wazuh/apis/tools/env/5.0$ ls -la certs/
@@ -83,21 +83,21 @@ And that's it, you can now view the logs using `docker logs <container-name>` or
 
 ### Ports mapping
 
-The ports of the different APIs are mapped to the host to be able to access them without having to log into the containers.
-Here are the mapping for each component:
+All relevant APIs ports are mapped to the host to be able to access them without having to log into the containers.
+Here are the mappings for each component:
 
-#### Communications API
+#### Server Communications API
 
-27000: Manager node
-27001: Worker node 1
-27002: Worker node 2
+- 27000: Manager node
+- 27001: Worker node 1
+- 27002: Worker node 2
 
-#### Management API
+#### Server Management API
 
-55000: Manager node
-55001: Worker node 1
-55002: Worker node 2
+- 55000: Manager node
+- 55001: Worker node 1
+- 55002: Worker node 2
 
 #### Indexer
 
-9200: Indexer node
+- 9200: Indexer node
