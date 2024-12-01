@@ -158,15 +158,18 @@ services:
       - wazuh-worker1
       - wazuh-worker2
 
-  # wazuh-agent:
-  #   build:
-  #     context: ./wazuh-agent
-  #   image: dev-wazuh-agent
-  #   entrypoint:
-  #     - /scripts/entrypoint.sh
-  #     - nginx-lb
-  #   depends_on:
-  #     - wazuh-manager
-  #     - wazuh-worker1
-  #     - wazuh-worker2
-  #     - nginx-lb
+  wazuh-agent:
+    build:
+      context: ./wazuh-agent
+    image: dev-wazuh-agent
+    container_name: wazuh-agent
+    volumes:
+      - ./wazuh-agent/wazuh-agent.yml:/etc/wazuh-agent/wazuh-agent.yml
+    environment:
+      USER: wazuh
+      PASSWORD: wazuh
+    depends_on:
+      - wazuh-manager
+      - wazuh-worker1
+      - wazuh-worker2
+      - nginx-lb
