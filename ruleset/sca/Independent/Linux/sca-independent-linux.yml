@@ -209,107 +209,204 @@ checks:
       - "c:systemctl is-enabled tmp.mount -> r:^enabled"
 
   # 1.1.3 Ensure nodev option set on /tmp partition. (Scored)
-   - id: 31008
-     title: "Ensure nodev option set on /tmp partition."
-     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
-     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nodev /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,nodev /tmp."
-     compliance:
-       - cis: ["1.1.3"]
-       - cis_csc_v7: ["6 13", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-       - pci_dss_v3.2.1: ["2.2"]
-     condition: all
-     rules:
-       - "c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nodev"
+  - id: 31008
+    title: "Ensure nodev option set on /tmp partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nodev /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,nodev /tmp."
+    compliance:
+    - cis: ["1.1.3"]
+    - cis_csc_v7: ["6 13", "5.1"]
+    - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+    - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+    - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+    - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+    - "c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nodev"
 
-  # 1.1.4 Ensure nosuid option set on /tmp partition. (Scored)
-   - id: 31009
-     title: "Ensure nosuid option set on /tmp partition."
-     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
-     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp ."
-     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nosuid /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,nosuid /tmp."
-     compliance:
-       - cis: ["1.1.4"]
-       - cis_csc_v7: ["6 13", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-       - pci_dss_v3.2.1: ["2.2"]
-     condition: all
-     rules:
-      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nosuid'
+ # 1.1.4 Ensure nosuid option set on /tmp partition. (Scored)
+  - id: 31009
+    title: "Ensure nosuid option set on /tmp partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp ."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nosuid /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,nosuid /tmp."
+    compliance:
+     - cis: ["1.1.4"]
+     - cis_csc_v7: ["6 13", "5.1"]
+     - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+     - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+     - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+    - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nosuid'
 
-  # 1.1.5 Ensure noexec option set on /tmp partition. (Scored)
-   - id: 31010
-     title: "Ensure noexec option set on /tmp partition."
+ # 1.1.5 Ensure noexec option set on /tmp partition. (Scored)
+  - id: 31010
+    title: "Ensure noexec option set on /tmp partition."
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp ."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,noexec /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,noexec /tmp."
+    compliance:
+     - cis: ["1.1.5"]
+     - cis_csc_v7: ["6 2", "2.6"]
+     - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+     - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
+     - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+     - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+    - 'c:findmnt -kn /tmp -> r:noexec'
+
+ # 1.1.6 Ensure separate partition exists for /var. (Scored)
+  - id: 31011
+    title: "Ensure separate partition exists for /var."
+    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
+    rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
+    imapact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate. Impact: Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    references:
+     - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+    compliance:
+     - cis: ["1.1.6"]
+     - cis_csc_v7: ["6 13", "5.1"]
+     - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+     - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+     - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+    - 'c:findmnt --kernel /var -> r:\s*/var\s'
+
+ # 1.1.7 Ensure separate partition exists for /var/tmp. (Scored)
+  - id: 31012
+    title: "Ensure separate partition exists for /var/tmp."
+    description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications."
+    rationale: "Since the /var/tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own file system allows an administrator to set the noexec option on the mount, making /var/tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate. Impact: Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    compliance:
+     - cis: ["1.1.7"]
+     - cis_csc_v7: ["6 13", "5.1"]
+     - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+     - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+     - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+    - 'c:findmnt --kernel /var/tmp -> r:\s*/var/tmp\s'
+
+ # 1.1.8 Ensure nodev option set on /var/tmp partition. (Scored)
+  - id: 31013
+    title: "Ensure nodev option set on /var/tmp partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,nodev /var/tmp."
+    compliance:
+     - cis: ["1.1.8"]
+     - cis_csc_v7: ["6 13", "5.1"]
+     - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+     - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+     - pci_dss_v3.2.1: ["2.2"]
+    condition: all
+    rules:
+    - "c:findmnt --kernel /var/tmp -> r:nodev"
+
+ # 1.1.9 Ensure nosuid option set on /var/tmp partition. (Scored)
+  - id: 31015
+    title: "Ensure nosuid option set on /var/tmp partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,nosuid /var/tmp."
+    compliance:
+     - cis: ["1.1.9"]
+     - cis_csc_v7: ["6 13", "5.1"]
+     - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+     - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+    condition: all
+    rules:
+      - "c:findmnt --kernel /var/tmp -> r:nosuid"
+
+  # 1.1.10 Ensure noexec option set on /var/tmp partition. (Scored)
+   - id: 31016
+     title: "Ensure noexec option set on /var/tmp partition."
      description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
-     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp ."
-     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,noexec /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,noexec /tmp."
+     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp ."
+     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,noexec /var/tmp."
      compliance:
-       - cis: ["1.1.5"]
+       - cis: ["1.1.10"]
        - cis_csc_v7: ["6 2", "2.6"]
        - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
        - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
-       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-       - pci_dss_v3.2.1: ["2.2"]
      condition: all
      rules:
-      - 'c:findmnt -kn /tmp -> r:noexec'
+      - "c:findmnt --kernel /var/tmp -> r:noexec"
 
-  # 1.1.6 Ensure separate partition exists for /var. (Scored)
-   - id: 31011
-     title: "Ensure separate partition exists for /var."
-     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
-     rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
-     imapact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
-     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate. Impact: Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+  # 1.1.11 Ensure separate partition exists for /var/log. (Scored)
+   - id: 31017
+     title: "Ensure separate partition exists for /var/log."
+     description: "The /var/log directory is used by system services to store log data ."
+     rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
+     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
      references:
        - 'http://tldp.org/HOWTO/LVM-HOWTO/'
      compliance:
-       - cis: ["1.1.6"]
-       - cis_csc_v7: ["6 13", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-       - pci_dss_v3.2.1: ["2.2"]
+       - cis: ["1.1.11"]
+       - cis_csc_v7: ["6 6.3", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var -> r:\s*/var\s'
+      - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s'
 
-  # 1.1.7 Ensure separate partition exists for /var/tmp. (Scored)
-   - id: 31012
-     title: "Ensure separate partition exists for /var/tmp."
-     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications."
-     rationale: "Since the /var/tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own file system allows an administrator to set the noexec option on the mount, making /var/tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+  # 1.1.12 Ensure separate partition exists for /var/log/audit. (Scored)
+   - id: 31018
+     title: "Ensure separate partition exists for /var/log/audit."
+     description: "The auditing daemon, auditd , stores log data in the /var/log/audit directory."
+     rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog) consume space in the same partition as auditd , it may not perform as desired."
      impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
-     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate. Impact: Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+     references:
+       - 'http://tldp.org/HOWTO/LVM-HOWTO/'
      compliance:
-       - cis: ["1.1.7"]
-       - cis_csc_v7: ["6 13", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-       - pci_dss_v3.2.1: ["2.2"]
+       - cis: ["1.1.12"]
+       - cis_csc_v7: ["6 6.3", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
      condition: all
      rules:
-      - 'c:findmnt --kernel /var/tmp -> r:\s*/var/tmp\s'
+      - 'c:findmnt --kernel /var/log/audit -> r:\s*/var/log/audit\s'
 
-  # 1.1.8 Ensure nodev option set on /var/tmp partition. (Scored)
-   - id: 31013
-     title: "Ensure nodev option set on /var/tmp partition."
-     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
-     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,nodev /var/tmp."
+  # 1.1.13 Ensure separate partition exists for /home. (Scored)
+   - id: 31019
+     title: "Ensure separate partition exists for /home."
+     description: "The /home directory is used to support disk storage needs of local users."
+     rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home ."
+     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+     references:
+       - 'http://tldp.org/HOWTO/LVM-HOWTO/'
      compliance:
-       - cis: ["1.1.8"]
+       - cis: ["1.1.13"]
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
-       - pci_dss_v3.2.1: ["2.2"]
      condition: all
      rules:
-      - "c:findmnt --kernel /var/tmp -> r:nodev"
+      - 'c:findmnt -kn /home -> r:\s*/home\s'
+
+  # 1.1.14 Ensure nodev option set on /home partition. (Scored)
+   - id: 31020
+     title: "Ensure nodev option set on /home partition."
+     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+     rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
+     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information. # mount -o remount,nodev /home Notes: The actions in this recommendation refer to the /homepartition, which is the default user partition that is defined in many distributions. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well."
+     compliance:
+       - cis: ["1.1.14"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition: all
+     rules:
+      - 'c:findmnt -kn /home -> r:nodev'
