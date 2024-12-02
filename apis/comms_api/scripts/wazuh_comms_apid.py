@@ -26,7 +26,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
-from api.constants import COMMS_API_LOG_PATH
 from api.middlewares import SecureHeadersMiddleware
 from comms_api.core.batcher import create_batcher_process
 from comms_api.core.commands import CommandsManager
@@ -78,13 +77,11 @@ def create_app(batcher_queue: MuxDemuxQueue, commands_manager: CommandsManager) 
     return app
 
 
-def setup_logging(daemon: bool, logging_config: RotatedLoggingConfig) -> dict:
+def setup_logging(logging_config: RotatedLoggingConfig) -> dict:
     """Set up the logging module and returns the configuration used.
 
     Parameters
     ----------
-    daemon : bool
-        Whether to execute the script as a daemon or in foreground.
     logging_config :  RotatedLoggingConfig
         Logger configuration.
 
@@ -93,18 +90,11 @@ def setup_logging(daemon: bool, logging_config: RotatedLoggingConfig) -> dict:
     dict
         Logging configuration dictionary.
     """
-    log_config_dict = set_logging(log_filepath=COMMS_API_LOG_PATH,
-                                  logging_config=logging_config,
-                                  background_mode=daemon)
+    log_config = set_logging(logging_config=logging_config)
 
-    for handler in log_config_dict['handlers'].values():
-        if 'filename' in handler:
-            utils.assign_wazuh_ownership(handler['filename'])
-            os.chmod(handler['filename'], 0o660)
+    logging.config.dictConfig(log_config)
 
-    logging.config.dictConfig(log_config_dict)
-
-    return log_config_dict
+    return log_config
 
 
 def configure_ssl(keyfile: str, certfile: str) -> None:
@@ -302,7 +292,7 @@ if __name__ == '__main__':
 
     utils.clean_pid_files(MAIN_PROCESS)
     
-    log_config_dict = setup_logging(daemon=args.daemon, logging_config=comms_api_config.logging)
+    log_config_dict = setup_logging(logging_config=comms_api_config.logging)
     logger = logging.getLogger('wazuh-comms-api')
 
     if args.daemon:

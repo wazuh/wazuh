@@ -91,8 +91,6 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
         Configuration for management API intervals. Default is an instance of ManagementAPIIntervals.
     ssl : APISSLConfig
         SSL configuration for the management API. Default is an instance of APISSLConfig.
-    logging : RotatedLoggingConfig
-        Logging configuration for the management API. Default is an instance of LoggingWithRotationConfig.
     cors : CorsConfig
         CORS configuration for the management API. Default is an instance of CorsConfig.
     access : AccessConfig
@@ -110,6 +108,7 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
         key=DEFAULT_MANAGEMENT_API_KEY_PATH,
         cert=DEFAULT_MANAGEMENT_API_CERT_PATH
     )
+    # TODO: review log rotation
     logging: RotatedLoggingConfig = RotatedLoggingConfig()
     cors: CorsConfig = CorsConfig()
     access: AccessConfig = AccessConfig()

@@ -34,7 +34,6 @@ ENGINE_BINARY_PATH = WAZUH_SHARE / 'bin' / 'wazuh-engine'
 ENGINE_DAEMON_NAME = 'wazuh-engined'
 MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
-CLUSTER_LOG = WAZUH_LOG / 'cluster.log'
 
 
 #
@@ -42,7 +41,7 @@ CLUSTER_LOG = WAZUH_LOG / 'cluster.log'
 #
 
 
-def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
+def set_logging(debug_mode=0) -> WazuhLogger:
     """Set cluster logger.
 
     Parameters
@@ -58,7 +57,6 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
         Cluster logger.
     """
     cluster_logger = ClusterLogger(
-        foreground_mode=foreground_mode,
         log_path='cluster.log',
         debug_level=debug_mode,
         tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
@@ -369,11 +367,6 @@ def start():
     except StopIteration:
         pass
 
-    # Set correct permissions on cluster.log file
-    if os.path.exists(CLUSTER_LOG):
-        os.chown(CLUSTER_LOG, wazuh_uid(), wazuh_gid())
-        os.chmod(CLUSTER_LOG, 0o660)
-
     try:
         server_config = CentralizedConfig.get_server_config()
     except Exception as e:
@@ -460,7 +453,7 @@ if __name__ == '__main__':
     except Exception:
         debug_mode_ = 0
 
-    main_logger = set_logging(foreground_mode=not getattr(args, 'daemon', False), debug_mode=debug_mode_)
+    main_logger = set_logging(debug_mode=debug_mode_)
 
     if hasattr(args, 'func'):
         args.func()

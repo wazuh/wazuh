@@ -10,7 +10,6 @@ from wazuh.core.config.models.base import WazuhConfigBaseModel
 class LoggingFormat(str, Enum):
     """Enum representing the available logging formats."""
     plain = 'plain'
-    json = 'json'
 
 
 class LoggingLevel(str, Enum):
@@ -79,20 +78,6 @@ class LoggingConfig(WazuhConfigBaseModel):
         return 2
 
 
-class LogFileMaxSizeConfig(WazuhConfigBaseModel):
-    """Configuration for maximum log file size.
-
-    Parameters
-    ----------
-    enabled : bool
-        Whether the maximum file size feature is enabled. Default is False.
-    size : str
-        The maximum size of the log file. Supports 'M' for megabytes and 'K' for kilobytes. Default is "1M".
-    """
-    enabled: bool = False
-    size: str = Field(default="1M", pattern=r"^([1-9]\d*)([KM])$")
-
-
 class RotatedLoggingConfig(WazuhConfigBaseModel):
     """Configuration for logging with rotation.
 
@@ -107,7 +92,6 @@ class RotatedLoggingConfig(WazuhConfigBaseModel):
     """
     level: APILoggingLevel = APILoggingLevel.debug
     format: List[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)
-    max_size: LogFileMaxSizeConfig = LogFileMaxSizeConfig()
 
     def get_level(self) -> int:
         """Returns the integer value corresponding to the logging level.
