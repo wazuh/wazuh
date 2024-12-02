@@ -1,9 +1,8 @@
 from wazuh.core.indexer.models.commands import Action, Command, Result, Status, Source, Target, TargetType
 
 
-def test_command_from_dict():
-    """Validate the correct functionality of the `Command.from_dict` method."""
-    document_id = 'id'
+def test_command_post_init():
+    """Validate the correct functionality of the `Command.__post_init` method."""
     status = 'pending'
     timeout = 100
     data = {
@@ -14,9 +13,8 @@ def test_command_from_dict():
         'timeout': timeout,
         'source': Source.SERVICES.value,
     }
-    command = Command().from_dict(document_id, data)
+    command = Command(**data)
 
-    assert command.document_id == document_id
     assert command.target == Target(**data['target'])
     assert command.action == Action(**data['action'])
     assert command.result == Result(**data['result'])

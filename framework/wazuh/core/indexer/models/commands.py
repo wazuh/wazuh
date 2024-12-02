@@ -53,10 +53,8 @@ class Target:
 @dataclass
 class Command:
     """Command data model."""
-    document_id: str = None
     request_id: str = None
     order_id: str = None
-    groups: str = None
     source: Source = None
     user: str = None
     target: Target = None
@@ -72,24 +70,6 @@ class Command:
             self.action = Action(**self.action)
         if isinstance(self.result, dict):
             self.result = Result(**self.result)
-
-    @classmethod
-    def from_dict(cls, document_id: str, data: dict):
-        """Create an object instance from a dictionary.
-        
-        Parameters
-        ----------
-        document_id : str
-            Document ID.
-        data : dict
-            Command data.
-        
-        Returns
-        -------
-        Command
-            Object instance with its fields initialized.
-        """
-        return cls(document_id=document_id, **data)
 
 
 class ResponseResult(str, Enum):
