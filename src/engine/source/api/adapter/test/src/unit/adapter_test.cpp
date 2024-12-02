@@ -14,16 +14,16 @@ TEST(ApiAdapterTest, Error)
     ASSERT_NO_THROW(Error {});
 }
 
-TEST(ApiAdapterTest, ReqOrError)
+TEST(ApiAdapterTest, ResOrErrorResp)
 {
     auto fnReq = []()
     {
-        ReqOrError<TestReq> {};
+        ResOrErrorResp<TestReq> {};
     };
 
     auto fnError = []()
     {
-        ReqOrError<Error> {};
+        ResOrErrorResp<Error> {};
     };
 
     ASSERT_NO_THROW(fnReq());
@@ -32,7 +32,7 @@ TEST(ApiAdapterTest, ReqOrError)
 
 TEST(ApiAdapterTest, IsError)
 {
-    auto res = ReqOrError<TestReq> {};
+    auto res = ResOrErrorResp<TestReq> {};
     ASSERT_FALSE(isError(res));
 
     res = Error {};
@@ -41,7 +41,7 @@ TEST(ApiAdapterTest, IsError)
 
 TEST(ApiAdapterTest, GetErrorResp)
 {
-    auto res = ReqOrError<TestReq> {};
+    auto res = ResOrErrorResp<TestReq> {};
     ASSERT_THROW(getErrorResp(res), std::bad_variant_access);
 
     res = Error {};
@@ -51,11 +51,11 @@ TEST(ApiAdapterTest, GetErrorResp)
 TEST(ApiAdapterTest, GetReq)
 {
     TestReq req;
-    auto res = ReqOrError<TestReq> {req};
-    ASSERT_NO_THROW(getReq(res));
+    auto res = ResOrErrorResp<TestReq> {req};
+    ASSERT_NO_THROW(getRes(res));
 
     res = Error {};
-    ASSERT_THROW(getReq(res), std::bad_variant_access);
+    ASSERT_THROW(getRes(res), std::bad_variant_access);
 }
 
 TEST(ApiAdapterTest, InternalErrorResponse)
@@ -100,14 +100,14 @@ TEST(ApiAdapterTest, ParseRequest)
     TestReq protoReq;
     protoReq.set_content("test");
     auto req = createRequest<TestReq>(protoReq);
-    ReqOrError<TestReq> res;
+    ResOrErrorResp<TestReq> res;
     auto fn = [&]()
     {
         res = parseRequest<TestReq, TestRes>(req);
     };
     ASSERT_NO_THROW(fn());
     ASSERT_FALSE(isError(res));
-    auto gotReq = getReq(res);
+    auto gotReq = getRes(res);
     ASSERT_EQ(gotReq.content(), protoReq.content());
 
     req.body = "invalid";

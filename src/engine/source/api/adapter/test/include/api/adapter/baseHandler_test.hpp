@@ -62,8 +62,8 @@ void handlerTest(ReqGetter& reqGetter,
     mockHandler.reset();
     httplib::Response expiredResponse;
     ASSERT_NO_THROW(routeHandler(request, expiredResponse));
-    auto expectedExpiredResponse = adapter::getError(
-        adapter::getHandler<adapter::eEngine::GenericStatus_Response>(std::weak_ptr<IHandler> {handler}));
+    auto expectedExpiredResponse =
+        adapter::internalErrorResponse<adapter::eEngine::GenericStatus_Response>("Error: Handler is not initialized");
     EXPECT_EQ(expiredResponse.status, expectedExpiredResponse.status);
     // TODO: find a way to compare the body problem is response type may be different than GenericStatus_Response
     // EXPECT_EQ(expiredResponse.body, expectedExpiredResponse.body);
