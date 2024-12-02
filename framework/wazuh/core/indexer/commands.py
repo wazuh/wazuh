@@ -87,33 +87,6 @@ class CommandsManager(BaseIndex):
 
         return commands
 
-    async def update(self, items: List[Union[Command, Result]]) -> None:
-        """Update commands.
-        
-        Parameters
-        ----------
-        items : List[Union[Command, Result]]
-            List of commands or results to update.
-
-        Raises
-        ------
-        WazuhResourceNotFound(2202)
-            If no document exists with the id provided.
-        """
-        actions = []
-        for item in items:
-            actions.append({IndexerKey.UPDATE: {IndexerKey._INDEX: self.INDEX, IndexerKey._ID: item.id}})
-            item_dict = asdict(item, dict_factory=remove_empty_values)
-            # The document ID shouldn't be part of the value
-            item_dict.pop(DOC_ID_KEY, None)
-            actions.append({IndexerKey.DOC: item_dict})
-
-        # TODO(25121): Create an internal library to build opensearch requests and parse responses
-        response = await self._client.bulk(actions, self.INDEX)
-        for item in response[IndexerKey.ITEMS]:
-            if item[IndexerKey.UPDATE][STATUS_KEY] == 404:
-                raise WazuhResourceNotFound(2202)
-
 
 def create_restart_command(agent_id: str) -> Command:
     """Create a restart command for an agent with the ID specified.
