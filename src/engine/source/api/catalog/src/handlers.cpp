@@ -14,23 +14,14 @@ adapter::RouteHandler resourcePost(const std::shared_ptr<ICatalog>& catalog)
         using RequestType = eCatalog::ResourcePost_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakCatalog);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ICatalog>(req, weakCatalog);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto catalog = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [catalog, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         const auto error = !protoReq.has_type()          ? std::make_optional("Missing /type parameter or is invalid")
@@ -88,23 +79,14 @@ adapter::RouteHandler resourceGet(const std::shared_ptr<ICatalog>& catalog)
         using RequestType = eCatalog::ResourceGet_Request;
         using ResponseType = eCatalog::ResourceGet_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakCatalog);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ICatalog>(req, weakCatalog);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto catalog = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [catalog, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         const auto error = !protoReq.has_name()          ? std::make_optional("Missing /name parameter")
@@ -165,23 +147,14 @@ adapter::RouteHandler resourceDelete(const std::shared_ptr<ICatalog>& catalog)
         using RequestType = eCatalog::ResourceDelete_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakCatalog);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ICatalog>(req, weakCatalog);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto catalog = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [catalog, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         const auto error = !protoReq.has_name()          ? std::make_optional("Missing /name parameter")
@@ -237,23 +210,14 @@ adapter::RouteHandler resourcePut(const std::shared_ptr<ICatalog>& catalog)
         using RequestType = eCatalog::ResourcePut_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakCatalog);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ICatalog>(req, weakCatalog);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto catalog = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [catalog, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         const auto error = !protoReq.has_name()          ? std::make_optional("Missing /name parameter")
@@ -311,23 +275,14 @@ adapter::RouteHandler resourceValidate(const std::shared_ptr<ICatalog>& catalog)
         using RequestType = eCatalog::ResourceValidate_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakCatalog);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ICatalog>(req, weakCatalog);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto catalog = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [catalog, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         const auto error = !protoReq.has_name()          ? std::make_optional("Missing /name parameter")
@@ -387,23 +342,14 @@ adapter::RouteHandler getNamespaces(const std::shared_ptr<ICatalog>& catalog)
         using RequestType = eCatalog::NamespacesGet_Request;
         using ResponseType = eCatalog::NamespacesGet_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakCatalog);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ICatalog>(req, weakCatalog);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto catalog = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [catalog, protoReq] = adapter::getRes(result);
 
         // Call catalog
         ResponseType eResponse;
