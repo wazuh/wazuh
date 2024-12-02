@@ -1,4 +1,4 @@
-FROM wazuh-server-builder
+FROM dev-wazuh-server-builder
 
 ENV DEBIAN_FRONTEND="noninteractive"
 

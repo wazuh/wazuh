@@ -5,8 +5,8 @@ services:
       args:
         WAZUH_ROOT: /wazuh
         ENGINE_COMMIT_ID: 286c3c6464e6b960c59b891f706a4300d52c4d04
-    image: wazuh-server-builder
-    command: "" # Exit early, the container won't be used
+    image: dev-wazuh-server-builder
+    entrypoint: "" # Exit early, the container won't be used
     container_name: wazuh-server-builder
 
   wazuh-manager:
