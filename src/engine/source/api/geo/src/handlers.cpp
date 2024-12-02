@@ -14,23 +14,14 @@ adapter::RouteHandler addDb(const std::shared_ptr<::geo::IManager>& geoManager)
         using RequestType = eGeo::DbPost_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakGeoManager);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::geo::IManager>(req, weakGeoManager);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto geoManager = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [geoManager, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         auto path = protoReq.path();
@@ -71,23 +62,14 @@ adapter::RouteHandler delDb(const std::shared_ptr<::geo::IManager>& geoManager)
         using RequestType = eGeo::DbDelete_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakGeoManager);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::geo::IManager>(req, weakGeoManager);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto geoManager = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [geoManager, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         auto path = protoReq.path();
@@ -118,23 +100,14 @@ adapter::RouteHandler listDb(const std::shared_ptr<::geo::IManager>& geoManager)
         using RequestType = eGeo::DbList_Request;
         using ResponseType = eGeo::DbList_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakGeoManager);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::geo::IManager>(req, weakGeoManager);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto geoManager = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [geoManager, protoReq] = adapter::getRes(result);
 
         // Get the databases
         const auto dbs = geoManager->listDbs();
@@ -160,23 +133,14 @@ adapter::RouteHandler remoteUpsertDb(const std::shared_ptr<::geo::IManager>& geo
         using RequestType = eGeo::DbRemoteUpsert_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
-        auto result = adapter::getHandler<ResponseType>(weakGeoManager);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::geo::IManager>(req, weakGeoManager);
         if (adapter::isError(result))
         {
-            res = adapter::getError(result);
+            res = adapter::getErrorResp(result);
             return;
         }
 
-        auto geoManager = adapter::getRes(result);
-
-        auto reqOrError = adapter::parseRequest<RequestType, ResponseType>(req);
-        if (adapter::isError(reqOrError))
-        {
-            res = adapter::getErrorResp(reqOrError);
-            return;
-        }
-
-        auto protoReq = adapter::getReq<RequestType>(reqOrError);
+        auto [geoManager, protoReq] = adapter::getRes(result);
 
         // Validate the params request
         ::geo::Type type;

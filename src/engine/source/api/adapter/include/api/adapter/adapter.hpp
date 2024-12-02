@@ -15,91 +15,70 @@ namespace api::adapter
 using RouteHandler = std::function<void(const httplib::Request&, httplib::Response&)>;
 namespace eEngine = ::com::wazuh::api::engine;
 
-/**
- * @brief Error type containing the response.
- *
- */
 struct Error
 {
     httplib::Response res;
 };
 
 /**
- * @brief Return type for requests or errors.
+ * @brief Return type for fallible operations with either the result or an error httplib::Response.
  *
- * @tparam Req The request type, must be a specialization of protobuf message.
- */
-template<typename Req>
-using ReqOrError = std::variant<Req, Error>;
-template<typename Res>
-using ResOrError = ReqOrError<Res>;
-
-/**
- * @brief Get the Error Response object
- *
- * @tparam Res Result type
- * @param res The response
- * @return httplib::Response
+ * @tparam Res The result type
  */
 template<typename Res>
-httplib::Response getError(const ResOrError<Res>& res)
-{
-    return std::get<Error>(res).res;
-}
-
-/**
- * @brief Get the result object
- *
- * @tparam Res Result type
- * @param res The result or error
- * @return Res
- */
-template<typename Res>
-Res getRes(const ResOrError<Res>& res)
-{
-    return std::get<Res>(res);
-}
+using ResOrErrorResp = std::variant<Res, Error>;
 
 /**
  * @brief Check if the response is an error.
  *
- * @tparam Req The request type
- * @param res The response
- * @return true If the response is an error
+ * @tparam Res The result type
+ * @param res The result
+ * @return true If the response is an httplib::Response error (Error)
  * @return false Otherwise
  */
-template<typename Req>
-inline bool isError(const ReqOrError<Req>& res)
+template<typename Res>
+inline bool isError(const ResOrErrorResp<Res>& res)
 {
     return std::holds_alternative<Error>(res);
 }
 
 /**
- * @brief Get the Error Response object
+ * @brief Get the Error object
  *
- * @tparam Req Request type
- * @param res The response
- * @return httplib::Response
+ * @tparam Res the result type
+ * @param res The result
+ * @return Error The error object with the httplib::Response
  */
-template<typename Req>
-httplib::Response getErrorResp(const ReqOrError<Req>& res)
+template<typename Res>
+Error getError(const ResOrErrorResp<Res>& res)
 {
-    static_assert(std::is_base_of_v<google::protobuf::Message, Req>, "Request must be a protobuf message");
-    return std::get<Error>(res).res;
+    return std::get<Error>(res);
 }
 
 /**
- * @brief Get the request object
+ * @brief Get the httplib::Response error
  *
- * @tparam Req Request type
- * @param res The response
- * @return Req
+ * @tparam Res The result type
+ * @param res The result
+ * @return httplib::Response error response
  */
-template<typename Req>
-Req getReq(const ReqOrError<Req>& res)
+template<typename Res>
+httplib::Response getErrorResp(const ResOrErrorResp<Res>& res)
 {
-    static_assert(std::is_base_of_v<google::protobuf::Message, Req>, "Request must be a protobuf message");
-    return std::get<Req>(res);
+    return getError(res).res;
+}
+
+/**
+ * @brief Get the result
+ *
+ * @tparam Res The result type
+ * @param res The result
+ * @return Res
+ */
+template<typename Res>
+Res getRes(const ResOrErrorResp<Res>& res)
+{
+    return std::get<Res>(res);
 }
 
 /**
@@ -190,10 +169,10 @@ inline httplib::Response userErrorResponse(const std::string& message)
  * @tparam Req The request typeç
  * @tparam Res The response type
  * @param req The httplib request
- * @return ReqOrError<Req> The request or an error with the response
+ * @return ResOrErrorResp<Req> The request or an error with the response
  */
 template<typename Req, typename Res>
-ReqOrError<Req> parseRequest(const httplib::Request& req)
+ResOrErrorResp<Req> parseRequest(const httplib::Request& req)
 {
     static_assert(std::is_base_of_v<google::protobuf::Message, Req>, "Request must be a protobuf message");
     if (!req.body.empty())
@@ -262,23 +241,26 @@ inline Res parseResponse(const httplib::Response& res)
     return Res {};
 }
 
-/**
- * @brief Get the Handler object from a weak pointer or return an error response.
- *
- * @tparam Res The response type
- * @tparam IHandler The handler type
- * @param weakHandler The weak handler
- * @return ResOrError<std::shared_ptr<IHandler>>
- */
-template<typename Res, typename IHandler>
-ResOrError<std::shared_ptr<IHandler>> getHandler(const std::weak_ptr<IHandler>& weakHandler)
+template<typename Req, typename IHandler>
+using ReqAndHandler = std::tuple<std::shared_ptr<IHandler>, Req>;
+
+template<typename Req, typename Res, typename IHandler>
+ResOrErrorResp<ReqAndHandler<Req, IHandler>> getReqAndHandler(const httplib::Request& req,
+                                                              const std::weak_ptr<IHandler>& weakHandler)
 {
-    if (auto handler = weakHandler.lock())
+    auto handler = weakHandler.lock();
+    if (!handler)
     {
-        return handler;
+        return Error {internalErrorResponse<Res>("Error: Handler is not initialized")};
     }
 
-    return Error {internalErrorResponse<Res>("API endpoint is not available")};
+    auto protoRequest = parseRequest<Req, Res>(req);
+    if (isError(protoRequest))
+    {
+        return getError(protoRequest);
+    }
+
+    return ReqAndHandler<Req, IHandler> {handler, getRes(protoRequest)};
 }
 
 } // namespace api::adapter
