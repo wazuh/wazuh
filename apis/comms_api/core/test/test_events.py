@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import call, patch, AsyncMock, MagicMock
 
@@ -11,8 +12,7 @@ from wazuh.core.batcher.client import BatcherClient
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import Agent, AgentMetadata, CommandResult, SCAEvent, TaskResult, StatefulEvent, \
-    Header, Module, Result
+from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module, TaskResult
 
 
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
@@ -64,9 +64,10 @@ async def test_send_stateful_events(send_events_mock, batcher_client_mock):
             architecture='x86_64',
             ip='127.0.0.1',
             os=OS(
-                name='Debian 12',
-                platform='Linux'
-            )
+                name='Debian',
+                platform='Linux',
+                version='12'
+            ),
         ),
     ))
     headers = [
@@ -82,12 +83,13 @@ async def test_send_stateful_events(send_events_mock, batcher_client_mock):
         ),
     ]
     data = [
-        CommandResult(result=Result(
-            code=200,
-            message='',
-            data=''
-        )),
-        SCAEvent(),
+        {
+            'result': {
+                'code': 200,
+                'message': '',
+                'data': ''
+            }
+        },
     ]
     batcher_queue = AsyncMock()
     batcher_client = BatcherClient(batcher_queue)
@@ -128,13 +130,14 @@ async def test_parse_stateful_events():
             hostname='wazuh-agent',
             ip=['127.0.0.1'],
             os=OS(
-                name='Debian 12',
-                platform='Linux'
+                name='Debian',
+                platform='Linux',
+                version='12'
             )
         ),
     ))
     header = Header(id='1', module=Module.COMMAND, operation=Operation.CREATE)
-    event = CommandResult(result=Result(code=200, message='', data=''))
+    event = {'result': {'code': 200, 'message': '', 'data': ''}}
     events = StatefulEvents(
         agent_metadata=agent_metadata,
         headers=[header],
@@ -143,7 +146,7 @@ async def test_parse_stateful_events():
     request._body = '\n'.join([
         agent_metadata.model_dump_json(), 
         header.model_dump_json(),
-        event.model_dump_json(),
+        json.dumps(event),
     ]).encode()
 
     result = await parse_stateful_events(request)
@@ -209,10 +212,7 @@ async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mo
                 module=Module.SCA
             ),
         ],
-        data=[
-            SCAEvent(),
-            SCAEvent()
-        ]
+        data=[{}, {}]
     )
     await send_events(events, batcher_client_mock)
 
