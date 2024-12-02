@@ -130,6 +130,7 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
         Indexer response for each one of the bulk tasks.
     """
     tasks: List[asyncio.Task] = []
+    item_ids: List[str] = []
     i: int = 0
 
     # Sends the events to the batcher
@@ -140,9 +141,13 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
             i += 1
 
         batcher_client.send_event(agent_metadata=events.agent_metadata, header=header, data=data)
+
+        if header.id not in item_ids:
+            item_ids.append(header.id)
             
+    for id in item_ids:
         task = asyncio.create_task(
-            (lambda u: batcher_client.get_response(u))(header.id)
+            (lambda u: batcher_client.get_response(u))(id)
         )
         tasks.append(task)
 
@@ -167,12 +172,13 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
     results: List[TaskResult] = []
 
     for result in tasks_results:
-        status = result[IndexerKey.STATUS]
-        if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
-            task_result = TaskResult(id=result[IndexerKey._ID], result=result[IndexerKey.RESULT], status=status)
-        else:
-            task_result = TaskResult(id='', result=result[IndexerKey.ERROR][IndexerKey.REASON], status=status)
+        for r in result:
+            status = r[IndexerKey.STATUS]
+            if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
+                task_result = TaskResult(id=r[IndexerKey._ID], result=r[IndexerKey.RESULT], status=status)
+            else:
+                task_result = TaskResult(id='', result=r[IndexerKey.ERROR][IndexerKey.REASON], status=status)
 
-        results.append(task_result)
+            results.append(task_result)
 
     return results

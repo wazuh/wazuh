@@ -228,26 +228,34 @@ async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mo
 def test_parse_tasks_results():
     """Check that the `parse_tasks_results` function works as expected."""
     tasks_results = [
-        {
-            '_id': '1',
-            'status': 201,
-            'result': 'created',
-        },
-        {
+        [
+            {
+                '_id': '1',
+                'status': 201,
+                'result': 'created',
+            },
+            {
+                '_id': '1',
+                'status': 200,
+                'result': 'updated',
+            }
+        ],
+        [{
             '_id': '2',
             'status': 200,
             'result': 'updated',
 
-        },
-        {
+        }],
+        [{
             'status': 400,
             'error': {
                 'reason': 'invalid field `scan_time`'
             },
-        }
+        }]
     ]
     expected = [
         TaskResult(id='1', result='created', status=201),
+        TaskResult(id='1', result='updated', status=200),
         TaskResult(id='2', result='updated', status=200),
         TaskResult(id='', result='invalid field `scan_time`', status=400),
     ]
