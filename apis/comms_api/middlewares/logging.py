@@ -33,6 +33,9 @@ async def log_request(request: Request, response: Response, start_time: time) ->
     if 'key' in body and '/authentication' in path:
         body['key'] = '***'
 
+    if logger.isEnabledFor(logging.DEBUG):
+        await log_request_debug(request, path)
+
     log_info = f'({agent_uuid}) ' if agent_uuid is not None else ''
     log_info += f'"{method} {path}" with parameters {json.dumps(query)} and body '
     log_info += f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status_code}'
@@ -49,6 +52,26 @@ async def log_request(request: Request, response: Response, start_time: time) ->
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})
+
+
+async def log_request_debug(request: Request, path: str) -> None:
+    """Log request headers and body JSON streams.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request received.
+    path : str
+        URL path.
+    """
+    logger.debug(f'Request headers: {dict(request.headers.items())}', extra={'log_type': 'log'})
+
+    if '/events' in path:
+        body = b''
+        async for chunk in request.stream():
+            body += chunk
+        
+        logger.debug(f'Request body stream: {body.decode()}',  extra={'log_type': 'log'})
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
