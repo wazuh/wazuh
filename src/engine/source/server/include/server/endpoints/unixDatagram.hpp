@@ -4,8 +4,6 @@
 #include <functional>
 #include <memory>
 
-#include <metrics/iMetricsManager.hpp>
-
 #include <server/endpoint.hpp>
 
 namespace engineserver::endpoint
@@ -33,19 +31,19 @@ private:
     std::shared_ptr<uvw::UDPHandle> m_handle;     ///< Handle to the socket
     int m_bufferSize;                             ///< Size of the receive buffer
 
-    struct Metric
-    {
-        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;     ///< Metrics scope for the endpoint
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_byteRecv;    ///< Counter for the total requests
-        std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_eventSize; ///< Histogram for the event size
-        std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_queueSize; ///< Histogram for the use queue size
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_busyQueue;   ///< Counter for the busy queue
+    // struct Metric
+    // {
+    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;     ///< Metrics scope for the endpoint
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_byteRecv;    ///< Counter for the total requests
+    //     std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_eventSize; ///< Histogram for the event size
+    //     std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_queueSize; ///< Histogram for the use queue size
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_busyQueue;   ///< Counter for the busy queue
 
-        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta; ///< Metrics scope for the endpoint rate
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_byteRecvPerSecond; ///< Byte received per second
-        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_eventPerSecond;    ///< Event received per second
-    };
-    Metric m_metric;
+    //     std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta; ///< Metrics scope for the endpoint rate
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_byteRecvPerSecond; ///< Byte received per second
+    //     std::shared_ptr<metricsManager::iCounter<uint64_t>> m_eventPerSecond;    ///< Event received per second
+    // };
+    // Metric m_metric;
 
     /**
      * @brief This function opens, binds and configures a Unix datagram socket.
@@ -61,14 +59,10 @@ public:
      *
      * @param address Path to the socket
      * @param callback Callback function to be called when a message is received
-     * @param metricsScope Metrics scope for the endpoint
-     * @param metricsScopeDelta Metrics scope for the endpoint rate
      * @param taskQueueSize Size of the queue of tasks to be processed by the thread pool
      */
     UnixDatagram(const std::string& address,
                  const std::function<void(const std::string&)>& callback,
-                 std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-                 std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                  const std::size_t taskQueueSize = 0);
 
     /**

@@ -8,16 +8,13 @@
 
 #include <base/logging.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <metrics/metricsManager.hpp>
 
 namespace kvdbManager
 {
 
-KVDBManager::KVDBManager(const KVDBManagerOptions& options,
-                         const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
+KVDBManager::KVDBManager(const KVDBManagerOptions& options)
 {
     m_ManagerOptions = options;
-    m_spMetricsScope = metricsManager->getMetricsScope("KVDB");
     m_kvdbHandlerCollection = std::make_shared<KVDBHandlerCollection>();
 }
 
