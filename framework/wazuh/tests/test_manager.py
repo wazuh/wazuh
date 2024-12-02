@@ -288,7 +288,7 @@ def test_read_ossec_con_ko():
     result = read_ossec_conf(section='test')
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1103
 
 @patch('builtins.open')
 def test_get_basic_info(mock_open):
