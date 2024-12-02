@@ -50,43 +50,6 @@ class CommandsManager(BaseIndex):
             result=ResponseResult(response.get(IndexerKey.RESULT)),
         )
 
-    async def get(self, uuid: UUID, status: Status) -> Optional[List[Command]]:
-        """Get commands with the provided status from an specific agent.
-
-        Parameters
-        ----------
-        uuid : UUID
-            Agent universally unique identifier.
-        status: Status
-            Command execution status.
-
-        Returns
-        -------
-        Optional[ListCommand]
-            Commands list or None.
-        """
-        body = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.MUST: [
-                        {IndexerKey.MATCH: {TARGET_ID_KEY: uuid}},
-                        {IndexerKey.MATCH: {STATUS_KEY: status}},
-                    ]
-                }
-            }
-        }
-
-        response = await self._client.search(index=self.INDEX, body=body)
-        hits = response[IndexerKey.HITS][IndexerKey.HITS]
-        if len(hits) == 0:
-            return None
-
-        commands = []
-        for data in hits:
-            commands.append(Command.from_dict(data[IndexerKey._ID], data[IndexerKey._SOURCE]))
-
-        return commands
-
 
 def create_restart_command(agent_id: str) -> Command:
     """Create a restart command for an agent with the ID specified.
