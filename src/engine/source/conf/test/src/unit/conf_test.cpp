@@ -273,6 +273,8 @@ protected:
 
     void SetUp() override
     {
+        logging::testInit();
+
         const auto& json = std::get<1>(this->GetParam());
         m_apiLoader = conf::mocks::createMockApiLoader(json);
         m_conf = std::make_shared<conf::Conf>(m_apiLoader);
