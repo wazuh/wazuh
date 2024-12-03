@@ -22,6 +22,10 @@
                     "value": "trace"
                 },
                 {
+                    "name": "WAZUH_CONFIG_SKIP_API",
+                    "value": "true"
+                },
+                {
                     "name": "WAZUH_QUEUE_FLOOD_FILE",
                     "value": ""
                 },
