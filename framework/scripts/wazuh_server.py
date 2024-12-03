@@ -68,13 +68,6 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
     return cluster_logger
 
 
-def print_version():
-    """Print Wazuh metadata."""
-    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
-
-    print(f'\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}')
-
-
 def start_daemon(background_mode: bool, name: str, args: List[str]):
     """Start a daemon in a subprocess and validate that there were no errors during its execution.
 
@@ -102,10 +95,10 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
             returncode = p.wait()
             if returncode != 0:
                 raise Exception(f'return code {returncode}')
-            else:
-                pid = pyDaemonModule.get_parent_pid(name)
-                if pid is None:
-                    raise Exception('failed during the execution')
+
+            pid = pyDaemonModule.get_parent_pid(name)
+            if pid is None:
+                raise Exception('failed during the execution')
     except subprocess.TimeoutExpired:
         # The command was executed without errors
         if name == ENGINE_DAEMON_NAME:
@@ -125,9 +118,10 @@ def start_daemons(background_mode: bool, root: bool):
     root : bool
         Whether the script is running as root or not.
     """
+    engine_log_level = {0: 'info', 1: 'debug', 2: 'trace'}
 
     daemons = {
-        ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', 'info', 'start'],
+        ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
         COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
             + (['-r'] if root else [])
             + (['-d'] if background_mode else []),

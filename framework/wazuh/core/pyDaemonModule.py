@@ -205,7 +205,7 @@ def get_running_processes(pids_path: str = common.WAZUH_RUN) -> list:
 
 
 def check_for_daemons_shutdown(daemons: list) -> bool:
-    """Check if the given daemons list had a correspondat PID
+    """Check if the given daemons list had their corresponding PID files.
 
     Parameters
     ----------
@@ -215,7 +215,7 @@ def check_for_daemons_shutdown(daemons: list) -> bool:
     Returns
     -------
     bool
-        False if all the daemons in the list don't have a PID else True
+        False if all the daemons in the list don't have a PID else True.
     """
     running_processes = get_running_processes()
     return any([d in running_processes for d in daemons])

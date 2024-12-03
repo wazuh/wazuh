@@ -59,6 +59,7 @@ def test_start_daemons(mock_popen, daemon, root):
             pass
 
     wazuh_server.main_logger = LoggerMock
+    wazuh_server.debug_mode_ = 0
     pid = 2
     process_mock = Mock()
     attrs = {'poll.return_value': 0, 'wait.return_value': 0}
@@ -490,10 +491,10 @@ def test_stop_ko():
     wazuh_server.main_logger = Mock()
 
     with patch.object(pyDaemonModule, 'get_wazuh_server_pid', side_effect=StopIteration):
-        with pytest.raises(SystemExit, match='1'):
+        with pytest.raises(SystemExit, match='0'):
             wazuh_server.stop()
 
-    wazuh_server.main_logger.error.assert_called_once_with('Wazuh server is not running.')
+    wazuh_server.main_logger.warning.assert_called_once_with('Wazuh server is not running.')
 
 
 @pytest.mark.parametrize(
