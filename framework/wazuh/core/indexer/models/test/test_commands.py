@@ -2,7 +2,7 @@ from wazuh.core.indexer.models.commands import Action, Command, Result, Status, 
 
 
 def test_command_post_init():
-    """Validate the correct functionality of the `Command.__post_init` method."""
+    """Validate the correct functionality of the `Command.__post_init__` method."""
     status = 'pending'
     timeout = 100
     data = {
