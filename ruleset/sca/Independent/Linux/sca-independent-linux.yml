@@ -410,3 +410,333 @@ checks:
      condition: all
      rules:
       - 'c:findmnt -kn /home -> r:nodev'
+
+  # 1.1.15 Ensure nodev option set on /dev/shm partition. (Scored)
+   - id: 31021
+     title: "Ensure nodev option set on /dev/shm partition."
+     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
+     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm : # mount -o remount,nodev /dev/shm Notes: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
+     compliance:
+       - cis: ["1.1.15"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.1.16 Ensure nosuid option set on /dev/shm partition. (Scored)
+   - id: 31022
+     title: "Ensure nosuid option set on /dev/shm partition."
+     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
+     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm : # mount -o remount,nosuid /dev/shm Notes: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
+     compliance:
+       - cis: ["1.1.16"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.1.17 Ensure noexec option set on /dev/shm partition. (Scored)
+   - id: 31023
+     title: "Ensure noexec option set on /dev/shm partition."
+     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
+     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec /dev/shm Notes: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
+     compliance:
+       - cis: ["1.1.17"]
+       - cis_csc_v7: ["6 2", "2.6", "66 1.1.18", "1", "1", "6 13", "5.1", "67 1.1.19"]
+       - iso_27001-2013: ["A.12.5.1", "A.12.6.2", "A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1046", "T1047", "T1051", "T1052", "T1053", "T1054", "T1055", "T1058", "T1064", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1091", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1118", "T1121", "T1127", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1164", "T1165", "T1166", "T1169", "T1170", "T1171", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1180", "T1184", "T1187", "T1190", "T1191", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1221", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1519", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.1.21 Ensure sticky bit is set on all world-writable directories. (Scored)
+   - id: 31024
+     title: "Ensure sticky bit is set on all world-writable directories."
+     description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
+     rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp) that are owned by another user."
+     remediation: "Run the following command to set the sticky bit on all world writable directories: # df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null | xargs -I '{}' chmod a+t '{}' Notes: Some distributions may not support the --local option to df."
+     compliance:
+       - cis: ["1.1.21"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.1.22 Disable Automounting. (Scored)
+   - id: 31025
+     title: "Disable Automounting."
+     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
+     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
+     remediation: "Run one of the following commands to disable autofs : # chkconfig autofs off # systemctl disable autofs # update-rc.d autofs disable."
+     compliance:
+       - cis: ["1.1.22"]
+       - cis_csc_v7: ["6 8.3", "8.4"]
+       - iso_27001-2013: ["A.12.2.1"]
+       - mitre_techniques: ["T1027", "T1045", "T1091", "T1193", "T1194", "T1200", "T1215", "T1221"]
+     condition:
+     rules:
+
+  # 1.1.23 Disable USB Storage. (Scored)
+   - id: 31026
+     title: "Disable USB Storage."
+     description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
+     rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/usb-storage.conf and add the following line: install usb-storage /bin/true Run the following command to unload the usb-storage module: rmmod usb-storage."
+     compliance:
+       - cis: ["1.1.23"]
+       - cis_csc_v7: ["6 8.3", "8.4"]
+       - iso_27001-2013: ["A.12.2.1"]
+       - mitre_techniques: ["T1027", "T1045", "T1091", "T1193", "T1194", "T1200", "T1215", "T1221"]
+     condition:
+     rules:
+
+  # 1.2.1 Ensure package manager repositories are configured. (Not Scored)
+   - id: 31027
+     title: "Ensure package manager repositories are configured."
+     description: "Systems need to have package manager repositories configured to ensure they receive the latest patches and updates."
+     rationale: "If a system's package repositories are misconfigured important patches may not be identified or a rogue repository could introduce compromised software."
+     remediation: "Configure your package manager repositories according to site policy."
+     compliance:
+       - cis: ["1.2.1"]
+       - cis_csc_v7: ["6 4.5", "3.4"]
+       - mitre_techniques: ["T1017", "T1019", "T1068", "T1072", "T1073", "T1075", "T1100", "T1103", "T1137", "T1138", "T1189", "T1190", "T1195", "T1210", "T1211", "T1212", "T1495"]
+     condition:
+     rules:
+
+  # 1.2.2 Ensure GPG keys are configured. (Not Scored)
+   - id: 31028
+     title: "Ensure GPG keys are configured."
+     description: "Most packages managers implement GPG key signing to verify package integrity during installation."
+     rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system."
+     remediation: "Update your package manager GPG keys in accordance with site policy."
+     compliance:
+       - cis: ["1.2.2"]
+       - cis_csc_v7: ["6 4.5", "3.4"]
+       - mitre_techniques: ["T1017", "T1019", "T1068", "T1072", "T1073", "T1075", "T1100", "T1103", "T1137", "T1138", "T1189", "T1190", "T1195", "T1210", "T1211", "T1212", "T1495"]
+     condition:
+     rules:
+
+  # 1.3.1 Ensure AIDE is installed. (Scored)
+   - id: 31029
+     title: "Ensure AIDE is installed."
+     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
+     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
+     remediation: "Install AIDE using the appropriate package manager or manual installation: # yum install aide # dnf install aide # apt-get install aide # zypper install aide # emerge aide Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: # aide --init."
+     references:
+       - 'http://aide.sourceforge.net/stable/manual.html'
+     compliance:
+       - cis: ["1.3.1"]
+       - cis_csc_v7: ["6 3.5", "14.9"]
+       - iso_27001-2013: ["A.12.4.3"]
+     condition:
+     rules:
+
+  # 1.3.2 Ensure filesystem integrity is regularly checked. (Scored)
+   - id: 31030
+     title: "Ensure filesystem integrity is regularly checked."
+     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
+     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
+     remediation: "Run the following commands: # cp ./config/aidecheck.service /etc/systemd/system/aidecheck.service # cp ./config/aidecheck.timer /etc/systemd/system/aidecheck.timer # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl reenable aidecheck.timer # systemctl restart aidecheck.timer # systemctl daemon-reload or Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check."
+     references:
+       - 'https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.servic'
+       - 'https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer'
+     compliance:
+       - cis: ["1.3.2"]
+       - cis_csc_v7: ["6 3.5", "14.9"]
+       - iso_27001-2013: ["A.12.4.3"]
+     condition:
+     rules:
+
+  # 1.4.1 Ensure permissions on bootloader config are configured. (Scored)
+   - id: 31031
+     title: "Ensure permissions on bootloader config are configured."
+     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options. The grub configuration is usually grub.cfg stored in /boot/grub2/ or /boot/grub/."
+     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
+     remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub2/grub.cfg # chmod og-rwx /boot/grub2/grub.cfg OR # chown root:root /boot/grub/grub.cfg # chmod og-rwx /boot/grub/grub.cfg Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub2/grub.cfg with the appropriate grub configuration file for your environment."
+     compliance:
+       - cis: ["1.4.1"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.4.2 Ensure bootloader password is set. (Scored)
+   - id: 31032
+     title: "Ensure bootloader password is set."
+     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
+     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
+     remediation: "For grub based systems create an encrypted password with grub-md5-crypt: # grub-crypt Password: <password> Retype Password: <password> <encrypted-password> Copy and paste the <encrypted-password> into the global section of /boot/grub/menu.lst: password <encrypted-password> For grub2 based systems Create an encrypted password with grub2-setpassword : # grub2-setpassword Enter password: <password> Confirm password: <password> OR create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> Your PBKDF2 is <encrypted-password> Add the following into /etc/grub.d/00_header or a custom /etc/grub.d configuration file: cat <<EOF set superusers=\"<username>\" password_pbkdf2 <username> <encrypted-password> EOF Run the following command to update the grub2 configuration: # grub2-mkconfig -o /boot/grub2/grub.cfg OR # update-grub."
+     compliance:
+       - cis: ["1.4.2"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.4.3 Ensure authentication required for single user mode. (Scored)
+   - id: 31033
+     title: "Ensure authentication required for single user mode."
+     description: "Single user mode is used for recovery when the system detects an issue during boot or by manual selection from the bootloader."
+     rationale: "Requiring authentication in single user mode prevents an unauthorized user from rebooting the system into single user to gain root privileges without credentials."
+     remediation: "Run the following command and follow the prompts to set a password for the root user: # passwd root."
+     compliance:
+       - cis: ["1.4.3"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.4.4 Ensure interactive boot is not enabled. (Not Scored)
+   - id: 31034
+     title: "Ensure interactive boot is not enabled."
+     description: "Interactive boot allows console users to interactively select which services start on boot. Not all distributions support this capability. The PROMPT_FOR_CONFIRM option provides console users the ability to interactively boot the system and select which services to start on boot ."
+     rationale: "Turn off the PROMPT_FOR_CONFIRM option on the console to prevent console users from potentially overriding established security settings."
+     remediation: "If interactive boot is available disable it."
+     compliance:
+       - cis: ["1.4.4"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.5 Additional Process Hardening Page 97 1.5.1 Ensure core dumps are restricted. (Scored)
+   - id: 31035
+     title: "Additional Process Hardening Page 97 1.5.1 Ensure core dumps are restricted."
+     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
+     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5)). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
+     remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 If systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
+     compliance:
+       - cis: ["1.5"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 1.5.2 Ensure XD/NX support is enabled. (Scored)
+   - id: 31036
+     title: "Ensure XD/NX support is enabled."
+     description: "Recent processors in the x86 family support the ability to prevent code execution on a per memory page basis. Generically and on AMD processors, this ability is called No Execute (NX), while on Intel processors it is called Execute Disable (XD). This ability can help prevent exploitation of buffer overflow vulnerabilities and should be activated whenever possible. Extra steps must be taken to ensure that this protection is enabled, particularly on 32-bit x86 systems. Other processors, such as Itanium and POWER, have included such support since inception and the standard kernel for those platforms supports the feature."
+     rationale: "Enabling any feature that can protect against buffer overflow attacks enhances the security of the system."
+     remediation: "On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit systems: If necessary configure your bootloader to load the new kernel and reboot the system. You may need to enable NX or XD support in your bios. Notes: Ensure your system supports the XD or NX bit and has PAE support before implementing this recommendation as this may prevent it from booting if these are not supported by your hardware."
+     compliance:
+       - cis: ["1.5.2"]
+       - cis_csc_v7: ["6 8.4", "8.3"]
+       - mitre_techniques: ["T1003", "T1068", "T1080", "T1085", "T1101", "T1117", "T1131", "T1189", "T1190", "T1203", "T1210", "T1211", "T1212"]
+     condition:
+     rules:
+
+  # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Scored)
+   - id: 31037
+     title: "Ensure address space layout randomization (ASLR) is enabled."
+     description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
+     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
+     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2."
+     compliance:
+       - cis: ["1.5.3"]
+       - cis_csc_v7: ["6 8.4", "8.3"]
+       - mitre_techniques: ["T1003", "T1068", "T1080", "T1085", "T1101", "T1117", "T1131", "T1189", "T1190", "T1203", "T1210", "T1211", "T1212"]
+     condition:
+     rules:
+
+  # 1.5.4 Ensure prelink is disabled. (Scored)
+   - id: 31038
+     title: "Ensure prelink is disabled."
+     description: "prelinkis a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
+     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
+     remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # yum remove prelink # apt-get remove prelink # zypper remove prelink."
+     compliance:
+       - cis: ["1.5.4"]
+       - cis_csc_v7: ["6 3.5", "14.9"]
+       - iso_27001-2013: ["A.12.4.3"]
+     condition:
+     rules:
+
+  # 1.6.1.1 Ensure SELinux or AppArmor are installed. (Scored)
+   - id: 31039
+     title: "Ensure SELinux or AppArmor are installed."
+     description: "SELinux and AppArmor provide Mandatory Access Controls."
+     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
+     remediation: "Install SELinux or apparmor using the appropriate package manager or manual installation: # yum install libselinux # apt-get install libselinux1 # zypper install libselinux The previous commands install SELinux, use the appropriate package if AppArmor is desired. Notes: SELinux and AppArmor both have several package names in use on different distributions. Research the appropriate packages for your environment."
+     compliance:
+       - cis: ["1.6.1.1"]
+       - cis_csc_v7: ["6 14.4", "14.6"]
+       - iso_27001-2013: ["A.9.1.1"]
+       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 1.6.2.1 Ensure SELinux is not disabled in bootloader configuration. (Scored)
+   - id: 31040
+     title: "Ensure SELinux is not disabled in bootloader configuration."
+     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
+     rationale: "SELinux must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
+     remediation: "For grub based systems edit /boot/grub/menu.lst and remove all instances of selinux=0 and enforcing=0 on all kernel lines. For grub2 based systems edit /etc/default/grub and remove all instances of selinux=0 and enforcing=0 from all CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX_DEFAULT=\"quiet\" GRUB_CMDLINE_LINUX=\"\" Run the following command to update the grub2 configuration: # update-grub or # grub2-mkconfig -o /boot/grub2/guub.cfg Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+     compliance:
+       - cis: ["1.6.2.1"]
+       - cis_csc_v7: ["6 14.4", "14.6"]
+       - iso_27001-2013: ["A.9.1.1"]
+       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 1.6.2.2 Ensure the SELinux state is enforcing. (Scored)
+   - id: 31041
+     title: "Ensure the SELinux state is enforcing."
+     description: "Set SELinux to enable when the system is booted."
+     rationale: "SELinux must be enabled at boot time to ensure that the controls it provides are in effect at all times."
+     remediation: "Edit the /etc/selinux/config file to set the SELINUX parameter: SELINUX=enforcing."
+     compliance:
+       - cis: ["1.6.2.2"]
+       - cis_csc_v7: ["6 14.4", "14.6"]
+       - iso_27001-2013: ["A.9.1.1"]
+       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 1.6.2.3 Ensure SELinux policy is configured. (Scored)
+   - id: 31042
+     title: "Ensure SELinux policy is configured."
+     description: "Configure SELinux to meet or exceed the default targeted policy, which constrains daemons and system software only."
+     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that at least the default recommendations are met."
+     remediation: "Edit the /etc/selinux/config file to set the SELINUXTYPE parameter: SELINUXTYPE=targeted Notes: If your organization requires stricter policies, ensure that they are set in the /etc/selinux/config file."
+     compliance:
+       - cis: ["1.6.2.3"]
+       - cis_csc_v7: ["6 14.4", "14.6"]
+       - iso_27001-2013: ["A.9.1.1"]
+       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 1.6.2.4 Ensure SETroubleshoot is not installed. (Scored)
+   - id: 31043
+     title: "Ensure SETroubleshoot is not installed."
+     description: "The SETroubleshoot service notifies desktop users of SELinux denials through a user-friendly interface. The service provides important information around configuration errors, unauthorized intrusions, and other potential errors."
+     rationale: "The SETroubleshoot service is an unnecessary daemon to have running on a server, especially if X Windows is disabled."
+     remediation: "Uninstall setroubleshoot using the appropriate package manager or manual installation: # yum remove setroubleshoot # apt-get remove setroubleshoot # zypper remove setroubleshoot."
+     compliance:
+       - cis: ["1.6.2.4"]
+       - cis_csc_v7: ["6 14.4", "14.6"]
+       - iso_27001-2013: ["A.9.1.1"]
+       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 1.6.2.5 Ensure the MCS Translation Service (mcstrans) is not installed. (Scored)
+   - id: 31044
+     title: "Ensure the MCS Translation Service (mcstrans) is not installed."
+     description: "The mcstransd daemon provides category label information to client processes requesting information. The label translations are defined in /etc/selinux/targeted/setrans.conf."
+     rationale: "Since this service is not used very often, remove it to reduce the amount of potentially vulnerable code running on the system."
+     compliance:
+       - cis: ["1.6.2.5"]
+     condition:
+     rules:    
