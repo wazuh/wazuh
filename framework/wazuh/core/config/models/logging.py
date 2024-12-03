@@ -87,8 +87,6 @@ class RotatedLoggingConfig(WazuhConfigBaseModel):
          The logging level. Default is "debug".
      format : List[Literal["plain", "json"]]
          The format for logging output. Default is ["plain"].
-     max_size : LogFileMaxSizeConfig
-         Configuration for the maximum log file size. Default is an instance of LogFileMaxSizeConfig.
     """
     level: APILoggingLevel = APILoggingLevel.debug
     format: List[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)

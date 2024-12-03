@@ -108,7 +108,7 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
         key=DEFAULT_MANAGEMENT_API_KEY_PATH,
         cert=DEFAULT_MANAGEMENT_API_CERT_PATH
     )
-    # TODO: review log rotation
+    # TODO: review this config
     logging: RotatedLoggingConfig = RotatedLoggingConfig()
     cors: CorsConfig = CorsConfig()
     access: AccessConfig = AccessConfig()

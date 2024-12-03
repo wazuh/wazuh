@@ -57,7 +57,6 @@ def set_logging(debug_mode=0) -> WazuhLogger:
         Cluster logger.
     """
     cluster_logger = ClusterLogger(
-        log_path='cluster.log',
         debug_level=debug_mode,
         tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
     )

@@ -2,11 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import collections
 import logging
 import json
 import re
-from pythonjsonlogger import jsonlogger
 
 from api.api_exception import APIError
 
@@ -21,68 +19,6 @@ logger = logging.getLogger('wazuh-api')
 UNKNOWN_USER_STRING = "unknown_user"
 WARNING = 'WARNING'
 INFO = 'INFO'
-
-
-class APILoggerSize:
-    size_regex = re.compile(r"(\d+)([KM])")
-    unit_conversion = {
-        'K': 1024,
-        'M': 1024 ** 2
-    }
-
-    def __init__(self, size_string: str):
-        size_string = size_string.upper()
-        try:
-            size, unit = self.size_regex.match(size_string).groups()
-        except AttributeError:
-            raise APIError(2011, details="Size value does not match the expected format: <number><unit> (Available"
-                                         " units: K (kilobytes), M (megabytes). For instance: 45M") from None
-
-        self.size = int(size) * self.unit_conversion[unit]
-        if self.size < self.unit_conversion['M']:
-            raise APIError(2011, details=f"Minimum value for size is 1M. Current: {size_string}")
-
-
-class WazuhJsonFormatter(jsonlogger.JsonFormatter):
-    """
-    Define the custom JSON log formatter used by wlogging.
-    """
-
-    def add_fields(self, log_record: collections.OrderedDict, record: logging.LogRecord, message_dict: dict):
-        """Implement custom logic for adding fields in a log entry.
-
-        Parameters
-        ----------
-        log_record : collections.OrderedDict
-            Dictionary with custom fields used to generate a log entry.
-        record : logging.LogRecord
-            Contains all the information to the event being logged.
-        message_dict : dict
-            Dictionary with a request or exception information.
-        """
-        # Request handling
-        if record.message is None:
-            record.message = {
-                'type': 'request',
-                'payload': message_dict
-            }
-        else:
-            # Traceback handling
-            traceback = message_dict.get('exc_info')
-            if traceback is not None:
-                record.message = {
-                    'type': 'error',
-                    'payload': f'{record.message}. {traceback}'
-                }
-            else:
-                # Plain text messages
-                record.message = {
-                    'type': 'informative',
-                    'payload': record.message
-                }
-        log_record['timestamp'] = self.formatTime(record, self.datefmt)
-        log_record['levelname'] = record.levelname
-        log_record['data'] = record.message
 
 
 def set_logging(logging_config: RotatedLoggingConfig) -> dict:

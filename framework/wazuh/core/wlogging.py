@@ -5,8 +5,6 @@
 import logging
 import logging.handlers
 
-from wazuh.core import common, utils
-
 
 class CustomFilter:
     """
@@ -44,15 +42,13 @@ class WazuhLogger:
     """
     Define attributes of a Python Wazuh daemon's logger.
     """
-    def __init__(self, log_path: str, debug_level: [int, str], logger_name: str = 'wazuh',
+    def __init__(self, debug_level: [int, str], logger_name: str = 'wazuh',
                  custom_formatter: callable = None, tag: str = '%(asctime)s %(levelname)s: %(message)s',
                  max_size: int = 0):
         """Constructor.
 
         Parameters
         ----------
-        log_path : str
-            Filepath of the file to send logs to. Relative to the Wazuh installation path.
         debug_level : int or str
             Log level.
         logger_name : str
@@ -61,10 +57,7 @@ class WazuhLogger:
             Subclass of logging.Formatter. Allows formatting messages depending on their contents.
         tag : str
             Tag defining logging format.
-        max_size : int
-            Number of bytes the log can store at max. Once reached, the log will be rotated.
         """
-        self.log_path = common.WAZUH_LOG / log_path
         self.logger = None
         self.debug_level = debug_level
         self.logger_name = logger_name
@@ -73,7 +66,6 @@ class WazuhLogger:
             self.custom_formatter = self.default_formatter
         else:
             self.custom_formatter = custom_formatter(style='%', datefmt="%Y/%m/%d %H:%M:%S")
-        self.max_size = max_size
 
     def setup_logger(self):
         """
