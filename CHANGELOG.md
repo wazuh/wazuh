@@ -39,6 +39,9 @@ All notable changes to this project will be documented in this file.
 - Fixed errors on AIX 7.2 by adapting the blibpath variable. ([#26900](https://github.com/wazuh/wazuh/pull/26900))
 - Sanitized agent paths to prevent issues with parent folder references. ([#26944](https://github.com/wazuh/wazuh/pull/26944))
 - Fixed an issue in the DEB package that prevented the agent from restarting after an upgrade. ([#26633](https://github.com/wazuh/wazuh/pull/26633))
+- Improved file path handling in agent communications to avoid references to parent folders. ([#26944](https://github.com/wazuh/wazuh/pull/26944))  
+- Set RPM package vendor to `UNKNOWN_VALUE` when the value is missing. ([#27054](https://github.com/wazuh/wazuh/pull/27054))  
+- Updated Solaris package generation to use the correct `wazuh-packages` reference. ([#27059](https://github.com/wazuh/wazuh/issues/27059))  
 
 #### Changed
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
