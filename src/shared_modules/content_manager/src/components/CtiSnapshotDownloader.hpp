@@ -35,6 +35,9 @@ private:
      */
     void download(UpdaterContext& context) override
     {
+        // Set the content type as snapshot.
+        context.data.at("type") = "raw";
+
         const auto& baseURL {context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
 
         // Get and use the CTI base parameters.

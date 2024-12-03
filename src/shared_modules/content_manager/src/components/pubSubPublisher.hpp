@@ -60,8 +60,9 @@ private:
                 throw SnapshotProcessingException {"Failed to process the snapshot"};
             }
 
-            // Update the offset
+            // Update the offset and hash
             context.currentOffset = offset;
+            context.spUpdaterBaseContext->downloadedFileHash = hash;
             logDebug2(WM_CONTENTUPDATER, "Data published");
         }
         else

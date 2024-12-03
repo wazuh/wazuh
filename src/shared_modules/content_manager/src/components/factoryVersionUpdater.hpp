@@ -15,6 +15,7 @@
 #include "sharedDefs.hpp"
 #include "skipStep.hpp"
 #include "updateCtiApiOffset.hpp"
+#include "updateOffline.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
@@ -43,6 +44,10 @@ public:
         if (versionUpdaterType.compare("cti-api") == 0)
         {
             return std::make_shared<UpdateCtiApiOffset>();
+        }
+        else if (versionUpdaterType.compare("offline") == 0)
+        {
+            return std::make_shared<UpdateOffline>();
         }
         else if (versionUpdaterType.compare("false") == 0)
         {

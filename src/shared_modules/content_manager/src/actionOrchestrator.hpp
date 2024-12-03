@@ -276,8 +276,9 @@ private:
             spUpdaterContext->spUpdaterBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
 
         logDebug2(WM_CONTENTUPDATER,
-                  "Current offset: %d . contentSource %s",
+                  "Current offset: '%d'. Current hash: '%s'. ContentSource: '%s'",
                   spUpdaterContext->currentOffset,
+                  spUpdaterContext->spUpdaterBaseContext->downloadedFileHash.c_str(),
                   contentSource.c_str());
         // Check if the full content download should be triggered
         // 1. If the current offset is '0' and the content source is 'cti-offset'.
