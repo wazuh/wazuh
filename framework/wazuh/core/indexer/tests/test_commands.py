@@ -5,12 +5,11 @@ from opensearchpy import exceptions
 import pytest
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY, create_restart_command, \
+from wazuh.core.indexer.commands import CommandsManager, create_restart_command, \
     COMMAND_USER_NAME, create_set_group_command, create_update_group_command
-from wazuh.core.indexer.base import IndexerKey, POST_METHOD
+from wazuh.core.indexer.base import POST_METHOD
 from wazuh.core.indexer.utils import convert_enums
-from wazuh.core.indexer.models.commands import Action, Command, Source, Status, Target, TargetType, \
-    CreateCommandResponse
+from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse
 
 
 class TestCommandsManager:
@@ -45,41 +44,6 @@ class TestCommandsManager:
         client_mock.transport.perform_request.side_effect = exceptions.RequestError(400, 'error')
         with pytest.raises(WazuhError, match='.*1761.*'):
             await index_instance.create(self.create_command)
-
-    async def test_get(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
-        """Check the correct functionality of the `get` method."""
-        uuid = '0191dd54-bd16-7025-80e6-ae49bc101c7a'
-        status = Status.PENDING
-        query = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.MUST: [
-                        {IndexerKey.MATCH: {TARGET_ID_KEY: uuid}},
-                        {IndexerKey.MATCH: {STATUS_KEY: status}},
-                    ]
-                }
-            }
-        }
-        search_result = {IndexerKey.HITS: {IndexerKey.HITS: [
-            {
-                IndexerKey._ID: 'pBjePGfvgm',
-                IndexerKey._SOURCE: {'target': {'id': uuid, 'type': TargetType.AGENT}, 'status': status}
-            },
-            {
-                IndexerKey._ID: 'pBjePGfvgn',
-                IndexerKey._SOURCE: {'target': {'id': '001', 'type': TargetType.AGENT}, 'status': status}
-            },
-        ]}}
-        client_mock.search.return_value = search_result
-
-        result = await index_instance.get(uuid=uuid, status=status)
-
-        hits = search_result[IndexerKey.HITS][IndexerKey.HITS]
-        assert result == [Command.from_dict(data[IndexerKey._ID], data[IndexerKey._SOURCE]) for data in hits]
-        client_mock.search.assert_called_once_with(
-            index=index_instance.INDEX,
-            body=query,
-        )
 
 
 def test_create_restart_command():
