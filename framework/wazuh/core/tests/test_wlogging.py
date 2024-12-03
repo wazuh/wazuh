@@ -41,8 +41,8 @@ def test_wazuh_logger__init__(mock_lformatter, mock_formatter, mock_logger_name,
                               mock_logger, mock_tag):
     """Test if WazuhLogger __init__ method initialize all attributes properly."""
 
-    wlogging.WazuhLogger(tag=mock_tag,debug_level=mock_debug_level,
-                             logger_name=mock_logger_name, custom_formatter=mock_formatter)
+    wlogging.WazuhLogger(tag=mock_tag, debug_level=mock_debug_level,
+                         logger_name=mock_logger_name, custom_formatter=mock_formatter)
     for x in [mock_formatter, mock_logger_name, mock_debug_level, mock_logger]:
         x.assert_called()
 

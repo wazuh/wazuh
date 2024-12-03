@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from wazuh.core.config.models.logging import LoggingFormat, LoggingLevel, LoggingConfig, \
-    APILoggingLevel, RotatedLoggingConfig, EngineLoggingLevel, EngineLoggingConfig
+    APILoggingLevel, APILoggingConfig, EngineLoggingLevel, EngineLoggingConfig
 
 
 @pytest.mark.parametrize('init_values, expected', [
@@ -67,10 +67,10 @@ def test_get_level_values(value, expected):
     {'format': []}
 
 ])
-def test_rotated_logging_config_invalid_values(init_values):
-    """Check the correct behavior of the `RotatedLoggingConfig` class validations."""
+def test_api_logging_config_invalid_values(init_values):
+    """Check the correct behavior of the `APILoggingConfig` class validations."""
     with pytest.raises(ValidationError):
-        _ = RotatedLoggingConfig(**init_values)
+        _ = APILoggingConfig(**init_values)
 
 
 @pytest.mark.parametrize('value, expected', [
@@ -82,6 +82,6 @@ def test_rotated_logging_config_invalid_values(init_values):
 ])
 def test_get_level(value, expected):
     """Check the correct behavior of the `get_level` method."""
-    config = RotatedLoggingConfig(level=value)
+    config = APILoggingConfig(level=value)
 
     assert config.get_level() == expected

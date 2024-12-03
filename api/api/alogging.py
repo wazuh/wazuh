@@ -8,7 +8,7 @@ import re
 
 from api.api_exception import APIError
 
-from wazuh.core.config.models.logging import RotatedLoggingConfig
+from wazuh.core.config.models.logging import APILoggingConfig
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
@@ -21,7 +21,7 @@ WARNING = 'WARNING'
 INFO = 'INFO'
 
 
-def set_logging(logging_config: RotatedLoggingConfig) -> dict:
+def set_logging(logging_config: APILoggingConfig) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -30,7 +30,7 @@ def set_logging(logging_config: RotatedLoggingConfig) -> dict:
     
     Parameters
     ----------
-    logging_config :  RotatedLoggingConfig
+    logging_config :  APILoggingConfig
         Logger configuration.
 
     Raises
@@ -73,7 +73,7 @@ def set_logging(logging_config: RotatedLoggingConfig) -> dict:
         },
         "filters": {
             'plain-filter': {'()': 'wazuh.core.wlogging.CustomFilter',
-                             'log_type': 'log' }
+                             'log_type': 'log'}
         },
         "handlers": {
             "default": {

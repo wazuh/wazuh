@@ -1,7 +1,6 @@
 import logging
 
 from pydantic import Field
-from typing import List
 from enum import Enum
 
 from wazuh.core.config.models.base import WazuhConfigBaseModel
@@ -78,18 +77,18 @@ class LoggingConfig(WazuhConfigBaseModel):
         return 2
 
 
-class RotatedLoggingConfig(WazuhConfigBaseModel):
-    """Configuration for logging with rotation.
+class APILoggingConfig(WazuhConfigBaseModel):
+    """Configuration for API logging.
 
      Parameters
      ----------
      level : Literal["debug", "info", "warning", "error", "critical"]
          The logging level. Default is "debug".
-     format : List[Literal["plain", "json"]]
+     format : list[Literal["plain"]]
          The format for logging output. Default is ["plain"].
     """
     level: APILoggingLevel = APILoggingLevel.debug
-    format: List[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)
+    format: list[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)
 
     def get_level(self) -> int:
         """Returns the integer value corresponding to the logging level.
