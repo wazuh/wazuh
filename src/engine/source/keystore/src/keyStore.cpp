@@ -9,104 +9,95 @@
  * Foundation.
  */
 
+#include <map>
+
 #include <base/logging.hpp>
 #include <base/utils/evpHelper.hpp>
-#include <base/utils/rocksDBWrapper.hpp>
-#include <base/utils/rsaHelper.hpp>
+#include <base/utils/keyValueFile.hpp>
 
 #include "keyStore.hpp"
 
-// KS_VERSION is the current version of the keystore. Used to identify the version of the keystore in the database.
-// KS_VERSION_FIELD is the field used to store the version of the keystore in the database.
-constexpr auto KS_VERSION {"1"};
-constexpr auto KS_VERSION_FIELD {"version"};
+constexpr auto KS_VALUE_SEPARATOR {':'};                   // Default separator for key-value pairs.
+constexpr auto KS_VERSION {"1"};                           // Keystore version.
+constexpr auto KS_VERSION_FIELD {"keystore-version"};      // Field name for the version.
+constexpr auto KS_KEY_FIELD {"keystore-key-length"};       // Field name for the key length.
+constexpr auto KS_KEY_SIZE {base::utils::CIPHER_KEY_SIZE}; // Default key length.
+constexpr auto KS_IV_FIELD {"keystore-iv-length"};         // Field name for the IV length.
+constexpr auto KS_IV_SIZE {base::utils::CIPHER_IV_SIZE};   // Default IV length.
 
-static void upgrade(utils::rocksdb::RocksDBWrapper& keystoreDB, const std::string& columnFamily)
+std::map<std::string, std::string> METADATA_FIELDS = {{KS_VERSION_FIELD, KS_VERSION},
+                                                      {KS_KEY_FIELD, std::to_string(KS_KEY_SIZE)},
+                                                      {KS_IV_FIELD, std::to_string(KS_IV_SIZE)}};
+
+static void checkKeyStoreVersion(base::utils::KeyValueFile& keyStore)
 {
-    std::string versionValue;
-
-    // If the version field does not exist, it means that the keystore has not been upgraded yet.
-    if (!keystoreDB.get(KS_VERSION_FIELD, versionValue, columnFamily))
+    auto checkFieldLambda = [&](const std::string& field, const std::string& value)
     {
-        try
+        std::string keyStoreValue;
+        if (!keyStore.get(field, keyStoreValue))
         {
-            // Upgrade all keys
-            for (const auto& [key, value] : keystoreDB.begin(columnFamily))
+            keyStore.put(field, value);
+        }
+        else
+        {
+            if (keyStoreValue != value)
             {
+                throw std::runtime_error("Invalid keystore version or key/iv size");
             }
         }
-        catch (const std::exception& exception)
-        {
-            // If the upgrade fails, delete all keys and log the error.
-            keystoreDB.deleteAll(columnFamily);
-            LOG_WARNING("Keystore upgrade failed, re-run the tool again for all keys to save them. Error: {}",
-                        exception.what());
-        }
-    }
+    };
 
-    // If the version is different from the current version, update it.
-    // If the upgrade fails, the version is set to the current version, because all keys have been deleted.
-    // If the upgrade is successful, the version is set to the current version, because versionValue is empty.
-    // If the version is the same, do nothing.
-    if (versionValue != KS_VERSION)
+    for (const auto& [field, value] : METADATA_FIELDS)
     {
-        keystoreDB.put(KS_VERSION_FIELD, KS_VERSION, columnFamily);
+        checkFieldLambda(field, value);
     }
 }
 
-void Keystore::put(const std::string& columnFamily,
-                   const std::string& key,
-                   const std::string& value,
-                   const std::string& databasePath)
+static void sanitizeKey(const std::string& key)
+{
+    for (const auto& [field, _] : METADATA_FIELDS)
+    {
+        if (key == field)
+        {
+            throw std::runtime_error("Cannot use reserved field name as key");
+        }
+    }
+}
+
+void Keystore::put(const std::string& key, const std::string& value, const std::string& keyStorePath)
 {
     std::vector<char> encryptedValue;
 
-    EVPHelper().encryptAES256(value, encryptedValue);
+    sanitizeKey(key);
 
-    auto keystoreDB = utils::rocksdb::RocksDBWrapper(databasePath, false);
+    auto keyStore = base::utils::KeyValueFile(keyStorePath, KS_VALUE_SEPARATOR);
+    checkKeyStoreVersion(keyStore);
 
-    if (!keystoreDB.columnExists(columnFamily))
-    {
-        keystoreDB.createColumn(columnFamily);
-    }
-    // Upgrade the keystore if necessary and insert the key-value pair, to get all keys encrypted with the same
-    // algorithm. If the version field does not exist, it means that the keystore has not been upgraded yet. If the
-    // version is different from the current version, update it. If the upgrade fails, the version is set to the current
-    // version, because all keys have been deleted.
-    upgrade(keystoreDB, columnFamily);
-
-    // Insert the key-value pair using AES encryption.
-    keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
+    base::utils::EVPHelper().encryptAES256(value, encryptedValue);
+    keyStore.put(key, encryptedValue);
 }
 
 /**
  * Get the key value in the specified column family.
  *
- * @param columnFamily The target column family.
  * @param key The key to be inserted or updated.
  * @param value The corresponding value to be returned.
+ * @param keyStorePath The path to the key store file.
  */
-void Keystore::get(const std::string& columnFamily,
-                   const std::string& key,
-                   std::string& value,
-                   const std::string& databasePath)
+bool Keystore::get(const std::string& key, std::string& value, const std::string& keyStorePath)
 {
     std::string encryptedValue;
 
-    auto keystoreDB = utils::rocksdb::RocksDBWrapper(databasePath, false);
+    auto keyStore = base::utils::KeyValueFile(keyStorePath, KS_VALUE_SEPARATOR);
 
-    if (!keystoreDB.columnExists(columnFamily))
-    {
-        keystoreDB.createColumn(columnFamily);
-    }
+    checkKeyStoreVersion(keyStore);
 
-    // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
-    upgrade(keystoreDB, columnFamily);
-
-    // Get the key-value pair using AES decryption.
-    if (keystoreDB.get(key, encryptedValue, columnFamily))
+    if (keyStore.get(key, encryptedValue))
     {
         std::vector<char> encryptedValueVec(encryptedValue.begin(), encryptedValue.end());
-        EVPHelper().decryptAES256(encryptedValueVec, value);
+        base::utils::EVPHelper().decryptAES256(encryptedValueVec, value);
+        return true;
     }
+
+    return false;
 }

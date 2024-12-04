@@ -31,6 +31,7 @@ env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
 
 
+
 jobs:
   build:
     name: Engine Integration Test
@@ -43,7 +44,7 @@ jobs:
     steps:
 
     - name: Install dependencies lzip
-      run: sudo apt-get install lzip  
+      run: sudo apt-get install lzip
 
     - name: Check out repository
       uses: actions/checkout@v4
@@ -96,7 +97,7 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init --conf ${{env.ENGINE_DIR}}/test/helper_tests/integration_tests/config.env
 
     - name: Integration Test
       run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run

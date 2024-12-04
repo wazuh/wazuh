@@ -20,6 +20,9 @@
 #include <base/utils/defer.hpp>
 #include <base/utils/opensslPrimitives.hpp>
 
+namespace base::utils
+{
+
 constexpr auto CIPHER_KEY_SIZE {32};
 constexpr auto CIPHER_IV_SIZE {16};
 constexpr auto OPENSSL_SUCCESS {1};
@@ -137,5 +140,7 @@ public:
         output.assign(plaintext.begin(), plaintext.end());
     }
 };
+
+} // namespace base::utils
 
 #endif // _EVPHELPER_HPP

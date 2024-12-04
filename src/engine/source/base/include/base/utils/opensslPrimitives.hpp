@@ -18,6 +18,8 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 
+namespace base::utils
+{
 class OpenSSLPrimitives
 {
 protected:
@@ -152,5 +154,7 @@ protected:
     }
 #pragma GCC diagnostic pop
 };
+
+} // namespace base::utils
 
 #endif // OPENSSL_PRIMITIVES_HPP

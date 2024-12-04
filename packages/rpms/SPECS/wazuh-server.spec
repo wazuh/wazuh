@@ -78,7 +78,6 @@ mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
 
 # Copy the installed files into RPM_BUILD_ROOT directory
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/wazuh-server
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/wazuh-server/keystore
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/log
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server

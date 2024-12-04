@@ -14,8 +14,9 @@
 
 #include <filesystem>
 
-namespace Utils
+namespace base::utils
 {
+
 std::filesystem::path findHomeDirectory()
 {
     std::filesystem::path homeDir;
@@ -47,6 +48,6 @@ std::filesystem::path findHomeDirectory()
 
     return homeDir;
 }
-} // namespace Utils
+} // namespace base::utils
 
 #endif // _HOMEDIR_HPP

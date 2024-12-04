@@ -42,19 +42,12 @@ public:
      * @param argv Arguments.
      */
     explicit CmdLineArgs(int argc, char* argv[])
-        : m_columnFamily {paramValueOf(argc, argv, "-f")}
-        , m_key {paramValueOf(argc, argv, "-k")}
+        : m_key {paramValueOf(argc, argv, "-k")}
         , m_value {paramValueOf(argc, argv, "-v", std::make_pair(false, ""))}
         , m_valuePath {paramValueOf(argc, argv, "-vp", std::make_pair(false, ""))}
         , m_keystorePath {paramValueOf(argc, argv, "-p", std::make_pair(false, ""))}
     {
     }
-
-    /**
-     * @brief Gets the target column family.
-     * @return Target column family.
-     */
-    const std::string& getColumnFamily() const { return m_columnFamily; }
 
     /**
      * @brief Gets the key for the key-value pair.
@@ -91,7 +84,6 @@ public:
             << "\nUsage: wazuh-keystore <option(s)>\n"
             << "Options:\n"
             << "\t-h \t\t\tShow this help message\n"
-            << "\t-f COLUMN_FAMILY\tSpecifies the target column family for the insertion.\n"
             << "\t-k KEY\t\t\tSpecifies the key for the key-value pair.\n"
             << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
             << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value "
@@ -100,12 +92,12 @@ public:
                "not provided.\n"
             << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
             << "\nExample:"
-            << "\n\t./wazuh-keystore -f indexer -k username -v admin\n"
-            << "\n\t./wazuh-keystore -f indexer -k username -v admin -p /custom/path/to/keystore\n"
-            << "\n\t./wazuh-keystore -f indexer -k password -vp /path/to/file.txt\n"
-            << "\n\t./wazuh-keystore -f indexer -k password < /path/to/file.txt\n"
-            << "\n\techo 'pass' | ./wazuh-keystore -f indexer -k password\n"
-            << "\n\tcat /path/to/file.txt | ./wazuh-keystore -f indexer -k password\n"
+            << "\n\t./wazuh-keystore -k username -v admin\n"
+            << "\n\t./wazuh-keystore -k username -v admin -p /custom/path/to/keystore\n"
+            << "\n\t./wazuh-keystore -k password -vp /path/to/file.txt\n"
+            << "\n\t./wazuh-keystore -k password < /path/to/file.txt\n"
+            << "\n\techo 'pass' | ./wazuh-keystore -k password\n"
+            << "\n\tcat /path/to/file.txt | ./wazuh-keystore -k password\n"
             << std::endl;
     }
 
@@ -145,7 +137,6 @@ private:
         return required.second;
     }
 
-    const std::string m_columnFamily;
     const std::string m_key;
     const std::string m_value;
     const std::string m_valuePath;

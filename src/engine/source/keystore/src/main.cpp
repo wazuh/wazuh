@@ -21,7 +21,6 @@
 
 int main(int argc, char* argv[])
 {
-    std::string family;
     std::string key;
     std::string value;
     std::string valuePath;
@@ -29,19 +28,18 @@ int main(int argc, char* argv[])
 
     // Logging init
     logging::LoggingConfig logConfig;
-    logConfig.level = logging::strToLevel("debug");
+    logConfig.level = logging::strToLevel("info");
 
     logging::start(logConfig);
 
     try
     {
         // Define current working directory
-        std::filesystem::path home_path = Utils::findHomeDirectory();
+        std::filesystem::path home_path = base::utils::findHomeDirectory();
         std::filesystem::current_path(home_path);
 
         CmdLineArgs args(argc, argv);
 
-        family = args.getColumnFamily();
         key = args.getKey();
         value = args.getValue();
         valuePath = args.getValuePath();
@@ -59,7 +57,7 @@ int main(int argc, char* argv[])
 
             if (!valueFromStdin.empty())
             {
-                Keystore::put(family, key, valueFromStdin, keystorePath);
+                Keystore::put(key, valueFromStdin, keystorePath);
             }
             else
             {
@@ -68,7 +66,7 @@ int main(int argc, char* argv[])
         }
         else if (!value.empty() && valuePath.empty())
         {
-            Keystore::put(family, key, value, keystorePath);
+            Keystore::put(key, value, keystorePath);
         }
         else if (!valuePath.empty() && value.empty())
         {
@@ -81,7 +79,7 @@ int main(int argc, char* argv[])
             std::string content;
             if (std::getline(file, content))
             {
-                Keystore::put(family, key, content, keystorePath);
+                Keystore::put(key, content, keystorePath);
             }
             else
             {

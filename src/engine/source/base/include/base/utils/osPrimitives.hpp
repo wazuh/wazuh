@@ -21,6 +21,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+namespace base::utils
+{
 class OSPrimitives
 {
 
@@ -69,5 +71,7 @@ protected:
 
     inline int gethostname(char* name, size_t len) { return ::gethostname(name, len); }
 };
+
+} // namespace base::utils
 
 #endif // _OS_PRIMITIVES_HPP

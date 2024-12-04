@@ -39,9 +39,12 @@ def get_password():
     Returns:
         str: The password stored in the keystore stripped of any leading/trailing whitespaces.
     """
-    command = [KEYSTORE_TESTTOOL_BINARY, "-c", "indexer", "-k", "password", "-p", KEYSTORE_DB_PATH]
+    command = [KEYSTORE_TESTTOOL_BINARY, "-k", "password", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
-    return run_command(command).strip()
+
+    output = run_command(command)
+    index = output.find("password:")
+    return output[index + 9:].strip()
 
 def set_password(password):
     """ Sets the password in the keystore using the keystore binary and the value parameter.
@@ -49,7 +52,7 @@ def set_password(password):
     Args:
         password (str): The password to set in the keystore.
     """
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-v", f"'{password}'", "-p", KEYSTORE_DB_PATH]
+    command = [KEYSTORE_BINARY, "-k", "password", "-v", f"'{password}'", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
 
@@ -59,7 +62,7 @@ def set_password_echo(password):
     Args:
         password (str): The password to set in the keystore.
     """
-    command = ["echo",f"'{password}'", "|" , KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-p", KEYSTORE_DB_PATH]
+    command = ["echo",f"'{password}'", "|" , KEYSTORE_BINARY, "-k", "password", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
 
@@ -71,7 +74,7 @@ def set_password_from_file(password):
     """
     with open("password.txt", "w", encoding='utf-8') as f:
         f.write(password)
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-vp", "./password.txt", "-p", KEYSTORE_DB_PATH]
+    command = [KEYSTORE_BINARY, "-k", "password", "-vp", "./password.txt", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
     os.remove("password.txt")
@@ -84,7 +87,7 @@ def set_password_redirect_file(password):
     """
     with open("password.txt", "w", encoding='utf-8') as f:
         f.write(password)
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password","<","./password.txt", "-p", KEYSTORE_DB_PATH]
+    command = [KEYSTORE_BINARY, "-k", "password","<","./password.txt", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
     os.remove("password.txt")
@@ -97,7 +100,7 @@ def set_password_cat_file(password):
     """
     with open("password.txt", "w", encoding='utf-8') as f:
         f.write(password)
-    command = ["cat", "./password.txt", "|", KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-p", KEYSTORE_DB_PATH]
+    command = ["cat", "./password.txt", "|", KEYSTORE_BINARY, "-k", "password", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
     os.remove("password.txt")
@@ -105,7 +108,7 @@ def set_password_cat_file(password):
 def clear_password():
     """ This method clears the password stored in the keystore.
     """
-    command = [KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-v", "NOT_USED_PASS", "-p", KEYSTORE_DB_PATH]
+    command = [KEYSTORE_BINARY, "-k", "password", "-v", "NOT_USED_PASS", "-p", KEYSTORE_DB_PATH]
     command = " ".join(command)
     run_command(command)
 
