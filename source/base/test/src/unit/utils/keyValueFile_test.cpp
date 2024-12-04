@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <base/logging.hpp>
+#include <base/utils/evpHelper.hpp>
 #include <base/utils/keyValueFile.hpp>
 
 auto constexpr TEST_KEY_VALUE_FILE {"key_value_test.keys"};
@@ -111,4 +112,37 @@ TEST_F(keyValueFileTest, PutAndGetNonDefaultSeparator)
     keyValueSeparator.put("key", "value");
     ASSERT_TRUE(keyValueSeparator.get("key", value));
     ASSERT_EQ(value, "value");
+}
+
+TEST_F(keyValueFileTest, PutAndGetRandomEncryptedValues)
+{
+    std::vector<char> encryptedValue;
+    std::string valueToEncrypt = "test_value_to_be_encrypted_by_aes256";
+
+    base::utils::EVPHelper().encryptAES256(valueToEncrypt, encryptedValue);
+    keyValue->put("key", encryptedValue);
+
+    std::string encryptedValueStr;
+    std::string readValue;
+    ASSERT_TRUE(keyValue->get("key", encryptedValueStr));
+    std::vector<char> encryptedValueVec(encryptedValueStr.begin(), encryptedValueStr.end());
+    base::utils::EVPHelper().decryptAES256(encryptedValueVec, readValue);
+
+    ASSERT_EQ(valueToEncrypt, readValue);
+}
+
+TEST_F(keyValueFileTest, PutAndGetBinaryValue)
+{
+    std::vector<char> binaryValue = {'\x00', '\xFA', '#',    '1',    'o',    '\xDA', '_',    'V',  '\t',   '\xCA',
+                                     '\xAE', '\x9A', '\x3E', ']',    '\x21', 'e',    '\n',   '`',  'w',    '\xAA',
+                                     '3',    'd',    '\x55', '\x2F', '\xBB', '}',    '\xA0', '8',  '*',    '#',
+                                     '\x10', '1',    '\'',   '\x2D', '\xDD', '\xAF', '\xFA', '	', '|',    '\x1A',
+                                     '\xF9', 'i',    'H',    '\x15', '\\',   'P',    '!',    '"',  '\x99', '$',
+                                     '%',    '&',    'm',    '/',    '(',    ')',    'z',    '=',  ':',    '?'};
+    keyValue->put("key", binaryValue);
+
+    std::vector<char> readValueVec;
+    ASSERT_TRUE(keyValue->get("key", readValueVec));
+
+    ASSERT_EQ(binaryValue, readValueVec);
 }
