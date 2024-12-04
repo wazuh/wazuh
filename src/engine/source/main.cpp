@@ -238,9 +238,12 @@ int main(int argc, char* argv[])
             icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
             icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
             icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
-            icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
-            icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
-            icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+            if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
+            {
+                icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
+                icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
+                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+            }
 
             icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
             const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);

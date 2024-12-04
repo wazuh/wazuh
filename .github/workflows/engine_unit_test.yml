@@ -66,6 +66,12 @@ jobs:
       - name: Build
         run: cmake --build ${{env.ENGINE_DIR}}/build --target all_tests -j$(nproc)
 
+      - name: Create install directory
+        run: |
+          sudo mkdir -p /run/wazuh-server/
+          sudo chown $(whoami):$(whoami) /run/wazuh-server/
+          sudo chmod 0750 /run/wazuh-server/
+
       - name: Unit Test
         # Run unit tests using CTest
         working-directory: ${{env.ENGINE_DIR}}/build

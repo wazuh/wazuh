@@ -31,7 +31,7 @@ public:
 class ApiLoader : public IApiLoader
 {
 public:
-    json::Json load() const override { return json::Json(R"({})"); }
+    json::Json load() const override;
 };
 
 } // namespace conf

@@ -55,6 +55,8 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_LIST, "WAZUH_INDEXER_SSL_CA_LIST", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
+    addUnit<bool>(key::INDEXER_SSL_USE_SSL, "WAZUH_INDEXER_SSL_USE_SSL", false);
+    addUnit<bool>(key::INDEXER_SSL_VERIFY_CERTS, "WAZUH_INDEXER_SSL_VERIFY_CERTS", false);
     addUnit<int>(key::INDEXER_TIMEOUT, "WAZUH_INDEXER_TIMEOUT", 60000);
     addUnit<int>(key::INDEXER_THREADS, "WAZUH_INDEXER_THREADS", 1);
     addUnit<std::string>(key::INDEXER_DB_PATH, "WAZUH_INDEXER_DB_PATH", "/var/lib/wazuh-server/indexer-connector/");

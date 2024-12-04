@@ -9,6 +9,7 @@
 #include <fmt/format.h>
 
 #include <base/json.hpp>
+#include <base/logging.hpp>
 
 #include <conf/apiLoader.hpp>
 #include <conf/unitconf.hpp>
@@ -16,6 +17,40 @@
 namespace conf
 {
 
+namespace
+{
+template<typename U>
+std::string toStr(const U& value)
+{
+    if constexpr (std::is_same_v<U, std::vector<std::string>>)
+    {
+        std::string result {};
+        for (const auto& item : value)
+        {
+            result += item + ",";
+        }
+        result.pop_back(); // Remove the last comma
+        return result;
+    }
+
+    if constexpr (std::is_same_v<U, bool>)
+    {
+        return value ? "true" : "false";
+    }
+
+    if constexpr (std::is_same_v<U, std::string>)
+    {
+        return value;
+    }
+
+    if constexpr (std::is_same_v<U, int> || std::is_same_v<U, int64_t>)
+    {
+        return fmt::format("{}", value);
+    }
+
+    throw std::runtime_error("The type is not supported.");
+}
+} // namespace
 /**
  * @brief Engine configuration.
  */
@@ -115,40 +150,54 @@ public:
         // Search for the environment variable, throw an error if the value is invalid
         if (const auto envValue = unit->template getEnvValue<T>())
         {
+            LOG_DEBUG("Using configuration key '{}' fom environment variable '{}': '{}'.",
+                      key,
+                      unit->getEnv(),
+                      toStr<T>(envValue.value()));
             return envValue.value();
         }
 
         // Search for the configuration API,if not found, return the default value
         if constexpr (std::is_same_v<T, std::string>)
         {
-            return m_apiConfig.getString(key.data()).value_or(unit->template getDefaultValue<T>());
+            const auto value = m_apiConfig.getString(key.data()).value_or(unit->template getDefaultValue<T>());
+            const auto org = m_apiConfig.getString(key.data()).has_value() ? "API" : "default";
+            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
+            return value;
         }
         else if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>)
         {
-            return m_apiConfig.getIntAsInt64(key.data()).value_or(unit->template getDefaultValue<T>());
+            const auto value = m_apiConfig.getIntAsInt64(key.data()).value_or(unit->template getDefaultValue<T>());
+            const auto org = m_apiConfig.getIntAsInt64(key.data()).has_value() ? "API" : "default";
+            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
+            return value;
         }
         else if constexpr (std::is_same_v<T, std::vector<std::string>>)
         {
             auto jArr = m_apiConfig.getArray(key.data());
             if (!jArr)
             {
-                return unit->template getDefaultValue<T>();
+                auto value = unit->template getDefaultValue<T>();
+                LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, toStr<T>(value));
+                return value;
             }
             std::vector<std::string> result;
             for (const auto& item : jArr.value())
             {
                 result.push_back(item.getString().value_or("ERROR VALUE"));
             }
+            LOG_DEBUG("Using configuration key '{}' from API: '{}'", key, toStr<T>(result));
             return result;
         }
         else if constexpr (std::is_same_v<T, bool>)
         {
-            return m_apiConfig.getBool(key.data()).value_or(unit->template getDefaultValue<T>());
+            auto value = m_apiConfig.getBool(key.data()).value_or(unit->template getDefaultValue<T>());
+            const auto org = m_apiConfig.getBool(key.data()).has_value() ? "API" : "default";
+            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
+            return value;
         }
-        else
-        {
-            throw std::runtime_error("The type is not supported.");
-        }
+
+        throw std::runtime_error("The type is not supported.");
     }
 };
 
