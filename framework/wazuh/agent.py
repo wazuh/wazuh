@@ -152,7 +152,7 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
             commands.append(command)
 
         response = await indexer_client.commands_manager.create(commands)
-        if response.result is ResponseResult.CREATED:
+        if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
             result.affected_items.extend(agent_list)
         else:
             for agent_id in agent_list:
@@ -388,7 +388,7 @@ async def add_agent(
 
         command = create_update_group_command(agent_id=id)
         response = await indexer_client.commands_manager.create([command])
-        if response.result is not ResponseResult.CREATED:
+        if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
             raise WazuhError(1762, extra_message=response.result.value)
 
     return WazuhResult({'data': new_agent})
@@ -555,7 +555,7 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
                     commands.append(command)
 
                 response = await indexer_client.commands_manager.create(commands)
-                if response.result is not ResponseResult.CREATED:
+                if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
                     raise WazuhError(1762, extra_message=response.result.value)
 
                 await indexer_client.agents.delete_group(group_name=group_id)
@@ -644,7 +644,7 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
             commands.append(command)
 
         response = await indexer_client.commands_manager.create(commands)
-        if response.result is ResponseResult.CREATED:
+        if response.result in (ResponseResult.OK, ResponseResult.CREATED):
             result.affected_items.extend(agent_list)
         else:
             for agent_id in agent_list:
@@ -710,7 +710,7 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
             commands.append(command)
 
         response = await indexer_client.commands_manager.create(commands)
-        if response.result is ResponseResult.CREATED:
+        if response.result in (ResponseResult.OK, ResponseResult.CREATED):
             result.affected_items.extend(agent_list)
         else:
             for agent_id in agent_list:
