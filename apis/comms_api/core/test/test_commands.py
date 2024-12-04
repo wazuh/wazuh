@@ -6,9 +6,9 @@ import pytest
 from comms_api.core.commands import CommandsManager, pull_commands
 from wazuh.core.indexer.models.commands import Command, Status, Target, TargetType
 
-ORDER_ID = 'UB2jVpEBYSr9jxqDgXAD'
+DOCUMENT_ID = 'UB2jVpEBYSr9jxqDgXAD'
 AGENT_ID = '01915801-4b34-7131-9d88-ff06ff05aefd'
-COMMAND = Command(order_id=ORDER_ID, status=Status.PENDING, target=Target(id=AGENT_ID, type=TargetType.AGENT))
+COMMAND = Command(document_id=DOCUMENT_ID, status=Status.PENDING, target=Target(id=AGENT_ID, type=TargetType.AGENT))
 
 
 @patch('comms_api.core.commands.SyncManager')
