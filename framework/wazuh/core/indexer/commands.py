@@ -44,9 +44,13 @@ class CommandsManager(BaseIndex):
         except exceptions.RequestError as e:
             raise WazuhError(1761, extra_message=str(e))
 
+        document_ids = []
+        for document in response.get(IndexerKey._DOCUMENTS):
+            document_ids.append(document.get(IndexerKey._ID))
+
         return CreateCommandResponse(
             index=response.get(IndexerKey._INDEX),
-            document_id=response.get(IndexerKey._ID),
+            document_ids=document_ids,
             result=ResponseResult(response.get(IndexerKey.RESULT)),
         )
 

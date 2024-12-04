@@ -12,6 +12,7 @@ class IndexerKey(str, Enum):
     _INDEX = '_index'
     _ID = '_id'
     _SOURCE = '_source'
+    _DOCUMENTS = '_documents'
     ID = 'id'
     DOC = 'doc'
     MATCH = 'match'

@@ -85,5 +85,5 @@ class ResponseResult(str, Enum):
 class CreateCommandResponse:
     """Create command response data model."""
     index: str
-    document_id: str
+    document_ids: List[str]
     result: ResponseResult
