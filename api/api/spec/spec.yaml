@@ -1627,6 +1627,7 @@ components:
         - status
         - order_id
         - request_id
+        - document_id
       properties:
         source:
           type: string
@@ -1682,6 +1683,9 @@ components:
           type: string
           format: alphanumeric_symbols
         request_id:
+          type: string
+          format: alphanumeric_symbols
+        document_id:
           type: string
           format: alphanumeric_symbols
 
@@ -6027,6 +6031,7 @@ paths:
                   status: PENDING
                   order_id: l8nhoJIBerRY2Wz26Je8
                   request_id: lsnhoJIBerRY2Wz26Je7
+                  document_id: SuyTlZIBRVsFsWNvvx6f
       responses:
         '200':
           description: "Orders sent"

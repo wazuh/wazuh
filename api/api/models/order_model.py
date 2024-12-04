@@ -99,6 +99,7 @@ class Order(Model):
         status: str = None,
         order_id: str = None,
         request_id: str = None,
+        document_id: str = None,
     ):
         self.swagger_types = {
             'source': str,
@@ -109,6 +110,7 @@ class Order(Model):
             'status': str,
             'order_id': str,
             'request_id': str,
+            'document_id': str,
         }
 
         self.attribute_map = {
@@ -120,6 +122,7 @@ class Order(Model):
             'status': 'status',
             'order_id': 'order_id',
             'request_id': 'request_id',
+            'document_id': 'document_id',
         }
 
         self._source = source
@@ -130,6 +133,7 @@ class Order(Model):
         self._status = status
         self._order_id = order_id
         self._request_id = request_id
+        self._document_id = document_id
 
     @property
     def source(self) -> str:
@@ -194,6 +198,14 @@ class Order(Model):
     @request_id.setter
     def request_id(self, request_id: str):
         self._request_id = request_id
+    
+    @property
+    def document_id(self) -> str:
+        return self._document_id
+
+    @document_id.setter
+    def document_id(self, document_id: str):
+        self._document_id = document_id
 
 
 class Orders(Body):
