@@ -53,6 +53,7 @@ class Target:
 @dataclass
 class Command:
     """Command data model."""
+    document_id: str = None
     request_id: str = None
     order_id: str = None
     source: Source = None

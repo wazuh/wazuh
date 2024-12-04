@@ -12,6 +12,9 @@ def test_command_post_init():
         'status': status,
         'timeout': timeout,
         'source': Source.SERVICES.value,
+        'request_id': 'lsnhoJIBerRY2Wz26Je7',
+        'order_id': 'lsnhoJIBerRY2Wz26Je7',
+        'document_id': 'UB2jVpEBYSr9jxqDgXAD'
     }
     command = Command(**data)
 

@@ -84,6 +84,7 @@ def test_create_restart_command():
     command = create_restart_command(agent_id=agent_id)
 
     assert command == expected_command
+    assert command.document_id is None
 
 
 def test_create_set_group_command():
@@ -108,6 +109,7 @@ def test_create_set_group_command():
     command = create_set_group_command(agent_id=agent_id, groups=groups)
 
     assert command == expected_command
+    assert command.document_id is None
 
 
 def test_create_update_group_command():
@@ -130,3 +132,4 @@ def test_create_update_group_command():
     command = create_update_group_command(agent_id=agent_id)
 
     assert command == expected_command
+    assert command.document_id is None
