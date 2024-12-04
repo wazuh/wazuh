@@ -46,6 +46,10 @@ private:
                 context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
                                                              context.spUpdaterBaseContext->downloadedFileHash,
                                                              Components::Columns::DOWNLOADED_FILE_HASH);
+
+                context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                                             std::to_string(context.currentOffset),
+                                                             Components::Columns::CURRENT_OFFSET);
             }
             else
             {
