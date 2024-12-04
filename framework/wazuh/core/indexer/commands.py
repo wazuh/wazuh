@@ -31,16 +31,16 @@ class CommandsManager(BaseIndex):
         CreateCommandResponse
             Indexer command manager response.
         """
-        command_list = []
+        commands_to_send = []
         for command in commands:
-            command_dict = asdict(command, dict_factory=convert_enums)
-            command_list.append(command_dict)
+            command_body = asdict(command, dict_factory=convert_enums)
+            commands_to_send.append(command_body)
 
         try:
             response = await self._client.transport.perform_request(
                 method=POST_METHOD,
                 url=f'{self.PLUGIN_URL}/commands',
-                body={'commands': command_list},
+                body={'commands': commands_to_send},
             )
         except exceptions.RequestError as e:
             raise WazuhError(1761, extra_message=str(e))
