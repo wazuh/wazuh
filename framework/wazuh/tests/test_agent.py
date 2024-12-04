@@ -317,7 +317,7 @@ async def test_agent_add_agent(
     )
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
-    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    create_response = CreateCommandResponse(index='.commands', document_ids=['pwrD5Ddf'], result=ResponseResult.CREATED)
     commands_create_mock = AsyncMock(return_value=create_response)
     create_indexer_mock.return_value.commands_manager.create = commands_create_mock
 
@@ -555,7 +555,7 @@ async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mo
     search_mock = AsyncMock(return_value=[IndexerAgent(id='0191c7fa-26d5-705f-bc3c-f54810d30d79')])
     create_indexer_mock.return_value.agents.search = search_mock
 
-    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    create_response = CreateCommandResponse(index='.commands', document_ids=['pwrD5Ddf'], result=ResponseResult.CREATED)
     commands_create_mock = AsyncMock(return_value=create_response)
     create_indexer_mock.return_value.commands_manager.create = commands_create_mock
 
