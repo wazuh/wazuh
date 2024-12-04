@@ -11,6 +11,4 @@ then
     sed -i "s:type\: master:type\: worker:g" /etc/wazuh-server/wazuh-server.yml
 fi
 
-/usr/share/wazuh-server/bin/wazuh-server start -rd
-
-tail -f /var/log/wazuh-server/cluster.log
+/usr/share/wazuh-server/bin/wazuh-server start -r

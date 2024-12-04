@@ -1,14 +1,4 @@
 services:
-  wazuh-server:
-    build:
-      context: ../../../../src/engine/tools/docker
-      args:
-        WAZUH_ROOT: /wazuh
-        ENGINE_COMMIT_ID: 286c3c6464e6b960c59b891f706a4300d52c4d04
-    image: dev-wazuh-server-builder
-    entrypoint: "" # Exit early, the container won't be used
-    container_name: wazuh-server-builder
-
   wazuh-manager:
     build:
       context: ./wazuh-server
@@ -35,7 +25,7 @@ services:
       - ../../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
     ports:
       # Management API
-      - "55000:55000"
+      - 55000:55000
       # Communications API
       - 27000:27000
     entrypoint:
@@ -44,7 +34,6 @@ services:
       - manager-node
       - manager
     depends_on:
-      - wazuh-server
       - wazuh-indexer
 
   wazuh-worker1:
