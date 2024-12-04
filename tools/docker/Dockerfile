@@ -8,16 +8,14 @@ ENV LANG=en_US.utf8
 ENV REINSTALL_CMAKE_VERSION_FROM_SOURCE="3.30.5"
 
 # Engine specific environment variables
-ARG WAZUH_ROOT=/root/wazuh
-ENV WAZUH_ROOT=${WAZUH_ROOT}
+ENV WAZUH_ROOT=/root/wazuh
 ENV ENGINE_SRC=$WAZUH_ROOT/src/engine
 ENV ENGINE_BUILD=$ENGINE_SRC/build
 
 # Force use the specific commit of master to aviod breaking changes like:
 # - Python packages
 # - Engine configuration and CLI
-ARG ENGINE_COMMIT_ID
-ENV ENGINE_COMMIT_ID=${ENGINE_COMMIT_ID}
+ENV ENGINE_COMMIT_ID=3fd4d415a8e7a185a5e1f58b5197ed0fd0c112d2
 ENV ENGINE_PRESET=release
 ENV ENGINE_ON_BACKGROUND=1
 ENV MM_LICENCE_KEY=
