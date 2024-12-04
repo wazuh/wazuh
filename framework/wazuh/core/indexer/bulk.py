@@ -3,6 +3,8 @@ from enum import Enum
 
 from opensearchpy import AsyncOpenSearch
 
+from wazuh.core.indexer.base import IndexerKey
+
 
 class Operation(str, Enum):
     """Enum representing bulk operations for the indexer.
@@ -86,6 +88,8 @@ class BulkDoc:
         if self.doc is None:
             return [self.metadata.decode()]
         else:
+            if self.metadata.operation == Operation.UPDATE:
+                self.doc = {IndexerKey.DOC: self.doc}
             return [self.metadata.decode(), self.doc]
 
     @classmethod

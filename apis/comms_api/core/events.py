@@ -1,8 +1,8 @@
 import asyncio
+import json
 from typing import List
 
 from fastapi import Request
-from pydantic import TypeAdapter
 from starlette.requests import ClientDisconnect
 
 from comms_api.models.events import StatefulEvents
@@ -11,7 +11,7 @@ from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.batcher.client import BatcherClient
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue
-from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, StatefulEvent, TaskResult
+from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, TaskResult
 
 HTTP_STATUS_OK = 200
 HTTP_STATUS_PARTIAL_CONTENT = 206
@@ -67,7 +67,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
     Raises
     ------
     WazuhError(2708)
-        Invalid request body headers.
+        If the client closed the request before the server could process the stream.
     WazuhError(2709)
         Invalid request body structure.
     
@@ -75,15 +75,10 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
     -------
     StatefulEvents
         Object containing the agent metadata, headers and events.
-    
-    Raises
-    ------
-    WazuhError(2708)
-        If the client closed the request before the server could process the stream.
     """
     i: int = 0
     headers: List[Header] = []
-    data: List[StatefulEvent] = []
+    data: List[dict] = []
 
     try:
         async for chunk in request.stream():
@@ -102,7 +97,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
                 if i == 0:
                     agent_metadata = AgentMetadata.model_validate_json(part)
                 elif i % 2 == 0:
-                    data.append(TypeAdapter(StatefulEvent).validate_json(part))
+                    data.append(json.loads(part))
                 else:
                     header = Header.model_validate_json(part)
                     headers.append(header)
@@ -113,6 +108,8 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
                 i += 1
     except ClientDisconnect:
         raise WazuhError(2708)
+    except json.JSONDecodeError as e:
+        raise WazuhError(2709, extra_message=str(e))
 
     return StatefulEvents(agent_metadata=agent_metadata, headers=headers, data=data)
 
@@ -133,6 +130,7 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
         Indexer response for each one of the bulk tasks.
     """
     tasks: List[asyncio.Task] = []
+    item_ids: List[str] = []
     i: int = 0
 
     # Sends the events to the batcher
@@ -143,9 +141,13 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
             i += 1
 
         batcher_client.send_event(agent_metadata=events.agent_metadata, header=header, data=data)
+
+        if header.id not in item_ids:
+            item_ids.append(header.id)
             
+    for id in item_ids:
         task = asyncio.create_task(
-            (lambda u: batcher_client.get_response(u))(header.id)
+            (lambda u: batcher_client.get_response(u))(id)
         )
         tasks.append(task)
 
@@ -170,12 +172,13 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
     results: List[TaskResult] = []
 
     for result in tasks_results:
-        status = result[IndexerKey.STATUS]
-        if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
-            task_result = TaskResult(id=result[IndexerKey._ID], result=result[IndexerKey.RESULT], status=status)
-        else:
-            task_result = TaskResult(id='', result=result[IndexerKey.ERROR][IndexerKey.REASON], status=status)
+        for r in result:
+            status = r[IndexerKey.STATUS]
+            if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
+                task_result = TaskResult(id=r[IndexerKey._ID], result=r[IndexerKey.RESULT], status=status)
+            else:
+                task_result = TaskResult(id='', result=r[IndexerKey.ERROR][IndexerKey.REASON], status=status)
 
-        results.append(task_result)
+            results.append(task_result)
 
     return results
