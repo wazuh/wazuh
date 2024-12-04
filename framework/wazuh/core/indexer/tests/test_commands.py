@@ -7,9 +7,10 @@ import pytest
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.commands import CommandsManager, create_restart_command, \
     COMMAND_USER_NAME, create_set_group_command, create_update_group_command
-from wazuh.core.indexer.base import POST_METHOD
+from wazuh.core.indexer.base import POST_METHOD, IndexerKey
 from wazuh.core.indexer.utils import convert_enums
-from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse
+from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
+    ResponseResult
 
 
 class TestCommandsManager:
@@ -26,9 +27,17 @@ class TestCommandsManager:
 
     async def test_create(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `create` method."""
-        client_mock.transport.perform_request.return_value = {
-            '_index': 'commands', '_id': 'pBjePGfvgm', 'result': 'CREATED'
+        return_value = {
+            IndexerKey._INDEX: CommandsManager.INDEX,
+            IndexerKey._DOCUMENTS: [
+                {IndexerKey._ID: 'pBjePGfvgm'},
+                {IndexerKey._ID: 'mp2Xymz6F3'},
+                {IndexerKey._ID: 'aYsJYUEmVk'},
+                {IndexerKey._ID: 'QTjrFfpoIS'}
+            ],
+            IndexerKey.RESULT: ResponseResult.CREATED
         }
+        client_mock.transport.perform_request.return_value = return_value
 
         response = await index_instance.create(self.create_command)
 
@@ -38,6 +47,11 @@ class TestCommandsManager:
             url=f'{index_instance.PLUGIN_URL}/commands',
             body=asdict(self.create_command, dict_factory=convert_enums),
         )
+
+        document_ids = [document.get(IndexerKey._ID) for document in return_value.get(IndexerKey._DOCUMENTS)]
+        assert response.index == return_value.get(IndexerKey._INDEX)
+        assert response.document_ids == document_ids
+        assert response.result == return_value.get(IndexerKey.RESULT)
     
     async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the error handling of the `create` method."""

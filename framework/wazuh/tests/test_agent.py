@@ -139,10 +139,9 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
     agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in all_agent_ids])
     create_indexer_mock.return_value.agents.search = agents_search_mock
 
-    document_id = 'pBjePGfvgm'
     create_response = CreateCommandResponse(
         index='.commands',
-        document_id=document_id,
+        document_ids=['pBjePGfvgm'],
         result=ResponseResult.INTERNAL_ERROR if fail else ResponseResult.CREATED,
     )
 
