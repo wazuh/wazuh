@@ -1,18 +1,14 @@
 from dataclasses import asdict
-from typing import List, Optional, Union
+from typing import List
 
 from opensearchpy import exceptions
-from uuid6 import UUID
 
-from .base import BaseIndex, IndexerKey, remove_empty_values, POST_METHOD
+from .base import BaseIndex, IndexerKey, POST_METHOD
 from .utils import convert_enums
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-from wazuh.core.indexer.models.commands import Action, Command, Result, Source, Status, Target, TargetType, \
-    CreateCommandResponse, ResponseResult
+from wazuh.core.exception import WazuhError
+from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
+    ResponseResult
  
-DOC_ID_KEY = 'id'
-TARGET_ID_KEY = 'target.id'
-STATUS_KEY = 'status'
 COMMAND_USER_NAME = 'Management API'
 
 
@@ -22,24 +18,29 @@ class CommandsManager(BaseIndex):
     INDEX = '.commands'
     PLUGIN_URL = '/_plugins/_command_manager'
 
-    async def create(self, command: Command) -> CreateCommandResponse:
+    async def create(self, commands: List[Command]) -> CreateCommandResponse:
         """Create a new command.
         
         Parameters
         ----------
-        command : Command
-            New command.
+        commands : List[Command]
+            New commands list.
         
         Returns
         -------
         CreateCommandResponse
             Indexer command manager response.
         """
+        command_list = []
+        for command in commands:
+            command_dict = asdict(command, dict_factory=convert_enums)
+            command_list.append(command_dict)
+
         try:
             response = await self._client.transport.perform_request(
                 method=POST_METHOD,
                 url=f'{self.PLUGIN_URL}/commands',
-                body=asdict(command, dict_factory=convert_enums),
+                body={'commands': command_list},
             )
         except exceptions.RequestError as e:
             raise WazuhError(1761, extra_message=str(e))

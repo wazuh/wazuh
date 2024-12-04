@@ -39,13 +39,17 @@ class TestCommandsManager:
         }
         client_mock.transport.perform_request.return_value = return_value
 
-        response = await index_instance.create(self.create_command)
+        response = await index_instance.create([self.create_command])
 
         assert isinstance(response, CreateCommandResponse)
         client_mock.transport.perform_request.assert_called_once_with(
             method=POST_METHOD,
             url=f'{index_instance.PLUGIN_URL}/commands',
-            body=asdict(self.create_command, dict_factory=convert_enums),
+            body={
+                'commands': [
+                    asdict(self.create_command, dict_factory=convert_enums),
+                ]
+            },
         )
 
         document_ids = [document.get(IndexerKey._ID) for document in return_value.get(IndexerKey._DOCUMENTS)]
@@ -57,7 +61,7 @@ class TestCommandsManager:
         """Check the error handling of the `create` method."""
         client_mock.transport.perform_request.side_effect = exceptions.RequestError(400, 'error')
         with pytest.raises(WazuhError, match='.*1761.*'):
-            await index_instance.create(self.create_command)
+            await index_instance.create([self.create_command])
 
 
 def test_create_restart_command():
