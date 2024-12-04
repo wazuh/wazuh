@@ -16,7 +16,9 @@ from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Modul
 
 
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
-async def test_send_stateless_events(events_send_mock):
+@patch('wazuh.core.engine.get_engine_client', new_callable=AsyncMock)
+@patch('wazuh.core.config.client.CentralizedConfig.get_engine_config')
+async def test_send_stateless_events(mock_engine_config, mock_engine_client, events_send_mock):
     """Check that the `send_stateless_events` function works as expected."""
     request = Request(scope={
         'type': 'http',
@@ -32,7 +34,9 @@ async def test_send_stateless_events(events_send_mock):
 
 
 @patch('wazuh.core.engine.events.EventsModule.send', side_effect=ClientDisconnect)
-async def test_send_stateless_events_ko(events_send_mock):
+@patch('wazuh.core.engine.get_engine_client',  new_callable=AsyncMock)
+@patch('wazuh.core.config.client.CentralizedConfig.get_engine_config')
+async def test_send_stateless_events_ko(mock_engine_config, mock_engine_client, events_send_mock):
     """Verify that the `send_stateless_events` function fails on a client disconnection."""
     request = Request(scope={
         'type': 'http',
@@ -40,7 +44,6 @@ async def test_send_stateless_events_ko(events_send_mock):
     })
     stream_mock = MagicMock()
     request.stream = stream_mock
-
     with pytest.raises(WazuhError, match=r'2708'):
         await send_stateless_events(request=request)
 
@@ -64,10 +67,10 @@ async def test_send_stateful_events(send_events_mock, batcher_client_mock):
             architecture='x86_64',
             ip='127.0.0.1',
             os=OS(
-                name='Debian',
-                platform='Linux',
+                name='Debian 12',
+                type='Linux',
                 version='12'
-            ),
+            )
         ),
     ))
     headers = [
@@ -131,7 +134,7 @@ async def test_parse_stateful_events():
             ip=['127.0.0.1'],
             os=OS(
                 name='Debian',
-                platform='Linux',
+                type='Linux',
                 version='12'
             )
         ),
@@ -196,7 +199,7 @@ async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mo
                 ip='127.0.0.1',
                 os=OS(
                     name='Debian 12',
-                    platform='Linux'
+                    type='Linux'
                 )
             ),
         )),

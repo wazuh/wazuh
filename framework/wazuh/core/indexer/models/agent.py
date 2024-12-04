@@ -52,7 +52,7 @@ class Status(str, Enum):
 class OS:
     """Agent operating system information."""
     name: str = None
-    platform: str = None
+    type: str = None
     version: str = None
 
 

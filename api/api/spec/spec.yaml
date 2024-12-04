@@ -785,7 +785,7 @@ components:
               properties:
                 name:
                   type: string
-                platform:
+                type:
                   type: string
                 version:
                   type: string
@@ -2666,7 +2666,7 @@ paths:
                   - 127.0.0.1
                 os:
                   name: Debian
-                  platform: Linux
+                  type: Linux
                   version: 12 "Bookworm"
       responses:
         '201':
