@@ -8,9 +8,9 @@ def run(args):
 
     try:
         # Get the configuration database
-        ConfigDatabase(args['config_file'], create=True)
+        ConfigDatabase(args['config_file'], create_if_not_exist=True)
     except Exception as ex:
-        sys.exit(f"Error adding integration: {ex}")
+        sys.exit(f"Error creating configuration file: {ex}")
 
 
 def configure(subparsers):

@@ -14,7 +14,7 @@ class ConfigDatabase:
     '''
     config_file = DEFAULT_CONFIG_FILE  # Default config file
 
-    def __init__(self, db_path=DEFAULT_CONFIG_FILE, create=False):
+    def __init__(self, db_path=DEFAULT_CONFIG_FILE, create_if_not_exist=False):
         '''
         Constructor for ConfigStore
 
@@ -22,7 +22,7 @@ class ConfigDatabase:
         config_file (str): Path to the configuration file
         '''
         self.config_file = db_path
-        if create or db_path == DEFAULT_CONFIG_FILE:
+        if create_if_not_exist and not os.path.exists(self.config_file):
             self._create_dbstorage()
 
         self._load_db()
@@ -45,7 +45,7 @@ class ConfigDatabase:
                         os.chown(self.config_file, -1, gid)
                     except Exception as e:
                         print(f"Warning: wazuh group cannot be set for {self.config_file}. Error: {e}")
-            elif not use_default:
+            else:
                 raise Exception(f"Configuration file already exists: {self.config_file}")
         except Exception as e:
             raise Exception(f"Error creating configuration file. Error: {e}")

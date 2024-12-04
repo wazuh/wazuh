@@ -46,8 +46,6 @@ def run(args):
         # Check the args
         args['post_parse'](args)
 
-        # Get the configuration database
-        db = ConfigDatabase(args['config_file'])
 
         # Create integration configuration
         iconf = IntegrationConf(args['integration_name'], args['format'], args['module'],
@@ -59,6 +57,8 @@ def run(args):
         else:
             iconf.get_template().remove_field(SubTempleType.EVENT, "log.file.path")
 
+        # Get the configuration database
+        db = ConfigDatabase(args['config_file'], create_if_not_exist=True)
         # Saving integration
         db.add_integration(iconf)
 
