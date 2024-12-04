@@ -202,3 +202,20 @@ def get_running_processes(pids_path: str = common.WAZUH_RUN) -> list:
     pids_path = Path(pids_path)
     running_processes = [i.stem for i in pids_path.glob('wazuh-*-*') if '_' not in i.stem]
     return ['-'.join(p.split('-')[:-1]) for p in running_processes]
+
+
+def check_for_daemons_shutdown(daemons: list) -> bool:
+    """Check if the given daemons list had their corresponding PID files.
+
+    Parameters
+    ----------
+    daemons : list
+        Daemons to check.
+
+    Returns
+    -------
+    bool
+        False if all the daemons in the list don't have a PID else True.
+    """
+    running_processes = get_running_processes()
+    return any([d in running_processes for d in daemons])

@@ -16,7 +16,8 @@ from wazuh.core.config.models.ssl_config import SSLConfig, IndexerSSLConfig, SSL
         'example'
     )
 ])
-def test_ssl_config_default_values(init_values, expected):
+@patch('os.path.isfile', return_value=True)
+def test_ssl_config_default_values(file_exists_mock, init_values, expected):
     """Check the correct initialization of the `SSLConfig` class."""
     ssl_config = SSLConfig(**init_values)
 

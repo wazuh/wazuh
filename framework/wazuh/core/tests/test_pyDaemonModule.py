@@ -104,3 +104,20 @@ def test_get_running_processes(path_mock):
     path_mock.return_value.glob.return_value = (MagicMock(stem=f'{daemon}-{i}') for i, daemon in enumerate(daemons))
 
     assert get_running_processes() == daemons
+
+
+@pytest.mark.parametrize(
+        'running_processes,expected',
+        (
+            (['wazuh-apid', 'wazuh-comms-apid', 'wazuh-engine'], True),
+            (['wazuh-apid', 'wazuh-comms-apid'], True),
+            ([], False),
+        )
+)
+@patch('wazuh.core.pyDaemonModule.get_running_processes')
+def test_check_for_daemons_shutdown(get_running_processes_mock, running_processes, expected):
+    """Validate that `check_for_daemons_shutdown` works as expected."""
+    daemons = ['wazuh-apid', 'wazuh-comms-apid', 'wazuh-engine']
+    get_running_processes_mock.return_value = running_processes
+
+    assert check_for_daemons_shutdown(daemons) == expected

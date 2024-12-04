@@ -12,6 +12,7 @@ import signal
 import subprocess
 import sys
 from typing import List
+import time
 
 from wazuh.core import pyDaemonModule
 from wazuh.core.authentication import generate_keypair, keypair_exists
@@ -67,20 +68,6 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
     return cluster_logger
 
 
-def exit_handler(signum, frame):
-    cluster_pid = os.getpid()
-    main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Shutting down...')
-
-    shutdown_cluster(cluster_pid)
-
-    if callable(original_sig_handler):
-        original_sig_handler(signum, frame)
-    elif original_sig_handler == signal.SIG_DFL:
-        # Call default handler if the original one can't be run
-        signal.signal(signum, signal.SIG_DFL)
-        os.kill(os.getpid(), signum)
-
-
 def start_daemon(background_mode: bool, name: str, args: List[str]):
     """Start a daemon in a subprocess and validate that there were no errors during its execution.
 
@@ -104,9 +91,6 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
             returncode = p.wait(timeout=2)
             if returncode != 0:
                 raise Exception(f'return code {returncode}')
-
-            if name == ENGINE_DAEMON_NAME:
-                pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         else:
             returncode = p.wait()
             if returncode != 0:
@@ -115,11 +99,11 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
             pid = pyDaemonModule.get_parent_pid(name)
             if pid is None:
                 raise Exception('failed during the execution')
-
     except subprocess.TimeoutExpired:
         # The command was executed without errors
+        if name == ENGINE_DAEMON_NAME:
+                pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         main_logger.info(f'Started {name} (pid: {pid})')
-        pass
     except Exception as e:
         main_logger.error(f'Error starting {name}: {e}')
 
@@ -134,9 +118,10 @@ def start_daemons(background_mode: bool, root: bool):
     root : bool
         Whether the script is running as root or not.
     """
+    engine_log_level = {0: 'info', 1: 'debug', 2: 'trace'}
 
     daemons = {
-        ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', 'start'],
+        ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
         COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
             + (['-r'] if root else [])
             + (['-d'] if background_mode else []),
@@ -166,21 +151,25 @@ def shutdown_daemon(name: str):
             pyDaemonModule.delete_pid(name, ppid)
 
 
-def shutdown_cluster(cluster_pid: int):
-    """Terminate daemons and cluster parent and child processes.
+def shutdown_server(server_pid: int):
+    """Terminate daemons and server parent and child processes.
 
     Parameters
     ----------
-    cluster_pid : int
-        Cluster process ID.
+    server_pid : int
+        Server process ID.
     """
     daemons = [ENGINE_DAEMON_NAME, MANAGEMENT_API_DAEMON_NAME, COMMS_API_DAEMON_NAME]
     for daemon in daemons:
         shutdown_daemon(daemon)
 
+    main_logger.info('Waiting for daemons shutdown.')
+    while pyDaemonModule.check_for_daemons_shutdown(daemons):
+        time.sleep(1)
+
     # Terminate the cluster
-    pyDaemonModule.delete_child_pids(SERVER_DAEMON_NAME, cluster_pid, main_logger)
-    pyDaemonModule.delete_pid(SERVER_DAEMON_NAME, cluster_pid)
+    pyDaemonModule.delete_child_pids(SERVER_DAEMON_NAME, server_pid, main_logger)
+    pyDaemonModule.delete_pid(SERVER_DAEMON_NAME, server_pid)
 
 
 #
@@ -394,10 +383,10 @@ def start():
         os.setgid(wazuh_gid())
         os.setuid(wazuh_uid())
 
-    cluster_pid = os.getpid()
-    pyDaemonModule.create_pid(SERVER_DAEMON_NAME, cluster_pid)
+    server_pid = os.getpid()
+    pyDaemonModule.create_pid(SERVER_DAEMON_NAME, server_pid)
     if not args.daemon:
-        print(f'Starting cluster in foreground (pid: {cluster_pid})')
+        print(f'Starting server in foreground (pid: {server_pid})')
 
     if server_config.node.type == NodeType.MASTER:
         main_function = master_main
@@ -418,7 +407,7 @@ def start():
     except Exception as e:
         main_logger.error(f'Unhandled exception: {e}')
     finally:
-        shutdown_cluster(cluster_pid)
+        shutdown_server(server_pid)
 
 
 def stop():
@@ -426,10 +415,10 @@ def stop():
     try:
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
     except StopIteration:
-        main_logger.error('Wazuh server is not running.')
-        sys.exit(1)
+        main_logger.warning('Wazuh server is not running.')
+        sys.exit(0)
 
-    shutdown_cluster(server_pid)
+    shutdown_server(server_pid)
     os.kill(server_pid, signal.SIGTERM)
 
 
@@ -446,7 +435,7 @@ def status():
 
 
 if __name__ == '__main__':
-    original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)
+    from wazuh.core import pyDaemonModule
 
     parser = get_script_arguments()
     args = parser.parse_args()
