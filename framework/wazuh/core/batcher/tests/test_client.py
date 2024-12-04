@@ -23,7 +23,7 @@ def test_send_event(queue_mock):
             ip='127.0.0.1',
             os=OS(
                 name='Debian 12',
-                platform='Linux'
+                type='Linux'
             )
         ),
     ))
