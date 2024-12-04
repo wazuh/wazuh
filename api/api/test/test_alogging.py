@@ -11,75 +11,10 @@ import pytest
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from api import alogging
-        from api.api_exception import APIError
 
 REQUEST_HEADERS_TEST = {'authorization': 'Basic d2F6dWg6cGFzc3dvcmQxMjM='}  # wazuh:password123
 AUTH_CONTEXT_TEST = {'auth_context': 'example'}
 HASH_AUTH_CONTEXT_TEST = '020efd3b53c1baf338cf143fad7131c3'
-
-
-@pytest.mark.parametrize('message, dkt', [
-    (None, {'k1': 'v1'}),
-    ('message_value', {'exc_info': 'traceback_value'}),
-    ('message_value', {})
-])
-def test_wazuhjsonformatter(message, dkt):
-    """Check wazuh json formatter is working as expected.
-
-    Parameters
-    ----------
-    message : str
-        Value used as a log record message.
-    dkt : dict
-        Dictionary used as a request or exception information.
-    """
-    with patch('api.alogging.logging.LogRecord') as mock_record:
-        mock_record.message = message
-        wjf = alogging.WazuhJsonFormatter()
-        log_record = {}
-        wjf.add_fields(log_record, mock_record, dkt)
-        assert 'timestamp' in log_record
-        assert 'data' in log_record
-        assert 'levelname' in log_record
-        tb = dkt.get('exc_info')
-        if tb is not None:
-            assert log_record['data']['payload'] == f'{message}. {tb}'
-        elif message is None:
-            assert log_record['data']['payload'] == dkt
-        else:
-            assert log_record['data']['payload'] == message
-        assert isinstance(log_record, dict)
-
-
-@pytest.mark.parametrize("size_input, expected_size", [
-    ("1m", 1024 * 1024),
-    ("1M", 1024 * 1024),
-    ("1024k", 1024 * 1024),
-    ("1024K", 1024 * 1024),
-    ("5m", 5 * 1024 * 1024)
-])
-def test_api_logger_size(size_input, expected_size):
-    """Assert `APILoggerSize` class returns the correct number of bytes depending on the given unit.
-
-    Parameters
-    ----------
-    size_input : str
-        Input for the class constructor.
-    expected_size : int
-        Expected number of bytes after translating the input.
-    """
-    assert alogging.APILoggerSize(size_input).size == expected_size
-
-
-def test_api_logger_size_exceptions():
-    """Assert `APILoggerSize` class returns the correct exceptions when the given size is not valid."""
-    # Test invalid units
-    with pytest.raises(APIError, match="2011.*expected format.*"):
-        alogging.APILoggerSize("3435j")
-
-    # Test min value
-    with pytest.raises(APIError, match="2011.*Minimum value.*"):
-        alogging.APILoggerSize("1k")
 
 
 @pytest.mark.parametrize("path, hash_auth_context, body, loggerlevel", [

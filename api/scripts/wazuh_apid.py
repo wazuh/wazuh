@@ -29,7 +29,6 @@ from api import error_handler
 from api.alogging import set_logging
 from api.api_exception import APIError, ExpectFailedException
 from api.configuration import generate_private_key, generate_self_signed_certificate
-from api.constants import API_LOG_PATH
 from api.middlewares import (
     CheckBlockedIP,
     CheckRateLimitsMiddleware,
@@ -319,18 +318,10 @@ if __name__ == '__main__':
 
     # Set up logger file
     try:
-        uvicorn_params['log_config'] = set_logging(log_filepath=API_LOG_PATH,
-                                                   logging_config=management_config.logging,
-                                                   background_mode=args.daemon)
+        uvicorn_params['log_config'] = set_logging(logging_config=management_config.logging)
     except APIError as api_log_error:
         print(f"Error when trying to start the Wazuh API. {api_log_error}")
         sys.exit(1)
-
-    # set permission on log files
-    for handler in uvicorn_params['log_config']['handlers'].values():
-        if 'filename' in handler:
-            utils.assign_wazuh_ownership(handler['filename'])
-            os.chmod(handler['filename'], 0o660)
 
     # Configure and create the wazuh-api logger
     add_debug2_log_level_and_error()
