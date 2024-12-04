@@ -29,7 +29,6 @@ int main(int argc, char* argv[])
     {
         CmdLineArgs args(argc, argv);
         std::string key = args.getKey();
-        std::string column = args.getColumnFamily();
         std::string value = args.getValue();
         std::string keystorePath = args.getKeystorePath();
 
@@ -40,12 +39,13 @@ int main(int argc, char* argv[])
 
         if (value.empty())
         {
-            Keystore::get(column, key, value, keystorePath);
-            std::cout << value << std::endl;
+            Keystore::get(key, value, keystorePath);
+            std::cout << key << ":" << value << std::endl;
         }
         else
         {
-            Keystore::put(column, key, value, keystorePath);
+            Keystore::put(key, value, keystorePath);
+            std::cout << "Key '" << key << "' updated." << std::endl;
         }
     }
     catch (const std::exception& e)

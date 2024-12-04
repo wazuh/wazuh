@@ -15,7 +15,7 @@
 #include <string>
 
 // Database constants, based on the keystore path.
-constexpr auto KEYSTORE_PATH {"/var/lib/wazuh-server/keystore"};
+constexpr auto KEYSTORE_PATH {"/etc/wazuh-server/client.keystore"};
 
 class Keystore final
 {
@@ -24,30 +24,22 @@ public:
     Keystore() = default;
 
     /**
-     * Insert or update a key-value pair in the specified column family.
+     * Insert or update a key-value pair in the keystore.
      *
-     * @param columnFamily The target column family.
      * @param key The key to be inserted or updated.
      * @param value The corresponding value.
-     * @param databasePath The path to the database file.
+     * @param keyStorePath The path to the database file.
      */
-    static void put(const std::string& columnFamily,
-                    const std::string& key,
-                    const std::string& value,
-                    const std::string& databasePath = KEYSTORE_PATH);
+    static void put(const std::string& key, const std::string& value, const std::string& keyStorePath = KEYSTORE_PATH);
 
     /**
-     * Get the key value in the specified column family.
+     * Get the value from the keystore.
      *
-     * @param columnFamily The target column family.
      * @param key The key to be inserted or updated.
      * @param value The corresponding value to be returned.
-     * @param databasePath The path to the database file.
+     * @param keyStorePath The path to the database file.
      */
-    static void get(const std::string& columnFamily,
-                    const std::string& key,
-                    std::string& value,
-                    const std::string& databasePath = KEYSTORE_PATH);
+    static bool get(const std::string& key, std::string& value, const std::string& keyStorePath = KEYSTORE_PATH);
 };
 
 #endif // _KEYSTORE_HPP

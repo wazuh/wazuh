@@ -29,7 +29,6 @@ public:
      */
     explicit CmdLineArgs(int argc, char* argv[])
         : m_key {paramValueOf(argc, argv, "-k", std::make_pair(true, ""))}
-        , m_columnFamily {paramValueOf(argc, argv, "-c", std::make_pair(true, ""))}
         , m_value {paramValueOf(argc, argv, "-v", std::make_pair(false, ""))}
         , m_keystorePath {paramValueOf(argc, argv, "-p", std::make_pair(false, ""))}
     {
@@ -50,13 +49,6 @@ public:
     std::string getValue() { return m_value; }
 
     /**
-     * @brief Get the requested column family.
-     *
-     * @return std::string Column family.
-     */
-    std::string getColumnFamily() { return m_columnFamily; }
-
-    /**
      * @brief Get the Keystore path.
      *
      * @return std::string Kesytore path.
@@ -73,14 +65,13 @@ public:
             << "Options:\n"
             << "\t-h \t\t\tShow this help message\n"
             << "\t-k <key> \t\tKey to query or insert.\n"
-            << "\t-c <columnFamily> \tColumn family to query or insert.\n"
             << "\t-v <value> \t\tValue to insert for. Optional, performs a get if not present.\n"
             << "\t-p <keystore_path>\tSpecifies the path to the keystore. Optional, the default value will be used "
                "if not provided.\n"
             << "\nExample:"
-            << "\n\t./keystore-testtool -k key -c column \n"
-            << "\n\t./keystore-testtool -k key -c column -v val1\n"
-            << "\n\t./keystore-testtool -k key -c column -v val1 -p /path/to/keystore\n"
+            << "\n\t./keystore-testtool -k key \n"
+            << "\n\t./keystore-testtool -k key -v val1\n"
+            << "\n\t./keystore-testtool -k key -v val1 -p /path/to/keystore\n"
             << std::endl;
     }
 
@@ -116,7 +107,6 @@ private:
     }
 
     const std::string m_key;
-    const std::string m_columnFamily;
     const std::string m_value;
     const std::string m_keystorePath;
 };

@@ -58,7 +58,8 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<int>(key::INDEXER_TIMEOUT, "WAZUH_INDEXER_TIMEOUT", 60000);
     addUnit<int>(key::INDEXER_THREADS, "WAZUH_INDEXER_THREADS", 1);
     addUnit<std::string>(key::INDEXER_DB_PATH, "WAZUH_INDEXER_DB_PATH", "/var/lib/wazuh-server/indexer-connector/");
-
+    addUnit<std::string>(
+        key::INDEXER_KEYSTORE_PATH, "WAZUH_INDEXER_KEYSTORE_PATH", "/etc/wazuh-server/client.keystore");
     // Queue module
     addUnit<int>(key::QUEUE_SIZE, "WAZUH_QUEUE_SIZE", 1000000);
     // If file is "" the queue will block until the event is pushed to the queue.
