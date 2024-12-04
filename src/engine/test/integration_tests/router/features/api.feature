@@ -109,21 +109,3 @@ Feature: Router Routes API Management
     Then I should receive a route with sync "ERROR"
     And I send a request to the router to reload the "default"
     And I should receive an error response
-
-  Scenario: Send an event without colon to the router via API
-    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
-    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
-    When I send a request to send event "hi! i am an event" to the route "default"
-    Then I should receive an error response indicating "Invalid event format, a colon was expected to be right after the first character"
-
-  Scenario: Send a short event to the router via API
-    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
-    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
-    When I send a request to send event "1:e" to the route "default"
-    Then I should receive an error response indicating "Invalid event format, event is too short (3)"
-
-  Scenario: Send a success event to the router via API
-    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
-    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
-    When I send a request to send event "1:hi! i am an event!:any" to the route "default"
-    Then I should receive a success response

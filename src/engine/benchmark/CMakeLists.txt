@@ -20,6 +20,5 @@ target_link_libraries(engine_bench_main
 add_subdirectory(regex)
 add_subdirectory(hlp)
 add_subdirectory(logicExpression)
-add_subdirectory(base)
 # add_subdirectory(helperFunctions) TODO Implment after refactoring
 add_subdirectory(json)

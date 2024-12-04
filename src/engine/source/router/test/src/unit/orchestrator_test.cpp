@@ -752,7 +752,9 @@ TEST_F(OrchestratorTest, ingestTraceLevelNoneAssetNotEmptyFailture)
     m_orchestrator->expectGetAssetsSuccess();
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {"anyAsset"}, "test");
 
-    auto resultFuture = m_orchestrator->ingestTest("1:any:message", opt);
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
+
+    auto resultFuture = m_orchestrator->ingestTest(std::move(event), opt);
     resultFuture.wait();
     auto result = resultFuture.get();
 
@@ -764,19 +766,8 @@ TEST_F(OrchestratorTest, ingestNameEmptyFailture)
     m_orchestrator->expectGetAssetsSuccess();
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "");
 
-    auto resultFuture = m_orchestrator->ingestTest("1:any:message", opt);
-    resultFuture.wait();
-    auto result = resultFuture.get();
-
-    EXPECT_TRUE(base::isError(result));
-}
-
-TEST_F(OrchestratorTest, ingestEventFailture)
-{
-    m_orchestrator->expectGetAssetsSuccess();
-    test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "test");
-
-    auto resultFuture = m_orchestrator->ingestTest("message:any", opt);
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
+    auto resultFuture = m_orchestrator->ingestTest(std::move(event), opt);
     resultFuture.wait();
     auto result = resultFuture.get();
 
@@ -891,16 +882,6 @@ TEST_F(OrchestratorTest, entriesGetSuccessRouter)
 {
     m_orchestrator->expectGetEntriesSuccessRouter();
     EXPECT_FALSE(m_orchestrator->getEntries().empty());
-}
-
-TEST_F(OrchestratorTest, postStrEventEmptyFailture)
-{
-    EXPECT_TRUE(base::isError(m_orchestrator->postStrEvent("")));
-}
-
-TEST_F(OrchestratorTest, postStrEventFailtureInProtocol)
-{
-    EXPECT_TRUE(base::isError(m_orchestrator->postStrEvent("message:1:any")));
 }
 
 TEST_F(OrchestratorTest, postRawNdjsonsmallNDJsonsFailture)

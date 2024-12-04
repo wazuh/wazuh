@@ -228,14 +228,6 @@ def step_impl(context, policy_name: str):
     delete_policy(policy_name)
 
 
-@when('I send a request to send event "{event}" to the route "{route_name}"')
-def step_impl(context, event: str, route_name: str):
-    request = api_router.QueuePost_Request()
-    request.wazuh_event = event
-    error, context.result = send_recv(
-        request, api_engine.GenericStatus_Response())
-
-
 @when('I send a request to {request} the filter "{filter_name}"')
 def step_impl(context, request: str, filter_name: str):
     if request == 'create':

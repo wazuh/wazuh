@@ -2235,9 +2235,7 @@ class RunPost_Request final :
     kAssetTraceFieldNumber = 6,
     kNamespacesFieldNumber = 7,
     kNameFieldNumber = 1,
-    kMessageFieldNumber = 2,
-    kLocationFieldNumber = 3,
-    kQueueFieldNumber = 4,
+    kNdjsonEventFieldNumber = 2,
     kTraceLevelFieldNumber = 5,
   };
   // repeated string asset_trace = 6;
@@ -2302,46 +2300,18 @@ class RunPost_Request final :
   std::string* _internal_mutable_name();
   public:
 
-  // string message = 2;
-  void clear_message();
-  const std::string& message() const;
+  // string ndjson_event = 2;
+  void clear_ndjson_event();
+  const std::string& ndjson_event() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_message(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_message();
-  PROTOBUF_NODISCARD std::string* release_message();
-  void set_allocated_message(std::string* message);
+  void set_ndjson_event(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_ndjson_event();
+  PROTOBUF_NODISCARD std::string* release_ndjson_event();
+  void set_allocated_ndjson_event(std::string* ndjson_event);
   private:
-  const std::string& _internal_message() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_message(const std::string& value);
-  std::string* _internal_mutable_message();
-  public:
-
-  // string location = 3;
-  void clear_location();
-  const std::string& location() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_location(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_location();
-  PROTOBUF_NODISCARD std::string* release_location();
-  void set_allocated_location(std::string* location);
-  private:
-  const std::string& _internal_location() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_location(const std::string& value);
-  std::string* _internal_mutable_location();
-  public:
-
-  // string queue = 4;
-  void clear_queue();
-  const std::string& queue() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_queue(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_queue();
-  PROTOBUF_NODISCARD std::string* release_queue();
-  void set_allocated_queue(std::string* queue);
-  private:
-  const std::string& _internal_queue() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_queue(const std::string& value);
-  std::string* _internal_mutable_queue();
+  const std::string& _internal_ndjson_event() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_ndjson_event(const std::string& value);
+  std::string* _internal_mutable_ndjson_event();
   public:
 
   // .com.wazuh.api.engine.tester.TraceLevel trace_level = 5;
@@ -2364,9 +2334,7 @@ class RunPost_Request final :
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> asset_trace_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> namespaces_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr message_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr location_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr queue_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr ndjson_event_;
     int trace_level_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
@@ -3884,154 +3852,54 @@ inline void RunPost_Request::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.name)
 }
 
-// string message = 2;
-inline void RunPost_Request::clear_message() {
-  _impl_.message_.ClearToEmpty();
+// string ndjson_event = 2;
+inline void RunPost_Request::clear_ndjson_event() {
+  _impl_.ndjson_event_.ClearToEmpty();
 }
-inline const std::string& RunPost_Request::message() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.RunPost_Request.message)
-  return _internal_message();
+inline const std::string& RunPost_Request::ndjson_event() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.RunPost_Request.ndjson_event)
+  return _internal_ndjson_event();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void RunPost_Request::set_message(ArgT0&& arg0, ArgT... args) {
+void RunPost_Request::set_ndjson_event(ArgT0&& arg0, ArgT... args) {
  
- _impl_.message_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.RunPost_Request.message)
+ _impl_.ndjson_event_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.RunPost_Request.ndjson_event)
 }
-inline std::string* RunPost_Request::mutable_message() {
-  std::string* _s = _internal_mutable_message();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.RunPost_Request.message)
+inline std::string* RunPost_Request::mutable_ndjson_event() {
+  std::string* _s = _internal_mutable_ndjson_event();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.RunPost_Request.ndjson_event)
   return _s;
 }
-inline const std::string& RunPost_Request::_internal_message() const {
-  return _impl_.message_.Get();
+inline const std::string& RunPost_Request::_internal_ndjson_event() const {
+  return _impl_.ndjson_event_.Get();
 }
-inline void RunPost_Request::_internal_set_message(const std::string& value) {
+inline void RunPost_Request::_internal_set_ndjson_event(const std::string& value) {
   
-  _impl_.message_.Set(value, GetArenaForAllocation());
+  _impl_.ndjson_event_.Set(value, GetArenaForAllocation());
 }
-inline std::string* RunPost_Request::_internal_mutable_message() {
+inline std::string* RunPost_Request::_internal_mutable_ndjson_event() {
   
-  return _impl_.message_.Mutable(GetArenaForAllocation());
+  return _impl_.ndjson_event_.Mutable(GetArenaForAllocation());
 }
-inline std::string* RunPost_Request::release_message() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.RunPost_Request.message)
-  return _impl_.message_.Release();
+inline std::string* RunPost_Request::release_ndjson_event() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.RunPost_Request.ndjson_event)
+  return _impl_.ndjson_event_.Release();
 }
-inline void RunPost_Request::set_allocated_message(std::string* message) {
-  if (message != nullptr) {
+inline void RunPost_Request::set_allocated_ndjson_event(std::string* ndjson_event) {
+  if (ndjson_event != nullptr) {
     
   } else {
     
   }
-  _impl_.message_.SetAllocated(message, GetArenaForAllocation());
+  _impl_.ndjson_event_.SetAllocated(ndjson_event, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.message_.IsDefault()) {
-    _impl_.message_.Set("", GetArenaForAllocation());
+  if (_impl_.ndjson_event_.IsDefault()) {
+    _impl_.ndjson_event_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.message)
-}
-
-// string location = 3;
-inline void RunPost_Request::clear_location() {
-  _impl_.location_.ClearToEmpty();
-}
-inline const std::string& RunPost_Request::location() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.RunPost_Request.location)
-  return _internal_location();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void RunPost_Request::set_location(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.location_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.RunPost_Request.location)
-}
-inline std::string* RunPost_Request::mutable_location() {
-  std::string* _s = _internal_mutable_location();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.RunPost_Request.location)
-  return _s;
-}
-inline const std::string& RunPost_Request::_internal_location() const {
-  return _impl_.location_.Get();
-}
-inline void RunPost_Request::_internal_set_location(const std::string& value) {
-  
-  _impl_.location_.Set(value, GetArenaForAllocation());
-}
-inline std::string* RunPost_Request::_internal_mutable_location() {
-  
-  return _impl_.location_.Mutable(GetArenaForAllocation());
-}
-inline std::string* RunPost_Request::release_location() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.RunPost_Request.location)
-  return _impl_.location_.Release();
-}
-inline void RunPost_Request::set_allocated_location(std::string* location) {
-  if (location != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.location_.SetAllocated(location, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.location_.IsDefault()) {
-    _impl_.location_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.location)
-}
-
-// string queue = 4;
-inline void RunPost_Request::clear_queue() {
-  _impl_.queue_.ClearToEmpty();
-}
-inline const std::string& RunPost_Request::queue() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.RunPost_Request.queue)
-  return _internal_queue();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void RunPost_Request::set_queue(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.queue_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.RunPost_Request.queue)
-}
-inline std::string* RunPost_Request::mutable_queue() {
-  std::string* _s = _internal_mutable_queue();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.RunPost_Request.queue)
-  return _s;
-}
-inline const std::string& RunPost_Request::_internal_queue() const {
-  return _impl_.queue_.Get();
-}
-inline void RunPost_Request::_internal_set_queue(const std::string& value) {
-  
-  _impl_.queue_.Set(value, GetArenaForAllocation());
-}
-inline std::string* RunPost_Request::_internal_mutable_queue() {
-  
-  return _impl_.queue_.Mutable(GetArenaForAllocation());
-}
-inline std::string* RunPost_Request::release_queue() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.RunPost_Request.queue)
-  return _impl_.queue_.Release();
-}
-inline void RunPost_Request::set_allocated_queue(std::string* queue) {
-  if (queue != nullptr) {
-    
-  } else {
-    
-  }
-  _impl_.queue_.SetAllocated(queue, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.queue_.IsDefault()) {
-    _impl_.queue_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.queue)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.RunPost_Request.ndjson_event)
 }
 
 // .com.wazuh.api.engine.tester.TraceLevel trace_level = 5;

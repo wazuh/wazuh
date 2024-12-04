@@ -527,9 +527,22 @@ def build_run_post_request(input_data: dict, level: api_tester.TraceLevel) -> ap
     request = api_tester.RunPost_Request()
     request.name = SESSION_NAME
     request.trace_level = level
-    request.message = json.dumps(input_data)
-    request.queue = "1"
-    request.location = "any"
+
+    test_event_header : dict = {
+        "agent": {
+            "id": "000",
+            "name": "test",
+        }
+    }
+
+    test_event : dict = {
+        "event": {
+            "original": json.dumps(input_data, separators=(',', ':'))
+        }
+    }
+
+    request.ndjson_event = json.dumps(test_event_header) + "\n" + json.dumps(test_event)
+
     request.namespaces.extend([NAMESPACE])
     return request
 

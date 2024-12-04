@@ -263,8 +263,6 @@ struct JParams
     std::optional<std::string> m_description;
 
     std::optional<std::string> m_message;
-    std::optional<std::string> m_location;
-    std::optional<std::string> m_queue;
 
     std::optional<router::test::Options::TraceLevel> m_traceLevel;
 
@@ -318,18 +316,6 @@ struct JParams
     JParams& traceLevel(router::test::Options::TraceLevel traceLevel)
     {
         m_traceLevel = traceLevel;
-        return *this;
-    }
-
-    JParams& location(const std::string& location)
-    {
-        m_location = location;
-        return *this;
-    }
-
-    JParams& queue(const std::string& queue)
-    {
-        m_queue = queue;
         return *this;
     }
 
@@ -391,14 +377,6 @@ struct JParams
                 j.appendString(ns, "/asset_trace");
             }
         }
-        if (m_location)
-        {
-            j.setString(m_location.value(), path + "location");
-        }
-        if (m_queue)
-        {
-            j.setString(m_queue.value(), path + "queue");
-        }
         if (m_policySync)
         {
             j.setString(syncToString(m_policySync.value()), path + "policySync");
@@ -413,7 +391,7 @@ struct JParams
         }
         if (m_message)
         {
-            j.setString(m_message.value(), path + "message");
+            j.setString(m_message.value(), path + "ndjson_event");
         }
         if (m_traceLevel)
         {
@@ -743,14 +721,13 @@ INSTANTIATE_TEST_SUITE_P(
         // [runPost]: TraceLevel: None, Timeout Error
         TestRouterTComplementStore(
             runPost,
-            routerTest::JParams(ENVIRONMENT_NAME, false).event("i am a message").queue("49").location("here"),
+            routerTest::JParams(ENVIRONMENT_NAME, false).event("{\"test\": \"header\"}\n{\"test\": \"event\"}"),
             failureWPayloadComplementStore(
                 [](auto tester, auto store, auto callback) -> json::Json
                 {
-                    std::string message = "49:here:i am a message";
                     base::Error error {"error"};
 
-                    EXPECT_CALL(*tester, ingestTest(message, testing::_, testing::_))
+                    EXPECT_CALL(*tester, ingestTest(testing::_, testing::_, testing::_))
                         .WillOnce(::testing::Return(error));
                     auto expected = json::Json();
                     expected.setString(error.message, "/error");
@@ -764,8 +741,6 @@ INSTANTIATE_TEST_SUITE_P(
         TestRouterTComplementStore(runPost,
                                    routerTest::JParams(ENVIRONMENT_NAME, false)
                                        .event("i am a message")
-                                       .queue("49")
-                                       .location("here")
                                        .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY),
                                    failureWPayloadComplementStore(
                                        [](auto tester, auto store, auto callback) -> json::Json
@@ -782,8 +757,6 @@ INSTANTIATE_TEST_SUITE_P(
         TestRouterTComplementStore(runPost,
                                    routerTest::JParams(ENVIRONMENT_NAME, false)
                                        .event("i am a message")
-                                       .queue("49")
-                                       .location("here")
                                        .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY)
                                        .namespaces({"ns1", "ns2"}),
                                    failureWPayloadComplementStore(
@@ -806,8 +779,6 @@ INSTANTIATE_TEST_SUITE_P(
             runPost,
             routerTest::JParams(ENVIRONMENT_NAME, false)
                 .event("i am a message")
-                .queue("49")
-                .location("here")
                 .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY)
                 .namespaces({"ns1", "ns2"}),
             failureWPayloadComplementStore(

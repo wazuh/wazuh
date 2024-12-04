@@ -441,25 +441,7 @@ INSTANTIATE_TEST_SUITE_P(
                         [](auto router) {
                             EXPECT_CALL(*router, changeEntryPriority(testing::_, testing::_))
                                 .WillOnce(::testing::Return(std::nullopt));
-                        })),
-        // [queuePost]: Fail
-        TestRouterT(queuePost,
-                    routerProduction::JParams("", "", "", 0, false).event(""),
-                    failureWPayload(
-                        [](auto router) -> json::Json
-                        {
-                            base::OptError error = base::Error {"Name cannot be empty"};
-                            EXPECT_CALL(*router, postStrEvent(testing::_)).WillOnce(::testing::Return(error));
-                            auto expected = json::Json();
-                            expected.setString(base::getError(error).message, "/error");
-                            return expected;
-                        })),
-        // [queuePost]: Sucess
-        TestRouterT(
-            queuePost,
-            routerProduction::JParams("", "", "", 0, false).event("Hi! i am an event!"),
-            success([](auto router)
-                    { EXPECT_CALL(*router, postStrEvent(testing::_)).WillOnce(::testing::Return(std::nullopt)); }))));
+                        }))));
 
 class RouterHandlerTestComplement : public ::testing::TestWithParam<TestRouterTComplement>
 {

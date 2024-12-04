@@ -32,9 +32,7 @@ class ApiConnector:
             # Create test request
             request = api_tester.RunPost_Request()
             request.name = self.session_name
-            request.queue = chr(self.config['queue'])
-            request.location = self.config['full_location']
-            request.message = event
+            request.ndjson_event = event
 
             request.namespaces.extend(self.config['namespaces'])
 

@@ -1,18 +1,16 @@
 import re
 from lxml import etree as ET
 
-from engine_test.event_format import EventFormat, Formats
+from engine_test.event_splitters.base_splitter import SplitterEvent
 
-class EventChannelFormat(EventFormat):
-    def __init__(self, integration, args):
-        super().__init__(integration, args)
-        self.config['queue'] = Formats.EVENTCHANNEL.value['queue']
-        self.config['origin'] = Formats.EVENTCHANNEL.value['origin']
+class EventChannelSplitter(SplitterEvent):
+    '''
+    Class to split the events from the EventChannel.
+    '''
+    def __init__(self):
+        pass
 
-    def format_event(self, event):
-        return event
-
-    def get_xml(self, event):
+    def _get_xml(self, event):
         xml_start = event.find('<Event')
         if xml_start == -1:
             print("XML 'Event' or 'Events' tag not found in '{}'".format(event))
@@ -26,7 +24,10 @@ class EventChannelFormat(EventFormat):
             print("XML ParseError: {}. The event will be ignored.".format(ex))
             return None
 
-    def get_events(self, raw_inputs):
+    def split_events(self, events: list[str]) -> list[str]:
+        '''
+        Split the raw input events into a list of events.
+        '''
         event_list = []
         # to remove the XML header if it exists
         xml_header_regex = re.compile(r'<\?xml.*?\?>\s*')
@@ -35,8 +36,8 @@ class EventChannelFormat(EventFormat):
         # etree.register_namespace('xmlns', 'http://schemas.microsoft.com/win/2004/08/events/event')
 
         # Extract the XML from the event
-        for raw_input in raw_inputs:
-            root = self.get_xml(raw_input)
+        for raw_input in events:
+            root = self._get_xml(raw_input)
             if root is None:
                 continue
             tag_name = root.tag.split('}')[-1]
@@ -45,15 +46,12 @@ class EventChannelFormat(EventFormat):
                     event_string = ET.tostring(event, method='xml', encoding='utf-8').decode('utf-8')
                     event_string = xml_header_regex.sub('', event_string)
                     event_list.append(event_string)
-            # Si el XML representa un solo evento
+            # If the XML is only one event
             elif tag_name == 'Event':
                 event_string = ET.tostring(root, method='xml', encoding='utf-8').decode('utf-8')
                 event_string = xml_header_regex.sub('', event_string)
                 event_list.append(event_string)
             else:
-                print("XML root tag is not 'Events' or 'Event'")
+                print("XML root tag is not 'Events' or 'Event', yhe event will be ignored.")
 
         return event_list
-
-    def is_multiline(self):
-        return Formats.EVENTCHANNEL.value['multiline']

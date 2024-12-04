@@ -32,7 +32,6 @@ constexpr std::string_view QUEUE_DROP_ON_FLOOD = "/queue/drop_on_flood";
 constexpr std::string_view ORCHESTRATOR_THREADS = "/orchestrator/threads";
 
 constexpr std::string_view SERVER_THREAD_POOL_SIZE = "/server/thread_pool_size";
-constexpr std::string_view SERVER_EVENT_SOCKET = "/server/event_socket";
 constexpr std::string_view SERVER_EVENT_QUEUE_SIZE = "/server/event_queue_size";
 constexpr std::string_view SERVER_API_SOCKET = "/server/api_socket";
 constexpr std::string_view SERVER_API_QUEUE_SIZE = "/server/api_queue_size";

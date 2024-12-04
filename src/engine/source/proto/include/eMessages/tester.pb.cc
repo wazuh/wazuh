@@ -192,9 +192,7 @@ PROTOBUF_CONSTEXPR RunPost_Request::RunPost_Request(
     /*decltype(_impl_.asset_trace_)*/{}
   , /*decltype(_impl_.namespaces_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.message_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.location_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.queue_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.ndjson_event_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.trace_level_)*/0
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct RunPost_RequestDefaultTypeInternal {
@@ -349,9 +347,7 @@ const uint32_t TableStruct_tester_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.name_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.message_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.location_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.queue_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.ndjson_event_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.trace_level_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.asset_trace_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::tester::RunPost_Request, _impl_.namespaces_),
@@ -381,7 +377,7 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 92, -1, -1, sizeof(::com::wazuh::api::engine::tester::TableGet_Request)},
   { 98, 107, -1, sizeof(::com::wazuh::api::engine::tester::TableGet_Response)},
   { 110, -1, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Request)},
-  { 123, 132, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Response)},
+  { 121, 130, -1, sizeof(::com::wazuh::api::engine::tester::RunPost_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -429,27 +425,26 @@ const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(
   " \001(\0162\".com.wazuh.api.engine.ReturnStatus"
   "\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0226\n\010sessions\030\003 \003(\0132$"
   ".com.wazuh.api.engine.tester.SessionB\010\n\006"
-  "_error\"\270\001\n\017RunPost_Request\022\014\n\004name\030\001 \001(\t"
-  "\022\017\n\007message\030\002 \001(\t\022\020\n\010location\030\003 \001(\t\022\r\n\005q"
-  "ueue\030\004 \001(\t\022<\n\013trace_level\030\005 \001(\0162\'.com.wa"
-  "zuh.api.engine.tester.TraceLevel\022\023\n\013asse"
-  "t_trace\030\006 \003(\t\022\022\n\nnamespaces\030\007 \003(\t\"\251\001\n\020Ru"
-  "nPost_Response\0222\n\006status\030\001 \001(\0162\".com.waz"
-  "uh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001("
-  "\tH\000\210\001\001\0228\n\006result\030\003 \001(\0132#.com.wazuh.api.e"
-  "ngine.tester.ResultH\001\210\001\001B\010\n\006_errorB\t\n\007_r"
-  "esult*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DIS"
-  "ABLED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UNK"
-  "NOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ERR"
-  "OR\020\003*/\n\nTraceLevel\022\010\n\004NONE\020\000\022\016\n\nASSET_ON"
-  "LY\020\001\022\007\n\003ALL\020\002b\006proto3"
+  "_error\"\234\001\n\017RunPost_Request\022\014\n\004name\030\001 \001(\t"
+  "\022\024\n\014ndjson_event\030\002 \001(\t\022<\n\013trace_level\030\005 "
+  "\001(\0162\'.com.wazuh.api.engine.tester.TraceL"
+  "evel\022\023\n\013asset_trace\030\006 \003(\t\022\022\n\nnamespaces\030"
+  "\007 \003(\t\"\251\001\n\020RunPost_Response\0222\n\006status\030\001 \001"
+  "(\0162\".com.wazuh.api.engine.ReturnStatus\022\022"
+  "\n\005error\030\002 \001(\tH\000\210\001\001\0228\n\006result\030\003 \001(\0132#.com"
+  ".wazuh.api.engine.tester.ResultH\001\210\001\001B\010\n\006"
+  "_errorB\t\n\007_result*5\n\005State\022\021\n\rSTATE_UNKN"
+  "OWN\020\000\022\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync"
+  "\022\020\n\014SYNC_UNKNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDA"
+  "TED\020\002\022\t\n\005ERROR\020\003*/\n\nTraceLevel\022\010\n\004NONE\020\000"
+  "\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_tester_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_tester_2eproto = {
-    false, false, 1661, descriptor_table_protodef_tester_2eproto,
+    false, false, 1633, descriptor_table_protodef_tester_2eproto,
     "tester.proto",
     &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 1, 13,
     schemas, file_default_instances, TableStruct_tester_2eproto::offsets,
@@ -3252,9 +3247,7 @@ RunPost_Request::RunPost_Request(const RunPost_Request& from)
       decltype(_impl_.asset_trace_){from._impl_.asset_trace_}
     , decltype(_impl_.namespaces_){from._impl_.namespaces_}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.message_){}
-    , decltype(_impl_.location_){}
-    , decltype(_impl_.queue_){}
+    , decltype(_impl_.ndjson_event_){}
     , decltype(_impl_.trace_level_){}
     , /*decltype(_impl_._cached_size_)*/{}};
 
@@ -3267,28 +3260,12 @@ RunPost_Request::RunPost_Request(const RunPost_Request& from)
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
-  _impl_.message_.InitDefault();
+  _impl_.ndjson_event_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.message_.Set("", GetArenaForAllocation());
+    _impl_.ndjson_event_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_message().empty()) {
-    _this->_impl_.message_.Set(from._internal_message(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.location_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.location_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_location().empty()) {
-    _this->_impl_.location_.Set(from._internal_location(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.queue_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.queue_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (!from._internal_queue().empty()) {
-    _this->_impl_.queue_.Set(from._internal_queue(), 
+  if (!from._internal_ndjson_event().empty()) {
+    _this->_impl_.ndjson_event_.Set(from._internal_ndjson_event(), 
       _this->GetArenaForAllocation());
   }
   _this->_impl_.trace_level_ = from._impl_.trace_level_;
@@ -3303,9 +3280,7 @@ inline void RunPost_Request::SharedCtor(
       decltype(_impl_.asset_trace_){arena}
     , decltype(_impl_.namespaces_){arena}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.message_){}
-    , decltype(_impl_.location_){}
-    , decltype(_impl_.queue_){}
+    , decltype(_impl_.ndjson_event_){}
     , decltype(_impl_.trace_level_){0}
     , /*decltype(_impl_._cached_size_)*/{}
   };
@@ -3313,17 +3288,9 @@ inline void RunPost_Request::SharedCtor(
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.name_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.message_.InitDefault();
+  _impl_.ndjson_event_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.message_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.location_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.location_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.queue_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.queue_.Set("", GetArenaForAllocation());
+    _impl_.ndjson_event_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -3341,9 +3308,7 @@ inline void RunPost_Request::SharedDtor() {
   _impl_.asset_trace_.~RepeatedPtrField();
   _impl_.namespaces_.~RepeatedPtrField();
   _impl_.name_.Destroy();
-  _impl_.message_.Destroy();
-  _impl_.location_.Destroy();
-  _impl_.queue_.Destroy();
+  _impl_.ndjson_event_.Destroy();
 }
 
 void RunPost_Request::SetCachedSize(int size) const {
@@ -3359,9 +3324,7 @@ void RunPost_Request::Clear() {
   _impl_.asset_trace_.Clear();
   _impl_.namespaces_.Clear();
   _impl_.name_.ClearToEmpty();
-  _impl_.message_.ClearToEmpty();
-  _impl_.location_.ClearToEmpty();
-  _impl_.queue_.ClearToEmpty();
+  _impl_.ndjson_event_.ClearToEmpty();
   _impl_.trace_level_ = 0;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -3382,33 +3345,13 @@ const char* RunPost_Request::_InternalParse(const char* ptr, ::_pbi::ParseContex
         } else
           goto handle_unusual;
         continue;
-      // string message = 2;
+      // string ndjson_event = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
-          auto str = _internal_mutable_message();
+          auto str = _internal_mutable_ndjson_event();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.RunPost_Request.message"));
-        } else
-          goto handle_unusual;
-        continue;
-      // string location = 3;
-      case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          auto str = _internal_mutable_location();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.RunPost_Request.location"));
-        } else
-          goto handle_unusual;
-        continue;
-      // string queue = 4;
-      case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
-          auto str = _internal_mutable_queue();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.RunPost_Request.queue"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.tester.RunPost_Request.ndjson_event"));
         } else
           goto handle_unusual;
         continue;
@@ -3490,34 +3433,14 @@ uint8_t* RunPost_Request::_InternalSerialize(
         1, this->_internal_name(), target);
   }
 
-  // string message = 2;
-  if (!this->_internal_message().empty()) {
+  // string ndjson_event = 2;
+  if (!this->_internal_ndjson_event().empty()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_message().data(), static_cast<int>(this->_internal_message().length()),
+      this->_internal_ndjson_event().data(), static_cast<int>(this->_internal_ndjson_event().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.tester.RunPost_Request.message");
+      "com.wazuh.api.engine.tester.RunPost_Request.ndjson_event");
     target = stream->WriteStringMaybeAliased(
-        2, this->_internal_message(), target);
-  }
-
-  // string location = 3;
-  if (!this->_internal_location().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_location().data(), static_cast<int>(this->_internal_location().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.tester.RunPost_Request.location");
-    target = stream->WriteStringMaybeAliased(
-        3, this->_internal_location(), target);
-  }
-
-  // string queue = 4;
-  if (!this->_internal_queue().empty()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_queue().data(), static_cast<int>(this->_internal_queue().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.tester.RunPost_Request.queue");
-    target = stream->WriteStringMaybeAliased(
-        4, this->_internal_queue(), target);
+        2, this->_internal_ndjson_event(), target);
   }
 
   // .com.wazuh.api.engine.tester.TraceLevel trace_level = 5;
@@ -3586,25 +3509,11 @@ size_t RunPost_Request::ByteSizeLong() const {
         this->_internal_name());
   }
 
-  // string message = 2;
-  if (!this->_internal_message().empty()) {
+  // string ndjson_event = 2;
+  if (!this->_internal_ndjson_event().empty()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_message());
-  }
-
-  // string location = 3;
-  if (!this->_internal_location().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_location());
-  }
-
-  // string queue = 4;
-  if (!this->_internal_queue().empty()) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_queue());
+        this->_internal_ndjson_event());
   }
 
   // .com.wazuh.api.engine.tester.TraceLevel trace_level = 5;
@@ -3636,14 +3545,8 @@ void RunPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const 
   if (!from._internal_name().empty()) {
     _this->_internal_set_name(from._internal_name());
   }
-  if (!from._internal_message().empty()) {
-    _this->_internal_set_message(from._internal_message());
-  }
-  if (!from._internal_location().empty()) {
-    _this->_internal_set_location(from._internal_location());
-  }
-  if (!from._internal_queue().empty()) {
-    _this->_internal_set_queue(from._internal_queue());
+  if (!from._internal_ndjson_event().empty()) {
+    _this->_internal_set_ndjson_event(from._internal_ndjson_event());
   }
   if (from._internal_trace_level() != 0) {
     _this->_internal_set_trace_level(from._internal_trace_level());
@@ -3674,16 +3577,8 @@ void RunPost_Request::InternalSwap(RunPost_Request* other) {
       &other->_impl_.name_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.message_, lhs_arena,
-      &other->_impl_.message_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.location_, lhs_arena,
-      &other->_impl_.location_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.queue_, lhs_arena,
-      &other->_impl_.queue_, rhs_arena
+      &_impl_.ndjson_event_, lhs_arena,
+      &other->_impl_.ndjson_event_, rhs_arena
   );
   swap(_impl_.trace_level_, other->_impl_.trace_level_);
 }

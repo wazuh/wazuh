@@ -467,31 +467,6 @@ std::list<prod::Entry> Orchestrator::getEntries() const
     return m_workers.front()->getRouter()->getEntries();
 }
 
-base::OptError Orchestrator::postStrEvent(std::string_view event)
-{
-    if (event.empty())
-    {
-        return base::Error {"Event cannot be empty"};
-    }
-
-    base::OptError err = std::nullopt;
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        this->postEvent(std::move(ev));
-    }
-    catch (const std::exception& e)
-    {
-        err = base::Error {e.what()};
-    }
-
-    if (err)
-    {
-        return err;
-    }
-    return std::nullopt;
-}
-
 void Orchestrator::postRawNdjson(std::string&& batch)
 {
     const std::size_t min_header_size = 2; // Header + subheader
@@ -711,25 +686,15 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
     return future;
 }
 
-std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(std::string_view event, const test::Options& opt)
-{
-
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        return this->ingestTest(std::move(ev), opt);
-    }
-    catch (const std::exception& e)
-    {
-        return std::async(std::launch::deferred,
-                          [err = base::Error {e.what()}]() -> base::RespOrError<test::Output> { return err; });
-    }
-}
-
 base::OptError Orchestrator::ingestTest(base::Event&& event,
                                         const test::Options& opt,
                                         std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
 {
+    if (event == nullptr)
+    {
+        return base::Error {"Event cannot be empty"};
+    }
+
     if (auto error = opt.validate(); error)
     {
         return error;
@@ -748,23 +713,6 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
     {
         std::shared_lock lock {m_syncMutex};
         m_workers.front()->getTester()->updateLastUsed(opt.environmentName());
-    }
-
-    return std::nullopt;
-}
-
-base::OptError Orchestrator::ingestTest(std::string_view event,
-                                        const test::Options& opt,
-                                        std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
-{
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        this->ingestTest(std::move(ev), opt, callbackFn);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
     }
 
     return std::nullopt;
