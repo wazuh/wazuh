@@ -17,14 +17,15 @@ This folder contains the development environment for the Wazuh 5.0 version. It i
 
 ## Quickstart
 
-Using the environment is quite simple and requires only two steps:
+Using the environment is quite simple and requires only three steps:
 
 1. Generate the certificates used to encrypt the communication between the different nodes.
-2. Start services.
+2. Download wazuh-indexer plugins from the [repository](https://github.com/wazuh/wazuh-indexer/actions/workflows/build.yml) and include them inside the `wazuh-indexer` folder.
+3. Start services.
 
 ### Certificates generation
 
-To generate the certificates for the server and indexer nodes, execute:
+To generate the certificates for the server and indexer nodes, execute
 
 ```bash
 certs/gen_certs.sh
@@ -61,6 +62,20 @@ drwxr-xr-x 7 wazuh wazuh     4096 Nov 28 09:01 ..
 -rw------- 1 wazuh wazuh     1704 Nov 28 13:12 wazuh-worker2.key
 -rw------- 1 wazuh wazuh     1675 Nov 28 13:12 wazuh-worker2-key.pem
 -rw-r--r-- 1 wazuh wazuh     1415 Nov 28 13:12 wazuh-worker2.pem
+```
+
+### Setting up indexer plugins
+
+Download the latest plugins from the wazuh-indexer GitHub repository and include them in the `wazuh-indexer` directory. The directory should end up with the following files
+
+```console
+wazuh@wazuh:~/wazuh/apis/tools/env/5.0$ ls -la wazuh-indexer/
+total 7920
+drwxr-xr-x 2 wazuh wazuh    4096 Dec  4 23:37 .
+drwxr-xr-x 7 wazuh wazuh    4096 Dec  4 23:38 ..
+-rw-r--r-- 1 wazuh wazuh     331 Dec  4 23:37 Dockerfile
+-rw-r--r-- 1 wazuh wazuh 8055100 Dec  4 23:37 wazuh-indexer-command-manager-5.0.0.0.zip
+-rw-r--r-- 1 wazuh wazuh   37072 Dec  4 23:37 wazuh-indexer-setup-5.0.0.0.zip
 ```
 
 ### Start services
