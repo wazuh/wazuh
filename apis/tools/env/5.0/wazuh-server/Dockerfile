@@ -51,11 +51,27 @@ COPY scripts/build.sh /tmp/build.sh
 
 RUN /tmp/build.sh
 
-FROM ubuntu:24.04 AS wazuh-server
+FROM ubuntu:24.04 AS server
+
+ENV USER=wazuh
+ENV GROUP=wazuh
+
+# Add group and user
+RUN groupadd -f "$GROUP" && useradd "$USER" -d "/" -s "/sbin/nologin" -g "$GROUP"
+
+# Copy directories from builder
+COPY --from=builder /etc/wazuh-server /etc/wazuh-server
+
+COPY --from=builder /run/wazuh-server /run/wazuh-server
+
+COPY --from=builder /var/log/wazuh-server /var/log/wazuh-server
+
+COPY --from=builder /var/lib/wazuh-server /var/lib/wazuh-server
 
 COPY --from=builder /usr/share/wazuh-server /usr/share/wazuh-server
 
-RUN apt update && apt install -y vim curl apt-transport-https sqlite3
+# Install debugging tools
+RUN apt update && apt install -y vim curl sqlite3
 
 COPY scripts/entrypoint.sh /scripts/entrypoint.sh
 
