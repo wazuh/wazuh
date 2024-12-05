@@ -84,6 +84,7 @@ jobs:
         export WHOAMI=$(whoami)
         sudo install -d -m 0750 -o ${WHOAMI} /var/lib/wazuh-server/
         sudo install -d -m 0750 -o ${WHOAMI} /run/wazuh-server/
+        sudo install -d -m 0750 -o ${WHOAMI} /etc/wazuh-server
         curl -LO http://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.10.0.tar.xz
         tar -xvf vd_1.0.0_vd_4.10.0.tar.xz
         mv queue/vd /var/lib/wazuh-server/
@@ -97,7 +98,7 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init --conf ${{env.ENGINE_DIR}}/test/helper_tests/integration_tests/config.env
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init
 
     - name: Integration Test
       run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run

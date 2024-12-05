@@ -80,6 +80,7 @@ jobs:
         export WHOAMI=$(whoami)
         sudo install -d -m 0750 -o ${WHOAMI} /var/lib/wazuh-server/
         sudo install -d -m 0750 -o ${WHOAMI} /run/wazuh-server/
+        sudo install -d -m 0750 -o ${WHOAMI} /etc/wazuh-server
         curl -LO http://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.10.0.tar.xz
         tar -xvf vd_1.0.0_vd_4.10.0.tar.xz
         mv queue/vd /var/lib/wazuh-server/
