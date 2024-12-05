@@ -1,7 +1,7 @@
 /*
  * Wazuh content manager
  * Copyright (C) 2015, Wazuh Inc.
- * May 02, 2023.
+ * Dec 03, 2024.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _UPDATE_CTI_API_OFFSET_HPP
-#define _UPDATE_CTI_API_OFFSET_HPP
+#ifndef _UPDATE_OFFLINE_HPP
+#define _UPDATE_OFFLINE_HPP
 
 #include "componentsHelper.hpp"
 #include "sharedDefs.hpp"
@@ -20,12 +20,12 @@
 #include <memory>
 
 /**
- * @class UpdateCtiApiOffset
+ * @class UpdateOffline
  *
  * @brief Class in charge of updating the content version as a step of a chain of responsibility.
  *
  */
-class UpdateCtiApiOffset final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
+class UpdateOffline final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
     /**
@@ -39,7 +39,13 @@ private:
         {
             if (context.spUpdaterBaseContext->spRocksDB)
             {
-                logDebug2(WM_CONTENTUPDATER, "Updating offset with value: '%d'", context.currentOffset);
+                logDebug2(WM_CONTENTUPDATER,
+                          "Updating hash with value: '%s'",
+                          context.spUpdaterBaseContext->downloadedFileHash.c_str());
+
+                context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                                             context.spUpdaterBaseContext->downloadedFileHash,
+                                                             Components::Columns::DOWNLOADED_FILE_HASH);
 
                 context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
                                                              std::to_string(context.currentOffset),
@@ -53,7 +59,7 @@ private:
         catch (const std::exception& e)
         {
             std::ostringstream errorMsg;
-            errorMsg << "UpdateCtiApiOffset - Error updating the content version: " << e.what();
+            errorMsg << "UpdateOffline - Error updating the content version: " << e.what();
             throw std::runtime_error(errorMsg.str());
         }
     }
@@ -67,7 +73,7 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
-        logDebug1(WM_CONTENTUPDATER, "UpdateCtiApiOffset - Starting process");
+        logDebug1(WM_CONTENTUPDATER, "UpdateOffline - Starting process");
 
         update(*context);
 
@@ -75,4 +81,4 @@ public:
     }
 };
 
-#endif // _UPDATE_CTI_API_OFFSET_HPP
+#endif // _UPDATE_OFFLINE_HPP
