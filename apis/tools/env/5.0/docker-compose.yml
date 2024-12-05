@@ -3,7 +3,7 @@ services:
     build:
       context: ./wazuh-server
       target: server
-    image: dev-wazuh-manager
+    image: dev-wazuh-server
     container_name: wazuh-manager
     hostname: wazuh-manager
     volumes:
@@ -40,7 +40,7 @@ services:
       - wazuh-indexer
 
   wazuh-worker1:
-    image: dev-wazuh-manager
+    image: dev-wazuh-server
     hostname: wazuh-worker1
     container_name: wazuh-worker1
     volumes:
@@ -78,7 +78,7 @@ services:
       - worker
 
   wazuh-worker2:
-    image: dev-wazuh-manager
+    image: dev-wazuh-server
     hostname: wazuh-worker2
     container_name: wazuh-worker2
     volumes:
