@@ -8,9 +8,6 @@ from comms_api.core.commands import CommandsManager
 from wazuh.core import common
 
 
-UNIX_SOCKET_PATH = common.WAZUH_SOCKET / 'comms-api.sock'
-
-
 def start_unix_server(commands_manager: CommandsManager):
     """Start the local server using HTTP over a unix socket.
 
@@ -26,5 +23,5 @@ def start_unix_server(commands_manager: CommandsManager):
     app.include_router(router)
     app.state.commands_manager = commands_manager
 
-    t = Thread(target=uvicorn.run, kwargs={'app': app, 'uds': UNIX_SOCKET_PATH}, daemon=True)
+    t = Thread(target=uvicorn.run, kwargs={'app': app, 'uds': common.COMMS_API_SOCKET_PATH}, daemon=True)
     t.start()

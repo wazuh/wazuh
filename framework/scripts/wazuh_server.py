@@ -16,11 +16,11 @@ import time
 
 from wazuh.core import pyDaemonModule
 from wazuh.core.authentication import generate_keypair, keypair_exists
-from wazuh.core.common import WAZUH_SHARE, WAZUH_LOG, wazuh_gid, wazuh_uid
+from wazuh.core.common import WAZUH_SHARE, WAZUH_LOG, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import NodeType
 from wazuh.core.cluster.cluster import clean_up
-from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version
+from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version, ping_unix_socket
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 from wazuh.core.cluster.unix_server.server import start_unix_server
@@ -47,8 +47,6 @@ def set_logging(debug_mode=0) -> WazuhLogger:
 
     Parameters
     ----------
-    foreground_mode : bool
-        Whether the script is running in foreground mode or not.
     debug_mode : int
         Debug mode.
 
@@ -190,6 +188,10 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     context_tag.set(tag)
     start_unix_server(tag)
 
+    while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
+        main_logger.info(f"Configuration server is not available, retrying...")
+        time.sleep(1)
+
     my_server = master.Master(
         performance_test=args.performance_test,
         concurrency_test=args.concurrency_test,
@@ -217,9 +219,6 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     # Initialize daemons
     start_daemons(args.daemon, args.root)
 
-    # TODO(25554) - Delete in future Issue including references to HAPROXY
-    # if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
-    #    tasks.append(HAPHelper)
     await asyncio.gather(*tasks)
 
 
@@ -245,6 +244,10 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
     tag = 'Worker'
     context_tag.set(tag)
     start_unix_server(tag)
+
+    while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
+        main_logger.info(f"Configuration server is not available, retrying...")
+        time.sleep(1)
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
     try:

@@ -976,7 +976,7 @@ class Handler(asyncio.Protocol):
         """
         self.logger.info('Sending orders to the Communications API')
 
-        transport = httpx.AsyncHTTPTransport(uds=common.WAZUH_SOCKET / 'comms-api.sock')
+        transport = httpx.AsyncHTTPTransport(uds=common.COMMS_API_SOCKET)
         client = httpx.AsyncClient(transport=transport, timeout=httpx.Timeout(10))
 
         orders_list = json.loads(orders)

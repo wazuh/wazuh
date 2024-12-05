@@ -3,7 +3,7 @@ from unittest.mock import call, patch, MagicMock
 import uvicorn
 
 from comms_api.core.unix_server.commands import post_commands
-from comms_api.core.unix_server.server import start_unix_server, UNIX_SOCKET_PATH
+from comms_api.core.unix_server.server import start_unix_server, common
 
 
 @patch('comms_api.core.unix_server.server.FastAPI')
@@ -19,6 +19,6 @@ def test_start_unix_server(mock_thread, router_mock, fastapi_mock):
         call().add_api_route('/commands', post_commands, methods=['POST'])
     ])
     mock_thread.assert_has_calls([
-        call(target=uvicorn.run, kwargs={'app': fastapi_mock(), 'uds': UNIX_SOCKET_PATH}, daemon=True),
+        call(target=uvicorn.run, kwargs={'app': fastapi_mock(), 'uds': common.COMMS_API_SOCKET_PATH}, daemon=True),
         call().start()
     ])

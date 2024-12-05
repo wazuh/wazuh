@@ -6,8 +6,6 @@ from typing import Any
 from wazuh.core.cluster.unix_server.config import get_config
 from wazuh.core import common
 
-SERVER_UNIX_SOCKET_PATH = common.WAZUH_RUN / 'config-server.sock'
-
 
 def get_log_config(node: str) -> dict[str, Any]:
     """
@@ -44,6 +42,6 @@ def start_unix_server(node: str):
 
     log_config = get_log_config(node=node)
     t = Thread(target=uvicorn.run,
-               kwargs={'app': app, 'uds': SERVER_UNIX_SOCKET_PATH, 'log_config': log_config},
+               kwargs={'app': app, 'uds': common.CONFIG_SERVER_SOCKET_PATH, 'log_config': log_config},
                daemon=True)
     t.start()
