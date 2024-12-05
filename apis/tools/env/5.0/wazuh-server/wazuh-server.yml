@@ -16,14 +16,14 @@ indexer:
     - host: wazuh-indexer
       port: 9200
   username: admin
-  password: SecretPassword1%
+  password: admin
   ssl:
     use_ssl: true
     key: /etc/wazuh-server/indexer-key.pem
     certificate: /etc/wazuh-server/indexer.pem
     certificate_authorities:
       - /etc/wazuh-server/root-ca.pem
-    verify_certificates: false
+    verify_certificates: true
 communications_api:
   host: '0.0.0.0'
 management_api:
