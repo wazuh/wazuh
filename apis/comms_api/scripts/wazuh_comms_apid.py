@@ -14,7 +14,7 @@ import atexit
 from argparse import ArgumentParser, Namespace
 from functools import partial
 from sys import exit
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 from multiprocessing import Process
 from multiprocessing.util import _exit_function
 
@@ -26,7 +26,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
-from api.constants import API_SSL_PATH, COMMS_API_LOG_PATH
 from api.middlewares import SecureHeadersMiddleware
 from comms_api.core.batcher import create_batcher_process
 from comms_api.core.commands import CommandsManager
@@ -39,9 +38,9 @@ from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
 from wazuh.core.batcher.config import BatcherConfig
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
-
+from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.logging import RotatedLoggingConfig
+from wazuh.core.config.models.logging import APILoggingConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
 
 MAIN_PROCESS = 'wazuh-comms-apid'
@@ -78,14 +77,12 @@ def create_app(batcher_queue: MuxDemuxQueue, commands_manager: CommandsManager) 
     return app
 
 
-def setup_logging(foreground_mode: bool, logging_config: RotatedLoggingConfig) -> dict:
+def setup_logging(logging_config: APILoggingConfig) -> dict:
     """Set up the logging module and returns the configuration used.
 
     Parameters
     ----------
-    foreground_mode : bool
-        Whether to execute the script in foreground mode or not.
-    logging_config :  RotatedLoggingConfig
+    logging_config :  APILoggingConfig
         Logger configuration.
 
     Returns
@@ -93,18 +90,11 @@ def setup_logging(foreground_mode: bool, logging_config: RotatedLoggingConfig) -
     dict
         Logging configuration dictionary.
     """
-    log_config_dict = set_logging(log_filepath=COMMS_API_LOG_PATH,
-                                  logging_config=logging_config,
-                                  foreground_mode=foreground_mode)
+    log_config = set_logging(logging_config=logging_config)
 
-    for handler in log_config_dict['handlers'].values():
-        if 'filename' in handler:
-            utils.assign_wazuh_ownership(handler['filename'])
-            os.chmod(handler['filename'], 0o660)
+    logging.config.dictConfig(log_config)
 
-    logging.config.dictConfig(log_config_dict)
-
-    return log_config_dict
+    return log_config
 
 
 def configure_ssl(keyfile: str, certfile: str) -> None:
@@ -153,15 +143,15 @@ def post_worker_init(worker):
     atexit.unregister(_exit_function)
 
 
-def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict, config: CommsAPIConfig) -> dict:
+def get_gunicorn_options(pid: int, daemon: bool, log_config_dict: dict, config: CommsAPIConfig) -> dict:
     """Get the gunicorn app configuration options.
 
     Parameters
     ----------
     pid : int
         Main process ID.
-    foreground_mode : bool
-        Whether to execute the script in foreground mode or not.
+    daemon : bool
+        Whether to execute the script as a daemon or in foreground.
     log_config_dict : dict
         Logging configuration dictionary.
     config : CommsAPIConfig
@@ -172,7 +162,6 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict,
     dict
         Gunicorn configuration options.
     """
-
     configure_ssl(config.ssl.key, config.ssl.cert)
 
     pidfile = common.WAZUH_RUN / f'{MAIN_PROCESS}-{pid}.pid'
@@ -180,7 +169,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict,
     return {
         'proc_name': MAIN_PROCESS,
         'pidfile': str(pidfile),
-        'daemon': not foreground_mode,
+        'daemon': daemon,
         'bind': f'{config.host}:{config.port}',
         'workers': config.workers,
         'worker_class': 'uvicorn.workers.UvicornWorker',
@@ -206,16 +195,14 @@ def get_script_arguments() -> Namespace:
         Arguments passed to the script.
     """
     parser = ArgumentParser()
-    parser.add_argument('--host', type=str, default='0.0.0.0', help='API host.')
-    parser.add_argument('-p', '--port', type=int, default=27000, help='API port.')
-    parser.add_argument('-f', action='store_true', dest='foreground', help='Run API in foreground mode.')
-    parser.add_argument('-r', action='store_true', dest='root', help='Run as root')
-
+    parser.add_argument('-d', '--daemon', action='store_true', dest='daemon', help='Run as a daemon')
+    parser.add_argument('-r', '--root', action='store_true', dest='root', help='Run as root')
+    parser.add_argument('-v', '--version', action='store_true', dest='version', help='Print version')
     return parser.parse_args()
 
 
 class StandaloneApplication(BaseApplication):
-    def __init__(self, app: Callable, options: Dict[str, Any] = None):
+    def __init__(self, app: Callable, options: dict[str, Any] = None):
         self.options = options or {}
         self.app = app
         super().__init__()
@@ -291,25 +278,27 @@ def terminate_processes(
 if __name__ == '__main__':
     args = get_script_arguments()
 
-    # The bash script that starts all services first executes them using the `-t` flag to check the configuration.
-    # We don't have a configuration yet, but it will be added in the future, so we just exit successfully for now.
-    #
+    if args.version:
+        print_version()
+        sys.exit(0)
+
     try:
         CentralizedConfig.load()
     except Exception as e:
         print(f"Error when trying to load the configuration. {e}")
         sys.exit(1)
+
     comms_api_config = CentralizedConfig.get_comms_api_config()
 
     utils.clean_pid_files(MAIN_PROCESS)
     
-    log_config_dict = setup_logging(args.foreground, comms_api_config.logging)
+    log_config_dict = setup_logging(logging_config=comms_api_config.logging)
     logger = logging.getLogger('wazuh-comms-api')
 
-    if args.foreground:
-        logger.info('Starting API in foreground')
-    else:
+    if args.daemon:
         pyDaemonModule.pyDaemon()
+    else:
+        logger.info('Starting API in foreground')
 
     if not args.root:
         # Drop privileges to wazuh
@@ -339,11 +328,11 @@ if __name__ == '__main__':
     )
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-    logger.info(f'Listening on {args.host}:{args.port}')
-    
+    logger.info(f'Listening on {comms_api_config.host}:{comms_api_config.port}')
+
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
-        options = get_gunicorn_options(pid, args.foreground, log_config_dict, comms_api_config)
+        options = get_gunicorn_options(pid, args.daemon, log_config_dict, comms_api_config)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
         logger.error(f'Error when trying to start the Wazuh Communications API. {e}')

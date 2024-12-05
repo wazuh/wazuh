@@ -128,7 +128,14 @@ class MuxDemuxQueue:
         item : Item
             Item whose content will be added to the response dictionary.
         """
-        self.responses[item.id] = item.content
+        if item.id not in self.responses:
+            self.responses[item.id] = [item.content]
+        else:
+            # Using self.responses[item.id].append() doesn't work because
+            # it doesn't hold the reference of nested objects
+            responses = self.responses[item.id]
+            responses.append(item.content)
+            self.responses[item.id] = responses
 
 
 class MuxDemuxRunner(Process):

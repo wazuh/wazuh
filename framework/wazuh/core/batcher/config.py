@@ -1,10 +1,3 @@
-# This constants are temporary until we have a centralized configration
-# TODO(#25121) - Delete after centralized configuration
-BATCHER_MAX_ELEMENTS = 5
-BATCHER_MAX_SIZE = 30000
-BATCHER_MAX_TIME_SECONDS = 0.15
-
-
 class BatcherConfig:
     """Configuration for the Batcher, specifying limits for batching.
 

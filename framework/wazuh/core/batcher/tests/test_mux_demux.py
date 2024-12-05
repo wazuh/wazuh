@@ -138,7 +138,7 @@ def test_internal_store_response():
     queue.internal_store_response(Item(id=example_uid, content=example_value, operation='create'))
 
     assert example_uid in dict_test
-    assert dict_test[example_uid] == example_value
+    assert dict_test[example_uid] == [example_value]
 
 
 @patch('framework.wazuh.core.batcher.mux_demux.SyncManager')

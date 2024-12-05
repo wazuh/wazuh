@@ -7,6 +7,7 @@ from typing import List, Tuple, Optional, Union
 from abc import ABC, abstractmethod
 from engine_handler.handler import EngineHandler
 
+
 class UnitOutput:
     def __init__(self, index: int, result: Union[str, dict]):
         self.index = index
@@ -17,14 +18,16 @@ class UnitOutput:
             self.success = True
             self.output = result
 
+
 class UnitResultInterface(ABC):
     @abstractmethod
-    def __init__(self, index: int, expected: dict, actual: UnitOutput, target: str, help:str):
+    def __init__(self, index: int, expected: dict, actual: UnitOutput, target: str, help: str):
         pass
 
     @abstractmethod
     def setup(self, actual: dict):
         pass
+
 
 class EngineTestOutput:
     def __init__(self, name: str, command: str):
@@ -34,6 +37,7 @@ class EngineTestOutput:
 
     def add_result(self, result: UnitOutput):
         self.results.append(result)
+
 
 class TestResult:
     def __init__(self, name: str, command: Optional[str] = None):
@@ -51,6 +55,7 @@ class TestResult:
     def make_failure(self, error: str):
         self.success = False
         self.test_error = error
+
 
 class Result:
     def __init__(self, name: str):
@@ -89,6 +94,7 @@ class Result:
 
         return out
 
+
 def execute(name: str, command: str) -> Tuple[Optional[str], EngineTestOutput]:
     result = EngineTestOutput(name, command)
     try:
@@ -110,6 +116,7 @@ def execute(name: str, command: str) -> Tuple[Optional[str], EngineTestOutput]:
 
     return None, result
 
+
 def validate(name: str, expected_file: Path, output: EngineTestOutput, unit_result: type, target: str, help: str) -> Tuple[Optional[str], TestResult]:
     result = TestResult(name)
 
@@ -127,6 +134,7 @@ def validate(name: str, expected_file: Path, output: EngineTestOutput, unit_resu
 
     return None, result
 
+
 def test(input_file: Path, expected_file: Path, unit_result: type, command: str, target: str, help: str) -> TestResult:
     name = input_file.stem.replace("_input", "")
     error, output = execute(name, command)
@@ -136,7 +144,8 @@ def test(input_file: Path, expected_file: Path, unit_result: type, command: str,
         print("F", end="", flush=True)
         result.make_failure(error)
         return result
-    error, compare_result = validate(name, expected_file, output, unit_result, target, help)
+    error, compare_result = validate(
+        name, expected_file, output, unit_result, target, help)
     compare_result.command = command
     if error:
         print("F", end="", flush=True)
@@ -148,6 +157,7 @@ def test(input_file: Path, expected_file: Path, unit_result: type, command: str,
     else:
         print("F", end="", flush=True)
     return compare_result
+
 
 def run_test(test_parent_path: Path, engine_api_socket: str, unit_result: type, debug_mode: str, target: str, help: str) -> Result:
     test_parent_name = test_parent_path.name
@@ -177,20 +187,23 @@ def run_test(test_parent_path: Path, engine_api_socket: str, unit_result: type, 
             test_name = f"{test_parent_name}-{input_file.parent.name}"
 
         ns = "wazuh system" if target == 'rule' else "wazuh"
-        engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_name} --api-socket {engine_api_socket} -n {ns} {debug_mode} -j"
+        engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} "
+        engine_test_command += f"run {test_name} --api-socket {engine_api_socket} -n {ns} {debug_mode} -j"
         command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
-        test_result = test(input_file, expected_file, unit_result, command, target, help)
+        test_result = test(input_file, expected_file,
+                           unit_result, command, target, help)
         result.add_result(test_result)
 
     return result
 
+
 def decoder_health_test(env_path: Path, unit_result: type, debug_mode: str, integration_name: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment...")
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         sys.exit(f"Configuration file not found: {conf_path}")
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
 
@@ -254,11 +267,11 @@ def decoder_health_test(env_path: Path, unit_result: type, debug_mode: str, inte
 
 def rule_health_test(env_path: Path, unit_result: type, debug_mode: str, ruleset_name: Optional[str] = None, skip: Optional[List[str]] = None):
     print("Validating environment for rules...")
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         sys.exit(f"Configuration file not found: {conf_path}")
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         sys.exit(f"Engine binary not found: {bin_path}")
 
@@ -318,25 +331,29 @@ def rule_health_test(env_path: Path, unit_result: type, debug_mode: str, ruleset
     else:
         sys.exit(1)
 
+
 def run(args, unit_result: type, debug_mode: str):
     if not issubclass(unit_result, UnitResultInterface):
-        sys.exit("Only types that implement the UnitResultInterface interface are supported")
+        sys.exit(
+            "Only types that implement the UnitResultInterface interface are supported")
     env_path = Path(args['environment'])
     integration_name = args.get('integration')
     rule_folder = args.get('rule_folder')
     target = args.get('target')
     skip = args['skip']
-  
-    provided_args = sum([bool(integration_name), bool(rule_folder), bool(target)])
+
+    provided_args = sum(
+        [bool(integration_name), bool(rule_folder), bool(target)])
     if provided_args > 1:
-        sys.exit("It is only possible to specify one of the following arguments: 'target', 'integration' or 'rule_folder'")
+        sys.exit(
+            "It is only possible to specify one of the following arguments: 'target', 'integration' or 'rule_folder'")
 
     if rule_folder:
         return rule_health_test(env_path, unit_result, debug_mode, rule_folder, skip)
-    
+
     elif integration_name:
         return decoder_health_test(env_path, unit_result, debug_mode, integration_name, skip)
-    
+
     elif target:
         if target == 'decoder':
             return decoder_health_test(env_path, unit_result, debug_mode, integration_name, skip)
@@ -344,6 +361,7 @@ def run(args, unit_result: type, debug_mode: str):
             return rule_health_test(env_path, unit_result, debug_mode, rule_folder, skip)
         else:
             sys.exit(f"The {target} target is not currently supported")
-    
+
     else:
-        sys.exit("At least one of the following arguments must be specified: 'target', 'integration' or 'rule_folder'")
+        sys.exit(
+            "At least one of the following arguments must be specified: 'target', 'integration' or 'rule_folder'")

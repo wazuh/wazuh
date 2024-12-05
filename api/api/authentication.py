@@ -12,7 +12,6 @@ from typing import Union
 
 from connexion.exceptions import Unauthorized
 
-import api.configuration as conf
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
 from api.util import raise_if_exc

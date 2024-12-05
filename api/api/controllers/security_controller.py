@@ -17,8 +17,7 @@ from api.models.base_model_ import Body
 from api.models.configuration_model import SecurityConfigurationModel
 from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
                                        RuleModel, UpdateUserModel)
-from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
-                      remove_nones_to_dict)
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from wazuh import security, __version__
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -29,48 +28,6 @@ from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
-
-
-@deprecate_endpoint(link=f'https://documentation.wazuh.com/{__version__}/user-manual/api/reference.html#'
-                         f'operation/api.controllers.security_controller.login_user')
-async def deprecated_login_user(user: str, raw: bool = False) -> ConnexionResponse:
-    """User/password authentication to get an access token.
-    This method should be called to get an API token. This token will expire at some time.
-
-    Parameters
-    ----------
-    user : str
-        Name of the user who wants to be authenticated.
-    raw : bool, optional
-        Respond in raw format. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-        Raw or JSON response with the generated access token.
-    """
-    f_kwargs = {'user_id': user}
-
-    dapi = DistributedAPI(f=preprocessor.get_permissions,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          logger=logger
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    token = None
-    try:
-        token = generate_token(user_id=user, data=data.dikt)
-    except WazuhException as e:
-        raise_if_exc(e)
-
-    return ConnexionResponse(body=token,
-                             content_type='text/plain',
-                             status_code=200) if raw else \
-           ConnexionResponse(body=dumps(WazuhResult({'data': TokenResponseModel(token=token)})),
-                             content_type=JSON_CONTENT_TYPE,
-                             status_code=200)
 
 
 async def login_user(user: str, raw: bool = False) -> ConnexionResponse:

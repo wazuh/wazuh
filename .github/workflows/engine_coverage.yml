@@ -175,6 +175,12 @@ jobs:
     - name: Build
       run: cmake --build ${{env.ENGINE_PATH}}/build --target all_tests -j$(nproc)
 
+    - name: Create install directory
+      run: |
+        sudo mkdir -p /run/wazuh-server/
+        sudo chown $(whoami):$(whoami) /run/wazuh-server/
+        sudo chmod 0750 /run/wazuh-server/
+
     - name: Coverage for changed modules
       run: |
         coverage_for_module() {

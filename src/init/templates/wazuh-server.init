@@ -6,7 +6,7 @@
 # Modified for slackware by Jack S. Lai
 
 WAZUH_HOME=WAZUH_HOME_TMP
-WAZUH_SERVER="${WAZUH_HOME}/bin/wazuh-server"
+WAZUH_SERVER="${WAZUH_HOME}/usr/share/wazuh-server/bin/wazuh-server"
 
 start() {
     # TODO: Remove root flag

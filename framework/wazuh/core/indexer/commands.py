@@ -1,18 +1,14 @@
 from dataclasses import asdict
-from typing import List, Optional, Union
+from typing import List
 
 from opensearchpy import exceptions
-from uuid6 import UUID
 
-from .base import BaseIndex, IndexerKey, remove_empty_values, POST_METHOD
+from .base import BaseIndex, IndexerKey, POST_METHOD
 from .utils import convert_enums
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-from wazuh.core.indexer.models.commands import Action, Command, Result, Source, Status, Target, TargetType, \
-    CreateCommandResponse, ResponseResult
+from wazuh.core.exception import WazuhError
+from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
+    ResponseResult
  
-DOC_ID_KEY = 'id'
-TARGET_ID_KEY = 'target.id'
-STATUS_KEY = 'status'
 COMMAND_USER_NAME = 'Management API'
 
 
@@ -22,97 +18,42 @@ class CommandsManager(BaseIndex):
     INDEX = '.commands'
     PLUGIN_URL = '/_plugins/_command_manager'
 
-    async def create(self, command: Command) -> CreateCommandResponse:
+    async def create(self, commands: List[Command]) -> CreateCommandResponse:
         """Create a new command.
         
         Parameters
         ----------
-        command : Command
-            New command.
+        commands : List[Command]
+            New commands list.
         
         Returns
         -------
         CreateCommandResponse
             Indexer command manager response.
         """
+        commands_to_send = []
+        for command in commands:
+            command_body = asdict(command, dict_factory=convert_enums)
+            commands_to_send.append(command_body)
+
         try:
             response = await self._client.transport.perform_request(
                 method=POST_METHOD,
                 url=f'{self.PLUGIN_URL}/commands',
-                body=asdict(command, dict_factory=convert_enums),
+                body={'commands': commands_to_send},
             )
         except exceptions.RequestError as e:
             raise WazuhError(1761, extra_message=str(e))
 
+        document_ids = []
+        for document in response.get(IndexerKey._DOCUMENTS):
+            document_ids.append(document.get(IndexerKey._ID))
+
         return CreateCommandResponse(
             index=response.get(IndexerKey._INDEX),
-            document_id=response.get(IndexerKey._ID),
+            document_ids=document_ids,
             result=ResponseResult(response.get(IndexerKey.RESULT)),
         )
-
-    async def get(self, uuid: UUID, status: Status) -> Optional[List[Command]]:
-        """Get commands with the provided status from an specific agent.
-
-        Parameters
-        ----------
-        uuid : UUID
-            Agent universally unique identifier.
-        status: Status
-            Command execution status.
-
-        Returns
-        -------
-        Optional[ListCommand]
-            Commands list or None.
-        """
-        body = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.MUST: [
-                        {IndexerKey.MATCH: {TARGET_ID_KEY: uuid}},
-                        {IndexerKey.MATCH: {STATUS_KEY: status}},
-                    ]
-                }
-            }
-        }
-
-        response = await self._client.search(index=self.INDEX, body=body)
-        hits = response[IndexerKey.HITS][IndexerKey.HITS]
-        if len(hits) == 0:
-            return None
-
-        commands = []
-        for data in hits:
-            commands.append(Command.from_dict(data[IndexerKey._ID], data[IndexerKey._SOURCE]))
-
-        return commands
-
-    async def update(self, items: List[Union[Command, Result]]) -> None:
-        """Update commands.
-        
-        Parameters
-        ----------
-        items : List[Union[Command, Result]]
-            List of commands or results to update.
-
-        Raises
-        ------
-        WazuhResourceNotFound(2202)
-            If no document exists with the id provided.
-        """
-        actions = []
-        for item in items:
-            actions.append({IndexerKey.UPDATE: {IndexerKey._INDEX: self.INDEX, IndexerKey._ID: item.id}})
-            item_dict = asdict(item, dict_factory=remove_empty_values)
-            # The document ID shouldn't be part of the value
-            item_dict.pop(DOC_ID_KEY, None)
-            actions.append({IndexerKey.DOC: item_dict})
-
-        # TODO(25121): Create an internal library to build opensearch requests and parse responses
-        response = await self._client.bulk(actions, self.INDEX)
-        for item in response[IndexerKey.ITEMS]:
-            if item[IndexerKey.UPDATE][STATUS_KEY] == 404:
-                raise WazuhResourceNotFound(2202)
 
 
 def create_restart_command(agent_id: str) -> Command:

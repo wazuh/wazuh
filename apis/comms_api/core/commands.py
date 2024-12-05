@@ -6,8 +6,7 @@ from fastapi import status
 from uuid6 import UUID
 
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.models.commands import Command, Status
+from wazuh.core.indexer.models.commands import Command
 
 
 class CommandsManager():
@@ -103,11 +102,5 @@ async def pull_commands(commands_manager: CommandsManager, agent_id: UUID) -> Li
             message='Request exceeded the processing time limit',
             status_code=status.HTTP_408_REQUEST_TIMEOUT,
         )
-
-    for command in commands:
-        command.status = Status.SENT
-
-    async with get_indexer_client() as indexer_client:
-        await indexer_client.commands_manager.update(commands)
     
     return commands

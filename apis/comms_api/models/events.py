@@ -2,13 +2,13 @@ from typing import List
 
 from pydantic import BaseModel
 
-from wazuh.core.indexer.models.events import AgentMetadata, Header, StatefulEvent, TaskResult
+from wazuh.core.indexer.models.events import AgentMetadata, Header, TaskResult
 
 
 class StatefulEvents(BaseModel):
     agent_metadata: AgentMetadata
     headers: List[Header]
-    events: List[StatefulEvent]
+    data: List[dict]
 
 
 class StatefulEventsResponse(BaseModel):

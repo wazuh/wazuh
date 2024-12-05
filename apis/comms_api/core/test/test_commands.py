@@ -1,17 +1,14 @@
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import call, patch
 from multiprocessing import Event
 
 import pytest
 
 from comms_api.core.commands import CommandsManager, pull_commands
-from wazuh.core.indexer import Indexer
 from wazuh.core.indexer.models.commands import Command, Status, Target, TargetType
 
-ORDER_ID = 'UB2jVpEBYSr9jxqDgXAD'
+DOCUMENT_ID = 'UB2jVpEBYSr9jxqDgXAD'
 AGENT_ID = '01915801-4b34-7131-9d88-ff06ff05aefd'
-COMMAND = Command(order_id=ORDER_ID, status=Status.PENDING, target=Target(id=AGENT_ID, type=TargetType.AGENT))
-UPDATED_COMMAND = Command(order_id=ORDER_ID, status=Status.SENT, target=Target(id=AGENT_ID, type=TargetType.AGENT))
-INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
+COMMAND = Command(document_id=DOCUMENT_ID, status=Status.PENDING, target=Target(id=AGENT_ID, type=TargetType.AGENT))
 
 
 @patch('comms_api.core.commands.SyncManager')
@@ -77,12 +74,8 @@ def test_commands_manager_shutdown(sync_manager_mock):
 
 @pytest.mark.asyncio
 @patch('comms_api.core.commands.CommandsManager')
-@patch('wazuh.core.indexer.create_indexer', return_value=INDEXER)
-@patch('wazuh.core.indexer.commands.CommandsManager.update', new_callable=AsyncMock)
-async def test_pull_commands(commands_update_mock, create_indexer_mock, commands_manager_mock):
+async def test_pull_commands(commands_manager_mock):
     commands_manager_mock.get_commands.return_value = [COMMAND]
     commands = await pull_commands(commands_manager_mock, AGENT_ID)
 
-    assert commands == [UPDATED_COMMAND]
-    create_indexer_mock.assert_called_once()
-    commands_update_mock.assert_called_once_with([UPDATED_COMMAND])
+    assert commands == [COMMAND]

@@ -3,7 +3,7 @@ from unittest.mock import patch, mock_open
 
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import (Config, CommsAPIConfig, ManagementAPIConfig,
-                                                     IndexerConfig, EngineConfig)
+                                                     IndexerConfig, EngineConfig, ConfigSections)
 from wazuh.core.config.models.server import DEFAULT_SERVER_INTERNAL_CONFIG, ServerConfig
 
 
@@ -24,11 +24,10 @@ mock_config_data = {
         "cti": {},
     },
     "indexer": {
-        "host": "localhost",
-        "port": 9200,
-        "user": "admin",
+        "hosts": [{"host": "localhost", "port": 9200}],
+        "username": "admin",
         "password": "password",
-        "ssl": {"use_ssl": False, "key": "", "cert": "", "ca": ""}
+        "ssl": {"use_ssl": False, "key": "", "certificate": "", "certificate_authorities": [""]}
     },
     "engine": {},
     "management_api": {},
@@ -97,6 +96,14 @@ def test_update_security_conf(mock_open_file, mock_yaml_dump, patch_load, update
     assert CentralizedConfig._config.management_api.jwt_expiration_timeout == expected_yaml_update["auth_token_exp_timeout"]
     assert CentralizedConfig._config.management_api.rbac_mode == expected_yaml_update["rbac_mode"]
     mock_yaml_dump.assert_called_once()
+
+
+def test_get_config_json(patch_load):
+    """Check the correct behavior of the `test_get_config_json` class method."""
+    engine_example = Config(**mock_config_data).model_dump_json(include=['engine'])
+    obtained = CentralizedConfig.get_config_json(sections=[ConfigSections.ENGINE])
+
+    assert obtained == engine_example
 
 
 @patch("builtins.open", new_callable=mock_open)

@@ -108,33 +108,3 @@ def test_context_cached():
                                                                                'calls to foo. '
     assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {"data": "bar"}})],
                       ContextVar)
-
-@pytest.mark.xfail(reason="This module it is deprecated.", run=False)
-@patch('wazuh.core.logtest.create_wazuh_socket_message', side_effect=SystemExit)
-def test_origin_module_context_var_framework(mock_create_socket_msg):
-    """Test that the origin_module context variable is being set to framework."""
-    from wazuh import logtest
-
-    # side_effect used to avoid mocking the rest of functions
-    with pytest.raises(SystemExit):
-        logtest.run_logtest()
-
-    assert mock_create_socket_msg.call_args[1]['origin']['module'] == 'framework'
-
-
-@pytest.mark.asyncio
-@pytest.mark.xfail(reason="This module it is deprecated.", run=False)
-@patch('wazuh.core.logtest.create_wazuh_socket_message', side_effect=SystemExit)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
-async def test_origin_module_context_var_api(mock_check_wazuh_status, mock_create_socket_msg):
-    """Test that the origin_module context variable is being set to API."""
-    import logging
-    from wazuh.core.cluster.dapi import dapi
-    from wazuh import logtest
-
-    # side_effect used to avoid mocking the rest of functions
-    with pytest.raises(SystemExit):
-        d = dapi.DistributedAPI(f=logtest.run_logtest, logger=logging.getLogger('wazuh'), is_async=True)
-        await d.distribute_function()
-
-    assert mock_create_socket_msg.call_args[1]['origin']['module'] == 'API'

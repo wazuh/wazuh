@@ -2,10 +2,10 @@ from engine_schema.generate import generate
 import shared.resource_handler as rs
 from ._modules import configure as modules_configure
 from ._modules import get_args as modules_get_args
+from shared.default_settings import Constants as DefaultSettings
 
 
 DEFAULT_ECS_VERSION = 'v8.8.0'
-DEFAULT_API_SOCK = '/run/wazuh-server/engine-api.socket'
 DEFAULT_INDEXER_DIR = '/etc/filebeat/'
 DEFAULT_FIELDS_DIR = '/home/vagrant/engine/wazuh/src/engine/ruleset/schemas/'
 
@@ -56,8 +56,8 @@ def configure(subparsers):
     parser_integrate.add_argument('--ecs-version', type=str, default=DEFAULT_ECS_VERSION,
                                   help=f'[default="{DEFAULT_ECS_VERSION}"] ECS version to use for the schema generation')
 
-    parser_integrate.add_argument('--api-sock', type=str, default=DEFAULT_API_SOCK,
-                                  help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
+    parser_integrate.add_argument('--api-sock', type=str, default=DefaultSettings.SOCKET_PATH,
+                                  help=f'[default="{DefaultSettings.SOCKET_PATH}"] Engine instance API socket path')
 
     parser_integrate.add_argument('--indexer-dir', type=str, default=DEFAULT_INDEXER_DIR,
                                   help=f'[default="{DEFAULT_INDEXER_DIR}"] Path to directory where the wazuh-template.json indexer file is located')

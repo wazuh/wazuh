@@ -13,6 +13,7 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        # TODO: Fix in #26725
         with patch('wazuh.core.utils.load_wazuh_xml'):
             from wazuh.core.manager import *
             from wazuh.core.exception import WazuhException
@@ -218,13 +219,6 @@ def test_parse_execd_output(error_flag, error_msg):
     else:
         with pytest.raises(WazuhException, match=f'.* 1908 .*'):
             parse_execd_output(json_response)
-
-
-@patch('wazuh.core.manager.configuration.api_conf', new={'experimental_features': True})
-def test_get_api_config():
-    """Checks that get_api_config method is returning current api_conf dict."""
-    result = get_api_conf()
-    assert result == {'experimental_features': True}
 
 
 @pytest.mark.parametrize('update_check', (True, False))

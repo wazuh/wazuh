@@ -7,8 +7,8 @@ from engine_test.cmds.add import AddCommand
 from engine_test.cmds.get import GetCommand
 from engine_test.cmds.list import ListCommand
 from engine_test.cmds.delete import DeleteCommand
-from engine_test.config import Config, DEFAULT_CONFIG_FILE
-
+from engine_test.config import DEFAULT_CONFIG_FILE
+from engine_test.cmds.session import configure as configure_session
 
 def parse_args():
     meta = metadata('engine-suite')
@@ -37,6 +37,9 @@ def parse_args():
 
     delete_command = DeleteCommand()
     delete_command.configure(subparsers)
+
+    # Session commands
+    configure_session(subparsers)
 
     return parser.parse_args()
 

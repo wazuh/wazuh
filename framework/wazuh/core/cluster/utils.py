@@ -12,12 +12,10 @@ import socket
 import time
 import typing
 from contextvars import ContextVar
-from functools import lru_cache
 from glob import glob
-from operator import setitem
 
 from wazuh.core import common, pyDaemonModule
-from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhHAPHelperError
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhHAPHelperError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
@@ -444,3 +442,8 @@ def raise_if_exc(result: object) -> None:
     """
     if isinstance(result, Exception):
         raise result
+
+
+def print_version():
+    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
+    print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))

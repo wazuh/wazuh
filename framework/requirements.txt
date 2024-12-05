@@ -19,7 +19,6 @@ opensearch-py==2.6.0
 psutil==5.9.0
 PyJWT==2.8.0
 python-dateutil==2.8.1
-python-json-logger==2.0.2
 pytz==2020.1
 rsa==4.7.2
 secure==0.3.0

@@ -112,25 +112,49 @@ installEngineStore()
     STORE_URL=https://packages.wazuh.com/deps/engine_store_model_database/${STORE_FILENAME}
     DEST_FULL_PATH=${INSTALLDIR}var/lib/wazuh-server
 
-    echo "Download ${STORE_FILENAME} file"
+    echo "Downloading ${STORE_FILENAME} file..."
     mkdir -p ${INSTALLDIR}tmp/wazuh-server
-    wget -O ${STORE_FULL_PATH} ${STORE_URL}
+    if ! wget -O ${STORE_FULL_PATH} ${STORE_URL}; then
+        echo "Error: Failed to download ${STORE_FILENAME} from ${STORE_URL}"
+        exit 1
+    fi
 
     chmod 640 ${STORE_FULL_PATH}
     chown ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_FULL_PATH}
 
-    tar -xzf ${STORE_FULL_PATH} -C ${DEST_FULL_PATH}
+    echo "Extracting ${STORE_FILENAME} to ${DEST_FULL_PATH}..."
+    if ! tar -xzf ${STORE_FULL_PATH} -C ${DEST_FULL_PATH}; then
+        echo "Error: Failed to extract ${STORE_FILENAME} to ${DEST_FULL_PATH}"
+        exit 1
+    fi
+
+    echo "Removing tar file ${STORE_FULL_PATH}..."
+    if ! rm -f ${STORE_FULL_PATH}; then
+        echo "Warning: Failed to remove tar file ${STORE_FULL_PATH}."
+    fi
+
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}/engine/store
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}/engine/kvdb
     find ${DEST_FULL_PATH}/engine/store -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
     find ${DEST_FULL_PATH}/engine/kvdb -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+    
+    echo "Verifying store installation..."
+    if [ ! -d "${DEST_FULL_PATH}/engine/store" ] || [ ! -d "${DEST_FULL_PATH}/engine/kvdb" ]; then
+        echo "Error: Store installation verification failed. Required directories are missing."
+        exit 1
+    fi
+
+    echo "Engine store installed successfully."
+
 }
+
 
 InstallEngine()
 {
   # Check if the content needs to be downloaded.
   checkDownloadContent
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} engine/build/main ${INSTALLDIR}bin/wazuh-engine
+  mkdir -p ${INSTALLDIR}usr/share/wazuh-server/bin
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} engine/build/main ${INSTALLDIR}usr/share/wazuh-server/bin/wazuh-engine
 
   # Folder for the engine socket.
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-server/

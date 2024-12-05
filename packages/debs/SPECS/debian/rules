@@ -58,17 +58,17 @@ override_dh_install:
 
 	# Copying to target
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/tmp
-	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/bin
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/run
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/etc
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib
 	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/log
-	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/usr/share
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/usr/share/wazuh-server/bin
 
-	cp -p $(INSTALLATION_DIR)bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)bin/
-	cp -p $(INSTALLATION_DIR)bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)bin/
-	cp -p $(INSTALLATION_DIR)bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)bin/
-	cp -p $(INSTALLATION_DIR)bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)bin/
+
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 
 	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)tmp/
 	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
@@ -104,14 +104,15 @@ override_dh_fixperms:
 	find $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 
 	# Binaries
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-engine
-	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-apid
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-apid
-	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-engine
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-comms-apid
-	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-comms-apid
-	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-server
-	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)bin/wazuh-server
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
+
 
 	# Services
 	chown root:root $(TARGET_DIR)/etc/init.d/wazuh-server

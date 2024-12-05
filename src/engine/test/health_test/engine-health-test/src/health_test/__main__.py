@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from health_test.health_test import run as test_run
+from health_test.core import run as test_run
 from health_test.validate_custom_field_indexing import run as validate_custom_field_indexing_run
 from health_test.validate_event_indexing import run as validate_event_indexing_run
 import sys
@@ -77,8 +77,6 @@ def parse_args() -> Namespace:
     # init subcommand
     init_parser = dynamic_subparsers.add_parser(
         'init', help='Initialize the test environment')
-    init_parser.add_argument(
-        '-b', '--binary', help='Specify the path to the engine binary', required=True)
     init_parser.add_argument('-r', '--ruleset',
                              help='Specify the path to the ruleset directory', required=True)
     init_parser.add_argument(

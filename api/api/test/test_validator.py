@@ -9,7 +9,7 @@ from pathlib import Path
 import jsonschema as js
 import pytest
 
-from api.validator import (check_exp, check_xml, _alphanumeric_param, _array_numbers, _array_names, _boolean, _dates,
+from api.validator import (check_exp, _alphanumeric_param, _array_numbers, _array_names, _boolean, _dates,
                            _empty_boolean, _hashes, _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges,
                            _search_param, _sort_param, _timeframe_type, _type_format, _yes_no_boolean,
                            allowed_fields, is_safe_path, _wazuh_version,
@@ -154,28 +154,6 @@ def test_validation_check_exp_ok(exp, regex_name):
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
     assert not check_exp(exp, regex_name)
-
-
-@pytest.mark.parametrize('xml_file', [
-    (os.path.join(test_data_path, 'test_xml_1.xml')),
-    (os.path.join(test_data_path, 'test_xml_2.xml'))
-])
-def test_validation_xml_ok(xml_file):
-    """Verify that check_xml() returns True with well-formed XML files."""
-    with open(xml_file) as f:
-        xml_content = f.read()
-    assert check_xml(xml_content)
-
-
-@pytest.mark.parametrize('xml_file', [
-    (os.path.join(test_data_path, 'test_xml_ko_1.xml')),
-    (os.path.join(test_data_path, 'test_xml_ko_2.xml'))
-])
-def test_validation_xml_ko(xml_file):
-    """Verify that check_xml() returns True with malformed XML files."""
-    with open(xml_file) as f:
-        xml_content = f.read()
-    assert not check_xml(xml_content)
 
 
 def test_allowed_fields():

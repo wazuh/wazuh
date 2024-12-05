@@ -10,7 +10,7 @@ from comms_api.routers.vulnerability import post_scan_request
 
 router = APIRouter(prefix='/api/v1')
 router.add_api_route('/authentication', authentication, methods=['POST'])
-router.add_api_route('/commands', get_commands, methods=['GET'])
+router.add_api_route('/commands', get_commands, methods=['GET'], response_model_exclude_none=True)
 router.include_router(events_router)
 router.add_api_route('/files', get_files, methods=['GET'], dependencies=[Depends(JWTBearer())])
 router.add_api_route('/vulnerability/scan', post_scan_request, methods=['POST'], dependencies=[Depends(JWTBearer())],

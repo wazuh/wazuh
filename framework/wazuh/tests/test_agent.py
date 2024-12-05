@@ -16,6 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        # TODO: Fix in #26725
         with patch('wazuh.core.utils.load_wazuh_xml'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
@@ -138,10 +139,9 @@ async def test_agent_restart_agents(create_indexer_mock, agent_list, expected_it
     agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in all_agent_ids])
     create_indexer_mock.return_value.agents.search = agents_search_mock
 
-    document_id = 'pBjePGfvgm'
     create_response = CreateCommandResponse(
         index='.commands',
-        document_id=document_id,
+        document_ids=['pBjePGfvgm'],
         result=ResponseResult.INTERNAL_ERROR if fail else ResponseResult.CREATED,
     )
 
@@ -317,7 +317,7 @@ async def test_agent_add_agent(
     )
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
-    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    create_response = CreateCommandResponse(index='.commands', document_ids=['pwrD5Ddf'], result=ResponseResult.CREATED)
     commands_create_mock = AsyncMock(return_value=create_response)
     create_indexer_mock.return_value.commands_manager.create = commands_create_mock
 
@@ -328,7 +328,7 @@ async def test_agent_add_agent(
         type=type,
         version=version,
         groups=groups,
-        
+
     )
 
     assert result.dikt['data'].id == new_agent.id
@@ -555,7 +555,7 @@ async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mo
     search_mock = AsyncMock(return_value=[IndexerAgent(id='0191c7fa-26d5-705f-bc3c-f54810d30d79')])
     create_indexer_mock.return_value.agents.search = search_mock
 
-    create_response = CreateCommandResponse(index='.commands', document_id='pwrD5Ddf', result=ResponseResult.CREATED)
+    create_response = CreateCommandResponse(index='.commands', document_ids=['pwrD5Ddf'], result=ResponseResult.CREATED)
     commands_create_mock = AsyncMock(return_value=create_response)
     create_indexer_mock.return_value.commands_manager.create = commands_create_mock
 

@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
 from comms_api.authentication.authentication import JWTBearer
-from comms_api.core.events import create_stateful_events, send_stateless_events, parse_stateful_events
+from comms_api.core.events import send_stateful_events, send_stateless_events, parse_stateful_events
 from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.exceptions import HTTPError, validation_exception_handler
 from comms_api.routers.utils import timeout
@@ -31,7 +31,7 @@ async def post_stateful_events(request: Request) -> StatefulEventsResponse:
     """
     try:
         events = await parse_stateful_events(request)
-        results = await create_stateful_events(events, request.app.state.batcher_queue)
+        results = await send_stateful_events(events, request.app.state.batcher_queue)
         return StatefulEventsResponse(results=results)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)

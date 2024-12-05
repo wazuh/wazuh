@@ -3,42 +3,28 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import ipaddress
-import json
 import re
 import threading
 from base64 import b64encode
 from datetime import datetime, timezone
 from functools import lru_cache
-from json import dumps, loads
 from pathlib import Path
 from os import listdir, path, remove
 from typing import List
 
-from wazuh.core import common, configuration, stats
+from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Agent as IndexerAgent
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
-    get_date_from_timestamp, get_group_file_path, GROUP_FILE_EXT
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_date_from_timestamp, get_group_file_path, \
+    GROUP_FILE_EXT
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
+from wazuh.core.wazuh_socket import WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
-
-detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
-detect_valid_lines = re.compile(r'^(\d{3,}) (.+) (any|\d+\.\d+\.\d+\.\d+) (\w+)', re.MULTILINE)
-
-mutex = threading.Lock()
-lock_file = None
-lock_acquired = False
-
-agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
-
-GROUPS_SEPARATOR = ','
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -864,43 +850,6 @@ class Agent:
         return data
 
     @staticmethod
-    def check_if_delete_agent(id: str, seconds: int) -> bool:
-        """Check if we should remove an agent: if time from last connection is greater than <seconds>.
-
-        Parameters
-        ----------
-        id : str
-            ID of the new agent.
-        seconds : int
-            Number of seconds.
-
-        Returns
-        -------
-        bool
-            True if time from last connection is greater thant <seconds>.
-        """
-        remove_agent = False
-
-        # Always return true for 0 seconds to prevent any possible races
-        if seconds == 0:
-            remove_agent = True
-        else:
-            agent_info = Agent(id=id).get_basic_information()
-            if 'lastKeepAlive' in agent_info:
-                if agent_info['lastKeepAlive'] == 0:
-                    remove_agent = True
-                else:
-                    if isinstance(agent_info['lastKeepAlive'], datetime):
-                        last_date = agent_info['lastKeepAlive'].replace(tzinfo=timezone.utc)
-                    else:
-                        last_date = get_utc_strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                    difference = (get_utc_now() - last_date).total_seconds()
-                    if difference >= seconds:
-                        remove_agent = True
-
-        return remove_agent
-
-    @staticmethod
     async def get(agent_id: str) -> IndexerAgent:
         """Get agent.
 
@@ -1058,37 +1007,6 @@ class Agent:
 
         return configuration.get_active_configuration(agent_id=self.id, component=component, configuration=config)
 
-    def get_stats(self, component: str) -> dict:
-        """Read the agent's component stats.
-
-        Parameters
-        ----------
-        component : str
-            Name of the component to get stats from.
-
-        Raises
-        ------
-        WazuhInternalError(1015)
-            Agent version is null.
-        WazuhInternalError(1735)
-            Agent version is not compatible with this feature.
-
-        Returns
-        -------
-        dict
-            Object with component's stats.
-        """
-        # Check if agent version is compatible with this feature
-        self.load_info_from_db()
-        if self.version is None:
-            raise WazuhInternalError(1015)
-        agent_version = WazuhVersion(self.version.split(" ")[1])
-        required_version = WazuhVersion(AGENT_COMPONENT_STATS_REQUIRED_VERSION.get(component))
-        if agent_version < required_version:
-            raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
-
-        return stats.get_daemons_stats_from_socket(self.id, component)
-
 
 def unify_wazuh_upgrade_version_format(upgrade_version: str) -> str:
     """Format the specified upgrade version into the 'vX.Y.Z' standard.
@@ -1144,33 +1062,6 @@ def format_fields(field_name: str, value: str) -> str:
         return value
 
 
-def send_restart_command(agent_id: str = '', agent_version: str = '', wq: WazuhQueue = None) -> str:
-    """Send restart command to an agent.
-
-    Parameters
-    ----------
-    agent_id : str
-        ID specifying the agent where the restart command will be sent to
-    agent_version : str
-        Agent version to compare with the required version. The format is vX.Y.Z.
-    wq : WazuhQueue
-        WazuhQueue used for the active response messages.
-
-    Returns
-    -------
-    str
-        Message generated by Wazuh.
-    """
-    # If the Wazuh agent version is newer or equal to the AR legacy version,
-    # the message sent will have JSON format
-    if WazuhVersion(agent_version) >= WazuhVersion(common.AR_LEGACY_VERSION):
-        ret_msg = wq.send_msg_to_agent(WazuhQueue.RESTART_AGENTS_JSON, agent_id)
-    else:
-        ret_msg = wq.send_msg_to_agent(WazuhQueue.RESTART_AGENTS, agent_id)
-
-    return ret_msg
-
-
 @common.async_context_cached('system_agents')
 async def get_agents_info() -> set:
     """Get all agent IDs in the system.
@@ -1198,8 +1089,7 @@ def get_groups() -> set:
     groups = set()
     for group_file in listdir(common.WAZUH_SHARED):
         filepath = Path(group_file)
-        # TODO(#25121): Remove second condition once those files are not longer present
-        if filepath.suffix == GROUP_FILE_EXT and filepath.stem not in ('agent-template', 'ar'):
+        if filepath.suffix == GROUP_FILE_EXT:
             groups.add(filepath.stem)
 
     return groups

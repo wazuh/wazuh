@@ -4,14 +4,11 @@ Wants=network-online.target
 After=network.target network-online.target
 
 [Service]
-Type=forking
 LimitNOFILE=65536
-
 # TODO: Remove root flag
-ExecStart=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-server start -r
-ExecStop=/usr/bin/env WAZUH_HOME_TMPbin/wazuh-server stop
-
-KillMode=process
+ExecStart=/usr/bin/env WAZUH_HOME_TMPusr/share/wazuh-server/bin/wazuh-server start -r
+Type=exec
+KillSignal=SIGINT
 RemainAfterExit=yes
 
 [Install]

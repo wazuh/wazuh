@@ -5,12 +5,12 @@ from opensearchpy import exceptions
 import pytest
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.commands import CommandsManager, STATUS_KEY, TARGET_ID_KEY, create_restart_command, \
+from wazuh.core.indexer.commands import CommandsManager, create_restart_command, \
     COMMAND_USER_NAME, create_set_group_command, create_update_group_command
-from wazuh.core.indexer.base import IndexerKey, POST_METHOD
+from wazuh.core.indexer.base import POST_METHOD, IndexerKey
 from wazuh.core.indexer.utils import convert_enums
-from wazuh.core.indexer.models.commands import Action, Command, Source, Status, Target, TargetType, \
-    CreateCommandResponse
+from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
+    ResponseResult
 
 
 class TestCommandsManager:
@@ -27,59 +27,41 @@ class TestCommandsManager:
 
     async def test_create(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `create` method."""
-        client_mock.transport.perform_request.return_value = {
-            '_index': 'commands', '_id': 'pBjePGfvgm', 'result': 'CREATED'
+        return_value = {
+            IndexerKey._INDEX: CommandsManager.INDEX,
+            IndexerKey._DOCUMENTS: [
+                {IndexerKey._ID: 'pBjePGfvgm'},
+                {IndexerKey._ID: 'mp2Xymz6F3'},
+                {IndexerKey._ID: 'aYsJYUEmVk'},
+                {IndexerKey._ID: 'QTjrFfpoIS'}
+            ],
+            IndexerKey.RESULT: ResponseResult.CREATED
         }
+        client_mock.transport.perform_request.return_value = return_value
 
-        response = await index_instance.create(self.create_command)
+        response = await index_instance.create([self.create_command])
 
         assert isinstance(response, CreateCommandResponse)
         client_mock.transport.perform_request.assert_called_once_with(
             method=POST_METHOD,
             url=f'{index_instance.PLUGIN_URL}/commands',
-            body=asdict(self.create_command, dict_factory=convert_enums),
+            body={
+                'commands': [
+                    asdict(self.create_command, dict_factory=convert_enums),
+                ]
+            },
         )
+
+        document_ids = [document.get(IndexerKey._ID) for document in return_value.get(IndexerKey._DOCUMENTS)]
+        assert response.index == return_value.get(IndexerKey._INDEX)
+        assert response.document_ids == document_ids
+        assert response.result == return_value.get(IndexerKey.RESULT)
     
     async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the error handling of the `create` method."""
         client_mock.transport.perform_request.side_effect = exceptions.RequestError(400, 'error')
         with pytest.raises(WazuhError, match='.*1761.*'):
-            await index_instance.create(self.create_command)
-
-    async def test_get(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
-        """Check the correct functionality of the `get` method."""
-        uuid = '0191dd54-bd16-7025-80e6-ae49bc101c7a'
-        status = Status.PENDING
-        query = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.MUST: [
-                        {IndexerKey.MATCH: {TARGET_ID_KEY: uuid}},
-                        {IndexerKey.MATCH: {STATUS_KEY: status}},
-                    ]
-                }
-            }
-        }
-        search_result = {IndexerKey.HITS: {IndexerKey.HITS: [
-            {
-                IndexerKey._ID: 'pBjePGfvgm',
-                IndexerKey._SOURCE: {'target': {'id': uuid, 'type': TargetType.AGENT}, 'status': status}
-            },
-            {
-                IndexerKey._ID: 'pBjePGfvgn',
-                IndexerKey._SOURCE: {'target': {'id': '001', 'type': TargetType.AGENT}, 'status': status}
-            },
-        ]}}
-        client_mock.search.return_value = search_result
-
-        result = await index_instance.get(uuid=uuid, status=status)
-
-        hits = search_result[IndexerKey.HITS][IndexerKey.HITS]
-        assert result == [Command.from_dict(data[IndexerKey._ID], data[IndexerKey._SOURCE]) for data in hits]
-        client_mock.search.assert_called_once_with(
-            index=index_instance.INDEX,
-            body=query,
-        )
+            await index_instance.create([self.create_command])
 
 
 def test_create_restart_command():
@@ -102,6 +84,7 @@ def test_create_restart_command():
     command = create_restart_command(agent_id=agent_id)
 
     assert command == expected_command
+    assert command.document_id is None
 
 
 def test_create_set_group_command():
@@ -126,6 +109,7 @@ def test_create_set_group_command():
     command = create_set_group_command(agent_id=agent_id, groups=groups)
 
     assert command == expected_command
+    assert command.document_id is None
 
 
 def test_create_update_group_command():
@@ -148,3 +132,4 @@ def test_create_update_group_command():
     command = create_update_group_command(agent_id=agent_id)
 
     assert command == expected_command
+    assert command.document_id is None

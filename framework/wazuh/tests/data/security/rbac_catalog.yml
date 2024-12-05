@@ -23,20 +23,6 @@ get_rbac_actions:
   - params:
       endpoint: None
     result:
-      active-response:command:
-        description: Execute active response commands in the agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - active-response:command
-          resources:
-            - agent:id:001
-            - agent:group:atlantic
-          effect: allow
-        related_endpoints:
-          - PUT /active-response
       agent:delete:
         description: Delete agents
         resources:
@@ -196,54 +182,15 @@ get_rbac_actions:
             - node:id:worker3
           effect: deny
         related_endpoints:
-          - GET /cluster/local/info
-          - GET /cluster/local/config
           - GET /cluster/nodes
           - GET /cluster/healthcheck
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
-          - GET /cluster/{node_id}/daemons/stats
-          - GET /cluster/{node_id}/stats
-          - GET /cluster/{node_id}/stats/hourly
-          - GET /cluster/{node_id}/stats/weekly
-          - GET /cluster/{node_id}/stats/analysisd
-          - GET /cluster/{node_id}/stats/remoted
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
-          - GET /cluster/{node_id}/configuration/{component}/{configuration}
-          - GET /manager/status
-          - GET /manager/info
-          - GET /manager/configuration
-          - GET /manager/daemons/stats
-          - GET /manager/stats
-          - GET /manager/stats/hourly
-          - GET /manager/stats/weekly
-          - GET /manager/stats/analysisd
-          - GET /manager/stats/remoted
-          - GET /manager/logs
-          - GET /manager/logs/summary
-          - PUT /manager/restart
-          - GET /manager/configuration/validation
-          - GET /manager/configuration/{component}/{configuration}
-      ciscat:read:
-        description: Access CIS-CAT results for agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - ciscat:read
-          resources:
-            - agent:id:001
-            - agent:id:003
-            - agent:group:default
-          effect: deny
-        related_endpoints:
-          - GET /ciscat/{agent_id}/results
-          - GET /experimental/ciscat/results
       cluster:status:
         description: Check Wazuh's cluster general status
         resources:
@@ -256,20 +203,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/status
-      cluster:read_api_config:
-        description: Check Wazuh's cluster nodes API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - cluster:read_api_config
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: allow
-        related_endpoints:
-          - GET /cluster/api/config
-          - GET /manager/api/config
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:
@@ -282,7 +215,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/{node_id}/configuration
-          - PUT /manager/configuration
       cluster:restart:
         description: Restart Wazuh's cluster nodes
         resources:
@@ -295,165 +227,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
-          - PUT /manager/restart
-      logtest:run:
-        description: Run logtest tool or end a logtest session
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - logtest:run
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /logtest
-          - DELETE /logtest/sessions/{token}
-      mitre:read:
-        description: Access information from MITRE database
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - mitre:read
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - GET /mitre/groups
-          - GET /mitre/metadata
-          - GET /mitre/mitigations
-          - GET /mitre/references
-          - GET /mitre/software
-          - GET /mitre/tactics
-          - GET /mitre/techniques
-      rootcheck:clear:
-        description: Clear the agents rootcheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:clear
-          resources:
-            - agent:id:*
-          effect: deny
-        related_endpoints:
-          - DELETE /rootcheck/{agent_id}
-          - DELETE /experimental/rootcheck
-      rootcheck:run:
-        description: Run agents rootcheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /rootcheck
-      rootcheck:read:
-        description: Access information from agents rootcheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:read
-          resources:
-            - agent:id:011
-          effect: allow
-        related_endpoints:
-          - GET /rootcheck/{agent_id}
-          - GET /rootcheck/{agent_id}/last_scan
-      sca:read:
-        description: Access agents security configuration assessment
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - sca:read
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - GET /sca/{agent_id}
-          - GET /sca/{agent_id}/checks/{policy_id}
-      syscheck:run:
-        description: Run agents syscheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /syscheck
-      syscheck:read:
-        description: Access information from agents syscheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:read
-          resources:
-            - agent:id:011
-            - agent:group:us-west
-          effect: allow
-        related_endpoints:
-          - GET /syscheck/{agent_id}
-          - GET /syscheck/{agent_id}/last_scan
-      syscheck:clear:
-        description: Clear the agents syscheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:clear
-          resources:
-            - agent:id:*
-          effect: deny
-        related_endpoints:
-          - DELETE /syscheck/{agent_id}
-          - DELETE /experimental/syscheck
-      syscollector:read:
-        description: Access agents syscollector information
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscollector:read
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - GET /experimental/syscollector/hardware
-          - GET /experimental/syscollector/netaddr
-          - GET /experimental/syscollector/netiface
-          - GET /experimental/syscollector/netproto
-          - GET /experimental/syscollector/os
-          - GET /experimental/syscollector/packages
-          - GET /experimental/syscollector/ports
-          - GET /experimental/syscollector/processes
-          - GET /experimental/syscollector/hotfixes
-          - GET /syscollector/{agent_id}/hardware
-          - GET /syscollector/{agent_id}/hotfixes
-          - GET /syscollector/{agent_id}/netaddr
-          - GET /syscollector/{agent_id}/netiface
-          - GET /syscollector/{agent_id}/netproto
-          - GET /syscollector/{agent_id}/os
-          - GET /syscollector/{agent_id}/packages
-          - GET /syscollector/{agent_id}/ports
-          - GET /syscollector/{agent_id}/processes
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:
@@ -586,30 +359,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /security/config
           - DELETE /security/config
-      task:status:
-        description: Access task's status information
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - task:status
-          resources:
-            - "*:*:*"
-          effect: deny
-        related_endpoints:
-          - GET /tasks/status
-      event:ingest:
-        description: "Ingest events"
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - event:ingest
-          resources:
-            - "*:*:*"
-          effect: "allow"
-        related_endpoints:
-          - POST /events
       order:send:
         description: "Send orders to the server"
         resources:

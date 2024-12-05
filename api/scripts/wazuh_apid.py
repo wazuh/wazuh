@@ -4,16 +4,49 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import argparse
+import asyncio
+import logging
+import logging.config
 import os
 import signal
+import ssl
 import sys
 import warnings
+from argparse import ArgumentParser, Namespace
 from functools import partial
 
+import uvicorn
+from connexion import AsyncApp
+from connexion.exceptions import HTTPException, ProblemException, Unauthorized
+from connexion.middleware import MiddlewarePosition
+from connexion.options import SwaggerUIOptions
+from content_size_limit_asgi import ContentSizeLimitMiddleware
+from content_size_limit_asgi.errors import ContentSizeExceeded
+from starlette.middleware.cors import CORSMiddleware
+
+from api import __path__ as api_path
+from api import error_handler
+from api.alogging import set_logging
+from api.api_exception import APIError, ExpectFailedException
+from api.configuration import generate_private_key, generate_self_signed_certificate
+from api.middlewares import (
+    CheckBlockedIP,
+    CheckRateLimitsMiddleware,
+    SecureHeadersMiddleware,
+    WazuhAccessLoggerMiddleware,
+    CheckExpectHeaderMiddleware,
+)
+from api.signals import lifespan_handler
+from api.uri_parser import APIUriParser
+from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.common import WAZUH_SERVER_YML
+from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.models.central_config import ManagementAPIConfig
 from wazuh.core.config.models.ssl_config import APISSLConfig
+from wazuh.rbac.orm import check_database_integrity
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.management_api import ManagementAPIConfig
+
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
@@ -204,14 +237,12 @@ def start(params: dict, config: ManagementAPIConfig):
             allow_credentials=config.cors.allow_credentials,
         )
 
-
     # Add error handlers to format exceptions
     app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)
     app.add_error_handler(Unauthorized, error_handler.unauthorized_error_handler)
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
     app.add_error_handler(403, error_handler.problem_error_handler)
-
 
     # Start uvicorn server
     try:
@@ -225,18 +256,6 @@ def start(params: dict, config: ManagementAPIConfig):
         else:
             logger.error(exc)
             raise exc
-
-
-def print_version():
-    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
-    print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))
-
-
-
-def version():
-    """Print API version and exits with 0 code. """
-    print_version()
-    sys.exit(0)
 
 
 def add_debug2_log_level_and_error():
@@ -260,65 +279,34 @@ def add_debug2_log_level_and_error():
     logging.Logger.error = error
 
 
-if __name__ == '__main__':
+def get_script_arguments() -> Namespace:
+    """Get script arguments.
 
-    parser = argparse.ArgumentParser()
-    #########################################################################################
-    parser.add_argument('-f', help="Run in foreground",
-                        action='store_true', dest='foreground')
-    parser.add_argument('-V', help="Print version",
-                        action='store_true', dest="version")
-    parser.add_argument('-r', help="Run as root",
-                        action='store_true', dest='root')
-    parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.",
-                        action='count',
-                        dest='debug_level')
-    args = parser.parse_args()
+    Returns
+    -------
+    argparse.Namespace
+        Arguments passed to the script.
+    """
+    parser = ArgumentParser()
+    parser.add_argument('-d', '--daemon', action='store_true', dest='daemon', help='Run as a daemon')
+    parser.add_argument('-r', '--root', action='store_true', dest='root', help='Run as root')
+    parser.add_argument('-v', '--version', action='store_true', dest='version', help='Print version')
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = get_script_arguments()
 
     if args.version:
-        version()
+        print_version()
         sys.exit(0)
-
-    import asyncio
-    import logging
-    import logging.config
-    import ssl
-
-    import uvicorn
-    from connexion import AsyncApp
-    from connexion.exceptions import HTTPException, ProblemException, Unauthorized
-    from connexion.middleware import MiddlewarePosition
-    from connexion.options import SwaggerUIOptions
-    from content_size_limit_asgi import ContentSizeLimitMiddleware
-    from content_size_limit_asgi.errors import ContentSizeExceeded
-    from starlette.middleware.cors import CORSMiddleware
-    from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.rbac.orm import check_database_integrity
-    from wazuh.core.config.client import CentralizedConfig
-    from wazuh.core.config.models.management_api import ManagementAPIConfig
-
-    from api import __path__ as api_path
-    from api import error_handler
-    from api.alogging import set_logging
-    from api.api_exception import APIError, ExpectFailedException
-    from api.configuration import generate_private_key, generate_self_signed_certificate
-    from api.constants import API_LOG_PATH
-    from api.middlewares import (
-        CheckBlockedIP,
-        CheckRateLimitsMiddleware,
-        SecureHeadersMiddleware,
-        WazuhAccessLoggerMiddleware,
-        CheckExpectHeaderMiddleware,
-    )
-    from api.signals import lifespan_handler
-    from api.uri_parser import APIUriParser
-    from api.util import to_relative_path
 
     try:
         CentralizedConfig.load()
     except Exception as e:
         print(f"Error when trying to load the configuration. {e}")
         sys.exit(1)
+
     management_config = CentralizedConfig.get_management_api_config()
 
     # Configure uvicorn parameters dictionary
@@ -330,18 +318,10 @@ if __name__ == '__main__':
 
     # Set up logger file
     try:
-        uvicorn_params['log_config'] = set_logging(log_filepath=API_LOG_PATH,
-                                                   logging_config=management_config.logging,
-                                                   foreground_mode=args.foreground)
+        uvicorn_params['log_config'] = set_logging(logging_config=management_config.logging)
     except APIError as api_log_error:
         print(f"Error when trying to start the Wazuh API. {api_log_error}")
         sys.exit(1)
-
-    # set permission on log files
-    for handler in uvicorn_params['log_config']['handlers'].values():
-        if 'filename' in handler:
-            utils.assign_wazuh_ownership(handler['filename'])
-            os.chmod(handler['filename'], 0o660)
 
     # Configure and create the wazuh-api logger
     add_debug2_log_level_and_error()
@@ -354,7 +334,7 @@ if __name__ == '__main__':
     utils.clean_pid_files(API_MAIN_PROCESS)
 
     # Foreground/Daemon
-    if not args.foreground:
+    if args.daemon:
         pyDaemonModule.pyDaemon()
     else:
         logger.info('Starting API in foreground')

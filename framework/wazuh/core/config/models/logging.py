@@ -1,7 +1,6 @@
 import logging
 
 from pydantic import Field
-from typing import List
 from enum import Enum
 
 from wazuh.core.config.models.base import WazuhConfigBaseModel
@@ -9,24 +8,44 @@ from wazuh.core.config.models.base import WazuhConfigBaseModel
 
 class LoggingFormat(str, Enum):
     """Enum representing the available logging formats."""
-    plain = "plain"
-    json = "json"
+    plain = 'plain'
 
 
 class LoggingLevel(str, Enum):
     """Enum representing the different levels of logging verbosity."""
-    info = "info"
-    debug = "debug"
-    debug2 = "debug2"
+    info = 'info'
+    debug = 'debug'
+    debug2 = 'debug2'
 
 
 class APILoggingLevel(str, Enum):
     """Enum representing the different levels of logging verbosity for an API."""
-    debug = "debug"
-    info = "info"
-    warning = "warning"
-    error = "error"
-    critical = "critical"
+    debug = 'debug'
+    info = 'info'
+    warning = 'warning'
+    error = 'error'
+    critical = 'critical'
+
+
+class EngineLoggingLevel(str, Enum):
+    """Enum representing the different levels of logging verbosity for the Engine."""
+    trace = 'trace'
+    debug = 'debug'
+    info = 'info'
+    warning = 'warning'
+    error = 'error'
+    critical = 'critical'
+
+
+class EngineLoggingConfig(WazuhConfigBaseModel):
+    """Configuration for Engine logging levels.
+
+    Parameters
+    ----------
+    level : EngineLoggingLevel
+        The logging level. Default is "info".
+    """
+    level: EngineLoggingLevel = EngineLoggingLevel.info
 
 
 class LoggingConfig(WazuhConfigBaseModel):
@@ -58,35 +77,18 @@ class LoggingConfig(WazuhConfigBaseModel):
         return 2
 
 
-class LogFileMaxSizeConfig(WazuhConfigBaseModel):
-    """Configuration for maximum log file size.
-
-    Parameters
-    ----------
-    enabled : bool
-        Whether the maximum file size feature is enabled. Default is False.
-    size : str
-        The maximum size of the log file. Supports 'M' for megabytes and 'K' for kilobytes. Default is "1M".
-    """
-    enabled: bool = False
-    size: str = Field(default="1M", pattern=r"^([1-9]\d*)([KM])$")
-
-
-class RotatedLoggingConfig(WazuhConfigBaseModel):
-    """Configuration for logging with rotation.
+class APILoggingConfig(WazuhConfigBaseModel):
+    """Configuration for API logging.
 
      Parameters
      ----------
      level : Literal["debug", "info", "warning", "error", "critical"]
          The logging level. Default is "debug".
-     format : List[Literal["plain", "json"]]
+     format : list[Literal["plain"]]
          The format for logging output. Default is ["plain"].
-     max_size : LogFileMaxSizeConfig
-         Configuration for the maximum log file size. Default is an instance of LogFileMaxSizeConfig.
     """
     level: APILoggingLevel = APILoggingLevel.debug
-    format: List[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)
-    max_size: LogFileMaxSizeConfig = LogFileMaxSizeConfig()
+    format: list[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)
 
     def get_level(self) -> int:
         """Returns the integer value corresponding to the logging level.

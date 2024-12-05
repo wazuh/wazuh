@@ -7,8 +7,7 @@ from typing import Union
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
-from wazuh import agent, stats
-from wazuh.core.cluster.control import get_system_nodes
+from wazuh import agent
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 
@@ -17,7 +16,6 @@ from api.models.agent_registration_model import AgentRegistrationModel
 from api.models.agent_group_added_model import GroupAddedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
-from api.validator import check_component_configuration_pair
 
 logger = logging.getLogger('wazuh-api')
 

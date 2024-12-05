@@ -407,26 +407,23 @@ utils::rocksdb::RocksDBWrapper& DatabaseFeedManager::getCVEDatabase()
 
 // LCOV_EXCL_STOP
 
-void DatabaseFeedManager::getVulnerabiltyDescriptiveInformation(
-    const std::string_view cveId, FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+bool DatabaseFeedManager::getVulnerabilityDescriptiveInformation(
+    const std::string& cveId,
+    const std::string& subShortName,
+    FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
 {
-    if (m_feedDatabase->get(std::string(cveId), resultContainer.slice, DESCRIPTIONS_COLUMN) == false)
+    if (const auto descriptionColumn = std::string(DESCRIPTIONS_COLUMN) + "_" + subShortName;
+        m_feedDatabase->get(cveId, resultContainer.slice, descriptionColumn) == false)
     {
-        throw std::runtime_error(
-            "Error getting VulnerabilityDescription object from rocksdb. Object not found for cveId: "
-            + std::string(cveId));
-    }
-
-    if (flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(resultContainer.slice.data()),
-                                       resultContainer.slice.size());
-        NSVulnerabilityScanner::VerifyVulnerabilityDescriptionBuffer(verifier) == false)
-    {
-        throw std::runtime_error(
-            "Error getting VulnerabilityDescription object from rocksdb. FlatBuffers verifier failed");
+        LOG_DEBUG("Vulnerability description not found for {} in {}.", cveId.c_str(), descriptionColumn.c_str());
+        resultContainer.data = nullptr;
+        return false;
     }
 
     resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
         NSVulnerabilityScanner::GetVulnerabilityDescription(resultContainer.slice.data()));
+
+    return true;
 }
 
 std::string DatabaseFeedManager::getCnaNameBySource(std::string_view source) const

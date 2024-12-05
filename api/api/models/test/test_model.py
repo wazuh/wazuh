@@ -18,7 +18,7 @@ from api.models import agent_registration_model
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
-        from api.models import base_model_ as bm, event_ingest_model
+        from api.models import base_model_ as bm, agent_registration_model
         from api.util import deserialize_model
         from wazuh import WazuhError
 
@@ -301,7 +301,7 @@ def test_all_models(deserialize_mock, module_name):
     'test',
     '7b8276c3bf96aff5709346d368f04aedA'
 ))
-async def test_agent_added_model_validation(key):
+async def test_agent_registration_model_validation(key):
     request = {
         'id': '01929571-49b5-75e8-a3f6-1d2b84f4f71a',
         'name': 'testing',
@@ -318,17 +318,3 @@ async def test_agent_added_model_validation(key):
         assert exc.value.detail == 'The key must be 32 characters long'
     else:
         await agent_registration_model.AgentRegistrationModel.get_kwargs(request)
-
-
-@pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
-async def test_event_ingest_model_validation(size, raises):
-    request = {'events': [{"foo": 1}, {"bar": 2}]}
-    event_ingest_model.MAX_EVENTS_PER_REQUEST = size
-
-    if raises:
-        with pytest.raises(ProblemException) as exc:
-            await event_ingest_model.EventIngestModel.get_kwargs(request)
-
-        assert exc.value.title == 'Events bulk size exceeded'
-    else:
-        await event_ingest_model.EventIngestModel.get_kwargs(request)

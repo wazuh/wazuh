@@ -11,8 +11,6 @@ CONFIG_FILE_PATH = CONFIG_PATH / 'api.yaml'
 SECURITY_PATH = CONFIG_PATH / 'security'
 SECURITY_CONFIG_PATH = SECURITY_PATH / 'security.yaml'
 
-API_LOG_PATH = common.WAZUH_LOG / API
-COMMS_API_LOG_PATH = common.WAZUH_LOG / 'comms_api'
 API_SSL_PATH = CONFIG_PATH / 'ssl'
 INSTALLATION_UID_PATH = common.WAZUH_LIB / 'installation_uid'
 INSTALLATION_UID_KEY = 'installation_uid'

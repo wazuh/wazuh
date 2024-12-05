@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Union
 
 from wazuh.core.cluster import __version__
-from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE, WAZUH_SERVER_YML
+from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_SOCKET_BUFFER_SIZE, WAZUH_SERVER_YML
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
@@ -30,8 +30,6 @@ class WazuhException(Exception):
                               '`/var/log/wazuh-server/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
-        1003: 'Command output not in JSON',
-        1004: 'Malformed command output ',
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
@@ -44,46 +42,26 @@ class WazuhException(Exception):
                'remediation': 'Please, restart Wazuh to restore sockets'},
         1014: {'message': 'Error communicating with socket',
                'remediation': 'Please, restart Wazuh to restore sockets'},
-        1015: 'Agent version is null. Was the agent ever connected?',
-        1016: {'message': 'Error moving file',
-               'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
-        1019: 'Error trying to create backup file',
         1020: {'message': 'Could not find any Wazuh log file',
                'remediation': 'Please check `WAZUH_HOME/logs`'},
 
         # Configuration: 1100 - 1199
         1101: {'message': 'Requested component does not exist',
                'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
-        1102: {'message': 'Invalid section',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
-                              'to get more information about configuration sections'},
         1103: {'message': 'Invalid field in section',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
-        1104: {'message': 'Invalid type',
-               'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
                'remediation': 'Please, check your configuration file. '
                               f'You can visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
-        1107: 'Internal options file not found',
-        1109: 'Option must be a digit',
-        1110: 'Option value is out of the limits',
         1112: {'message': 'Empty files are not supported',
                'remediation': 'Please, provide another file'
-               },
-        1113: {'message': 'XML syntax error',
-               'remediation': 'Please, ensure file content has correct XML'
-               },
-        1114: "Wazuh syntax error",
-        1115: {'message': 'Error executing verify-agent-conf',
-               'remediation': 'Please, check your configuration file and try again'
                },
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
@@ -99,9 +77,6 @@ class WazuhException(Exception):
                               f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid ossec configuration',
                'remediation': 'Please, provide a valid ossec configuration'
-               },
-        1126: {'message': 'Error updating ossec configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -128,11 +103,6 @@ class WazuhException(Exception):
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, '
                               'contact us at [official repository](https://github.com/wazuh/wazuh/issues)'
                },
-        1308: {'message': 'Stats file does not exist',
-               'remediation': 'Stats files are usually generated at 12 PM on a daily basis'},
-        1309: 'Statistics file damaged',
-        1310: {'message': 'Invalid agent ID',
-               'remediation': 'This component only exists in real agents'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -155,16 +125,6 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-
-        # Syscheck/AR: 1600 - 1699
-        1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
-        1650: 'Active response - Command not specified',
-
-        1652: {'message': 'The command used is not defined in the configuration.',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/capabilities/active-response/how-to-configure.html)'
-                              'to get more information'
-               },
 
         # Agents: 1700 - 1799
         1701: {'message': 'Agent does not exist',
@@ -214,9 +174,6 @@ class WazuhException(Exception):
         1726: {'message': 'Wazuh authd is not running',
                'remediation': 'Please enable authd or check if there is any error'
                },
-        1727: {'message': 'Error listing group files',
-               'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
-               },
         1728: {'message': 'Invalid node type',
                'remediation': f'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html '
@@ -236,34 +193,26 @@ class WazuhException(Exception):
                'remediation': 'Please update the agent, in case the problem persists contact us at: https://github.com'
                               '/wazuh/wazuh/issues'
                },
-        1737: {'message': f"Maximum number of groups per multigroup is {MAX_GROUPS_PER_MULTIGROUP}",
-               'remediation': 'Please choose another group or remove an agent from the target group'
-               },
         1738: {'message': 'Agent name is too long',
                'remediation': f'Max length allowed for agent name is {AGENT_NAME_LEN_LIMIT}'
                },
         1740: {'message': 'Action only available for active agents',
                'remediation': 'Please activate the agent to synchronize it'
                },
-        1743: 'Error running Wazuh syntax validator',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
-        1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
-               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
         1752: {'message': 'Could not force single group for the agent'},
         1757: {'message': 'Error deleting an agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
-               },
         1761: {'message': 'Error sending request to the indexer',
                'remediation': 'Please check the request body and try again'
                },
         1762: 'Error sending command to the commands manager',
-        1763: "Invalid inventory module type. It must be 'network', 'package', 'process' or 'system'",
+        1763: 'Invalid inventory module type. It must be {types}',
         1764: "Invalid User-Agent HTTP header value. It must follow the format '<name> <type> <version>'",
-        1765: "Invalid module name. It must be 'fim', 'sca', 'inventory', 'command' or 'vulnerability'",
+        1765: 'Invalid module name. It must be {modules}',
         1766: {'message': 'The agent already belongs to the group'},
 
         # Manager:
@@ -273,23 +222,9 @@ class WazuhException(Exception):
                },
         1904: {'message': 'Bad data from \'wcom\''
                },
-        1905: {'message': 'File could not be updated, it already exists',
-               'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
-               },
-        1906: {'message': 'File does not exist',
-               'remediation': 'Please, provide a different file or make sure provided file path is correct'
-               },
-        1907: {'message': 'File could not be deleted',
-               'remediation': 'Please, ensure you have the right file permissions'
-               },
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'
                },
-        1910: {'message': 'Content-type header is mandatory',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
-                              f'cluster_controller.put_files_node)'
-                              ' to get more information about how to configure a cluster'},
         1911: {'message': 'Error parsing body request to UTF-8',
                'remediation': 'Please, check if the file content is valid UTF-8'},
         1912: {'message': 'Body is empty',
@@ -303,7 +238,7 @@ class WazuhException(Exception):
 
         # Indexer
         2200: {'message': 'Could not connect to the indexer'},
-        2201: {'message': 'Indexer credentials not provided'},
+        2201: {'message': 'Invalid indexer credentials'},
         2202: {'message': 'Command does not exist'},
 
         # Communications API
@@ -473,12 +408,6 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
         6005: {'message': 'Maximum number of requests per minute reached'},
-
-        # Logtest
-        7000: {'message': 'Error trying to get logtest response'},
-        7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'},
-
     }
 
     # Reserve agent upgrade custom errors

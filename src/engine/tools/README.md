@@ -30,6 +30,8 @@ tool/
 
 ## API communication
 
+The `api-communication` package is a tool designed to facilitate communication with the engine API, allowing the execution of commands and operations on engine components.
+
 ### Main Features
 
 - **Communication with the Engine API**:
@@ -37,6 +39,11 @@ tool/
 
 - **API Command Management**:
     Translates messages into specific commands that the engine API can process, allowing operations to be performed on engine components
+
+### Installation
+```bash
+pip3 install tools/api_communication
+```
 
 ## Engine suite
 
@@ -49,6 +56,11 @@ The `engine-suite` package is a comprehensive tool designed to manage, clean, an
 - **File Comparison**: Provides tools to compare event files in YAML or JSON format, detecting differences in keys and values. In addition, it integrates external tools such as Delta for a clear visualization of the differences.
 
 - **Integrations Management**: Centralizes the creation, addition, update and removal of integrations, and also generates documentation, charts and manifests to facilitate the administration and monitoring of these integrations.
+
+### Installation
+```bash
+pip3 install tools/engine_suite
+```
 
 ## EVTX to XML
 

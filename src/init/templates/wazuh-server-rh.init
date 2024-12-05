@@ -16,7 +16,7 @@ export LANG=C
 . /etc/init.d/functions
 
 WAZUH_HOME=WAZUH_HOME_TMP
-WAZUH_SERVER="${WAZUH_HOME}/bin/wazuh-server"
+WAZUH_SERVER="${WAZUH_HOME}/usr/share/wazuh-server/bin/wazuh-server"
 
 start() {
     echo -n "Starting Wazuh: "

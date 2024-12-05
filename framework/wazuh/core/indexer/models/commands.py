@@ -56,7 +56,6 @@ class Command:
     document_id: str = None
     request_id: str = None
     order_id: str = None
-    groups: str = None
     source: Source = None
     user: str = None
     target: Target = None
@@ -73,24 +72,6 @@ class Command:
         if isinstance(self.result, dict):
             self.result = Result(**self.result)
 
-    @classmethod
-    def from_dict(cls, document_id: str, data: dict):
-        """Create an object instance from a dictionary.
-        
-        Parameters
-        ----------
-        document_id : str
-            Document ID.
-        data : dict
-            Command data.
-        
-        Returns
-        -------
-        Command
-            Object instance with its fields initialized.
-        """
-        return cls(document_id=document_id, **data)
-
 
 class ResponseResult(str, Enum):
     """Create command response result enum."""
@@ -105,5 +86,5 @@ class ResponseResult(str, Enum):
 class CreateCommandResponse:
     """Create command response data model."""
     index: str
-    document_id: str
+    document_ids: List[str]
     result: ResponseResult

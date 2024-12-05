@@ -6,6 +6,8 @@ from fastapi import status
 import pytest
 from freezegun import freeze_time
 
+
+# TODO: Fix in #26725
 with patch('wazuh.core.utils.load_wazuh_xml'):
     from api.authentication import INVALID_TOKEN, JWT_ISSUER
     from comms_api.authentication.authentication import decode_token, generate_token, JWTBearer, JWT_AUDIENCE, \

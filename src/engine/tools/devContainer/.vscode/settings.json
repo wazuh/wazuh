@@ -1,9 +1,20 @@
 {
+    "python.defaultInterpreterPath": ".venv/bin/python",
+    "python.analysis.include": [
+        "${env:ENGINE_SRC}/tools/api-communication/src",
+        "${env:ENGINE_SRC}/tools/engine-suite/src",
+        "${env:ENGINE_SRC}/test/engine-test-utils/src",
+        "${env:ENGINE_SRC}/test/health_test/engine-health-test/src",
+        "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src",
+        "${env:ENGINE_SRC}/test/integration_tests/engine-it/src"
+    ],
     "cmake.sourceDirectory": "${env:ENGINE_SRC}",
     "cmake.buildDirectory": "${env:ENGINE_BUILD}",
-    "cmake.ctest.parallelJobs": 30,
+    "cmake.ctest.parallelJobs": 0,
     "testMate.cpp.test.workingDirectory": "${env:ENGINE_BUILD}",
     "testMate.cpp.test.executables": "${env:ENGINE_BUILD}/**/*{test,Test,TEST}*",
+    "cmake.options.statusBarVisibility": "compact",
+    "cmake.configureOnOpen": true,
     "files.associations": {
         "*.h": "c",
         "*.c": "c",
@@ -86,7 +97,8 @@
         "typeinfo": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "typeindex": "cpp"
     },
     "yaml.schemas": {
         "${env:ENGINE_SRC}/ruleset/schemas/wazuh-asset.json": [

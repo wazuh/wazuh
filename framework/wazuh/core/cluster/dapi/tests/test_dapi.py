@@ -28,14 +28,14 @@ with patch('wazuh.common.wazuh_uid'):
 
             from wazuh.tests.util import RBAC_bypasser
 
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
-            from wazuh.core.manager import get_manager_status
-            from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-            from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
-            from wazuh.core.exception import WazuhClusterError
-            from api.util import raise_if_exc
-            from wazuh.core.cluster import local_client
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
+        from wazuh.core.manager import get_manager_status
+        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+        from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
+        from wazuh.core.exception import WazuhClusterError
+        from api.util import raise_if_exc
+        from wazuh.core.cluster import local_client
 
 logger = logging.getLogger('wazuh')
 
@@ -135,7 +135,6 @@ def test_DistributedAPI_debug_log():
     (agent.get_agents, 'local_master', 'master', 'local', None),
     (agent.restart_agents, 'distributed_master', 'master', 'forward', None),
     (cluster.get_node_wrapper, 'local_any', 'worker', 'local', 'token_nbf_time'),
-    (ciscat.get_ciscat_results, 'distributed_master', 'worker', 'remote', None),
 ])
 async def test_DistributedAPI_distribute_function(api_request, request_type, node, expected, f_kwargs):
     """Test distribute_function functionality with different test cases.

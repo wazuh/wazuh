@@ -236,23 +236,9 @@ MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFE
 AGENT_NAME_LEN_LIMIT = 128
 DATABASE_LIMIT = 500
 MAXIMUM_DATABASE_LIMIT = 100000
-MAX_GROUPS_PER_MULTIGROUP = 128
-
-
-# ============================================= Wazuh constants - Version ==============================================
-# Agent upgrading variables.
-WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
-# Agent component stats required version.
-AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0', 'agent': 'v4.2.0'}
-# Version variables (legacy, required, etc).
-AR_LEGACY_VERSION = 'Wazuh v4.2.0'
-ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 
 
 # ================================================ Wazuh path - Config =================================================
-# TODO: Keep until we remove the different functionalities completely
-AR_CONF = ''
-CLIENT_KEYS = ''
 WAZUH_SERVER_YML = WAZUH_ETC / 'wazuh-server.yml'
 
 
@@ -261,25 +247,15 @@ DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.re
 
 # TODO: Constants asociate to functionality next to deprecate.
 WAZUH_LOG_JSON = os.path.join('', 'ossec.json')
-ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-analysisd.state')
-REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-remoted.state')
-OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
-STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
 
 
 # ================================================ Wazuh path - Sockets ================================================
 ENGINE_SOCKET = WAZUH_RUN / 'engine.socket'
 # TODO: Constants asociated to functionality next to deprecate.
-ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
 AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
 EXECQ_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'execq')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
 WCOM_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'com')
-LOGTEST_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest')
-UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
 REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
-TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
-WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
-QUEUE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'queue')

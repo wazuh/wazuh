@@ -15,6 +15,7 @@ with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
         with patch('wazuh.core.common.wazuh_uid'):
             with patch('wazuh.core.common.wazuh_gid'):
+                # TODO: Fix in #26725
                 with patch('wazuh.core.utils.load_wazuh_xml'):
 
                     sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -54,6 +55,7 @@ def test_read_cluster_config():
         with pytest.raises(WazuhError, match='.* 3006 .*'):
             utils.read_cluster_config()
 
+    # TODO: Fix in #26725
     with patch('wazuh.core.configuration.load_wazuh_xml', return_value=SystemExit):
         with pytest.raises(SystemExit) as pytest_wrapped_e:
             utils.read_cluster_config(from_import=True)

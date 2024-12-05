@@ -9,12 +9,14 @@ server:
       cert: /etc/wazuh-server/server.crt
       ca: /etc/wazuh-server/server.ca
 indexer:
-  host: localhost
-  port: 9200
-  user: admin
+  hosts:
+    - host: localhost
+      port: 9200
+  username: admin
   password: admin
   ssl:
     use_ssl: true
     key: <PATH_TO_KEY_FILE>
-    cert: <PATH_TO_CERT_FILE>
-    ca: <PATH_TO_CA_FILE>
+    certificate: <PATH_TO_CERT_FILE>
+    certificate_authorities:
+      - <PATH_TO_CA_FILE>

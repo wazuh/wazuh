@@ -21,15 +21,6 @@ relationships:
         - agents_commands
         - security_all
         - cluster_all
-        - ciscat_read
-        - rootcheck_all
-        - mitre_read
-        - sca_read
-        - syscheck_all
-        - syscollector_read
-        - logtest_all
-        - task_status
-        - events_ingest
         - orders_send
       rule_ids:
         - wui_elastic_admin
@@ -38,13 +29,7 @@ relationships:
     readonly:
       policy_ids:
         - agents_read
-        - ciscat_read
         - cluster_read
-        - rootcheck_read
-        - mitre_read
-        - sca_read
-        - syscheck_read
-        - syscollector_read
       rule_ids: []
 
     users_admin:

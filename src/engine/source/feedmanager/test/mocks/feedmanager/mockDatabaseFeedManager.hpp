@@ -95,13 +95,14 @@ public:
                 ());
 
     /**
-     * @brief Mock method for getVulnerabiltyDescriptiveInformation.
+     * @brief Mock method for getVulnerabilityDescriptiveInformation.
      *
      * @note This method is intended for testing purposes and does not perform any real action.
      */
-    MOCK_METHOD(void,
-                getVulnerabiltyDescriptiveInformation,
-                (const std::string_view cveId,
+    MOCK_METHOD(bool,
+                getVulnerabilityDescriptiveInformation,
+                (const std::string& cveId,
+                 const std::string& subShortName,
                  FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer),
                 ());
 
@@ -139,6 +140,12 @@ public:
      *
      */
     MOCK_METHOD(const nlohmann::json&, cnaMappings, (), ());
+
+    /**
+     * @brief Mock method for vendorsMap.
+     *
+     */
+    MOCK_METHOD(const nlohmann::json&, vendorsMap, (), ());
 };
 
 #endif // _MOCK_DATABASEFEEDMANAGER_HPP

@@ -1,6 +1,5 @@
-from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -8,19 +7,17 @@ from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
 from wazuh.core.indexer.models.agent import Host as AgentHost
-from wazuh.core.indexer.models.commands import Result
 
 FIM_INDEX = 'wazuh-states-fim'
+INVENTORY_HARDWARE_INDEX = 'wazuh-states-inventory-hardware'
+INVENTORY_HOTFIXES_INDEX = 'wazuh-states-inventory-hotfixes'
 INVENTORY_NETWORKS_INDEX = 'wazuh-states-inventory-networks'
 INVENTORY_PACKAGES_INDEX = 'wazuh-states-inventory-packages'
+INVENTORY_PORTS_INDEX = 'wazuh-states-inventory-ports'
 INVENTORY_PROCESSES_INDEX = 'wazuh-states-inventory-processes'
 INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
 SCA_INDEX = 'wazuh-states-sca'
 VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
-INVENTORY_NETWORKS_TYPE = 'networks'
-INVENTORY_PACKAGES_TYPE = 'packages'
-INVENTORY_PROCESSES_TYPE = 'processes'
-INVENTORY_SYSTEM_TYPE = 'system'
 
 
 class Agent(BaseModel):
@@ -45,187 +42,6 @@ class TaskResult(BaseModel):
     status: int
 
 
-class Hash(BaseModel):
-    """Hash data model."""
-    md5: str = None
-    sha1: str = None
-    sha256: str = None
-
-
-class File(BaseModel):
-    """File data model."""
-    attributes: List[str] = None
-    name: str = None
-    path: str = None
-    gid: int = None
-    group: str = None
-    inode: str = None
-    mtime: datetime = None
-    mode: str = None
-    size: float = None
-    target_path: str = None
-    type: str = None
-    uid: int = None
-    owner: str = None
-    hash: Hash = None
-
-
-class Registry(BaseModel):
-    """Registry data model."""
-    key: str = None
-    value: str = None
-
-
-class FIMEvent(BaseModel):
-    """FIM events data model."""
-    file: File = None
-    registry: Registry = None
-
-
-class InventoryNetworkEvent(BaseModel):
-    """Inventory network events data model."""
-    # TODO(25121): Add inventory network fields once they are defined
-
-
-class OS(BaseModel):
-    """OS data model."""
-    kernel: str = None
-    full: str = None
-    name: str = None
-    platform: str = None
-    version: str = None
-    type: str = None
-
-
-class Host(BaseModel):
-    """Host data model."""
-    architecture: str = None
-    hostname: str = None
-    os: OS = None
-
-
-class Package(BaseModel):
-    """Package data model."""
-    architecture: str = None
-    description: str = None
-    installed: datetime = None
-    name: str = None
-    path: str = None
-    size: float = None
-    type: str = None
-    version: str = None
-
-
-class InventoryPackageEvent(BaseModel):
-    """Inventory packages events data model."""
-    scan_time: datetime = None
-    package: Package = None
-
-
-class Parent(BaseModel):
-    """Process parent data model."""
-    pid: float = None
-
-
-class ID(BaseModel):
-    """Process users and groups ID data model."""
-    id: str = None
-
-
-class Process(BaseModel):
-    """Process data model."""
-    pid: float = None
-    name: str = None
-    parent: Parent = None
-    command_line: str = None
-    args: List[str] = None
-    user: ID = None
-    real_user: ID = None
-    saved_user: ID = None
-    group: ID = None
-    real_group: ID = None
-    saved_group: ID = None
-    start: datetime = None
-    thread: ID = None
-
-
-class InventoryProcessEvent(BaseModel):
-    """Inventory process events data model."""
-    scan_time: datetime = None
-    process: Process = None
-
-
-class InventorySystemEvent(BaseModel):
-    """Inventory system events data model."""
-    scan_time: datetime = None
-    host: Host = None
-
-
-class SCAEvent(BaseModel):
-    """SCA events data model."""
-    # TODO(25121): Add SCA event fields once they are defined
-
-
-class VulnerabilityEventHost(BaseModel):
-    """Host data model in relation to vulnerability events."""
-    os: OS = None
-
-
-class VulnerabilityEventPackage(BaseModel):
-    """Package data model in relation to vulnerability events."""
-    architecture: str = None
-    build_version: str = None
-    checksum: str = None
-    description: str = None
-    install_scope: str = None
-    installed: datetime = None
-    license: str = None
-    name: str = None
-    path: str = None
-    reference: str = None
-    size: float = None
-    type: str = None
-    version: str = None
-
-
-class Scanner(BaseModel):
-    """Scanner data model."""
-    source: str = None
-    vendor: str = None
-
-
-class Score(BaseModel):
-    """Score data model."""
-    base: float = None
-    environmental: float = None
-    temporal: float = None
-    version: str = None
-
-
-class VulnerabilityEvent(BaseModel):
-    """Vulnerability events data model."""
-    host: VulnerabilityEventHost = None
-    package: VulnerabilityEventPackage = None
-    scanner: Scanner = None
-    score: Score = None
-    category: str = None
-    classification: str = None
-    description: str = None
-    detected_at: datetime = None
-    enumeration: str = None
-    id: str = None
-    published_at: datetime = None
-    reference: str = None
-    report_id: str = None
-    severity: str = None
-    under_evaluation: bool = None
-
-
-class CommandResult(BaseModel):
-    """Command result data model."""
-    result: Result
-
-
 class Module(str, Enum):
     """Stateful event module name."""
     FIM = 'fim'
@@ -243,18 +59,15 @@ class Header(BaseModel):
     operation: Operation = None
 
 
-class StatefulEvent(BaseModel):
-    """Stateful event data model."""
-    data: Union[
-        FIMEvent,
-        InventoryNetworkEvent,
-        InventoryPackageEvent,
-        InventoryProcessEvent,
-        InventorySystemEvent,
-        SCAEvent,
-        VulnerabilityEvent,
-        CommandResult
-    ]
+class InventoryType(str, Enum):
+    """Stateful events inventory types."""
+    HARDWARE = 'hardware'
+    HOTFIXES = 'hotfixes'
+    PACAKGES = 'packages'
+    NETWORKS = 'networks'
+    SYSTEM = 'system'
+    PORTS = 'ports'
+    PROCESSES = 'processes'
 
 
 STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
@@ -262,6 +75,16 @@ STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
     Module.SCA: SCA_INDEX,
     Module.VULNERABILITY: VULNERABILITY_INDEX,
     Module.COMMAND: CommandsManager.INDEX
+}
+
+INVENTORY_EVENTS: Dict[InventoryType, str] = {
+    InventoryType.HARDWARE: INVENTORY_HARDWARE_INDEX,
+    InventoryType.HOTFIXES: INVENTORY_HOTFIXES_INDEX,
+    InventoryType.PACAKGES: INVENTORY_PACKAGES_INDEX,
+    InventoryType.NETWORKS: INVENTORY_NETWORKS_INDEX,
+    InventoryType.SYSTEM: INVENTORY_SYSTEM_INDEX,
+    InventoryType.PORTS: INVENTORY_PORTS_INDEX,
+    InventoryType.PROCESSES: INVENTORY_PROCESSES_INDEX
 }
 
 
@@ -288,18 +111,20 @@ def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
         Index name.
     """
     if module == Module.INVENTORY:
-        if type == INVENTORY_PACKAGES_TYPE:
-            return INVENTORY_PACKAGES_INDEX
-        if type == INVENTORY_PROCESSES_TYPE:
-            return INVENTORY_PROCESSES_INDEX
-        if type == INVENTORY_NETWORKS_TYPE:
-            return INVENTORY_NETWORKS_INDEX
-        if type == INVENTORY_SYSTEM_TYPE:
-            return INVENTORY_SYSTEM_INDEX
-
-        raise WazuhError(1763)
+        types = list(INVENTORY_EVENTS.keys())
+        if type not in types:
+            extra_info = {
+                'types': ', '.join(types[:-1]) + ' or ' + types[-1]
+            }
+            raise WazuhError(1763, extra_message=extra_info)
+        
+        return INVENTORY_EVENTS[type]
 
     try:
         return STATEFUL_EVENTS_INDICES[module]
     except KeyError:
-        raise WazuhError(1765)
+        modules = list(STATEFUL_EVENTS_INDICES.keys())
+        extra_info = {
+            'modules': ', '.join(modules[:-1]) + ' or ' + modules[-1]
+        }
+        raise WazuhError(1765, extra_message=extra_info)

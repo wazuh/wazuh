@@ -1,6 +1,0 @@
----
-- actions:
-  - event:ingest
-  resources:
-  - "*:*:*"
-  effect: deny

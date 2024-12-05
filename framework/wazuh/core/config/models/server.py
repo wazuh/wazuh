@@ -4,15 +4,15 @@ from enum import Enum
 
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import SSLConfig
-from wazuh.core.config.models.logging import LoggingConfig
+from wazuh.core.config.models.logging import LoggingConfig, LoggingLevel
 
 DEFAULT_CTI_URL = "https://cti.wazuh.com"
 
 
 class NodeType(str, Enum):
     """Enum representing supported nodes types."""
-    worker = "worker"
-    master = "master"
+    WORKER = 'worker'
+    MASTER = 'master'
 
 
 class MasterIntervalsConfig(WazuhConfigBaseModel):
@@ -329,7 +329,7 @@ class ServerConfig(WazuhConfigBaseModel):
     worker: WorkerConfig = WorkerConfig()
     master: MasterConfig = MasterConfig()
     communications: CommunicationsConfig = CommunicationsConfig()
-    logging: LoggingConfig = LoggingConfig(level="debug2")
+    logging: LoggingConfig = LoggingConfig(level=LoggingLevel.info)
     cti: CTIConfig = CTIConfig()
     _internal: ServerSyncConfig = PrivateAttr(DEFAULT_SERVER_INTERNAL_CONFIG)
 

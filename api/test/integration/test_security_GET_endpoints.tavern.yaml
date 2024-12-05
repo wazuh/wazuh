@@ -1090,38 +1090,6 @@ stages:
         function: tavern_utils:test_distinct_key
 
 ---
-test_name: GET /security/user/authenticate
-
-stages:
-
-  - name: Get an API token in raw format
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
-      headers:
-        Authorization: "Basic {basic_auth:s}"
-      params:
-        raw: True
-      method: GET
-    response:
-      status_code: 200
-      verify_response_with:
-        - function: tavern_utils:test_token_raw_format
-      save:
-        $ext:
-          function: tavern_utils:test_save_token_raw_format
-
-  - name: Test generated token
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/"
-      headers:
-        Authorization: "Bearer {login_token}"
-      method: GET
-    response:
-      status_code: 200
-
----
 test_name: GET /security/users
 
 marks:
@@ -1652,24 +1620,24 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        endpoint: "PUT /active-response"
+        endpoint: "POST /agents"
     response:
       status_code: 200
       json:
         error: 0
         data:
-          active-response:command:
+          agent:create:
             description: !anystr
             resources:
-              - agent:id
+              - "*:*"
             example:
               actions:
-                - active-response:command
+                - agent:create
               resources:
-                - agent:id:001
+                - "*:*:*"
               effect: allow
             related_endpoints:
-              - PUT /active-response
+              - POST /agents
 
   - name: Testing RBAC's actions catalog
     request:

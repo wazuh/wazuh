@@ -19,6 +19,7 @@ import wazuh.core.exception as exception
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        # TODO: Fix in #26725
         with patch('wazuh.core.utils.load_wazuh_xml'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators

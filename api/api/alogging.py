@@ -2,15 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import collections
 import logging
 import json
 import re
-from pythonjsonlogger import jsonlogger
 
 from api.api_exception import APIError
 
-from wazuh.core.config.models.logging import RotatedLoggingConfig
+from wazuh.core.config.models.logging import APILoggingConfig
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
@@ -23,69 +21,7 @@ WARNING = 'WARNING'
 INFO = 'INFO'
 
 
-class APILoggerSize:
-    size_regex = re.compile(r"(\d+)([KM])")
-    unit_conversion = {
-        'K': 1024,
-        'M': 1024 ** 2
-    }
-
-    def __init__(self, size_string: str):
-        size_string = size_string.upper()
-        try:
-            size, unit = self.size_regex.match(size_string).groups()
-        except AttributeError:
-            raise APIError(2011, details="Size value does not match the expected format: <number><unit> (Available"
-                                         " units: K (kilobytes), M (megabytes). For instance: 45M") from None
-
-        self.size = int(size) * self.unit_conversion[unit]
-        if self.size < self.unit_conversion['M']:
-            raise APIError(2011, details=f"Minimum value for size is 1M. Current: {size_string}")
-
-
-class WazuhJsonFormatter(jsonlogger.JsonFormatter):
-    """
-    Define the custom JSON log formatter used by wlogging.
-    """
-
-    def add_fields(self, log_record: collections.OrderedDict, record: logging.LogRecord, message_dict: dict):
-        """Implement custom logic for adding fields in a log entry.
-
-        Parameters
-        ----------
-        log_record : collections.OrderedDict
-            Dictionary with custom fields used to generate a log entry.
-        record : logging.LogRecord
-            Contains all the information to the event being logged.
-        message_dict : dict
-            Dictionary with a request or exception information.
-        """
-        # Request handling
-        if record.message is None:
-            record.message = {
-                'type': 'request',
-                'payload': message_dict
-            }
-        else:
-            # Traceback handling
-            traceback = message_dict.get('exc_info')
-            if traceback is not None:
-                record.message = {
-                    'type': 'error',
-                    'payload': f'{record.message}. {traceback}'
-                }
-            else:
-                # Plain text messages
-                record.message = {
-                    'type': 'informative',
-                    'payload': record.message
-                }
-        log_record['timestamp'] = self.formatTime(record, self.datefmt)
-        log_record['levelname'] = record.levelname
-        log_record['data'] = record.message
-
-
-def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_mode: bool = False) -> dict:
+def set_logging(logging_config: APILoggingConfig) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -94,16 +30,11 @@ def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_m
     
     Parameters
     ----------
-    log_filepath : str
-        Log file path.
-    logging_config :  RotatedLoggingConfig
+    logging_config :  APILoggingConfig
         Logger configuration.
-    foreground_mode : bool
-        Log output to console streams when true
-        else Log output to file.
 
-    Raise
-    -----
+    Raises
+    ------
     ApiError
 
     Returns
@@ -113,24 +44,8 @@ def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_m
     """
     log_level = logging_config.get_level()
     handlers = {
-        'plainfile': None, 
-        'jsonfile': None,
+        'console': {}
     }
-    if foreground_mode:
-        handlers.update({'console': {}})
-
-    if 'json' in logging_config.format:
-        handlers["jsonfile"] = {
-            'filename': f"{log_filepath}.json",
-            'formatter': 'json',
-            'filters': ['json-filter'],
-        }
-    if 'plain' in logging_config.format:
-        handlers["plainfile"] = {
-            'filename': f"{log_filepath}.log",
-            'formatter': 'log',
-            'filters': ['plain-filter'],
-        }
 
     hdls = [k for k, v in handlers.items() if isinstance(v, dict)]
     if not hdls:
@@ -155,17 +70,10 @@ def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_m
                 "datefmt": "%Y/%m/%d %H:%M:%S",
                 "use_colors": None,
             },
-            "json" : {
-                '()': 'api.alogging.WazuhJsonFormatter',
-                'style': '%',
-                'datefmt': "%Y/%m/%d %H:%M:%S"
-            }
         },
         "filters": {
             'plain-filter': {'()': 'wazuh.core.wlogging.CustomFilter',
-                             'log_type': 'log' },
-            'json-filter': {'()': 'wazuh.core.wlogging.CustomFilter',
-                             'log_type': 'json' }
+                             'log_type': 'log'}
         },
         "handlers": {
             "default": {
@@ -193,21 +101,6 @@ def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_m
     }
 
     # configure file handlers
-    for handler, d in handlers.items():
-        if d and 'filename' in d:
-            if logging_config.max_size.enabled:
-                max_size = APILoggerSize(logging_config.max_size.size).size
-                d.update({
-                    'class':'wazuh.core.wlogging.SizeBasedFileRotatingHandler',
-                    'maxBytes': max_size,
-                    'backupCount': 1
-                })
-            else:
-                d.update({
-                    'class': 'wazuh.core.wlogging.TimeBasedFileRotatingHandler',
-                    'when': 'midnight'
-                })
-            log_config_dict['handlers'][handler] = d
 
     # Configure the uvicorn loggers. They will be created by the uvicorn server.
     log_config_dict['loggers']['uvicorn'] = {"handlers": hdls, "level": WARNING, "propagate": False}
@@ -223,8 +116,8 @@ def set_logging(log_filepath, logging_config: RotatedLoggingConfig, foreground_m
 
 
 def custom_logging(user, remote, method, path, query,
-                    body, elapsed_time, status, hash_auth_context='',
-                    headers: dict = None):
+                   body, elapsed_time, status, hash_auth_context='',
+                   headers: dict = None):
     """Provide the log entry structure depending on the logging format.
 
     Parameters

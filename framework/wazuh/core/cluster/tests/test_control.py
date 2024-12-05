@@ -159,10 +159,11 @@ async def test_distribute_orders(read_config_mock, get_cluster_items_mock):
     local_client = LocalClient()
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client) as execute_mock:
         with patch('json.loads'):
-            await control.distribute_orders(lc=local_client, orders=[Order(status='pending').to_dict()])
+            order = Order(document_id='1', status='pending').to_dict()
+            await control.distribute_orders(lc=local_client, orders=[order])
 
         data = b'[{"source": null, "user": null, "target": null, "action": null, "timeout": null, ' \
-            b'"status": "pending", "order_id": null, "request_id": null}]'
+            b'"status": "pending", "order_id": null, "request_id": null, "document_id": "1"}]'
         execute_mock.assert_called_once_with(command=b'dist_orders', data=data)
 
         with patch('json.loads', return_value=KeyError(1)):

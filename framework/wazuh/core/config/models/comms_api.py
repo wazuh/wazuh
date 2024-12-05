@@ -4,7 +4,7 @@ from pydantic import PositiveInt, PositiveFloat
 from api.constants import API_SSL_PATH
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import APISSLConfig
-from wazuh.core.config.models.logging import RotatedLoggingConfig
+from wazuh.core.config.models.logging import APILoggingConfig
 
 DEFAULT_COMMUNICATIONS_API_KEY_PATH = os.path.join(API_SSL_PATH, 'server.key')
 DEFAULT_COMMUNICATIONS_API_CERT_PATH = os.path.join(API_SSL_PATH, 'server.crt')
@@ -38,7 +38,7 @@ class CommsAPIConfig(WazuhConfigBaseModel):
         The port number for the communications API. Default: 27000.
     workers : PositiveInt
         The number of worker threads for the communications API. Default: 4.
-    logging : RotatedLoggingConfig
+    logging : APILoggingConfig
         Logging configuration for the communications API. Default is an instance of LoggingWithRotationConfig.
     batcher : BatcherConfig
         Configuration for the batcher. Default is an instance of BatcherConfig.
@@ -51,7 +51,7 @@ class CommsAPIConfig(WazuhConfigBaseModel):
     port: PositiveInt = 27000
     workers: PositiveInt = 4
 
-    logging: RotatedLoggingConfig = RotatedLoggingConfig()
+    logging: APILoggingConfig = APILoggingConfig()
     batcher: BatcherConfig = BatcherConfig()
     ssl: APISSLConfig = APISSLConfig(
         key=DEFAULT_COMMUNICATIONS_API_KEY_PATH,

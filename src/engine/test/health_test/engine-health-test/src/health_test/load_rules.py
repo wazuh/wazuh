@@ -103,12 +103,12 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
 def run(args):
     env_path = Path(args['environment']).resolve()
 
-    conf_path = (env_path / "engine/general.conf").resolve()
+    conf_path = (env_path / "config.env").resolve()
     if not conf_path.is_file():
         print(f"Configuration file not found: {conf_path}")
         sys.exit(1)
 
-    bin_path = (env_path / "bin/wazuh-engine").resolve()
+    bin_path = (env_path / "wazuh-engine").resolve()
     if not bin_path.is_file():
         print(f"Engine binary not found: {bin_path}")
         sys.exit(1)

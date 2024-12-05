@@ -7,7 +7,7 @@ import os
 import sqlite3
 import sys
 from copy import copy
-from unittest.mock import AsyncMock, patch, call
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from shutil import rmtree
@@ -900,40 +900,6 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     assert agents['items'][0]['id'] == first_id
 
 
-@pytest.mark.parametrize("agent_id, seconds, expected_result", [
-    ('002', 10, True),
-    ('002', 700, False)
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_check_if_delete_agent(socket_mock, send_mock, agent_id, seconds, expected_result):
-    """Test if check_if_delete_agent() returns True when time from last connection is greater than <seconds>
-
-    Parameters
-    ----------
-    agent_id : str
-        Id of the agent to be searched.
-    seconds : int
-        Number of seconds.
-    expected_result : bool
-        Result that check_if_delete_agent() should return with given params.
-    """
-    result = Agent.check_if_delete_agent(agent_id, seconds)
-    assert result == expected_result, f'Result is {result} but should be {expected_result}'
-
-
-@patch("wazuh.core.agent.Agent.get_basic_information")
-def test_agent_check_if_delete_agent_ko(mock_agent):
-    """Test if check_if_delete_agent() returns True when lastKeepAlive == 0 or not instance of datetime"""
-    mock_agent.return_value = {'lastKeepAlive': 0}
-    result = Agent.check_if_delete_agent(0, 700)
-    assert result, f'Result is {result} but should be True'
-
-    mock_agent.return_value = {'lastKeepAlive': '2000-01-01 00:00:00'}
-    result = Agent.check_if_delete_agent(0, 700)
-    assert result, f'Result is {result} but should be True'
-
-
 @pytest.mark.parametrize("group_exists", [
     True,
     False,
@@ -1112,52 +1078,6 @@ def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
         agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"global":{}, "interval":{}}}'
-    result = agent.get_stats('logcollector')
-    assert result == {'global': {}, 'interval': {}}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method raises expected exception when the agent's version is lower than required."""
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
-        agent.get_stats('logcollector')
-
-
-@pytest.mark.parametrize('agents_list, versions_list', [
-    (['001', '002', '003', '004'],
-     [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
-])
-@patch('wazuh.core.agent.WazuhQueue.send_msg_to_agent')
-@patch('wazuh.core.agent.WazuhQueue.__init__', return_value=None)
-def test_send_restart_command(wq_mock, wq_send_msg, agents_list, versions_list):
-    """Test that restart_command calls send_msg_to_agent with correct params.
-
-    Parameters
-    ----------
-    agents_list : list
-        List of agents' ids to test the send restart command with.
-    versions_list : list
-        List of agents' versions to test whether the message sent was the correct one or not.
-    """
-    with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
-        for agent_id, agent_version in zip(agents_list, versions_list):
-            wq = WazuhQueue(common.AR_SOCKET)
-            send_restart_command(agent_id, agent_version['version'], wq)
-            expected_msg = WazuhQueue.RESTART_AGENTS_JSON if WazuhVersion(
-                agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else WazuhQueue.RESTART_AGENTS
-            wq_send_msg.assert_called_with(expected_msg, agent_id)
 
 
 @patch('wazuh.core.indexer.create_indexer')

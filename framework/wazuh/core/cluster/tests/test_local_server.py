@@ -15,6 +15,7 @@ from uvloop import Loop
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
+        # TODO: Fix in #26725
         with patch('wazuh.core.utils.load_wazuh_xml'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators

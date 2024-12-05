@@ -1,8 +1,9 @@
-from pydantic import FilePath, PositiveInt, PositiveFloat
+from pydantic import FilePath, PositiveInt, PositiveFloat, model_serializer
+from typing import Dict, Any
 
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.config.models.base import WazuhConfigBaseModel
-from wazuh.core.config.models.logging import LoggingConfig
+from wazuh.core.config.models.logging import EngineLoggingConfig
 
 
 class EngineClientConfig(WazuhConfigBaseModel):
@@ -36,4 +37,15 @@ class EngineConfig(WazuhConfigBaseModel):
     """
     tzdv_automatic_update: bool = False
     client: EngineClientConfig = EngineClientConfig()
-    logging: LoggingConfig = LoggingConfig()
+    logging: EngineLoggingConfig = EngineLoggingConfig()
+
+    @model_serializer(when_used='json')
+    def only_logging_serialize(self) -> Dict[str, Any]:
+        """Serialize the EngineConfig model to include only the logging field when used in JSON serialization.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing only the logging configuration.
+        """
+        return {'logging': self.logging}
