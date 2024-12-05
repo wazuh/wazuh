@@ -74,7 +74,6 @@ scl enable devtoolset-11 ./install.sh
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
 
 # Copy the installed files into RPM_BUILD_ROOT directory
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}run/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
@@ -88,7 +87,6 @@ cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid ${RPM_BUILD_ROOT}%{
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
-cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/
 cp -pr %{_localstatedir}var/lib/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/
 cp -pr %{_localstatedir}var/log/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/log/
@@ -172,7 +170,6 @@ if [ $1 = 0 ];then
   fi
 
   # Remove lingering folders and files
-  rm -rf %{_localstatedir}tmp/wazuh-server
   rm -rf %{_localstatedir}usr/bin/wazuh-engine
   rm -rf %{_localstatedir}usr/bin/wazuh-apid
   rm -rf %{_localstatedir}usr/bin/wazuh-comms-apid
@@ -200,10 +197,6 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   fi
 fi
 
-chown -R wazuh:wazuh %{_localstatedir}tmp/wazuh-server
-find %{_localstatedir}tmp/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-chown -R wazuh:wazuh %{_localstatedir}tmp/wazuh-server
-find %{_localstatedir}tmp/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 chown -R wazuh:wazuh %{_localstatedir}var/lib/wazuh-server
 find %{_localstatedir}var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 chown -R wazuh:wazuh %{_localstatedir}var/log/wazuh-server
@@ -239,6 +232,7 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}run/wazuh-server
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}var/lib/wazuh-server
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}var/lib/wazuh-server/vd
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}var/lib/wazuh-server/tmp
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}var/lib/wazuh-server/engine
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}var/lib/wazuh-server/engine/tzdb
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}var/log/wazuh-server
@@ -271,7 +265,7 @@ rm -fr %{buildroot}
 %attr(750, wazuh, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
 # This will be correctly added in #26936
 %attr(750, wazuh, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/rbac_control
-%attr(640, wazuh, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
+%attr(640, wazuh, wazuh) %{_localstatedir}var/lib/wazuh-server/tmp/vd_1.0.0_vd_4.10.0.tar.xz
 
 %config(missingok) %{_initrddir}/wazuh-server
 /usr/lib/systemd/system/wazuh-server.service

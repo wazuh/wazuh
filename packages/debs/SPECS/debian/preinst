@@ -21,12 +21,12 @@ fi
 case "$1" in
     install|upgrade)
         if [ "$1" = "install" ]; then
-            # Create wazuh group if not exists
+            # Create wazuh group if it does not exist
             if ! getent group $WAZUH_USER > /dev/null 2>&1; then
                 groupadd -r $WAZUH_USER
             fi
 
-            # Create wazuh user if not exists
+            # Create wazuh user if it does not exist
             if ! getent passwd ${WAZUH_USER} > /dev/null 2>&1; then
                 useradd ${WAZUH_USER} -d / -s /sbin/nologin -g ${WAZUH_USER}
             fi

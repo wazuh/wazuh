@@ -31,8 +31,6 @@ InstallCommon()
 
   ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
-  # Folder for temporary files
-  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}tmp/wazuh-server
   # Folder for the engine api socket
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-engine
   # Folder for persistent databases (vulnerability scanner, ruleset, connector).
@@ -95,11 +93,11 @@ InstallServer()
 checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.10.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}tmp/wazuh-server/${VD_FILENAME}
+    VD_FULL_PATH=${INSTALLDIR}var/lib/wazuh-server/tmp/${VD_FILENAME}
 
     if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
         echo "Download ${VD_FILENAME} file"
-        mkdir -p ${INSTALLDIR}tmp/wazuh-server
+        mkdir -p ${INSTALLDIR}var/lib/wazuh-server/tmp/
         wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
 
         chmod 640 ${VD_FULL_PATH}
@@ -139,7 +137,7 @@ installEngineStore()
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}/engine/kvdb
     find ${DEST_FULL_PATH}/engine/store -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
     find ${DEST_FULL_PATH}/engine/kvdb -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-    
+
     echo "Verifying store installation..."
     if [ ! -d "${DEST_FULL_PATH}/engine/store" ] || [ ! -d "${DEST_FULL_PATH}/engine/kvdb" ]; then
         echo "Error: Store installation verification failed. Required directories are missing."

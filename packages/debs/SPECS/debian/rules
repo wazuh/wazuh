@@ -70,7 +70,6 @@ override_dh_install:
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 
-	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)tmp/
 	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
 	cp -pr $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/
 	cp -pr $(INSTALLATION_DIR)var/log/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/log/
@@ -90,8 +89,6 @@ override_dh_install:
 override_dh_fixperms:
 	dh_fixperms
 	# Folders
-	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server
-	find $(TARGET_DIR)$(INSTALLATION_DIR)tmp/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
 	find $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
