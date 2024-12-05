@@ -138,16 +138,29 @@ public:
 
     void pop()
     {
+        // If the queue is empty, nothing to do.
+        if (m_size == 0)
+        {
+            return;
+        }
+
         auto index = m_first;
         std::string value;
 
         // Find the first element in the queue from m_first (included).
-        while (!m_db->KeyMayExist(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value))
+        while (index <= m_last &&
+               !m_db->KeyMayExist(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value))
         {
             // If the key does not exist, it means that the queue is not continuous.
             // This incremental is only for the head, because this is a part of recovery algorithm when the queue
             // not is continuous.
             ++index;
+        }
+
+        // If the index is greater than the last element, the queue status is invalid.
+        if (index > m_last)
+        {
+            throw std::runtime_error("Failed to dequeue element, queue is empty");
         }
 
         // RocksDB dequeue element.
