@@ -269,8 +269,8 @@ def terminate_processes(
     """
     if parent_pid == os.getpid():
         logger.info('Shutting down')
-        batcher_process.terminate()
         mux_demux_manager.shutdown()
+        batcher_process.terminate()
         commands_manager.shutdown()
         pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
         pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
@@ -341,5 +341,3 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
-    finally:
-        terminate_processes(pid, mux_demux_manager, batcher_process, commands_manager)

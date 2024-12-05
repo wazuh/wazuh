@@ -125,7 +125,7 @@ class Batcher:
         self._shutdown_event = asyncio.Event()
         loop = asyncio.get_running_loop()
         loop.add_signal_handler(signal.SIGTERM, self._handle_signal, signal.SIGTERM)
-        loop.add_signal_handler(signal.SIGINT, self._handle_signal, signal.SIGINT)
+        loop.add_signal_handler(signal.SIGINT, signal.SIG_IGN)
 
         try:
             while not self._shutdown_event.is_set():
@@ -171,8 +171,6 @@ class Batcher:
         signal_number : int
             Signal number indicating the type of signal received (e.g., SIGINT, SIGTERM).
         """
-        if signal_number == signal.Signals.SIGINT:
-            return
         signal_name = signal.Signals(signal_number).name
         logger.info(f'Batcher (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
         self._shutdown_event.set()
