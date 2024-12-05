@@ -15,8 +15,15 @@
 
 #include "keyStore.hpp"
 
-constexpr auto KS_VALUE_SEPARATOR {':'};                   // Default separator for key-value pairs.
+constexpr auto KS_VALUE_SEPARATOR {':'}; // Default separator for key-value pairs.
 
+/**
+ * @brief Insert or update a key-value pair in the keystore.
+ *
+ * @param key The key to be inserted or updated.
+ * @param value The value to be inserted or updated.
+ * @param keyStorePath The path to the key store file.
+ */
 void Keystore::put(const std::string& key, const std::string& value, const std::string& keyStorePath)
 {
     std::vector<char> encryptedValue;
@@ -27,21 +34,20 @@ void Keystore::put(const std::string& key, const std::string& value, const std::
 }
 
 /**
- * Get the key value in the specified column family.
+ * Get the a value from the keystore.
  *
- * @param key The key to be inserted or updated.
- * @param value The corresponding value to be returned.
+ * @param key The key to be retrieved.
+ * @param value The returned value. Won't be modified if the key is not found.
  * @param keyStorePath The path to the key store file.
  */
 bool Keystore::get(const std::string& key, std::string& value, const std::string& keyStorePath)
 {
-    std::string encryptedValue;
+    std::vector<char> encryptedValueVec;
 
     auto keyStore = base::utils::KeyValueFile(keyStorePath, KS_VALUE_SEPARATOR);
 
-    if (keyStore.get(key, encryptedValue))
+    if (keyStore.get(key, encryptedValueVec))
     {
-        std::vector<char> encryptedValueVec(encryptedValue.begin(), encryptedValue.end());
         base::utils::EVPHelper().decryptAES256(encryptedValueVec, value);
         return true;
     }
