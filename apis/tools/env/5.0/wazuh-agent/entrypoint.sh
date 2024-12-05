@@ -11,9 +11,18 @@ done
 
 echo "Waiting for the manager to be up..."
 
-until curl -sfIo /dev/null "${MANAGER_URL}/"; do
+while true
+do
+    curl -ksfIo /dev/null "${MANAGER_URL}/"
+    if [[ "$?" -eq 22 ]]; then
+        break
+    fi
     sleep 1
 done
+
+# Wait some time for the nodes to sync the JWT key pair and configurations
+echo "Waiting for the nodes to sync..."
+sleep 10
 
 # Register agent
 /usr/share/wazuh-agent/bin/wazuh-agent --register --url $NGINX_URL --user $USER --password $PASSWORD
