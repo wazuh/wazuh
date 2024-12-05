@@ -120,9 +120,9 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
     sslCertificate = config.sslOptions.cert;
     sslKey = config.sslOptions.key;
 
-    const auto& kesytorePath = config.keystorePath.empty() ? KEYSTORE_PATH : config.keystorePath;
-    Keystore::get(USER_KEY, username, kesytorePath);
-    Keystore::get(PASSWORD_KEY, password, kesytorePath);
+    const auto& keystorePath = config.keystorePath.empty() ? KEYSTORE_PATH : config.keystorePath;
+    Keystore::get(USER_KEY, username, keystorePath);
+    Keystore::get(PASSWORD_KEY, password, keystorePath);
 
     if (username.empty())
     {
