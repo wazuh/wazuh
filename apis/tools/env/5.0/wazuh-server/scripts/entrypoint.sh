@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+shutdown() {
+    echo "Container stopped, shutting down server..."
+    /usr/share/wazuh-server/bin/wazuh-server stop
+}
+
+# Trap SIGTERM
+trap 'shutdown' SIGTERM
+
 cp /tmp/wazuh-server.yml /etc/wazuh-server/wazuh-server.yml
 
 # Set node's name
@@ -11,4 +19,6 @@ then
     sed -i "s:type\: master:type\: worker:g" /etc/wazuh-server/wazuh-server.yml
 fi
 
-/usr/share/wazuh-server/bin/wazuh-server start -r
+/usr/share/wazuh-server/bin/wazuh-server start -r &
+
+wait $!
