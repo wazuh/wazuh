@@ -1089,7 +1089,8 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_status(eEngine::ReturnStatus::OK);
                 return userResponse<eEngine::policy::DefaultParentDelete_Response>(protoRes);
             },
-            [](auto& mock) {
+            [](auto& mock)
+            {
                 EXPECT_CALL(mock, delDefaultParent(testing::_, testing::_, testing::_))
                     .WillOnce(testing::Return(std::string("")));
             }),
@@ -1111,7 +1112,8 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.set_warning("warning");
                 return userResponse<eEngine::policy::DefaultParentDelete_Response>(protoRes);
             },
-            [](auto& mock) {
+            [](auto& mock)
+            {
                 EXPECT_CALL(mock, delDefaultParent(testing::_, testing::_, testing::_))
                     .WillOnce(testing::Return(std::string("warning")));
             }),
@@ -1127,7 +1129,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<IPolicy>& policyManager) { return policyDefaultParentDelete(policyManager); },
             []() { return userErrorResponse<eEngine::policy::DefaultParentDelete_Response>("error"); },
-            [](auto& mock) {
+            [](auto& mock)
+            {
                 EXPECT_CALL(mock, delDefaultParent(testing::_, testing::_, testing::_))
                     .WillOnce(testing::Return(base::Error {"error"}));
             }),
@@ -1171,7 +1174,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return createRequest<eEngine::policy::DefaultParentDelete_Request>(protoReq);
             },
             [](const std::shared_ptr<IPolicy>& policyManager) { return policyDefaultParentDelete(policyManager); },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::policy::DefaultParentDelete_Response>(
                     "Invalid policy name: Name cannot be empty");
             },
@@ -1228,7 +1232,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return createRequest<eEngine::policy::DefaultParentDelete_Request>(protoReq);
             },
             [](const std::shared_ptr<IPolicy>& policyManager) { return policyDefaultParentDelete(policyManager); },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::policy::DefaultParentDelete_Response>(
                     "Invalid parent name: Name cannot be empty");
             },
@@ -1251,8 +1256,7 @@ INSTANTIATE_TEST_SUITE_P(
                 protoRes.add_data("policy/policy/0");
                 return userResponse<eEngine::policy::PoliciesGet_Response>(protoRes);
             },
-            [](auto& mock)
-            {
+            [](auto& mock) {
                 EXPECT_CALL(mock, list())
                     .WillOnce(testing::Return(std::vector<base::Name> {base::Name("policy/policy/0")}));
             }),
@@ -1265,8 +1269,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<IPolicy>& policyManager) { return policiesGet(policyManager); },
             []() { return userErrorResponse<eEngine::policy::PoliciesGet_Response>("error"); },
-            [](auto& mock)
-            { EXPECT_CALL(mock, list()).WillOnce(testing::Return(base::Error {"error"})); }),
+            [](auto& mock) { EXPECT_CALL(mock, list()).WillOnce(testing::Return(base::Error {"error"})); }),
         // Wrong request type
         HandlerT(
             []()
