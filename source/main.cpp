@@ -614,7 +614,7 @@ int main(int argc, char* argv[])
              * @apiBody (Log Information) {Object} event Details of the event itself.
              * @apiBody (Log Information) {String} event.original The original message collected from the agent.
              * @apiBody (Log Information) {String} event.created Timestamp when an event is recollected in '%Y-%m-%dT%H:%M:%SZ' format.
-             * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g. apache, eventchannel,
+             * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g. apache, windows-eventchannel,
              * journald, etc)
              * @apiBody (Log Information) {String} event.provider Source of the event. (e.g channel, file, journald unit, etc)
              *
