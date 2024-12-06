@@ -69,12 +69,12 @@ InstallServer()
     ${PYTHON_BIN_PATH} -m pip install ../framework/
 
     ## Install Server management API
-    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=/usr/share/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../api/
+    ${MAKEBIN} --quiet -C ../apis/server_management install INSTALLDIR=/usr/share/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../apis/server_management
 
     ## Install Communications API
-    ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=/usr/share/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../apis/
+    ${MAKEBIN} --quiet -C ../apis/communications install INSTALLDIR=/usr/share/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../apis/communications
 
 }
 
