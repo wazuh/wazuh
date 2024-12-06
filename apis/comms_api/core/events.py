@@ -176,6 +176,7 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
             status = r[IndexerKey.STATUS]
             if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
                 task_result = TaskResult(
+                    index=r[IndexerKey._INDEX],
                     id=r[IndexerKey._ID],
                     result=r[IndexerKey.RESULT],
                     status=status
@@ -186,7 +187,12 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
                 else:
                     error_reason = r[IndexerKey.ERROR][IndexerKey.REASON]
                     
-                task_result = TaskResult(id=r[IndexerKey._ID], result=error_reason, status=status)
+                task_result = TaskResult(
+                    index=r[IndexerKey._INDEX],
+                    id=r[IndexerKey._ID],
+                    result=error_reason,
+                    status=status,
+                )
 
             results.append(task_result)
 

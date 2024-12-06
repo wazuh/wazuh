@@ -8,7 +8,7 @@ from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.events import post_stateful_events, post_stateless_events
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.exception import WazuhEngineError, WazuhError
-from wazuh.core.indexer.models.events import TaskResult
+from wazuh.core.indexer.models.events import TaskResult, FIM_INDEX
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,7 @@ async def test_post_stateful_events(parse_stateful_events_mock, send_stateful_ev
     })
     request.app.state.batcher_queue = AsyncMock()
 
-    results = [TaskResult(id='123', result='created', status=201)]
+    results = [TaskResult(index=FIM_INDEX, id='123', result='created', status=201)]
     events = []
     parse_stateful_events_mock.return_value = events
     send_stateful_events_mock.return_value = results
