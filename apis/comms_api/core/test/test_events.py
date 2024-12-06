@@ -250,17 +250,33 @@ def test_parse_tasks_results():
 
         }],
         [{
+            '_id': '3',
             'status': 400,
             'error': {
                 'reason': 'invalid field `scan_time`'
             },
+        }],
+        [{
+            '_id': '4',
+            'status': 404,
+            'error': {
+                'reason': '[4]: document missing'
+            },
+        }],
+        [{
+            '_index': 'wazuh-states-inventory-processes',
+            '_id': '5',
+            'result': 'not_found',
+            'status': 404
         }]
     ]
     expected = [
         TaskResult(id='1', result='created', status=201),
         TaskResult(id='1', result='updated', status=200),
         TaskResult(id='2', result='updated', status=200),
-        TaskResult(id='', result='invalid field `scan_time`', status=400),
+        TaskResult(id='3', result='invalid field `scan_time`', status=400),
+        TaskResult(id='4', result='[4]: document missing', status=404),
+        TaskResult(id='5', result='not_found', status=404),
     ]
     results = parse_tasks_results(tasks_results)
 
