@@ -81,12 +81,12 @@ InstallServer()
     ${PYTHON_BIN_PATH} -m pip install ../framework/
 
     ## Install Server management API
-    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=/usr/share/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../api/
+    ${MAKEBIN} --quiet -C ../apis/server_management install INSTALLDIR=/usr/share/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../apis/server_management
 
     ## Install Communications API
-    ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=/usr/share/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../apis/
+    ${MAKEBIN} --quiet -C ../apis/communications install INSTALLDIR=/usr/share/wazuh-server
+    ${PYTHON_BIN_PATH} -m pip install ../apis/communications
 
 }
 
@@ -137,7 +137,7 @@ installEngineStore()
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}/engine/kvdb
     find ${DEST_FULL_PATH}/engine/store -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
     find ${DEST_FULL_PATH}/engine/kvdb -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-    
+
     echo "Verifying store installation..."
     if [ ! -d "${DEST_FULL_PATH}/engine/store" ] || [ ! -d "${DEST_FULL_PATH}/engine/kvdb" ]; then
         echo "Error: Store installation verification failed. Required directories are missing."
