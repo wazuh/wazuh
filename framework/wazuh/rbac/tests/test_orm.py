@@ -30,7 +30,7 @@ def db_setup():
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
-                with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                with patch('server_management_api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as rbac
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
@@ -1089,7 +1089,7 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
 ])
 def test_migrate_data(db_setup, from_id, to_id, users):
     """Test `migrate_data` function briefly.
-    
+
     NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
     # This test case updates the default user passwords and omits the rest of the migration
     if to_id == WAZUH_WUI_USER_ID:

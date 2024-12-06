@@ -21,8 +21,8 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.default_controller.load_spec', return_value=MagicMock())
-@patch('api.controllers.default_controller.WazuhResult', return_value={})
+@patch('server_management_api.controllers.default_controller.load_spec', return_value=MagicMock())
+@patch('server_management_api.controllers.default_controller.WazuhResult', return_value={})
 async def test_default_info(mock_wresult, mock_lspec):
     """Verify 'default_info' endpoint is working as expected."""
     result = await default_info()

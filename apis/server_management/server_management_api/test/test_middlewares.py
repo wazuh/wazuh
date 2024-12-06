@@ -47,21 +47,21 @@ def mock_req(request, request_info):
 async def test_middlewares_check_blocked_ip(mock_req):
     """Test check_blocked_ip function.
        Check if the ip_block is emptied when the blocking period has finished."""
-    with patch("api.middlewares.ip_stats", new={'ip': {'timestamp': -300}}) as mock_ip_stats, \
-        patch("api.middlewares.ip_block", new={"ip"}) as mock_ip_block:
+    with patch("server_management_api.middlewares.ip_stats", new={'ip': {'timestamp': -300}}) as mock_ip_stats, \
+        patch("server_management_api.middlewares.ip_block", new={"ip"}) as mock_ip_block:
         check_blocked_ip(mock_req)
         # Assert that under these conditions, they have been emptied
         assert not mock_ip_stats and not mock_ip_block
 
 
-@patch("api.middlewares.ip_stats", new={"ip": {'timestamp': 5}})
-@patch("api.middlewares.ip_block", new={"ip"})
+@patch("server_management_api.middlewares.ip_stats", new={"ip": {'timestamp': 5}})
+@patch("server_management_api.middlewares.ip_block", new={"ip"})
 @freeze_time(datetime(1970, 1, 1))
 @pytest.mark.asyncio
 async def test_middlewares_check_blocked_ip_ko(mock_req):
     """Test if `check_blocked_ip` raises an exception if the IP is still blocked."""
     with pytest.raises(ProblemException) as exc_info, \
-        patch('api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req):
+        patch('server_management_api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req):
         check_blocked_ip(mock_req)
         assert exc_info.value.status == 403
         assert exc_info.value.title == "Permission Denied"
@@ -84,7 +84,7 @@ def test_middlewares_check_rate_limit(
     expected_error_code, mock_req):
     """Test if the rate limit mechanism triggers when the `max_requests` are reached."""
 
-    with patch(f"api.middlewares.{current_time_key}", new=current_time):
+    with patch(f"server_management_api.middlewares.{current_time_key}", new=current_time):
         code = check_rate_limit(
             current_time_key=current_time_key,
             request_counter_key=current_counter_key,
@@ -107,8 +107,8 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
     rq_x_min = 10000
     api_conf = {'access': { 'max_request_per_minute': rq_x_min }}
     with TestContext(operation=operation), \
-        patch('api.middlewares.check_rate_limit', return_value=0) as mock_check, \
-        patch('api.middlewares.configuration.api_conf', new=api_conf):
+        patch('server_management_api.middlewares.check_rate_limit', return_value=0) as mock_check, \
+        patch('server_management_api.middlewares.configuration.api_conf', new=api_conf):
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         if endpoint == '/events':
             mock_check.assert_has_calls([
@@ -144,10 +144,10 @@ async def test_check_rate_limits_middleware_ko(
     rq_x_min = 10000
     api_conf = {'access': { 'max_request_per_minute': rq_x_min }}
     with TestContext(operation=operation), \
-        patch('api.middlewares.ConnexionRequest.from_starlette_request',
+        patch('server_management_api.middlewares.ConnexionRequest.from_starlette_request',
               return_value=mock_req) as mock_from, \
-        patch('api.middlewares.configuration.api_conf', api_conf), \
-        patch('api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect), \
+        patch('server_management_api.middlewares.configuration.api_conf', api_conf), \
+        patch('server_management_api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect), \
         pytest.raises(ProblemException) as exc_info:
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         mock_from.assert_called_once_with(mock_req)
@@ -193,17 +193,17 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
     mock_blacke2b = MagicMock()
     mock_blacke2b.return_value.hexdigest.return_value = f"blackeb2 {hash}"
     with TestContext(operation=operation), \
-        patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('server_management_api.middlewares.custom_logging') as mock_custom_logging, \
         patch('hashlib.blake2b', mock_blacke2b), \
-        patch('api.middlewares.base64.b64decode', return_value=sec_header[1].encode("latin1") \
+        patch('server_management_api.middlewares.base64.b64decode', return_value=sec_header[1].encode("latin1") \
                   if isinstance(sec_header[1], str) else '') as mock_b64decode, \
-        patch('api.middlewares.jwt.decode',
+        patch('server_management_api.middlewares.jwt.decode',
               return_value=sec_header[1])  as mock_jwt_decode, \
-        patch('api.middlewares.get_keypair',
+        patch('server_management_api.middlewares.get_keypair',
               return_value=(None, None)) as mock_get_keypair, \
-        patch('api.middlewares.logger.warning',
+        patch('server_management_api.middlewares.logger.warning',
               return_value=(None, None)) as mock_log_warning, \
-        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+        patch('server_management_api.middlewares.AbstractSecurityHandler.get_auth_header_value',
               return_value=sec_header) as mock_get_headers:
         expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
         await access_log(request=mock_req, response=response, prev_time=expected_time)
@@ -254,10 +254,10 @@ async def test_access_log_hash_auth_context(mock_req):
     mock_req.headers = {}
     mock_req.query_params = {}
 
-    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
-        patch('api.middlewares.jwt.decode', return_value=sec_header[1]), \
-        patch('api.middlewares.get_keypair', return_value=(None, None)), \
-        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header):
+    with patch('server_management_api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('server_management_api.middlewares.jwt.decode', return_value=sec_header[1]), \
+        patch('server_management_api.middlewares.get_keypair', return_value=(None, None)), \
+        patch('server_management_api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header):
         await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
 
         mock_custom_logging.assert_called_once_with(
@@ -297,8 +297,8 @@ async def test_access_log_ko(mock_req, exception):
     mock_req.headers = {'content-type': 'None'}
 
     with TestContext(operation=operation), \
-        patch('api.middlewares.custom_logging') as mock_custom_logging, \
-        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=exception):
+        patch('server_management_api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('server_management_api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=exception):
         expected_time = datetime(1970, 1, 1, 0, 0, 0).timestamp()
         await access_log(request=mock_req, response=response, prev_time=expected_time)
         mock_custom_logging.assert_called_once_with(
@@ -322,8 +322,8 @@ async def test_wazuh_access_logger_middleware():
     operation.method = "post"
 
     with TestContext(operation=operation), \
-        patch('api.middlewares.access_log') as mock_access_log, \
-        patch('api.middlewares.ConnexionRequest.from_starlette_request',
+        patch('server_management_api.middlewares.access_log') as mock_access_log, \
+        patch('server_management_api.middlewares.ConnexionRequest.from_starlette_request',
               return_value=mock_req) as mock_from:
         expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
         resp = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
@@ -343,7 +343,7 @@ async def test_secure_headers_middleware(mock_req):
     operation = MagicMock(name="operation")
     operation.method = "post"
 
-    with TestContext(operation=operation), patch('api.middlewares.secure_headers') as mock_secure:
+    with TestContext(operation=operation), patch('server_management_api.middlewares.secure_headers') as mock_secure:
         secure_headers.framework.starlette = MagicMock()
         ret_response = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         mock_secure.framework.starlette.assert_called_once_with(response)
@@ -375,7 +375,7 @@ async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req)
     mock_req.method = method
 
     with TestContext(operation=operation), \
-        patch('api.middlewares.check_blocked_ip') as mock_block_ip:
+        patch('server_management_api.middlewares.check_blocked_ip') as mock_block_ip:
         secure_headers.framework.starlette = MagicMock()
         ret_response = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         if call_check:

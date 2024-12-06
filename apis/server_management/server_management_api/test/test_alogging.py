@@ -43,7 +43,7 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
     log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" ' if hash_auth_context \
                 else f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
     json_info.update({'hash_auth_context' : hash_auth_context} if hash_auth_context else {})
-    with patch('api.alogging.logger') as log_info_mock:
+    with patch('server_management_api.alogging.logger') as log_info_mock:
         log_info_mock.info = MagicMock()
         log_info_mock.debug2 = MagicMock()
         log_info_mock.level = loggerlevel

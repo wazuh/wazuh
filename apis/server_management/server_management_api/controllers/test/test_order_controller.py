@@ -25,16 +25,16 @@ with patch('wazuh.common.wazuh_uid'):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["order_controller"], indirect=True)
-@patch('api.configuration.api_conf')
-@patch('api.controllers.order_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.order_controller.remove_nones_to_dict')
-@patch('api.controllers.order_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.order_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.configuration.api_conf')
+@patch('server_management_api.controllers.order_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.order_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.order_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.order_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_post_orders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'post_orders' endpoint is working as expected."""
-    with patch('api.controllers.order_controller.Body.validate_content_type'):
+    with patch('server_management_api.controllers.order_controller.Body.validate_content_type'):
         with patch(
-            'api.controllers.order_controller.Orders.get_kwargs', return_value=AsyncMock()
+            'server_management_api.controllers.order_controller.Orders.get_kwargs', return_value=AsyncMock()
         ) as mock_getkwargs:
 
             result = await post_orders()

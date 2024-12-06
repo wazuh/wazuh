@@ -21,7 +21,7 @@ from server_management_api.signals import (
 @pytest.fixture
 def installation_uid_mock():
     with patch(
-        'api.signals.INSTALLATION_UID_PATH', os.path.join('/tmp', INSTALLATION_UID_KEY)
+        'server_management_api.signals.INSTALLATION_UID_PATH', os.path.join('/tmp', INSTALLATION_UID_KEY)
     ) as path_mock:
         yield path_mock
 
@@ -30,7 +30,7 @@ def installation_uid_mock():
 
 @pytest.fixture
 def query_update_check_service_mock():
-    with patch('api.signals.query_update_check_service') as mock:
+    with patch('server_management_api.signals.query_update_check_service') as mock:
         yield mock
 
 
@@ -45,10 +45,10 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
     coroutine_mock.assert_awaited_once()
 
 
-@patch('api.signals.os.chmod')
-@patch('api.signals.os.chown')
-@patch('api.signals.common.wazuh_gid')
-@patch('api.signals.common.wazuh_uid')
+@patch('server_management_api.signals.os.chmod')
+@patch('server_management_api.signals.os.chown')
+@patch('server_management_api.signals.common.wazuh_gid')
+@patch('server_management_api.signals.common.wazuh_uid')
 @pytest.mark.asyncio
 async def test_check_installation_uid_populate_uid_if_not_exists(
     uid_mock, gid_mock, chown_mock, chmod_mock, installation_uid_mock
@@ -125,7 +125,7 @@ async def test_get_update_information_injects_correct_data_into_app_context(
 @pytest.mark.asyncio
 async def test_get_update_information_schedule(query_update_check_service_mock):
     cti_context[INSTALLATION_UID_KEY] = str(uuid4())
-    with patch('api.signals.asyncio') as sleep_mock:
+    with patch('server_management_api.signals.asyncio') as sleep_mock:
         task = asyncio.create_task(
             get_update_information()
         )
@@ -145,10 +145,10 @@ async def test_get_update_information_schedule(query_update_check_service_mock):
         (False, False, 0),
     ],
 )
-@patch('api.signals.check_installation_uid')
-@patch('api.signals.get_update_information')
-@patch('api.signals.update_check_is_enabled')
-@patch('api.signals.running_in_master_node')
+@patch('server_management_api.signals.check_installation_uid')
+@patch('server_management_api.signals.get_update_information')
+@patch('server_management_api.signals.update_check_is_enabled')
+@patch('server_management_api.signals.running_in_master_node')
 @pytest.mark.asyncio
 async def test_register_background_tasks(
     running_in_master_node_mock,
@@ -167,7 +167,7 @@ async def test_register_background_tasks(
     running_in_master_node_mock.return_value = cluster_config
     update_check_mock.return_value = update_check_config
 
-    with patch('api.signals.asyncio') as create_task_mock:
+    with patch('server_management_api.signals.asyncio') as create_task_mock:
         create_task_mock.create_task.return_value = AwaitableMock(spec=asyncio.Task)
         create_task_mock.create_task.return_value.cancel = AsyncMock()
 

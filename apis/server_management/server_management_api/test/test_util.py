@@ -123,13 +123,13 @@ def test_deserialize_dict():
     assert all(isinstance(x, TestClass) for x in result.values())
 
 
-@patch('api.util._deserialize_primitive')
-@patch('api.util._deserialize_object')
-@patch('api.util.deserialize_date')
-@patch('api.util.deserialize_datetime')
-@patch('api.util._deserialize_list')
-@patch('api.util._deserialize_dict')
-@patch('api.util.deserialize_model')
+@patch('server_management_api.util._deserialize_primitive')
+@patch('server_management_api.util._deserialize_object')
+@patch('server_management_api.util.deserialize_date')
+@patch('server_management_api.util.deserialize_datetime')
+@patch('server_management_api.util._deserialize_list')
+@patch('server_management_api.util._deserialize_dict')
+@patch('server_management_api.util.deserialize_model')
 def test_deserialize(mock_model, mock_dict, mock_list, mock_datetime, mock_date, mock_object, mock_primitive):
     """Check that _deserialize calls the expected function depending on the class"""
     assert util._deserialize(None, None) is None
@@ -212,7 +212,7 @@ def test_create_problem(exception_type, code, extra_fields, returned_code, retur
     ((WazuhPermissionError(4000), ['value0', 'value1']), None),
     ((WazuhResourceNotFound(1710), ['value0', 'value1']), None)
 ])
-@patch('api.util._create_problem')
+@patch('server_management_api.util._create_problem')
 def test_raise_if_exc(mock_create_problem, obj, code):
     """Check that raise_if_exc calls _create_problem when an exception is given"""
     result = util.raise_if_exc(obj)
@@ -277,7 +277,7 @@ async def test_deprecate_endpoint(link):
     assert response.headers == {}, f'Unexpected deprecation headers were found: {response.headers}'
 
 
-@patch('api.util.raise_if_exc')
+@patch('server_management_api.util.raise_if_exc')
 @pytest.mark.asyncio
 async def test_only_master_endpoint(mock_exc):
     """Test that only_master_endpoint decorator raise the correct exception when running_in_master_node is False."""
@@ -288,8 +288,8 @@ async def test_only_master_endpoint(mock_exc):
 
     ret_val = 'foo'
 
-    with patch('api.util.running_in_master_node', return_value=False):
+    with patch('server_management_api.util.running_in_master_node', return_value=False):
         await func_()
         mock_exc.assert_called_once_with(WazuhResourceNotFound(902))
-    with patch('api.util.running_in_master_node', return_value=True):
+    with patch('server_management_api.util.running_in_master_node', return_value=True):
         assert await func_() == ret_val

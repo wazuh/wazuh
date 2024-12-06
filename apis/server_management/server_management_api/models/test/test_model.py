@@ -17,12 +17,12 @@ from server_management_api.controllers.util import JSON_CONTENT_TYPE
 from server_management_api.models import agent_registration_model
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['api.authentication'] = MagicMock()
+        sys.modules['server_management_api.authentication'] = MagicMock()
         from server_management_api.models import base_model_ as bm, agent_registration_model
         from server_management_api.util import deserialize_model
         from wazuh import WazuhError
 
-        del sys.modules['api.authentication']
+        del sys.modules['server_management_api.authentication']
 
 models_path = dirname(dirname(abspath(__file__)))
 
@@ -207,7 +207,7 @@ async def test_body_get_kwargs(additional_kwargs):
 async def test_body_get_kwargs_ko():
     """Test class Body `get_kwargs` class method exceptions."""
     invalid_request = {'invalid': 'value1'}
-    with patch('api.models.base_model_.util.deserialize_model', side_effect=JSONDecodeError('msg', 'a', 1)):
+    with patch('server_management_api.models.base_model_.util.deserialize_model', side_effect=JSONDecodeError('msg', 'a', 1)):
         with pytest.raises(ProblemException) as exc:
             await TestModel.get_kwargs(invalid_request)
 
@@ -266,7 +266,7 @@ def test_body_validate_content_type_ko():
 
 
 @pytest.mark.parametrize('module_name', [module for module in listdir(models_path) if module.endswith('model.py')])
-@patch('api.util.deserialize_model')
+@patch('server_management_api.util.deserialize_model')
 def test_all_models(deserialize_mock, module_name):
     """Test that all API models classes are correctly defined."""
     # Load API model
