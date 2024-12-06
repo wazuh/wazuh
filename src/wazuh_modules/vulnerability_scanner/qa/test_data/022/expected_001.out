@@ -1,6 +1,0 @@
-[
-    "No match due to default status for OS: windows_server_2008, Version: 6.1.7600 while scanning for Vulnerability: CVE-2022-21981",
-    "Match found for OS: windows_server_2008 for vulnerability: CVE-2022-21983 due to default status.",
-    "Remediation for OS 'windows_server_2008' on Agent '1001' has been found. CVE: 'CVE-2022-21983', Remediation: 'KB5034768'.",
-    "No remediation available for OS 'windows_server_2008' on Agent '1001' for CVE: 'CVE-2016-0133', discarding."
-]
