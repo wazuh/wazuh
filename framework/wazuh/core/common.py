@@ -213,11 +213,17 @@ WAZUH_LOG = VAR_LOG / WAZUH_SERVER
 WAZUH_LIB = VAR_LIB / WAZUH_SERVER
 
 WAZUH_QUEUE = WAZUH_RUN / 'cluster'
-WAZUH_SOCKET = WAZUH_RUN / 'socket'
 
 WAZUH_SHARED = WAZUH_ETC / 'shared'
 
 LOCAL_SERVER_SOCKET = 'local-server.sock'
+LOCAL_SERVER_SOCKET_PATH = WAZUH_RUN / LOCAL_SERVER_SOCKET
+
+CONFIG_SERVER_SOCKET = 'config-server.sock'
+CONFIG_SERVER_SOCKET_PATH = WAZUH_RUN / CONFIG_SERVER_SOCKET
+
+COMMS_API_SOCKET = 'comms-api.sock'
+COMMS_API_SOCKET_PATH = WAZUH_RUN / COMMS_API_SOCKET
 
 
 # ============================================= Wazuh constants - Commands =============================================

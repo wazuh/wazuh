@@ -6,6 +6,7 @@ import fcntl
 import json
 import logging
 import os
+from pathlib import Path
 import re
 import signal
 import socket
@@ -66,6 +67,35 @@ HELPER_DEFAULTS = {
     IMBALANCE_TOLERANCE: 0.1,
     REMOVE_DISCONNECTED_NODE_AFTER: 240,
 }
+
+
+def ping_unix_socket(socket_path: Path, timeout: int = 1):
+    """Ping a UNIX socket to check if it's available.
+
+    Parameters
+    ----------
+    socket_path : Path
+        Path to the UNIX socket file.
+    timeout : int
+        Connection timeout in seconds.
+
+    Returns
+    -------
+    bool
+        True if the socket is reachable, False otherwise.
+    """
+    if not socket_path.exists():
+        return False
+
+    try:
+        # Create a testing UNIX socket client to connect to the server socket.
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(timeout)
+        client.connect(str(socket_path))
+        client.close()
+        return True
+    except (socket.timeout, socket.error):
+        return False
 
 
 def _parse_haproxy_helper_integer_values(helper_config: dict) -> dict:

@@ -116,10 +116,9 @@ def test_localclient_initialization(mock_get_running_loop, read_config_mock, get
     assert lc.transport is None
 
 
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
 @pytest.mark.asyncio
-async def test_localclient_start(read_config_mock, get_cluster_items_mock):
+@patch('wazuh.core.config.client.CentralizedConfig.get_server_config')
+async def test_localclient_start(mock_get_server_config):
     """Check that the start method works correctly. Exceptions are not tested."""
 
     async def create_unix_connection(protocol_factory=None, path=None):
@@ -131,17 +130,16 @@ async def test_localclient_start(read_config_mock, get_cluster_items_mock):
             lc = LocalClient()
             await lc.start()
             assert mock_create_unix_connection.call_count == 1
-            assert mock_create_unix_connection.call_args[1]["path"] == common.WAZUH_SOCKET / common.LOCAL_SERVER_SOCKET
+            assert mock_create_unix_connection.call_args[1]["path"] == common.LOCAL_SERVER_SOCKET_PATH
             assert isinstance(mock_create_unix_connection.call_args[1]["protocol_factory"], Callable)
             assert lc.protocol == "protocol"
             assert lc.transport == "transport"
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
+@patch('wazuh.core.config.client.CentralizedConfig.get_server_config')
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
-async def test_localclient_start_ko(mock_get_running_loop, read_config_mock, get_cluster_items_mock):
+async def test_localclient_start_ko(mock_get_running_loop, mock_get_server_config):
     """Check the behavior of the start function for the different types of exceptions that may occur."""
     with pytest.raises(WazuhInternalError, match=r'.* 3009 .*'):
         await LocalClient().start()

@@ -15,18 +15,16 @@ from uvloop import Loop
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
-            import wazuh.rbac.decorators
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
 
-            del sys.modules['wazuh.rbac.orm']
-            from wazuh.tests.util import RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
+        from wazuh.tests.util import RBAC_bypasser
 
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            from wazuh.core.cluster.local_server import *
-            from wazuh.core.cluster.dapi import dapi
-            from wazuh.core.exception import WazuhClusterError
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh.core.cluster.local_server import *
+        from wazuh.core.cluster.dapi import dapi
+        from wazuh.core.exception import WazuhClusterError
 
 async def wait_function_called(func_mock):
     while not func_mock.call_count:
