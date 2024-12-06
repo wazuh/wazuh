@@ -33,4 +33,4 @@ install:
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,${BIN_INSTALLDIR}/%,$(script));)
 
-	$(MV_FILE) ${BIN_INSTALLDIR}/wazuh_apid ${BIN_INSTALLDIR}/wazuh-apid
+	$(MV_FILE) ${BIN_INSTALLDIR}/wazuh_server_management_apid ${BIN_INSTALLDIR}/wazuh-server-management-apid
