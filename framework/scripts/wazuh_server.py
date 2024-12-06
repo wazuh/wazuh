@@ -28,12 +28,12 @@ from wazuh.core.config.models.server import ServerConfig
 
 
 SERVER_DAEMON_NAME = 'wazuh-server'
-COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / 'wazuh_comms_apid.py'
+COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'comms_api' / 'scripts' / 'wazuh_comms_apid.py'
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
 EMBEDDED_PYTHON_PATH = WAZUH_SHARE / 'framework' / 'python' / 'bin' / 'python3'
 ENGINE_BINARY_PATH = WAZUH_SHARE / 'bin' / 'wazuh-engine'
 ENGINE_DAEMON_NAME = 'wazuh-engined'
-MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
+MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'server_management_api' / 'scripts' / 'wazuh_server_management_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
 
 

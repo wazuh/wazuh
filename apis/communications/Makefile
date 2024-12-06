@@ -22,8 +22,8 @@ all: install
 
 install:
 
-	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/apis/scripts
-	$(INSTALL_FILE) scripts/wazuh_comms_apid.py ${SHARE_INSTALLDIR}/apis/scripts
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/comms_api/scripts
+	$(INSTALL_FILE) scripts/wazuh_comms_apid.py ${SHARE_INSTALLDIR}/comms_api/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,${BIN_INSTALLDIR}/%,$(script));)
