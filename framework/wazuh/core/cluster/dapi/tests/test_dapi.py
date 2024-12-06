@@ -34,7 +34,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
         from wazuh.core.exception import WazuhClusterError
-        from api.util import raise_if_exc
+        from server_management_api.util import raise_if_exc
         from wazuh.core.cluster import local_client
 
 logger = logging.getLogger('wazuh')

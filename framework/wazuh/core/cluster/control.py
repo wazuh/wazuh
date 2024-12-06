@@ -5,7 +5,7 @@
 from typing import List
 import json
 
-from api.models.order_model import Order
+from server_management_api.models.order_model import Order
 from wazuh import WazuhInternalError
 from wazuh.core import common
 from wazuh.core.agent import Agent
@@ -194,7 +194,7 @@ async def distribute_orders(lc: local_client.LocalClient, orders: List[Order]) -
         LocalClient instance.
     orders : List[Order]
         Orders list.
-    
+
     Raises
     ------
     Exception

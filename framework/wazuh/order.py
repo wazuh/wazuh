@@ -1,6 +1,6 @@
 from typing import List
 
-from api.models.order_model import Order
+from server_management_api.models.order_model import Order
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.control import distribute_orders
 from wazuh.core.exception import WazuhError, WazuhClusterError

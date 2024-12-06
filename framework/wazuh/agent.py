@@ -5,7 +5,7 @@
 from os import chmod, chown, path
 from typing import List, Optional, Union
 
-from api.models.agent_registration_model import Host
+from server_management_api.models.agent_registration_model import Host
 
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
@@ -355,7 +355,7 @@ async def add_agent(
         Group doesn't exist.
     WazuhError(1762)
         Failed while creating the update-group order.
-    
+
     Returns
     -------
     WazuhResult

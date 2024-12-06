@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from wazuh.core.exception import WazuhClusterError
-from api.models.order_model import Order
+from server_management_api.models.order_model import Order
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):

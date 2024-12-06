@@ -26,7 +26,7 @@ import yaml
 from cachetools import cached, TTLCache
 
 import wazuh.core.results as results
-import api.configuration
+import server_management_api.configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection

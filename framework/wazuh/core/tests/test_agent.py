@@ -16,7 +16,7 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException, WazuhIndexerError
-        from api.util import remove_nones_to_dict
+        from server_management_api.util import remove_nones_to_dict
         from wazuh.core.common import reset_context_cache
         from wazuh.core.indexer.agent import Agent as IndexerAgent
         from wazuh.core.utils import get_group_file_path

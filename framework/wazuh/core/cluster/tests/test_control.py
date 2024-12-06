@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from api.models.order_model import Order
+from server_management_api.models.order_model import Order
 from wazuh.core.exception import WazuhClusterError
 
 with patch('wazuh.common.getgrnam'):

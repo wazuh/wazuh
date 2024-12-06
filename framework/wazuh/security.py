@@ -6,7 +6,7 @@ import re
 from copy import deepcopy
 from functools import lru_cache
 
-from api.authentication import get_security_conf
+from server_management_api.authentication import get_security_conf
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
