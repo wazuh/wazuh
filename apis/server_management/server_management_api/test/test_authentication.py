@@ -62,7 +62,7 @@ def test_check_user_master():
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
-@patch('api.authentication.raise_if_exc', side_effect=None)
+@patch('server_management_api.authentication.raise_if_exc', side_effect=None)
 async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
     """Verify if result is as expected"""
     result = authentication.check_user('test_user', 'test_pass')
@@ -83,12 +83,12 @@ def test_get_security_conf():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('auth_context', [{'name': 'initial_auth'}, None])
-@patch('api.authentication.jwt.encode', return_value='test_token')
-@patch('api.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+@patch('server_management_api.authentication.jwt.encode', return_value='test_token')
+@patch('server_management_api.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
-@patch('api.authentication.raise_if_exc', side_effect=None)
+@patch('server_management_api.authentication.raise_if_exc', side_effect=None)
 async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_get_keypair,
                         mock_encode, auth_context):
     """Verify if result is as expected"""
@@ -98,7 +98,7 @@ async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_
             return 0
 
     mock_raise_if_exc.return_value = security_conf
-    with patch('api.authentication.core_utils.get_utc_now', return_value=NewDatetime()):
+    with patch('server_management_api.authentication.core_utils.get_utc_now', return_value=NewDatetime()):
         result = authentication.generate_token(user_id='001', data={'roles': [1]}, auth_context=auth_context)
     assert result == 'test_token', 'Result is not as expected'
 
@@ -116,7 +116,7 @@ async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_
     mock_encode.assert_called_once_with(expected_payload, '-----BEGIN PRIVATE KEY-----', algorithm='ES256')
 
 
-@patch('api.authentication.TokenManager')
+@patch('server_management_api.authentication.TokenManager')
 def test_check_token(mock_tokenmanager):
     result = authentication.check_token(username='wazuh_user', roles=tuple([1]), token_nbf_time=3600, run_as=False,
                                         origin_node_type='master')
@@ -124,12 +124,12 @@ def test_check_token(mock_tokenmanager):
 
 
 @pytest.mark.asyncio
-@patch('api.authentication.jwt.decode')
-@patch('api.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+@patch('server_management_api.authentication.jwt.decode')
+@patch('server_management_api.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', return_value=True)
-@patch('api.authentication.raise_if_exc', side_effect=None)
+@patch('server_management_api.authentication.raise_if_exc', side_effect=None)
 async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_get_keypair,
                       mock_decode):
 
@@ -157,21 +157,21 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
 
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
-@patch('api.authentication.raise_if_exc', side_effect=None)
-@patch('api.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+@patch('server_management_api.authentication.raise_if_exc', side_effect=None)
+@patch('server_management_api.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
 async def test_decode_token_ko(mock_get_keypair, mock_raise_if_exc, mock_distribute_function):
     """Assert exceptions are handled as expected inside decode_token()"""
     with pytest.raises(Unauthorized):
         authentication.decode_token(token='test_token')
 
-    with patch('api.authentication.jwt.decode') as mock_decode:
-        with patch('api.authentication.get_keypair',
+    with patch('server_management_api.authentication.jwt.decode') as mock_decode:
+        with patch('server_management_api.authentication.get_keypair',
                    return_value=('-----BEGIN PRIVATE KEY-----',
                                  '-----BEGIN PUBLIC KEY-----')):
             with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None):
                 with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function'):
-                    with patch('api.authentication.raise_if_exc') as mock_raise_if_exc:
+                    with patch('server_management_api.authentication.raise_if_exc') as mock_raise_if_exc:
                         mock_decode.return_value = deepcopy(original_payload)
 
                         with pytest.raises(Unauthorized):

@@ -61,8 +61,8 @@ def test_middlewares_prevent_bruteforce_attack(stats, request_info, mock_request
     mock_request.configure_mock(scope={'path': request_info['path']})
     mock_request.method = request_info['method']
     mock_request.query_param['pretty'] = request_info.get('pretty', 'false')
-    with patch("api.error_handler.ip_stats", new=copy(stats)) as ip_stats, \
-        patch("api.error_handler.ip_block", new=set()) as ip_block:
+    with patch("server_management_api.error_handler.ip_stats", new=copy(stats)) as ip_stats, \
+        patch("server_management_api.error_handler.ip_block", new=set()) as ip_block:
         previous_attempts = ip_stats['ip']['attempts'] if 'ip' in ip_stats else 0
         prevent_bruteforce_attack(mock_request, attempts=5)
         if stats:
@@ -102,8 +102,8 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
             problem['detail'] = detail
             mock_request.context = {}
 
-    with patch('api.error_handler.prevent_bruteforce_attack') as mock_pbfa, \
-        patch('api.configuration.api_conf', new={'access': {'max_login_attempts': 1000}}):
+    with patch('server_management_api.error_handler.prevent_bruteforce_attack') as mock_pbfa, \
+        patch('server_management_api.configuration.api_conf', new={'access': {'max_login_attempts': 1000}}):
         response = await unauthorized_error_handler(mock_request, exc)
         if path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
             and method in {'GET', 'POST'}:

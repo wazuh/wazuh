@@ -44,7 +44,7 @@ def mock_request():
     operation = MagicMock(name="operation")
     operation.method = "post"
     with TestContext(operation=operation):
-        with patch('api.controllers.security_controller.request', MagicMock) as m_req:
+        with patch('server_management_api.controllers.security_controller.request', MagicMock) as m_req:
             m_req.json = AsyncMock(side_effect=lambda: {'ctx': ''} )
             m_req.get = MagicMock(return_value=None)
             m_req.query_params = MagicMock()
@@ -57,11 +57,11 @@ def mock_request():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('raw', [True, False])
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.generate_token', return_value='token')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
 async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, raw, mock_request):
     """Verify 'login_user' endpoint is working as expected."""
     result = await login_user(user='001', raw=raw)
@@ -81,11 +81,11 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.generate_token', return_value='token')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
     """Verify 'login_user' endpoint is handling WazuhException as expected."""
@@ -106,11 +106,11 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('raw', [True, False])
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.generate_token', return_value='token')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
 async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc,
                             raw, mock_request):
     """Verify 'run_as_login' endpoint is working as expected."""
@@ -132,11 +132,11 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.generate_token', return_value='token')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                mock_bool, mock_request):
@@ -157,10 +157,10 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_user_me' endpoint is working as expected."""
     result = await get_user_me()
@@ -183,7 +183,7 @@ async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @pytest.mark.asyncio
 async def test_get_user_me_policies(mock_request):
     """Verify 'get_user_me_policies' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.WazuhResult', return_value='mock_wr_result') as mock_wr:
+    with patch('server_management_api.controllers.security_controller.WazuhResult', return_value='mock_wr_result') as mock_wr:
         result = await get_user_me_policies()
         mock_wr.assert_called_once_with({'data': mock_request.context['token_info']['rbac_policies'],
                                          'message': "Current user processed policies information was returned"})
@@ -191,9 +191,9 @@ async def test_get_user_me_policies(mock_request):
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request):
     """Verify 'logout_user' endpoint is working as expected."""
     result = await logout_user()
@@ -209,10 +209,10 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request):
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_users' endpoint is working as expected."""
     result = await get_users()
@@ -241,10 +241,10 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'edit_run_as' endpoint is working as expected."""
     result = await edit_run_as(user_id='001', allow_run_as=False)
@@ -266,14 +266,14 @@ async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'create_user' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.CreateUserModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.CreateUserModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await create_user()
             mock_dapi.assert_called_once_with(
@@ -291,14 +291,14 @@ async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_user' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.CreateUserModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.CreateUserModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await update_user(user_id='001')
             mock_dapi.assert_called_once_with(
@@ -316,10 +316,10 @@ async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_uids', ['001', 'all'])
 async def test_delete_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_uids, mock_request):
     """Verify 'delete_users' endpoint is working as expected."""
@@ -343,10 +343,10 @@ async def test_delete_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_u
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_roles' endpoint is working as expected."""
     result = await get_roles()
@@ -375,14 +375,14 @@ async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'add_role' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.RoleModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.RoleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await add_role()
             mock_dapi.assert_called_once_with(f=security.add_role,
@@ -399,10 +399,10 @@ async def test_add_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_uids', ['001', 'all'])
 async def test_remove_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_uids, mock_request):
     """Verify 'remove_roles' endpoint is working as expected."""
@@ -426,14 +426,14 @@ async def test_remove_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_u
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_role' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.RoleModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.RoleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await update_role(
                                        role_id='001')
@@ -451,10 +451,10 @@ async def test_update_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_rules' endpoint is working as expected."""
     result = await get_rules()
@@ -483,14 +483,14 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'add_rule' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.RuleModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.RuleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await add_rule()
             mock_dapi.assert_called_once_with(f=security.add_rule,
@@ -507,14 +507,14 @@ async def test_add_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_rule' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.RuleModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.RuleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await update_rule(
                                        rule_id='001')
@@ -532,10 +532,10 @@ async def test_update_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request):
     """Verify 'remove_rules' endpoint is working as expected."""
@@ -559,10 +559,10 @@ async def test_remove_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_policies' endpoint is working as expected."""
     result = await get_policies()
@@ -591,14 +591,14 @@ async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'add_policy' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.PolicyModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.PolicyModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await add_policy()
             mock_dapi.assert_called_once_with(f=security.add_policy,
@@ -615,10 +615,10 @@ async def test_add_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_pids', ['001', 'all'])
 async def test_remove_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_pids, mock_request):
     """Verify 'remove_policies' endpoint is working as expected."""
@@ -641,14 +641,14 @@ async def test_remove_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_policy' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.PolicyModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.PolicyModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await update_policy(
                                          policy_id='001')
@@ -666,10 +666,10 @@ async def test_update_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'set_user_role' endpoint is working as expected."""
     result = await set_user_role(
@@ -693,10 +693,10 @@ async def test_set_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request):
     """Verify 'remove_user_role' endpoint is working as expected."""
@@ -722,10 +722,10 @@ async def test_remove_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'set_role_policy' endpoint is working as expected."""
     result = await set_role_policy(
@@ -749,10 +749,10 @@ async def test_set_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request):
     """Verify 'remove_role_policy' endpoint is working as expected."""
@@ -778,10 +778,10 @@ async def test_remove_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'set_role_rule' endpoint is working as expected."""
     result = await set_role_rule(
@@ -808,10 +808,10 @@ async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request):
     """Verify 'remove_role_rule' endpoint is working as expected."""
@@ -837,10 +837,10 @@ async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
     """Verify 'get_rbac_resources' endpoint is working as expected."""
     result = await get_rbac_resources()
@@ -859,10 +859,10 @@ async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
     """Verify 'get_rbac_actions' endpoint is working as expected."""
     result = await get_rbac_actions()
@@ -881,17 +881,17 @@ async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.isinstance')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
 async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes,
                                  mock_request):
     """Verify 'revoke_all_tokens' endpoint is working as expected."""
     mock_isins.return_value = True if not mock_snodes else False
-    with patch('api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
+    with patch('server_management_api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
         result = await revoke_all_tokens()
         if not mock_snodes:
             mock_isins.assert_called_once()
@@ -911,16 +911,16 @@ async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, m
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.type', return_value=AffectedItemsWazuhResult)
-@patch('api.controllers.security_controller.len', return_value=0)
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.type', return_value=AffectedItemsWazuhResult)
+@patch('server_management_api.controllers.security_controller.len', return_value=0)
 async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                     mock_request):
     """Verify 'revoke_all_tokens' endpoint is handling WazuhPermissionError as expected."""
-    with patch('api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
+    with patch('server_management_api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await revoke_all_tokens()
         mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
                                           f_kwargs=mock_remove.return_value,
@@ -940,10 +940,10 @@ async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mo
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_security_config' endpoint is working as expected."""
     result = await get_security_config()
@@ -961,15 +961,15 @@ async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.security_controller.isinstance')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
 async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfunc, mock_snodes):
     """Verify 'security_revoke_tokens' endpoint is working as expected."""
     mock_isins.return_value = True if not mock_snodes else False
-    with patch('api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
+    with patch('server_management_api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
         await security_revoke_tokens()
         mock_dapi.assert_called_once_with(f=security.revoke_tokens,
                                           request_type='distributed_master' if mock_snodes is not None else 'local_any',
@@ -983,16 +983,16 @@ async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfun
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'put_security_config' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.Body.validate_content_type'):
+        with patch('server_management_api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
-            with patch('api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
+            with patch('server_management_api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
                 result = await put_security_config()
                 f_kwargs = {'updated_config': mock_getkwargs.return_value
                             }
@@ -1010,15 +1010,15 @@ async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.security_controller.remove_nones_to_dict')
+@patch('server_management_api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'delete_security_config' endpoint is working as expected."""
-    with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
+    with patch('server_management_api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
                return_value=AsyncMock()) as mock_getkwargs:
-        with patch('api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
+        with patch('server_management_api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
             result = await delete_security_config()
             f_kwargs = {'updated_config': mock_getkwargs.return_value}
             mock_dapi.assert_called_once_with(f=security.update_security_config,

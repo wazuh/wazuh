@@ -28,10 +28,10 @@ with patch('wazuh.common.wazuh_uid'):
         "force_query,dapi_call_count,update_check", ([True, 2, True], [True, 1, False], [False, 1, True])
 )
 @pytest.mark.asyncio
-@patch('api.controllers.manager_controller.configuration.update_check_is_enabled')
-@patch('api.controllers.manager_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
+@patch('server_management_api.controllers.manager_controller.configuration.update_check_is_enabled')
+@patch('server_management_api.controllers.manager_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('server_management_api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
+@patch('server_management_api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_check_available_version(
     mock_exc,
     mock_dapi,
@@ -45,7 +45,7 @@ async def test_check_available_version(
     cti_context = {UPDATE_INFORMATION_KEY: {"foo": 1}, INSTALLATION_UID_KEY: "1234"}
     update_check_mock.return_value = update_check
 
-    with patch('api.controllers.manager_controller.cti_context', new=cti_context):
+    with patch('server_management_api.controllers.manager_controller.cti_context', new=cti_context):
         result = await check_available_version(force_query=force_query)
         assert mock_dapi.call_count == dapi_call_count
 

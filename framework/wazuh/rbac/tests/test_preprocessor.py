@@ -20,8 +20,7 @@ def db_setup():
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
-                with patch('wazuh.core.common.WAZUH_SERVER_YML', new=test_data_path):
-                    from wazuh.rbac.preprocessor import PreProcessor
+                from wazuh.rbac.preprocessor import PreProcessor
     init_db('schema_security_test.sql', test_data_path)
 
     yield PreProcessor
