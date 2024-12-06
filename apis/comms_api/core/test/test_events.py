@@ -12,7 +12,9 @@ from wazuh.core.batcher.client import BatcherClient
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module, TaskResult
+from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module, TaskResult, SCA_INDEX, FIM_INDEX, \
+    VULNERABILITY_INDEX, INVENTORY_PORTS_INDEX, INVENTORY_PROCESSES_INDEX, INVENTORY_NETWORKS_INDEX
+from wazuh.core.indexer.commands import CommandsManager
 
 
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
@@ -54,8 +56,8 @@ async def test_send_stateless_events_ko(mock_engine_config, mock_engine_client, 
 async def test_send_stateful_events(send_events_mock, batcher_client_mock):
     """Check that the `send_stateful_events` function works as expected."""
     expected = [
-        TaskResult(id='1', result='created', status=201),
-        TaskResult(id='2', result='created', status=201),
+        TaskResult(index=CommandsManager.INDEX, id='1', result='created', status=201),
+        TaskResult(index=CommandsManager.INDEX, id='2', result='created', status=201),
     ]
     agent_metadata = AgentMetadata(agent=Agent(
         id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
@@ -233,34 +235,55 @@ def test_parse_tasks_results():
     tasks_results = [
         [
             {
+                '_index': SCA_INDEX,
                 '_id': '1',
                 'status': 201,
                 'result': 'created',
             },
             {
+                '_index': VULNERABILITY_INDEX,
                 '_id': '1',
                 'status': 200,
                 'result': 'updated',
             }
         ],
         [{
+            '_index': FIM_INDEX,
             '_id': '2',
             'status': 200,
             'result': 'updated',
 
         }],
         [{
+            '_index': INVENTORY_PORTS_INDEX,
+            '_id': '3',
             'status': 400,
             'error': {
                 'reason': 'invalid field `scan_time`'
             },
+        }],
+        [{
+            '_index': INVENTORY_NETWORKS_INDEX,
+            '_id': '4',
+            'status': 404,
+            'error': {
+                'reason': '[4]: document missing'
+            },
+        }],
+        [{
+            '_index': INVENTORY_PROCESSES_INDEX,
+            '_id': '5',
+            'result': 'not_found',
+            'status': 404
         }]
     ]
     expected = [
-        TaskResult(id='1', result='created', status=201),
-        TaskResult(id='1', result='updated', status=200),
-        TaskResult(id='2', result='updated', status=200),
-        TaskResult(id='', result='invalid field `scan_time`', status=400),
+        TaskResult(index=SCA_INDEX, id='1', result='created', status=201),
+        TaskResult(index=VULNERABILITY_INDEX, id='1', result='updated', status=200),
+        TaskResult(index=FIM_INDEX, id='2', result='updated', status=200),
+        TaskResult(index=INVENTORY_PORTS_INDEX, id='3', result='invalid field `scan_time`', status=400),
+        TaskResult(index=INVENTORY_NETWORKS_INDEX, id='4', result='[4]: document missing', status=404),
+        TaskResult(index=INVENTORY_PROCESSES_INDEX, id='5', result='not_found', status=404),
     ]
     results = parse_tasks_results(tasks_results)
 
