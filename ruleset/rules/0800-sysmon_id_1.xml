@@ -817,8 +817,8 @@
 
   <rule id="92076" level="6">
     <if_group>sysmon_event1</if_group>
-    <field name="win.eventdata.originalFileName" type="pcre2">(?i)RUNDLL32.EXE</field>
-    <field name="win.eventdata.commandLine" type="pcre2">(?i).lock</field>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)RUNDLL32\.EXE</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\.lock</field>
     <options>no_full_log</options>
     <description>Rundll32 executing suspicious .lock file, possible persistence tactic</description>
     <mitre>
