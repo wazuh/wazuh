@@ -17,7 +17,7 @@ from typing import Dict, Optional, Union
 import certifi
 import httpx
 import wazuh
-from api import configuration
+from server_management_api import configuration
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status

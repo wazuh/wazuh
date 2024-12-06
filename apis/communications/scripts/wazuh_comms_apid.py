@@ -24,9 +24,9 @@ from fastapi.exceptions import RequestValidationError
 from gunicorn.app.base import BaseApplication
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from api.alogging import set_logging
-from api.configuration import generate_private_key, generate_self_signed_certificate
-from api.middlewares import SecureHeadersMiddleware
+from server_management_api.alogging import set_logging
+from server_management_api.configuration import generate_private_key, generate_self_signed_certificate
+from server_management_api.middlewares import SecureHeadersMiddleware
 from comms_api.core.batcher import create_batcher_process
 from comms_api.core.commands import CommandsManager
 from comms_api.core.unix_server.server import start_unix_server
