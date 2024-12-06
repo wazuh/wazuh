@@ -255,16 +255,15 @@ def test_shared_files_invalid_values(values):
 
 @pytest.mark.parametrize('test_list, name, expected', [
     (
-            [
-                SharedFiles(dir='example1', description='', permissions=2, source='', names=['example'],
-                            recursive=True, restart=True, remove_subdirs_if_empty=False, extra_valid=False),
-                SharedFiles(dir='example2', description='', permissions=2, source='', names=['example'],
-                            recursive=True, restart=True, remove_subdirs_if_empty=False, extra_valid=False)
-            ],
-            'example1',
+        [
             SharedFiles(dir='example1', description='', permissions=2, source='', names=['example'],
+                        recursive=True, restart=True, remove_subdirs_if_empty=False, extra_valid=False),
+            SharedFiles(dir='example2', description='', permissions=2, source='', names=['example'],
                         recursive=True, restart=True, remove_subdirs_if_empty=False, extra_valid=False)
-
+        ],
+        'example1',
+        SharedFiles(dir='example1', description='', permissions=2, source='', names=['example'],
+                    recursive=True, restart=True, remove_subdirs_if_empty=False, extra_valid=False)
     ),
     (
         [], 'example1', None

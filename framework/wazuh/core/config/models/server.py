@@ -2,6 +2,7 @@ from pydantic import PositiveInt, conint, confloat, PrivateAttr, Field
 from typing import List, Optional
 from enum import Enum
 
+from wazuh.core.common import WAZUH_ETC, WAZUH_SHARED
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import SSLConfig
 from wazuh.core.config.models.logging import LoggingConfig, LoggingLevel
@@ -262,18 +263,18 @@ class CTIConfig(WazuhConfigBaseModel):
 DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
     files=[
         SharedFiles(
-            dir="etc/",
-            description="JWT signing key pair",
+            dir=WAZUH_ETC.as_posix(),
+            description='JWT signing key pair',
             permissions=416,
-            source="master",
-            names=["private_key.pem", "public_key.pem"],
+            source='master',
+            names=['private_key.pem', 'public_key.pem'],
             recursive=False,
             restart=False,
             remove_subdirs_if_empty=False,
             extra_valid=False,
         ),
         SharedFiles(
-            dir='etc/shared/',
+            dir=WAZUH_SHARED.as_posix(),
             description='group files',
             permissions=432,
             source='master',
@@ -284,7 +285,7 @@ DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
             extra_valid=False,
         ),
     ],
-    excluded_files=['ar.conf'],
+    excluded_files=[],
     excluded_extensions=['~', '.tmp', '.lock', '.swp']
 )
 
