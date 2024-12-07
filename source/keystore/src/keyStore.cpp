@@ -11,11 +11,58 @@
 
 #include <base/logging.hpp>
 #include <base/utils/evpHelper.hpp>
-#include <base/utils/keyValueFile.hpp>
 
 #include "keyStore.hpp"
 
 constexpr auto KS_VALUE_SEPARATOR {':'}; // Default separator for key-value pairs.
+
+/**
+ * @brief Verifies if the file exists and creates it with the right permissions.
+ *
+ * @param filePath Path to the keystore.
+ */
+void Keystore::fileCreate(const std::string& filePath)
+{
+    // Create file and update permissions only if it does not exist
+    if (!std::filesystem::exists(filePath))
+    {
+        std::ofstream file(filePath);
+        if (!file.is_open())
+        {
+            throw std::runtime_error("Error creating key-value file due to: " + std::string(strerror(errno)));
+        }
+        file.close();
+        std::filesystem::permissions(filePath,
+                                     std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
+                                         | std::filesystem::perms::group_read);
+    }
+}
+
+/**
+ * @brief Reads the content from the file and decrypts it.
+ *
+ * @param filePath File path.
+ * @return base::utils::KeyValue A key-value object.
+ */
+base::utils::KeyValue Keystore::readAndDecrypt(const std::string& filePath)
+{
+    std::ifstream file(filePath, std::ifstream::binary);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Error opening key-value file due to: " + std::string(strerror(errno)));
+    }
+
+    std::vector<char> buffer(std::istreambuf_iterator<char>(file), {});
+    file.close();
+
+    std::string decryptedKeystoreStr;
+    if (!buffer.empty())
+    {
+        base::utils::EVPHelper().decryptAES256(buffer, decryptedKeystoreStr);
+    }
+
+    return base::utils::KeyValue(decryptedKeystoreStr, KS_VALUE_SEPARATOR);
+}
 
 /**
  * @brief Insert or update a key-value pair in the keystore.
@@ -26,11 +73,21 @@ constexpr auto KS_VALUE_SEPARATOR {':'}; // Default separator for key-value pair
  */
 void Keystore::put(const std::string& key, const std::string& value, const std::string& keyStorePath)
 {
-    std::vector<char> encryptedValue;
-    auto keyStore = base::utils::KeyValueFile(keyStorePath, KS_VALUE_SEPARATOR);
+    fileCreate(keyStorePath);
+    auto keyValue = readAndDecrypt(keyStorePath);
+    keyValue.put(key, value);
 
-    base::utils::EVPHelper().encryptAES256(value, encryptedValue);
-    keyStore.put(key, encryptedValue);
+    std::vector<char> encryptedKeystore;
+    base::utils::EVPHelper().encryptAES256(keyValue.dumpMap(), encryptedKeystore);
+
+    std::ofstream outFile(keyStorePath, std::ios_base::trunc | std::ios_base::binary);
+    if (!outFile.is_open())
+    {
+        throw std::runtime_error("Error opening key store file due to: " + std::string(strerror(errno)));
+    }
+
+    outFile.write(encryptedKeystore.data(), encryptedKeystore.size());
+    outFile.close();
 }
 
 /**
@@ -42,15 +99,8 @@ void Keystore::put(const std::string& key, const std::string& value, const std::
  */
 bool Keystore::get(const std::string& key, std::string& value, const std::string& keyStorePath)
 {
-    std::vector<char> encryptedValueVec;
+    fileCreate(keyStorePath);
+    auto keyValue = readAndDecrypt(keyStorePath);
 
-    auto keyStore = base::utils::KeyValueFile(keyStorePath, KS_VALUE_SEPARATOR);
-
-    if (keyStore.get(key, encryptedValueVec))
-    {
-        base::utils::EVPHelper().decryptAES256(encryptedValueVec, value);
-        return true;
-    }
-
-    return false;
+    return keyValue.get(key, value);
 }
