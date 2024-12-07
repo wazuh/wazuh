@@ -89,12 +89,12 @@ TEST_F(keyValueTest, PutAndGetNonDefaultSeparator)
 
 TEST_F(keyValueTest, PutAndGetBinaryValue)
 {
-    std::string binaryValue = {'\x00', '\xFA', '#',    '1',    'o',    '\xDA', '_',    'V',  '\t',   '\xCA',
-                               '\xAE', '\x9A', '\x3E', ']',    '\x21', 'e',    '\xEA',   '-',  'w',    '\xAA',
-                               '3',    'd',    '\x55', '\x2F', '\xBB', '}',    '\xA0', '8',  '*',    '#',
+    std::string binaryValue = {'\x00', '\xFA', '#',    '1',    'o',    '\xDA', '_',    'V',    '\t',   '\xCA',
+                               '\xAE', '\x9A', '\x3E', ']',    '\x21', 'e',    '\xEA', '-',    'w',    '\xAA',
+                               '3',    'd',    '\x55', '\x2F', '\xBB', '}',    '\xA0', '8',    '*',    '#',
                                '\x10', '1',    '\'',   '\x2D', '\xDD', '\xAF', '\xFA', '	', '|',    '\x1A',
-                               '\xF9', 'i',    'H',    '\x15', '\\',   'P',    '!',    '"',  '\x99', '$',
-                               '%',    '&',    'm',    '/',    '(',    ')',    'z',    '=',  '\x01',    '?'};
+                               '\xF9', 'i',    'H',    '\x15', '\\',   'P',    '!',    '"',    '\x99', '$',
+                               '%',    '&',    'm',    '/',    '(',    ')',    'z',    '=',    '\x01', '?'};
     keyValue->put("key", binaryValue);
 
     std::string readValueVec;

@@ -131,7 +131,7 @@ def setup_teardown():
 password_list = ["password",
                  "kdashf 781264723(/$%&)(IUGHB/)",
                  """~`R4+$b"Eç-öÇsý~ðe^î4"ôÙÆ-DXõ$ÁW"ô´C©~7ÙU9ZZ9[S£>KPû3ñ{Äñ¦}@ED×DCË`$Ï@©}¸ÉR2ÚðÑqí§XÄ(¬x%ã,ú»cf}céq%~Ð°n¾ëÜKÀ®;sÓí½(Ccô;zÙê³¯â¼{s""",
-                 """"NñÚ?e2"CÀ !Û(z"û>ESÊ¥â½°|NØ3~}¬éØ#ÓÐ`\èï9¤ ¢,Ñ|`Éà©jqø!ßõ§JÐØæ"ê¢8åzL)-yE1ª58Ñõ×ùCd;©6^{Ý¬[Æ:n&F½²Ð 1á(Çt{*¤}^êt2H¬¢ñ0=âËàÕÐ>àBí"""]
+                 """"NñÚ?e2"CÀ !Û(z"û>ESÊ¥â½°|NØ3~}¬éØ#ÓÐ`\èï9¤ ¢,Ñ|`Éà©jqø!ßõ§JÐØæ"ê¢8åzL)-yE1ª58Ñõ×ùCd;©6^{Ý¬[Æzn&F½²Ð 1á(Çt{*¤}^êt2H¬¢ñ0=âËàÕÐ>àBí"""]
 
 insertion_methods = [set_password,
                      set_password_from_file,
