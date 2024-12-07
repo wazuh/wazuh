@@ -14,11 +14,28 @@
 
 #include <string>
 
+#include <base/utils/keyValue.hpp>
+
 // Database constants, based on the keystore path.
 constexpr auto KEYSTORE_PATH {"/etc/wazuh-server/client.keystore"};
 
 class Keystore final
 {
+private:
+    /**
+     * @brief Verifies if the file exists and creates it with the right permissions.
+     *
+     * @param filePath Path to the keystore.
+     */
+    static void fileCreate(const std::string& filePath);
+
+    /**
+     * @brief Reads the content from the file and decrypts it.
+     *
+     * @param filePath File path.
+     * @return base::utils::KeyValue A key-value object.
+     */
+    static base::utils::KeyValue readAndDecrypt(const std::string& filePath);
 
 public:
     Keystore() = default;
