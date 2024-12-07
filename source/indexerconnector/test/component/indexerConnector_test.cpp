@@ -222,10 +222,14 @@ extern "C" int __wrap_chown(const char* path, uid_t owner, gid_t group)
  * increase the test coverage.
  *
  */
-TEST_F(IndexerConnectorTest, ConnectionWithDefaultUserAndPassword)
+TEST_F(IndexerConnectorTest, ConnectionWithUserAndPassword)
 {
-    IndexerConnectorOptions indexerConfig {
-        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .keystorePath = TEST_KEYSTORE_PATH, .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
+                                           .hosts = {A_ADDRESS},
+                                           .username = "user",
+                                           .password = "password",
+                                           .keystorePath = TEST_KEYSTORE_PATH,
+                                           .timeout = INDEXER_TIMEOUT};
 
     // Create connector and wait until the connection is established.
     auto indexerConnector {IndexerConnector(indexerConfig)};

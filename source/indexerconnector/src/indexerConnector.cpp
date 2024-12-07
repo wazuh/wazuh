@@ -20,7 +20,6 @@
 #include <base/utils/stringUtils.hpp>
 #include <base/utils/timeUtils.hpp>
 #include <indexerConnector/indexerConnector.hpp>
-#include <keyStore.hpp>
 
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
@@ -119,18 +118,16 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
 
     sslCertificate = config.sslOptions.cert;
     sslKey = config.sslOptions.key;
+    username = config.username;
+    password = config.password;
 
-    const auto& keystorePath = config.keystorePath.empty() ? KEYSTORE_PATH : config.keystorePath;
-    Keystore::get(USER_KEY, username, keystorePath);
-    Keystore::get(PASSWORD_KEY, password, keystorePath);
-
-    if (username.empty())
+    if (config.username.empty())
     {
         username = "admin";
         LOG_WARNING("No username found in the configuration, using default value.");
     }
 
-    if (password.empty())
+    if (config.password.empty())
     {
         password = "admin";
         LOG_WARNING("No password found in the configuration, using default value.");
