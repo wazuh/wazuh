@@ -24,7 +24,6 @@ target_link_libraries(indexerconnector
   PRIVATE
   RocksDB::rocksdb
   urlrequest
-  keystore
 )
 
 if(ENGINE_BUILD_TEST)
