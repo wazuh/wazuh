@@ -121,6 +121,16 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
         }
     }
 
+    if (config.contains("username"))
+    {
+        indexerConnectorOptions.username = config.at("username");
+    }
+
+    if (config.contains("password"))
+    {
+        indexerConnectorOptions.password = config.at("password");
+    }
+
     if (config.contains("keystorePath"))
     {
         indexerConnectorOptions.keystorePath = config.at("keystorePath").get_ref<const std::string&>();
