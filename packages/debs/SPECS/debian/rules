@@ -69,6 +69,7 @@ override_dh_install:
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-keystore $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 
 	cp -pr $(INSTALLATION_DIR)tmp/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)tmp/
 	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
@@ -105,9 +106,11 @@ override_dh_fixperms:
 
 	# Binaries
 	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
+	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-keystore
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
 	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-keystore
 	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
 	chown root:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server

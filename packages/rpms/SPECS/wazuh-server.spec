@@ -87,6 +87,7 @@ cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine ${RPM_BUILD_ROOT}
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
+cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-keystore ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
 cp -pr %{_localstatedir}tmp/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}tmp/
 cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/
@@ -174,6 +175,7 @@ if [ $1 = 0 ];then
   # Remove lingering folders and files
   rm -rf %{_localstatedir}tmp/wazuh-server
   rm -rf %{_localstatedir}usr/bin/wazuh-engine
+  rm -rf %{_localstatedir}usr/bin/wazuh-keystore
   rm -rf %{_localstatedir}usr/bin/wazuh-apid
   rm -rf %{_localstatedir}usr/bin/wazuh-comms-apid
   rm -rf %{_localstatedir}usr/bin/wazuh-server
@@ -252,6 +254,7 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}var/lib/wazuh-server/indexer-connector
 
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-engine
+%attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-keystore
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
