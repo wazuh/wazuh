@@ -51,3 +51,26 @@ TEST_F(KeyStoreComponentTest, TestPutGet)
     Keystore::get("key2", out, TEST_KEYSTORE_PATH);
     ASSERT_EQ(out, "value2");
 }
+
+TEST_F(KeyStoreComponentTest, CreationAndPermissions)
+{
+    std::filesystem::remove_all(TEST_KEYSTORE_PATH);
+    std::string out;
+    Keystore::get("key1", out, TEST_KEYSTORE_PATH);
+
+    auto status = std::filesystem::status(TEST_KEYSTORE_PATH);
+    auto perms = status.permissions();
+
+    ASSERT_TRUE(std::filesystem::exists(TEST_KEYSTORE_PATH));
+    ASSERT_TRUE(std::filesystem::is_regular_file(TEST_KEYSTORE_PATH));
+    ASSERT_TRUE((perms & std::filesystem::perms::owner_read) != std::filesystem::perms::none);
+    ASSERT_TRUE((perms & std::filesystem::perms::owner_write) != std::filesystem::perms::none);
+    ASSERT_TRUE((perms & std::filesystem::perms::group_read) != std::filesystem::perms::none);
+
+    ASSERT_FALSE((perms & std::filesystem::perms::owner_exec) != std::filesystem::perms::none);
+    ASSERT_FALSE((perms & std::filesystem::perms::group_write) != std::filesystem::perms::none);
+    ASSERT_FALSE((perms & std::filesystem::perms::group_exec) != std::filesystem::perms::none);
+    ASSERT_FALSE((perms & std::filesystem::perms::others_read) != std::filesystem::perms::none);
+    ASSERT_FALSE((perms & std::filesystem::perms::others_write) != std::filesystem::perms::none);
+    ASSERT_FALSE((perms & std::filesystem::perms::others_exec) != std::filesystem::perms::none);
+}
