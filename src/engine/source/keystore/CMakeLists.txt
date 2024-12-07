@@ -20,7 +20,7 @@ target_link_libraries(wazuh-keystore keystore OpenSSL::SSL OpenSSL::Crypto base 
 # Tests
 if(ENGINE_BUILD_TEST)
 
-set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/tests)
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 add_executable(keystore_ctest
