@@ -75,11 +75,11 @@ def wazuh_keystore():
     # Save credentials in the keystore
     wazuh_keystore_path = Path("engine/build/source/keystore/", "wazuh-keystore")
 
-    keystore_args = ["-f", "indexer", "-k", "username", "-v", "admin", "-p", KEYSTORE_PATH]
+    keystore_args = ["-k", "username", "-v", "admin", "-p", KEYSTORE_PATH]
     kesytore_command = [wazuh_keystore_path] + keystore_args
     run_command(kesytore_command)
 
-    keystore_args = ["-f", "indexer", "-k", "password", "-v", OPENSEARCH_PASSWORD, "-p", KEYSTORE_PATH]
+    keystore_args = ["-k", "password", "-v", OPENSEARCH_PASSWORD, "-p", KEYSTORE_PATH]
     kesytore_command = [wazuh_keystore_path] + keystore_args
     run_command(kesytore_command)
 
