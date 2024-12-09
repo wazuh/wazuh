@@ -1873,3 +1873,586 @@ checks:
        - cis: ["4.1.7"]
      condition:
      rules:
+
+  # 4.1.8 Ensure events that modify the system's Mandatory Access Controls are collected. (Scored)
+   - id: 31128
+     title: "Ensure events that modify the system's Mandatory Access Controls are collected."
+     description: "Monitor SELinux/AppArmor mandatory access controls. The parameters below monitor any write access (potential additional, deletion or modification of files in the directory) or attribute changes to the /etc/selinux or /etc/apparmor and /etc/apparmor.d directories."
+     rationale: "Changes to files in these directories could indicate that an unauthorized user is attempting to modify access controls and change security contexts, leading to a compromise of the system."
+     remediation: "On systems using SELinux Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/selinux/ -p wa -k MAC-policy -w /usr/share/selinux/ -p wa -k MAC-policy On systems using AppArmor Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.8"]
+       - cis_csc_v7: ["6 3.6", "5.5"]
+       - iso_27001-2013: ["A.12.1.2"]
+       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+     condition:
+     rules:
+
+  # 4.1.9 Ensure login and logout events are collected. (Scored)
+   - id: 31129
+     title: "Ensure login and logout events are collected."
+     description: "Monitor login and logout events. The parameters below track changes to files associated with login/logout events. The file /var/log/faillog tracks failed events from login. The file /var/log/lastlog maintain records of the last time a user successfully logged in. The file /var/log/tallylog maintains records of failures via the pam_tally2 module."
+     rationale: "Monitoring login/logout events could provide a system administrator with information associated with brute force attacks against user logins."
+     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /var/log/faillog -p wa -k logins -w /var/log/lastlog -p wa -k logins -w /var/log/tallylog -p wa -k logins Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.9"]
+       - cis_csc_v7: ["6 5.5", "16.10"]
+       - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1110", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 4.1.10 Ensure session initiation information is collected. (Scored)
+   - id: 31130
+     title: "Ensure session initiation information is collected."
+     description: "Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier \"session.\" The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier \"logins.\"."
+     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
+     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k logins -w /var/log/btmp -p wa -k logins Notes: The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp) Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.10"]
+       - cis_csc_v7: ["6 5.5", "16.10"]
+       - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1110", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 4.1.11 Ensure discretionary access control permission modification events are collected. (Scored)
+   - id: 31131
+     title: "Ensure discretionary access control permission modification events are collected."
+     description: "Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >= 500) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier \"perm_mod.\"."
+     rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
+     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.11"]
+       - cis_csc_v7: ["6 3.6", "5.5"]
+       - iso_27001-2013: ["A.12.1.2"]
+       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+     condition:
+     rules:
+
+  # 4.1.12 Ensure unsuccessful unauthorized file access attempts are collected. (Scored)
+   - id: 31132
+     title: "Ensure unsuccessful unauthorized file access attempts are collected."
+     description: "Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation (creat), opening (open , openat) and truncation ( truncate , ftruncate) of files. An audit log record will only be written if the user is a non-privileged user (auid > = 500), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier \"access.\"."
+     rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system."
+     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.12"]
+       - cis_csc_v7: ["6 14.6", "14.9"]
+       - iso_27001-2013: ["A.12.4.3"]
+     condition:
+     rules:
+
+  # 4.1.13 Ensure use of privileged commands is collected. (Scored)
+   - id: 31133
+     title: "Ensure use of privileged commands is collected."
+     description: "Monitor privileged programs (those that have the setuid and/or setgid bit set on execution) to determine if unprivileged users are running these commands."
+     rationale: "Execution of privileged commands by non-privileged users could be an indication of someone trying to gain unauthorized access to the system."
+     remediation: "To remediate this issue, the system administrator will have to execute a find command to locate all the privileged programs and then add an audit line for each one of them. The audit parameters associated with this are as follows: -F path=\" $1 \" - will populate each file name found through the find command and processed by awk. -F perm=x - will write an audit record if the file is executed. -F auid>=500 - will write a record if the user executing the command is not a privileged user. - F auid!= 4294967295 - will ignore Daemon events All audit records should be tagged with the identifier \"privileged\". Run the following command replacing with a list of partitions where programs can be executed from on your system: # find <partition> -xdev \\( -perm -4000 -o -perm -2000 \\) -type f | awk '{print \\ \"-a always,exit -F path=\" $1 \" -F perm=x -F auid>=500 -F auid!=4294967295 \\ -k privileged\" }' Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules And add all resulting lines to the file. Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.13"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 4.1.14 Ensure successful file system mounts are collected. (Scored)
+   - id: 31134
+     title: "Ensure successful file system mounts are collected."
+     description: "Monitor the use of the mount system call. The mount (and umount) system call controls the mounting and unmounting of file systems. The parameters below configure the system to create an audit record when the mount system call is used by a non-privileged user."
+     rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open , creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document."
+     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k mounts For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S mount -F auid>=500 -F auid!=4294967295 -k mounts -a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k mounts Notes: This tracks successful and unsuccessful mount commands. File system mounts do not have to come from external media and this action still does not verify write (e.g. CD ROMS). Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.14"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 4.1.15 Ensure file deletion events by users are collected. (Scored)
+   - id: 31135
+     title: "Ensure file deletion events by users are collected."
+     description: "Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for the unlink (remove a file), unlinkat (remove a file attribute), rename (rename a file) and renameat (rename a file attribute) system calls and tags them with the identifier \"delete\"."
+     rationale: "Monitoring these calls from non-privileged users could provide a system administrator with evidence that inappropriate removal of files and file attributes associated with protected files is occurring. While this audit option will look at all events, system administrators will want to look for specific privileged files that are being deleted or altered."
+     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete Notes: At a minimum, configure the audit system to collect file deletion events for all users and root. Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.15"]
+       - cis_csc_v7: ["6 13", "13"]
+     condition:
+     rules:
+
+  # 4.1.16 Ensure changes to system administration scope (sudoers) is collected. (Scored)
+   - id: 31136
+     title: "Ensure changes to system administration scope (sudoers) is collected."
+     description: "Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier \"scope.\"."
+     rationale: "Changes in the /etc/sudoers file can indicate that an unauthorized change has been made to scope of system administrator activity."
+     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d/ -p wa -k scope Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.16"]
+       - cis_csc_v7: ["6 5.4", "4.8"]
+       - iso_27001-2013: ["A.12.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1047", "T1051", "T1053", "T1054", "T1055", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1088", "T1089", "T1096", "T1097", "T1098", "T1100", "T1134", "T1136", "T1145", "T1146", "T1150", "T1156", "T1157", "T1165", "T1169", "T1175", "T1184", "T1190", "T1196", "T1198", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1489", "T1492", "T1494", "T1495", "T1501", "T1504", "T1505", "T1525", "T1530"]
+     condition:
+     rules:
+
+  # 4.1.17 Ensure system administrator actions (sudolog) are collected. (Scored)
+   - id: 31137
+     title: "Ensure system administrator actions (sudolog) are collected."
+     description: "Monitor the sudo log file. If the system has been properly configured to disable the use of the su command and force all administrators to have to log in first and then use sudo to execute privileged commands, then all administrator commands will be logged to /var/log/sudo.log . Any time a command is executed, an audit event will be triggered as the /var/log/sudo.log file will be opened for write and the executed administration command will be written to the log."
+     rationale: "Changes in /var/log/sudo.log indicate that an administrator has executed a command or the log file itself has been tampered with. Administrators will want to correlate the events written to the audit trail with the records written to /var/log/sudo.log to verify if unauthorized commands have been executed."
+     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /var/log/sudo.log -p wa -k actions Notes: The system must be configured with sudisabled (See Item 5.6 Ensure access to the su command is restricted) to force all command execution through sudo. This will not be effective on the console, as administrators can log in as root. Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.17"]
+       - cis_csc_v7: ["6 5.1", "5.5"]
+       - iso_27001-2013: ["A.12.1.2"]
+       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+     condition:
+     rules:
+
+  # 4.1.18 Ensure kernel module loading and unloading is collected. (Scored)
+   - id: 31138
+     title: "Ensure kernel module loading and unloading is collected."
+     description: "Monitor the loading and unloading of kernel modules. The programs insmod (install a kernel module), rmmod (remove a kernel module), and modprobe (a more sophisticated program to load and unload modules, as well as some other features) control loading and unloading of modules. The init_module (load a module) and delete_module (delete a module) system calls control loading and unloading of modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of \"modules\"."
+     rationale: "Monitoring the use of insmod , rmmod and modprobe could provide system administrators with evidence that an unauthorized user loaded or unloaded a kernel module, possibly compromising the security of the system. Monitoring of the init_module and delete_module system calls would reflect an unauthorized user attempting to use a different program to load and unload modules."
+     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /sbin/insmod -p x -k modules -w /sbin/rmmod -p x -k modules -w /sbin/modprobe -p x -k modules -a always,exit -F arch=b32 -S init_module -S delete_module -k modules For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /sbin/insmod -p x -k modules -w /sbin/rmmod -p x -k modules -w /sbin/modprobe -p x -k modules -a always,exit -F arch=b64 -S init_module -S delete_module -k modules Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.18"]
+       - cis_csc_v7: ["6 3", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 4.1.19 Ensure the audit configuration is immutable. (Scored)
+   - id: 31139
+     title: "Ensure the audit configuration is immutable."
+     description: "Set system audit so that audit rules cannot be modified with auditctl . Setting the flag \"-e 2\" forces audit to be put in immutable mode. Audit changes can only be made on system reboot."
+     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
+     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file Notes: This setting will ensure reloading the auditd config to set active settings requires a system reboot."
+     compliance:
+       - cis: ["4.1.19"]
+       - cis_csc_v7: ["6 3", "6"]
+     condition:
+     rules:
+
+  # 4.2.1.1 Ensure rsyslog is installed. (Scored)
+   - id: 31140
+     title: "Ensure rsyslog is installed."
+     description: "The rsyslog software is a recommended replacement to the original syslogd daemon which provide improvements over syslogd, such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
+     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
+     remediation: "Install rsyslog or using the appropriate package manager or manual installation: # yum install rsyslog # apt-get install rsyslog # zypper install rsyslog."
+     compliance:
+       - cis: ["4.2.1.1"]
+       - cis_csc_v7: ["6 6.2", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.2.1.2 Ensure rsyslog Service is enabled. (Scored)
+   - id: 31141
+     title: "Ensure rsyslog Service is enabled."
+     description: "Once the rsyslog package is installed it needs to be activated."
+     rationale: "If the rsyslog service is not activated the system may default to the syslogd service or lack logging instead."
+     remediation: "Run one of the following commands to enable rsyslog : # chkconfig rsyslog on # systemctl enable rsyslog # update-rc.d rsyslog enable Notes: Additional methods of enabling a service exist. Consult your distribution documentation for appropriate methods. Some distributions may configure syslog daemon selection via a setting in a configuration file such as /etc/sysconfig/syslog and a centralized init script."
+     compliance:
+       - cis: ["4.2.1.2"]
+       - cis_csc_v7: ["6 6.2", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.2.1.3 Ensure logging is configured. (Not Scored)
+   - id: 31142
+     title: "Ensure logging is configured."
+     description: "The /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files specifies rules for logging and which files are to be used to log certain classes of messages."
+     rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
+     remediation: "Edit the following lines in the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files as appropriate for your environment: *.emerg :omusrmsg:* mail.* -/var/log/mail mail.info -/var/log/mail.info mail.warning -/var/log/mail.warn mail.err /var/log/mail.err news.crit -/var/log/news/news.crit news.err -/var/log/news/news.err news.notice -/var/log/news/news.notice *.=warning;*.=err -/var/log/warn *.crit /var/log/warn *.*;mail.none;news.none -/var/log/messages local0,local1.* -/var/log/localmessages local2,local3.* -/var/log/localmessages local4,local5.* -/var/log/localmessages local6,local7.* -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd."
+     compliance:
+       - cis: ["4.2.1.3"]
+       - cis_csc_v7: ["6 6.2", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.2.1.4 Ensure rsyslog default file permissions configured. (Scored)
+   - id: 31143
+     title: "Ensure rsyslog default file permissions configured."
+     description: "rsyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
+     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
+     remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640."
+     compliance:
+       - cis: ["4.2.1.4"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Scored)
+   - id: 31144
+     title: "Ensure rsyslog is configured to send logs to a remote log host."
+     description: "The rsyslog utility supports the ability to send logs it gathers to a remote log host running syslogd(8) or to receive messages from remote hosts, reducing administrative overhead."
+     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
+     remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). *.* @@loghost.example.com Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd."
+     compliance:
+       - cis: ["4.2.1.5"]
+       - cis_csc_v7: ["6 6.6", "6.6"]
+     condition:
+     rules:
+
+  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Not Scored)
+   - id: 31145
+     title: "Ensure remote rsyslog messages are only accepted on designated log hosts."
+     description: "By default, rsyslog does not listen for log messages coming in from remote systems. The ModLoad tells rsyslog to load the imtcp.so module so it can listen over a network via TCP. The InputTCPServerRun option instructs rsyslogd to listen on the specified TCP port."
+     rationale: "The guidance in the section ensures that remote log hosts are configured to only accept rsyslog data from hosts within the specified domain and that those systems that are not designed to be log hosts do not accept any remote rsyslog messages. This provides protection from spoofed log data and ensures that system administrators are reviewing reasonably complete syslog data in a central location."
+     remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un- comment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514 For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514 Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd."
+     compliance:
+       - cis: ["4.2.1.6"]
+       - cis_csc_v7: ["6 9.1", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 4.2.2.1 Ensure journald is configured to send logs to rsyslog. (Scored)
+   - id: 31146
+     title: "Ensure journald is configured to send logs to rsyslog."
+     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the rsyslog service provides a consistent means of log collection and export."
+     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
+     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes."
+     references:
+       - 'https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste'
+     compliance:
+       - cis: ["4.2.2.1"]
+       - cis_csc_v7: ["6 6.2", "6.5"]
+     condition:
+     rules:
+
+  # 4.2.2.2 Ensure journald is configured to compress large log files. (Scored)
+   - id: 31147
+     title: "Ensure journald is configured to compress large log files."
+     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
+     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
+     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes."
+     references:
+       - 'https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste'
+     compliance:
+       - cis: ["4.2.2.2"]
+       - cis_csc_v7: ["6 6.2", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk. (Scored)
+   - id: 31148
+     title: "Ensure journald is configured to write logfiles to persistent disk."
+     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss."
+     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
+     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent."
+     references:
+       - 'https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste'
+     compliance:
+       - cis: ["4.2.2.3"]
+       - cis_csc_v7: ["6 6.2", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.2.3 Ensure permissions on all logfiles are configured. (Scored)
+   - id: 31149
+     title: "Ensure permissions on all logfiles are configured."
+     description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
+     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
+     remediation: "Run the following commands to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx \"{}\" + -o -type d -exec chmod g- w,o-rwx \"{}\" + Notes: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions."
+     compliance:
+       - cis: ["4.2.3"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 4.3 Ensure logrotate is configured. (Not Scored)
+   - id: 31150
+     title: "Ensure logrotate is configured."
+     description: "The system includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/logrotate.d/syslog is the configuration file used to rotate log files created by syslog or rsyslog."
+     rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
+     remediation: "Edit /etc/logrotate.conf and /etc/logrotate.d/* to ensure logs are rotated according to site policy. Notes: If no maxage setting is set for logrotate a situation can occur where logrotate is interrupted and fails to delete rotated logfiles. It is recommended to set this to a value greater than the longest any log file should exist on your system to ensure that any such logfile is removed but standard rotation settings are not overridden."
+     compliance:
+       - cis: ["4.3"]
+       - cis_csc_v7: ["6 6.3", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 5.1 Configure cron Page 380 5.1.1 Ensure cron daemon is enabled. (Scored)
+   - id: 31151
+     title: "Configure cron Page 380 5.1.1 Ensure cron daemon is enabled."
+     description: "The cron daemon is used to execute batch jobs on the system."
+     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
+     remediation: "Based on your system configuration, run the appropriate one of the following commands to enable cron : # chkconfig crond on # systemctl enable crond # update-rc.d crond enable Notes: Additional methods of enabling a service exist. Consult your distribution documentation for appropriate methods."
+     compliance:
+       - cis: ["5.1"]
+       - cis_csc_v7: ["6 6", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.1.2 Ensure permissions on /etc/crontab are configured. (Scored)
+   - id: 31152
+     title: "Ensure permissions on /etc/crontab are configured."
+     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
+     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
+     remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
+     compliance:
+       - cis: ["5.1.2"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Scored)
+   - id: 31153
+     title: "Ensure permissions on /etc/cron.hourly are configured."
+     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+     remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : # chown root:root /etc/cron.hourly # chmod og-rwx /etc/cron.hourly."
+     compliance:
+       - cis: ["5.1.3"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Scored)
+   - id: 31154
+     title: "Ensure permissions on /etc/cron.daily are configured."
+     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : # chown root:root /etc/cron.daily # chmod og-rwx /etc/cron.daily."
+     compliance:
+       - cis: ["5.1.4"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Scored)
+   - id: 31155
+     title: "Ensure permissions on /etc/cron.weekly are configured."
+     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+     remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : # chown root:root /etc/cron.weekly # chmod og-rwx /etc/cron.weekly."
+     compliance:
+       - cis: ["5.1.5"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Scored)
+   - id: 31156
+     title: "Ensure permissions on /etc/cron.monthly are configured."
+     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+     remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : # chown root:root /etc/cron.monthly # chmod og-rwx /etc/cron.monthly."
+     compliance:
+       - cis: ["5.1.6"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Scored)
+   - id: 31157
+     title: "Ensure permissions on /etc/cron.d are configured."
+     description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab , but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
+     remediation: "Run the following commands to set ownership and permissions on /etc/cron.d : # chown root:root /etc/cron.d # chmod og-rwx /etc/cron.d."
+     compliance:
+       - cis: ["5.1.7"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.1.8 Ensure at/cron is restricted to authorized users. (Scored)
+   - id: 31158
+     title: "Ensure at/cron is restricted to authorized users."
+     description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow , cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+     remediation: "Run the following commands to remove /etc/cron.deny and /etc/at.deny and create and set permissions and ownership for /etc/cron.allow and /etc/at.allow : # rm /etc/cron.deny # rm /etc/at.deny # touch /etc/cron.allow # touch /etc/at.allow # chmod og-rwx /etc/cron.allow # chmod og-rwx /etc/at.allow # chown root:root /etc/cron.allow # chown root:root /etc/at.allow."
+     compliance:
+       - cis: ["5.1.8"]
+       - cis_csc_v7: ["6 16", "16"]
+     condition:
+     rules:
+
+  # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Scored)
+   - id: 31159
+     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
+     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
+     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
+     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config."
+     compliance:
+       - cis: ["5.2.1"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.2 Ensure permissions on SSH private host key files are configured. (Scored)
+   - id: 31160
+     title: "Ensure permissions on SSH private host key files are configured."
+     description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
+     rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
+     remediation: "Run the following commands to set ownership and permissions on the private SSH host key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0600 {} \\;."
+     compliance:
+       - cis: ["5.2.2"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.3 Ensure permissions on SSH public host key files are configured. (Scored)
+   - id: 31161
+     title: "Ensure permissions on SSH public host key files are configured."
+     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
+     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
+     remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod 0644 {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;."
+     compliance:
+       - cis: ["5.2.3"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.4 Ensure SSH Protocol is set to 2. (Scored)
+   - id: 31162
+     title: "Ensure SSH Protocol is set to 2."
+     description: "Older versions of SSH support two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
+     rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Protocol 2 Notes: This command not longer exists in newer versions of SSH. This check is still being included for systems that may be running an older version of SSH. As of openSSH version 7.4 this parameter will not cause an issue when included."
+     compliance:
+       - cis: ["5.2.4"]
+       - cis_csc_v7: ["6 3.4", "4.5"]
+       - iso_27001-2013: ["A.9.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.5 Ensure SSH LogLevel is appropriate. (Scored)
+   - id: 31163
+     title: "Ensure SSH LogLevel is appropriate."
+     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
+     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO."
+     references:
+       - 'https://www.ssh.com/ssh/sshd_config/'
+     compliance:
+       - cis: ["5.2.5"]
+       - cis_csc_v7: ["6 16", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 5.2.6 Ensure SSH X11 forwarding is disabled. (Scored)
+   - id: 31164
+     title: "Ensure SSH X11 forwarding is disabled."
+     description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
+     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: X11Forwarding no."
+     compliance:
+       - cis: ["5.2.6"]
+       - cis_csc_v7: ["6 16", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less. (Scored)
+   - id: 31165
+     title: "Ensure SSH MaxAuthTries is set to 4 or less."
+     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
+     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4."
+     compliance:
+       - cis: ["5.2.7"]
+       - cis_csc_v7: ["6 16", "16.13"]
+       - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1134", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 5.2.8 Ensure SSH IgnoreRhosts is enabled. (Scored)
+   - id: 31166
+     title: "Ensure SSH IgnoreRhosts is enabled."
+     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
+     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes."
+     compliance:
+       - cis: ["5.2.8"]
+       - cis_csc_v7: ["6 9", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 5.2.9 Ensure SSH HostbasedAuthentication is disabled. (Scored)
+   - id: 31167
+     title: "Ensure SSH HostbasedAuthentication is disabled."
+     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
+     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no."
+     compliance:
+       - cis: ["5.2.9"]
+       - cis_csc_v7: ["6 9", "16.3"]
+       - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.10 Ensure SSH root login is disabled. (Scored)
+   - id: 31168
+     title: "Ensure SSH root login is disabled."
+     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
+     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no."
+     compliance:
+       - cis: ["5.2.10"]
+       - cis_csc_v7: ["6 5.8", "4.3"]
+       - iso_27001-2013: ["A.9.2.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+     condition:
+     rules:
+
+  # 5.2.11 Ensure SSH PermitEmptyPasswords is disabled. (Scored)
+   - id: 31169
+     title: "Ensure SSH PermitEmptyPasswords is disabled."
+     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
+     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no."
+     compliance:
+       - cis: ["5.2.11"]
+       - cis_csc_v7: ["6 16", "16.3"]
+       - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.12 Ensure SSH PermitUserEnvironment is disabled. (Scored)
+   - id: 31170
+     title: "Ensure SSH PermitUserEnvironment is disabled."
+     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
+     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)."
+     compliance:
+       - cis: ["5.2.12"]
+     condition:
+     rules:
