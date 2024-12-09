@@ -1,0 +1,90 @@
+services:
+    wazuh-base:
+        build:
+            context: ./wazuh-base
+            args:
+                WAZUH_BRANCH: ${WAZUH_BRANCH}
+        image: dev-wazuh-base
+
+    wazuh-master:
+        build:
+            context: ./wazuh-manager
+            target: server
+        image: dev-wazuh-manager
+        hostname: wazuh-master
+        volumes:
+            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
+            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+        ports:
+            - "55050:55000"
+        entrypoint:
+            - /scripts/entrypoint.sh
+            - wazuh-master
+            - master-node
+            - master
+        depends_on:
+            - wazuh-base
+
+    wazuh-worker1:
+        image: dev-wazuh-manager
+        hostname: wazuh-worker1
+        volumes:
+            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
+            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+        depends_on:
+            - wazuh-master
+        ports:
+            - "55051:55000"
+        entrypoint:
+            - /scripts/entrypoint.sh
+            - wazuh-master
+            - worker1
+            - worker
+
+    wazuh-worker2:
+        image: dev-wazuh-manager
+        hostname: wazuh-worker2
+        volumes:
+            - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+            - ${WAZUH_LOCAL_PATH}/api/scripts:/var/ossec/api/scripts
+            - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+            - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+        depends_on:
+            - wazuh-master
+        ports:
+            - "55052:55000"
+        entrypoint:
+            - /scripts/entrypoint.sh
+            - wazuh-master
+            - worker2
+            - worker
+
+    nginx-lb:
+        build:
+            context: ./nginx-lb
+        image: dev-nginx-lb
+        restart: on-failure:5
+        entrypoint:
+            - /scripts/entrypoint.sh
+        depends_on:
+            - wazuh-master
+            - wazuh-worker1
+            - wazuh-worker2
+
+    wazuh-agent:
+        build:
+            context: ./wazuh-agent
+        image: dev-wazuh-agent
+        entrypoint:
+            - /scripts/entrypoint.sh
+            - nginx-lb
+            - ${WAZUH_VERSION}
+        depends_on:
+            - wazuh-master
+            - wazuh-worker1
+            - wazuh-worker2
+            - nginx-lb
