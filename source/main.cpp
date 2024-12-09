@@ -301,7 +301,6 @@ int main(int argc, char* argv[])
             }
 
             icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
-            icConfig.keystorePath = confManager.get<std::string>(conf::key::INDEXER_KEYSTORE_PATH);
             const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);
             if (to < 0)
             {

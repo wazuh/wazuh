@@ -64,7 +64,6 @@ protected:
 };
 
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
-constexpr auto TEST_KEYSTORE_PATH {"./keystore"};
 
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
@@ -228,7 +227,6 @@ TEST_F(IndexerConnectorTest, ConnectionWithUserAndPassword)
                                            .hosts = {A_ADDRESS},
                                            .username = "user",
                                            .password = "password",
-                                           .keystorePath = TEST_KEYSTORE_PATH,
                                            .timeout = INDEXER_TIMEOUT};
 
     // Create connector and wait until the connection is established.
@@ -246,7 +244,6 @@ TEST_F(IndexerConnectorTest, ConnectionWithSslCredentials)
 {
     IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
                                            .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
                                            .sslOptions = {.cacert = {"/etc/filebeat/certs/root-ca.pem"},
                                                           .cert = "/etc/filebeat/certs/filebeat.pem",
                                                           .key = "/etc/filebeat/certs/filebeat-key.pem"},
@@ -283,7 +280,6 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
     // Indexer configuration with SSL options
     IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
                                            .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
                                            .sslOptions = {.cacert = {certFileOne, certFileTwo},
                                                           .cert = "/etc/filebeat/certs/filebeat.pem",
                                                           .key = "/etc/filebeat/certs/filebeat-key.pem"},
@@ -316,7 +312,6 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArrayNoFiles)
     IndexerConnectorOptions indexerConfig {
         .name = INDEXER_NAME,
         .hosts = {A_ADDRESS},
-        .keystorePath = TEST_KEYSTORE_PATH,
         .sslOptions = {.cacert = {"/etc/filebeat/certs/root-ca.pem", "/etc/filebeat/certs/root-ca-two.pem"},
                        .cert = "/etc/filebeat/certs/filebeat.pem",
                        .key = "/etc/filebeat/certs/filebeat-key.pem"},
@@ -333,8 +328,7 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArrayNoFiles)
  */
 TEST_F(IndexerConnectorTest, ConnectionUnavailableServer)
 {
-    IndexerConnectorOptions indexerConfig {
-        .name = INDEXER_NAME, .hosts = {B_ADDRESS}, .keystorePath = TEST_KEYSTORE_PATH, .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME, .hosts = {B_ADDRESS}, .timeout = INDEXER_TIMEOUT};
 
     // Create connector and wait until the max time is reached.
     auto indexerConnector {IndexerConnector(indexerConfig)};
@@ -354,10 +348,8 @@ TEST_F(IndexerConnectorTest, ConnectionMultipleServers)
     m_indexerServers[C_IDX]->setHealth("green");
 
     // Create connector and wait until the connection is made with the available server.
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {A_ADDRESS, B_ADDRESS, C_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS, B_ADDRESS, C_ADDRESS}, .timeout = INDEXER_TIMEOUT};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 }
 
@@ -369,10 +361,8 @@ TEST_F(IndexerConnectorTest, ConnectionInvalidServer)
 {
     // Trigger connection and expect that it is not made.
     constexpr auto INEXISTANT_SERVER {"localhost:6789"};
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {INEXISTANT_SERVER},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {INEXISTANT_SERVER}, .timeout = INDEXER_TIMEOUT};
 
     auto indexerConnector {IndexerConnector(indexerConfig)};
     ASSERT_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS),
@@ -406,11 +396,8 @@ TEST_F(IndexerConnectorTest, Publish)
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT,
-                                           .databasePath = DATABASE_BASE_PATH};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Publish content and wait until the publication finishes.
@@ -447,11 +434,8 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT,
-                                           .databasePath = DATABASE_BASE_PATH};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Publish content and wait until the publication finishes.
@@ -488,11 +472,8 @@ TEST_F(IndexerConnectorTest, PublishWithoutId)
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT,
-                                           .databasePath = DATABASE_BASE_PATH};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Publish content and wait until the publication finishes.
@@ -520,11 +501,8 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
     m_indexerServers[B_IDX]->setPublishCallback(checkPublishedData);
 
     // Initialize connector.
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {B_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT,
-                                           .databasePath = DATABASE_BASE_PATH};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {B_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
 
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
@@ -551,8 +529,7 @@ TEST_F(IndexerConnectorTest, PublishInvalidData)
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {
-        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .keystorePath = TEST_KEYSTORE_PATH, .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Trigger publication and expect that it is not made.
@@ -578,8 +555,7 @@ TEST_F(IndexerConnectorTest, DiscardInvalidJSON)
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {
-        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .keystorePath = TEST_KEYSTORE_PATH, .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Trigger publication of invalid data.
@@ -617,11 +593,8 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT,
-                                           .databasePath = DATABASE_BASE_PATH};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Publish content to INDEX_ID_A and wait until is finished.
@@ -671,11 +644,8 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
     m_indexerServers[A_IDX]->setPublishCallback(forceErrorCallback);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
-                                           .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT,
-                                           .databasePath = DATABASE_BASE_PATH};
+    IndexerConnectorOptions indexerConfig {
+        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Trigger publication and expect that it is not made.
@@ -693,10 +663,8 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
 TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
 {
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {.name = "UPPER_case_INDEX",
-                                           .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {
+        .name = "UPPER_case_INDEX", .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT};
 
     EXPECT_THROW(IndexerConnector {indexerConfig}, std::invalid_argument);
 }
@@ -735,10 +703,8 @@ TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {.name = indexerNameDatePlaceHolder,
-                                           .hosts = {A_ADDRESS},
-                                           .keystorePath = TEST_KEYSTORE_PATH,
-                                           .timeout = INDEXER_TIMEOUT};
+    IndexerConnectorOptions indexerConfig {
+        .name = indexerNameDatePlaceHolder, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT};
     const std::string INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR {std::string(INDEXER_NAME) + R"(_\$\(date\))"};
     EXPECT_TRUE(std::regex_match(indexerNameDatePlaceHolder, std::regex(INDEX_NAME_PLACE_HOLDER_FORMAT_REGEX_STR)));
     auto indexerConnector {IndexerConnector(indexerConfig)};

@@ -130,11 +130,6 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
     {
         indexerConnectorOptions.password = config.at("password");
     }
-
-    if (config.contains("keystorePath"))
-    {
-        indexerConnectorOptions.keystorePath = config.at("keystorePath").get_ref<const std::string&>();
-    }
 }
 
 int main(const int argc, const char* argv[])
