@@ -38,7 +38,7 @@ struct IndexerConnectorOptions
     std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
     std::string username;           ///< The username to authenticate with OpenSearch.
     std::string password;           ///< The password to authenticate with OpenSearch.
-    std::string keystorePath;       ///< The path to the keystore.
+
     struct
     {
         std::vector<std::string> cacert; ///< The list of CA certificates to trust.

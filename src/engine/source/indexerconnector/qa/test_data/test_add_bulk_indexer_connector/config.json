@@ -1,6 +1,5 @@
 {
   "name": "wazuh-states-vulnerabilities",
   "enabled": "yes",
-  "hosts": ["http://localhost:9200"],
-  "keystorePath" : "./keystore"
+  "hosts": ["http://localhost:9200"]
 }
