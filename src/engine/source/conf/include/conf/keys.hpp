@@ -25,7 +25,6 @@ constexpr std::string_view INDEXER_SSL_VERIFY_CERTS = "/indexer/ssl/verify_certi
 constexpr std::string_view INDEXER_TIMEOUT = "/indexer/timeout";
 constexpr std::string_view INDEXER_THREADS = "/indexer/threads";
 constexpr std::string_view INDEXER_DB_PATH = "/indexer/db_path";
-constexpr std::string_view INDEXER_KEYSTORE_PATH = "/indexer/keystore_path";
 
 constexpr std::string_view QUEUE_SIZE = "/engine/queue/size";
 constexpr std::string_view QUEUE_FLOOD_FILE = "/engine/queue/flood_file";
