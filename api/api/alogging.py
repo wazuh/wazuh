@@ -21,7 +21,7 @@ WARNING = 'WARNING'
 INFO = 'INFO'
 
 
-def set_logging(logging_config: APILoggingConfig) -> dict:
+def set_logging(logging_config: APILoggingConfig, tag: str) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -32,6 +32,8 @@ def set_logging(logging_config: APILoggingConfig) -> dict:
     ----------
     logging_config :  APILoggingConfig
         Logger configuration.
+    tag : str
+        Logger tag.
 
     Raises
     ------
@@ -66,7 +68,7 @@ def set_logging(logging_config: APILoggingConfig) -> dict:
             },
             "log": {
                 "()": "uvicorn.logging.DefaultFormatter",
-                "fmt": "%(asctime)s %(levelname)s: %(message)s",
+                "fmt": f"%(asctime)s %(levelname)s: [{tag}] %(message)s",
                 "datefmt": "%Y/%m/%d %H:%M:%S",
                 "use_colors": None,
             },
@@ -94,8 +96,8 @@ def set_logging(logging_config: APILoggingConfig) -> dict:
             },
         },
         "loggers": {
+            "wazuh": {"handlers": hdls, "level": log_level, "propagate": False},
             "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
-            "start-stop-api": {"handlers": hdls, "level": INFO, "propagate": False},
             "wazuh-comms-api": {"handlers": hdls, "level": log_level, "propagate": False}
         }
     }

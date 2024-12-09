@@ -16,7 +16,7 @@ import time
 
 from wazuh.core import pyDaemonModule
 from wazuh.core.authentication import generate_keypair, keypair_exists
-from wazuh.core.common import WAZUH_SHARE, WAZUH_LOG, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH
+from wazuh.core.common import WAZUH_SHARE, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import NodeType
 from wazuh.core.cluster.cluster import clean_up
@@ -381,7 +381,7 @@ def start():
     server_pid = os.getpid()
     pyDaemonModule.create_pid(SERVER_DAEMON_NAME, server_pid)
     if not args.daemon:
-        print(f'Starting server in foreground (pid: {server_pid})')
+        main_logger.info(f'Starting server in foreground (pid: {server_pid})')
 
     if server_config.node.type == NodeType.MASTER:
         main_function = master_main

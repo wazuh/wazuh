@@ -98,6 +98,7 @@ class Indexer(MixinBulk):
         WazuhIndexerError(2200)
             In case of errors communicating with the Wazuh Indexer.
         """
+        logger.debug('Connecting to the indexer client.')
         try:
             return await self._client.info()
         except ssl.SSLError as e:
@@ -110,7 +111,7 @@ class Indexer(MixinBulk):
 
     async def close(self) -> None:
         """Close the Wazuh Indexer client."""
-        logger.warning('Closing the indexer client session.')
+        logger.debug('Closing the indexer client session.')
         await self._client.close()
 
 
