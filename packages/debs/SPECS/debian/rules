@@ -25,6 +25,9 @@ export JOBS="5"
 export DEBUG_ENABLED="no"
 export PATH="${PATH}"
 export LD_LIBRARY_PATH=""
+ifeq ($(shell uname -m), aarch64)
+	export VCPKG_FORCE_SYSTEM_BINARIES="arm"
+endif
 
 %:
 	dh $@
