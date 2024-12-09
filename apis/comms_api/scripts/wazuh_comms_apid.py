@@ -44,6 +44,7 @@ from wazuh.core.config.models.logging import APILoggingConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
 
 MAIN_PROCESS = 'wazuh-comms-apid'
+LOGGING_TAG = 'Communications API'
 
 
 def create_app(batcher_queue: MuxDemuxQueue, commands_manager: CommandsManager) -> FastAPI:
@@ -90,7 +91,7 @@ def setup_logging(logging_config: APILoggingConfig) -> dict:
     dict
         Logging configuration dictionary.
     """
-    log_config = set_logging(logging_config=logging_config)
+    log_config = set_logging(logging_config=logging_config, tag=LOGGING_TAG)
 
     logging.config.dictConfig(log_config)
 

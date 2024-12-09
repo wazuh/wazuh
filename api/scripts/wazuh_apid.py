@@ -56,6 +56,7 @@ API_MAIN_PROCESS = 'wazuh-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
 API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
 API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
+LOGGING_TAG = 'Management API'
 
 logger = None
 
@@ -318,7 +319,7 @@ if __name__ == '__main__':
 
     # Set up logger file
     try:
-        uvicorn_params['log_config'] = set_logging(logging_config=management_config.logging)
+        uvicorn_params['log_config'] = set_logging(logging_config=management_config.logging, tag=LOGGING_TAG)
     except APIError as api_log_error:
         print(f"Error when trying to start the Wazuh API. {api_log_error}")
         sys.exit(1)
