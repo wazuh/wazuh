@@ -23,13 +23,20 @@ constexpr auto KS_VALUE_SEPARATOR {':'}; // Default separator for key-value pair
  */
 void Keystore::fileCreate(const std::string& filePath)
 {
+    std::filesystem::path keyStorePath(filePath);
+
     // Create file and update permissions only if it does not exist
-    if (!std::filesystem::exists(filePath))
+    if (!std::filesystem::exists(keyStorePath))
     {
+        if (!std::filesystem::exists(keyStorePath.parent_path()))
+        {
+            throw std::runtime_error("The parent directory of the key store file '" + filePath + "' does not exist.");
+        }
+
         std::ofstream file(filePath);
         if (!file.is_open())
         {
-            throw std::runtime_error("Error creating key-value file due to: " + std::string(strerror(errno)));
+            throw std::runtime_error("Error creating key store file due to: " + std::string(strerror(errno)));
         }
         file.close();
         std::filesystem::permissions(filePath,
@@ -58,6 +65,10 @@ base::utils::KeyValue Keystore::readAndDecrypt(const std::string& filePath)
     std::string decryptedKeystoreStr;
     if (!buffer.empty())
     {
+        if (buffer.size() <= (base::utils::CIPHER_KEY_SIZE + base::utils::CIPHER_IV_SIZE))
+        {
+            throw std::runtime_error("Invalid key store file encryption.");
+        }
         base::utils::EVPHelper().decryptAES256(buffer, decryptedKeystoreStr);
     }
 
