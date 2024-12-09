@@ -99,9 +99,11 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what() << "\n";
+        std::cerr << "Unable to update key store file, no changes made. Reason: " << e.what() << "\n";
         return 1;
     }
+
+    std::cout << "Key store file updated successfully.\n";
 
     return 0;
 }
