@@ -1358,463 +1358,518 @@ checks:
      condition:
      rules:
 
-  # 2.2.6 Ensure ftp client is not installed. (Automated)
-   - id: 18589
-     title: "Ensure ftp client is not installed."
-     description: "tnftp an enhanced FTP client, is the user interface to the Internet standard File Transfer Protocol. The program allows a user to transfer files to and from a remote network site."
-     rationale: "Unless there is a need to run the system using Internet standard File Transfer Protocol (for example, to allow anonymous downloads), it is recommended that the package be removed to reduce the potential attack surface."
-     remediation: "Run the following commands to uninstall tnftp & ftp: # apt purge ftp # apt purge tnftp."
+  # 3.1.1 Ensure IP forwarding is disabled. (Scored)
+   - id: 31089
+     title: "Ensure IP forwarding is disabled."
+     description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
+     rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
+     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0 net.ipv6.conf.all.forwarding = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv6.conf.all.forwarding=0 # sysctl -w net.ipv4.route.flush=1 # sysctl -w net.ipv6.route.flush=1."
      compliance:
-       - cis: ["2.2.6"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_mitigations: ["M1042"]
-       - mitre_tactics: ["TA0008"]
-       - mitre_techniques: ["T1203", "T1543", "T1543.002"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+       - cis: ["3.1.1"]
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
      rules:
-      - "not c:dpkg-query -s ftp tnftp -> r:^Status: install ok installed"
 
-  # 2.3.1.1 Ensure a single time synchronization daemon is in use. (Automated) - Not Implemented
-
-  # 2.3.2.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated)
-   - id: 18591
-     title: "Ensure systemd-timesyncd configured with authorized timeserver."
-     description: "NTP= - A space-separated list of NTP server host names or IP addresses. During runtime this list is combined with any per-interface NTP servers acquired from systemd-networkd.service(8). systemd-timesyncd will contact all configured system or per-interface servers in turn, until one responds. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. This setting defaults to an empty list. FallbackNTP= - A space-separated list of NTP server host names or IP addresses to be used as the fallback NTP servers. Any per-interface NTP servers obtained from systemd-networkd.service(8) take precedence over this setting, as do any servers set via NTP= above. This setting is hence only relevant if no other NTP server information is known. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. If this option is not given, a compiled-in list of NTP servers is used."
-     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-     remediation: "Set NTP and/or FallbackNPT parameters to local site approved authoritative time server(s) in /etc/systemd/timesyncd.conf or a file in /etc/systemd/timesyncd.conf.d/ ending in .conf in the [Time] section: Example file: [Time] NTP=time.nist.gov # Uses the generic name for NIST's time servers FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Example script to create systemd drop-in configuration file: #!/usr/bin/env bash { a_settings=(\"NTP=time.nist.gov\" \"FallbackNTP=time-a-g.nist.gov time-b- g.nist.gov time-c-g.nist.gov\") [ ! -d /etc/systemd/timesyncd.conf.d/ ] && mkdir /etc/systemd/timesyncd.conf.d/ if grep -Psq -- '^\\h*\\[Time\\]' /etc/systemd/timesyncd.conf.d/60- timesyncd.conf; then printf '%s\\n' \"\" \"${a_settings[@]}\" >> /etc/systemd/timesyncd.conf.d/60-timesyncd.conf else printf '%s\\n' \"\" \"[Time]\" \"${a_settings[@]}\" >> /etc/systemd/timesyncd.conf.d/60-timesyncd.conf fi } Note: If this setting appears in a canonically later file, or later in the same file, the setting will be overwritten Run to following command to update the parameters in the service: # systemctl reload-or-restart systemd-journald."
-     references:
-       - 'https://www.freedesktop.org/software/systemd/man/timesyncd.conf.html'
-       - 'https://tf.nist.gov/tf-cgi/servers.cgi'
-     compliance:
-       - cis: ["2.3.2.1"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition: any
-     rules:
-      - "f:/etc/systemd/timesyncd.conf -> r:^NTP|^FallbackNTP"
-      - "not c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded|^ActiveState=active"
-
-  # 2.3.2.2 Ensure systemd-timesyncd is enabled and running. (Automated)
-   - id: 18592
-     title: "Ensure systemd-timesyncd is enabled and running."
-     description: "systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network."
-     rationale: "systemd-timesyncd needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-     remediation: "- IF - systemd-timesyncd is in use on the system, run the following commands: Run the following command to unmask systemd-timesyncd.service: # systemctl unmask systemd-timesyncd.service Run the following command to enable and start systemd-timesyncd.service: # systemctl --now enable systemd-timesyncd.service - OR - If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd.service."
-     compliance:
-       - cis: ["2.3.2.2"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition: all
-     rules:
-      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
-      - "c:systemctl is-active systemd-timesyncd.service -> r:active"
-
-  # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Automated)
-   - id: 18593
-     title: "Ensure chrony is configured with authorized timeserver."
-     description: "The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server's system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. - pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
-     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-     remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: Edit the Chrony configuration and add or edit the server and/or pool lines returned by the Audit Procedure as appropriate according to local site policy <[server|pool]> <[remote-server|remote-pool]> Example script to add a drop-in configuration for the pool directive: #!/usr/bin/env bash { [ ! -d \"/etc/chrony/sources.d/\" ] && mkdir /etc/chrony/sources.d/ printf '%s\\n' \"\" \"#The maxsources option is unique to the pool directive\" \\ \"pool time.nist.gov iburst maxsources 4\" >> /etc/chrony/sources.d/60- sources.sources chronyc reload sources &>/dev/null } Example script to add a drop-in configuration for the server directive: #!/usr/bin/env bash { [ ! -d \"/etc/chrony/sources.d/\" ] && mkdir /etc/chrony/sources.d/ printf '%s\\n' \"\" \"server time-a-g.nist.gov iburst\" \"server 132.163.97.3 iburst\" \\ \"server time-d-b.nist.gov iburst\" >> /etc/chrony/sources.d/60- sources.sources chronyc reload sources &>/dev/null } Run the following command to reload the chronyd config: # systemctl reload-or-restart chronyd."
-     compliance:
-       - cis: ["2.3.3.1"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition: any
-     rules:
-      - 'f:/etc/chrony/chrony.conf -> r:^server|^pool'
-      - 'd:/etc/chrony/sources.d -> r:\.*.sources -> r:^server|^pool'
-      - 'not c:systemctl show chrony.service -> r:^LoadState=loaded|^ActiveState=active'
-
-  # 2.3.3.2 Ensure chrony is running as user _chrony. (Automated)
-   - id: 18594
-     title: "Ensure chrony is running as user _chrony."
-     description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
-     rationale: "The chronyd service should run with only the required privlidges."
-     remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony - OR - If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony # apt autoremove chrony."
-     compliance:
-       - cis: ["2.3.3.2"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition: all
-     rules:
-      - 'c:ps -ef -> r:_chrony\.+chronyd'
-      - 'd:/etc/chrony/sources.d -> r:\.*.sources -> r:^server|^pool'
-      - "not c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded|^ActiveState=active"
-
-  # 2.3.3.3 Ensure chrony is enabled and running. (Automated)
-   - id: 18595
-     title: "Ensure chrony is enabled and running."
-     description: "chrony is a daemon for synchronizing the system clock across the network."
-     rationale: "chrony needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-     remediation: "- IF - chrony is in use on the system, run the following commands: Run the following command to unmask chrony.service: # systemctl unmask chrony.service Run the following command to enable and start chrony.service: # systemctl --now enable chrony.service - OR - If another time synchronization service is in use on the system, run the following command to remove chrony: # apt purge chrony # apt autoremove chrony."
-     compliance:
-       - cis: ["2.3.3.3"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition: all
-     rules:
-      - "c:systemctl show chrony.service -> r:^LoadState=loaded"
-      - "c:systemctl show chrony.service -> r:^ActiveState=active"
-      - "not c:systemctl show systemd-timesyncd.service -> r:^LoadState=loaded|^ActiveState=active"
-
-  # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
-   - id: 18596
-     title: "Ensure cron daemon is enabled and active."
-     description: "The cron daemon is used to execute batch jobs on the system."
-     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
-     remediation: "- IF - cron is installed on the system: Run the following commands to unmask, enable, and start cron: # systemctl unmask \"$(systemctl list-unit-files | awk '$1~/^crond?\\.service/{print $1}')\" # systemctl --now enable \"$(systemctl list-unit-files | awk '$1~/^crond?\\.service/{print $1}')\"."
-     compliance:
-       - cis: ["2.4.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0005"]
-       - mitre_techniques: ["T1562", "T1562.001"]
-     condition: all
-     rules:
-      - "c:systemctl show cron.service -> r:^LoadState=loaded"
-      - "c:systemctl show cron.service -> r:^ActiveState=active"
-
-  # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
-   - id: 18597
-     title: "Ensure permissions on /etc/crontab are configured."
-     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
-     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
-     remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on /etc/crontab: # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
-     compliance:
-       - cis: ["2.4.1.2"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002", "TA0007"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - 'c:stat /etc/crontab -> r:Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-
-  # 2.4.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
-   - id: 18598
-     title: "Ensure permissions on /etc/cron.hourly are configured."
-     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
-     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-     remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on the /etc/cron.hourly directory: # chown root:root /etc/cron.hourly/ # chmod og-rwx /etc/cron.hourly/."
-     compliance:
-       - cis: ["2.4.1.3"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002", "TA0007"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-
-  # 2.4.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
-   - id: 18599
-     title: "Ensure permissions on /etc/cron.daily are configured."
-     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
-     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-     remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on the /etc/cron.daily directory: # chown root:root /etc/cron.daily/ # chmod og-rwx /etc/cron.daily/."
-     compliance:
-       - cis: ["2.4.1.4"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002", "TA0007"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-
-  # 2.4.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
-   - id: 18600
-     title: "Ensure permissions on /etc/cron.weekly are configured."
-     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
-     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-     remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on the /etc/cron.weekly directory: # chown root:root /etc/cron.weekly/ # chmod og-rwx /etc/cron.weekly/."
-     compliance:
-       - cis: ["2.4.1.5"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002", "TA0007"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-
-  # 2.4.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
-   - id: 18601
-     title: "Ensure permissions on /etc/cron.monthly are configured."
-     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
-     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-     remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on the /etc/cron.monthly directory: # chown root:root /etc/cron.monthly/ # chmod og-rwx /etc/cron.monthly/."
-     compliance:
-       - cis: ["2.4.1.6"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002", "TA0007"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-
-  # 2.4.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
-   - id: 18602
-     title: "Ensure permissions on /etc/cron.d are configured."
-     description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab, but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
-     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-     remediation: "- IF - cron is installed on the system: Run the following commands to set ownership and permissions on the /etc/cron.d directory: # chown root:root /etc/cron.d/ # chmod og-rwx /etc/cron.d/."
-     compliance:
-       - cis: ["2.4.1.7"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002", "TA0007"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - 'c:stat /etc/cron.d/ -> r:Access:\s*\t*\(0700/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-
-  # 2.4.1.8 Ensure crontab is restricted to authorized users. (Automated)
-   - id: 18603
-     title: "Ensure crontab is restricted to authorized users."
-     description: "crontab is the program used to install, deinstall, or list the tables used to drive the cron daemon. Each user can have their own crontab, and though these are files in /var/spool/cron/crontabs, they are not intended to be edited directly. If the /etc/cron.allow file exists, then you must be listed (one user per line) therein in order to be allowed to use this command. If the /etc/cron.allow file does not exist but the /etc/cron.deny file does exist, then you must not be listed in the /etc/cron.deny file in order to use this command. If neither of these files exists, then depending on site-dependent configuration parameters, only the super user will be allowed to use this command, or all users will be able to use this command. If both files exist then /etc/cron.allow takes precedence. Which means that /etc/cron.deny is not considered and your user must be listed in /etc/cron.allow in order to be able to use the crontab. Regardless of the existence of any of these files, the root administrative user is always allowed to setup a crontab. The files /etc/cron.allow and /etc/cron.deny, if they exist, must be either world-readable, or readable by group crontab. If they are not, then cron will deny access to all users until the permissions are fixed. There is one file for each user's crontab under the /var/spool/cron/crontabs directory. Users are not allowed to edit the files under that directory directly to ensure that only users allowed by the system to run periodic tasks can add them, and only syntactically correct crontabs will be written there. This is enforced by having the directory writable only by the crontab group and configuring crontab command with the setgid bid set for that specific group. Note: - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user - The files /etc/cron.allow and /etc/cron.deny, if they exist, only controls administrative access to the crontab command for scheduling and modifying cron jobs."
-     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-     remediation: "- IF - cron is installed on the system: Run the following script to: - Create /etc/cron.allow if it doesn't exist - Change owner to user root - Change group owner to group root - OR - group crontab if it exists - Change mode to 640 or more restrictive #!/usr/bin/env bash { [ ! -e \"/etc/cron.deny\" ] && touch /etc/cron.allow chmod u-x,g-wx,o-rwx /etc/cron.allow if grep -Pq -- '^\\h*crontab\\:' /etc/group; then chown root:crontab /etc/cron.allow else chown root:root /etc/cron.allow fi } - IF - /etc/cron.deny exists, run the following script to: - Change owner to user root - Change group owner to group root - OR - group crontab if it exists - Change mode to 640 or more restrictive #!/usr/bin/env bash { if [ -e \"/etc/cron.deny\" ]; then chmod u-x,g-wx,o-rwx /etc/cron.deny if grep -Pq -- '^\\h*crontab\\:' /etc/group; then chown root:crontab /etc/cron.deny else chown root:root /etc/cron.deny fi fi } Note: On systems where cron is configured to use the group crontab, if the group crontab is not set as the owner of cron.allow, then cron will deny access to all users and you will see an error similar to: You (<USERNAME>) are not allowed to use this program (crontab) See crontab(1) for more information."
-     compliance:
-       - cis: ["2.4.1.8"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - "f:/etc/cron.allow"
-      - 'c:stat /etc/cron.allow -> r:Access:\s*\t*\(0640/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-
-  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
-   - id: 18604
-     title: "Ensure at is restricted to authorized users."
-     description: "at allows fairly complex time specifications, extending the POSIX.2 standard. It accepts times of the form HH:MM to run a job at a specific time of day. (If that time is already past, the next day is assumed.) You may also specify midnight, noon, or teatime (4pm) and you can have a time-of-day suffixed with AM or PM for running in the morning or the evening. You can also say what day the job will be run, by giving a date in the form month-name day with an optional year, or giving a date of the form MMDD[CC]YY, MM/DD/[CC]YY, DD.MM.[CC]YY or [CC]YY-MM-DD. The specification of a date must follow the specification of the time of day. You can also give times like now + count time-units, where the time-units can be minutes, hours, days, or weeks and you can tell at to run the job today by suffixing the time with today and to run the job tomorrow by suffixing the time with tomorrow. The /etc/at.allow and /etc/at.deny files determine which user can submit commands for later execution via at or batch. The format of the files is a list of usernames, one on each line. Whitespace is not permitted. If the file /etc/at.allow exists, only usernames mentioned in it are allowed to use at. If /etc/at.allow does not exist, /etc/at.deny is checked, every username not mentioned in it is then allowed to use at. An empty /etc/at.deny means that every user may use at. If neither file exists, only the superuser is allowed to use at."
-     rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-     remediation: "- IF - at is installed on the system: Run the following script to: - /etc/at.allow: o Create the file if it doesn't exist o Change owner or user root o If group daemon exists, change to group daemon, else change group to root o Change mode to 640 or more restrictive - - IF - /etc/at.deny exists: o Change owner or user root o If group daemon exists, change to group daemon, else change group to root o Change mode to 640 or more restrictive #!/usr/bin/env bash { grep -Pq -- '^daemon\\b' /etc/group && l_group=\"daemon\" || l_group=\"root\" [ ! -e \"/etc/at.allow\" ] && touch /etc/at.allow chown root:\"$l_group\" /etc/at.allow chmod u-x,g-wx,o-rwx /etc/at.allow [ -e \"/etc/at.deny\" ] && chown root:\"$l_group\" /etc/at.deny [ -e \"/etc/at.deny\" ] && chmod u-x,g-wx,o-rwx /etc/at.deny }."
-     compliance:
-       - cis: ["2.4.2.1"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1018"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1053", "T1053.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
-     rules:
-      - "f:/etc/at.allow"
-      - 'c:stat -Lc "%a" /etc/at.allow -> n:^(\d)\d\d$ compare <= 6'
-      - 'c:stat -Lc "%a" /etc/at.allow -> n:^\d(\d)\d$ compare <= 4'
-      - 'c:stat -Lc "%a" /etc/at.allow -> n:^\d\d(\d)$ compare <= 0'
-      - 'c:stat -Lc "%U %G" /etc/at.allow -> r:^root root$|^root daemon$'
-
-  # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
-
-  # 3.1.2 Ensure wireless interfaces are disabled. (Automated)
-   - id: 18606
-     title: "Ensure wireless interfaces are disabled."
-     description: "Wireless networking is used when wired networks are unavailable."
-     rationale: "-IF- wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
-     impact: "Many if not all laptop workstations and some desktop workstations will connect via wireless requiring these interfaces be enabled."
-     remediation: "Run the following script to disable any wireless interfaces: #!/usr/bin/env bash { module_fix() { if ! modprobe -n -v \"$l_mname\" | grep -P -- '^\\h*install \\/bin\\/(true|false)'; then echo -e \" - setting module: \\\"$l_mname\\\" to be un-loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi if ! grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\" /etc/modprobe.d/*; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi } if [ -n \"$(find /sys/class/net/*/ -type d -name wireless)\" ]; then l_dname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename \"$(readlink -f \"$driverdir\"/device/driver/module)\";done | sort -u) for l_mname in $l_dname; do module_fix done fi }."
+  # 3.1.2 Ensure packet redirect sending is disabled. (Scored)
+   - id: 31090
+     title: "Ensure packet redirect sending is disabled."
+     description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
+     rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1."
      compliance:
        - cis: ["3.1.2"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["15.4", "15.5"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - mitre_mitigations: ["M1028"]
-       - mitre_tactics: ["TA0010"]
-       - mitre_techniques: ["T1011", "T1595", "T1595.001", "T1595.002"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
      rules:
-      - "c:nmcli radio wifi -> r:^disabled"
-      - "c:nmcli radio wwan -> r:^disabled"
 
-  # 3.1.3 Ensure bluetooth services are not in use. (Automated)
-   - id: 18607
-     title: "Ensure bluetooth services are not in use."
-     description: "Bluetooth is a short-range wireless technology standard that is used for exchanging data between devices over short distances. It employs UHF radio waves in the ISM bands, from 2.402 GHz to 2.48 GHz. It is mainly used as an alternative to wire connections."
-     rationale: "An attacker may be able to find a way to access or corrupt your data. One example of this type of activity is bluesnarfing, which refers to attackers using a Bluetooth connection to steal information off of your Bluetooth device. Also, viruses or other malicious code can take advantage of Bluetooth technology to infect other devices. If you are infected, your data may be corrupted, compromised, stolen, or lost."
-     impact: "Many personal electronic devices (PEDs) use Bluetooth technology. For example, you may be able to operate your computer with a wireless keyboard. Disabling Bluetooth will prevent these devices from connecting to the system. There may be packages that are dependent on the bluez package. If the bluez package is removed, these dependent packages will be removed as well. Before removing the bluez package, review any dependent packages to determine if they are required on the system. -IF- a dependent package is required: stop and mask bluetooth.service leaving the bluez package installed."
-     remediation: "Run the following commands to stop bluetooth.service, and remove the bluez package: # systemctl stop bluetooth.service # apt purge bluez - OR - - IF - the bluez package is required as a dependency: Run the following commands to stop and mask bluetooth.service: # systemctl stop bluetooth.service # systemctl mask bluetooth.service Note: A reboot may be required."
-     references:
-       - 'https://www.cisa.gov/tips/st05-015'
-     compliance:
-       - cis: ["3.1.3"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_mitigations: ["M1042"]
-       - mitre_tactics: ["TA0010"]
-       - mitre_techniques: ["T1011", "T1011.001"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition: any
-     rules:
-      - "c:dpkg-query -s bluez -> r:package 'bluez' is not installed"
-      - "not c:systemctl is-active bluetooth.service -> r:^LoadState=loaded|^ActiveState=active"
-
-  # 3.2.1 Ensure dccp kernel module is not available. (Automated)
-   - id: 18608
-     title: "Ensure dccp kernel module is not available."
-     description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
-     rationale: "- IF - the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
-     remediation: "Run the following script to unload and disable the dccp module: - IF - the dccp kernel module is available in ANY installed kernel: - Create a file ending in .conf with install dccp /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist dccp in the /etc/modprobe.d/ directory - Run modprobe -r dccp 2>/dev/null; rmmod dccp 2>/dev/null to remove dccp from the kernel - IF - the dccp kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env."
+  # 3.2.1 Ensure source routed packets are not accepted. (Scored)
+   - id: 31091
+     title: "Ensure source routed packets are not accepted."
+     description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
+     rationale: "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route and net.ipv6.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv6.conf.all.accept_source_route=0 # sysctl -w net.ipv6.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1 # sysctl -w net.ipv6.route.flush=1."
      compliance:
        - cis: ["3.2.1"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_mitigations: ["M1042"]
-       - mitre_tactics: ["TA0008"]
-       - mitre_techniques: ["T1068", "T1210"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
      rules:
-      - c:modprobe -n -v dccp -> r:^install /bin/false
-      - not c:lsmod -> r:dccp
 
-  # 3.2.2 Ensure tipc kernel module is not available. (Automated)
-   - id: 18609
-     title: "Ensure tipc kernel module is not available."
-     description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
-     rationale: "- IF - the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-     remediation: "Run the following script to unload and disable the tipc module: - IF - the tipc kernel module is available in ANY installed kernel: - Create a file ending in .conf with install tipc /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist tipc in the /etc/modprobe.d/ directory - Run modprobe -r tipc 2>/dev/null; rmmod tipc 2>/dev/null to remove tipc from the kernel - IF - the tipc kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env."
+  # 3.2.2 Ensure ICMP redirects are not accepted. (Scored)
+   - id: 31092
+     title: "Ensure ICMP redirects are not accepted."
+     description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects and net.ipv6.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
+     rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1 # sysctl -w net.ipv6.route.flush=1."
      compliance:
        - cis: ["3.2.2"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_mitigations: ["M1042"]
-       - mitre_tactics: ["TA0008"]
-       - mitre_techniques: ["T1068", "T1210"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition: all
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
      rules:
-      - c:modprobe -n -v tipc -> r:^install /bin/false
-      - not c:lsmod -> r:tipc
+
+  # 3.2.3 Ensure secure ICMP redirects are not accepted. (Scored)
+   - id: 31093
+     title: "Ensure secure ICMP redirects are not accepted."
+     description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
+     rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1."
+     compliance:
+       - cis: ["3.2.3"]
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
+     rules:
+
+  # 3.2.4 Ensure suspicious packets are logged. (Scored)
+   - id: 31094
+     title: "Ensure suspicious packets are logged."
+     description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
+     rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1."
+     compliance:
+       - cis: ["3.2.4"]
+       - cis_csc_v7: ["6 6", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 3.2.5 Ensure broadcast ICMP requests are ignored. (Scored)
+   - id: 31095
+     title: "Ensure broadcast ICMP requests are ignored."
+     description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
+     rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1."
+     compliance:
+       - cis: ["3.2.5"]
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
+     rules:
+
+  # 3.2.6 Ensure bogus ICMP responses are ignored. (Scored)
+   - id: 31096
+     title: "Ensure bogus ICMP responses are ignored."
+     description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
+     rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
+     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1."
+     compliance:
+       - cis: ["3.2.6"]
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
+     rules:
+
+  # 3.2.7 Ensure Reverse Path Filtering is enabled. (Scored)
+   - id: 31097
+     title: "Ensure Reverse Path Filtering is enabled."
+     description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
+     rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1."
+     compliance:
+       - cis: ["3.2.7"]
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
+     rules:
+
+  # 3.2.8 Ensure TCP SYN Cookies is enabled. (Scored)
+   - id: 31098
+     title: "Ensure TCP SYN Cookies is enabled."
+     description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
+     rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1."
+     compliance:
+       - cis: ["3.2.8"]
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
+     rules:
+
+  # 3.2.9 Ensure IPv6 router advertisements are not accepted. (Scored)
+   - id: 31099
+     title: "Ensure IPv6 router advertisements are not accepted."
+     description: "This setting disables the system's ability to accept IPv6 router advertisements."
+     rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
+     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_ra=0 # sysctl -w net.ipv6.conf.default.accept_ra=0 # sysctl -w net.ipv6.route.flush=1."
+     compliance:
+       - cis: ["3.2.9"]
+       - cis_csc_v7: ["6 3", "11"]
+     condition:
+     rules:
+
+  # 3.3 TCP Wrappers Page 249 3.3.1 Ensure TCP Wrappers is installed. (Not Scored)
+   - id: 31100
+     title: "TCP Wrappers Page 249 3.3.1 Ensure TCP Wrappers is installed."
+     description: "Many Linux distributions provide value-added firewall solutions which provide easy, advanced management of network traffic into and out of the local system. When these solutions are available and appropriate for an environment they should be used. In cases where a value-added firewall is not provided by a distribution, TCP Wrappers provides a simple access list and standardized logging method for services capable of supporting it. Services that are called from inetd and xinetd support the use of TCP wrappers. Any service that can support TCP wrappers will have the libwrap.so library attached to it."
+     rationale: "TCP Wrappers provide a good simple access list mechanism to services that may not have that support built in. It is recommended that all services that can support TCP Wrappers, use it."
+     remediation: "Run the following command to install TCP Wrappers: # yum install tcp_wrappers # apt-get install tcpd # zypper install tcpd."
+     compliance:
+       - cis: ["3.3"]
+       - cis_csc_v7: ["6 9.2", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.3.2 Ensure /etc/hosts.allow is configured. (Not Scored)
+   - id: 31101
+     title: "Ensure /etc/hosts.allow is configured."
+     description: "The /etc/hosts.allow file specifies which IP addresses are permitted to connect to the host. It is intended to be used in conjunction with the /etc/hosts.deny file."
+     rationale: "The /etc/hosts.allow file supports access control by IP and helps ensure that only authorized systems can connect to the system."
+     remediation: "Run the following command to create /etc/hosts.allow: # echo \"ALL: <net>/<mask>, <net>/<mask>, ...\" >/etc/hosts.allow where each <net>/<mask> combination (for example, \"192.168.1.0/255.255.255.0\") represents one network block in use by your organization that requires access to this system. Notes: Contents of the /etc/hosts.allow file will vary depending on your network configuration."
+     compliance:
+       - cis: ["3.3.2"]
+       - cis_csc_v7: ["6 9.2", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.3.3 Ensure /etc/hosts.deny is configured. (Not Scored)
+   - id: 31102
+     title: "Ensure /etc/hosts.deny is configured."
+     description: "The /etc/hosts.deny file specifies which IP addresses are not permitted to connect to the host. It is intended to be used in conjunction with the /etc/hosts.allow file."
+     rationale: "The /etc/hosts.deny file serves as a failsafe so that any host not specified in /etc/hosts.allow is denied access to the system."
+     remediation: "Run the following command to create /etc/hosts.deny: # echo \"ALL: ALL\" >> /etc/hosts.deny Notes: Contents of the /etc/hosts.deny file may include additional options depending on your network configuration."
+     compliance:
+       - cis: ["3.3.3"]
+       - cis_csc_v7: ["6 9.2", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.3.4 Ensure permissions on /etc/hosts.allow are configured. (Scored)
+   - id: 31103
+     title: "Ensure permissions on /etc/hosts.allow are configured."
+     description: "The /etc/hosts.allow file contains networking information that is used by many applications and therefore must be readable for these applications to operate."
+     rationale: "It is critical to ensure that the /etc/hosts.allow file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+     remediation: "Run the following commands to set permissions on /etc/hosts.allow: # chown root:root /etc/hosts.allow # chmod 644 /etc/hosts.allow."
+     compliance:
+       - cis: ["3.3.4"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 3.3.5 Ensure permissions on /etc/hosts.deny are configured. (Scored)
+   - id: 31104
+     title: "Ensure permissions on /etc/hosts.deny are configured."
+     description: "The /etc/hosts.deny file contains network information that is used by many system applications and therefore must be readable for these applications to operate."
+     rationale: "It is critical to ensure that the /etc/hosts.deny file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+     remediation: "Run the following commands to set permissions on /etc/hosts.deny : # chown root:root /etc/hosts.deny # chmod 644 /etc/hosts.deny."
+     compliance:
+       - cis: ["3.3.5"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 3.4.1 Ensure DCCP is disabled. (Scored)
+   - id: 31105
+     title: "Ensure DCCP is disabled."
+     description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
+     rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/dccp.conf and add the following line: install dccp /bin/true."
+     compliance:
+       - cis: ["3.4.1"]
+       - cis_csc_v7: ["6 9.1", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 3.4.2 Ensure SCTP is disabled. (Scored)
+   - id: 31106
+     title: "Ensure SCTP is disabled."
+     description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
+     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/sctp.conf and add the following line: install sctp /bin/true."
+     compliance:
+       - cis: ["3.4.2"]
+       - cis_csc_v7: ["6 9.1", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 3.4.3 Ensure RDS is disabled. (Scored)
+   - id: 31107
+     title: "Ensure RDS is disabled."
+     description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
+     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/rds.conf and add the following line: install rds /bin/true."
+     compliance:
+       - cis: ["3.4.3"]
+       - cis_csc_v7: ["6 9.1", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 3.4.4 Ensure TIPC is disabled. (Scored)
+   - id: 31108
+     title: "Ensure TIPC is disabled."
+     description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
+     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/tipc.conf and add the following line: install tipc /bin/true."
+     compliance:
+       - cis: ["3.4.4"]
+       - cis_csc_v7: ["6 9.1", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 3.5.1.1 Ensure IPv6 default deny firewall policy. (Scored)
+   - id: 31109
+     title: "Ensure IPv6 default deny firewall policy."
+     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
+     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
+     remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+     compliance:
+       - cis: ["3.5.1.1"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.5.1.2 Ensure IPv6 loopback traffic is configured. (Scored)
+   - id: 31110
+     title: "Ensure IPv6 loopback traffic is configured."
+     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1)."
+     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+     remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+     compliance:
+       - cis: ["3.5.1.2"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.5.1.3 Ensure IPv6 outbound and established connections are configured. (Not Scored)
+   - id: 31111
+     title: "Ensure IPv6 outbound and established connections are configured."
+     description: "Configure the firewall rules for new outbound, and established IPv6 connections."
+     rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
+     remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # ip6tables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+     compliance:
+       - cis: ["3.5.1.3"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.5.1.4 Ensure IPv6 firewall rules exist for all open ports. (Not Scored)
+   - id: 31112
+     title: "Ensure IPv6 firewall rules exist for all open ports."
+     description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
+     rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
+     remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well. The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
+     compliance:
+       - cis: ["3.5.1.4"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.5.2.1 Ensure default deny firewall policy. (Scored)
+   - id: 31113
+     title: "Ensure default deny firewall policy."
+     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
+     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
+     remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+     compliance:
+       - cis: ["3.5.2.1"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.5.2.2 Ensure loopback traffic is configured. (Scored)
+   - id: 31114
+     title: "Ensure loopback traffic is configured."
+     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8)."
+     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+     remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+     compliance:
+       - cis: ["3.5.2.2"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.5.2.3 Ensure outbound and established connections are configured. (Not Scored)
+   - id: 31115
+     title: "Ensure outbound and established connections are configured."
+     description: "Configure the firewall rules for new outbound, and established connections."
+     rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage."
+     remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # iptables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+     compliance:
+       - cis: ["3.5.2.3"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.5.2.4 Ensure firewall rules exist for all open ports. (Scored)
+   - id: 31116
+     title: "Ensure firewall rules exist for all open ports."
+     description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
+     rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports."
+     remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well. The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
+     compliance:
+       - cis: ["3.5.2.4"]
+       - cis_csc_v7: ["9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 3.5.3 Ensure iptables is installed. (Scored)
+   - id: 31117
+     title: "Ensure iptables is installed."
+     description: "iptables allows configuration of the IPv4 and IPv6 tables in the linux kernel and the rules stored within them. Most firewall configuration utilities operate as a front end to iptables."
+     rationale: "iptables is required for firewall management and configuration."
+     remediation: "Run the following command to install iptables: # yum install iptables # apt-get install iptables # zypper install iptables."
+     compliance:
+       - cis: ["3.5.3"]
+       - cis_csc_v7: ["6 9.1", "9.4"]
+       - iso_27001-2013: ["A.13.1.1"]
+     condition:
+     rules:
+
+  # 3.6 Ensure wireless interfaces are disabled. (Not Scored)
+   - id: 31118
+     title: "Ensure wireless interfaces are disabled."
+     description: "Wireless networking is used when wired networks are unavailable. Debian contains a wireless tool kit to allow system administrators to configure and use wireless networks."
+     rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
+     remediation: "Run the following command to disable any wireless interfaces: # ip link set <interface> down Disable any wireless interfaces in your network configuration."
+     compliance:
+       - cis: ["3.6"]
+       - cis_csc_v7: ["6 15.4", "15.4"]
+       - iso_27001-2013: ["A.8.1.3"]
+     condition:
+     rules:
+
+  # 3.7 Disable IPv6. (Not Scored)
+   - id: 31119
+     title: "Disable IPv6."
+     description: "Although IPv6 has many advantages over IPv4, not all organizations have IPv6 or dual stack configurations implemented."
+     rationale: "If IPv6 or dual stack is not to be used, it is recommended that IPv6 be disabled to reduce the attack surface of the system."
+     remediation: "Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX=\"ipv6.disable=1\" Depending or your distribution, run the appropriate following command to update the grub2 configuration: # grub2-mkconfig –o /boot/grub2/grub.cfg or # update-grub."
+     compliance:
+       - cis: ["3.7"]
+       - cis_csc_v7: ["6 3", "9.1"]
+       - iso_27001-2013: ["A.13.1.2"]
+     condition:
+     rules:
+
+  # 4.1.1.1 Ensure audit log storage size is configured. (Scored)
+   - id: 31120
+     title: "Ensure audit log storage size is configured."
+     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
+     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
+     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB> Notes: The max_log_file parameter is measured in megabytes. Other methods of log rotation may be appropriate based on site policy. One example is time-based rotation strategies which don't have native support in auditd configurations. Manual audit of custom configurations should be evaluated for effectiveness and completeness."
+     compliance:
+       - cis: ["4.1.1.1"]
+       - cis_csc_v7: ["6 6.3", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.1.1.2 Ensure system is disabled when audit logs are full. (Scored)
+   - id: 31121
+     title: "Ensure system is disabled when audit logs are full."
+     description: "The auditd daemon can be configured to halt the system when the audit logs are full."
+     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability."
+     remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root admin_space_left_action = halt."
+     compliance:
+       - cis: ["4.1.1.2"]
+       - cis_csc_v7: ["6 6.3", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.1.1.3 Ensure audit logs are not automatically deleted. (Scored)
+   - id: 31122
+     title: "Ensure audit logs are not automatically deleted."
+     description: "The max_log_file_action setting determines how to handle the audit log file reaching the max file size. A value of keep_logs will rotate the logs but never delete old logs."
+     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
+     remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs."
+     compliance:
+       - cis: ["4.1.1.3"]
+       - cis_csc_v7: ["6 6.3", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.1.2 Ensure auditd is installed. (Scored)
+   - id: 31123
+     title: "Ensure auditd is installed."
+     description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
+     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
+     remediation: "Run the following command to Install auditd # yum install audit audit-libs # apt-get install auditd audispd-plugins # zipper install audit audit-libs."
+     compliance:
+       - cis: ["4.1.2"]
+       - cis_csc_v7: ["6 6.2", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.1.3 Ensure auditd service is enabled. (Scored)
+   - id: 31124
+     title: "Ensure auditd service is enabled."
+     description: "Turn on the auditd daemon to record system events."
+     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
+     remediation: "Run one of the following commands to enable auditd : # chkconfig auditd on # systemctl enable auditd # update-rc.d auditd enable Notes: Additional methods of enabling a service exist. Consult your distribution documentation for appropriate methods."
+     compliance:
+       - cis: ["4.1.3"]
+       - cis_csc_v7: ["6 6.2", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.1.4 Ensure auditing for processes that start prior to auditd is enabled. (Scored)
+   - id: 31125
+     title: "Ensure auditing for processes that start prior to auditd is enabled."
+     description: "Configure grub so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
+     rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
+     remediation: "For grub2 based systems edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: GRUB_CMDLINE_LINUX=\"audit=1\" Run the following command to update the grub2 configuration: # grub2-mkconfig -o /boot/grub2/grub.cfg or # update-grub For grub based systems edit /boot/grub/menu.lst to include audit=1 on all kernel lines. Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub2/grub.cfg, /boot/grub/grun.cfg, /boot/grub/menu.lst with the appropriate grub configuration file for your environment."
+     compliance:
+       - cis: ["4.1.4"]
+       - cis_csc_v7: ["6 6.2", "6.2"]
+       - iso_27001-2013: ["A.12.4.1"]
+     condition:
+     rules:
+
+  # 4.1.5 Ensure events that modify date and time information are collected. (Scored)
+   - id: 31126
+     title: "Ensure events that modify date and time information are collected."
+     description: "Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier \"time-change\"."
+     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
+     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.5"]
+       - cis_csc_v7: ["6 3.6", "5.5"]
+       - iso_27001-2013: ["A.12.1.2"]
+       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+     condition:
+     rules:
+
+  # 4.1.6 Ensure events that modify user/group information are collected. (Scored)
+   - id: 31127
+     title: "Ensure events that modify user/group information are collected."
+     description: "Record events affecting the group , passwd (user IDs), shadow and gshadow (passwords) or /etc/security/opasswd (old passwords, based on remember parameter in the PAM configuration) files. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier \"identity\" in the audit log file."
+     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
+     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity Notes: Reloading the auditd config to set active settings may require a system reboot."
+     compliance:
+       - cis: ["4.1.6"]
+       - cis_csc_v7: ["6 5.4", "4.8"]
+       - iso_27001-2013: ["A.12.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1047", "T1051", "T1053", "T1054", "T1055", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1088", "T1089", "T1096", "T1097", "T1098", "T1100", "T1134", "T1136", "T1145", "T1146", "T1150", "T1156", "T1157", "T1165", "T1169", "T1175", "T1184", "T1190", "T1196", "T1198", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1489", "T1492", "T1494", "T1495", "T1501", "T1504", "T1505", "T1525", "T1530"]
+     condition:
+     rules:
+
+  # 4.1.7 Ensure events that modify the system's network environment are collected. (Scored)
+   - id: 31128
+     title: "Ensure events that modify the system's network environment are collected."
+     description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre-login), /etc/hosts (file containing host names and associated IP addresses) and /etc/sysconfig/network (directory containing network interface scripts and configurations) files."
+     rationale: "Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/sysconfig/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier \"system-locale.\"."
+     compliance:
+       - cis: ["4.1.7"]
+     condition:
+     rules:
