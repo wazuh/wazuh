@@ -1,20 +1,24 @@
-from pathlib import Path
 import shutil
+import os
+from pathlib import Path
 
-from handler_engine_instance import up_down
+from engine_handler.handler import EngineHandler
 
-up_down_engine = up_down.UpDownEngine()
+engine_handler = EngineHandler(
+    os.getenv('BINARY_DIR', ""), os.getenv('CONF_FILE', ""))
+
 dbs_path = Path(__file__).resolve().parent / "data" / "dbs"
 
 
 def before_feature(context, feature):
-    context.up_down_engine = up_down_engine
-    up_down_engine.send_start_command()
+    context.shared_data = {}
+    engine_handler.start()
+    context.shared_data['engine_instance'] = engine_handler
     dbs_path.mkdir(exist_ok=True)
 
 
 def after_feature(context, feature):
-    up_down_engine.send_stop_command()
+    engine_handler.stop()
 
     # Clean up data directory
     shutil.rmtree(dbs_path)

@@ -5,7 +5,7 @@
 
 import os
 from datetime import timezone, datetime
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 from uuid import uuid4
 
 import httpx
@@ -13,8 +13,10 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        from wazuh.core.manager import *
-        from wazuh.core.exception import WazuhException
+        # TODO: Fix in #26725
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            from wazuh.core.manager import *
+            from wazuh.core.exception import WazuhException
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
@@ -26,15 +28,6 @@ class InitManager:
         """Sets up necessary environment to test manager functions"""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
-        # rules
-        self.input_rules_file = 'test_rules.xml'
-        self.output_rules_file = 'uploaded_test_rules.xml'
-        # decoders
-        self.input_decoders_file = 'test_decoders.xml'
-        self.output_decoders_file = 'uploaded_test_decoders.xml'
-        # CDB lists
-        self.input_lists_file = 'test_lists'
-        self.output_lists_file = 'uploaded_test_lists'
 
 
 @pytest.fixture(scope='module')
@@ -228,13 +221,6 @@ def test_parse_execd_output(error_flag, error_msg):
             parse_execd_output(json_response)
 
 
-@patch('wazuh.core.manager.configuration.api_conf', new={'experimental_features': True})
-def test_get_api_config():
-    """Checks that get_api_config method is returning current api_conf dict."""
-    result = get_api_conf()
-    assert result == {'experimental_features': True}
-
-
 @pytest.mark.parametrize('update_check', (True, False))
 @pytest.mark.parametrize('last_check_date', (None, datetime.now()))
 def test_get_update_information_template(last_check_date, update_check, installation_uid):
@@ -253,6 +239,15 @@ def test_get_update_information_template(last_check_date, update_check, installa
     assert 'last_available_major' in template
     assert 'last_available_minor' in template
     assert 'last_available_patch' in template
+
+
+@pytest.mark.asyncio
+async def test_query_update_check_service_timeout(installation_uid):
+    """Test that the query_update_check_service function calls httpx.AsyncClient with a timeout."""
+    with patch('httpx.AsyncClient') as client:
+        await query_update_check_service(installation_uid)
+
+        client.assert_called_with(verify=ANY, timeout=httpx.Timeout(DEFAULT_TIMEOUT))
 
 
 @pytest.mark.asyncio
@@ -353,6 +348,7 @@ async def test_query_update_check_service_returns_correct_data_when_status_200(
         assert update_information['last_available_patch'] == {}
 
 
+@pytest.mark.asyncio
 async def test_query_update_check_service_returns_correct_data_on_error(
     installation_uid, client_session_get_mock
 ):

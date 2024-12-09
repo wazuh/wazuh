@@ -18,7 +18,6 @@ default_policies:
           - agent:modify_group
           - agent:reconnect
           - agent:restart
-          - agent:upgrade
         resources:
           - agent:id:*
           - agent:group:*
@@ -126,187 +125,17 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  ciscat_read:
-    description: Allow read agent's ciscat results information.
-    policies:
-      ciscat:
-        actions:
-          - ciscat:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  decoders_read:
-    description: Allow reading all decoder files in the system.
-    policies:
-      decoders:
-        actions:
-          - decoders:read
-        resources:
-          - decoder:file:*
-        effect: allow
-
-  decoders_all:
-    description: Allow managing all decoder files in the system.
-    policies:
-      files:
-        actions:
-          - decoders:read
-          - decoders:delete
-        resources:
-          - decoder:file:*
-        effect: allow
-      resourceless:
-        actions:
-          - decoders:update
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  mitre_read:
-    description: Allow read MITRE database information.
-    policies:
-      mitre:
-        actions:
-          - mitre:read
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  lists_read:
-    description: Allow reading all lists paths in the system.
-    policies:
-      rules:
-        actions:
-          - lists:read
-        resources:
-          - list:file:*
-        effect: allow
-
-  lists_all:
-    description: Allow managing all CDB lists files in the system.
-    policies:
-      rules:
-        actions:
-          - lists:read
-          - lists:delete
-        resources:
-          - list:file:*
-        effect: allow
-      resourceless:
-        actions:
-          - lists:update
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  rootcheck_read:
-    description: Allow read rootcheck information.
-    policies:
-      rootcheck:
-        actions:
-          - rootcheck:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  rootcheck_all:
-    description: Allow read, run and clear rootcheck information.
-    policies:
-      rootcheck:
-        actions:
-          - rootcheck:clear
-          - rootcheck:read
-          - rootcheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
-  rules_read:
-    description: Allow reading all rule files in the system.
-    policies:
-      rules:
-        actions:
-          - rules:read
-        resources:
-          - rule:file:*
-        effect: allow
-
-  rules_all:
-    description: Allow managing all rule files in the system.
-    policies:
-      files:
-        actions:
-          - rules:read
-          - rules:delete
-        resources:
-          - rule:file:*
-        effect: allow
-      resourceless:
-        actions:
-          - rules:update
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  sca_read:
-    description: Allow read agent's sca information.
-    policies:
-      sca:
-        actions:
-          - sca:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscheck_read:
-    description: Allow read syscheck information
-    policies:
-      syscheck:
-        actions:
-          - syscheck:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscheck_all:
-    description: Allow read, run and clear syscheck information
-    policies:
-      syscheck:
-        actions:
-          - syscheck:clear
-          - syscheck:read
-          - syscheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscollector_read:
-    description: Allow read agents information
-    policies:
-      syscollector:
-        actions:
-          - syscollector:read
-        resources:
-          - agent:id:*
-        effect: allow
-
   cluster_all:
-    description: Provide full access to all cluster/manager related functionalities.
+    description: Provide full access to all cluster related functionalities.
     policies:
       resourceless:
         actions:
           - cluster:status
-          - manager:read
-          - manager:read_api_config
-          - manager:update_config
-          - manager:restart
         resources:
           - '*:*:*'
         effect: allow
       nodes:
         actions:
-          - cluster:read_api_config
           - cluster:read
           - cluster:restart
           - cluster:update_config
@@ -315,51 +144,21 @@ default_policies:
         effect: allow
 
   cluster_read:
-    description: Provide read access to all cluster/manager related functionalities.
+    description: Provide read access to all cluster related functionalities.
     policies:
-      resourceless:
-        actions:
-          - cluster:status
-          - manager:read
-          - manager:read_api_config
-        resources:
-          - '*:*:*'
-        effect: allow
       nodes:
         actions:
-          - cluster:read_api_config
           - cluster:read
-          - cluster:read_api_config
         resources:
           - node:id:*
         effect: allow
 
-  logtest_all:
-    description: Provide access to all logtest related functionalities.
-    policies:
-      logtest:
-        actions:
-          - logtest:run
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  task_status:
-    description: Provide permissions to check the status of tasks
-    policies:
-      task:
-        actions:
-          - task:status
-        resources:
-          - '*:*:*'
-        effect: allow
-
-  events_ingest:
-    description: Allow ingesting events.
+  orders_send:
+    description: Allow sending orders to the server.
     policies:
       resourceless:
         actions:
-          - event:ingest
+          - order:send
         resources:
           - '*:*:*'
         effect: allow

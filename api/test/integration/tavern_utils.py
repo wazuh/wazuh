@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import ast
 import json
 import re
 import subprocess
@@ -65,8 +65,7 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
     select_key : str
         Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
     flag_nested_key_list : bool
-        Flag used to indicate that the nested key contains a list. Used to test endpoints like
-        GET /sca/{agent_id}/checks/{policy_id}.
+        Flag used to indicate that the nested key contains a list.
     """
     main_keys = set()
     nested_keys = dict()
@@ -238,7 +237,7 @@ def test_validate_data_dict_field(response, fields_dict):
 
         for element in field_list:
             try:
-                assert (isinstance(element[key], eval(value)) for key, value in dikt.items())
+                assert (isinstance(element[key], ast.literal_eval(value)) for key, value in dikt.items())
             except KeyError:
                 assert len(element) == 1
                 assert isinstance(element['count'], int)
@@ -295,51 +294,6 @@ def test_save_response_data(response):
     return Box({'response_data': response.json()['data']})
 
 
-def test_save_response_data_mitre(response, fields):
-    response = response.json()['data']
-    fields_response = list()
-    for r in response['affected_items']:
-        fields_response.append({k: r[k] for k in fields})
-
-    return Box({'response_data': fields_response})
-
-
-def test_validate_mitre(response, data, index=0):
-    data = data.replace('"', '\\"')  # Escape " character in data
-    data = json.loads(data.replace("'", '"'))
-    for element in data:
-        for k, v in element.items():
-            if isinstance(v, str):
-                v = v.replace('\\"', '"')  # Remove \\ characters used to escape "
-            assert v == response.json()['data']['affected_items'][index][k]
-
-
-def test_validate_restart_by_node(response, data):
-    data = json.loads(data.replace("'", '"'))
-    affected_items = list()
-    for item in data['affected_items']:
-        if item['status'] == 'active':
-            affected_items.append(item['id'])
-    assert response.json()['data']['affected_items'] == affected_items
-    assert not response.json()['data']['failed_items']
-    healthcheck_agent_restart(response, affected_items)
-
-
-def test_validate_restart_by_node_rbac(response, permitted_agents):
-    data = response.json().get('data', None)
-    if data:
-        if data['affected_items']:
-            healthcheck_agent_restart(response, data['affected_items'])
-            for agent in data['affected_items']:
-                assert agent in permitted_agents
-        else:
-            assert data['total_affected_items'] == 0
-    else:
-        assert response.status_code == 403
-        assert response.json()['error'] == 4000
-        assert 'agent:id' in response.json()['detail']
-
-
 def test_validate_auth_context(response, expected_roles=None):
     """Check that the authorization context has been matched with the correct rules
 
@@ -352,18 +306,6 @@ def test_validate_auth_context(response, expected_roles=None):
     token = response.json()['data']['token'].split('.')[1]
     payload = loads(b64decode(token + '===').decode())
     assert payload['rbac_roles'] == expected_roles
-
-
-def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
-    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
-    if experimental:
-        hotfixes_keys.add('agent_id')
-    affected_items = response.json()['data']['affected_items']
-    if affected_items:
-        for item in affected_items:
-            assert set(item.keys()) == hotfixes_keys
-            if hotfix_filter:
-                assert item['hotfix'] == hotfix_filter
 
 
 def test_validate_group_configuration(response, expected_field, expected_value):
@@ -486,7 +428,7 @@ def check_agent_active_status(agents_list):
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
 
         # Transform string representation of list to list and save agents id
-        id_active_agents = [agent['id'] for agent in eval(output)]
+        id_active_agents = [agent['id'] for agent in ast.literal_eval(output)]
 
         if all(a in id_active_agents for a in agents_list):
             break

@@ -1,16 +1,17 @@
 # Engine development enviroment
 
 1. [Project structure](#structure)
-1. [Adding tests](#addtest)
-1. [Adding benchmarks](#addbench)
-1. [Cmake dependencies](#cmakedep)
-1. [Visual studio code integration](#VSC)
-    1. [CMake and c++](#CMAKECPP)
-    1. [Astyle formatter](#astyle)
-    1. [Gtest integration](#gtest)
-    1. [Debugging main with gdb](#debug)
-1. [Documentation generation](#docxygen)
-1. [Building manually](#buildmanual)
+    1. [Benchamarck](#benchamarck)
+    1. [Build](#build)
+    1. [Docs](#docs)
+    1. [Source](#source)
+    1. [Test](#test)
+    1. [Tools](#tools)
+1. [Directory description](#directory-description)
+1. [Engine Compilation](#engine-compilation)
+    1. [Install cmake](#install-cmake)
+    1. [Install vcpkg](#install-vcpkg)
+    1. [Building engine](#building-engine)
 1. [License](#license)
 
 <a name="structure"></a>
@@ -18,34 +19,18 @@
 ```bash
 engine/
 ├── benchmark
-│   ├── CMakeLists.txt
-│   └── source
-│       └── dummy_benchmark.cpp
 ├── build
 |   └── ...
 ├── CMakeLists.txt
 ├── docs
-│   ├── Doxyfile.in
-│   └── ...
-├── README.md
 ├── source
-│   ├── main.cpp
-│   ├── shared
-|   ├── sub_module_0
-|   └── sub_module_n
-└── test
-    ├── CMakeLists.txt
-    └── source
-        └── dummy_test.cpp
+├── test
+├── tools
 ```
 
-<a name="addtest"></a>
-## Adding tests
-Test are located inside `<root_dir>/test/source` folder, to add tests simply create new cpp file inside said folder. Check [google/gtest](https://github.com/google/googletest) documentation in order to build tests using gtest.
+## Benchamarck
 
-<a name="addbench"></a>
-## Adding benchmarks
-Test are located inside `<root_dir>/benchmark/source` folder, to add benchmarks simply create new cpp file inside said folder. Check [google/benchmark](https://github.com/google/benchmark) documentation in order to build micro-benchmarks using google benchmark.
+Dedicated to the implementation of performance tests and benchmarking. Contains source code files necessary to evaluate the performance of various system components. The tests developed in this folder allow identifying bottlenecks and optimizing the efficiency of operations, contributing to the continuous improvement of the system.
 
 <a name="VSC"></a>
 ## Visual studio code integration
@@ -73,13 +58,8 @@ In order to integrate CMake and c++ with VSCode we need to install the [c++ exte
 ```
 CMake: Configure
 ```
-We can select CMake build variant, targets, executable and tests on the bottom menu:
-
-![](docs/img/bottom_menu.png)
-
-We can also see build information on the dedicated CMake section on the left side menu:
-
-![](docs/img/left_menu_cmake.png)
+- We can select CMake build variant, targets, executable and tests on the bottom menu.
+- We can also see build information on the dedicated CMake section on the left side menu.
 
 <a name="astyle"></a>
 ### Astyle formatter
@@ -91,6 +71,14 @@ We need to [install astyle](http://astyle.sourceforge.net/install.html) and [c++
         "--options=${workspaceFolder}/.vscode/astyle.config"
     ]
 }
+- **Make a new directory to hold vcpkg and extract the tar.gz file**:
+```bash
+mkdir /home/$USER/engine/vcpkg
+tar xf vcpkg.tar.gz --strip-components=1 -C /home/$USER/engine/vcpkg
+```
+- **Build vcpkg**:
+```bash
+/home/$USER/engine/vcpkg/bootstrap-vcpkg.sh
 ```
 And create `astyle.config` file inside `.vscode` folder using Wazuh style guidelines:
 ```
@@ -166,21 +154,37 @@ Documentation is generated with docxygen, currently html and latex outputs are g
 <a name="buildmanual"></a>
 ## Building manually
 This project use [CMake](https://cmake.org) and [VCPKG](https://vcpkg.io)
+#### Step 1: Install Dependencies
 ```bash
-cd ..
+apt install curl zip unzip tar -y
+apt install build-essential clang-format -y
+apt install pkg-config -y
+apt install lzip -y
+```
+#### Step 2: Install CMake 3.30
+```bash
+cd $HOME
+wget https://github.com/Kitware/CMake/releases/download/v3.24.4/cmake-3.24.4-linux-x86_64.sh
+chmod +x cmake-3.24.4-linux-x86_64.sh
+./cmake-3.24.4-linux-x86_64.sh
+export PATH=$HOME/cmake-3.24.4-linux-x86_64/bin:$PATH
+```
+#### Step 3: Install vcpkg
+```bash
 git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg && ./bootstrap-vcpkg.sh
+cd vcpkg
+./bootstrap-vcpkg.sh
 export VCPKG_ROOT=$(pwd)
 export PATH=$VCPKG_ROOT:$PATH
-cd ../wazuh/src
+```
+#### Step 4: Install Wazuh Engine
+```bash
+git clone --recurse-submodules https://github.com/wazuh/wazuh.git  
+cd wazuh/src/engine
 cmake --preset=release
 cmake --build build -j$(nproc)
 ```
 
-To run tests:
-```bash
-ctest --test-dir build --output-on-failure
-```
 <a name="license"></a>
 ## License
 Wazuh Engine is distributed under the AGPLv3 license. See [LICENSE-engine](LICENSE-engine) and [COPYING-engine](COPYING-engine) for more details.

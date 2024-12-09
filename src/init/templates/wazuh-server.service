@@ -1,0 +1,15 @@
+[Unit]
+Description=Wazuh server
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+LimitNOFILE=65536
+# TODO: Remove root flag
+ExecStart=/usr/bin/env WAZUH_HOME_TMPusr/share/wazuh-server/bin/wazuh-server start -r
+Type=exec
+KillSignal=SIGINT
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

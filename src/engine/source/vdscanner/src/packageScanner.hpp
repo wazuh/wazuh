@@ -22,7 +22,6 @@
 #include <memory>
 #include <variant>
 
-auto constexpr DEFAULT_CNA {"nvd"};
 auto constexpr L1_CACHE_SIZE {2048};
 
 /**
@@ -82,17 +81,24 @@ private:
         const auto osPlatform = data->osPlatform().data();
         const auto translations = m_databaseFeedManager->checkAndTranslatePackage(packageCandidate, osPlatform);
 
-        auto scanPackage = [this, &data, &cnaName, &vulnerabilityScan](const PackageData& package)
+        auto scanPackage =
+            [this,
+             &data,
+             &cnaName,
+             &vulnerabilityScan,
+             functionName = logging::getLambdaName(__FUNCTION__, "scanPackage")](const PackageData& package)
         {
-            LOG_DEBUG("Initiating a vulnerability scan for package '{}' ({}) ({}) with CVE Numbering Authorities (CNA)"
-                      " '{}' on Agent '{}' (ID: '{}', Version: '{}').",
-                      package.name,
-                      package.format,
-                      package.vendor,
-                      cnaName,
-                      data->agentName(),
-                      data->agentId(),
-                      data->agentVersion());
+            LOG_DEBUG_L(
+                functionName.c_str(),
+                "Initiating a vulnerability scan for package '{}' ({}) ({}) with CVE Numbering Authorities (CNA)"
+                " '{}' on Agent '{}' (ID: '{}', Version: '{}').",
+                package.name,
+                package.format,
+                package.vendor,
+                cnaName,
+                data->agentName(),
+                data->agentId(),
+                data->agentVersion());
 
             m_databaseFeedManager->getVulnerabilitiesCandidates(cnaName, package, vulnerabilityScan);
         };
@@ -119,9 +125,10 @@ private:
      * @brief Define what CNA will be used to read the data.
      *
      * @param ctx Scan context.
-     * @return std::string CNA name.
+     * @return std::pair<std::string, std::string> CNA pair.
+     *
      */
-    std::string getCNA(std::shared_ptr<TScanContext> ctx)
+    std::pair<std::string, std::string> getCNA(std::shared_ptr<TScanContext> ctx)
     {
         auto cnaName {m_databaseFeedManager->getCnaNameByFormat(ctx->packageFormat().data())};
 
@@ -138,7 +145,7 @@ private:
                                                                           ctx->osPlatform().data());
                     if (cnaName.empty())
                     {
-                        return DEFAULT_CNA;
+                        return {DEFAULT_CNA, DEFAULT_CNA};
                     }
                 }
             }
@@ -183,7 +190,7 @@ private:
 
         if (const auto it = cnaMapping.find(cnaName); it == cnaMapping.end())
         {
-            return cnaName;
+            return {cnaName, cnaName};
         }
         else
         {
@@ -193,7 +200,7 @@ private:
                 base,
                 "$(MAJOR_VERSION)",
                 majorVersionEquivalence(ctx->osPlatform().data(), ctx->osMajorVersion().data()));
-            return base;
+            return {cnaName, base};
         }
     }
 
@@ -551,9 +558,10 @@ public:
      */
     std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> data) override
     {
-        auto vulnerabilityScan = [&data, this](const std::string& cnaName,
-                                               const PackageData& package,
-                                               const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
+        auto vulnerabilityScan = [&data, this, functionName = logging::getLambdaName(__FUNCTION__, "scanPackage")](
+                                     const std::string& cnaName,
+                                     const PackageData& package,
+                                     const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
         {
             try
             {
@@ -591,16 +599,18 @@ public:
             catch (const std::exception& e)
             {
                 // Log the warning and continue with the next vulnerability.
-                LOG_DEBUG("Failed to scan package: '{}', CVE Numbering Authorities (CNA): '{}', Error: '{}'",
-                          package.name,
-                          cnaName,
-                          e.what());
+                LOG_DEBUG_L(functionName.c_str(),
+                            "Failed to scan package: '{}', CVE Numbering Authorities (CNA): '{}', Error: '{}'",
+                            package.name,
+                            cnaName,
+                            e.what());
 
                 return false;
             }
         };
 
-        const auto CNAValue = getCNA(data);
+        data->m_vulnerabilitySource = getCNA(data);
+        const auto& CNAValue = data->m_vulnerabilitySource.second;
 
         try
         {

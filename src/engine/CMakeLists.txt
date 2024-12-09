@@ -17,7 +17,6 @@ project(wazuh-engine
 set(ENGINE_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
 # set(LIB_DIR ${PROJECT_SOURCE_DIR}/lib)
 set(ENGINE_SOURCE_DIR ${PROJECT_SOURCE_DIR}/source)
-set(ENGINE_TEST_DIR ${PROJECT_SOURCE_DIR}/test)
 set(ENGINE_BENCHMARK_DIR ${PROJECT_SOURCE_DIR}/benchmark)
 set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
@@ -26,6 +25,7 @@ option(ENGINE_BUILD_TEST "Generate tests" ON)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
+option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
 
 # TODO put this in a better place together with other global options like warnings
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -61,10 +61,72 @@ else()
 endif()
 
 ####################################################################################################
+# Temporary IANA Time Zone Database fixed
+####################################################################################################
+function(configure_tzdb)
+
+    set(TZDB_VERSION "2024a")
+    set(TZDB_URL "https://ftp.iana.org/tz/releases/tzdb-${TZDB_VERSION}.tar.lz")
+    set(TZDB_DIR "${CMAKE_BINARY_DIR}/tzdb")
+    set(TZDB_TAR "${CMAKE_BINARY_DIR}/tzcode${TZDB_VERSION}.tar.lz")
+    set(TZDB_HLP_TEST_DIR "${CMAKE_BINARY_DIR}/source/hlp/data")
+
+    find_program(WGET wget)
+    find_program(TAR tar)
+    find_program(LZIP lzip)
+
+    if(NOT WGET)
+        message(FATAL_ERROR "wget is required but not found. Please install wget.")
+    endif()
+
+    if(NOT TAR)
+        message(FATAL_ERROR "tar is required but not found. Please install tar.")
+    endif()
+
+    if(NOT LZIP)
+        message(FATAL_ERROR "lzip is required but not found. Please install lzip.")
+    endif()
+
+    # Download tzdb
+    if(NOT EXISTS ${TZDB_TAR})
+        message(STATUS "Downloading tzdb version ${TZDB_VERSION} from ${TZDB_URL}")
+        execute_process(
+            COMMAND ${WGET} ${TZDB_URL} -O ${TZDB_TAR}
+            RESULT_VARIABLE DOWNLOAD_RESULT
+        )
+        if(NOT DOWNLOAD_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to download tzdb from ${TZDB_URL}")
+        endif()
+    endif()
+
+    # Check if tzdb directory exists if not extract it
+    if(NOT EXISTS ${TZDB_DIR})
+        message(STATUS "Creating directory ${TZDB_DIR} for extraction")
+        file(MAKE_DIRECTORY ${TZDB_DIR})  # Crear el directorio de destino
+
+        message(STATUS "Extracting tzdb version ${TZDB_VERSION} into ${TZDB_DIR}")
+        execute_process(
+            COMMAND ${TAR} --lzip --strip-components=1 -xvf ${TZDB_TAR} -C ${TZDB_DIR}
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract tzdb file ${TZDB_TAR}")
+        endif()
+    endif()
+
+    file(MAKE_DIRECTORY ${TZDB_HLP_TEST_DIR})
+    file(COPY ${TZDB_DIR} DESTINATION ${TZDB_HLP_TEST_DIR} FILES_MATCHING PATTERN "*")
+
+
+endfunction()
+# Temporaty fix for IANA Time Zone Database
+configure_tzdb()
+
+
+####################################################################################################
 # Dependencies
 ####################################################################################################
-function(find_and_create_imported_target package_name target_name)
-    find_package(${package_name} CONFIG REQUIRED)
+function(action package_name target_name)
     if (${package_name}_FOUND)
         if (NOT TARGET ${target_name})
             add_library(${target_name} INTERFACE IMPORTED)
@@ -77,6 +139,16 @@ function(find_and_create_imported_target package_name target_name)
     else()
         message(FATAL_ERROR "${package_name} not found!")
     endif()
+endfunction()
+
+function(find_and_create_imported_target package_name target_name)
+    find_package(${package_name} CONFIG REQUIRED)
+    action(${package_name} ${target_name})
+endfunction()
+
+function(find_and_create_imported_target_ex package_name target_name)
+    find_package(${package_name} REQUIRED)
+    action(${package_name} ${target_name})
 endfunction()
 
 # Build test
@@ -121,6 +193,9 @@ find_and_create_imported_target("httplib" "httplib::httplib")
 find_and_create_imported_target("date" "date::date")
 find_and_create_imported_target("date" "date::date-tz")
 
+find_and_create_imported_target("liblzma" "liblzma::liblzma")
+find_and_create_imported_target_ex("LibArchive" "LibArchive::LibArchive")
+
 ####################################################################################################
 # Targets
 ####################################################################################################
@@ -147,7 +222,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/yml)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
-add_subdirectory(${ENGINE_SOURCE_DIR}/cmds)
 add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
@@ -155,9 +229,40 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
 add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
+add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
+add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
 
-#TODO isolate rxcpp
-target_link_libraries(main base cmds api CLI11::CLI11)
+target_link_libraries(main
+    base
+    conf
+    yml
+    defs
+    builder
+    #bk::taskf
+    bk::rx
+    server
+    router::router
+    store
+    api
+    libuv::uv_a
+    kvdb
+    eMessages
+    metrics
+    geo
+    schemf
+    wdb
+    sockiface
+    rbac
+    geo::igeo
+    vdscanner
+    apiserver
+    indexerconnector
+)
+
+# If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
+if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
+    target_link_libraries(main -static-libgcc -static-libstdc++)
+endif()
 
 # Build benchmark
 if(ENGINE_BUILD_BENCHMARK)

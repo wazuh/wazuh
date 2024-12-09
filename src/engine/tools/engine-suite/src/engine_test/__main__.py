@@ -7,14 +7,15 @@ from engine_test.cmds.add import AddCommand
 from engine_test.cmds.get import GetCommand
 from engine_test.cmds.list import ListCommand
 from engine_test.cmds.delete import DeleteCommand
-from engine_test.config import Config
+from engine_test.config import DEFAULT_CONFIG_FILE
+from engine_test.cmds.session import configure as configure_session
 
 def parse_args():
     meta = metadata('engine-suite')
     parser = argparse.ArgumentParser(prog='engine-test')
 
-    parser.add_argument('-c', '--config', help=f'Configuration file. Default: {Config.get_config_file()}',
-                            type=str, default=Config.get_config_file(), dest='config_file')
+    parser.add_argument('-c', '--config', help=f'Configuration file. Default: {DEFAULT_CONFIG_FILE}',
+                        type=str, default=DEFAULT_CONFIG_FILE, dest='config_file')
 
     parser.add_argument('-v', '--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
@@ -37,11 +38,16 @@ def parse_args():
     delete_command = DeleteCommand()
     delete_command.configure(subparsers)
 
+    # Session commands
+    configure_session(subparsers)
+
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
     args.func(vars(args))
+
 
 if __name__ == '__main__':
     sys.exit(main())

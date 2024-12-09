@@ -9,15 +9,20 @@ import re
 from unittest.mock import patch, MagicMock, mock_open
 import botocore
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
+import aws_constants as test_constants
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
-import aws_bucket
 import server_access
 
 TEST_LOG_SERVER_ACCESS_FULL_PATH = '2021-04-29-09-12-25-F123456789012345'
-utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = TEST_LOG_SERVER_ACCESS_FULL_PATH
+test_constants.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = TEST_LOG_SERVER_ACCESS_FULL_PATH
 
 
 @patch('aws_bucket.AWSCustomBucket.__init__')
@@ -31,7 +36,9 @@ def test_aws_server_access_initializes_properly(mock_custom_bucket):
 
 
 @pytest.mark.parametrize('object_list',
-                         [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
+                         [test_constants.LIST_OBJECT_V2,
+                          test_constants.LIST_OBJECT_V2_NO_PREFIXES,
+                          test_constants.LIST_OBJECT_V2_TRUNCATED])
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
 @pytest.mark.parametrize('same_prefix_result', [True, False])
@@ -57,19 +64,19 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
     with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
             patch('wazuh_integration.WazuhAWSDatabase.__init__'):
 
-        instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=utils.TEST_BUCKET,
+        instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=test_constants.TEST_BUCKET,
                                            delete_file=delete_file, reparse=reparse)
 
         mock_build_filter.return_value = {
             'Bucket': instance.bucket,
             'MaxKeys': 1000,
-            'Prefix': utils.TEST_PREFIX
+            'Prefix': test_constants.TEST_PREFIX
         }
 
         instance.client = MagicMock()
         instance.client.list_objects_v2.return_value = object_list
 
-        aws_account_id = utils.TEST_ACCOUNT_ID
+        aws_account_id = test_constants.TEST_ACCOUNT_ID
         aws_region = None
 
         with patch('aws_bucket.AWSBucket._same_prefix', return_value=same_prefix_result) as mock_same_prefix, \
@@ -80,7 +87,8 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
                 patch('aws_bucket.AWSCustomBucket.mark_complete') as mock_mark_complete:
 
             if 'IsTruncated' in object_list and object_list['IsTruncated']:
-                instance.client.list_objects_v2.side_effect = [object_list, utils.LIST_OBJECT_V2_NO_PREFIXES]
+                instance.client.list_objects_v2.side_effect = [object_list,
+                                                               test_constants.LIST_OBJECT_V2_NO_PREFIXES]
 
             instance.iter_files_in_bucket(aws_account_id, aws_region)
 
@@ -140,28 +148,30 @@ def test_aws_server_access_iter_files_in_bucket_handles_exceptions(mock_sts):
     with patch('aws_bucket.AWSBucket.build_s3_filter_args') as mock_build_filter:
         with pytest.raises(SystemExit) as e:
             instance.skip_on_error = False
-            utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = ['123']
-            instance.client.list_objects_v2.return_value = utils.LIST_OBJECT_V2_NO_PREFIXES
-            instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
-        assert e.value.code == utils.INVALID_KEY_FORMAT_ERROR_CODE
+            test_constants.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = ['123']
+            instance.client.list_objects_v2.return_value = test_constants.LIST_OBJECT_V2_NO_PREFIXES
+            instance.iter_files_in_bucket(test_constants.TEST_ACCOUNT_ID,
+                                          test_constants.TEST_REGION)
+        assert e.value.code == wodles.aws.tests.aws_constants.INVALID_KEY_FORMAT_ERROR_CODE
 
         with pytest.raises(SystemExit) as e:
             mock_build_filter.side_effect = Exception
-            instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
-        assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+            instance.iter_files_in_bucket(test_constants.TEST_ACCOUNT_ID,
+                                          test_constants.TEST_REGION)
+        assert e.value.code == wodles.aws.tests.aws_constants.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_aws_server_access_marker_only_logs_after(mock_sts):
     """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value."""
-    test_only_logs_after = utils.TEST_ONLY_LOGS_AFTER
+    test_only_logs_after = test_constants.TEST_ONLY_LOGS_AFTER
 
     instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, only_logs_after=test_only_logs_after)
-    instance.prefix = utils.TEST_PREFIX
+    instance.prefix = test_constants.TEST_PREFIX
 
     instance.date_format = '%Y-%m-%d'
 
-    marker = instance.marker_only_logs_after(aws_region=utils.TEST_REGION, aws_account_id=utils.TEST_ACCOUNT_ID)
+    marker = instance.marker_only_logs_after(aws_region=test_constants.TEST_REGION, aws_account_id=test_constants.TEST_ACCOUNT_ID)
     assert marker == f"{instance.prefix}" \
                      f"{test_only_logs_after[0:4]}-{test_only_logs_after[4:6]}-{test_only_logs_after[6:8]}"
 
@@ -169,20 +179,20 @@ def test_aws_server_access_marker_only_logs_after(mock_sts):
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_aws_server_access_check_bucket_handles_exceptions_when_empty_bucket(mock_sts):
     """Test 'check_bucket' method exits with the expected code when no files are found in the bucket."""
-    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=utils.TEST_BUCKET)
+    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=test_constants.TEST_BUCKET)
     instance.client = MagicMock()
     instance.client.list_objects_v2.return_value = {'ResponseWithoutCommonPrefixes'}
 
     with pytest.raises(SystemExit) as e:
         instance.check_bucket()
-    assert e.value.code == utils.EMPTY_BUCKET_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.EMPTY_BUCKET_ERROR_CODE
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
-    (aws_bucket.INVALID_CREDENTIALS_ERROR_CODE, utils.INVALID_CREDENTIALS_ERROR_CODE),
-    (aws_bucket.INVALID_REQUEST_TIME_ERROR_CODE, utils.INVALID_REQUEST_TIME_ERROR_CODE),
-    ("OtherClientError", utils.UNKNOWN_ERROR_CODE)
+    (constants.THROTTLING_EXCEPTION_ERROR_NAME, wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE),
+    (constants.INVALID_CREDENTIALS_ERROR_NAME, wodles.aws.tests.aws_constants.INVALID_CREDENTIALS_ERROR_CODE),
+    (constants.INVALID_REQUEST_TIME_ERROR_NAME, wodles.aws.tests.aws_constants.INVALID_REQUEST_TIME_ERROR_CODE),
+    ("OtherClientError", wodles.aws.tests.aws_constants.UNKNOWN_ERROR_CODE)
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_aws_server_access_check_bucket_handles_exceptions_on_client_error(mock_sts,
@@ -235,4 +245,4 @@ def test_aws_server_access_load_information_from_file(mock_sts_client):
          "tls_version": "TLSv1.2", "source": "s3_server_access"}]
 
     with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
-        assert instance.load_information_from_file(utils.TEST_LOG_KEY) == expected_information
+        assert instance.load_information_from_file(test_constants.TEST_LOG_KEY) == expected_information

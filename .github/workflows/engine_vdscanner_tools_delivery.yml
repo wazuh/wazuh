@@ -1,0 +1,101 @@
+name: Engine VD Scanner tools Delivery
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on pull request but only changes in src/engine/source/vdscanner/{tools,src,include} directories.
+  # Trigger on pull request changes
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/engine/source/vdscanner/tools/**"
+      - "src/engine/source/vdscanner/src/**"
+      - "src/engine/source/vdscanner/include/**"
+      - ".github/workflows/engine_vdscanner_tools_delivery.yml"
+      - "src/engine/source/feedmanager/schemas/"
+
+  # Trigger when a pull request is merged into master
+  push:
+    branches:
+      - master
+    paths:
+      - "src/engine/source/vdscanner/tools/**"
+      - "src/engine/source/vdscanner/src/**"
+      - "src/engine/source/vdscanner/include/**"
+      - ".github/workflows/engine_vdscanner_tools_delivery.yml"
+      - "src/engine/source/feedmanager/schemas/"
+
+  # Allows manual trigger.
+  workflow_dispatch:
+
+# Ensures only one instance of this workflow is running per PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  BUILD_PRESET: debug
+  ENGINE_DIR: ${{github.workspace}}/src/engine
+  TOOLS_DIR: ${{github.workspace}}/src/engine/build/source/vdscanner/tools
+  TOOLS_FILE_NAME: vdscanner_tools
+  FEEDMANAGER_DIR: ${{github.workspace}}/src/engine/source/feedmanager
+
+jobs:
+  build:
+    name: Engine VD Scanner Tools Delivery
+
+    # Runs only if the PR status is different to Draft
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get install lzip xz-utils
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup VCPKG
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: "${{env.ENGINE_DIR}}/vcpkg"
+          vcpkgGitCommitId: "a42af01b72c28a8e1d7b48107b33e4f286a55ef6"
+          vcpkgJsonGlob: "${{env.ENGINE_DIR}}/vcpkg.json"
+
+      - name: Configure CMake
+        run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
+
+      - name: Build vdscanner tools
+        run: |
+          cmake --build ${{env.ENGINE_DIR}}/build --target vdscanner_tool -j$(nproc)
+          cmake --build ${{env.ENGINE_DIR}}/build --target rocksdb_tool -j$(nproc)
+
+      - name: Compress vdscanner tools and flatbuffer schemas.
+        run: |
+          cp -r ${{env.FEEDMANAGER_DIR}}/schemas ${{env.TOOLS_DIR}}
+          cd ${{env.TOOLS_DIR}}; XZ_OPT=-9; find . \( -type f -executable -o -name schemas \) -exec tar cfJ ${{env.TOOLS_FILE_NAME}}.tar.xz {} +;
+          if [ $? -eq 0 ]; then
+            size=$(du -sh ${{env.TOOLS_FILE_NAME}}.tar.xz)
+            echo "vdscanner tools successfully compressed: ${size}"
+
+            tar -tf ${{env.TOOLS_FILE_NAME}}.tar.xz
+
+            # Moving location to access easily in the next step.
+            mv ${{env.TOOLS_FILE_NAME}}.tar.xz ${{github.workspace}}
+            exit 0
+          else
+            echo "Error compressing vdscanner tools and flatbuffer schemas."
+            exit 1
+          fi
+
+      # Upload vdscanner tools
+      - name: Upload vdscanner tools
+        if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{env.TOOLS_FILE_NAME}}
+          path: ${{env.TOOLS_FILE_NAME}}.tar.xz
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true

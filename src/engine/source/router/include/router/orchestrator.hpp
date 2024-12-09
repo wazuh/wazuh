@@ -179,6 +179,11 @@ public:
     base::OptError postStrEvent(std::string_view event) override;
 
     /**
+     * @copydoc router::IRouterAPI::postRawNdjson
+     */
+    void postRawNdjson(std::string&& batch) override;
+
+    /**
      * @copydoc router::IRouterAPI::changeEpsSettings
      */
     base::OptError changeEpsSettings(uint eps, uint refreshInterval) override;

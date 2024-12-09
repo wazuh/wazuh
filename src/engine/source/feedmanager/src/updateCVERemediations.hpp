@@ -72,23 +72,25 @@ public:
 
         flatbuffers::FlatBufferBuilder builder;
         std::vector<flatbuffers::Offset<flatbuffers::String>> updatesVec;
-        std::for_each(remediations->begin(),
-                      remediations->end(),
-                      [&builder, &updatesVec](const cve_v5::Remediation* remediation)
-                      {
-                          auto updatesCve5 = remediation->anyOf();
-                          if (!updatesCve5)
-                          {
-                              LOG_ERROR("No updates available.");
-                              return;
-                          }
+        std::for_each(
+            remediations->begin(),
+            remediations->end(),
+            [&builder, &updatesVec, functionName = logging::getLambdaName(__FUNCTION__, "processRemediationUpdates")](
+                const cve_v5::Remediation* remediation)
+            {
+                auto updatesCve5 = remediation->anyOf();
+                if (!updatesCve5)
+                {
+                    LOG_ERROR_L(functionName.c_str(), "No updates available.");
+                    return;
+                }
 
-                          for (size_t idxUpdate = 0; idxUpdate < updatesCve5->size(); idxUpdate++)
-                          {
-                              updatesVec.emplace_back(builder.CreateString(
-                                  updatesCve5->Get(static_cast<unsigned int>(idxUpdate))->c_str()));
-                          }
-                      });
+                for (size_t idxUpdate = 0; idxUpdate < updatesCve5->size(); idxUpdate++)
+                {
+                    updatesVec.emplace_back(
+                        builder.CreateString(updatesCve5->Get(static_cast<unsigned int>(idxUpdate))->c_str()));
+                }
+            });
 
         if (!updatesVec.empty())
         {

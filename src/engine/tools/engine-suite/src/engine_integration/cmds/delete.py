@@ -1,11 +1,6 @@
 import shared.resource_handler as rs
-from pathlib import Path
-from .generate_manifest import run as gen_manifest
-import sys
 import json
-
-DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
-DEFAULT_NAMESPACE = 'user'
+from shared.default_settings import Constants as DefaultSettings
 
 
 def run(args, resource_handler: rs.ResourceHandler):
@@ -69,8 +64,8 @@ def run(args, resource_handler: rs.ResourceHandler):
 def configure(subparsers):
     parser_rm = subparsers.add_parser(
         'delete', help='Delete integration assets from the Engine Catalog. If a step fails it continue with the next')
-    parser_rm.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
-                           help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
+    parser_rm.add_argument('-a', '--api-sock', type=str, default=DefaultSettings.SOCKET_PATH, dest='api_sock',
+                           help=f'[default="{DefaultSettings.SOCKET_PATH}"] Engine instance API socket path')
 
     parser_rm.add_argument('integration-name', type=str,
                            help=f'Integration name to be deleted')
@@ -78,7 +73,7 @@ def configure(subparsers):
     parser_rm.add_argument('--dry-run', dest='dry-run', action='store_true',
                            help=f'default False, When True will print all the steps to apply without affecting the store')
 
-    parser_rm.add_argument('-n', '--namespace', type=str, dest='namespace', default=DEFAULT_NAMESPACE,
-                           help=f'[default="{DEFAULT_NAMESPACE}"] Namespace of the integration')
+    parser_rm.add_argument('-n', '--namespace', type=str, dest='namespace', default=DefaultSettings.DEFAULT_NS,
+                           help=f'[default="{DefaultSettings.DEFAULT_NS}"] Namespace of the integration')
 
     parser_rm.set_defaults(func=run)

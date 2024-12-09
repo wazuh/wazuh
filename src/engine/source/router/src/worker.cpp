@@ -14,10 +14,10 @@ void Worker::start(const EpsLimit& epsLimit)
 
     m_isRunning = true;
     m_thread = std::thread(
-        [this, epsLimit]()
+        [this, epsLimit, functionName = logging::getLambdaName(__FUNCTION__, "routerWorkerThread")]()
         {
             std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
-            LOG_DEBUG("Router Worker {} started", tID);
+            LOG_DEBUG_L(functionName.c_str(), "Router Worker {} started", tID);
             while (m_isRunning)
             {
                 // Process test queue
@@ -32,7 +32,7 @@ void Worker::start(const EpsLimit& epsLimit)
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_ERROR("Error when executing API callback: ", e.what());
+                        LOG_ERROR_L(functionName.c_str(), "Error when executing API callback: ", e.what());
                     }
                 }
 
@@ -43,7 +43,7 @@ void Worker::start(const EpsLimit& epsLimit)
                     m_router->ingest(std::move(event));
                 }
             }
-            LOG_DEBUG("Router Worker {} finished", tID);
+            LOG_DEBUG_L(functionName.c_str(), "Router Worker {} finished", tID);
         });
 }
 

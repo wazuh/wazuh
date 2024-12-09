@@ -81,7 +81,8 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
 
     // Listen for incoming data
     m_handle->on<uvw::UDPDataEvent>(
-        [this](const uvw::UDPDataEvent& event, uvw::UDPHandle& handle)
+        [this, functionName = logging::getLambdaName(__FUNCTION__, "handleUDPDataEvent")](
+            const uvw::UDPDataEvent& event, uvw::UDPHandle& handle)
         {
             // Get the data
             auto data = std::string {event.data.get(), event.length};
@@ -101,7 +102,8 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                 }
                 catch (const std::exception& e)
                 {
-                    LOG_WARNING("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
+                    LOG_WARNING_L(
+                        functionName.c_str(), "[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
                 }
 
                 return;
@@ -111,7 +113,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             if (++m_currentTaskQueueSize >= m_taskQueueSize)
 
             {
-                LOG_WARNING("[Endpoint: {}] Queue is full, pause listening.", m_address);
+                LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Queue is full, pause listening.", m_address);
                 pause();
                 // Update metric
                 m_metric.m_busyQueue->addValue(1UL);
@@ -121,7 +123,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             // Create a job to the worker thread
             std::shared_ptr<std::string> dataPtr {std::make_shared<std::string>(std::move(data))};
             auto workerJob = m_loop->resource<uvw::WorkReq>(
-                [this, dataPtr]()
+                [this, dataPtr, functionName = logging::getLambdaName(__FUNCTION__, "handleWorkerRequest")]()
                 {
                     try
                     {
@@ -129,30 +131,37 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_WARNING("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
+                        LOG_WARNING_L(
+                            functionName.c_str(), "[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
                     }
                 });
 
             // Listen for the job completion
             workerJob->on<uvw::WorkEvent>(
-                [this](const uvw::WorkEvent&, uvw::WorkReq& work)
+                [this, functionName = logging::getLambdaName(__FUNCTION__, "handleWorkerEvent")](const uvw::WorkEvent&,
+                                                                                                 uvw::WorkReq& work)
                 {
                     m_currentTaskQueueSize--;
                     if (resume())
                     {
-                        LOG_WARNING("[Endpoint: {}] Resume listening.", m_address);
+                        LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Resume listening.", m_address);
                     }
                     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
                 });
 
             workerJob->on<uvw::ErrorEvent>(
-                [this](const uvw::ErrorEvent& error, uvw::WorkReq& work)
+                [this, functionName = logging::getLambdaName(__FUNCTION__, "handleWorkerErrorEvent")](
+                    const uvw::ErrorEvent& error, uvw::WorkReq& work)
                 {
-                    LOG_WARNING("[Endpoint: {}] Error calling the callback: {}", m_address, error.what(), error.code());
+                    LOG_WARNING_L(functionName.c_str(),
+                                  "[Endpoint: {}] Error calling the callback: {}",
+                                  m_address,
+                                  error.what(),
+                                  error.code());
                     m_currentTaskQueueSize--;
                     if (resume())
                     {
-                        LOG_WARNING("[Endpoint: {}] Resume listening.", m_address);
+                        LOG_WARNING_L(functionName.c_str(), "[Endpoint: {}] Resume listening.", m_address);
                     }
                     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
                 });
@@ -161,21 +170,24 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
 
     // Listen for errors
     m_handle->on<uvw::ErrorEvent>(
-        [this](const uvw::ErrorEvent& event, uvw::UDPHandle& handle)
+        [this, functionName = logging::getLambdaName(__FUNCTION__, "handleErrorEvent")](const uvw::ErrorEvent& event,
+                                                                                        uvw::UDPHandle& handle)
         {
             // Log the error
-            LOG_WARNING("[Endpoint: {}] Error: code=[{}]; name=[{}]; message=[{}].",
-                        m_address,
-                        event.code(),
-                        event.name(),
-                        event.what());
+            LOG_WARNING_L(functionName.c_str(),
+                          "[Endpoint: {}] Error: code=[{}]; name=[{}]; message=[{}].",
+                          m_address,
+                          event.code(),
+                          event.name(),
+                          event.what());
         });
 
     m_handle->on<uvw::CloseEvent>(
-        [this](const uvw::CloseEvent& event, uvw::UDPHandle& handle)
+        [this, functionName = logging::getLambdaName(__FUNCTION__, "handleCloseEvent")](const uvw::CloseEvent& event,
+                                                                                        uvw::UDPHandle& handle)
         {
             // Log the error
-            LOG_INFO("[Endpoint: {}] Closed.", m_address);
+            LOG_INFO_L(functionName.c_str(), "[Endpoint: {}] Closed.", m_address);
         });
     // Bind the socket
     auto socketFd = bindUnixDatagramSocket(m_bufferSize);

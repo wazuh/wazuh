@@ -7,6 +7,14 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
+  pull_request:
+    paths:
+      - ".github/workflows/integration-tests-api-tier-2.yml"
+      - "api/**"
+      - "src/Makefile"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_api/**"
+      - "!tests/integration/test_api/test_rbac/**"
 
 jobs:
   build:
@@ -16,9 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64

@@ -6,7 +6,6 @@ import shared.resource_handler as rs
 from .cmds.create import configure as create_configure
 from .cmds.generate_doc import configure as generate_doc_configure
 from .cmds.generate_graph import configure as generate_graph_configure
-from .cmds.generate_manifest import configure as generate_manifest_configure
 from .cmds.add import configure as add_configure
 from .cmds.delete import configure as delete_configure
 from .cmds.update import configure as update_configure
@@ -27,7 +26,6 @@ def parse_args():
     create_configure(subparsers)
     generate_doc_configure(subparsers)
     generate_graph_configure(subparsers)
-    generate_manifest_configure(subparsers)
     add_configure(subparsers)
     delete_configure(subparsers)
     update_configure(subparsers)

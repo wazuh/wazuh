@@ -70,7 +70,12 @@ def reload_default_rbac_resources():
 
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
+    with (
+        patch('wazuh.core.common.wazuh_uid'),
+        patch('wazuh.core.common.wazuh_gid'),
+        # TODO: Fix in #26725
+        patch('wazuh.core.utils.load_wazuh_xml')
+    ):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
@@ -138,7 +143,7 @@ def failed_are_equal(target_dict, expected_dict):
 
 
 @pytest.mark.parametrize('security_function, params, expected_result', security_cases)
-def test_security(db_setup, security_function, params, expected_result):
+async def test_security(db_setup, security_function, params, expected_result):
     """Verify the entire security module.
 
     Parameters
@@ -154,9 +159,10 @@ def test_security(db_setup, security_function, params, expected_result):
     """
     try:
         security, _, _ = db_setup
-        result = getattr(security, security_function)(**params).to_dict()
-        assert affected_are_equal(result, expected_result)
-        assert failed_are_equal(result, expected_result)
+        result = await getattr(security, security_function)(**params)
+        result_dict = result.to_dict()
+        assert affected_are_equal(result_dict, expected_result)
+        assert failed_are_equal(result_dict, expected_result)
     except WazuhError as e:
         assert str(e.code) == list(expected_result['failed_items'].keys())[0]
 

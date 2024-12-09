@@ -19,7 +19,7 @@ on:
         type: string
         description: 'Modules to exclude, separated by commas'
         required: false
-        default: "feedmanager"
+        default: "feedmanager,proto"
       min_coverage:
         type: number
         description: 'Minimum coverage required'
@@ -40,7 +40,7 @@ env:
   BUILD_PATH: src/engine/build
   BUILD_MODULES_PATH: src/engine/build/source
   FULL_COVERAGE: ${{ inputs.full_coverage }}
-  EXCLUDE_MODULES: ${{ inputs.exlude_modules || 'feedmanager' }}
+  EXCLUDE_MODULES: ${{ inputs.exlude_modules || 'feedmanager,proto' }}
   MIN_COVERAGE: ${{ inputs.min_coverage || 80 }}
 
 jobs:
@@ -58,11 +58,8 @@ jobs:
       with:
         ref: v2.0
 
-    - name: Install dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: bc
-        version: 1.0
+    - name: Install dependencies (bc lzip)
+      run: sudo apt-get install lzip bc
 
     - name: Check out repository
       uses: actions/checkout@v4
@@ -178,6 +175,12 @@ jobs:
     - name: Build
       run: cmake --build ${{env.ENGINE_PATH}}/build --target all_tests -j$(nproc)
 
+    - name: Create install directory
+      run: |
+        sudo mkdir -p /run/wazuh-server/
+        sudo chown $(whoami):$(whoami) /run/wazuh-server/
+        sudo chmod 0750 /run/wazuh-server/
+
     - name: Coverage for changed modules
       run: |
         coverage_for_module() {
@@ -218,6 +221,7 @@ jobs:
 
 
     - name: Tar coverage reports
+      if: ${{ env.MODULES_LIST != '' }}
       run: |
         cd ${{github.workspace}}/${{env.BUILD_PATH}}
         tar_file="coverage_reports.tar.gz"
@@ -241,6 +245,7 @@ jobs:
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
       id: upload-coverage-reports
+      if: ${{ env.MODULES_LIST != '' }}
       with:
         name: coverage-reports
         path: ${{github.workspace}}/${{env.BUILD_PATH}}/coverage_reports.tar.gz
@@ -248,8 +253,10 @@ jobs:
         retention-days: 1
         if-no-files-found: error
 
+
     - name: Verify coverage
       id: verify-coverage
+      if: ${{ env.MODULES_LIST != '' }}
       run: |
         # Pass coverage requeriments
         PASS=true

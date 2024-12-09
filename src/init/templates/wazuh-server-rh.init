@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# Copyright (C) 2015, Wazuh Inc.
+# OSSEC         Controls Wazuh on Redhat-based systems
+# Author:       Kayvan A. Sylvan <kayvan@sylvan.com>
+# Author:       Daniel B. Cid <dcid@ossec.net>
+#
+# chkconfig: 2345 99 15
+# description: Starts and stops Wazuh (Host Intrusion Detection System)
+#
+# This will work on Redhat systems (maybe others too)
+
+# Source function library.
+export LANG=C
+
+. /etc/init.d/functions
+
+WAZUH_HOME=WAZUH_HOME_TMP
+WAZUH_SERVER="${WAZUH_HOME}/usr/share/wazuh-server/bin/wazuh-server"
+
+start() {
+    echo -n "Starting Wazuh: "
+    # TODO: Remove root flag
+    ${WAZUH_SERVER} start -r > /dev/null
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        success
+    else
+        failure
+    fi
+    echo
+    return $RETVAL
+}
+
+stop() {
+    echo -n "Stopping Wazuh: "
+    ${WAZUH_SERVER} stop > /dev/null
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]; then
+        success
+    else
+        failure
+    fi
+    echo
+    return $RETVAL
+}
+
+status() {
+    ${WAZUH_SERVER} status
+    RETVAL=$?
+    return $RETVAL
+}
+
+case "$1" in
+start)
+    start
+    ;;
+stop)
+    stop
+    ;;
+restart)
+    stop
+    start
+    ;;
+status)
+    status
+    ;;
+*)
+    echo "*** Usage: ossec {start|stop|restart|status}"
+    exit 1
+esac
+
+exit $?

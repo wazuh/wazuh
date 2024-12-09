@@ -7,8 +7,8 @@ import re
 from types import MappingProxyType
 from typing import Dict, List
 
-from defusedxml import ElementTree as ET
 from jsonschema import Draft4Validator
+from uuid6 import UUID
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
@@ -21,8 +21,8 @@ _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]
 _boolean = re.compile(r'^true$|^false$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
-_group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[A-Za-z0-9.\-_]+$')
+_group_names = re.compile(r'^(?!^all$)[A-Za-z0-9\-_]+$')
+_group_names_or_all = re.compile(r'^[A-Za-z0-9\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:['
                      r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
@@ -38,12 +38,8 @@ _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
-_cdb_filename_path = re.compile(r'^[\-\w]+$')
-_xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
-_xml_filename = re.compile(r'^[\w\-]+\.xml(,[\w\-]+\.xml)*$')
 _query_param = re.compile(r"^[\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+(?:[;,][\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}-[\d]{1,2}$')
-_get_dirnames_path = re.compile(r'^(((etc|ruleset)/(decoders|rules)[\w\-/]*)|(etc/lists[\w\-/]*))$')
 _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
@@ -58,185 +54,6 @@ security_config_schema = {
     "properties": {
         "auth_token_exp_timeout": {"type": "integer"},
         "rbac_mode": {"type": "string", "enum": ["white", "black"]}
-    }
-}
-
-api_config_schema = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        "host": {"type": "string"},
-        "port": {"type": "number"},
-        "use_only_authd": {"type": "boolean"},  # Deprecated. To be removed on later versions
-        "drop_privileges": {"type": "boolean"},
-        "experimental_features": {"type": "boolean"},
-        "max_upload_size": {"type": "integer", "minimum": 0},
-        "intervals": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "request_timeout": {"type": "number", "minimum": 0}
-            },
-        },
-        "https": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "enabled": {"type": "boolean"},
-                "key": {"type": "string",
-                        "pattern": r"^[\w\-.]+$"},
-                "cert": {"type": "string",
-                         "pattern": r"^[\w\-.]+$"},
-                "use_ca": {"type": "boolean"},
-                "ca": {"type": "string",
-                       "pattern": r"^[\w\-.]+$"},
-                "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
-                                                            "TLSv1", "TLSv1.1", "TLSv1.2", "auto", "AUTO"]},
-                "ssl_ciphers": {"type": "string"}
-            },
-        },
-        "logs": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "level": {"type": "string"},
-                "path": {"type": "string"},  # Deprecated. To be removed on later versions
-                "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]},
-                "max_size": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                        "size": {"type": "string"}
-                    }
-                }
-            },
-        },
-        "cors": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "enabled": {"type": "boolean"},
-                "source_route": {"type": "string"},
-                "expose_headers": {
-                    "oneOf": [
-                        {"type": "string"},
-                        {"type": "array", "items": {"type": "string"}}
-                    ]
-                },
-                "allow_headers": {
-                    "oneOf": [
-                        {"type": "string"},
-                        {"type": "array", "items": {"type": "string"}}
-                    ]
-                },
-                "allow_credentials": {"type": "boolean"},
-            },
-        },
-        "cache": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "enabled": {"type": "boolean"},
-                "time": {"type": "number"},
-            },
-        },
-        "access": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "max_login_attempts": {"type": "integer"},
-                "block_time": {"type": "integer"},
-                "max_request_per_minute": {"type": "integer"},
-            },
-        },
-        "upload_configuration": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "remote_commands": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "localfile": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "allow": {"type": "boolean"},
-                                "exceptions": {"type": "array", "items": {"type": "string"}},
-                            },
-                        },
-                        "wodle_command": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "allow": {"type": "boolean"},
-                                "exceptions": {"type": "array", "items": {"type": "string"}},
-                            },
-                        },
-                    },
-                },
-                "limits": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "eps": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "allow": {
-                                    "type": "boolean"
-                                }
-                            }
-                        }
-                    }
-                },
-                "agents": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "allow_higher_versions": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "allow": {
-                                    "type": "boolean"
-                                }
-                            },
-                        }
-                    }
-                },
-                "indexer": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "allow": {
-                            "type": "boolean"
-                        }
-                    }
-                },
-                "integrations": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "virustotal": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "public_key": {
-                                    "type": "object",
-                                    "additionalProperties": False,
-                                    "properties": {
-                                        "allow": {"type": "boolean"},
-                                        "minimum_quota": {"type": "integer"}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -280,29 +97,6 @@ def check_exp(exp: str, regex: re.Pattern) -> bool:
     return regex.match(exp) is not None
 
 
-def check_xml(xml_string: str) -> bool:
-    """Function to check if an XML string is correct.
-
-    Parameters
-    ----------
-    xml_string : str
-        XML string to check.
-
-    Returns
-    -------
-    bool
-        True if the XML is OK. False otherwise.
-    """
-    try:
-        ET.fromstring(xml_string)
-    except ET.ParseError:
-        return False
-    except Exception:
-        return False
-
-    return True
-
-
 def allowed_fields(filters: Dict) -> List:
     """Return a list with allowed fields.
 
@@ -319,7 +113,7 @@ def allowed_fields(filters: Dict) -> List:
     return [field for field in filters]
 
 
-def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = True) -> bool:
+def is_safe_path(path: str, basedir: str = common.WAZUH_ETC, relative: bool = True) -> bool:
     """Check if a path is correct.
 
     Parameters
@@ -410,11 +204,6 @@ def format_numbers(value):
 @Draft4Validator.FORMAT_CHECKER.checks("numbers_or_all")
 def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("cdb_filename_path")
-def format_cdb_filename_path(value):
-    return check_exp(value, _cdb_filename_path)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("xml_filename")
@@ -521,3 +310,15 @@ def format_group_names(value):
 @Draft4Validator.FORMAT_CHECKER.checks("group_names_or_all")
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)
+
+
+@Draft4Validator.FORMAT_CHECKER.checks("uuid4")
+def format_uuid4(value):
+    ret_val = True
+    try:
+        uuid = UUID(value)
+        if uuid.version != 4:
+            ret_val = False
+    except ValueError:
+        ret_val = False
+    return ret_val

@@ -1,23 +1,25 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import Depends, Request, status
 
 from comms_api.authentication.authentication import decode_token, JWTBearer
-from comms_api.core.commands import pull_commands, post_results
-from comms_api.models.commands import Commands, CommandsResults
+from comms_api.core.commands import pull_commands
+from comms_api.models.commands import Commands
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhCommsAPIError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhCommsAPIError
 
 
 @timeout(30)
-async def get_commands(token: Annotated[str, Depends(JWTBearer())]) -> Commands:
+async def get_commands(token: Annotated[str, Depends(JWTBearer())], request: Request) -> Commands:
     """Get commands endpoint handler.
 
     Parameters
     ----------
     token : str
         JWT token.
+    request : Request
+        Incoming HTTP request.
 
     Raises
     ------
@@ -31,40 +33,7 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())]) -> Commands:
     """
     try:
         uuid = decode_token(token)["uuid"]
-        commands = await pull_commands(uuid)
+        commands = await pull_commands(request.app.state.commands_manager, uuid)
         return Commands(commands=commands)
     except WazuhCommsAPIError as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_403_FORBIDDEN)
-    except WazuhResourceNotFound as exc:
-        raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_404_NOT_FOUND)
-
-
-@timeout(30)
-async def post_commands_results(results: CommandsResults) -> Response:
-    """Post commands results endpoint handler.
-
-    Parameters
-    ----------
-    results : CommandsResults
-        Commands results.
-
-    Raises
-    ------
-    HTTPError
-        If there is any system or validation error.
-
-    Returns
-    -------
-    Response
-        HTTP OK empty response.
-    """
-    try:
-        await post_results(results.results)
-        return Response(status_code=status.HTTP_200_OK)
-    except WazuhResourceNotFound as exc:
-        raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_404_NOT_FOUND)
-
-
-commands_router = APIRouter(prefix='/commands')
-commands_router.add_api_route('', get_commands, methods=['GET'])
-commands_router.add_api_route('/results', post_commands_results, dependencies=[Depends(JWTBearer())], methods=['POST'])

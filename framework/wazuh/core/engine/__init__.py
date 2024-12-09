@@ -4,15 +4,13 @@ from typing import AsyncIterator
 
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
 
+from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.engine.events import EventsModule
+from wazuh.core.engine.vulnerability import VulnerabilityModule
 from wazuh.core.exception import WazuhEngineError
+from wazuh.core.config.client import CentralizedConfig
 
 logger = getLogger('wazuh')
-
-# TODO: use actual default path
-ENGINE_API_SOCKET_PATH = '/var/wazuh/queue/engine.sock'
-DEFAULT_RETRIES = 3
-DEFAULT_TIMEOUT = 0.5
 
 
 class Engine:
@@ -20,15 +18,16 @@ class Engine:
 
     def __init__(
         self,
-        socket_path: str = ENGINE_API_SOCKET_PATH,
-        retries: int = DEFAULT_RETRIES,
-        timeout: float = DEFAULT_TIMEOUT,
+        socket_path: str,
+        retries: int,
+        timeout: float,
     ) -> None:
         transport = AsyncHTTPTransport(uds=socket_path, retries=retries)
         self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
 
-        # Register Engine modules here
+        # Engine modules
         self.events = EventsModule(client=self._client)
+        self.vulnerability = VulnerabilityModule(client=self._client)
 
     async def close(self) -> None:
         """Close the Engine client."""
@@ -44,8 +43,12 @@ async def get_engine_client() -> AsyncIterator[Engine]:
     AsyncIterator[Engine]
         Engine client iterator.
     """
-    # TODO: get class parameters from the configuration
-    client = Engine()
+    engine_config = CentralizedConfig.get_engine_config()
+    client = Engine(
+        socket_path=engine_config.client.api_socket_path,
+        timeout=engine_config.client.timeout,
+        retries=engine_config.client.retries
+    )
 
     try:
         yield client

@@ -18,6 +18,8 @@
 #include "base/utils/stringUtils.hpp"
 #include "base/utils/timeUtils.hpp"
 #include "databaseFeedManager.hpp"
+#include "descriptionsHelper.hpp"
+#include "fieldAlertHelper.hpp"
 #include "scanContext.hpp"
 
 /**
@@ -37,36 +39,40 @@ class TResponseBuilder final : public utils::patterns::AbstractHandler<std::shar
 private:
     std::shared_ptr<TDatabaseFeedManager> m_databaseFeedManager;
 
-    void buildScore(const std::string& cveId,
-                    nlohmann::json& json,
-                    const NSVulnerabilityScanner::VulnerabilityDescription* data)
+    void buildUnderEvaluation(nlohmann::json& json, CveDescription description)
     {
-        const auto cvssVersion {data->scoreVersion()->str()};
-        const auto scoreVersion {"cvss" + cvssVersion.substr(0, 1)};
+        json["under_evaluation"] = base::utils::numeric::floatToDoubleRound(description.scoreBase, 2) == 0
+                                   || description.classification.empty() || description.severity.empty();
+    }
+
+    void buildScore(const std::string& cveId, nlohmann::json& json, CveDescription description)
+    {
+        const auto cvssVersion {description.scoreVersion};
+        const auto scoreVersion {std::string("cvss") + cvssVersion.front()};
 
         if (!cvssVersion.empty())
         {
             nlohmann::json vectorObj;
             if (scoreVersion.compare("cvss2") == 0)
             {
-                vectorObj["access_complexity"] = data->accessComplexity()->str();
-                vectorObj["authentication"] = data->authentication()->str();
+                vectorObj["access_complexity"] = description.accessComplexity;
+                vectorObj["authentication"] = description.authentication;
             }
             else if (scoreVersion.compare("cvss3") == 0)
             {
-                vectorObj["attack_vector"] = data->attackVector()->str();
-                vectorObj["privileges_required"] = data->privilegesRequired()->str();
-                vectorObj["scope"] = data->scope()->str();
-                vectorObj["user_interaction"] = data->userInteraction()->str();
+                vectorObj["attack_vector"] = description.attackVector;
+                vectorObj["privileges_required"] = description.privilegesRequired;
+                vectorObj["scope"] = description.scope;
+                vectorObj["user_interaction"] = description.userInteraction;
             }
             else
             {
                 LOG_DEBUG("CVSS version not supported: {}", cvssVersion);
             }
 
-            vectorObj["availability"] = data->availabilityImpact()->str();
-            vectorObj["confidentiality_impact"] = data->confidentialityImpact()->str();
-            vectorObj["integrity_impact"] = data->integrityImpact()->str();
+            vectorObj["availability"] = description.availabilityImpact;
+            vectorObj["confidentiality_impact"] = description.confidentialityImpact;
+            vectorObj["integrity_impact"] = description.integrityImpact;
 
             json["cvss"][scoreVersion]["vector"] = std::move(vectorObj);
         }
@@ -126,7 +132,7 @@ public:
      * @param data Scan context.
      * @return std::shared_ptr<ScanContext> Abstract handler.
      */
-    std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> data) override
+    std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<ScanContext> data) override
     {
         LOG_DEBUG("Building event details for component type: {}", static_cast<int>(data->scannerType()));
 
@@ -145,56 +151,73 @@ public:
 
         nlohmann::json dataElements = nlohmann::json::array();
 
+        const auto vulnerabilitySource = m_databaseFeedManager->vendorsMap()
+                                             .at("adp_descriptions")
+                                             .at(std::get<VulnerabilitySource::ADP_BASE>(data->m_vulnerabilitySource))
+                                             .at("adp");
+
         // For each element, we get the vulnerability descriptive information and build the event details.
         for (auto& [cve, json] : data->m_elements)
         {
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription> returnData;
-            m_databaseFeedManager->getVulnerabiltyDescriptiveInformation(cve, returnData);
-            if (returnData.data)
+            try
             {
-                switch (data->scannerType())
-                {
-                    case ScannerType::Package:
-                        json["category"] = "Packages";
-                        json["item_id"] = data->packageItemId();
-                        break;
+                DescriptionsHelper::vulnerabilityDescription(
+                    cve,
+                    data->m_vulnerabilitySource,
+                    m_databaseFeedManager,
+                    [&](const CveDescription& description)
+                    {
+                        switch (data->scannerType())
+                        {
+                            case ScannerType::Package:
+                                json["category"] = "Packages";
+                                json["item_id"] = data->packageItemId();
+                                break;
 
-                    case ScannerType::Os: json["category"] = "OS"; break;
+                            case ScannerType::Os: json["category"] = "OS"; break;
 
-                    default: throw std::invalid_argument("Invalid scanner type"); break;
-                }
+                            default: throw std::invalid_argument("Invalid scanner type"); break;
+                        }
 
-                // Status date
-                json["classification"] = returnData.data->classification()->str();
-                json["description"] = returnData.data->description()->str();
-                json["detected_at"] = base::utils::time::getCurrentISO8601();
-                json["enumeration"] = "CVE";
-                json["id"] = cve;
-                json["published_at"] = returnData.data->datePublished()->str();
-                json["reference"] = returnData.data->reference()->str();
-                json["score"]["base"] = base::utils::numeric::floatToDoubleRound(returnData.data->scoreBase(), 2);
-                json["score"]["version"] = returnData.data->scoreVersion()->str();
-                json["severity"] = base::utils::string::toSentenceCase(returnData.data->severity()->str());
+                        // Status date
+                        json["classification"] = FieldAlertHelper::fillEmptyOrNegative(description.classification);
+                        json["description"] = description.description;
+                        json["detected_at"] = base::utils::time::getCurrentISO8601();
+                        json["enumeration"] = "CVE";
+                        json["id"] = cve;
+                        json["published_at"] = description.datePublished;
+                        json["reference"] = description.reference;
+                        json["score"]["base"] = FieldAlertHelper::fillEmptyOrNegative(
+                            base::utils::numeric::floatToDoubleRound(description.scoreBase, 2));
+                        json["score"]["version"] = FieldAlertHelper::fillEmptyOrNegative(description.scoreVersion);
+                        json["severity"] = FieldAlertHelper::fillEmptyOrNegative(base::utils::string::toSentenceCase(
+                            std::string(description.severity.data(), description.severity.size())));
+                        json["source"] = vulnerabilitySource;
 
-                // Alert data
-                json["assigner"] = returnData.data->assignerShortName()->str();
-                json["cwe_reference"] = returnData.data->cweId()->str();
-                json["rationale"] = returnData.data->description()->str();
-                json["updated"] = returnData.data->dateUpdated()->str();
+                        // Alert data
+                        json["assigner"] = description.assignerShortName;
+                        json["cwe_reference"] = description.cweId;
+                        json["updated"] = description.dateUpdated;
 
-                if (const auto it = data->m_matchConditions.find(cve); it != data->m_matchConditions.end())
-                {
-                    buildMatchCondition(json, it->second);
-                }
-                else
-                {
-                    // If we dont have a match condition, we dont have a CVE match, and this is an error.
-                    throw std::invalid_argument("Match condition not found for CVE: " + cve);
-                }
+                        if (const auto it = data->m_matchConditions.find(cve); it != data->m_matchConditions.end())
+                        {
+                            buildMatchCondition(json, it->second);
+                        }
+                        else
+                        {
+                            // If we dont have a match condition, we dont have a CVE match, and this is an error.
+                            throw std::invalid_argument("Match condition not found for CVE: " + cve);
+                        }
 
-                buildScore(cve, json, returnData.data);
+                        buildScore(cve, json, description);
+                        buildUnderEvaluation(json, description);
 
-                data->moveResponseData(json);
+                        data->moveResponseData(json);
+                    });
+            }
+            catch (const std::exception& e)
+            {
+                LOG_ERROR("Error building event details for CVE: {}. Error message: {}", cve, e.what());
             }
         }
 

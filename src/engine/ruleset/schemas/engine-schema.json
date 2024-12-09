@@ -842,7 +842,7 @@
       "array": false
     },
     "email.message_id": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "email.origination_timestamp": {
@@ -882,7 +882,7 @@
       "array": false
     },
     "error.stack_trace": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "error.type": {
@@ -1762,7 +1762,7 @@
       "array": false
     },
     "http.request.body.content": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "http.request.bytes": {
@@ -1790,7 +1790,7 @@
       "array": false
     },
     "http.response.body.content": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "http.response.bytes": {
@@ -2282,7 +2282,7 @@
       "array": false
     },
     "process.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.elf.architecture": {
@@ -2466,7 +2466,7 @@
       "array": false
     },
     "process.entry_leader.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.entry_leader.entity_id": {
@@ -2634,7 +2634,7 @@
       "array": false
     },
     "process.group_leader.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.group_leader.entity_id": {
@@ -2794,7 +2794,7 @@
       "array": false
     },
     "process.io.text": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.io.total_bytes_captured": {
@@ -2922,7 +2922,7 @@
       "array": false
     },
     "process.parent.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.parent.elf.architecture": {
@@ -3566,7 +3566,7 @@
       "array": false
     },
     "process.session_leader.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.session_leader.entity_id": {
@@ -3782,7 +3782,7 @@
       "array": false
     },
     "registry.data.strings": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": true
     },
     "registry.data.type": {
@@ -4890,7 +4890,7 @@
       "array": false
     },
     "threat.enrichments.indicator.registry.data.strings": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": true
     },
     "threat.enrichments.indicator.registry.data.type": {
@@ -4938,11 +4938,11 @@
       "array": false
     },
     "threat.enrichments.indicator.url.full": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.enrichments.indicator.url.original": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.enrichments.indicator.url.password": {
@@ -4950,7 +4950,7 @@
       "array": false
     },
     "threat.enrichments.indicator.url.path": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.enrichments.indicator.url.port": {
@@ -5738,7 +5738,7 @@
       "array": false
     },
     "threat.indicator.registry.data.strings": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": true
     },
     "threat.indicator.registry.data.type": {
@@ -5786,11 +5786,11 @@
       "array": false
     },
     "threat.indicator.url.full": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.indicator.url.original": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.indicator.url.password": {
@@ -5798,7 +5798,7 @@
       "array": false
     },
     "threat.indicator.url.path": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.indicator.url.port": {
@@ -6314,11 +6314,11 @@
       "array": false
     },
     "url.full": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "url.original": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "url.password": {
@@ -6326,7 +6326,7 @@
       "array": false
     },
     "url.path": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "url.port": {
@@ -6658,6 +6658,10 @@
       "array": false
     },
     "wazuh.decoders": {
+      "type": "keyword",
+      "array": true
+    },
+    "wazuh.rules": {
       "type": "keyword",
       "array": true
     },

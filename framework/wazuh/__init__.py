@@ -46,7 +46,7 @@ class Wazuh:
 
         self.version = f'v{__version__}'
         self.type = 'server'
-        self.path = common.WAZUH_PATH
+        self.path = common.WAZUH_SHARE
         self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
         self.tz_offset = None

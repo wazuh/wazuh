@@ -2,13 +2,14 @@ from typing import List
 
 from pydantic import BaseModel
 
-from wazuh.core.engine.models.events import StatelessEvent
-from wazuh.core.indexer.models.events import StatefulEvent
+from wazuh.core.indexer.models.events import AgentMetadata, Header, TaskResult
 
 
 class StatefulEvents(BaseModel):
-    events: List[StatefulEvent]
+    agent_metadata: AgentMetadata
+    headers: List[Header]
+    data: List[dict]
 
 
-class StatelessEvents(BaseModel):
-    events: List[StatelessEvent]
+class StatefulEventsResponse(BaseModel):
+    results: List[TaskResult]

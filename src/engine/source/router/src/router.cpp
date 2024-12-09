@@ -38,9 +38,9 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost, bool ignoreFai
         }
         entry.environment() = nullptr;
         entry.hash("");
+        entry.lastUpdate(0);
     }
     entry.status(env::State::DISABLED); // It is disabled until all routes are ready
-    entry.lastUpdate(getStartTime());
 
     // Add the entry to the table
     {
@@ -109,6 +109,7 @@ base::OptError Router::enableEntry(const std::string& name)
         return base::Error {"The route is not buided"};
     }
     entry.status(env::State::ENABLED);
+    entry.lastUpdate(getStartTime());
     return {};
 }
 

@@ -1,7 +1,0 @@
-[
-    "Translation for package 'Microsoft Office Professional Plus 2016' on platform 'windows' found in Level 2 cache.",
-    "Vendor match for Package: office, Version: 2016, CVE: CVE-2024-20673, Vendor: microsoft",
-    "Scanning package - 'office' (Installed Version: 2016, Security Vulnerability: CVE-2024-20673). Identified vulnerability: Version: 2016. Required Version Threshold: . Required Version Threshold (or Equal): .",
-    "Match found, the package 'office', is vulnerable to 'CVE-2024-20673'. Current version: '2016' is equal to '2016'. - Agent '' (ID: '001', Version: '')",
-    "No remediations for agent '001' have been found"
-]

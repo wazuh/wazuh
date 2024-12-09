@@ -5,8 +5,10 @@ from functools import wraps
 from fastapi import status
 
 from comms_api.routers.exceptions import HTTPError
+import wazuh.core.config.client
 
 logger = logging.getLogger('wazuh-comms-api')
+
 
 DEFAULT_TIMEOUT = 10
 

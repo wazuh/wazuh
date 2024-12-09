@@ -1,4 +1,0 @@
-[
-    "No match due to default status for Package: xz-utils, Version: 5.2.5-2ubuntu1 while scanning for Vulnerability: CVE-2024-3094",
-    "Match found, the package 'xz', is vulnerable to 'CVE-2024-3094'. Current version: '5.6.0' is equal to '5.6.0'. - Agent '' (ID: '001', Version: '')."
-]

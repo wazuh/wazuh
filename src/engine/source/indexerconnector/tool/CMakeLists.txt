@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-include_directories(../../../headers/)
-
 file(GLOB INDEXER_CONNECTOR_TOOL_SRC
     "*.cpp"
     )

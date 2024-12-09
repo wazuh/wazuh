@@ -9,7 +9,7 @@ from comms_api.models.authentication import Credentials, TokenResponse
 from comms_api.routers.authentication import authentication
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.exception import WazuhInternalError, WazuhIndexerError, WazuhResourceNotFound
-from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.models.agent import Agent, Status
 from wazuh.core.utils import get_utc_now
 
 
@@ -38,7 +38,7 @@ async def test_authentication(
     connect_mock.assert_called_once()
     close_mock.assert_called_once()
     agents_index_get_mock.assert_called_once_with(uuid)
-    agents_index_update_mock.assert_called_once_with(uuid, Agent(last_login=get_utc_now()))
+    agents_index_update_mock.assert_called_once_with(uuid, Agent(last_login=get_utc_now(), status=Status.ACTIVE))
     generate_token_mock.assert_called_once_with(credentials.uuid)
     assert response == TokenResponse(token='token')
 

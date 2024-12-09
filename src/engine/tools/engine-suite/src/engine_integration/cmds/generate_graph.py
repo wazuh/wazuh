@@ -1,12 +1,20 @@
 import shared.resource_handler as rs
 import graphviz as gv
+from pathlib import Path
 
 
 def get_asset_sources_fn(resource_handler: rs.ResourceHandler, results: list):
+    # load manifest file
+    manifest = resource_handler.load_file('manifest.yml', rs.Format.YML)
+
     def fn(file_path: str):
         decoder = resource_handler.load_file(file_path, rs.Format.YML)
-        results.append(
-            (decoder['name'], decoder['sources'] if 'sources' in decoder else []))
+        for type in manifest:
+            if type is not 'name':
+                if decoder['name'] in manifest[type]:
+                    print(f'Loading {file_path}')
+                    results.append(
+                        (decoder['name'], decoder['parents'] if 'parents' in decoder else []))
 
     return fn
 
@@ -34,9 +42,14 @@ def create_dot_graph(data):
 def run(args, resource_handler: rs.ResourceHandler):
     assets = []
     type_name = args['type']
-    # Gets a list of tuples with the name and sources of the assets
-    resource_handler.walk_dir(
-        type_name, get_asset_sources_fn(resource_handler, assets), recursive=True)
+    # Gets a list of tuples with the name and parents of the assets
+    type_path = Path(resource_handler.cwd()).parent.parent / type_name
+    type_path = type_path.resolve()
+    print(f'Walking through {type_path}')
+    for file in type_path.rglob('*.yml'):
+        process = get_asset_sources_fn(resource_handler, assets)
+        process(file.as_posix())
+
 
     dot_graph = create_dot_graph(assets)
 

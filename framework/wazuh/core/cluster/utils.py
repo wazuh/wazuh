@@ -6,27 +6,25 @@ import fcntl
 import json
 import logging
 import os
+from pathlib import Path
 import re
 import signal
 import socket
 import time
 import typing
 from contextvars import ContextVar
-from functools import lru_cache
 from glob import glob
-from operator import setitem
 
 from wazuh.core import common, pyDaemonModule
-from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhHAPHelperError
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhHAPHelperError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.config.client import CentralizedConfig
 
 NO = 'no'
 YES = 'yes'
-DISABLED = 'disabled'
 HAPROXY_HELPER = 'haproxy_helper'
 HAPROXY_DISABLED = 'haproxy_disabled'
 HAPROXY_ADDRESS = 'haproxy_address'
@@ -49,8 +47,9 @@ IMBALANCE_TOLERANCE = 'imbalance_tolerance'
 REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 
 logger = logging.getLogger('wazuh')
-execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock")
+execq_lockfile = common.WAZUH_RUN / ".api_execq_lock"
 
+#TODO(25554) - Delete HAPROXY Config
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
     HAPROXY_PROTOCOL: 'http',
@@ -68,6 +67,35 @@ HELPER_DEFAULTS = {
     IMBALANCE_TOLERANCE: 0.1,
     REMOVE_DISCONNECTED_NODE_AFTER: 240,
 }
+
+
+def ping_unix_socket(socket_path: Path, timeout: int = 1):
+    """Ping a UNIX socket to check if it's available.
+
+    Parameters
+    ----------
+    socket_path : Path
+        Path to the UNIX socket file.
+    timeout : int
+        Connection timeout in seconds.
+
+    Returns
+    -------
+    bool
+        True if the socket is reachable, False otherwise.
+    """
+    if not socket_path.exists():
+        return False
+
+    try:
+        # Create a testing UNIX socket client to connect to the server socket.
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(timeout)
+        client.connect(str(socket_path))
+        client.close()
+        return True
+    except (socket.timeout, socket.error):
+        return False
 
 
 def _parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
@@ -172,75 +200,6 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
     return helper_config
 
 
-def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
-    """Read cluster configuration from ossec.conf.
-
-    If some fields are missing in the ossec.conf cluster configuration, they are replaced
-    with default values.
-    If there is no cluster configuration at all, the default configuration is marked as disabled.
-
-    Parameters
-    ----------
-    config_file : str
-        Path to configuration file.
-    from_import : bool
-        This flag indicates whether this function has been called from a module load (True) or from a function (False).
-
-    Returns
-    -------
-    config_cluster : dict
-        Dictionary with cluster configuration.
-    """
-    cluster_default_configuration = {
-        'disabled': False,
-        'node_type': 'master',
-        'name': 'wazuh',
-        'node_name': 'node01',
-        'key': '',
-        'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['NODE_IP'],
-        'hidden': 'no'
-    }
-
-    try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
-    except WazuhException as e:
-        if e.code == 1106:
-            # If no cluster configuration is present in ossec.conf, return default configuration but disabling it.
-            cluster_default_configuration['disabled'] = True
-            return cluster_default_configuration
-        else:
-            raise WazuhError(3006, extra_message=e.message)
-    except Exception as e:
-        raise WazuhError(3006, extra_message=str(e))
-
-    # If any value is missing from user's cluster configuration, add the default one.
-    for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
-        config_cluster[value_name] = cluster_default_configuration[value_name]
-
-    if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
-        raise WazuhError(3004, extra_message="Cluster port must be an integer.")
-
-    config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster[DISABLED] == NO:
-        config_cluster[DISABLED] = False
-    elif config_cluster[DISABLED] == YES:
-        config_cluster[DISABLED] = True
-    elif not isinstance(config_cluster[DISABLED], bool):
-        raise WazuhError(3004,
-                         extra_message=f"Allowed values for 'disabled' field are 'yes' and 'no'. "
-                                       f"Found: '{config_cluster['disabled']}'")
-
-    if config_cluster['node_type'] == 'client':
-        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
-        config_cluster['node_type'] = 'worker'
-
-    if config_cluster.get(HAPROXY_HELPER):
-        config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
-
-    return config_cluster
-
 
 @temporary_cache()
 def get_manager_status(cache=False) -> typing.Dict:
@@ -263,12 +222,9 @@ def get_manager_status(cache=False) -> typing.Dict:
     except (PermissionError, FileNotFoundError) as e:
         raise WazuhInternalError(1913, extra_message=str(e))
 
-    processes = ['wazuh-agentlessd', 'wazuh-analysisd', 'wazuh-authd', 'wazuh-csyslogd', 'wazuh-dbd', 'wazuh-monitord',
-                 'wazuh-execd', 'wazuh-integratord', 'wazuh-logcollector', 'wazuh-maild', 'wazuh-remoted',
-                 'wazuh-reportd', 'wazuh-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid',
-                 'wazuh-comms-apid']
+    processes = ['wazuh-server', 'wazuh-engined', 'wazuh-apid', 'wazuh-comms-apid']
 
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), common.WAZUH_RUN
     for process in processes:
         pidfile = glob(os.path.join(run_dir, f"{process}-*.pid"))
         if os.path.exists(os.path.join(run_dir, f"{process}.failed")):
@@ -301,11 +257,10 @@ def get_cluster_status() -> typing.Dict:
     dict
         Cluster status.
     """
-    cluster_status = {"enabled": "no" if read_cluster_config()['disabled'] else "yes"}
     try:
-        cluster_status |= {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
+        cluster_status = {"running": "yes" if get_manager_status()['wazuh-server'] == 'running' else "no"}
     except WazuhInternalError:
-        cluster_status |= {"running": "no"}
+        cluster_status = {"running": "no"}
 
     return cluster_status
 
@@ -356,47 +311,8 @@ def manager_restart() -> WazuhResult:
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
-        read_config.cache_clear()
 
     return WazuhResult({'message': 'Restart request sent'})
-
-
-@lru_cache()
-def get_cluster_items():
-    """Load and return the content of cluster.json file as a dict.
-
-    Returns
-    -------
-    cluster_items : dict
-        Dictionary with the information inside cluster.json file.
-    """
-    try:
-        here = os.path.abspath(os.path.dirname(__file__))
-        with open(os.path.join(common.WAZUH_PATH, here, 'cluster.json')) as f:
-            cluster_items = json.load(f)
-        # Rebase permissions.
-        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
-                 filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
-        return cluster_items
-    except Exception as e:
-        raise WazuhError(3005, str(e))
-
-
-@lru_cache()
-def read_config(config_file=common.OSSEC_CONF):
-    """Get the cluster configuration.
-
-    Parameters
-    ----------
-    config_file : str
-        Path to configuration file.
-
-    Returns
-    -------
-    dict
-        Dictionary with cluster configuration.
-    """
-    return read_cluster_config(config_file=config_file)
 
 
 # Context vars
@@ -488,7 +404,8 @@ def process_spawn_sleep(child):
         Process child number.
     """
     pid = os.getpid()
-    pyDaemonModule.create_pid(f'wazuh-clusterd_child_{child}', pid)
+    # TODO: 26590 - Use a parameter to set the child name.
+    pyDaemonModule.create_pid(f'wazuh-server_child_{child}', pid)
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
@@ -530,16 +447,15 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
 
 
 def running_in_master_node() -> bool:
-    """Determine if cluster is disabled or API is running in a master node.
+    """Determine if API is running in a master node.
 
     Returns
     -------
     bool
-        True if API is running in master node or if cluster is disabled else False.
+        True if API is running in master node.
     """
-    cluster_config = read_cluster_config()
-
-    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
+    server_config = CentralizedConfig.get_server_config()
+    return server_config.node.type == 'master'
 
 
 def raise_if_exc(result: object) -> None:
@@ -556,3 +472,8 @@ def raise_if_exc(result: object) -> None:
     """
     if isinstance(result, Exception):
         raise result
+
+
+def print_version():
+    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
+    print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))

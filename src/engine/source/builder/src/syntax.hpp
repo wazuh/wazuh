@@ -16,17 +16,19 @@ namespace builder::syntax
 // Asset syntax
 namespace asset
 {
-constexpr auto NAME_KEY = "name";               ///< Key for the name field in an asset.
-constexpr auto METADATA_KEY = "metadata";       ///< Key for the metadata field in an asset.
-constexpr auto PARENTS_KEY = "parents";         ///< Key for the parents field in an asset.
-constexpr auto CHECK_KEY = "check";             ///< Key for the check stage in an asset.
-constexpr auto PARSE_KEY = "parse";             ///< Key for the parse stage in an asset.
-constexpr auto NORMALIZE_KEY = "normalize";     ///< Key for the normalize stage in an asset.
-constexpr auto MAP_KEY = "map";                 ///< Key for the map stage in an asset.
-constexpr auto DEFINITIONS_KEY = "definitions"; ///< Key for the definitions stage in an asset.
-constexpr auto OUTPUTS_KEY = "outputs";         ///< Key for the outputs stage in an asset.
-constexpr auto FILE_OUTPUT_KEY = "file";        ///< Key for the file output stage in an asset.
-constexpr auto FILE_OUTPUT_PATH_KEY = "path";   ///< Key for the file output path in an asset.
+constexpr auto NAME_KEY = "name";                    ///< Key for the name field in an asset.
+constexpr auto METADATA_KEY = "metadata";            ///< Key for the metadata field in an asset.
+constexpr auto PARENTS_KEY = "parents";              ///< Key for the parents field in an asset.
+constexpr auto CHECK_KEY = "check";                  ///< Key for the check stage in an asset.
+constexpr auto PARSE_KEY = "parse";                  ///< Key for the parse stage in an asset.
+constexpr auto NORMALIZE_KEY = "normalize";          ///< Key for the normalize stage in an asset.
+constexpr auto MAP_KEY = "map";                      ///< Key for the map stage in an asset.
+constexpr auto DEFINITIONS_KEY = "definitions";      ///< Key for the definitions stage in an asset.
+constexpr auto OUTPUTS_KEY = "outputs";              ///< Key for the outputs stage in an asset.
+constexpr auto FILE_OUTPUT_KEY = "file";             ///< Key for the file output stage in an asset.
+constexpr auto FILE_OUTPUT_PATH_KEY = "path";        ///< Key for the file output path in an asset.
+constexpr auto INDEXER_OUTPUT_KEY = "wazuh-indexer"; ///< Key for the INDEXER output stage in an asset.
+constexpr auto INDEXER_OUTPUT_INDEX_KEY = "index";   ///< Key for the INDEXER output stage in an asset.
 
 constexpr auto CONDITION_NAME =
     "condition"; ///< Name of the condition expression in the asset to be displayed in traces.
@@ -42,6 +44,8 @@ constexpr auto REF_ANCHOR = '$';       ///< Char used to indicate a reference.
 constexpr auto SEPARATOR = '.';        ///< Char used to separate levels in a fields path.
 constexpr auto VAR_ANCHOR = '_';       ///< Char used to indicate a variable.
 constexpr auto NAME_EXTENDED = "_@#-"; ///< Extended allowed chars in a field name.
+constexpr auto DEFAULT_ESCAPE = '\\';  ///< Char used to escape special characters in a field name.
+constexpr auto ESCAPED_CHARS = ".";    ///< Characters that can be escaped in a field name.
 } // namespace field
 
 // Function helpers syntax

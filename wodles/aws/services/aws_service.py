@@ -9,14 +9,7 @@ from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
-
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
-
-DEFAULT_DATABASE_NAME = "aws_services"
-DEFAULT_TABLENAME = "aws_services"
-
-AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
+import constants
 
 
 class AWSService(wazuh_integration.WazuhAWSDatabase):
@@ -55,10 +48,11 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         The desired duration of the session that is going to be assumed.
     """
 
-    def __init__(self, reparse: bool, profile: str, iam_role_arn: str, service_name: str, only_logs_after: str,
-                 account_alias: str, region: str, db_table_name: str = DEFAULT_TABLENAME,
-                 discard_field: str = None, discard_regex: str = None, sts_endpoint: str = None,
-                 service_endpoint: str = None,
+
+    def __init__(self, reparse: bool, profile: str, iam_role_arn: str,
+                 service_name: str, only_logs_after: str, account_alias: str, region: str,
+                 db_table_name: str = constants.DEFAULT_AWS_SERVICES_TABLENAME, discard_field: str = None,
+                 discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                  iam_role_duration: str = None, **kwargs):
         # DB name
         self.db_name = 'aws_services'
@@ -142,7 +136,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         region : str
             AWS region.
         """
-        if region not in aws_tools.ALL_REGIONS:
+        if region not in constants.ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 
     def get_last_log_date(self):
@@ -160,6 +154,6 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         # cast updatedAt
         if 'updatedAt' in msg:
             msg['updatedAt'] = datetime.strftime(msg['updatedAt'], '%Y-%m-%dT%H:%M:%SZ')
-        formatted_msg = copy.deepcopy(AWS_SERVICE_MSG_TEMPLATE)
+        formatted_msg = copy.deepcopy(constants.AWS_SERVICE_MSG_TEMPLATE)
         formatted_msg['aws'] = msg
         return formatted_msg

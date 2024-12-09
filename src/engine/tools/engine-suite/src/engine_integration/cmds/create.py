@@ -7,32 +7,24 @@ def fill_documentation_base(path, name, resource_handler: rs.ResourceHandler):
     doc["overview"] = '<overview>'
     doc["compatibility"] = '<compatibility>'
     doc["configuration"] = '<configuration>'
-    doc["event"] = {'module': '<event.module>', 'dataset':'<event.dataset>'}
+    doc["event"] = {'module': '<event.module>', 'dataset': '<event.dataset>'}
     resource_handler.save_file(path, name, doc, rs.Format.YML)
 
-def fill_changelog_base(path, name, resource_handler: rs.ResourceHandler):
-    doc = f'''items:
-    - version: <v.v.v>
-      short: <v.v>
-      pr: <#46546>'''
-    resource_handler.create_file(path+'/'+ name, doc)
 
 def run(args, resource_handler: rs.ResourceHandler):
     integration_name = args['name']
 
     resource_handler.create_dir(integration_name)
     resource_handler.create_dir(f'{integration_name}/test')
-    resource_handler.create_dir(f'{integration_name}/decoders')
-    resource_handler.create_dir(f'{integration_name}/rules')
-    resource_handler.create_dir(f'{integration_name}/outputs')
-    resource_handler.create_dir(f'{integration_name}/filters')
-    resource_handler.create_dir(f'{integration_name}/agent')
-    resource_handler.create_file(f'{integration_name}/fields.yml')
-    resource_handler.create_file(f'{integration_name}/logpar.yml')
+    resource_handler.create_file(f'{integration_name}/test/engine-test.conf')
     resource_handler.create_file(f'{integration_name}/documentation.yml')
-    fill_documentation_base(integration_name, 'documentation.yml', resource_handler)
-    resource_handler.create_dir(f'{integration_name}/kvdbs')
-    fill_changelog_base(integration_name, 'changelog.yml', resource_handler)
+    integration_doc = {}
+    integration_doc['name'] = f'integration/{integration_name}/0'
+    resource_handler.save_file(
+        integration_name, 'manifest.yml', integration_doc, rs.Format.YML)
+
+    fill_documentation_base(
+        integration_name, 'documentation.yml', resource_handler)
 
 
 def configure(subparsers):

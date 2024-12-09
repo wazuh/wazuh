@@ -29,12 +29,13 @@ Mapper getMapper(std::string&& parsed, std::string_view targetField)
 
 SemParser getSemParser(std::string_view targetField,
                        date::fields<std::chrono::nanoseconds> fds,
+                       const std::locale& outputLocale,
                        std::string&& abbrev,
                        std::string_view name,
                        std::chrono::minutes offset)
 {
 
-    return [targetField, fds, abbrev = std::move(abbrev), name, offset](
+    return [targetField, fds, outputLocale, abbrev = std::move(abbrev), name, offset](
                std::string_view) -> std::variant<hlp::parser::Mapper, base::Error>
     {
         // if no year is parsed, we add our current year
@@ -50,7 +51,7 @@ SemParser getSemParser(std::string_view targetField,
 
         // Format to strict_date_optional_time
         std::ostringstream out {};
-        out.imbue(std::locale("en_US.UTF-8"));
+        out.imbue(outputLocale);
 
         // If we have timezone information, transform it to UTC
         // else, assume we have UTC.
@@ -120,14 +121,15 @@ const std::vector<std::tuple<std::string, std::string>> TIME_FORMAT {
  * @param dateSample
  * @return std::variant<std::string, base::Error>
  */
-std::string formatDateFromSample(const std::string& dateSample, const std::string& locale)
+// TODO: Delete option for locale
+std::string formatDateFromSample(const std::string& dateSample)
 {
 
     // Check if the dateSample matches with more than one format
     std::vector<std::string> matchingFormats {};
     for (const auto& [name, format] : TIME_FORMAT)
     {
-        auto p = hlp::parsers::getDateParser({.options = {format, "en_US.UTF-8"}});
+        auto p = hlp::parsers::getDateParser({.options = {format}});
         auto res = p(dateSample);
 
         if (res.success())
@@ -163,18 +165,20 @@ namespace hlp
 namespace
 {
 /**
- * @brief Load the timezone database and check if the version is the same as the provided.
+ * @brief Try load and check if the timezone database needs to be updated.
  *
- * @param version The version to check
- * @return true if the database is loaded and the version is the same as the provided
+ * @param version Required version
+ * @param autoUpdate if true, check if the database needs to be updated
+ * @return False if the database needs to be downloaded and installed/updated.
+ * @return True if the database is loaded correctly and no update is needed.
  */
-bool loadTimeZoneDB(const std::string& version)
+bool loadTimeZoneDB(const std::string& version, bool autoUpdate)
 {
     try
     {
         const auto& db = date::get_tzdb();
         LOG_INFO("Loaded timezone database version: '{}'", db.version);
-        return version == db.version;
+        return !(autoUpdate && db.version != version);
     }
     catch (std::exception& e)
     {
@@ -214,10 +218,10 @@ void initTZDB(const std::string& path, const bool autoUpdate)
 {
     date::set_install(path);
 
-    std::string rv = date::remote_version();
+    std::string rv = "2024a"; // TODO: change to date::remote_version();
     LOG_DEBUG("Remote timezone database version: '{}'", rv);
 
-    if (loadTimeZoneDB(rv) && !autoUpdate)
+    if (loadTimeZoneDB(rv, autoUpdate))
     {
         return;
     }
@@ -236,16 +240,18 @@ Parser getDateParser(const Params& params)
     {
         throw std::runtime_error("Date parser requires the first parameter to be a date sample or format. "
                                  "Additionally, it can be specified the \"locale\" as the second parameter, "
-                                 "otherwise \"en_US.UTF-8\" will be used by default");
+                                 "otherwise \"C/POSIX\" will be used by default");
     }
 
     std::string format = params.options[0];
-    auto localeStr = params.options.size() > 1 ? params.options[1] : "en_US.UTF-8";
+    auto localeStr = params.options.size() > 1 ? params.options[1] : "_auto";
 
-    std::locale locale;
+    std::locale parserLocale;                          // Used for parsing the date
+    std::locale outputLocale = std::locale::classic(); // Used for outputting the date
     try
     {
-        locale = std::locale(localeStr);
+        // Use the C/POSIX locale.
+        parserLocale = localeStr == "_auto" ? std::locale::classic() : std::locale(localeStr);
     }
     catch (std::exception& e)
     {
@@ -265,16 +271,16 @@ Parser getDateParser(const Params& params)
         }
         else
         {
-            format = formatDateFromSample(format, localeStr);
+            format = formatDateFromSample(format);
         }
     }
 
     const auto target = params.targetField.empty() ? std::string {} : params.targetField;
 
-    return [format, locale, name = params.name, target](std::string_view text)
+    return [format, parserLocale, outputLocale, name = params.name, target](std::string_view text)
     {
         auto ss = std::istringstream(std::string(text));
-        ss.imbue(locale);
+        ss.imbue(parserLocale);
 
         std::string abbrev {};
         std::chrono::minutes offset {0};
@@ -289,7 +295,7 @@ Parser getDateParser(const Params& params)
         auto pos = (ss.tellg() == -1) ? text.size() : static_cast<std::size_t>(ss.tellg());
 
         return abs::makeSuccess(
-            SemToken {text.substr(0, pos), getSemParser(target, fds, std::move(abbrev), name, offset)},
+            SemToken {text.substr(0, pos), getSemParser(target, fds, outputLocale, std::move(abbrev), name, offset)},
             text.substr(pos));
     };
 }

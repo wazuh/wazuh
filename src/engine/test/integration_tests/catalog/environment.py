@@ -1,9 +1,13 @@
-from handler_engine_instance import up_down
+import os
+from engine_handler.handler import EngineHandler
 
-up_down_engine = up_down.UpDownEngine()
+engine_handler = EngineHandler(
+    os.getenv('BINARY_DIR', ""), os.getenv('CONF_FILE', ""))
+
 
 def before_all(context):
-    up_down_engine.send_start_command()
+    engine_handler.start()
+
 
 def after_all(context):
-    up_down_engine.send_stop_command()
+    engine_handler.stop()

@@ -1,0 +1,40 @@
+server:
+  nodes:
+    - master
+  node:
+    name: server_01
+    type: master
+    ssl:
+      key: /etc/wazuh-server/server.key
+      cert: /etc/wazuh-server/server.crt
+      ca: /etc/wazuh-server/server.ca
+indexer:
+  hosts:
+    - host: localhost
+      port: 9200
+  username: admin
+  password: admin
+  ssl:
+    use_ssl: true
+    key: <KEY_FILE_PATH>
+    certificate: <CERT_FILE_PATH>
+    certificate_authorities:
+      - <CA_FILE_PATH>
+communications_api:
+  host: localhost
+  port: 27000
+  ssl:
+    key: /etc/wazuh-server/api/configuration/ssl/server.key
+    cert: /etc/wazuh-server/api/configuration/ssl/server.crt
+    use_ca: false
+    ca: <CA_FILE_PATH>
+management_api:
+  host: 
+    - localhost
+    - ::1
+  port: 55000
+  ssl:
+    key: /etc/wazuh-server/api/configuration/ssl/server.key
+    cert: /etc/wazuh-server/api/configuration/ssl/server.crt
+    use_ca: false
+    ca: <CA_FILE_PATH>

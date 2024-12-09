@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Dependencies for testing:
+      # Dependencies for documentation:
       # - doxygen 
       # - graphviz
       - name: Install dependencies
@@ -72,6 +72,72 @@ jobs:
           path: src/doc
           retention-days: 1
 
+  documentation-apidoc:
+    name: Engine OPENAPI documentation generation
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # Dependencies for apidoc:
+      # - apidoc
+      # - apidoc-openapi-3-1
+      - name: Install api documentation dependencies
+        run: |
+          sudo npm install -g apidoc
+          sudo npm install -g apidoc-openapi-3-1
+
+      # Generate apidoc
+      - name: Generate APIDOC OPENAPI documentation
+        shell: bash
+        run: |
+          cd src/engine
+          ERRORS_APIDOC_FILE=apidoc_errors.txt
+          ERRORS_OPENAPI_FILE=openapi_errors.txt
+          apidoc -i . -o . -f source/main.cpp 2> ${ERRORS_APIDOC_FILE}
+          npx apidoc-openapi-3-1 2> ${ERRORS_OPENAPI_FILE}
+
+          # Check if there are errors
+          if [ -s "${ERRORS_APIDOC_FILE}" -o -s "${ERRORS_OPENAPI_FILE}" ]; then
+            echo "-----------------------------------------------"
+            echo "FAILED: APIDOC/OPENAPI documentation generation failed"
+            echo "-----------------------------------------------"
+            exit 1
+          else
+            echo "----------------------------------------------------"
+            echo "PASSED: APIDOC/OPENAPI documentation generated successfully"
+            echo "$(ls -lh)"
+            echo "$(pwd)"
+            echo "----------------------------------------------------"
+          fi
+
+      - name: Redocly CLI Test
+        uses: fluximus-prime/redocly-cli-github-action@v1
+        with:
+          args: 'build-docs src/engine/swagger.json --output src/engine/engine.html'
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: APIDOC/OPENAPI errors
+          path: |
+            src/engine/apidoc_errors.txt
+            src/engine/openapi_errors.txt
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: APIDOC OPENAPI Documentation
+          path: |
+            src/engine/swagger.json
+            src/engine/index.html
+            src/engine/assets
+            src/engine/engine.html
+          retention-days: 1
+
+
   style:
     name: Engine coding style check
     runs-on: ubuntu-22.04
@@ -103,7 +169,7 @@ jobs:
 
             ERRORS_FILE=clang_format_errors.txt
             clang-format $arguments 2> ${ERRORS_FILE}
-            
+
             # Print clanformat version used.
             echo "Clang-format version: $(clang-format --version)"
 

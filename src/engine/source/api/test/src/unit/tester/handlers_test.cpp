@@ -671,13 +671,7 @@ eTester::Result getResultFromOutput(const ::router::test::Output& output)
     eTester::Result result {};
 
     // Set event
-    auto resProtoEvent = eMessage::eMessageFromJson<google::protobuf::Value>(output.event()->str());
-    if (std::holds_alternative<base::Error>(resProtoEvent))
-    {
-        throw std::runtime_error {std::get<base::Error>(resProtoEvent).message}; // Should never happen
-    }
-    auto& protoEvent = std::get<google::protobuf::Value>(resProtoEvent);
-    result.mutable_output()->CopyFrom(protoEvent);
+    result.mutable_output()->assign(output.event()->str());
 
     // Set traces
     for (const auto& [assetName, assetTrace] : output.traceList())

@@ -9,9 +9,9 @@ This directory contains the integration tests for the Wazuh Engine. These tests 
 Before running the integration tests, ensure that the following prerequisites are installed:
 
 - **Basic requirements for sandbox environment  ([described here](../README.md#prerequisites))**
-- **IT-Utils**: A set of utilities for integration tests. Install it using pip:
+- **engine-test-utils**: A set of utilities for integration tests. Install it using pip:
   ```bash
-  pip3 install test/integration_tests/it-utils
+  pip3 install test/engine-test-utils
   ```
 - **Behave**: A behavior-driven development (BDD) Python framework. Install it using pip:
   ```bash
@@ -35,7 +35,7 @@ First, set up an isolated environment to run the tests. This ensures that the te
 Load all necessary configurations for the test:
 
 ```bash
-./test/integration_tests/initialState.py -e /tmp/engine-integration-test
+engine-it -e /tmp/engine-integration-test -t ./test/integration_tests init -b ./build/main
 ```
 
 ### Executing All Integration Tests
@@ -43,15 +43,7 @@ Load all necessary configurations for the test:
 Run all integration tests by executing:
 
 ```bash
-./test/integration_tests/run.py -e /tmp/engine-integration-test
-```
-
-### Running a Specific Module
-
-To run tests for a specific module, specify the test directory of the module:
-
-```bash
-./test/integration_tests/run.py -e /tmp/engine-integration-test -f test/integration_tests/catalog
+engine-it -e /tmp/engine-integration-test -t ./test/integration_tests run
 ```
 
 ### Running a Specific Feature
@@ -59,7 +51,7 @@ To run tests for a specific module, specify the test directory of the module:
 To run a specific feature, point to the feature file:
 
 ```bash
-./test/integration_tests/run.py -e /tmp/engine-integration-test -f test/integration_tests/catalog/features/api.feature
+engine-it -e /tmp/engine-integration-test -t ./test/integration_tests run -f test/integration_tests/catalog/api.feature
 ```
 
 ### Command Line Help
@@ -67,7 +59,7 @@ To run a specific feature, point to the feature file:
 For additional options and help, use the `-h` flag:
 
 ```bash
-./test/integration_tests/run.py -h
+engine-it run -h
 ```
 
 This will display usage information and describe the command-line options available.

@@ -39,27 +39,31 @@ jobs:
     timeout-minutes: 60
 
     steps:
+
+    - name: Install dependencies (lzip)
+      run: sudo apt-get install lzip
+
     - name: Check out repository
       uses: actions/checkout@v4
       with:
         submodules: recursive
-  
-    - name: Cache CMake and ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ${{ github.workflow }}-${{ runner.os }}
+
+    # Disabled due to not being implemented in the current workflow
+    # - name: Cache CMake and ccache
+    #   uses: hendrikmuhs/ccache-action@v1.2
+    #   with:
+    #     key: ${{ github.workflow }}-${{ runner.os }}
 
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
         pip install ${{env.ENGINE_DIR}}/tools/api-communication/
-        pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
-        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
-        pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine_helper_test
+        pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
+        pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine-helper-test/
 
     - name: Setup VCPKG
       uses: lukka/run-vcpkg@v11
@@ -71,6 +75,17 @@ jobs:
     - name: Configure CMake
       run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
 
+    - name: Create install directory
+      run: |
+        export WHOAMI=$(whoami)
+        sudo install -d -m 0750 -o ${WHOAMI} /var/lib/wazuh-server/
+        sudo install -d -m 0750 -o ${WHOAMI} /run/wazuh-server/
+        curl -LO http://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.10.0.tar.xz
+        tar -xvf vd_1.0.0_vd_4.10.0.tar.xz
+        mv queue/vd /var/lib/wazuh-server/
+        mv queue/vd_updater /var/lib/wazuh-server/
+        rm -rf queue vd_1.0.0_vd_4.10.0.tar.xz
+
     - name: Build
       run: cmake --build ${{env.ENGINE_DIR}}/build --target main -j$(nproc)
 
@@ -78,7 +93,16 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: engine-helper-test-initial-state -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/general.conf
+      run: engine-helper-test -e /tmp/actions init --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/config.env
 
-    - name: Helper Functions Test
-      run: engine-helper-test-generate-runner -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main -i ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/output/
+    - name: Validate helper descriptions
+      run: engine-helper-test -e /tmp/actions validate --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
+
+    - name: Generate tests
+      run: engine-helper-test -e /tmp/actions generate-tests --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_tests/
+
+    - name: Run tests
+      run: engine-helper-test -e /tmp/actions run --input-dir /tmp/helper_tests/
+
+    - name: Validate documentation generation
+      run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/

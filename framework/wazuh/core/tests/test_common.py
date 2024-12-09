@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
-from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, context_cached, reset_context_cache, \
-    get_context_cache
+from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, async_context_cached, context_cached, \
+    reset_context_cache, get_context_cache
 
 
 @pytest.mark.parametrize('fake_path, expected', [
@@ -37,6 +37,40 @@ def test_wazuh_uid():
 def test_wazuh_gid():
     with patch('wazuh.core.common.getgrnam', return_value=getgrnam("root")):
         wazuh_gid()
+
+
+async def test_async_context_cached():
+    """Verify that async_context_cached decorator correctly saves and returns saved value when called again."""
+
+    test_async_context_cached.calls_to_foo = 0
+
+    @async_context_cached('foobar')
+    async def foo(arg='bar', **data):
+        test_async_context_cached.calls_to_foo += 1
+        return arg
+
+    # The result of function 'foo' is being cached and it has been called once
+    assert await foo() == 'bar' and test_async_context_cached.calls_to_foo == 1
+    assert await foo() == 'bar' and test_async_context_cached.calls_to_foo == 1
+    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {}})], ContextVar)
+
+    # foo called with an argument
+    assert await foo('other_arg') == 'other_arg' and test_async_context_cached.calls_to_foo == 2
+    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['other_arg'], "kwargs": {}})],
+                      ContextVar)
+
+    # foo called with the same argument as default, a new context var is created in the cache
+    assert await foo('bar') == 'bar' and test_async_context_cached.calls_to_foo == 3
+    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['bar'], "kwargs": {}})], ContextVar)
+
+    # Reset cache and calls to foo
+    reset_context_cache()
+    test_async_context_cached.calls_to_foo = 0
+
+    # foo called with kwargs, a new context var is created with kwargs not empty
+    assert await foo(data='bar') == 'bar' and test_async_context_cached.calls_to_foo == 1
+    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {"data": "bar"}})],
+                      ContextVar)
 
 
 def test_context_cached():
@@ -74,32 +108,3 @@ def test_context_cached():
                                                                                'calls to foo. '
     assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {"data": "bar"}})],
                       ContextVar)
-
-
-@patch('wazuh.core.logtest.create_wazuh_socket_message', side_effect=SystemExit)
-def test_origin_module_context_var_framework(mock_create_socket_msg):
-    """Test that the origin_module context variable is being set to framework."""
-    from wazuh import logtest
-
-    # side_effect used to avoid mocking the rest of functions
-    with pytest.raises(SystemExit):
-        logtest.run_logtest()
-
-    assert mock_create_socket_msg.call_args[1]['origin']['module'] == 'framework'
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.logtest.create_wazuh_socket_message', side_effect=SystemExit)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
-async def test_origin_module_context_var_api(mock_check_wazuh_status, mock_create_socket_msg):
-    """Test that the origin_module context variable is being set to API."""
-    import logging
-    from wazuh.core.cluster.dapi import dapi
-    from wazuh import logtest
-
-    # side_effect used to avoid mocking the rest of functions
-    with pytest.raises(SystemExit):
-        d = dapi.DistributedAPI(f=logtest.run_logtest, logger=logging.getLogger('wazuh'), is_async=True)
-        await d.distribute_function()
-
-    assert mock_create_socket_msg.call_args[1]['origin']['module'] == 'API'

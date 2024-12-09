@@ -1,6 +1,6 @@
 #include "base/logging.hpp"
 #include "cmdArgParser.hpp"
-#include <indexerConnector.hpp>
+#include <indexerConnector/indexerConnector.hpp>
 #include <iomanip>
 #include <iostream>
 #include <random>
@@ -90,6 +90,48 @@ nlohmann::json fillWithRandomData(const nlohmann::json& templateJson)
     return result;
 }
 
+void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const nlohmann::json& config)
+{
+    if (config.contains("name"))
+    {
+        indexerConnectorOptions.name = config.at("name").get_ref<const std::string&>();
+    }
+
+    if (config.contains("hosts"))
+    {
+        indexerConnectorOptions.hosts = config.at("hosts");
+    }
+
+    if (config.contains("ssl"))
+    {
+        if (config.at("ssl").contains("certificate_authorities")
+            && !config.at("ssl").at("certificate_authorities").empty())
+        {
+            indexerConnectorOptions.sslOptions.cacert = config.at("ssl").at("certificate_authorities");
+        }
+
+        if (config.at("ssl").contains("certificate"))
+        {
+            indexerConnectorOptions.sslOptions.cert = config.at("ssl").at("certificate").get_ref<const std::string&>();
+        }
+
+        if (config.at("ssl").contains("key"))
+        {
+            indexerConnectorOptions.sslOptions.key = config.at("ssl").at("key").get_ref<const std::string&>();
+        }
+    }
+
+    if (config.contains("username"))
+    {
+        indexerConnectorOptions.username = config.at("username");
+    }
+
+    if (config.contains("password"))
+    {
+        indexerConnectorOptions.password = config.at("password");
+    }
+}
+
 int main(const int argc, const char* argv[])
 {
     try
@@ -104,10 +146,13 @@ int main(const int argc, const char* argv[])
         {
             throw std::invalid_argument("Could not open configuration file.");
         }
+        // Parse configuration
         const auto configuration = nlohmann::json::parse(configurationFile);
+        IndexerConnectorOptions indexerConnectorOptions;
+        fillConfiguration(indexerConnectorOptions, configuration);
 
         // Create indexer connector.
-        IndexerConnector indexerConnector(configuration);
+        IndexerConnector indexerConnector(indexerConnectorOptions);
 
         // Read events file.
         // If the events file path is empty, then the events are generated

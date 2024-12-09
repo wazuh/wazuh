@@ -9,27 +9,12 @@
 
 import argparse
 import configparser
-from os import path
 from datetime import datetime
 from typing import Optional
 import sys
 import re
 
-DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
-SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/current/cloud-security/amazon/services/' \
-                                        'supported-services/security-lake.html#configuring-an-iam-role'
-
-ALL_REGIONS = (
-    'af-south-1', 'ap-east-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-south-1', 'ap-south-2',
-    'ap-southeast-1', 'ap-southeast-2', 'ap-southeast-3', 'ap-southeast-4', 'ca-central-1', 'eu-central-1',
-    'eu-central-2', 'eu-north-1', 'eu-south-1', 'eu-south-2', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'il-central-1',
-    'me-central-1', 'me-south-1', 'sa-east-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
-)
-
-RETRY_ATTEMPTS_KEY: str = "max_attempts"
-RETRY_MODE_CONFIG_KEY: str = "retry_mode"
-RETRY_MODE_BOTO_KEY: str = "mode"
-WAZUH_DEFAULT_RETRY_CONFIGURATION = {RETRY_ATTEMPTS_KEY: 10, RETRY_MODE_BOTO_KEY: 'standard'}
+import constants
 
 # Enable/disable debug mode
 debug_level = 0
@@ -92,10 +77,10 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
         boto_config['config'].proxies_config = proxies_config
     
     # Checks for retries config in profile config and sets it if not found to avoid throttling exception
-    if RETRY_ATTEMPTS_KEY in profile_config or RETRY_MODE_CONFIG_KEY in profile_config:
+    if constants.RETRY_ATTEMPTS_KEY in profile_config or constants.RETRY_MODE_CONFIG_KEY in profile_config:
         retries = {
-            RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
-            RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
+            constants.RETRY_ATTEMPTS_KEY: int(profile_config.get(constants.RETRY_ATTEMPTS_KEY, 10)),
+            constants.RETRY_MODE_BOTO_KEY: profile_config.get(constants.RETRY_MODE_CONFIG_KEY, 'standard')
         }
         debug(f"Retries parameters found in user profile. Using profile '{profile}' retries configuration", 2)
         boto_config['config'].retries = retries
@@ -340,7 +325,7 @@ def get_aws_config_params() -> configparser.RawConfigParser:
         The parsed configuration.
     """
     config = configparser.RawConfigParser()
-    config.read(DEFAULT_AWS_CONFIG_PATH)
+    config.read(constants.DEFAULT_AWS_CONFIG_PATH)
 
     return config
 

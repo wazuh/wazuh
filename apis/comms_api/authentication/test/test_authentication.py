@@ -6,11 +6,14 @@ from fastapi import status
 import pytest
 from freezegun import freeze_time
 
-from api.authentication import INVALID_TOKEN, JWT_ISSUER
-from comms_api.authentication.authentication import decode_token, generate_token, JWTBearer, JWT_AUDIENCE, \
-    JWT_EXPIRATION
-from comms_api.routers.exceptions import HTTPError
-from wazuh.core.exception import WazuhCommsAPIError
+
+# TODO: Fix in #26725
+with patch('wazuh.core.utils.load_wazuh_xml'):
+    from api.authentication import INVALID_TOKEN, JWT_ISSUER
+    from comms_api.authentication.authentication import decode_token, generate_token, JWTBearer, JWT_AUDIENCE, \
+        JWT_EXPIRATION
+    from comms_api.routers.exceptions import HTTPError
+    from wazuh.core.exception import WazuhCommsAPIError
 
 payload = {
     'iss': JWT_ISSUER,

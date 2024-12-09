@@ -132,10 +132,10 @@ private:
     };
 
     moodycamel::BlockingConcurrentQueue<T, D> m_queue {}; ///< The queue itself.
-
-    std::shared_ptr<FloodingFile> m_floodingFile; ///< The flooding file.
-    std::size_t m_maxAttempts;                    ///< The maximum number of attempts to push an element to the queue.
-    std::chrono::microseconds m_waitTime;         ///< The time to wait for the queue to be not full.
+    std::size_t m_minCapacity;                            ///< The minimum capacity of the queue.
+    std::shared_ptr<FloodingFile> m_floodingFile;         ///< The flooding file.
+    std::size_t m_maxAttempts;            ///< The maximum number of attempts to push an element to the queue.
+    std::chrono::microseconds m_waitTime; ///< The time to wait for the queue to be not full.
     bool m_discard; ///< If true, the queue will discard the events when it is full instead of flooding the file or
                     ///< blocking.
 
@@ -231,6 +231,7 @@ public:
         }
 
         m_queue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
+        m_minCapacity = capacity;
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
@@ -363,7 +364,14 @@ public:
      * @note The size is approximate.
      * @return size_t The size of the queue.
      */
-    size_t size() const override { return m_queue.size_approx(); }
+    inline size_t size() const override { return m_queue.size_approx(); }
+
+    /**
+     * @brief Gets the approximate free capacity of the queue.
+     *
+     * @return size_t The approximate number of elements that can be pushed into the queue.
+     */
+    inline size_t aproxFreeSlots() const override { return m_minCapacity - m_queue.size_approx(); }
 };
 
 } // namespace base::queue

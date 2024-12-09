@@ -12,6 +12,7 @@ from wazuh.core.exception import WazuhHAPHelperError
 JSON_TYPE: TypeAlias = dict | list[dict]
 PROXY_API_RESPONSE: TypeAlias = JSON_TYPE | None
 HTTP_PROTOCOL = Literal['http', 'https']
+DEFAULT_TIMEOUT = 10.0
 
 
 def _convert_to_seconds(milliseconds: int) -> int:
@@ -111,7 +112,8 @@ class ProxyAPI:
             In case of errors communicating with the HAProxy REST API.
         """
         try:
-            async with httpx.AsyncClient(verify=self.haproxy_cert, cert=self.client_cert) as client:
+            async with httpx.AsyncClient(verify=self.haproxy_cert, cert=self.client_cert,
+                                         timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
                 response = await client.get(
                     join(f'{self.protocol}://', f'{self.address}:{self.port}', self.HAP_ENDPOINT, 'health'),
                     auth=(self.username, self.password),
@@ -165,7 +167,8 @@ class ProxyAPI:
 
         try:
             async with httpx.AsyncClient(verify=self.haproxy_cert,
-                                         cert=self.client_cert, follow_redirects=True) as client:
+                                         cert=self.client_cert, follow_redirects=True,
+                                         timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
                 response = await client.request(
                     method=method.value,
                     url=uri,

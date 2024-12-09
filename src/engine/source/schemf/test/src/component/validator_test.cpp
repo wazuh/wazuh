@@ -32,6 +32,7 @@ const std::set<ST> ALLSCHEMATYPES = {ST::BOOLEAN,
                                      ST::DOUBLE,
                                      ST::KEYWORD,
                                      ST::TEXT,
+                                     ST::WILDCARD,
                                      ST::DATE,
                                      ST::DATE_NANOS,
                                      ST::IP,
@@ -53,6 +54,7 @@ const json::Json J_SCALED_FLOAT {"1.0"};
 const json::Json J_DOUBLE {std::to_string(double(std::numeric_limits<float_t>::max()) + 1).c_str()};
 const json::Json J_KEYWORD {"\"keyword\""};
 const json::Json J_TEXT {"\"text\""};
+const json::Json J_WILDCARD {"\"wildcard\""};
 const json::Json J_DATE {"\"2020-01-01T01:00:00Z\""};
 const json::Json J_DATE_NANOS {"\"2020-01-01T00:00:00.000000000Z\""};
 const json::Json J_IP {"\"192.168.0.1\""};
@@ -73,6 +75,7 @@ const std::map<ST, json::Json> SCHEMA_JSON = {
     {ST::DOUBLE, J_DOUBLE},
     {ST::KEYWORD, J_KEYWORD},
     {ST::TEXT, J_TEXT},
+    {ST::WILDCARD, J_WILDCARD},
     {ST::DATE, J_DATE},
     {ST::DATE_NANOS, J_DATE_NANOS},
     {ST::IP, J_IP},
@@ -377,12 +380,22 @@ INSTANTIATE_TEST_SUITE_P(
            BuildT(ST::HALF_FLOAT, {ST::FLOAT, ST::HALF_FLOAT, ST::SCALED_FLOAT}, {ST::DOUBLE}, {JT::Number}),
            BuildT(ST::SCALED_FLOAT, {ST::FLOAT, ST::HALF_FLOAT, ST::SCALED_FLOAT}, {ST::DOUBLE}, {JT::Number}),
            BuildT(ST::DOUBLE, {ST::FLOAT, ST::HALF_FLOAT, ST::SCALED_FLOAT, ST::DOUBLE}, {}, {JT::Number}),
-           BuildT(ST::KEYWORD, {ST::TEXT, ST::KEYWORD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY}, {}, {JT::String}),
-           BuildT(ST::TEXT, {ST::TEXT, ST::KEYWORD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY}, {}, {JT::String}),
-           BuildT(ST::DATE, {ST::DATE}, {ST::TEXT, ST::KEYWORD}, {JT::String}),
-           BuildT(ST::DATE_NANOS, {ST::DATE_NANOS}, {ST::TEXT, ST::KEYWORD}, {JT::String}),
-           BuildT(ST::IP, {ST::IP}, {ST::TEXT, ST::KEYWORD}, {JT::String}),
-           BuildT(ST::BINARY, {ST::BINARY}, {ST::TEXT, ST::KEYWORD}, {JT::String}),
+           BuildT(ST::KEYWORD,
+                  {ST::TEXT, ST::KEYWORD, ST::WILDCARD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY},
+                  {},
+                  {JT::String}),
+           BuildT(ST::TEXT,
+                  {ST::TEXT, ST::KEYWORD, ST::WILDCARD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY},
+                  {},
+                  {JT::String}),
+           BuildT(ST::WILDCARD,
+                  {ST::WILDCARD, ST::TEXT, ST::KEYWORD, ST::DATE, ST::DATE_NANOS, ST::IP, ST::BINARY},
+                  {},
+                  {JT::String}),
+           BuildT(ST::DATE, {ST::DATE}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
+           BuildT(ST::DATE_NANOS, {ST::DATE_NANOS}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
+           BuildT(ST::IP, {ST::IP}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
+           BuildT(ST::BINARY, {ST::BINARY}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
            BuildT(ST::OBJECT, {ST::OBJECT}, {}, {JT::Object}),
            BuildT(ST::NESTED, {ST::NESTED}, {}, {JT::Object}),
            BuildT(ST::GEO_POINT, {ST::GEO_POINT}, {}, {JT::Object})),

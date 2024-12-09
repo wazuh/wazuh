@@ -139,8 +139,8 @@ def step_impl(context, name: str, type: str, dbUrl: str, hashUrl: str):
 
 @when('I restart the engine')
 def step_impl(context):
-    context.up_down_engine.send_stop_command()
-    context.up_down_engine.send_start_command()
+    context.shared_data['engine_instance'].stop()
+    context.shared_data['engine_instance'].start()
 
 
 ####################################################################################################
@@ -176,7 +176,9 @@ def step_impl(context, message: str):
     if index != -1:
         index2 = message.find("}'", index)
         assert index2 != -1, "missing '}}"
-        message = message[:index+1] + get_db_path(message[index+2:index2]).as_posix() + message[index2+1:]
+        message = message[:index+1] + \
+            get_db_path(message[index+2:index2]
+                        ).as_posix() + message[index2+1:]
 
     assert context.response.error == message, f'expected "{message}" but got "{context.response.error}"'
 

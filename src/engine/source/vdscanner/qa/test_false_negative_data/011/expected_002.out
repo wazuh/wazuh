@@ -1,7 +1,0 @@
-[
-    "Initiating a vulnerability scan for package 'mail' (pkg) (apple) with CVE Numbering Authorities (CNA) 'nvd' on Agent '' (ID: '002', Version: '').",
-    "The vendor is not the same for Package: mail, Version: 16.0, CVE: CVE-2008-4584, Content vendor: chilkat_software, Package vendor: apple",
-    "The vendor is not the same for Package: mail, Version: 16.0, CVE: CVE-2017-15806, Content vendor: zetacomponents, Package vendor: apple",
-    "The platform is not in the list for Package: mail, Version: 16.0, CVE: CVE-2005-2512, OS CPE: cpe:/o:apple:macos:::::, OS code name:",
-    "Initiating a vulnerability scan for package 'brotli' (pkg) ( ) with CVE Numbering Authorities (CNA) 'homebrew' on Agent '' (ID: '002', Version: '')."
-]

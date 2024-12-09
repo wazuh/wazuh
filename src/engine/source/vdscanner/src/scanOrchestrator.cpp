@@ -1,22 +1,17 @@
-#include "scanOrchestrator.hpp"
+#include "vdscanner/scanOrchestrator.hpp"
 #include "base/logging.hpp"
 #include "factoryOrchestrator.hpp"
 #include "scanContext.hpp"
 
+using namespace vdscanner;
+
 static const std::map<std::string, PayloadType, std::less<>> SCAN_TYPE {{"packagelist", PayloadType::PackageList},
                                                                         {"fullscan", PayloadType::FullScan}};
 
-ScanOrchestrator::ScanOrchestrator(const std::string& configuration)
+ScanOrchestrator::ScanOrchestrator()
 {
     // Database feed manager initialization.
     m_databaseFeedManager = std::make_shared<DatabaseFeedManager>(m_mutex);
-
-    // Configuration initialization.
-    m_configuration = nlohmann::json::parse(configuration, nullptr, false);
-    if (m_configuration.is_discarded())
-    {
-        throw std::invalid_argument("Invalid configuration");
-    }
 
     LOG_DEBUG("Vulnerability scanner module started");
 }

@@ -1,5 +1,5 @@
-#ifndef _H_LOGGING
-#define _H_LOGGING
+#ifndef _LOGGING_HPP
+#define _LOGGING_HPP
 
 #include <iostream>
 #include <map>
@@ -8,6 +8,8 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+
+#define LAMBDA_SEPARATOR "::<lambda>"
 
 namespace logging
 {
@@ -75,7 +77,8 @@ enum class Level
     Warn,     /**< Warning logging level. */
     Err,      /**< Error logging level. */
     Critical, /**< Critical logging level. */
-    Off       /**< Turn off logging. */
+    Off,      /**< Turn off logging. */
+    Invalid
 };
 
 /**
@@ -117,7 +120,8 @@ constexpr static auto levelToStr(Level level)
         case Level::Warn: return "warning";
         case Level::Err: return "error";
         case Level::Critical: return "critical";
-        default: return "off";
+        case Level::Off: return "off";
+        default: return "invalid";
     }
 }
 
@@ -133,27 +137,31 @@ constexpr static auto strToLevel(std::string_view level)
     {
         return Level::Trace;
     }
-    else if (level == levelToStr(Level::Debug))
+    if (level == levelToStr(Level::Debug))
     {
         return Level::Debug;
     }
-    else if (level == levelToStr(Level::Info))
+    if (level == levelToStr(Level::Info))
     {
         return Level::Info;
     }
-    else if (level == levelToStr(Level::Warn))
+    if (level == levelToStr(Level::Warn))
     {
         return Level::Warn;
     }
-    else if (level == levelToStr(Level::Err))
+    if (level == levelToStr(Level::Err))
     {
         return Level::Err;
     }
-    else if (level == levelToStr(Level::Critical))
+    if (level == levelToStr(Level::Critical))
     {
         return Level::Critical;
     }
-    return Level::Off;
+    if (level == levelToStr(Level::Off))
+    {
+        return Level::Off;
+    }
+    throw std::invalid_argument(fmt::format("Invalid log level: '{}'", level));
 }
 
 /**
@@ -182,6 +190,13 @@ std::shared_ptr<spdlog::logger> getDefaultLogger();
 void setLevel(Level level);
 
 /**
+ * @brief Retrieves the log level.
+ * @return The log level.
+ * @throw std::runtime_error If the log level is invalid.
+ */
+Level getLevel();
+
+/**
  * @brief Starts logging with the given configuration.
  * @param cfg Logging configuration parameters.
  */
@@ -196,6 +211,11 @@ void stop();
  * @brief Initializes the logger for testing purposes.
  */
 void testInit();
+
+inline std::string getLambdaName(const char* parentScope, const std::string& lambdaName)
+{
+    return std::string(parentScope) + LAMBDA_SEPARATOR + lambdaName;
+}
 
 } // namespace logging
 
@@ -218,4 +238,26 @@ void testInit();
     logging::getDefaultLogger()->log(                                                                                  \
         spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::critical, msg, ##__VA_ARGS__)
 
-#endif // _H_LOGGING
+#define LOG_TRACE_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::trace, msg, ##__VA_ARGS__)
+#define LOG_DEBUG_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::debug, msg, ##__VA_ARGS__)
+#define LOG_TRACE_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::trace, msg, ##__VA_ARGS__)
+#define LOG_INFO_L(functionName, msg, ...)                                                                             \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::info, msg, ##__VA_ARGS__)
+#define LOG_WARNING_L(functionName, msg, ...)                                                                          \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::warn, msg, ##__VA_ARGS__)
+#define LOG_ERROR_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::err, msg, ##__VA_ARGS__)
+#define LOG_CRITICAL_L(functionName, msg, ...)                                                                         \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::critical, msg, ##__VA_ARGS__)
+
+#endif // _LOGGING_HPP

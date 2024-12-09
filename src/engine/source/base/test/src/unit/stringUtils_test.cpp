@@ -250,3 +250,86 @@ TEST(splitEscaped, EcapeEscapedChar)
     std::vector<std::string> result = base::utils::string::splitEscaped(input, '!', '#');
     ASSERT_EQ(result, expected);
 }
+
+TEST(StringUtilsTest, CheckReplacementReplace)
+{
+    std::string string_base = "The quick brown fox jumps over the lazy fox";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "fox", "dog"));
+    EXPECT_EQ(string_base, "The quick brown dog jumps over the lazy dog");
+}
+
+TEST(StringUtilsTest, CheckReplacementReplaceIsInSearch)
+{
+    std::string string_base = "aaaa aaaaa a";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "aa", "a"));
+    EXPECT_EQ(string_base, "a a a");
+}
+
+TEST(StringUtilsTest, BasicOverlapReplacement)
+{
+    std::string string_base = "abababab";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "aba", "a"));
+    EXPECT_EQ(string_base, "ab");
+}
+
+TEST(StringUtilsTest, OverlapWithSmallerReplacement)
+{
+    std::string string_base = "aaaaa";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "aa", "a"));
+    EXPECT_EQ(string_base, "a");
+}
+
+TEST(StringUtilsTest, ReplaceEmptySearchString)
+{
+    std::string string_base = "this should not change";
+    EXPECT_FALSE(base::utils::string::replaceAll(string_base, "", "new"));
+    EXPECT_EQ(string_base, "this should not change");
+}
+
+TEST(StringUtilsTest, SearchEqualsReplace)
+{
+    std::string string_base = "no change expected";
+    EXPECT_FALSE(base::utils::string::replaceAll(string_base, "change", "change"));
+    EXPECT_EQ(string_base, "no change expected");
+}
+
+TEST(StringUtilsTest, ReplaceWithLongerString)
+{
+    std::string string_base = "ab cd ef";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, " ", "_verylongseparator_"));
+    EXPECT_EQ(string_base, "ab_verylongseparator_cd_verylongseparator_ef");
+}
+
+TEST(StringUtilsTest, NoOccurrence)
+{
+    std::string string_base = "there is no match here";
+    EXPECT_FALSE(base::utils::string::replaceAll(string_base, "xyz", "replacement"));
+    EXPECT_EQ(string_base, "there is no match here");
+}
+
+TEST(StringUtilsTest, PartialMatches)
+{
+    std::string string_base = "abacada";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "aba", "x"));
+    EXPECT_EQ(string_base, "xcada");
+}
+
+TEST(StringUtilsTest, ExitConditionRecursion)
+{
+    std::string string_base = "a";
+    EXPECT_FALSE(base::utils::string::replaceAll(string_base, "a", "aa"));
+}
+
+TEST(StringUtilsTest, ContinuousReplacements)
+{
+    std::string string_base = "abababababab";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "ab", "cd"));
+    EXPECT_EQ(string_base, "cdcdcdcdcdcd");
+}
+
+TEST(StringUtilsTest, ReplaceWithEmptyString)
+{
+    std::string string_base = "remove this remove this";
+    EXPECT_TRUE(base::utils::string::replaceAll(string_base, "remove", ""));
+    EXPECT_EQ(string_base, " this  this");
+}

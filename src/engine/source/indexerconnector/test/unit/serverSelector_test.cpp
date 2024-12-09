@@ -9,76 +9,90 @@
  * Foundation.
  */
 
-#include "base/logging.hpp"
-#include "fakeOpenSearchServer.hpp"
+#include "serverSelector_test.hpp"
 #include "serverSelector.hpp"
+#include "trampolineHTTPRequest.hpp"
 #include <chrono>
-#include <gtest/gtest.h>
 #include <memory>
 #include <string>
 #include <thread>
 
-/**
- * @brief Runs unit tests for ServerSelector class
- */
-class ServerSelectorTest : public ::testing::Test
+namespace
 {
-protected:
-    inline static std::unique_ptr<FakeOpenSearchServer>
-        m_fakeOpenSearchGreenServer; ///< pointer to FakeOpenSearchServer class
+// Generalized lambda for simulating HTTP responses based on server health status
+auto mockHTTPRequestLambda = [](RequestParameters requestParameters,
+                                PostRequestParameters postRequestParameters,
+                                ConfigurationParameters /*configurationParameters*/) -> void
+{
+    const auto& url = requestParameters.url.url();
 
-    inline static std::unique_ptr<FakeOpenSearchServer>
-        m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
-
-    std::shared_ptr<ServerSelector> m_selector; ///< pointer to Selector class
-
-    std::vector<std::string> m_servers; ///< Servers
-
-    /**
-     * @brief Sets initial conditions for each test case.
-     */
-    // cppcheck-suppress unusedFunction
-    void SetUp() override
+    if (url == GREEN_SERVER + "/_cat/health")
     {
-        logging::testInit();
-        // Register the host and port of the green server
-        m_servers.emplace_back("http://localhost:9209");
-        // Register the host and port of the red server
-        m_servers.emplace_back("http://localhost:9210");
+        const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                      {"timestamp", "23:51:04"},
+                                                      {"cluster", "wazuh-cluster"},
+                                                      {"status", "green"},
+                                                      {"node.total", "1"},
+                                                      {"node.data", "1"},
+                                                      {"discovered_cluster_manager", "true"},
+                                                      {"shards", "166"},
+                                                      {"pri", "166"},
+                                                      {"relo", "0"},
+                                                      {"init", "0"},
+                                                      {"unassign", "0"},
+                                                      {"pending_tasks", "0"},
+                                                      {"max_task_wait_time", "-"},
+                                                      {"active_shards_percent", "100.0%"}}})
+                                  .dump();
+        postRequestParameters.onSuccess(response);
     }
-
-    /**
-     * @brief Creates the fakeOpenSearchServers for the runtime of the test suite
-     */
-    // cppcheck-suppress unusedFunction
-    static void SetUpTestSuite()
+    else if (url == YELLOW_SERVER + "/_cat/health")
     {
-        const std::string host {"localhost"};
-
-        if (!m_fakeOpenSearchGreenServer)
-        {
-            m_fakeOpenSearchGreenServer = std::make_unique<FakeOpenSearchServer>(host, 9209, "green");
-        }
-
-        if (!m_fakeOpenSearchRedServer)
-        {
-            m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>(host, 9210, "red");
-        }
+        const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                      {"timestamp", "23:51:04"},
+                                                      {"cluster", "wazuh-cluster"},
+                                                      {"status", "yellow"},
+                                                      {"node.total", "1"},
+                                                      {"node.data", "1"},
+                                                      {"discovered_cluster_manager", "true"},
+                                                      {"shards", "166"},
+                                                      {"pri", "166"},
+                                                      {"relo", "0"},
+                                                      {"init", "0"},
+                                                      {"unassign", "0"},
+                                                      {"pending_tasks", "0"},
+                                                      {"max_task_wait_time", "-"},
+                                                      {"active_shards_percent", "100.0%"}}})
+                                  .dump();
+        postRequestParameters.onSuccess(response);
     }
-
-    /**
-     * @brief Resets fakeOpenSearchServers causing the shutdown of the test server.
-     */
-    // cppcheck-suppress unusedFunction
-    static void TearDownTestSuite()
+    else if (url == RED_SERVER + "/_cat/health")
     {
-        m_fakeOpenSearchGreenServer.reset();
-        m_fakeOpenSearchRedServer.reset();
+        const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                      {"timestamp", "23:51:04"},
+                                                      {"cluster", "wazuh-cluster"},
+                                                      {"status", "red"},
+                                                      {"node.total", "1"},
+                                                      {"node.data", "1"},
+                                                      {"discovered_cluster_manager", "true"},
+                                                      {"shards", "166"},
+                                                      {"pri", "166"},
+                                                      {"relo", "0"},
+                                                      {"init", "0"},
+                                                      {"unassign", "0"},
+                                                      {"pending_tasks", "0"},
+                                                      {"max_task_wait_time", "-"},
+                                                      {"active_shards_percent", "100.0%"}}})
+                                  .dump();
+        postRequestParameters.onSuccess(response);
+    }
+    else
+    {
+        postRequestParameters.onError("Unknown server", 404);
     }
 };
 
-// Healt check interval for the servers
-constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL {5u};
+} // namespace
 
 /**
  * @brief Test instantiation with valid servers.
@@ -86,7 +100,10 @@ constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL {5u};
  */
 TEST_F(ServerSelectorTest, TestInstantiation)
 {
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
+    // Instantiate the Server Selector object
+    auto m_selector = std::make_shared<TServerSelector<TMonitoring<TrampolineHTTPRequest>>>(
+        m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
+    EXPECT_NO_THROW(m_selector);
 }
 
 /**
@@ -98,7 +115,10 @@ TEST_F(ServerSelectorTest, TestInstantiationWithoutServers)
     m_servers.clear();
 
     // It doesn't throw an exception because the class ServerSelector accepts vector without servers
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
+    // Instantiate the Server Selector object
+    auto m_selector = std::make_shared<TServerSelector<TMonitoring<TrampolineHTTPRequest>>>(
+        m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
+    EXPECT_NO_THROW(m_selector);
 }
 
 /**
@@ -107,20 +127,23 @@ TEST_F(ServerSelectorTest, TestInstantiationWithoutServers)
  */
 TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
 {
-    const auto hostGreenServer {m_servers.at(0)};
-    const auto hostRedServer {m_servers.at(1)};
+    // Set up the expectations for the MockHTTPRequest
+    EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda));
 
     std::string nextServer;
 
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
+    // Instantiate the Server Selector object
+    auto m_selector = std::make_shared<TServerSelector<TMonitoring<TrampolineHTTPRequest>>>(
+        m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
+    EXPECT_NO_THROW(m_selector);
 
-    // It doesn't throw an exception because all servers are available before health check
+    // It doesn't throw an exception because there are available servers before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, hostGreenServer);
+    EXPECT_EQ(nextServer, GREEN_SERVER);
 
-    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, hostRedServer);
+    EXPECT_EQ(nextServer, YELLOW_SERVER);
 }
 
 /**
@@ -129,31 +152,35 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
  */
 TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 {
-    const auto hostGreenServer {m_servers.at(0)};
-    const auto hostRedServer {m_servers.at(1)};
+    // Set up the expectations for the MockHTTPRequest
+    EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda));
 
     std::string nextServer;
 
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
+    // Instantiate the Server Selector object
+    auto m_selector = std::make_shared<TServerSelector<TMonitoring<TrampolineHTTPRequest>>>(
+        m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
+    EXPECT_NO_THROW(m_selector);
 
-    // It doesn't throw an exception because all servers are available before health check
+    // We expect to iterate over the green and yellow server
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, hostGreenServer);
+    EXPECT_EQ(nextServer, GREEN_SERVER);
 
-    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, hostRedServer);
+    EXPECT_EQ(nextServer, YELLOW_SERVER);
+
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, GREEN_SERVER);
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(SERVER_SELECTOR_HEALTH_CHECK_INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
-    // next server will be the green because it's available
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, hostGreenServer);
+    EXPECT_EQ(nextServer, YELLOW_SERVER);
 
-    // next server will be the green because the red server isn't available
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, hostGreenServer);
+    EXPECT_EQ(nextServer, GREEN_SERVER);
 }
 
 /**
@@ -162,22 +189,24 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
  */
 TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
 {
-    const auto hostRedServer {m_servers.at(1)};
-
     m_servers.clear();
-    m_servers.emplace_back(hostRedServer);
+    m_servers.emplace_back(RED_SERVER);
 
-    std::string nextServer;
+    // Set up the expectations for the MockHTTPRequest
+    EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda));
 
-    EXPECT_NO_THROW(m_selector = std::make_shared<ServerSelector>(m_servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL));
+    // Instantiate the Server Selector object
+    auto m_selector = std::make_shared<TServerSelector<TMonitoring<TrampolineHTTPRequest>>>(
+        m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
+    EXPECT_NO_THROW(m_selector);
 
-    // It doesn't throw an exception because all servers are available before health check
-    EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, hostRedServer);
+    // Throw an exception because there are no available servers
+    EXPECT_THROW(m_selector->getNext(), std::runtime_error);
 
     // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(SERVER_SELECTOR_HEALTH_CHECK_INTERVAL + 5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
-    // It throws an exception because there are no available servers
-    EXPECT_THROW(nextServer = m_selector->getNext(), std::runtime_error);
+    // Throw an exception because there are no available servers
+    EXPECT_THROW(m_selector->getNext(), std::runtime_error);
 }

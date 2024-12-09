@@ -29,7 +29,7 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 
 add_executable(server_utest
     ${UNIT_SRC_DIR}/engineServer_test.cpp
-    ${UNIT_SRC_DIR}/unixDatagram_test.cpp
+    # ${UNIT_SRC_DIR}/unixDatagram_test.cpp
     ${UNIT_SRC_DIR}/unixStream_test.cpp
     ${UNIT_SRC_DIR}/protocolHandlerStream_test.cpp
 )

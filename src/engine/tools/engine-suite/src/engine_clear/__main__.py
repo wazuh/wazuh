@@ -1,6 +1,7 @@
 import sys
 import argparse
 from importlib.metadata import metadata
+from shared.default_settings import Constants as DefaultSettings
 
 import shared.resource_handler as rs
 
@@ -14,7 +15,7 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='engine-clear')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
-    parser.add_argument('--api-sock', default='/var/ossec/queue/sockets/engine-api',
+    parser.add_argument('--api-sock', default=DefaultSettings.SOCKET_PATH,
                         help='Path to the engine-api socket')
     parser.add_argument('-f, --force', action='store_true',
                         default=False, dest='force', help='Force the execution of the command')
@@ -70,13 +71,13 @@ def main():
         if asset == "policy":
             policies = []
             try:
-                policies = resource_handler._get_policies_command(args.api_sock)['data']['data']
+                policies = resource_handler.get_policies_command(args.api_sock)['data']['data']
             except Exception as e:
                 pass
             for policy in policies:
                 try:
                     print(f'Deleting policy {policy}')
-                    resource_handler._delete_asset(args.api_sock, policy)
+                    resource_handler.policy_store_delete(args.api_sock, policy)
                 except Exception as e:
                     print(f'Error deleting {policy}: {e}')
         else:

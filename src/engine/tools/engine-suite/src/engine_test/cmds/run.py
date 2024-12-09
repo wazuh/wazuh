@@ -1,16 +1,14 @@
 import pathlib
 from engine_test.command import Command
 from engine_test.integration import Integration
+from shared.default_settings import Constants as DefaultSettings
 
 DEFAULT_AGENT_ID = "001"
 DEFAULT_AGENT_NAME = "wazuh-agent-1"
 DEFAULT_AGENT_IP = "any"
-DEFAULT_NAMESPACES = ['user']
 DEFAULT_VERBOSE = False
-DEFAULT_POLICY = "policy/wazuh/0"
 DEFAULT_ASSETS = []
 DEFAULT_JSON_FORMAT = False
-DEFAULT_API_SOCKET = "/var/ossec/queue/sockets/engine-api"
 
 
 class RunCommand(Command):
@@ -28,7 +26,7 @@ class RunCommand(Command):
                                 type=str, default=DEFAULT_AGENT_ID, dest='agent_id')
 
         parser_run.add_argument('--api-socket', help=f'Socket to connect to the API',
-                                type=str, default=DEFAULT_API_SOCKET, dest='api-socket')
+                                type=str, default=DefaultSettings.SOCKET_PATH, dest='api-socket')
 
         parser_run.add_argument('--agent-name', help=f'Agent name for events filling',
                                 type=str, default=DEFAULT_AGENT_NAME, dest='agent_name')
@@ -43,12 +41,12 @@ class RunCommand(Command):
                                 type=pathlib.Path, dest='output_file')
 
         parser_run.add_argument('-n', '--namespaces', nargs='+', help=f'List of namespaces to include',
-                                default=DEFAULT_NAMESPACES, dest='namespaces')
+                                default=DefaultSettings.DEFAULT_NS, dest='namespaces')
 
         group = parser_run.add_mutually_exclusive_group()
 
         group.add_argument('-p', '--policy', help=f'Policy where to run the test. A temporary test session will be created and deleted when the command is completed.',
-                           default=DEFAULT_POLICY, dest='policy')
+                           default=DefaultSettings.DEFAULT_POLICY, dest='policy')
         group.add_argument('-s', '--session-name', help=f'Session where to run the test',
                            dest='session_name')
 

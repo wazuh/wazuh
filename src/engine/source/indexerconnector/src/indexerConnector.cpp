@@ -9,23 +9,93 @@
  * Foundation.
  */
 
-#include "indexerConnector.hpp"
-#include "HTTPRequest.hpp"
-#include "base/logging.hpp"
+#include <filesystem>
+#include <fstream>
+#include <grp.h>
+#include <pwd.h>
+#include <unistd.h>
+
+#include <HTTPRequest.hpp>
+#include <base/logging.hpp>
+#include <base/utils/stringUtils.hpp>
+#include <base/utils/timeUtils.hpp>
+#include <indexerConnector/indexerConnector.hpp>
+
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
-#include <fstream>
 
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
 constexpr auto ELEMENTS_PER_BULK {1000};
+constexpr auto WAZUH_OWNER {"wazuh"};
+constexpr auto WAZUH_GROUP {"wazuh"};
+constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
-constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
-static void initConfiguration(SecureCommunication& secureCommunication, const nlohmann::json& config)
+/**
+ * @brief Merges the CA root certificates into a single file.
+ * @param filePaths The list of CA root certificates file paths.
+ * @param caRootCertificate The path to the merged CA root certificate.
+ * @throws std::runtime_error If the CA root certificate file does not exist, could not be opened, written or the
+ * ownership could not be changed.
+ */
+static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
+{
+    std::string caRootCertificateContentMerged;
+
+    for (const auto& filePath : filePaths)
+    {
+        if (!std::filesystem::exists(filePath))
+        {
+            throw std::runtime_error("The CA root certificate file: '" + filePath + "' does not exist.");
+        }
+
+        std::ifstream file(filePath);
+        if (!file.is_open())
+        {
+            throw std::runtime_error("Could not open CA root certificate file: '" + filePath + "'.");
+        }
+
+        caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    }
+
+    caRootCertificate = MERGED_CA_PATH;
+
+    if (std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
+        !std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
+    {
+        throw std::runtime_error("Could not create the directory for the CA root merged file");
+    }
+
+    std::ofstream outputFile(caRootCertificate);
+    if (!outputFile.is_open())
+    {
+        throw std::runtime_error("Could not write the CA root merged file");
+    }
+
+    outputFile << caRootCertificateContentMerged;
+    outputFile.close();
+
+    struct passwd* pwd = getpwnam(WAZUH_OWNER);
+    struct group* grp = getgrnam(WAZUH_GROUP);
+
+    if (pwd == nullptr && grp == nullptr)
+    {
+        throw std::runtime_error("Could not get the user and group information.");
+    }
+
+    if (chown(caRootCertificate.c_str(), pwd->pw_uid, grp->gr_gid) != 0)
+    {
+        throw std::runtime_error("Could not change the ownership of the CA root merged file");
+    }
+
+    LOG_DEBUG("All CA files merged into '{}' successfully.", caRootCertificate.c_str());
+}
+
+static void initConfiguration(SecureCommunication& secureCommunication, const IndexerConnectorOptions& config)
 {
     std::string caRootCertificate;
     std::string sslCertificate;
@@ -33,46 +103,34 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
     std::string username;
     std::string password;
 
-    if (config.contains("ssl"))
+    if (config.sslOptions.cacert.size() > 1)
     {
-        if (config.at("ssl").contains("certificate_authorities")
-            && !config.at("ssl").at("certificate_authorities").empty())
-        {
-            caRootCertificate = config.at("ssl").at("certificate_authorities").front().get_ref<const std::string&>();
-        }
-
-        if (config.at("ssl").contains("certificate"))
-        {
-            sslCertificate = config.at("ssl").at("certificate").get_ref<const std::string&>();
-        }
-
-        if (config.at("ssl").contains("key"))
-        {
-            sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
-        }
+        mergeCaRootCertificates(config.sslOptions.cacert, caRootCertificate);
+    }
+    else if (!config.sslOptions.cacert.empty())
+    {
+        caRootCertificate = config.sslOptions.cacert.front();
+    }
+    else
+    {
+        LOG_DEBUG("No CA root certificate found in the configuration.");
     }
 
-    if (config.contains("username"))
-    {
-        username = config.at("username");
-    }
+    sslCertificate = config.sslOptions.cert;
+    sslKey = config.sslOptions.key;
+    username = config.username;
+    password = config.password;
 
-    if (config.contains("password"))
-    {
-        password = config.at("password");
-    }
-
-    if (username.empty() && password.empty())
-    {
-        username = "admin";
-        password = "admin";
-        LOG_WARNING("No username and password found in the configuration, using default values.");
-    }
-
-    if (username.empty())
+    if (config.username.empty())
     {
         username = "admin";
         LOG_WARNING("No username found in the configuration, using default value.");
+    }
+
+    if (config.password.empty())
+    {
+        password = "admin";
+        LOG_WARNING("No password found in the configuration, using default value.");
     }
 
     secureCommunication.basicAuth(username + ":" + password)
@@ -95,18 +153,23 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
 {
     bulkData.append(R"({"index":{"_index":")");
     bulkData.append(index);
-    bulkData.append(R"(","_id":")");
-    bulkData.append(id);
+
+    if (!id.empty())
+    {
+        bulkData.append(R"(","_id":")");
+        bulkData.append(id);
+    }
+
     bulkData.append(R"("}})");
     bulkData.append("\n");
     bulkData.append(data);
     bulkData.append("\n");
 }
 
-IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t& timeout, const uint8_t workingThreads)
+IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnectorOptions)
 {
     // Get index name.
-    m_indexName = config.at("name").get_ref<const std::string&>();
+    m_indexName = indexerConnectorOptions.name;
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {
@@ -114,25 +177,27 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
     }
 
     auto secureCommunication = SecureCommunication::builder();
-    initConfiguration(secureCommunication, config);
+    initConfiguration(secureCommunication, indexerConnectorOptions);
 
     // Initialize publisher.
-    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
+    auto selector {std::make_shared<TServerSelector<Monitoring>>(
+        indexerConnectorOptions.hosts, indexerConnectorOptions.timeout, secureCommunication)};
 
     // Validate threads number
-    if (workingThreads <= 0)
+    if (indexerConnectorOptions.workingThreads <= 0)
     {
         LOG_DEBUG("Invalid number of working threads, using default value.");
     }
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-        [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
+        [this, selector, secureCommunication, functionName = logging::getLambdaName(__FUNCTION__, "processEventQueue")](
+            std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
 
             if (m_stopping.load())
             {
-                LOG_DEBUG("IndexerConnector is stopping, event processing will be skipped.");
+                LOG_DEBUG_L(functionName.c_str(), "IndexerConnector is stopping, event processing will be skipped.");
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
@@ -140,40 +205,56 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
             std::string bulkData;
             url.append("/_bulk?refresh=wait_for");
 
+            std::string indexNameCurrentDate = m_indexName;
+            base::utils::string::replaceAll(indexNameCurrentDate, "$(date)", base::utils::time::getCurrentDate("."));
+
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
                 dataQueue.pop();
-                auto parsedData = nlohmann::json::parse(data);
-                const auto& id = parsedData.at("id").get_ref<const std::string&>();
+                auto parsedData = nlohmann::json::parse(data, nullptr, false);
+
+                if (parsedData.is_discarded())
+                {
+                    continue;
+                }
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    builderBulkDelete(bulkData, id, m_indexName);
+                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
+                    builderBulkDelete(bulkData, id, indexNameCurrentDate);
                 }
                 else
                 {
+                    const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
                     const auto dataString = parsedData.at("data").dump();
-                    builderBulkIndex(bulkData, id, m_indexName, dataString);
+                    builderBulkIndex(bulkData, id, indexNameCurrentDate, dataString);
                 }
             }
 
             if (!bulkData.empty())
             {
                 // Process data.
-                HTTPRequest::instance().post({HttpURL(url), bulkData, secureCommunication},
-                                             {[](const std::string& response)
-                                              { LOG_DEBUG("Response: %s", response.c_str()); },
-                                              [](const std::string& error, const long statusCode)
-                                              {
-                                                  LOG_ERROR("%s, status code: %ld.", error.c_str(), statusCode);
-                                                  throw std::runtime_error(error);
-                                              }});
+                HTTPRequest::instance().post(
+                    {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
+                    {.onSuccess = [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
+                                      const std::string& response)
+                     { LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str()); },
+                     .onError =
+                         [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
+                             const std::string& error, const long statusCode)
+                     {
+                         LOG_ERROR_L(functionName.c_str(), "{}, status code: {}.", error.c_str(), statusCode);
+                         throw std::runtime_error(error);
+                     }});
             }
         },
-        DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK,
-        workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING : workingThreads);
+        ThreadEventDispatcherParams {.dbPath = indexerConnectorOptions.databasePath + m_indexName,
+                                     .bulkSize = ELEMENTS_PER_BULK,
+                                     .dispatcherType =
+                                         (indexerConnectorOptions.workingThreads <= SINGLE_ORDERED_DISPATCHING
+                                              ? ThreadEventDispatcherType::SINGLE_THREADED_ORDERED
+                                              : ThreadEventDispatcherType::MULTI_THREADED_UNORDERED)});
 }
 
 IndexerConnector::~IndexerConnector()

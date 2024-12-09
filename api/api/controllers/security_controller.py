@@ -17,8 +17,7 @@ from api.models.base_model_ import Body
 from api.models.configuration_model import SecurityConfigurationModel
 from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
                                        RuleModel, UpdateUserModel)
-from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
-                      remove_nones_to_dict)
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from wazuh import security, __version__
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -29,48 +28,6 @@ from wazuh.rbac import preprocessor
 
 logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
-
-
-@deprecate_endpoint(link=f'https://documentation.wazuh.com/{__version__}/user-manual/api/reference.html#'
-                         f'operation/api.controllers.security_controller.login_user')
-async def deprecated_login_user(user: str, raw: bool = False) -> ConnexionResponse:
-    """User/password authentication to get an access token.
-    This method should be called to get an API token. This token will expire at some time.
-
-    Parameters
-    ----------
-    user : str
-        Name of the user who wants to be authenticated.
-    raw : bool, optional
-        Respond in raw format. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-        Raw or JSON response with the generated access token.
-    """
-    f_kwargs = {'user_id': user}
-
-    dapi = DistributedAPI(f=preprocessor.get_permissions,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          logger=logger
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    token = None
-    try:
-        token = generate_token(user_id=user, data=data.dikt)
-    except WazuhException as e:
-        raise_if_exc(e)
-
-    return ConnexionResponse(body=token,
-                             content_type='text/plain',
-                             status_code=200) if raw else \
-           ConnexionResponse(body=dumps(WazuhResult({'data': TokenResponseModel(token=token)})),
-                             content_type=JSON_CONTENT_TYPE,
-                             status_code=200)
 
 
 async def login_user(user: str, raw: bool = False) -> ConnexionResponse:
@@ -279,7 +236,7 @@ async def get_users(user_ids: list = None, pretty: bool = False, wait_for_comple
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           logger=logger,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -314,7 +271,7 @@ async def edit_run_as(user_id: str, allow_run_as: bool, pretty: bool = False,
     dapi = DistributedAPI(f=security.edit_run_as,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           logger=logger,
                           current_user=request.context['token_info']['sub'],
                           rbac_permissions=request.context['token_info']['rbac_policies'],
@@ -346,7 +303,7 @@ async def create_user(pretty: bool = False, wait_for_complete: bool = False) -> 
     dapi = DistributedAPI(f=security.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           wait_for_complete=wait_for_complete
@@ -382,7 +339,7 @@ async def update_user(user_id: str, pretty: bool = False, wait_for_complete: boo
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           wait_for_complete=wait_for_complete
@@ -417,7 +374,7 @@ async def delete_users(user_ids: list = None, pretty: bool = False,
     dapi = DistributedAPI(f=security.remove_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           logger=logger,
                           current_user=request.context['token_info']['sub'],
                           rbac_permissions=request.context['token_info']['rbac_policies'],
@@ -474,7 +431,7 @@ async def get_roles(role_ids: list = None, pretty: bool = False, wait_for_comple
     dapi = DistributedAPI(f=security.get_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -507,7 +464,7 @@ async def add_role(pretty: bool = False, wait_for_complete: bool = False) -> Con
     dapi = DistributedAPI(f=security.add_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -542,7 +499,7 @@ async def remove_roles(role_ids: list = None, pretty: bool = False,
     dapi = DistributedAPI(f=security.remove_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -576,7 +533,7 @@ async def update_role(role_id: int, pretty: bool = False, wait_for_complete: boo
     dapi = DistributedAPI(f=security.update_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -632,7 +589,7 @@ async def get_rules(rule_ids: list = None, pretty: bool = False, wait_for_comple
     dapi = DistributedAPI(f=security.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -665,7 +622,7 @@ async def add_rule(pretty: bool = False, wait_for_complete: bool = False) -> Con
     dapi = DistributedAPI(f=security.add_rule,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -699,7 +656,7 @@ async def update_rule(rule_id: int, pretty: bool = False, wait_for_complete: boo
     dapi = DistributedAPI(f=security.update_rule,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -734,7 +691,7 @@ async def remove_rules(rule_ids: list = None, pretty: bool = False,
     dapi = DistributedAPI(f=security.remove_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -790,7 +747,7 @@ async def get_policies(policy_ids: list = None, pretty: bool = False, wait_for_c
     dapi = DistributedAPI(f=security.get_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -822,7 +779,7 @@ async def add_policy(pretty: bool = False, wait_for_complete: bool = False) -> C
     dapi = DistributedAPI(f=security.add_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -857,7 +814,7 @@ async def remove_policies(policy_ids: list = None, pretty: bool = False,
     dapi = DistributedAPI(f=security.remove_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -891,7 +848,7 @@ async def update_policy(policy_id: int, pretty: bool = False, wait_for_complete:
     dapi = DistributedAPI(f=security.update_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -927,7 +884,7 @@ async def set_user_role(user_id: str, role_ids: list, position: int = None,
     dapi = DistributedAPI(f=security.set_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -964,7 +921,7 @@ async def remove_user_role(user_id: str, role_ids: list, pretty: bool = False,
     dapi = DistributedAPI(f=security.remove_user_role,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1001,7 +958,7 @@ async def set_role_policy(role_id: int, policy_ids: list, position: int = None, 
     dapi = DistributedAPI(f=security.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1039,7 +996,7 @@ async def remove_role_policy(role_id: int, policy_ids: list, pretty: bool = Fals
     dapi = DistributedAPI(f=security.remove_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1076,7 +1033,7 @@ async def set_role_rule(role_id: int, rule_ids: list, pretty: bool = False,
     dapi = DistributedAPI(f=security.set_role_rule,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1114,7 +1071,7 @@ async def remove_role_rule(role_id: int, rule_ids: list, pretty: bool = False,
     dapi = DistributedAPI(f=security.remove_role_rule,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1205,7 +1162,7 @@ async def revoke_all_tokens(pretty: bool = False) -> ConnexionResponse:
     dapi = DistributedAPI(f=security.wrapper_revoke_tokens,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master' if nodes is not None else 'local_any',
-                          is_async=False,
+                          is_async=True,
                           broadcasting=nodes is not None,
                           wait_for_complete=True,
                           logger=logger,
@@ -1240,7 +1197,7 @@ async def get_security_config(pretty: bool = False, wait_for_complete: bool = Fa
     dapi = DistributedAPI(f=security.get_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1258,7 +1215,7 @@ async def security_revoke_tokens():
 
     dapi = DistributedAPI(f=revoke_tokens,
                           request_type='distributed_master' if nodes is not None else 'local_any',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=True,
                           broadcasting=nodes is not None,
                           logger=logger,
@@ -1289,7 +1246,7 @@ async def put_security_config(pretty: bool = False, wait_for_complete: bool = Fa
     dapi = DistributedAPI(f=security.update_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1323,7 +1280,7 @@ async def delete_security_config(pretty: bool = False, wait_for_complete: bool =
     dapi = DistributedAPI(f=security.update_security_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
