@@ -1,13 +1,9 @@
-import os.path
 from pydantic import PositiveInt, PositiveFloat
 
-from api.constants import API_SSL_PATH
+from api.constants import API_CERT_PATH, API_KEY_PATH
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.core.config.models.logging import APILoggingConfig
-
-DEFAULT_COMMUNICATIONS_API_KEY_PATH = os.path.join(API_SSL_PATH, 'server.key')
-DEFAULT_COMMUNICATIONS_API_CERT_PATH = os.path.join(API_SSL_PATH, 'server.crt')
 
 
 class BatcherConfig(WazuhConfigBaseModel):
@@ -54,7 +50,7 @@ class CommsAPIConfig(WazuhConfigBaseModel):
     logging: APILoggingConfig = APILoggingConfig()
     batcher: BatcherConfig = BatcherConfig()
     ssl: APISSLConfig = APISSLConfig(
-        key=DEFAULT_COMMUNICATIONS_API_KEY_PATH,
-        cert=DEFAULT_COMMUNICATIONS_API_CERT_PATH,
+        key=API_KEY_PATH.as_posix(),
+        cert=API_CERT_PATH.as_posix(),
         ssl_ciphers=""
     )
