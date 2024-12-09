@@ -9,9 +9,12 @@
  * Foundation.
  */
 
-#include "rocksDBSafeQueuePrefix_test.hpp"
 #include <filesystem>
+#include <queue>
 #include <thread>
+
+#include "rocksDBSafeQueuePrefix_test.hpp"
+#include "rocksDBWrapper.hpp"
 
 void RocksDBSafeQueuePrefixTest::SetUp()
 {
@@ -183,4 +186,51 @@ TEST_F(RocksDBSafeQueuePrefixTest, ClearAllQueue)
     EXPECT_EQ(0, queue->size("000"));
     EXPECT_EQ(0, queue->size("001"));
     EXPECT_TRUE(queue->empty());
+}
+
+TEST_F(RocksDBSafeQueuePrefixTest, PopWithDeletedIndex)
+{
+    const int ITERATION_COUNT = 10;
+    constexpr int ELEMENTS_TO_POP = 8;
+    const std::array elements {"1", "2", "4", "5", "6", "7", "9", "10"};
+
+    for (int i = 0; i < ITERATION_COUNT; i++)
+    {
+        queue->push("001", std::to_string(i + 1));
+    }
+
+    for (int i = 0; i < ITERATION_COUNT; i++)
+    {
+        queue->push("002", std::to_string(i + 1));
+    }
+
+    queue = nullptr;
+    {
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        db->delete_("001_" + std::to_string(3));
+        db->delete_("001_" + std::to_string(8));
+    }
+    queue = std::make_unique<Utils::TSafeMultiQueue<std::string, std::string, RocksDBQueueCF<std::string>>>(
+        RocksDBQueueCF<std::string>("test.db"));
+
+    std::queue<std::string> queueElements;
+    while (queue->size("001") != 0)
+    {
+        queueElements.push(queue->front().first);
+        EXPECT_NO_THROW(queue->pop("001"));
+    }
+
+    if (queueElements.size() != ELEMENTS_TO_POP)
+    {
+        FAIL() << "Expected " << ELEMENTS_TO_POP << " elements, but got " << queueElements.size();
+    }
+
+    for (const auto& element : elements)
+    {
+        EXPECT_EQ(element, queueElements.front());
+        queueElements.pop();
+    }
+
+    EXPECT_EQ(queue->size("001"), 0);
+    EXPECT_EQ(queue->size("002"), 10);
 }
