@@ -14,7 +14,7 @@
 #include <functional>
 
 #include <base/logging.hpp>
-#include <base/utils/homedirHelper.hpp>
+#include <fs/homedirHelper.hpp>
 
 #include "argsParser.hpp"
 #include "keyStore.hpp"
@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     try
     {
         // Define current working directory
-        std::filesystem::path home_path = base::utils::findHomeDirectory();
+        std::filesystem::path home_path = fs::findHomeDirectory();
         std::filesystem::current_path(home_path);
 
         CmdLineArgs args(argc, argv);
