@@ -37,6 +37,7 @@ class AgentMetadata(BaseModel):
 
 class TaskResult(BaseModel):
     """Stateful event bulk task result data model."""
+    index: str
     id: str
     result: str
     status: int
