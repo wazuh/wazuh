@@ -45,6 +45,9 @@ constexpr std::string_view API_SERVER_SOCKET = "/engine/api_server/socket";
 constexpr std::string_view TZDB_PATH = "/engine/tzdb/path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "/engine/tzdb/auto_update";
 
+constexpr std::string_view METRICS_EXPORT_INTERVAL = "/engine/metrics/export_interval";
+constexpr std::string_view METRICS_EXPORT_TIMEOUT = "/engine/metrics/export_timeout";
+
 }; // namespace conf::key
 
 #endif // _CONF_KEYS_HPP
