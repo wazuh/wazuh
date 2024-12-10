@@ -144,15 +144,13 @@ def post_worker_init(worker):
     atexit.unregister(_exit_function)
 
 
-def get_gunicorn_options(pid: int, daemon: bool, log_config_dict: dict, config: CommsAPIConfig) -> dict:
+def get_gunicorn_options(pid: int, log_config_dict: dict, config: CommsAPIConfig) -> dict:
     """Get the gunicorn app configuration options.
 
     Parameters
     ----------
     pid : int
         Main process ID.
-    daemon : bool
-        Whether to execute the script as a daemon or in foreground.
     log_config_dict : dict
         Logging configuration dictionary.
     config : CommsAPIConfig
@@ -170,7 +168,7 @@ def get_gunicorn_options(pid: int, daemon: bool, log_config_dict: dict, config: 
     return {
         'proc_name': MAIN_PROCESS,
         'pidfile': str(pidfile),
-        'daemon': daemon,
+        'daemon': False,
         'bind': f'{config.host}:{config.port}',
         'workers': config.workers,
         'worker_class': 'uvicorn.workers.UvicornWorker',
@@ -196,7 +194,6 @@ def get_script_arguments() -> Namespace:
         Arguments passed to the script.
     """
     parser = ArgumentParser()
-    parser.add_argument('-d', '--daemon', action='store_true', dest='daemon', help='Run as a daemon')
     parser.add_argument('-r', '--root', action='store_true', dest='root', help='Run as root')
     parser.add_argument('-v', '--version', action='store_true', dest='version', help='Print version')
     return parser.parse_args()
@@ -296,12 +293,8 @@ if __name__ == '__main__':
     log_config_dict = setup_logging(logging_config=comms_api_config.logging)
     logger = logging.getLogger('wazuh-comms-api')
 
-    if args.daemon:
-        pyDaemonModule.pyDaemon()
-    else:
-        logger.info('Starting API in foreground')
-
     if not args.root:
+        logger.info('Starting API')
         # Drop privileges to wazuh
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
@@ -333,7 +326,7 @@ if __name__ == '__main__':
 
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
-        options = get_gunicorn_options(pid, args.daemon, log_config_dict, comms_api_config)
+        options = get_gunicorn_options(pid, log_config_dict, comms_api_config)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
         logger.error(f'Error when trying to start the Wazuh Communications API. {e}')

@@ -63,13 +63,11 @@ def set_logging(debug_mode=0) -> WazuhLogger:
     return cluster_logger
 
 
-def start_daemon(background_mode: bool, name: str, args: List[str]):
+def start_daemon(name: str, args: List[str]):
     """Start a daemon in a subprocess and validate that there were no errors during its execution.
 
     Parameters
     ----------
-    background_mode : bool
-        Whether the script is running in background mode or not.
     name : str
         Daemon name.
     args : list
@@ -80,36 +78,25 @@ def start_daemon(background_mode: bool, name: str, args: List[str]):
     try:
         p = subprocess.Popen(args)
         pid = p.pid
-        if not background_mode or name == ENGINE_DAEMON_NAME:
-            # Wait two seconds to catch any failures during the execution. If the timeout is reached we consider
-            # it successful
-            returncode = p.wait(timeout=2)
-            if returncode != 0:
-                raise Exception(f'return code {returncode}')
-        else:
-            returncode = p.wait()
-            if returncode != 0:
-                raise Exception(f'return code {returncode}')
-
-            pid = pyDaemonModule.get_parent_pid(name)
-            if pid is None:
-                raise Exception('failed during the execution')
+        # Wait two seconds to catch any failures during the execution. If the timeout is reached we consider
+        # it successful
+        returncode = p.wait(timeout=2)
+        if returncode != 0:
+            raise Exception(f'return code {returncode}')
     except subprocess.TimeoutExpired:
         # The command was executed without errors
         if name == ENGINE_DAEMON_NAME:
-                pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
+            pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         main_logger.info(f'Started {name} (pid: {pid})')
     except Exception as e:
         main_logger.error(f'Error starting {name}: {e}')
 
 
-def start_daemons(background_mode: bool, root: bool):
+def start_daemons(root: bool):
     """Start the engine and the management and communications APIs daemons in subprocesses.
 
     Parameters
     ----------
-    background_mode : bool
-        Whether the script is running in background mode or not.
     root : bool
         Whether the script is running as root or not.
     """
@@ -118,15 +105,13 @@ def start_daemons(background_mode: bool, root: bool):
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
         COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
-            + (['-r'] if root else [])
-            + (['-d'] if background_mode else []),
+            + (['-r'] if root else []),
         MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
-            + (['-r'] if root else [])
-            + (['-d'] if background_mode else []),
+            + (['-r'] if root else []),
     }
 
     for name, args in daemons.items():
-        start_daemon(background_mode, name, args)
+        start_daemon(name, args)
 
 
 def shutdown_daemon(name: str):
@@ -217,7 +202,7 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     tasks = [my_server_task, my_local_server_task]
 
     # Initialize daemons
-    start_daemons(args.daemon, args.root)
+    start_daemons(args.root)
 
     await asyncio.gather(*tasks)
 
@@ -295,7 +280,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
             # Initialize the daemons one time
             if not daemons_initialized:
                 # Initialize daemons
-                start_daemons(args.daemon, args.root)
+                start_daemons(args.root)
                 daemons_initialized = True
 
             await asyncio.gather(*tasks)
@@ -334,7 +319,6 @@ def get_script_arguments() -> argparse.Namespace:
     # implemented in worker nodes.
     start_parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
     ####################################################################################################################
-    start_parser.add_argument('-d', '--daemon', help='Run as a daemon', action='store_true', dest='daemon')
     start_parser.add_argument('-r', '--root', help='Run as root', action='store_true', dest='root')
 
     start_parser.set_defaults(func=start)
@@ -369,10 +353,6 @@ def start():
     # Check for unused PID files
     clean_pid_files(SERVER_DAEMON_NAME)
 
-    # Foreground/Daemon
-    if args.daemon:
-        pyDaemonModule.pyDaemon()
-
     # Drop privileges to wazuh
     if not args.root:
         os.setgid(wazuh_gid())
@@ -380,8 +360,7 @@ def start():
 
     server_pid = os.getpid()
     pyDaemonModule.create_pid(SERVER_DAEMON_NAME, server_pid)
-    if not args.daemon:
-        main_logger.info(f'Starting server in foreground (pid: {server_pid})')
+    main_logger.info(f'Starting server (pid: {server_pid})')
 
     if server_config.node.type == NodeType.MASTER:
         main_function = master_main
