@@ -20,6 +20,7 @@
 #include <base/utils/stringUtils.hpp>
 #include <base/utils/timeUtils.hpp>
 #include <indexerConnector/indexerConnector.hpp>
+#include <nlohmann/json.hpp>
 
 #include "indexerQuery.hpp"
 #include "secureCommunication.hpp"
