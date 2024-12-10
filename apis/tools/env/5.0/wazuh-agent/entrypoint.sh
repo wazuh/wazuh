@@ -25,7 +25,7 @@ echo "Waiting for the nodes to sync..."
 sleep 10
 
 # Register agent
-/usr/share/wazuh-agent/bin/wazuh-agent --register --url $NGINX_URL --user $USER --password $PASSWORD
+SPDLOG_LEVEL=TRACE /usr/share/wazuh-agent/bin/wazuh-agent --register --url $NGINX_URL --user $USER --password $PASSWORD
 
 # Run agent
-/usr/share/wazuh-agent/bin/wazuh-agent
+SPDLOG_LEVEL=TRACE /usr/share/wazuh-agent/bin/wazuh-agent
