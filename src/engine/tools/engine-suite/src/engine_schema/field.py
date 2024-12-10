@@ -127,7 +127,9 @@ class Field:
     The name includes the whole parent group fields concatenade with dots
     """
 
-    def __init__(self, module: str, name: str, description: str, indexer_type: IndexerType, array: bool = False, indexer_details: dict = None):
+    def __init__(
+            self, module: str, name: str, description: str, indexer_type: IndexerType, array: bool = False,
+            indexer_details: dict = None):
         # Metadata
         self.module = module
         self.name = name
@@ -371,13 +373,27 @@ class FieldTree:
 
         return jlogpar
 
+    def _merge_dicts(self, dict1, dict2):
+        for key, value in dict2.items():
+            if key in dict1:
+                if isinstance(value, dict) and isinstance(dict1[key], dict):
+                    dict1[key] = self._merge_dicts(dict1[key], value)
+                else:
+                    dict1[key] = value
+            else:
+                dict1[key] = value
+        return dict1
+
     def merge(self, other: FieldTree):
         for k, v in other._root[self._children_tag].items():
             if self._has_field_node(k):
-                raise Exception(
-                    f'Error merging field tree, field {k} already exists')
-
-            self._root[self._children_tag][k] = v
+                if isinstance(self._root[self._children_tag].get(k), dict):
+                    self._root[self._children_tag][k] = self._merge_dicts(
+                        self._root[self._children_tag].get(k, {}),
+                        v
+                    )
+            else:
+                self._root[self._children_tag][k] = v
 
         for k, v in other._logpar_overrides.items():
             if k in self._logpar_overrides:

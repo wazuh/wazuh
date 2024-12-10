@@ -371,7 +371,6 @@ def load_indexer_output(engine_handler: EngineHandler) -> None:
                 "date": "2024/12/01"
             }
         },
-        "check": "not_exists($wazuh.noIndexing) OR $wazuh.noIndexing == false",
         "outputs": [
             {
                 "wazuh-indexer": {
@@ -509,7 +508,8 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
     print("Environment validated.")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
@@ -591,7 +591,8 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     print("Environment validated.")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     results: List[Result] = []
     rules: List[Path] = []

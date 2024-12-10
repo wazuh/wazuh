@@ -535,7 +535,6 @@ def load_indexer_output(engine_handler: EngineHandler) -> None:
                 "date": "2024/12/01"
             }
         },
-        "check": "not_exists($wazuh.noIndexing) OR $wazuh.noIndexing == false",
         "outputs": [
             {
                 "wazuh-indexer": {
@@ -635,7 +634,8 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         sys.exit(f"Error reading the JSON schema file: {e}")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
@@ -660,7 +660,6 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
                 integrations.append(integration_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
-
 
         log = (env_path / "logs/engine.log").as_posix()
         engine_handler.start(log)
@@ -723,7 +722,8 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
         sys.exit(f"Error reading the JSON schema file: {e}")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     results: List[Result] = []
     rules: List[Path] = []
@@ -748,7 +748,6 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
                 rules.append(ruleset_path)
 
         opensearch_management.init_opensearch(env_path / 'ruleset' / 'schemas' / 'wazuh-template.json')
-
 
         log = (env_path / "logs/engine.log").as_posix()
         engine_handler.start(log)
