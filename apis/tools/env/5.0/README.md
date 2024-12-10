@@ -66,7 +66,7 @@ drwxr-xr-x 7 wazuh wazuh     4096 Nov 28 09:01 ..
 
 ### Setting up indexer plugins
 
-Download the latest plugins from the wazuh-indexer GitHub repository and include them in the `wazuh-indexer` directory. The directory should end up with the following files
+Download the latest plugins from the wazuh-indexer GitHub repository, decompress and include them in the `wazuh-indexer` directory. The directory should end up with the following files
 
 ```console
 wazuh@wazuh:~/wazuh/apis/tools/env/5.0$ ls -la wazuh-indexer/
