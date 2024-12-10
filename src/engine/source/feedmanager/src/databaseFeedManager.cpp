@@ -19,11 +19,11 @@
 #include "eventDecoder.hpp"
 #include "storeModel.hpp"
 
-const std::string CONTENT_NAME {"vd_1.0.0_vd_4.10.0"};                            // Content name.
-const std::filesystem::path WAZUH_LIB_PATH {"/var/lib/wazuh-server/"};            //< Path to the lib server files.
-const std::filesystem::path TMP_PATH {"/tmp/wazuh-server"};                       //< Path to the tmp files.
-const std::filesystem::path WAZUH_LIB_TMP_PATH {WAZUH_LIB_PATH / "tmp/"};         //< Path to the lib server tmp files.
-const std::filesystem::path XZ_FILE_PATH {TMP_PATH / (CONTENT_NAME + ".tar.xz")}; //< Path of the compressed db
+const std::string CONTENT_NAME {"vd_1.0.0_vd_4.10.0"};                    // Content name.
+const std::filesystem::path WAZUH_LIB_PATH {"/var/lib/wazuh-server/"};    //< Path to the lib server files.
+const std::filesystem::path WAZUH_LIB_TMP_PATH {WAZUH_LIB_PATH / "tmp/"}; //< Path to the lib server tmp files.
+const std::filesystem::path XZ_FILE_PATH {WAZUH_LIB_TMP_PATH
+                                          / (CONTENT_NAME + ".tar.xz")};                  //< Path of the compressed db
 const std::filesystem::path TAR_FILE_PATH {WAZUH_LIB_TMP_PATH / (CONTENT_NAME + ".tar")}; //< Path to the tar db.
 const std::filesystem::path LEGACY_DB_PATH {WAZUH_LIB_TMP_PATH / "queue/"};           //< Path to the legacy database.
 const std::filesystem::path VD_FEED_DB_BASE_PATH {WAZUH_LIB_PATH / "vd/"};            //< Path to the current database.
@@ -60,10 +60,6 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
             if (std::filesystem::remove_all(VD_UPDATER_DB_BASE_PATH))
             {
                 LOG_DEBUG("Removing existent {} folder.", VD_UPDATER_DB_BASE_PATH.c_str());
-            }
-            if (!std::filesystem::exists(WAZUH_LIB_TMP_PATH))
-            {
-                std::filesystem::create_directories(WAZUH_LIB_TMP_PATH);
             }
 
             LOG_DEBUG("Starting XZ file decompression");
