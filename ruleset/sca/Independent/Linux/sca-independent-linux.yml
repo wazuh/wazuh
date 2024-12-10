@@ -2456,3 +2456,650 @@ checks:
        - cis: ["5.2.12"]
      condition:
      rules:
+
+  # 5.2.13 Ensure only strong Ciphers are used. (Scored)
+   - id: 31170
+     title: "Ensure only strong Ciphers are used."
+     description: "This variable limits the ciphers that SSH can use during communication."
+     rationale: "Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a \"Sweet32\" attack The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the \"Bar Mitzvah\" issue The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors The mm_newkeys_from_blob function in monitor_wrap.c, when an AES-GCM cipher is used, does not properly initialize memory for a MAC context data structure, which allows remote authenticated users to bypass intended ForceCommand and login-shell restrictions via packet data that provides a crafted callback address."
+     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128- gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr."
+     references:
+       - 'https://nvd.nist.gov/vuln/detail/CVE-2016-2183'
+       - 'https://nvd.nist.gov/vuln/detail/CVE-2015-2808'
+       - 'https://www.kb.cert.org/vuls/id/565052'
+       - 'https://www.openssh.com/txt/cbc.adv'
+       - 'https://nvd.nist.gov/vuln/detail/CVE-2008-5161'
+       - 'https://nvd.nist.gov/vuln/detail/CVE-2013-4548'
+       - 'https://www.kb.cert.org/vuls/id/565052'
+       - 'https://www.openssh.com/txt/cbc.adv'
+     compliance:
+       - cis: ["5.2.13"]
+       - cis_csc_v7: ["6 3.4", "14.4"]
+       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
+       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
+     condition:
+     rules:
+
+  # 5.2.14 Ensure only strong MAC algorithms are used. (Scored)
+   - id: 31171
+     title: "Ensure only strong MAC algorithms are used."
+     description: "This variable limits the types of MAC algorithms that SSH can use during communication."
+     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
+     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2- 512,hmac-sha2-256."
+     references:
+       - 'http://www.mitls.org/pages/attacks/SLOTH'
+     compliance:
+       - cis: ["5.2.14"]
+       - cis_csc_v7: ["6 3.4", "14.4"]
+       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
+       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
+     condition:
+     rules:
+
+  # 5.2.15 Ensure only strong Key Exchange algorithms are used. (Scored)
+   - id: 31172
+     title: "Ensure only strong Key Exchange algorithms are used."
+     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received."
+     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
+     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman- group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18- sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie- hellman-group-exchange-sha256."
+     compliance:
+       - cis: ["5.2.15"]
+       - cis_csc_v7: ["6 3.4", "14.4"]
+       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
+       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
+     condition:
+     rules:
+
+  # 5.2.16 Ensure SSH Idle Timeout Interval is configured. (Scored)
+   - id: 31173
+     title: "Ensure SSH Idle Timeout Interval is configured."
+     description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. When the ClientAliveInterval variable is set, ssh sessions that have no activity for the specified length of time are terminated. When the ClientAliveCountMax variable is set, sshd will send client alive messages at every ClientAliveInterval interval. When the number of consecutive client alive messages are sent with no response from the client, the ssh session is terminated. For example, if the ClientAliveInterval is set to 15 seconds and the ClientAliveCountMax is set to 3, the client ssh session will be terminated after 45 seconds of idle time."
+     rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening.. While the recommended setting is 300 seconds (5 minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0. In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages will be sent."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy: ClientAliveInterval 300 ClientAliveCountMax 0."
+     compliance:
+       - cis: ["5.2.16"]
+       - cis_csc_v7: ["6 16.4", "16.11"]
+       - iso_27001-2013: ["A.8.1.3"]
+       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1110", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+     condition:
+     rules:
+
+  # 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less. (Scored)
+   - id: 31174
+     title: "Ensure SSH LoginGraceTime is set to one minute or less."
+     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
+     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60."
+     compliance:
+       - cis: ["5.2.17"]
+       - cis_csc_v7: ["6 16", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.18 Ensure SSH access is limited. (Scored)
+   - id: 31175
+     title: "Ensure SSH access is limited."
+     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
+     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
+     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> AllowGroups <grouplist> DenyUsers <userlist> DenyGroups <grouplist>."
+     compliance:
+       - cis: ["5.2.18"]
+       - cis_csc_v7: ["6 5.1", "5.8"]
+     condition:
+     rules:
+
+  # 5.2.19 Ensure SSH warning banner is configured. (Scored)
+   - id: 31176
+     title: "Ensure SSH warning banner is configured."
+     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
+     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net."
+     compliance:
+       - cis: ["5.2.19"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.20 Ensure SSH PAM is enabled. (Scored)
+   - id: 31177
+     title: "Ensure SSH PAM is enabled."
+     description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
+     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
+     compliance:
+       - cis: ["5.2.20"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.21 Ensure SSH AllowTcpForwarding is disabled. (Scored)
+   - id: 31178
+     title: "Ensure SSH AllowTcpForwarding is disabled."
+     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
+     rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
+     impact: "SSH tunnels are widely used in many corporate environments that employ mainframe systems as their application backends. In those environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications. Default Value: AllowTcpForwarding yes."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no."
+     references:
+       - 'https://www.ssh.com/ssh/tunneling/example'
+     compliance:
+       - cis: ["5.2.21"]
+       - cis_csc_v7: ["6 16", "9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+     condition:
+     rules:
+
+  # 5.2.22 Ensure SSH MaxStartups is configured. (Scored)
+   - id: 31179
+     title: "Ensure SSH MaxStartups is configured."
+     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
+     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: maxstartups 10:30:60."
+     compliance:
+       - cis: ["5.2.22"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.2.23 Ensure SSH MaxSessions is set to 4 or less. (Scored)
+   - id: 31180
+     title: "Ensure SSH MaxSessions is set to 4 or less."
+     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
+     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
+     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 4."
+     compliance:
+       - cis: ["5.2.23"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.3.1 Ensure password creation requirements are configured. (Scored)
+   - id: 31181
+     title: "Ensure password creation requirements are configured."
+     description: "The pam_cracklib.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_cracklib.so options. - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. - minlen=14 - password must be 14 characters or more - dcredit=-1 - provide at least one digit - ucredit=-1 - provide at least one uppercase character - ocredit=-1 - provide at least one special character - lcredit=-1 - provide at least one lowercase character The pam_pwquality.so module functions similarly but the minlen , dcredit , ucredit , ocredit , and lcredit parameters are stored in the /etc/security/pwquality.conf file. The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies."
+     rationale: "Strong passwords protect systems from being hacked through brute force methods."
+     remediation: "Set password creation requirements to conform to site policy. Many distributions provide tools for updating PAM configuration, consult your documentation for details. If no tooling is provided edit the appropriate /etc/pam.d/ configuration file and add or modify the pam_cracklib.so or pam_pwquality.so lines to include the required options: password required pam_cracklib.so try_first_pass retry=3 minlen=14 dcredit=-1 ucredit=-1 ocredit=-1 lcredit=-1 password requisite pam_pwquality.so try_first_pass retry=3 If pam_pwquality.so is in use also configure settings in /etc/security/pwquality.conf : minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Notes: Consult your documentation for the appropriate PAM file and module. Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. Settings in /etc/security/pwquality.conf must use spaces around the = symbol."
+     compliance:
+       - cis: ["5.3.1"]
+       - cis_csc_v7: ["6 5.7", "14", "16.12", "14"]
+       - iso_27001-2013: ["A.12.4.1"]
+       - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 5.3.3 Ensure password reuse is limited. (Not Scored)
+   - id: 31182
+     title: "Ensure password reuse is limited."
+     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
+     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note that these change only apply to accounts configured on the local system."
+     remediation: "Set remembered password history to conform to site policy. Many distributions provide tools for updating PAM configuration, consult your documentation for details. If no tooling is provided edit the appropriate /etc/pam.d/ configuration file and add or modify the pam_pwhistory.so or pam_unix.so lines to include the remember option: password required pam_pwhistory.so remember=5 password sufficient pam_unix.so remember=5 Notes: Consult your documentation for the appropriate PAM file and module. Additional module options may be set, recommendation only covers those listed here."
+     compliance:
+       - cis: ["5.3.3"]
+       - cis_csc_v7: ["6 16", "16"]
+     condition:
+     rules:
+
+  # 5.3.4 Ensure password hashing algorithm is SHA-512. (Not Scored)
+   - id: 31183
+     title: "Ensure password hashing algorithm is SHA-512."
+     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
+     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note that these change only apply to accounts configured on the local system."
+     remediation: "Set password hashing algorithm to sha512. Many distributions provide tools for updating PAM configuration, consult your documentation for details. If no tooling is provided edit the appropriate /etc/pam.d/ configuration file and add or modify the pam_unix.so lines to include the sha512 option: password sufficient pam_unix.so sha512 Notes: Consult your documentation for the appropriate PAM file and module. Additional module options may be set, recommendation only covers those listed here. If it is determined that the password algorithm being used is not SHA-512, once it is changed, it is recommended that all user ID's be immediately expired and forced to change their passwords on next login. To accomplish that, the following commands can be used. Any system accounts that need to be expired should be carefully done separately by the system administrator to prevent any potential problems. # cat /etc/passwd | awk -F: '( $3 >= 500 && $1 != \"nfsnobody\" ) { print $1 }' | xargs -n 1 chage -d 0 This command assumes a system UID split at 500. Some distributions split at UID 1000 instead, consult your documentation and/or the UID_MIN setting in /etc/login.defs to determine which is appropriate for you."
+     compliance:
+       - cis: ["5.3.4"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 5.4.1.1 Ensure password expiration is 365 days or less. (Scored)
+   - id: 31184
+     title: "Ensure password expiration is 365 days or less."
+     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
+     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
+     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user> Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. Note: A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password."
+     compliance:
+       - cis: ["5.4.1.1"]
+       - cis_csc_v7: ["6 16", "4.4"]
+       - iso_27001-2013: ["A.9.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+     condition:
+     rules:
+
+  # 5.4.1.2 Ensure minimum days between password changes is 7 or more. (Scored)
+   - id: 31185
+     title: "Ensure minimum days between password changes is 7 or more."
+     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
+     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
+     remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs : PASS_MIN_DAYS 7 Modify user parameters for all users with a password set to match: # chage --mindays 7 <user> Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
+     compliance:
+       - cis: ["5.4.1.2"]
+       - cis_csc_v7: ["6 16", "4.4"]
+       - iso_27001-2013: ["A.9.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+     condition:
+     rules:
+
+  # 5.4.1.3 Ensure password expiration warning days is 7 or more. (Scored)
+   - id: 31186
+     title: "Ensure password expiration warning days is 7 or more."
+     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
+     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
+     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs : PASS_WARN_AGE 7 Modify user parameters for all users with a password set to match: # chage --warndays 7 <user> Notes: You can also check this setting in /etc/shadow directly. The 6th field should be 7 or more for all users with a password."
+     compliance:
+       - cis: ["5.4.1.3"]
+       - cis_csc_v7: ["6 16", "4.4"]
+       - iso_27001-2013: ["A.9.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+     condition:
+     rules:
+
+  # 5.4.1.4 Ensure inactive password lock is 30 days or less. (Scored)
+   - id: 31187
+     title: "Ensure inactive password lock is 30 days or less."
+     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
+     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
+     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user> Notes: You can also check this setting in /etc/shadow directly. The 7th field should be 30 or less for all users with a password. Note: A value of -1 would disable this setting."
+     compliance:
+       - cis: ["5.4.1.4"]
+       - cis_csc_v7: ["6 16", "4.4"]
+       - iso_27001-2013: ["A.9.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+     condition:
+     rules:
+
+  # 5.4.1.5 Ensure all users last password change date is in the past. (Scored)
+   - id: 31188
+     title: "Ensure all users last password change date is in the past."
+     description: "All users should have a password change date in the past."
+     rationale: "If a users recorded password change date is in the future then they could bypass any set password expiration."
+     remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
+     compliance:
+       - cis: ["5.4.1.5"]
+       - cis_csc_v7: ["6 16", "4.4"]
+       - iso_27001-2013: ["A.9.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+     condition:
+     rules:
+
+  # 5.4.2 Ensure system accounts are secured. (Scored)
+   - id: 31189
+     title: "Ensure system accounts are secured."
+     description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell."
+     rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
+     remediation: "Run the commands appropriate for your distribution: Set the shell for any accounts returned by the audit to nologin: # usermod -s $(which nologin) <user> Lock any non root accounts returned by the audit: # usermod -L <user> The following command will set all system accounts to a non login shell: awk -F: '($1!=\"root\" && $1!=\"sync\" && $1!=\"shutdown\" && $1!=\"halt\" && $1!~/^\\+/ && $3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' && $7!=\"'\"$(which nologin)\"'\" && $7!=\"/bin/false\") {print $1}' /etc/passwd | while read user do usermod -s $(which nologin) $user done The following command will automatically lock not root system accounts: awk -F: '($1!=\"root\" && $1!~/^\\+/ && $3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"') {print $1}' /etc/passwd | xargs -I '{}' passwd -S '{}' | awk '($2!=\"L\" && $2!=\"LK\") {print $1}' | while read user do usermod -L $user done Notes: The root, sync, shutdown, and halt users are exempted from requiring a non-login shell."
+     compliance:
+       - cis: ["5.4.2"]
+       - cis_csc_v7: ["6 16", "16"]
+     condition:
+     rules:
+
+  # 5.4.3 Ensure default group for the root account is GID 0. (Scored)
+   - id: 31190
+     title: "Ensure default group for the root account is GID 0."
+     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
+     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
+     remediation: "Run the following command to set the root user default group to GID 0 : # usermod -g 0 root."
+     compliance:
+       - cis: ["5.4.3"]
+       - cis_csc_v7: ["6 5", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.4.4 Ensure default user umask is 027 or more restrictive. (Scored)
+   - id: 31191
+     title: "Ensure default user umask is 027 or more restrictive."
+     description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile , .bashrc , etc.) in their home directories."
+     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
+     remediation: "Edit the /etc/bashrc, /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: umask 027 Notes: The audit and remediation in this recommendation apply to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. Other methods of setting a default user umask exist however the shell configuration files are the last run and will override other settings if they exist therefor our recommendation is to configure in the shell configuration files. If other methods are in use in your environment they should be audited and the shell configs should be verified to not override."
+     compliance:
+       - cis: ["5.4.4"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.4.5 Ensure default user shell timeout is 900 seconds or less. (Scored)
+   - id: 31192
+     title: "Ensure default user shell timeout is 900 seconds or less."
+     description: "The default TMOUT determines the shell timeout for users. The TMOUT value is measured in seconds."
+     rationale: "Having no timeout value associated with a shell could allow an unauthorized user access to another user's shell session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening."
+     remediation: "Edit the /etc/bashrc and /etc/profile files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: TMOUT=900 Notes: The audit and remediation in this recommendation apply to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. Other methods of setting a timeout exist for other shells not covered here. Ensure that the timeout conforms to your local policy."
+     compliance:
+       - cis: ["5.4.5"]
+       - cis_csc_v7: ["6 16.4", "16.11"]
+       - iso_27001-2013: ["A.8.1.3"]
+       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1110", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+     condition:
+     rules:
+
+  # 5.5 Ensure root login is restricted to system console. (Not Scored)
+   - id: 31193
+     title: "Ensure root login is restricted to system console."
+     description: "The file /etc/securetty contains a list of valid terminals that may be logged in directly as root."
+     rationale: "Since the system console has special properties to handle emergency situations, it is important to ensure that the console is in a physically secure location and that unauthorized consoles have not been defined."
+     remediation: "Remove entries for any consoles that are not in a physically secure location."
+     compliance:
+       - cis: ["5.5"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 5.6 Ensure access to the su command is restricted. (Scored)
+   - id: 31194
+     title: "Ensure access to the su command is restricted."
+     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo , which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su , the su command will only allow users in the wheel group to execute su ."
+     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
+     remediation: "Add the following line to the /etc/pam.d/su file: auth required pam_wheel.so use_uid Create a comma separated list of users in the wheel statement in the /etc/group file: wheel:x:10:root,<user list>."
+     compliance:
+       - cis: ["5.6"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 6.1.1 Audit system file permissions. (Not Scored)
+   - id: 31195
+     title: "Audit system file permissions."
+     description: "The RPM and Debian package managers have a number of useful options. One of these, the --verify (or -V for RPM) option, can be used to verify that system packages are correctly installed. The --verify option can be used to verify a particular package or to verify all system packages. If no output is returned, the package is installed correctly. The following table describes the meaning of output from the verify option: Code Meaning S File size differs. M File mode differs (includes permissions and file type). 5 The MD5 checksum differs. D The major and minor version numbers differ on a device file. L A mismatch occurs in a link. U The file ownership differs. G The file group owner differs. T The file time (mtime) differs. The rpm -qf or dpkg -S command can be used to determine which package a particular file belongs to. For example the following commands determines which package the /bin/bash file belongs to: # rpm -qf /bin/bash bash-4.1.2-29.el6.x86_64 # dpkg -S /bin/bash bash: /bin/bash To verify the settings for the package that controls the /bin/bash file, run the following: # rpm -V bash-4.1.2-29.el6.x86_64 .M....... /bin/bash # dpkg --verify bash ??5?????? c /etc/bash.bashrc Note that you can feed the output of the rpm -qf command to the rpm -V command: # rpm -V `rpm -qf /etc/passwd` .M...... c /etc/passwd S.5....T c /etc/printcap."
+     rationale: "It is important to confirm that packaged system files and directories are maintained with the permissions they were intended to have from the OS vendor."
+     remediation: "Correct any discrepancies found and rerun the audit until output is clean or risk is mitigated or accepted."
+     references:
+       - 'http://docs.fedoraproject.org/en-'
+     compliance:
+       - cis: ["6.1.1"]
+       - cis_csc_v7: ["6 14.4", "14.6"]
+       - iso_27001-2013: ["A.9.1.1"]
+       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+     condition:
+     rules:
+
+  # 6.1.2 Ensure permissions on /etc/passwd are configured. (Scored)
+   - id: 31196
+     title: "Ensure permissions on /etc/passwd are configured."
+     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
+     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+     remediation: "Run the following command to set permissions on /etc/passwd : # chown root:root /etc/passwd # chmod 644 /etc/passwd."
+     compliance:
+       - cis: ["6.1.2"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.3 Ensure permissions on /etc/shadow are configured. (Scored)
+   - id: 31197
+     title: "Ensure permissions on /etc/shadow are configured."
+     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
+     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
+     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/shadow : # chown root:root /etc/shadow # chown root:shadow /etc/shadow # chmod o-rwx,g-wx /etc/shadow."
+     compliance:
+       - cis: ["6.1.3"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.4 Ensure permissions on /etc/group are configured. (Scored)
+   - id: 31198
+     title: "Ensure permissions on /etc/group are configured."
+     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
+     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
+     remediation: "Run the following command to set permissions on /etc/group : # chown root:root /etc/group # chmod 644 /etc/group."
+     compliance:
+       - cis: ["6.1.4"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.5 Ensure permissions on /etc/gshadow are configured. (Scored)
+   - id: 31199
+     title: "Ensure permissions on /etc/gshadow are configured."
+     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
+     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
+     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/gshadow : # chown root:root /etc/gshadow # chown root:shadow /etc/gshadow # chmod o-rwx,g-rw /etc/gshadow."
+     compliance:
+       - cis: ["6.1.5"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.6 Ensure permissions on /etc/passwd- are configured. (Scored)
+   - id: 31200
+     title: "Ensure permissions on /etc/passwd- are configured."
+     description: "The /etc/passwd- file contains backup user account information."
+     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+     remediation: "Run the following command to set permissions on /etc/passwd- : # chown root:root /etc/passwd- # chmod u-x,go-rwx /etc/passwd-."
+     compliance:
+       - cis: ["6.1.6"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.7 Ensure permissions on /etc/shadow- are configured. (Scored)
+   - id: 31201
+     title: "Ensure permissions on /etc/shadow- are configured."
+     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
+     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/shadow- : # chown root:root /etc/shadow- # chown root:shadow /etc/shadow- # chmod o-rwx,g-rw /etc/shadow-."
+     compliance:
+       - cis: ["6.1.7"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.8 Ensure permissions on /etc/group- are configured. (Scored)
+   - id: 31202
+     title: "Ensure permissions on /etc/group- are configured."
+     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
+     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+     remediation: "Run the following command to set permissions on /etc/group- : # chown root:root /etc/group- # chmod u-x,go-wx /etc/group-."
+     compliance:
+       - cis: ["6.1.8"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.9 Ensure permissions on /etc/gshadow- are configured. (Scored)
+   - id: 31203
+     title: "Ensure permissions on /etc/gshadow- are configured."
+     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
+     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/gshadow- : # chown root:root /etc/gshadow- # chown root:shadow /etc/gshadow- # chmod o-rwx,g-rw /etc/gshadow-."
+     compliance:
+       - cis: ["6.1.9"]
+       - cis_csc_v7: ["6 16.14", "16.4"]
+       - iso_27001-2013: ["A.10.1.1"]
+     condition:
+     rules:
+
+  # 6.1.10 Ensure no world writable files exist. (Scored)
+   - id: 31204
+     title: "Ensure no world writable files exist."
+     description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
+     rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
+     remediation: "Removing write access for the \"other\" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file."
+     compliance:
+       - cis: ["6.1.10"]
+       - cis_csc_v7: ["6 14", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 6.1.11 Ensure no unowned files or directories exist. (Scored)
+   - id: 31205
+     title: "Ensure no unowned files or directories exist."
+     description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
+     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up \"owning\" these files, and thus have more access on the system than was intended."
+     remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
+     compliance:
+       - cis: ["6.1.11"]
+       - cis_csc_v7: ["6 14", "13.2"]
+       - mitre_techniques: ["T1015", "T1028", "T1046", "T1051", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1200", "T1210", "T1221", "T1519"]
+     condition:
+     rules:
+
+  # 6.1.12 Ensure no ungrouped files or directories exist. (Scored)
+   - id: 31206
+     title: "Ensure no ungrouped files or directories exist."
+     description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
+     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up \"owning\" these files, and thus have more access on the system than was intended."
+     remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
+     compliance:
+       - cis: ["6.1.12"]
+       - cis_csc_v7: ["6 14", "13.2"]
+       - mitre_techniques: ["T1015", "T1028", "T1046", "T1051", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1200", "T1210", "T1221", "T1519"]
+     condition:
+     rules:
+
+  # 6.1.13 Audit SUID executables. (Not Scored)
+   - id: 31207
+     title: "Audit SUID executables."
+     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
+     rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
+     remediation: "Ensure that no rogue SUID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
+     compliance:
+       - cis: ["6.1.13"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 6.1.14 Audit SGID executables. (Not Scored)
+   - id: 31208
+     title: "Audit SGID executables."
+     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
+     rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
+     remediation: "Ensure that no rogue SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
+     compliance:
+       - cis: ["6.1.14"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 6.2.1 Ensure password fields are not empty. (Scored)
+   - id: 31209
+     title: "Ensure password fields are not empty."
+     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
+     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
+     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username> Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
+     compliance:
+       - cis: ["6.2.1"]
+       - cis_csc_v7: ["6 16", "4.4"]
+       - iso_27001-2013: ["A.9.4.3"]
+       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+     condition:
+     rules:
+
+  # 6.2.2 Ensure no legacy "+" entries exist in /etc/passwd. (Scored)
+   - id: 31210
+     title: "Ensure no legacy "+" entries exist in /etc/passwd."
+     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
+     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
+     remediation: "Remove any legacy '+' entries from /etc/passwd if they exist."
+     compliance:
+       - cis: ["6.2.2"]
+       - cis_csc_v7: ["6 16.9", "16.2"]
+     condition:
+     rules:
+
+  # 6.2.3 Ensure no legacy "+" entries exist in /etc/shadow. (Scored)
+   - id: 31211
+     title: "Ensure no legacy "+" entries exist in /etc/shadow."
+     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
+     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
+     remediation: "Remove any legacy '+' entries from /etc/shadow if they exist."
+     compliance:
+       - cis: ["6.2.3"]
+       - cis_csc_v7: ["6 16.9", "16.2"]
+     condition:
+     rules:
+
+  # 6.2.4 Ensure no legacy "+" entries exist in /etc/group. (Scored)
+   - id: 31212
+     title: "Ensure no legacy "+" entries exist in /etc/group."
+     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
+     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
+     remediation: "Remove any legacy '+' entries from /etc/group if they exist."
+     compliance:
+       - cis: ["6.2.4"]
+       - cis_csc_v7: ["6 16.9", "16.2"]
+     condition:
+     rules:
+
+  # 6.2.5 Ensure root is the only UID 0 account. (Scored)
+   - id: 31213
+     title: "Ensure root is the only UID 0 account."
+     description: "Any account with UID 0 has superuser privileges on the system."
+     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
+     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
+     compliance:
+       - cis: ["6.2.5"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 6.2.6 Ensure root PATH Integrity. (Scored)
+   - id: 31214
+     title: "Ensure root PATH Integrity."
+     description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
+     rationale: "Including the current working directory (.) or other writable directory in root 's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program."
+     remediation: "Correct or justify any items discovered in the Audit step."
+     compliance:
+       - cis: ["6.2.6"]
+       - cis_csc_v7: ["6 5.1", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 6.2.7 Ensure all users' home directories exist. (Scored)
+   - id: 31215
+     title: "Ensure all users' home directories exist."
+     description: "Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
+     rationale: "If the user's home directory does not exist or is unassigned, the user will be placed in \"/\" and will not be able to write any files or have local environment variables set."
+     remediation: "If any users' home directories do not exist, create them and make sure the respective user owns the directory. Users without an assigned home directory should be removed or assigned a home directory as appropriate. Notes: The audit script checks all users UID 500 and above except nfsnobody. Some distributions split at UID 1000 instead, consult your documentation and/or the UID_MIN setting in /etc/login.defs to determine which is appropriate for you. On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
+     compliance:
+       - cis: ["6.2.7"]
+       - cis_csc_v7: ["6 13", "5.1"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+     condition:
+     rules:
+
+  # 6.2.8 Ensure users' home directories permissions are 750 or more restrictive. (Scored)
+   - id: 31216
+     title: "Ensure users' home directories permissions are 750 or more restrictive."
+     description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
+     rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
+     compliance:
+       - cis: ["6.2.8"]
+     condition:
+     rules:
