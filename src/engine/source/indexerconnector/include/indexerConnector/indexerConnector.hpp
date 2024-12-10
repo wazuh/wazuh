@@ -17,6 +17,9 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <vector>
+
+#include <nlohmann/json.hpp>
 
 #include <base/utils/threadEventDispatcher.hpp>
 
