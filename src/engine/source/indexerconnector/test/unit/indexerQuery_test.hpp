@@ -1,5 +1,5 @@
 /*
- * Wazuh Indexer Connector - IndexerQueryBuilder tests
+ * Wazuh Indexer Connector - IndexerQuery tests
  * Copyright (C) 2015, Wazuh Inc.
  * November 06, 2024.
  *
@@ -9,15 +9,15 @@
  * Foundation.
  */
 
-#ifndef _INDEXER_QUERY_BUILDER_TEST_HPP
-#define _INDEXER_QUERY_BUILDER_TEST_HPP
+#ifndef _INDEXER_QUERY_TEST_HPP
+#define _INDEXER_QUERY_TEST_HPP
 
 #include <gtest/gtest.h>
 
 /**
  * @brief Runs unit tests for ServerSelector class
  */
-class IndexerQueryBuilderTest : public ::testing::Test
+class IndexerQueryTest : public ::testing::Test
 {
 protected:
     /**
@@ -33,4 +33,4 @@ protected:
     void TearDown() {}
 };
 
-#endif // _INDEXER_QUERY_BUILDER_TEST_HPP
+#endif // _INDEXER_QUERY_TEST_HPP
