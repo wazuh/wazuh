@@ -57,6 +57,7 @@ Install()
 
     # Build compiled code.
     BuildEngine
+    BuildKeystore
 
     # Install
     InstallWazuh
