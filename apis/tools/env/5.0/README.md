@@ -91,8 +91,11 @@ docker compose up
 > re-build an image or all images, execute `docker compose build` (use the flag `--no-cache` to build from the ground 
 > up).
 
-And that's it, you can now view the logs using `docker logs <container-name>` or log into the containers using
-`docker exec -it <container-name> bash`.
+And that's it, here are some commands to interact with the environment:
+
+- `docker logs -f <container-name>`: follow a container's logs.
+- `docker exec -it <container-name> bash`: log into a container.
+- `docker restart <container-name>`: restart a container. This is preffered than using the binaries directly.
 
 ## Documentation
 
