@@ -21,7 +21,7 @@
 #include <base/utils/timeUtils.hpp>
 #include <indexerConnector/indexerConnector.hpp>
 
-#include "indexerQueryBuilder.hpp"
+#include "indexerQuery.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 
@@ -140,7 +140,7 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
         .caRootCertificate(caRootCertificate);
 }
 
-static void handleIndexerInternalErrors(const std::string& response, const std::vector<nlohmann::json>& events)
+static void handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events)
 {
     // Parse the response JSON with error handling
     const auto parsedResponse = nlohmann::json::parse(response, nullptr, false);
@@ -184,7 +184,7 @@ static void handleIndexerInternalErrors(const std::string& response, const std::
         LOG_WARNING("Error indexing document (type {} - reason: '{}') - Associated event: {}",
                     errorType,
                     errorReason,
-                    events.at(i).dump());
+                    events.at(i));
     }
 }
 
@@ -192,7 +192,6 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
 {
     // Get index name.
     m_indexName = indexerConnectorOptions.name;
-    m_processedEvents.reserve(ELEMENTS_PER_BULK); // Reserve space for the bulk size.
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {
@@ -227,8 +226,7 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
             auto url = selector->getNext();
             std::string bulkData;
 
-            // Clear the processed events.
-            m_processedEvents.clear();
+            std::vector<std::string> processedEvents;
 
             url.append("/_bulk?refresh=wait_for");
 
@@ -249,17 +247,15 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
                     const auto& id = parsedData.at("id").get_ref<const std::string&>();
-                    bulkData += IndexerQueryBuilder::builder().deleteIndex(indexNameCurrentDate, id).build();
-                    m_processedEvents.push_back(parsedData.at("id"));
+                    bulkData += IndexerQuery::deleteIndex(indexNameCurrentDate, id);
+                    processedEvents.push_back(id);
                 }
                 else
                 {
                     const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
-                    bulkData += IndexerQueryBuilder::builder()
-                                    .bulkIndex(indexNameCurrentDate, id)
-                                    .addData(parsedData.at("data").dump())
-                                    .build();
-                    m_processedEvents.push_back(parsedData.at("data"));
+                    const auto indexData = parsedData.at("data").dump();
+                    bulkData += IndexerQuery::bulkIndex(indexNameCurrentDate, id, indexData);
+                    processedEvents.push_back(std::move(indexData));
                 }
             }
 
@@ -270,10 +266,11 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                     {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
                     {.onSuccess =
                          [functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse"),
-                          this](const std::string& response)
+                          this,
+                          &processedEvents](const std::string& response)
                      {
                          LOG_DEBUG_L(functionName.c_str(), "Response: {}", response.c_str());
-                         handleIndexerInternalErrors(response, m_processedEvents);
+                         handleIndexerInternalErrors(response, processedEvents);
                      },
                      .onError =
                          [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](

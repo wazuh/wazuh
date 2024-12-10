@@ -120,10 +120,15 @@ static const auto C_PORT {7777};
 static const auto C_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(C_PORT)};
 
 static const auto DEFAULT_CONTENT {"Content published"};
+constexpr auto LOG_FILE = "indexer_connector_test.log";
 
 void IndexerConnectorTest::SetUp()
 {
-    logging::testInit();
+    // Configure logging file
+    auto logginfConfig =
+        logging::LoggingConfig {.filePath = LOG_FILE, .level = logging::Level::Debug, .truncate = true};
+    logging::start(logginfConfig);
+
     // Create dummy template file.
     std::ofstream outputFile(TEMPLATE_FILE_PATH);
     outputFile << TEMPLATE_DATA.dump();
@@ -149,6 +154,8 @@ void IndexerConnectorTest::TearDown()
         server.reset();
     }
     m_indexerServers.clear();
+
+    logging::stop();
 }
 
 void IndexerConnectorTest::waitUntil(const std::function<bool()>& stopCondition,
@@ -414,55 +421,69 @@ TEST_F(IndexerConnectorTest, Publish)
 }
 
 /**
- * @brief Test the connection and posterior data publication into a server. The published data is checked against the
- * expected one.
+ * @brief Test the connection and posterior data publication into a server. The mismatch size case is tested.
  *
  */
-TEST_F(IndexerConnectorTest, PublishWithErrorsInBulk)
+TEST_F(IndexerConnectorTest, PublishWithErrorsInBulkMismatch)
 {
     nlohmann::json expectedMetadata;
     expectedMetadata["index"]["_index"] = INDEXER_NAME;
     expectedMetadata["index"]["_id"] = INDEX_ID_A;
+
+    // Expected content
+    auto constexpr totalElements {2};
+    auto expectedContent = R"(
+    {
+        "took": 5055,
+        "errors": true,
+        "items": []
+    })"_json;
+
+    auto expectedElement = R"(
+    {
+        "index": {
+            "_index": "test-basic-index",
+            "_id": "1rQ_kZIBmzjx6FV-K3nH",
+            "status": 400,
+            "error": {
+                "type": "mapper_parsing_exception",
+                "reason": "failed to parse field [suricata.flow.bytes_toclient] of type [long] in document with id '1rQ_kZIBmzjx6FV-K3nH'. Preview of field's value: 'non-integer'",
+                "caused_by": {
+                    "type": "illegal_argument_exception",
+                    "reason": "For input string: \"non-integer\""
+                }
+            }
+        }
+    })"_json;
+
+    for (int i = 0; i < totalElements; ++i)
+    {
+        expectedContent.at("items").push_back(expectedElement);
+    }
 
     // Callback that checks the expected data to be published.
     // The format of the data published is divided in two lines:
     // First line: JSON data with the metadata (indexer name, index ID)
     // Second line: Index data.
     auto callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data, std::string& content)
+    const auto checkPublishedData {[&](const std::string& data, std::string& content)
                                    {
                                        const auto splitData {base::utils::string::split(data, '\n')};
                                        ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
                                        callbackCalled = true;
                                        // Properly formatted JSON content as a string
-                                       content = R"(
-    {
-  "took": 5055,
-  "errors": true,
-  "items": [
-    {
-      "index": {
-        "_index": "test-basic-index",
-        "_id": "1rQ_kZIBmzjx6FV-K3nH",
-        "status": 400,
-        "error": {
-          "type": "mapper_parsing_exception",
-          "reason": "failed to parse field [suricata.flow.bytes_toclient] of type [long] in document with id '1rQ_kZIBmzjx6FV-K3nH'. Preview of field's value: 'non-integer'",
-          "caused_by": {
-            "type": "illegal_argument_exception",
-            "reason": "For input string: \"non-integer\""
-          }
-        }
-      }
-    }
-  ]
-})";
+                                       content = expectedContent.dump();
                                    }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
-    IndexerConnectorOptions indexerConfig {
-        .name = INDEXER_NAME, .hosts = {A_ADDRESS}, .timeout = INDEXER_TIMEOUT, .databasePath = DATABASE_BASE_PATH};
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
+                                           .hosts = {A_ADDRESS},
+                                           .username = "admin",
+                                           .password = "admin",
+                                           .timeout = INDEXER_TIMEOUT,
+                                           .workingThreads = 1,
+                                           .databasePath = DATABASE_BASE_PATH};
     auto indexerConnector {IndexerConnector(indexerConfig)};
 
     // Publish content and wait until the publication finishes.
@@ -508,13 +529,169 @@ TEST_F(IndexerConnectorTest, PublishWithErrorsInBulk)
             "start" : "2018-10-03T16:16:26.467217+0000"
         }
     })"_json;
-    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+
+    for (int i = 0; i < totalElements - 1; ++i)
+    {
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    }
+
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // Read the log file and check the error message
+    std::ifstream logFile(LOG_FILE);
+    std::string logContent((std::istreambuf_iterator<char>(logFile)), {});
+    logFile.close();
+
+    // Check the log content
+    auto foundError = logContent.find("warning: Mismatch between the number of events (1) and response items (2)");
+    ASSERT_TRUE(foundError != std::string::npos);
 }
 
 /**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
- * expected one. The publication contains a DELETED operation.
+ * expected one.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishWithErrorsInBulkMultiThread)
+{
+    nlohmann::json expectedMetadata;
+    expectedMetadata["index"]["_index"] = INDEXER_NAME;
+    expectedMetadata["index"]["_id"] = INDEX_ID_A;
+
+    // Expected content
+    auto constexpr totalElements {100};
+    auto expectedContent = R"(
+    {
+        "took": 5055,
+        "errors": true,
+        "items": []
+    })"_json;
+
+    auto expectedElement = R"(
+    {
+        "index": {
+            "_index": "test-basic-index",
+            "_id": "1rQ_kZIBmzjx6FV-K3nH",
+            "status": 400,
+            "error": {
+                "type": "mapper_parsing_exception",
+                "reason": "failed to parse field [suricata.flow.bytes_toclient] of type [long] in document with id '1rQ_kZIBmzjx6FV-K3nH'. Preview of field's value: 'non-integer'",
+                "caused_by": {
+                    "type": "illegal_argument_exception",
+                    "reason": "For input string: \"non-integer\""
+                }
+            }
+        }
+    })"_json;
+
+    for (int i = 0; i < totalElements; ++i)
+    {
+        expectedContent.at("items").push_back(expectedElement);
+    }
+
+    // Callback that checks the expected data to be published.
+    // The format of the data published is divided in two lines:
+    // First line: JSON data with the metadata (indexer name, index ID)
+    // Second line: Index data.
+    auto callbackCalled {false};
+    const auto checkPublishedData {[&](const std::string& data, std::string& content)
+                                   {
+                                       const auto splitData {base::utils::string::split(data, '\n')};
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       callbackCalled = true;
+                                       // Properly formatted JSON content as a string
+                                       content = expectedContent.dump();
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    // Create connector and wait until the connection is established.
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME,
+                                           .hosts = {A_ADDRESS},
+                                           .username = "admin",
+                                           .password = "admin",
+                                           .timeout = INDEXER_TIMEOUT,
+                                           .workingThreads = 2,
+                                           .databasePath = DATABASE_BASE_PATH};
+    auto indexerConnector {IndexerConnector(indexerConfig)};
+
+    // Publish content and wait until the publication finishes.
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = R"({
+        "timestamp" : "2018-10-03T16:16:26.711841+0000",
+        "flow_id" : 678269478904081,
+        "in_iface" : "enp0s3",
+        "event_type" : "alert",
+        "src_ip" : "192.168.1.146",
+        "src_port" : 32864,
+        "dest_ip" : "89.160.20.112",
+        "dest_port" : 80,
+        "proto" : "TCP",
+        "tx_id" : 0,
+        "alert" : {
+            "action" : "allowed",
+            "gid" : 1,
+            "signature_id" : 2013028,
+            "rev" : 4,
+            "signature" : "ET POLICY curl User-Agent Outbound",
+            "category" : "Attempted Information Leak",
+            "severity" : 2
+        },
+        "http" : {
+            "hostname" : "example.net",
+            "url" : "/",
+            "http_user_agent" : "curl/7.58.0",
+            "http_content_type" : "text/html",
+            "http_method" : "GET",
+            "protocol" : "HTTP/1.1",
+            "status" : 200,
+            "length" : 1121
+        },
+        "app_proto" : "http",
+        "flow" : {
+            "pkts_toserver" : 4,
+            "pkts_toclient" : 3,
+            "bytes_toserver" : 347,
+            "bytes_toclient" : "non-integer",
+            "start" : "2018-10-03T16:16:26.467217+0000"
+        }
+    })"_json;
+
+    for (int i = 0; i < totalElements; ++i)
+    {
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    }
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // Read the log file
+    std::ifstream logFile(LOG_FILE);
+    std::string logContent((std::istreambuf_iterator<char>(logFile)), {});
+    logFile.close();
+
+    // Check the log content
+    auto errorMessage =
+        R"(warning: Error indexing document (type mapper_parsing_exception - reason: 'failed to parse field [suricata.flow.bytes_toclient] )"
+        R"(of type [long] in document with id '1rQ_kZIBmzjx6FV-K3nH'. Preview of field's value: 'non-integer'') - Associated event: )"
+        R"({"alert":{"action":"allowed","category":"Attempted Information Leak","gid":1,"rev":4,"severity":2,"signature":"ET POLICY curl )"
+        R"(User-Agent Outbound","signature_id":2013028},"app_proto":"http","dest_ip":"89.160.20.112","dest_port":80,"event_type":"alert",)"
+        R"("flow":{"bytes_toclient":"non-integer","bytes_toserver":347,"pkts_toclient":3,"pkts_toserver":4,"start":"2018-10-03T16:16:26.467217+0000"})"
+        R"(,"flow_id":678269478904081,"http":{"hostname":"example.net","http_content_type":"text/html","http_method":"GET","http_user_agent")"
+        R"(:"curl/7.58.0","length":1121,"protocol":"HTTP/1.1","status":200,"url":"/"},"in_iface":"enp0s3","proto":"TCP","src_ip")"
+        R"(:"192.168.1.146","src_port":32864,"timestamp":"2018-10-03T16:16:26.711841+0000","tx_id":0})";
+
+    size_t foundError = 0;
+    for (int i = 0; i < totalElements; ++i)
+    {
+        foundError = logContent.find(errorMessage, foundError + 1);
+        ASSERT_TRUE(foundError != std::string::npos);
+    }
+}
+
+/**
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against
+ * the expected one. The publication contains a DELETED operation.
  *
  */
 TEST_F(IndexerConnectorTest, PublishDeleted)
@@ -551,8 +728,8 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
 }
 
 /**
- * @brief Test the connection and posterior data publication into a server. The published data is checked against the
- * expected one. The payload doesn't contain an ID.
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against
+ * the expected one. The payload doesn't contain an ID.
  *
  */
 TEST_F(IndexerConnectorTest, PublishWithoutId)
@@ -677,8 +854,8 @@ TEST_F(IndexerConnectorTest, DiscardInvalidJSON)
 }
 
 /**
- * @brief Test the connection and posterior double data publication into a server. The published data is checked against
- * the expected one.
+ * @brief Test the connection and posterior double data publication into a server. The published data is checked
+ * against the expected one.
  *
  */
 TEST_F(IndexerConnectorTest, PublishTwoIndexes)
@@ -781,8 +958,8 @@ TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
 }
 
 /**
- * @brief Test the connection and posterior data publication into a server. The published data is checked against the
- * expected one.
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against
+ * the expected one.
  *
  */
 TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
