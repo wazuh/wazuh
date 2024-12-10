@@ -93,13 +93,13 @@ InstallServer()
 checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.10.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}tmp/wazuh-server/${VD_FILENAME}
+    VD_BASE_PATH=${INSTALLDIR}var/lib/wazuh-server/tmp/
+    VD_FULL_PATH=${VD_BASE_PATH}${VD_FILENAME}
 
     if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
         echo "Download ${VD_FILENAME} file"
-        mkdir -p ${INSTALLDIR}tmp/wazuh-server
+        mkdir -p ${VD_BASE_PATH}
         wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
-
         chmod 640 ${VD_FULL_PATH}
         chown ${WAZUH_USER}:${WAZUH_GROUP} ${VD_FULL_PATH}
     fi
@@ -137,7 +137,7 @@ installEngineStore()
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}/engine/kvdb
     find ${DEST_FULL_PATH}/engine/store -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
     find ${DEST_FULL_PATH}/engine/kvdb -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-    
+
     echo "Verifying store installation..."
     if [ ! -d "${DEST_FULL_PATH}/engine/store" ] || [ ! -d "${DEST_FULL_PATH}/engine/kvdb" ]; then
         echo "Error: Store installation verification failed. Required directories are missing."

@@ -257,7 +257,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
 # This will be correctly added in #26936
 %attr(750, root, wazuh) %{_localstatedir}usr/share/wazuh-server/bin/rbac_control
-%attr(640, root, wazuh) %{_localstatedir}tmp/wazuh-server/vd_1.0.0_vd_4.10.0.tar.xz
+%attr(640, root, wazuh) %{_localstatedir}var/lib/wazuh-server/tmp/vd_1.0.0_vd_4.10.0.tar.xz
 
 %config(missingok) %{_initrddir}/wazuh-server
 /usr/lib/systemd/system/wazuh-server.service
