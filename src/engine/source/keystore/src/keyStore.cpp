@@ -16,11 +16,6 @@
 
 constexpr auto KS_VALUE_SEPARATOR {':'}; // Default separator for key-value pairs.
 
-/**
- * @brief Verifies if the file exists and creates it with the right permissions.
- *
- * @param filePath Path to the keystore.
- */
 void Keystore::fileCreate(const std::string& filePath)
 {
     std::filesystem::path keyStorePath(filePath);
@@ -45,12 +40,6 @@ void Keystore::fileCreate(const std::string& filePath)
     }
 }
 
-/**
- * @brief Reads the content from the file and decrypts it.
- *
- * @param filePath File path.
- * @return base::utils::KeyValue A key-value object.
- */
 base::utils::KeyValue Keystore::readAndDecrypt(const std::string& filePath)
 {
     std::ifstream file(filePath, std::ifstream::binary);
@@ -75,13 +64,6 @@ base::utils::KeyValue Keystore::readAndDecrypt(const std::string& filePath)
     return base::utils::KeyValue(decryptedKeystoreStr, KS_VALUE_SEPARATOR);
 }
 
-/**
- * @brief Insert or update a key-value pair in the keystore.
- *
- * @param key The key to be inserted or updated.
- * @param value The value to be inserted or updated.
- * @param keyStorePath The path to the key store file.
- */
 void Keystore::put(const std::string& key, const std::string& value, const std::string& keyStorePath)
 {
     fileCreate(keyStorePath);
@@ -101,13 +83,6 @@ void Keystore::put(const std::string& key, const std::string& value, const std::
     outFile.close();
 }
 
-/**
- * Get the a value from the keystore.
- *
- * @param key The key to be retrieved.
- * @param value The returned value. Won't be modified if the key is not found.
- * @param keyStorePath The path to the key store file.
- */
 bool Keystore::get(const std::string& key, std::string& value, const std::string& keyStorePath)
 {
     fileCreate(keyStorePath);

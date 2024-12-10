@@ -52,9 +52,12 @@ public:
     /**
      * Get the value from the keystore.
      *
-     * @param key The key to be inserted or updated.
+     * @param key The key of the value to be retrieved.
      * @param value The corresponding value to be returned.
      * @param keyStorePath The path to the database file.
+     *
+     * @return true If the key is found.
+     * @return false If the key is not found.
      */
     static bool get(const std::string& key, std::string& value, const std::string& keyStorePath = KEYSTORE_PATH);
 };
