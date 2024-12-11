@@ -13,10 +13,7 @@
 #define _KEY_VALUE_HPP
 
 #include <algorithm>
-#include <filesystem>
-#include <fstream>
 #include <map>
-#include <sstream>
 #include <string>
 
 #include <base/logging.hpp>
@@ -33,7 +30,7 @@ class KeyValue
 private:
     const char m_separator;
     const char m_newLine;
-    std::map<std::string, std::string> m_keyValueMap;
+    std::map<std::string, std::string, std::less<>> m_keyValueMap;
 
     /**
      * @brief Reads the buffer and parses it into a map of key-value pairs.
@@ -56,9 +53,9 @@ private:
     }
 
 public:
-    KeyValue(const std::string& keyValueBuffer = "",
-             const char separator = KEY_VALUE_SEPARATOR,
-             const char newLine = KEY_VALUE_NEWLINE)
+    explicit KeyValue(const std::string& keyValueBuffer = "",
+                      const char separator = KEY_VALUE_SEPARATOR,
+                      const char newLine = KEY_VALUE_NEWLINE)
         : m_separator {separator}
         , m_newLine {newLine}
     {
@@ -93,7 +90,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The value to be inserted or updated.
      */
-    void put(const std::string& key, const std::string& value)
+    void put(const std::string& key, std::string_view value)
     {
         if (key.empty() || value.empty())
         {
@@ -103,7 +100,8 @@ public:
         if (key.find(m_separator) != std::string::npos || key.find(m_newLine) != std::string::npos
             || value.find(m_separator) != std::string::npos || value.find(m_newLine) != std::string::npos)
         {
-            throw std::runtime_error("Invalid key-value pair, can't contain separator or newline.");
+            throw std::runtime_error(std::string("Invalid key-value pair, can't contain separator (") + m_separator
+                                     + ") or newline.");
         }
 
         if (m_keyValueMap.find(key) != m_keyValueMap.end())
@@ -122,7 +120,7 @@ public:
      *
      * @return std::string The buffer with the key-value pairs.
      */
-    std::string dumpMap()
+    std::string dumpMap() const
     {
         std::string buffer;
         for (const auto& [mapKey, mapValue] : m_keyValueMap)

@@ -25,9 +25,9 @@ private:
     /**
      * @brief Verifies if the file exists and creates it with the right permissions.
      *
-     * @param filePath Path to the keystore.
+     * @param keyStorePath Path to the keystore.
      */
-    static void fileCreate(const std::string& filePath);
+    static void fileCreate(const std::filesystem::path& keyStorePath);
 
     /**
      * @brief Reads the content from the file and decrypts it.

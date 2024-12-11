@@ -73,7 +73,7 @@ public:
      *
      * @return std::string Kesytore path.
      */
-    std::string getKeystorePath() { return m_keystorePath; }
+    std::string getKeystorePath() const { return m_keystorePath; }
 
     /**
      * @brief Shows the help to the user.
