@@ -28,6 +28,7 @@ bool isMD5Hash(const std::string& str)
 namespace geo
 {
 // Function to download content of the URL into a std::string in memory
+// TODO: Should use http-request library instead of libcurl
 base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url) const
 {
     CURL* curl;
