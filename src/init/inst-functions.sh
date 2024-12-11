@@ -32,15 +32,15 @@ InstallCommon()
   ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
   # Folder for the engine api socket
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-engine
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-engine
   # Folder for persistent databases (vulnerability scanner, ruleset, connector).
-  ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine
+  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine
   # Folder for persistent databases (vulnerability scanner).
-  ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/vd
+  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/vd
   # Folder for persistent databases (ruleset).
-  ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/ruleset
+  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/ruleset
   # Folder for persistent queues for the indexer connector.
-  ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/indexer-connector
+  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/indexer-connector
 
 }
 
@@ -93,11 +93,11 @@ InstallServer()
 checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.10.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}tmp/wazuh-server/${VD_FILENAME}
+    VD_FULL_PATH=${INSTALLDIR}var/lib/wazuh-server/tmp/${VD_FILENAME}
 
     if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
         echo "Download ${VD_FILENAME} file"
-        mkdir -p ${INSTALLDIR}tmp/wazuh-server
+        mkdir -p ${INSTALLDIR}var/lib/wazuh-server/tmp/
         wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
 
         chmod 640 ${VD_FULL_PATH}
@@ -137,7 +137,7 @@ installEngineStore()
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}/engine/kvdb
     find ${DEST_FULL_PATH}/engine/store -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
     find ${DEST_FULL_PATH}/engine/kvdb -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-    
+
     echo "Verifying store installation..."
     if [ ! -d "${DEST_FULL_PATH}/engine/store" ] || [ ! -d "${DEST_FULL_PATH}/engine/kvdb" ]; then
         echo "Error: Store installation verification failed. Required directories are missing."
@@ -154,25 +154,24 @@ InstallEngine()
   # Check if the content needs to be downloaded.
   checkDownloadContent
   mkdir -p ${INSTALLDIR}usr/share/wazuh-server/bin
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} engine/build/main ${INSTALLDIR}usr/share/wazuh-server/bin/wazuh-engine
+  ${INSTALL} -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} engine/build/main ${INSTALLDIR}usr/share/wazuh-server/bin/wazuh-engine
 
   # Folder for the engine socket.
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-server/
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-server/
 
   # Folder for persistent databases (vulnerability scanner, ruleset, connector).
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/vd
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine
-  ${INSTALL} -d -m 0755 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server
-  ${INSTALL} -d -m 0755 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server/engine
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/vd
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine
+  ${INSTALL} -d -m 0755 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server
+  ${INSTALL} -d -m 0755 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server/engine
 
-  #${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} engine/build/tzdb ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
   cp -rp engine/build/tzdb ${INSTALLDIR}var/lib/wazuh-server/engine/
-  chown -R root:${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
+  chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
   chmod 0750 ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
   chmod 0640 ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb/*
 
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/indexer-connector
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/indexer-connector
 
   # Download and extract the Engine store
   installEngineStore
