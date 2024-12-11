@@ -257,6 +257,7 @@ target_link_libraries(main
     vdscanner
     apiserver
     indexerconnector
+    httpsrv
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
