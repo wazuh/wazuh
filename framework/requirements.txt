@@ -31,3 +31,5 @@ yarl==1.7.0
 zipp==3.19.1
 content_size_limit_asgi==0.1.5
 setuptools>=70.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
+anyio>=4.4.0 # not directly required, pinned by Snyk to avoid a vulnerability
+starlette>=0.40.0 # not directly required, pinned by Snyk to avoid a vulnerability
