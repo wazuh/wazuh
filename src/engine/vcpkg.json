@@ -9,7 +9,6 @@
     "fmt",
     "gtest",
     "libmaxminddb",
-    "libuv",
     "opentelemetry-cpp",
     "protobuf",
     "pugixml",
@@ -19,7 +18,6 @@
     "rxcpp",
     "spdlog",
     "taskflow",
-    "uvw",
     "yaml-cpp",
     "cpp-httplib",
     "liblzma",
@@ -63,10 +61,6 @@
       "version": "1.9.1#0"
     },
     {
-      "name": "libuv",
-      "version": "1.48.0#0"
-    },
-    {
       "name": "opentelemetry-cpp",
       "version": "1.8.3#6"
     },
@@ -101,10 +95,6 @@
     {
       "name": "taskflow",
       "version": "3.7.0#0"
-    },
-    {
-      "name": "uvw",
-      "version": "2.12.1#2"
     },
     {
       "name": "yaml-cpp",

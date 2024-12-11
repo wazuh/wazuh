@@ -188,9 +188,10 @@ adapter::RouteHandler routeDelete(const std::shared_ptr<::router::IRouterAPI>& r
 }
 
 adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router,
-                               const std::weak_ptr<api::policy::IPolicy>& policy)
+                               const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wRouter = router, wPolicyManager = policy](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -305,9 +306,10 @@ adapter::RouteHandler routePatchPriority(const std::shared_ptr<::router::IRouter
 }
 
 adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router,
-                               const std::weak_ptr<api::policy::IPolicy>& policy)
+                               const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wRouter = router, wPolicyManager = policy](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;
