@@ -9,6 +9,9 @@
  * Foundation.
  */
 
+#include <filesystem>
+#include <fstream>
+
 #include <base/logging.hpp>
 #include <base/utils/evpHelper.hpp>
 
@@ -16,25 +19,24 @@
 
 constexpr auto KS_VALUE_SEPARATOR {':'}; // Default separator for key-value pairs.
 
-void Keystore::fileCreate(const std::string& filePath)
+void Keystore::fileCreate(const std::filesystem::path& keyStorePath)
 {
-    std::filesystem::path keyStorePath(filePath);
-
     // Create file and update permissions only if it does not exist
     if (!std::filesystem::exists(keyStorePath))
     {
         if (!std::filesystem::exists(keyStorePath.parent_path()))
         {
-            throw std::runtime_error("The parent directory of the key store file '" + filePath + "' does not exist.");
+            throw std::runtime_error("The parent directory of the key store file '"
+                                     + std::string(keyStorePath.filename()) + "' does not exist.");
         }
 
-        std::ofstream file(filePath);
+        std::ofstream file(keyStorePath.filename());
         if (!file.is_open())
         {
             throw std::runtime_error("Error creating key store file due to: " + std::string(strerror(errno)));
         }
         file.close();
-        std::filesystem::permissions(filePath,
+        std::filesystem::permissions(keyStorePath.filename(),
                                      std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
                                          | std::filesystem::perms::group_read);
     }

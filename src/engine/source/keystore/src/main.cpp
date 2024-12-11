@@ -11,7 +11,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <functional>
 
 #include <base/logging.hpp>
 #include <fs/homedirHelper.hpp>
