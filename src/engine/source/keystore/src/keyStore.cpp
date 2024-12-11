@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#include <filesystem>
 #include <fstream>
 
 #include <base/logging.hpp>
