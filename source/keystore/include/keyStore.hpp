@@ -12,6 +12,7 @@
 #ifndef _KEYSTORE_HPP
 #define _KEYSTORE_HPP
 
+#include <filesystem>
 #include <string>
 
 #include <base/utils/keyValue.hpp>
