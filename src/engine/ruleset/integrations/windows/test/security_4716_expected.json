@@ -1,0 +1,118 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "trusted-domain-information-changed",
+      "category": [
+        "configuration"
+      ],
+      "code": "4716",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2020-07-28T08:17:00.470644Z",
+      "type": [
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-BVM4LI1L1Q6.TEST.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "Trusted domain information was modified",
+    "related": {
+      "user": [
+        "Administrator"
+      ]
+    },
+    "user": {
+      "domain": "TEST",
+      "id": "S-1-5-21-2024912787-2692429404-2351956786-500",
+      "name": "Administrator"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "DomainName": "-",
+        "DomainSid": "S-1-0-0",
+        "SidFilteringEnabled": "-",
+        "SubjectDomainName": "TEST",
+        "SubjectLogonId": "0x6a868",
+        "SubjectUserName": "Administrator",
+        "SubjectUserSid": "S-1-5-21-2024912787-2692429404-2351956786-500",
+        "TdoAttributes": "1",
+        "TdoDirection": "3",
+        "TdoType": "3"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "WIN-BVM4LI1L1Q6.TEST.local"
+        },
+        "Correlation": {
+          "@ActivityID": "BE129571-63F8-0000-A795-12BEF863D601"
+        },
+        "EventID": {
+          "#text": "4716"
+        },
+        "EventRecordID": {
+          "#text": "14929"
+        },
+        "Execution": {
+          "@ProcessID": "776",
+          "@ThreadID": "3776"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "54849625-5478-4994-A5BA-3E3B0328C30D",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13569"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-07-28T08:17:00.470644Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x6a868"
+      },
+      "trustAttribute": "TRUST_ATTRIBUTE_NON_TRANSITIVE",
+      "trustDirection": "TRUST_DIRECTION_BIDIRECTIONAL",
+      "trustType": "TRUST_TYPE_MIT"
+    }
+  }
+]

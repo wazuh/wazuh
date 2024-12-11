@@ -1,0 +1,18 @@
+{
+    "steps": [
+        {
+            "description": "Build (Coverage flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_COVERAGE=ON"
+            ]
+        },
+        {
+            "description": "Valgrind",
+            "parameters": [
+                "--test valgrind",
+                "--include build"
+            ]
+        }
+    ]
+}

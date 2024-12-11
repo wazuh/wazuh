@@ -1,0 +1,32 @@
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Sysmon" Guid="{5770385f-c22a-43e0-bf4c-06f5698ffbd9}"/>
+      <EventID>23</EventID>
+      <Version>5</Version>
+      <Level>4</Level>
+      <Task>23</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8000000000000000</Keywords>
+      <TimeCreated SystemTime="2023-09-16T23:16:03.9863345Z"/>
+      <EventRecordID>2444</EventRecordID>
+      <Correlation/>
+      <Execution ProcessID="5236" ThreadID="5684"/>
+      <Channel>Microsoft-Windows-Sysmon/Operational</Channel>
+      <Computer>DESKTOP-8UVR214</Computer>
+      <Security UserID="S-1-5-18"/>
+    </System>
+    <EventData>
+      <Data Name="RuleName">-</Data>
+      <Data Name="UtcTime">2023-09-16 23:16:03.985</Data>
+      <Data Name="ProcessGuid">{7100ab27-350d-6506-912a-000000001200}</Data>
+      <Data Name="ProcessId">10328</Data>
+      <Data Name="User">DESKTOP-8UVR214\nahuel</Data>
+      <Data Name="Image">C:\Users\nahuel\Desktop\nahuel\Apache24\bin\httpd.exe</Data>
+      <Data Name="TargetFilename">C:\inetpub\logs\LogFiles\access.log</Data>
+      <Data Name="Hashes">MD5=55BFEBE68443611320A8A70C7DFD5D56,SHA256=5809ABFE5219B046AF113536279F8B16F9D6A5A3E63417BAE6E1202A3E958C33,IMPHASH=00000000000000000000000000000000</Data>
+      <Data Name="IsExecutable">false</Data>
+      <Data Name="Archived">true</Data>
+    </EventData>
+  </Event>
+</Events>

@@ -11,7 +11,7 @@
     "function_params": {
       "agent_list": []
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
     "allowed_resources": [[]],
     "result": "allow"
   },
@@ -27,8 +27,8 @@
     "function_params": {
       "call_func": true
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
-    "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001", "002", "003", "004", "005"]]
   },
   {
     "rbac": {
@@ -43,8 +43,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {},
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
-    "allowed_resources": [["000", "002", "004"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
+    "allowed_resources": [["002", "004"]]
   },
   {
     "rbac": {
@@ -61,8 +61,8 @@
     "function_params": {
       "call_func": false
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
-    "allowed_resources": [["000", "002", "004"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
+    "allowed_resources": [["002", "004"]]
   },
   {
     "rbac": {
@@ -77,8 +77,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {},
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
-    "allowed_resources": [["000", "002", "003", "004", "005"]]
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
+    "allowed_resources": [["002", "003", "004", "005"]]
   },
   {
     "rbac": {
@@ -168,11 +168,6 @@
   },
   {
     "rbac": {
-      "agent:delete": {
-        "agent:group:group1": "deny",
-        "agent:id:*": "allow",
-        "agent:id:000": "deny"
-      }
     },
     "decorator_params": {
         "actions": ["agent:delete"],
@@ -181,9 +176,9 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": ["000", "001", "002", "005", "099"]
+      "agent_list": ["001", "002", "005", "099"]
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"]},
     "allowed_resources": [["001", "002", "005", "099"]]
   },
   {
@@ -201,35 +196,16 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": ["000", "001", "002", "005", "099"]
+      "agent_list": ["001", "002", "005", "099"]
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
-    "allowed_resources": [["000", "099"]]
-  },
-  {
-    "rbac": {
-      "agent:delete": {
-        "agent:group:group1": "allow",
-        "agent:group:group2": "deny",
-        "agent:id:000": "deny"
-      }
-    },
-    "decorator_params": {
-        "actions": ["agent:delete"],
-        "resources": ["agent:id:{agent_list}"],
-        "post_proc_func": null,
-        "post_proc_kwargs": null
-    },
-    "function_params": {
-      "agent_list": ["000", "001", "002", "005", "099"]
-    },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
     "allowed_resources": [["099"]]
   },
   {
     "rbac": {
       "agent:delete": {
-        "agent:id:000": "deny"
+        "agent:group:group1": "allow",
+        "agent:group:group2": "deny"
       }
     },
     "decorator_params": {
@@ -239,9 +215,24 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": ["000", "097", "099"]
+      "agent_list": ["001", "002", "005", "099"]
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": ["001", "005", "099", "098"], "agent:group:group2": ["002", "005", "004", "001"]},
+    "allowed_resources": [["099"]]
+  },
+  {
+    "rbac": {
+    },
+    "decorator_params": {
+        "actions": ["agent:delete"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["097", "099"]
+    },
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"]},
     "allowed_resources": [["097", "099"]]
   },
   {
@@ -449,7 +440,7 @@
     "function_params": {
       "agent_list": null
     },
-    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": []},
+    "fake_system_resources": {"agent:id:*": ["001", "002", "003", "004", "005"], "agent:group:group1": []},
     "allowed_resources": [[]],
     "exception": "4000"
   },
@@ -535,16 +526,6 @@
   },
   {
     "rbac": {
-      "agent:read": {
-        "agent:group:*": "allow",
-        "agent:group:group1": "deny",
-        "agent:id:000": "allow"
-      },
-      "agent:update": {
-        "agent:group:*": "deny",
-        "agent:group:group1": "allow",
-        "agent:id:000": "deny"
-      }
     },
     "decorator_params": {
         "actions": ["agent:read", "agent:update"],

@@ -3,41 +3,28 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import ipaddress
-import json
 import re
 import threading
 from base64 import b64encode
 from datetime import datetime, timezone
 from functools import lru_cache
-from json import dumps, loads
-from os import listdir, path
-from shutil import rmtree
+from pathlib import Path
+from os import listdir, path, remove
+from typing import List
 
-from wazuh.core import common, configuration, stats
+from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.models.agent import Agent as IndexerAgent
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
-    get_date_from_timestamp
+    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_date_from_timestamp, get_group_file_path, \
+    GROUP_FILE_EXT
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
+from wazuh.core.wazuh_socket import WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
-
-detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
-detect_valid_lines = re.compile(r'^(\d{3,}) (.+) (any|\d+\.\d+\.\d+\.\d+) (\w+)', re.MULTILINE)
-
-mutex = threading.Lock()
-lock_file = None
-lock_acquired = False
-
-agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
-
-GROUP_FIELDS = ['name', 'mergedSum', 'configSum', 'count']
-GROUP_REQUIRED_FIELDS = ['name']
-GROUP_FILES_FIELDS = ['filename', 'hash']
-GROUP_FILES_REQUIRED_FIELDS = ['filename']
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -420,52 +407,9 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         return WazuhDBQuery._format_data_into_dictionary(self)
 
 
-class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    """Class used to query agents with multigroups."""
-
-    def __init__(self, group_id: str, query: str = '', *args: dict, **kwargs: dict):
-        """Class constructor.
-
-        Parameters
-        ----------
-        group_id : str
-            ID of the group.
-        query : str
-            Query.
-        """
-        self.group_id = group_id
-        query = 'group={}'.format(group_id) + (';' + query if query else '')
-        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
-
-    def _default_query(self) -> str:
-        """Get default query.
-
-        Returns
-        -------
-        str
-            Default query.
-        """
-        return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" \
-            else "SELECT {0} FROM agent a"
-
-    def _default_count_query(self) -> str:
-        """Get count part for the default query.
-
-        Returns
-        -------
-        str
-            String representing the count part for the default query.
-        """
-        return 'COUNT(DISTINCT a.id)'
-
-    def _get_total_items(self):
-        """Get total items."""
-        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
-        self.query += ' GROUP BY a.id '
-
-
 class Agent:
     """Wazuh Agent object."""
+    # TODO(#25121): Remove old fields.
     fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'connection_status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
@@ -475,6 +419,9 @@ class Agent:
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
               'group_config_status': 'group_config_status', 'status_code': 'status_code'}
+
+    new_fields = {'id': 'id', 'name': 'name', 'key': 'key', 'groups': 'groups', 'type': 'type', 'version': 'version',
+                 'type': 'type', 'last_login': 'last_login', 'persistent_connection_mode': 'persistent_connection_mode'}
 
     def __init__(self, id: str = None, name: str = None, ip: str = None, key: str = None, force: dict = None):
         """Initialize an agent.
@@ -591,17 +538,9 @@ class Agent:
         -------
         str
             Agent key.
-
-        Raises
-        ------
-        WazuhError(1703)
-            Action not available for manager (000).
         """
         self.load_info_from_db()
-        if self.id != "000":
-            self.key = self.compute_key()
-        else:
-            raise WazuhError(1703)
+        self.key = self.compute_key()
 
         return self.key
 
@@ -623,6 +562,7 @@ class Agent:
         str
             Message generated by Wazuh.
         """
+        # TODO(#25121): the behavior should be reviewed in the corresponding use case.
         # Check if agent is active
         self.get_basic_information()
         if self.status.lower() != 'active':
@@ -836,26 +776,28 @@ class Agent:
         self.key = self.compute_key()
 
     @staticmethod
-    def delete_single_group(group_id: str) -> dict:
+    async def delete_single_group(group_name: str) -> dict:
         """Delete a group.
 
         Parameters
         ----------
-        group_id : str
-            Group ID.
+        group_name : str
+            Group name.
 
         Returns
         -------
         dict
             Confirmation message.
         """
-        # Delete group directory
-        group_path = path.join(common.SHARED_PATH, group_id)
+        # Delete group file
+        group_path = get_group_file_path(group_name)
         if path.exists(group_path):
-            rmtree(group_path)
+            try:
+                remove(group_path)
+            except Exception as e:
+                raise WazuhError(1006, extra_message=str(e))
 
-        msg = "Group '{0}' deleted.".format(group_id)
-
+        msg = "Group '{0}' deleted.".format(group_name)
         return {'message': msg}
 
     def get_agent_os_name(self) -> str:
@@ -908,96 +850,21 @@ class Agent:
         return data
 
     @staticmethod
-    def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None) -> str:
-        """Add an existing group to an agent.
+    async def get(agent_id: str) -> IndexerAgent:
+        """Get agent.
 
         Parameters
         ----------
-        group_id: str
-            Name of the group.
-        agent_id: str
-            ID of the agent.
-        replace: bool
-            Whether to append new group to current agent's group or replace it.
-        replace_list: list
-            List of group names that can be replaced.
-
-        Raises
-        ------
-        WazuhInternalError(2007)
-            Body is empty.
-        WazuhError(1752)
-            Could not force single group for the agent.
-        WazuhError(1737)
-            Maximum number of groups reached.
+        agent_id : str
+            Agent ID.
 
         Returns
         -------
-        str
-            Confirmation message with agent and group IDs.
+        IndexerAgent
+            Agent information.
         """
-        if replace_list is None:
-            replace_list = []
-
-        # Get agent's group
-        try:
-            agent_groups = set(Agent.get_agent_groups(agent_id))
-        except Exception as e:
-            raise WazuhInternalError(2007, extra_message=str(e))
-
-        if replace:
-            if not agent_groups.issubset(set(replace_list)):
-                raise WazuhError(1752)
-        else:
-            # Check if the group already belongs to the agent
-            if group_id in agent_groups:
-                raise WazuhError(1751)
-
-        # Check multigroup limit
-        if len(agent_groups) >= common.MAX_GROUPS_PER_MULTIGROUP:
-            raise WazuhError(1737)
-
-        # Update group
-        Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
-
-        return f"Agent {agent_id} assigned to {group_id}"
-
-    @staticmethod
-    def check_if_delete_agent(id: str, seconds: int) -> bool:
-        """Check if we should remove an agent: if time from last connection is greater than <seconds>.
-
-        Parameters
-        ----------
-        id : str
-            ID of the new agent.
-        seconds : int
-            Number of seconds.
-
-        Returns
-        -------
-        bool
-            True if time from last connection is greater thant <seconds>.
-        """
-        remove_agent = False
-
-        # Always return true for 0 seconds to prevent any possible races
-        if seconds == 0:
-            remove_agent = True
-        else:
-            agent_info = Agent(id=id).get_basic_information()
-            if 'lastKeepAlive' in agent_info:
-                if agent_info['lastKeepAlive'] == 0:
-                    remove_agent = True
-                else:
-                    if isinstance(agent_info['lastKeepAlive'], datetime):
-                        last_date = agent_info['lastKeepAlive'].replace(tzinfo=timezone.utc)
-                    else:
-                        last_date = get_utc_strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                    difference = (get_utc_now() - last_date).total_seconds()
-                    if difference >= seconds:
-                        remove_agent = True
-
-        return remove_agent
+        async with get_indexer_client() as indexer_client:
+            return await indexer_client.agents.get(agent_id)
 
     @staticmethod
     def group_exists(group_id: str) -> bool:
@@ -1022,13 +889,10 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhError(1722)
 
-        if path.isdir(path.join(common.SHARED_PATH, group_id)):
-            return True
-        else:
-            return False
+        return path.exists(get_group_file_path(group_id))
 
     @staticmethod
-    def get_agent_groups(agent_id: str) -> list:
+    async def get_agent_groups(agent_id: str) -> List[str]:
         """Return all agent's groups.
 
         Parameters
@@ -1038,18 +902,15 @@ class Agent:
 
         Returns
         -------
-        list
-            List of group IDs.
+        List[str]
+            List of group names.
         """
-        wdb = WazuhDBConnection()
-        try:
-            _, payload = wdb.send(f'global select-group-belong {agent_id}', raw=True)
-            return json.loads(payload)
-        finally:
-            wdb.close()
+        async with get_indexer_client() as indexer_client:
+            agent = await indexer_client.agents.get(agent_id)
+            return agent.groups
 
     @staticmethod
-    def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False):
+    async def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False):
         """Set a relationship between an agent and a group.
 
         Parameters
@@ -1061,26 +922,19 @@ class Agent:
         remove : bool
             Set the relationship with the remove mode.
         override : bool
-            Set the relationship with the override mode. This option only works if remove is False. If both override and
-            remove are False, the mode used is append.
+            Replace all groups with the specified one. Only works if `remove` is False.
         """
-        if remove:
-            mode = 'remove'
-        else:
-            mode = 'append' if not override else 'override'
+        async with get_indexer_client() as indexer_client:
+            if remove:
+                await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=[agent_id])
+                return
 
-        command = f'global set-agent-groups {{"mode":"{mode}","sync_status":"syncreq","data":[{{"id":{agent_id},' \
-                  f'"groups":["{group_id}"]}}]}}'
-
-        wdb = WazuhDBConnection()
-        try:
-            wdb.send(command, raw=True)
-        finally:
-            wdb.close()
+            await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=[agent_id],
+                                                            override=override)
 
     @staticmethod
-    def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
-        """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
+    async def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
+        """Unset agent group. If agent has multiple groups, it will preserve all previous groups except the last one.
 
         Parameters
         ----------
@@ -1093,8 +947,6 @@ class Agent:
 
         Raises
         ------
-        WazuhError(1703)
-            Action not available for manager.
         WazuhResourceNotFound(1710)
             The group was not found.
         WazuhError(1734)
@@ -1108,18 +960,14 @@ class Agent:
             Confirmation message.
         """
         if not force:
-            # Check if agent exists, it is not 000 and the group exists
-            Agent(agent_id).get_basic_information()
-
-            if agent_id == "000":
-                raise WazuhError(1703)
+            # Check if agent and the group exists
+            _ = await Agent.get(agent_id)
 
             if not Agent.group_exists(group_id):
                 raise WazuhResourceNotFound(1710)
 
         # Get agent's group
-        group_list = set(Agent.get_agent_groups(agent_id))
-        set_default = False
+        group_list = set(await Agent.get_agent_groups(agent_id))
 
         # Check agent belongs to group group_id
         if group_id not in group_list:
@@ -1127,14 +975,10 @@ class Agent:
         elif len(group_list) == 1:
             if group_id == 'default':
                 raise WazuhError(1745)
-            else:
-                set_default = True
 
-        # Update group file
-        Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
+        await Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
 
-        return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
-                                                                   if set_default else "")
+        return f"Agent '{agent_id}' removed from '{group_id}'."
 
     def get_config(self, component: str = '', config: str = '', agent_version: str = '') -> dict:
         """Read agent's loaded configuration.
@@ -1161,38 +1005,7 @@ class Agent:
         if WazuhVersion(agent_version) < WazuhVersion(common.ACTIVE_CONFIG_VERSION):
             raise WazuhInternalError(1735, extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}")
 
-        return configuration.get_active_configuration(self.id, component, config)
-
-    def get_stats(self, component: str) -> dict:
-        """Read the agent's component stats.
-
-        Parameters
-        ----------
-        component : str
-            Name of the component to get stats from.
-
-        Raises
-        ------
-        WazuhInternalError(1015)
-            Agent version is null.
-        WazuhInternalError(1735)
-            Agent version is not compatible with this feature.
-
-        Returns
-        -------
-        dict
-            Object with component's stats.
-        """
-        # Check if agent version is compatible with this feature
-        self.load_info_from_db()
-        if self.version is None:
-            raise WazuhInternalError(1015)
-        agent_version = WazuhVersion(self.version.split(" ")[1])
-        required_version = WazuhVersion(AGENT_COMPONENT_STATS_REQUIRED_VERSION.get(component))
-        if agent_version < required_version:
-            raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
-
-        return stats.get_daemons_stats_from_socket(self.id, component)
+        return configuration.get_active_configuration(agent_id=self.id, component=component, configuration=config)
 
 
 def unify_wazuh_upgrade_version_format(upgrade_version: str) -> str:
@@ -1249,35 +1062,8 @@ def format_fields(field_name: str, value: str) -> str:
         return value
 
 
-def send_restart_command(agent_id: str = '', agent_version: str = '', wq: WazuhQueue = None) -> str:
-    """Send restart command to an agent.
-
-    Parameters
-    ----------
-    agent_id : str
-        ID specifying the agent where the restart command will be sent to
-    agent_version : str
-        Agent version to compare with the required version. The format is vX.Y.Z.
-    wq : WazuhQueue
-        WazuhQueue used for the active response messages.
-
-    Returns
-    -------
-    str
-        Message generated by Wazuh.
-    """
-    # If the Wazuh agent version is newer or equal to the AR legacy version,
-    # the message sent will have JSON format
-    if WazuhVersion(agent_version) >= WazuhVersion(common.AR_LEGACY_VERSION):
-        ret_msg = wq.send_msg_to_agent(WazuhQueue.RESTART_AGENTS_JSON, agent_id)
-    else:
-        ret_msg = wq.send_msg_to_agent(WazuhQueue.RESTART_AGENTS, agent_id)
-
-    return ret_msg
-
-
-@common.context_cached('system_agents')
-def get_agents_info() -> set:
+@common.async_context_cached('system_agents')
+async def get_agents_info() -> set:
     """Get all agent IDs in the system.
 
     Returns
@@ -1285,13 +1071,10 @@ def get_agents_info() -> set:
     set
         IDs of all agents in the system.
     """
-    with open(common.CLIENT_KEYS, 'r') as f:
-        file_content = f.read()
-
-    result = set(agent_regex.findall(file_content))
-    result.add('000')
-
-    return result
+    async with get_indexer_client() as indexer_client:
+        query = {IndexerKey.MATCH_ALL: {}}
+        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='agent.id')
+        return set([agent.id for agent in agents])
 
 
 @common.context_cached('system_groups')
@@ -1304,14 +1087,16 @@ def get_groups() -> set:
         Names of all groups in the system.
     """
     groups = set()
-    for shared_file in listdir(common.SHARED_PATH):
-        path.isdir(path.join(common.SHARED_PATH, shared_file)) and groups.add(shared_file)
+    for group_file in listdir(common.WAZUH_SHARED):
+        filepath = Path(group_file)
+        if filepath.suffix == GROUP_FILE_EXT:
+            groups.add(filepath.stem)
 
     return groups
 
 
-@common.context_cached('system_expanded_groups')
-def expand_group(group_name: str) -> set:
+@common.async_context_cached('system_expanded_groups')
+async def expand_group(group_name: str) -> set:
     """Expand a certain group or all (*) of them.
 
     Parameters
@@ -1324,32 +1109,12 @@ def expand_group(group_name: str) -> set:
     set
         Set of agent IDs.
     """
-    agents_ids = []
-    wdb_conn = WazuhDBConnection()
-    try:
-        last_id = 0
-        while True:
-            if group_name == '*':
-                command = 'global sync-agent-groups-get {"last_id":' f'{last_id}' ', "condition":"all"}'
-            else:
-                command = f'global get-group-agents {group_name} last_id {last_id}'
+    if group_name == '*':
+        return await get_agents_info()
 
-            status, payload = wdb_conn.send(command, raw=True)
-            agents = json.loads(payload)
-
-            for agent in agents[0]['data'] if group_name == '*' else agents:
-                agent_id = str(agent['id'] if isinstance(agent, dict) else agent).zfill(3)
-                agents_ids.append(agent_id)
-
-            if status == 'ok':
-                break
-            else:
-                last_id = int(agents_ids[-1])
-
-    finally:
-        wdb_conn.close()
-
-    return set(agents_ids) & get_agents_info()
+    async with get_indexer_client() as indexer_client:
+        agents = await indexer_client.agents.get_group_agents(group_name=group_name)
+        return set([agent.id for agent in agents])
 
 
 @lru_cache()
@@ -1361,6 +1126,7 @@ def get_manager_name() -> str:
     str
         Manager name.
     """
+    # TODO(#25121): This function needs to be redifined according to the required used case.
     wdb_conn = WazuhDBConnection()
     manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
     wdb_conn.close()
@@ -1397,106 +1163,3 @@ def get_rbac_filters(system_resources: set = None, permitted_resources: list = N
         negate = True
 
     return {'filters': filters, 'rbac_negate': negate}
-
-
-def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, **kwargs) -> list:
-    """Recursive function used to create the agents upgrade tasks.
-
-    If a task manager communication error is in the response (error with code 4), the chunk size used is split in half.
-
-    Parameters
-    ----------
-    eligible_agents : list
-        List of eligible agents.
-    chunk_size : int
-        Number of agents to be sent to the upgrade socket at the same time.
-    command : str
-        Upgrade command. Values: 'upgrade', 'upgrade_custom', 'upgrade_result'.
-    **kwargs
-        Upgrade procedure extra parameters.
-
-    Returns
-    -------
-    list
-        Upgrade tasks results.
-    """
-    result = []
-    agents_chunks = [eligible_agents[x:x + chunk_size] for x in range(0, len(eligible_agents), chunk_size)]
-    for chunk in agents_chunks:
-        response = core_upgrade_agents(command=command, agents_chunk=chunk, wpk_repo=kwargs.get('wpk_repo'),
-                                       version=kwargs.get('version'), force=kwargs.get('force'),
-                                       use_http=kwargs.get('use_http'), package_type=kwargs.get('package_type'),
-                                       file_path=kwargs.get('file_path'), installer=kwargs.get('installer'),
-                                       get_result=kwargs.get('get_result'))
-
-        # In case of task manager communication error, try to create the upgrade tasks again with a smaller chunk size
-        # If the used chunk size is 1, return the response with the task manager communication error
-        if any(item['error'] == 4 for item in response['data']) and chunk_size != 1:
-            return create_upgrade_tasks(eligible_agents, chunk_size // 2, command, **kwargs)
-
-        result.append(response)
-
-    return result
-
-
-def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk_repo: str = None, version: str = None,
-                        force: bool = False, use_http: bool = False, package_type: str = None, file_path: str = None,
-                        installer: str = None, get_result: bool = False) -> dict:
-    """Send command to upgrade module / task module.
-
-    Parameters
-    ----------
-    agents_chunk : list
-        List of agents ID's.
-    command : str
-        Command sent to the socket. Default: 'upgrade_result'
-    wpk_repo : str
-        URL for WPK download.
-    version : str
-        Version to upgrade to.
-    force : bool
-        Forces the agents to upgrade, ignoring version validations.
-    use_http : bool
-        False for HTTPS protocol, True for HTTP protocol.
-    package_type : str
-        Default package type (rpm, deb).
-    file_path : str
-        Path to the installation file.
-    installer : str
-        Selected installer.
-    get_result : bool
-        Get the result of an update (True -> Task module), Create new upgrade task (False -> Upgrade module)
-
-    Returns
-    -------
-    dict
-        Message received from the socket (Task module or Upgrade module)
-    """
-    msg = create_wazuh_socket_message(origin={'module': 'api'},
-                                      command=command,
-                                      parameters={
-                                          'agents': agents_chunk,
-                                          'version': unify_wazuh_upgrade_version_format(version),
-                                          'force_upgrade': force,
-                                          'use_http': use_http,
-                                          'package_type': package_type,
-                                          'wpk_repo': wpk_repo,
-                                          'file_path': file_path,
-                                          'installer': installer
-                                      } if not get_result else {'agents': agents_chunk})
-
-    msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
-
-    # Send upgrading command
-    s = WazuhSocket(common.UPGRADE_SOCKET)
-    s.send(dumps(msg).encode())
-
-    # Receive upgrade information from socket
-    data = loads(s.receive().decode())
-    s.close()
-
-    [agent_info.update((k, get_utc_strptime(v, "%Y/%m/%d %H:%M:%S").strftime(DATE_FORMAT))
-                       for k, v in agent_info.items() if k in {'create_time', 'update_time'})
-     for agent_info in data['data']]
-
-    return data

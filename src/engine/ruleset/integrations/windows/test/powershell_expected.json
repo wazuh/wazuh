@@ -1,0 +1,338 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "code": "400",
+      "dataset": "powershell",
+      "kind": "event",
+      "module": "windows",
+      "provider": "PowerShell",
+      "start": "2020-06-04T07:20:27.747227Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "Engine state is changed from None to Available.",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-powershell"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "Binary": {}
+      },
+      "System": {
+        "Channel": {
+          "#text": "Windows PowerShell"
+        },
+        "Computer": {
+          "#text": "vagrant"
+        },
+        "EventID": {
+          "#text": "400",
+          "@Qualifiers": "0"
+        },
+        "EventRecordID": {
+          "#text": "18591"
+        },
+        "Keywords": {
+          "#text": "0x80000000000000"
+        },
+        "Level": {
+          "#text": "4"
+        },
+        "Provider": {
+          "@Name": "PowerShell"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "4"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-06-04T07:20:27.747227Z"
+        }
+      },
+      "logon": {
+        "channel": "Windows PowerShell",
+        "computer_name": "vagrant",
+        "event_id": "400",
+        "provider_name": "PowerShell",
+        "record_id": "18591",
+        "task": "4"
+      }
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "code": "400",
+      "dataset": "powershell",
+      "kind": "event",
+      "module": "windows",
+      "provider": "PowerShell",
+      "start": "2020-05-14T11:32:51.989256Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "Engine state is changed from None to Available.",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-powershell"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "Binary": {}
+      },
+      "System": {
+        "Channel": {
+          "#text": "Windows PowerShell"
+        },
+        "Computer": {
+          "#text": "vagrant"
+        },
+        "EventID": {
+          "#text": "400",
+          "@Qualifiers": "0"
+        },
+        "EventRecordID": {
+          "#text": "1579"
+        },
+        "Keywords": {
+          "#text": "0x80000000000000"
+        },
+        "Level": {
+          "#text": "4"
+        },
+        "Provider": {
+          "@Name": "PowerShell"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "4"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-05-14T11:32:51.989256Z"
+        }
+      },
+      "logon": {
+        "channel": "Windows PowerShell",
+        "computer_name": "vagrant",
+        "event_id": "400",
+        "provider_name": "PowerShell",
+        "record_id": "1579",
+        "task": "4"
+      }
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "code": "400",
+      "dataset": "powershell",
+      "kind": "event",
+      "module": "windows",
+      "provider": "PowerShell",
+      "start": "2020-05-14T07:01:14.371507Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "Engine state is changed from None to Available.",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-powershell"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "Binary": {}
+      },
+      "System": {
+        "Channel": {
+          "#text": "Windows PowerShell"
+        },
+        "Computer": {
+          "#text": "vagrant"
+        },
+        "EventID": {
+          "#text": "400",
+          "@Qualifiers": "0"
+        },
+        "EventRecordID": {
+          "#text": "1511"
+        },
+        "Keywords": {
+          "#text": "0x80000000000000"
+        },
+        "Level": {
+          "#text": "4"
+        },
+        "Provider": {
+          "@Name": "PowerShell"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "4"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-05-14T07:01:14.371507Z"
+        }
+      },
+      "logon": {
+        "channel": "Windows PowerShell",
+        "computer_name": "vagrant",
+        "event_id": "400",
+        "provider_name": "PowerShell",
+        "record_id": "1511",
+        "task": "4"
+      }
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "code": "400",
+      "dataset": "powershell",
+      "kind": "event",
+      "module": "windows",
+      "provider": "PowerShell",
+      "start": "2020-05-14T07:00:30.891423Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "Engine state is changed from None to Available.",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-powershell"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "Binary": {}
+      },
+      "System": {
+        "Channel": {
+          "#text": "Windows PowerShell"
+        },
+        "Computer": {
+          "#text": "vagrant"
+        },
+        "EventID": {
+          "#text": "400",
+          "@Qualifiers": "0"
+        },
+        "EventRecordID": {
+          "#text": "1492"
+        },
+        "Keywords": {
+          "#text": "0x80000000000000"
+        },
+        "Level": {
+          "#text": "4"
+        },
+        "Provider": {
+          "@Name": "PowerShell"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "4"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-05-14T07:00:30.891423Z"
+        }
+      },
+      "logon": {
+        "channel": "Windows PowerShell",
+        "computer_name": "vagrant",
+        "event_id": "400",
+        "provider_name": "PowerShell",
+        "record_id": "1492",
+        "task": "4"
+      }
+    }
+  }
+]

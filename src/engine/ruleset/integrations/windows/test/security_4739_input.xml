@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing"
+        Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+      <EventID>4739</EventID>
+      <Version>0</Version>
+      <Level>0</Level>
+      <Task>13569</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2015-10-02T00:45:37.587380900Z" />
+      <EventRecordID>1049781</EventRecordID>
+      <Correlation />
+      <Execution ProcessID="500" ThreadID="1648" />
+      <Channel>Security</Channel>
+      <Computer>DC01.contoso.local</Computer>
+      <Security />
+    </System>
+    <EventData>
+      <Data Name="DomainPolicyChanged">Password Policy</Data>
+      <Data Name="DomainName">CONTOSO</Data>
+      <Data Name="DomainSid">S-1-5-21-3457937927-2839227994-823803824</Data>
+      <Data Name="SubjectUserSid">S-1-5-18</Data>
+      <Data Name="SubjectUserName">DC01$</Data>
+      <Data Name="SubjectDomainName">CONTOSO</Data>
+      <Data Name="SubjectLogonId">0x3e7</Data>
+      <Data Name="PrivilegeList">-</Data>
+      <Data Name="MinPasswordAge">-</Data>
+      <Data Name="MaxPasswordAge">-</Data>
+      <Data Name="ForceLogoff">-</Data>
+      <Data Name="LockoutThreshold">-</Data>
+      <Data Name="LockoutObservationWindow">-</Data>
+      <Data Name="LockoutDuration">-</Data>
+      <Data Name="PasswordProperties">-</Data>
+      <Data Name="MinPasswordLength">-</Data>
+      <Data Name="PasswordHistoryLength">13</Data>
+      <Data Name="MachineAccountQuota">-</Data>
+      <Data Name="MixedDomainMode">-</Data>
+      <Data Name="DomainBehaviorVersion">-</Data>
+      <Data Name="OemInformation">-</Data>
+    </EventData>
+  </Event>
+</Events>

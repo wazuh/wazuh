@@ -1,5 +1,0 @@
-- sections:
-    - section: localfile
-      elements:
-        - log_format:
-            value: 'LOG_FORMAT'

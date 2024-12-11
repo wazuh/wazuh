@@ -1,0 +1,34 @@
+title: Windows Security Integration
+overview: This integration processes events from Windows Security channel, Powershell, Powershell/Operational and Sysmon
+compatibility: All Windows versions
+configuration: >
+  To capture Powershell and Sysmon events, modify the `ossec.conf` file in a monitored agent as in the following block:
+    ```xml
+  <ossec_config>
+      <localfile>
+          <location>Microsoft-Windows-Sysmon/Operational</location>
+          <log_format>eventchannel</log_format>
+      </localfile>
+
+      <localfile>
+          <location>Microsoft-Windows-Powershell/Operational</location>
+          <log_format>eventchannel</log_format>
+      </localfile>
+
+      <localfile>
+          <location>Microsoft-Windows-Powershell</location>
+          <log_format>eventchannel</log_format>
+      </localfile>
+  </ossec_config>
+
+  To detect events with sysmon, it must be executed with the configuration file agent/sysmon_config.xml
+
+  For more information visit this:
+  https://learn.microsoft.com/en-us/sysinternals/downloads/Sysmon
+
+  The generated events can be found in the event viewer at this location: Microsoft-Windows-Sysmon/Operational
+
+event:
+  module: windows
+  dataset: EventChannel
+

@@ -1,0 +1,181 @@
+[
+    {
+        "@timestamp": "2023-07-03T16:13:29.806Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-deprecation",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"deprecation\",\"timestamp\":\"2023-07-03T16:13:29,806Z\",\"level\":\"DEPRECATION\",\"component\":\"o.o.d.c.s.Settings\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"[node.max_local_storage_nodes] setting was deprecated in OpenSearch and will be removed in a future release! See the breaking changes documentation for the next major version.\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "component": "o.o.d.c.s.Settings",
+            "level": "DEPRECATION",
+            "message": "[node.max_local_storage_nodes] setting was deprecated in OpenSearch and will be removed in a future release! See the breaking changes documentation for the next major version.",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T16:13:29,806Z",
+            "type": "deprecation"
+        },
+        "log": {
+            "level": "DEPRECATION",
+            "logger": "o.o.d.c.s.Settings"
+        },
+        "message": "[node.max_local_storage_nodes] setting was deprecated in OpenSearch and will be removed in a future release! See the breaking changes documentation for the next major version.",
+        "node": {
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-deprecation"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_deprecation.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_deprecation.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T16:13:35.282Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-deprecation",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"deprecation\",\"timestamp\":\"2023-07-03T16:13:35,282Z\",\"level\":\"DEPRECATION\",\"component\":\"o.o.d.c.t.FormatNames\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"Camel case format name dateOptionalTime is deprecated and will be removed in a future version. Use snake case name date_optional_time instead.\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "eOXG1FbXQB2KVUJrjJeSQQ",
+            "component": "o.o.d.c.t.FormatNames",
+            "level": "DEPRECATION",
+            "message": "Camel case format name dateOptionalTime is deprecated and will be removed in a future version. Use snake case name date_optional_time instead.",
+            "node.id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T16:13:35,282Z",
+            "type": "deprecation"
+        },
+        "log": {
+            "level": "DEPRECATION",
+            "logger": "o.o.d.c.t.FormatNames"
+        },
+        "message": "Camel case format name dateOptionalTime is deprecated and will be removed in a future version. Use snake case name date_optional_time instead.",
+        "node": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-deprecation"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_deprecation.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_deprecation.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:16:53.190Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-deprecation",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"deprecation\",\"timestamp\":\"2023-07-03T17:16:53,190Z\",\"level\":\"DEPRECATION\",\"component\":\"o.o.d.c.m.IndexNameExpressionResolver\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"this request accesses system indices: [.opendistro_security], but in a future major version, direct access to system indices will be prevented by default\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "eOXG1FbXQB2KVUJrjJeSQQ",
+            "component": "o.o.d.c.m.IndexNameExpressionResolver",
+            "level": "DEPRECATION",
+            "message": "this request accesses system indices: [.opendistro_security], but in a future major version, direct access to system indices will be prevented by default",
+            "node.id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:16:53,190Z",
+            "type": "deprecation"
+        },
+        "log": {
+            "level": "DEPRECATION",
+            "logger": "o.o.d.c.m.IndexNameExpressionResolver"
+        },
+        "message": "this request accesses system indices: [.opendistro_security], but in a future major version, direct access to system indices will be prevented by default",
+        "node": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-deprecation"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_deprecation.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_deprecation.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]

@@ -21,3 +21,6 @@ default_roles:
 
   cluster_admin:
     description: Manager administrator of the system, this role have full access to all manager related functionalities.
+
+  agent_register:
+    description: Manager of create new agents into the system.

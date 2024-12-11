@@ -18,6 +18,10 @@ from wazuh.core.cluster.utils import (
     HAPROXY_PROTOCOL,
     HAPROXY_RESOLVER,
     HAPROXY_USER,
+    HAPROXY_CERT,
+    CLIENT_CERT,
+    CLIENT_CERT_KEY,
+    CLIENT_CERT_PASSWORD,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
 )
@@ -539,6 +543,7 @@ class TestHAPHelper:
         ):
             assert helper.get_connection_retry() == CONNECTION_RETRY + 2
 
+    @pytest.mark.parametrize('protocol', ['http', 'https'])
     @pytest.mark.parametrize('hard_stop_after', [None, 8, 12])
     @pytest.mark.parametrize('multiple_frontends', [True, False])
     async def test_start(
@@ -549,6 +554,7 @@ class TestHAPHelper:
         proxy_mock: mock.MagicMock,
         dapi_mock: mock.MagicMock,
         sleep_mock: mock.AsyncMock,
+        protocol: str,
         hard_stop_after: int | None,
         multiple_frontends: bool,
     ):
@@ -557,9 +563,13 @@ class TestHAPHelper:
         HAPROXY_PASSWORD_VALUE = 'test'
         HAPROXY_ADDRESS_VALUE = 'wazuh-proxy'
         HAPROXY_PORT_VALUE = 5555
-        HAPROXY_PROTOCOL_VALUE = 'http'
+        HAPROXY_PROTOCOL_VALUE = protocol
         HAPROXY_BACKEND_VALUE = 'wazuh_test'
         HAPROXY_RESOLVER_VALUE = 'resolver_test'
+        HAPROXY_CERT_VALUE = 'example_cert.pem' if protocol == 'https' else True
+        CLIENT_CERT_VALUE = None
+        CLIENT_CERT_KEY_VALUE = None
+        CLIENT_CERT_PASSWORD_VALUE = None
         EXCLUDED_NODES_VALUE = ['worker1']
         FREQUENCY_VALUE = 60
         AGENT_RECONNECTION_STABILITY_TIME_VALUE = 10
@@ -578,6 +588,10 @@ class TestHAPHelper:
             HAPROXY_PROTOCOL: HAPROXY_PROTOCOL_VALUE,
             HAPROXY_BACKEND: HAPROXY_BACKEND_VALUE,
             HAPROXY_RESOLVER: HAPROXY_RESOLVER_VALUE,
+            HAPROXY_CERT: HAPROXY_CERT_VALUE,
+            CLIENT_CERT: CLIENT_CERT_VALUE,
+            CLIENT_CERT_KEY: CLIENT_CERT_KEY_VALUE,
+            CLIENT_CERT_PASSWORD: CLIENT_CERT_PASSWORD_VALUE,
             EXCLUDED_NODES: EXCLUDED_NODES_VALUE,
             FREQUENCY: FREQUENCY_VALUE,
             AGENT_RECONNECTION_STABILITY_TIME: AGENT_RECONNECTION_STABILITY_TIME_VALUE,
@@ -618,6 +632,10 @@ class TestHAPHelper:
                                     address=HAPROXY_ADDRESS_VALUE,
                                     port=HAPROXY_PORT_VALUE,
                                     protocol=HAPROXY_PROTOCOL_VALUE,
+                                    haproxy_cert_file=HAPROXY_CERT_VALUE,
+                                    client_cert_file=None,
+                                    client_key_file=None,
+                                    client_password=None
                                 )
 
                                 proxy_mock.assert_called_once_with(
@@ -635,8 +653,10 @@ class TestHAPHelper:
                                 proxy.check_multiple_frontends.assert_called_once_with(
                                     port=WAZUH_PORT, frontend_to_skip=f'{HAPROXY_BACKEND_VALUE}_front'
                                 )
-                                if multiple_frontends:
+                                if multiple_frontends and protocol == 'https':
                                     logger_mock.warning.assert_called_once()
+                                elif multiple_frontends and protocol == 'http':
+                                    assert logger_mock.warning.call_count == 2
                                 else:
                                     assert logger_mock.call_count == 0
 

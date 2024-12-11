@@ -1,0 +1,44 @@
+name: decoder/windows-event/0
+
+metadata:
+  module: Windows
+  title: Base decoder for Windows events.
+  description: This Windows decoder normalizes common fields from Windows events.
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This decoder was tested on Windows Server 2019 and Windows 10, but should work on all versions of Windows Vista onwards.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/23
+  references:
+    - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
+
+definitions:
+ # Standard Windows system reporting levels
+  _win_log_level:
+    '0': information
+    '1': critical
+    '2': error
+    '3': warning
+    '4': information
+    '5': verbose
+
+check:
+  - event.module: windows
+
+normalize:
+  - map:
+      - windows: parse_xml($event.original, windows)
+      - event.original: delete()
+
+      - event.start: $windows.System.TimeCreated.@SystemTime
+      - event.code: $windows.System.EventID.#text
+      - event.dataset: downcase($windows.System.Channel.#text)
+      - event.module: 'windows'
+      - event.kind: event
+      - event.provider: $windows.System.Provider.@Name
+
+      - log.level: get_key_in($_win_log_level, $windows.System.Level.#text)
+
+      - host.name: $windows.System.Computer.#text
+
+      - wazuh.decoders: array_append(windows-event)

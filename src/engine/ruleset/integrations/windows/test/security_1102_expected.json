@@ -1,0 +1,119 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "audit-log-cleared",
+      "category": [
+        "iam"
+      ],
+      "code": "1102",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Eventlog",
+      "start": "2019-11-07T10:34:29.055919Z",
+      "type": [
+        "admin",
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-TEST.testd.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "The audit log was cleared",
+    "related": {
+      "user": [
+        "Administrator"
+      ]
+    },
+    "user": {
+      "domain": "TESTD",
+      "id": "S-1-5-21-101361758-2486510592-3018839910-500",
+      "name": "Administrator"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "WIN-TEST.testd.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "1102"
+        },
+        "EventRecordID": {
+          "#text": "14224"
+        },
+        "Execution": {
+          "@ProcessID": "1144",
+          "@ThreadID": "1824"
+        },
+        "Keywords": {
+          "#text": "0x4020000000000000"
+        },
+        "Level": {
+          "#text": "4"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}",
+          "@Name": "Microsoft-Windows-Eventlog"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "104"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2019-11-07T10:34:29.055919Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "UserData": {
+        "LogFileCleared": {
+          "@xmlns": "http://manifests.microsoft.com/win/2004/08/windows/eventlog",
+          "SubjectDomainName": {
+            "#text": "TESTD"
+          },
+          "SubjectLogonId": {
+            "#text": "0x50e87"
+          },
+          "SubjectUserName": {
+            "#text": "Administrator"
+          },
+          "SubjectUserSid": {
+            "#text": "S-1-5-21-101361758-2486510592-3018839910-500"
+          }
+        }
+      },
+      "logon": {
+        "id": "0x50e87"
+      }
+    }
+  }
+]

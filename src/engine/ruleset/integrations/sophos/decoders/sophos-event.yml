@@ -1,0 +1,109 @@
+---
+name: decoder/sophos-event/0
+
+metadata:
+  module: Sophos
+  title: Sophos-Event logs decoder
+  version: [17.5.x, 18.0.x]
+  description: Decoder for Sophos-Event
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
+
+parents:
+  - decoder/integrations/0
+
+check:
+  - event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Event"
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sophos
+  # - event.dataset: sophos.xg
+
+parse:
+  logpar:
+    # device="SFW" date=2020-05-18 time=14:39:20 timezone="CEST" device_name="XG230" device_id=1234567890123457 log_id=062910617703 log_type="Event" log_component="Firewall Authentication" log_subtype="Authentication" status="Successful" priority=Information user_name="elastic.user@elastic.test.com" usergroupname="VPN.SSL.Users.elastic" auth_client="IPSec" auth_mechanism="N/A" reason="" src_ip=10.84.234.38 src_mac="" start_time=1591086575 sent_bytes=0 recv_bytes=0 message="User elastic.user@elastic.test.com was logged out of firewall" name="elastic.user@elastic.test.com" timestamp=1591086576
+    # device="SFW" date=2020-05-18 time=14:38:58 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=062511418055 log_type="Event" log_component="IPSec" log_subtype="System" status="Failed" priority=Warning user_name="elastic.user@elastic.test.com" connectionname="Location-1" connectiontype="0" localinterfaceip=214.167.51.66 localgateway="" localnetwork="172.17.32.0/19" remoteinterfaceip=89.160.20.112 remotenetwork="10.84.234.5/32" message="location-1 - IKE message retransmission timed out (Remote: 89.160.20.112)"
+    - event.original: <~tmp.payload_message>
+
+# TODO: All sophos named fields are not currently in the schema.
+normalize:
+  - map:
+      - ~tmp.payload_message: +replace/=""/=" "
+    logpar:
+      - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
+  - map:
+      - destination.ip: $~tmp.localinterfaceip
+      - event.action: +downcase/$~tmp.log_subtype
+      - event.code: $~tmp.log_id
+      - event.dataset: sophos.xg
+      - event.duration: $~tmp.duration
+      - event.end: +concat/$~tmp.date/T/$~tmp.time
+      - event.kind: event
+      - event.module: sophos
+      - event.outcome: success
+  - check:
+      - ~tmp.priority: Unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: Alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: Critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: Error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: Warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: Notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
+      - event.severity: 6
+  - map:
+      - event.start: +concat/$~tmp.date/T/$~tmp.time
+      - event.timezone: $~tmp.timezone
+      - fileset.name: xg
+      - input.type: log
+      - log.level: $~tmp.priority
+      - message: +downcase/$~tmp.protocol
+      - observer.product: XG
+      - observer.serial_number: $~tmp.device_id
+      - observer.type: firewall
+      - observer.vendor: Sophos
+      - related.user: [$~tmp.user_name]
+      - service.type: sophos
+      - sophos.xg.auth_client: $~tmp.auth_client
+      - sophos.xg.auth_mechanism: $~tmp.auth_mechanism
+      - sophos.xg.backup_mode: $~tmp.backup_mode
+      - sophos.xg.connectionname: $~tmp.connectionname
+      - sophos.xg.connectiontype: $~tmp.connectiontype
+      - sophos.xg.device: $~tmp.device
+      - sophos.xg.device_name: $~tmp.device_name
+      - sophos.xg.localnetwork: $~tmp.ips_policy_id
+      - sophos.xg.log_component: $~tmp.log_component
+      - sophos.xg.log_id: $~tmp.log_id
+      - sophos.xg.log_subtype: $~tmp.log_subtype
+      - sophos.xg.log_type: $~tmp.log_type
+      - sophos.xg.priority: $~tmp.priority
+      - sophos.xg.remotenetwork: $~tmp.remotenetwork
+      - sophos.xg.status: $~tmp.status
+      - source.ip: $~tmp.remoteinterfaceip
+      - source.ip: $~tmp.src_ip
+      - source.user.name: $~tmp.user_name
+      - tags: [forwarded, preserve_original_event, sophos-xg]
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - related.ip: [$~tmp.destination.ip, $source.ip]
+      - wazuh.decoders: +array_append/sophos-event
+      - ~tmp: delete()

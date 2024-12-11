@@ -1,0 +1,43 @@
+# Name of the helper function
+name: downcase
+
+metadata:
+  description: |
+    The operation converts any uppercase character to an lowercase character.
+    The result of the lowercase (+downcase) operation is mapped to “field”.
+    If the field field already exists, then it will be replaced. In case of errors “field” will not be modified.
+  keywords:
+    - string
+
+helper_type: map
+
+# Arguments expected by the helper function
+arguments:
+  upper_characters:
+    type: string # Expected type is string
+    generate: string
+    source: both # Includes values or references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      upper_characters: ABCD
+    should_pass: true
+    expected: abcd
+    description: Change string to downcase
+  - arguments:
+      upper_characters: AbcD
+    should_pass: true
+    expected: abcd
+    description: Change string to downcase
+  - arguments:
+      upper_characters: aBcDECF
+    should_pass: true
+    expected: abcdecf
+    description: Change string to downcase

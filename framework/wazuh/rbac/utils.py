@@ -6,11 +6,10 @@ from functools import wraps
 
 from cachetools import TTLCache, cached
 from wazuh.core.common import cache_event
-
-from api.configuration import security_conf
+from wazuh.core.config.client import CentralizedConfig
 
 # Tokens cache
-tokens_cache = TTLCache(maxsize=4500, ttl=security_conf['auth_token_exp_timeout'])
+tokens_cache = TTLCache(maxsize=4500, ttl=CentralizedConfig.get_management_api_config().jwt_expiration_timeout)
 
 
 def clear_cache():

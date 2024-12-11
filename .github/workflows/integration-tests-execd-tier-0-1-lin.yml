@@ -10,8 +10,6 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-execd-tier-0-1-lin.yml"
-        - "src/config/active-response.c"
-        - "src/config/active-response.h"
         - "src/execd/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
@@ -40,8 +38,6 @@ jobs:
       - name: Install wazuh agent for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf

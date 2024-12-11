@@ -1,0 +1,126 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+#
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+#
+# Modified to make a template file for a multi-binary package with separated
+# build-arch and build-indep targets  by Bill Allombert 2001
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+export PKG_DIR=debian/wazuh-server
+
+export TARGET_DIR=${CURDIR}/${PKG_DIR}
+
+# Package build options
+export INSTALLATION_DIR="/"
+export JOBS="5"
+export DEBUG_ENABLED="no"
+export PATH="${PATH}"
+export LD_LIBRARY_PATH=""
+
+%:
+	dh $@
+
+override_dh_shlibdeps:
+
+override_dh_auto_configure:
+
+override_dh_auto_install:
+
+override_dh_install:
+	# Install Wazuh
+	VCPKG_ROOT="/root/vcpkg" \
+	PATH="${PATH}:${VCPKG_ROOT}" \
+	USER_LANGUAGE="en" \
+	USER_NO_STOP="y" \
+	USER_DIR="$(INSTALLATION_DIR)" \
+	USER_DELETE_DIR="y" \
+	USER_UPDATE="n" \
+	USER_ENABLE_EMAIL="n" \
+	USER_WHITE_LIST="n" \
+	USER_ENABLE_SYSLOG="y" \
+	USER_ENABLE_AUTHD="y" \
+	USER_SERVER_IP="MANAGER_IP" \
+	USER_CA_STORE="/path/to/my_cert.pem" \
+	USER_GENERATE_AUTHD_CERT="y" \
+	USER_AUTO_START="n" \
+	USER_CREATE_SSL_CERT="n" \
+	DOWNLOAD_CONTENT="y" \
+	./install.sh
+
+	# Copying to target
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/tmp
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/run
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/etc
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/lib
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/var/log
+	mkdir -p $(TARGET_DIR)$(INSTALLATION_DIR)/usr/share/wazuh-server/bin
+
+
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+
+	cp -pr $(INSTALLATION_DIR)run/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)run/
+	cp -pr $(INSTALLATION_DIR)var/lib/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/
+	cp -pr $(INSTALLATION_DIR)var/log/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)var/log/
+	cp -pr $(INSTALLATION_DIR)usr/share/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/
+	cp -pr $(INSTALLATION_DIR)etc/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)etc/
+
+	# Copying init.d script
+	mkdir -p ${TARGET_DIR}/etc/init.d/
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-server-debian.init
+	install -m 0644 src/init/templates/wazuh-server-debian.init ${TARGET_DIR}/etc/init.d/wazuh-server
+
+	# Copying systemd file
+	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-server.service
+	install -m 0644 src/init/templates/wazuh-server.service ${TARGET_DIR}/usr/lib/systemd/system/
+
+override_dh_fixperms:
+	dh_fixperms
+	# Folders
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)run/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)etc/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+	chown -R wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server
+	find $(TARGET_DIR)$(INSTALLATION_DIR)var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
+
+	# Binaries
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
+	chown wazuh:wazuh $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
+
+
+	# Services
+	chown root:root $(TARGET_DIR)/etc/init.d/wazuh-server
+	chmod 755 $(TARGET_DIR)/etc/init.d/wazuh-server
+	chown root:root $(TARGET_DIR)/usr/lib/systemd/system/wazuh-server.service
+	chmod 644 $(TARGET_DIR)/usr/lib/systemd/system/wazuh-server.service
+
+	# Fix Python permissions
+	chmod -R 0750 ${TARGET_DIR}$(INSTALLATION_DIR)usr/share/wazuh-server/framework/python/bin
+
+override_dh_strip:
+	dh_strip --dbg-package=wazuh-server-dbg --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
+
+.PHONY: override_dh_install override_dh_strip override_dh_auto_build override_dh_auto_configure override_dh_fixperms

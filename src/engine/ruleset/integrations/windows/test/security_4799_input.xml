@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing"
+        Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+      <EventID>4799</EventID>
+      <Version>0</Version>
+      <Level>0</Level>
+      <Task>13826</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2015-11-12T03:50:23.625407600Z" />
+      <EventRecordID>685</EventRecordID>
+      <Correlation ActivityID="{CBAEDE08-1CF0-0000-50DE-AECBF01CD101}" />
+      <Execution ProcessID="744" ThreadID="188" />
+      <Channel>Security</Channel>
+      <Computer>WIN10-1.contoso.local</Computer>
+      <Security />
+    </System>
+    <EventData>
+      <Data Name="TargetUserName">Administrators</Data>
+      <Data Name="TargetDomainName">Builtin</Data>
+      <Data Name="TargetSid">S-1-5-32-544</Data>
+      <Data Name="SubjectUserSid">S-1-5-21-1377283216-344919071-3415362939-1104</Data>
+      <Data Name="SubjectUserName">dadmin</Data>
+      <Data Name="SubjectDomainName">CONTOSO</Data>
+      <Data Name="SubjectLogonId">0x72d9d</Data>
+      <Data Name="CallerProcessId">0xc80</Data>
+      <Data Name="CallerProcessName">C:\\Windows\\System32\\mmc.exe</Data>
+    </EventData>
+  </Event>
+</Events>

@@ -11,12 +11,7 @@ import aws_service
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
-
-
-SUPPORTED_REGIONS = (
-    'ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-2', 'eu-central-1', 'eu-north-1', 'eu-west-1',
-    'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
-)
+import constants
 
 
 class AWSInspector(aws_service.AWSService):
@@ -44,7 +39,7 @@ class AWSInspector(aws_service.AWSService):
                  remove_log_streams=None, discard_field=None, discard_regex=None,
                  sts_endpoint=None, service_endpoint=None, iam_role_duration=None, **kwargs):
 
-        aws_service.AWSService.__init__(self, db_table_name=aws_service.DEFAULT_TABLENAME, service_name='inspector',
+        aws_service.AWSService.__init__(self, db_table_name=constants.DEFAULT_AWS_SERVICES_TABLENAME, service_name='inspector',
                                         reparse=reparse, profile=profile, iam_role_arn=iam_role_arn,
                                         only_logs_after=only_logs_after, account_alias=account_alias,
                                         region=region, aws_log_groups=aws_log_groups,
@@ -149,5 +144,5 @@ class AWSInspector(aws_service.AWSService):
         region : str
             AWS region.
         """
-        if region not in SUPPORTED_REGIONS:
+        if region not in constants.INSPECTOR_SUPPORTED_REGIONS:
             raise ValueError(f"Unsupported region '{region}'")

@@ -4,10 +4,10 @@
 
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import aws_bucket
-
-DYNAMIC_FIELDS = ['additionalEventData', 'responseElements', 'requestParameters']
+import constants
 
 
 class AWSCloudTrailBucket(aws_bucket.AWSLogsBucket):
@@ -26,7 +26,7 @@ class AWSCloudTrailBucket(aws_bucket.AWSLogsBucket):
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         # ES mapping expects for a dictionary, if the field is any other type (list or string)
         # turn it into a dictionary
-        for field_to_cast in DYNAMIC_FIELDS:
+        for field_to_cast in constants.AWS_CLOUDTRAIL_DYNAMIC_FIELDS:
             if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
                 event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
 

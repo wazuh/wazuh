@@ -1,0 +1,6 @@
+name: integration/aws/0
+decoders:
+- decoder/aws-s3/0
+- decoder/aws-elb/0
+- decoder/aws-json/0
+- decoder/aws-cloudtrail/0

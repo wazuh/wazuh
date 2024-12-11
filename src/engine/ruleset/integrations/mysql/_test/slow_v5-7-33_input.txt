@@ -1,0 +1,10 @@
+# Time: 2023-06-09T17:36:44.616690Z
+# User@Host: root[root] @ localhost []  Id:     3
+# Query_time: 5.005327  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 0
+SET timestamp=1686332204;
+select sleep(5);
+# Time: 2023-06-09T17:37:12.443209Z
+# User@Host: root[root] @ localhost []  Id:     3
+# Query_time: 10.003493  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 0
+SET timestamp=1686332232;
+select sleep(10);

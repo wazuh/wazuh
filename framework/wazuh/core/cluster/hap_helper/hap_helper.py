@@ -17,15 +17,18 @@ from wazuh.core.cluster.utils import (
     HAPROXY_PROTOCOL,
     HAPROXY_RESOLVER,
     HAPROXY_USER,
+    HAPROXY_CERT,
+    CLIENT_CERT,
+    CLIENT_CERT_KEY,
+    CLIENT_CERT_PASSWORD,
+    HELPER_DEFAULTS,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
     ClusterFilter,
     context_tag,
-    get_cluster_items,
-    read_cluster_config,
 )
-from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
+from wazuh.core.config.client import CentralizedConfig
 
 CONNECTION_PORT = 1514
 
@@ -463,8 +466,8 @@ class HAPHelper:
         int
             The seconds of connection retry.
         """
-        cluster_items = get_cluster_items()
-        return cluster_items['intervals']['worker']['connection_retry'] + 2
+        server_config = CentralizedConfig.get_server_config()
+        return server_config.worker.intervals.connection_retry + 2
 
     @classmethod
     async def start(cls):
@@ -474,9 +477,21 @@ class HAPHelper:
         logger = HAPHelper._get_logger(tag)
 
         try:
-            helper_config = read_cluster_config()['haproxy_helper']
-            port_config = get_ossec_conf(section='remote')
+            helper_config = HELPER_DEFAULTS['haproxy_helper']
+            port_config = {'remote': [{'port': 8000}]}
             connection_port = int(port_config.get('remote')[0].get('port', CONNECTION_PORT))
+
+            protocol = helper_config[HAPROXY_PROTOCOL]
+            if protocol == 'http' and (helper_config[HAPROXY_CERT] or helper_config[CLIENT_CERT] or
+                                       helper_config[CLIENT_CERT_KEY] or helper_config[CLIENT_CERT_PASSWORD]):
+                logger.warning("HTTPS related parameters have been set but will be ignored since "
+                               "HTTP is defined as protocol.")
+
+                # Set the certificate information to default values to avoid errors in the communication
+                helper_config[HAPROXY_CERT] = HELPER_DEFAULTS[HAPROXY_CERT]
+                helper_config[CLIENT_CERT] = HELPER_DEFAULTS[CLIENT_CERT]
+                helper_config[CLIENT_CERT_KEY] = HELPER_DEFAULTS[CLIENT_CERT_KEY]
+                helper_config[CLIENT_CERT_PASSWORD] = HELPER_DEFAULTS[CLIENT_CERT_PASSWORD]
 
             proxy_api = ProxyAPI(
                 username=helper_config[HAPROXY_USER],
@@ -484,7 +499,11 @@ class HAPHelper:
                 tag=tag,
                 address=helper_config[HAPROXY_ADDRESS],
                 port=helper_config[HAPROXY_PORT],
-                protocol=helper_config[HAPROXY_PROTOCOL],
+                protocol=protocol,
+                haproxy_cert_file=helper_config[HAPROXY_CERT],
+                client_cert_file=helper_config[CLIENT_CERT],
+                client_key_file=helper_config[CLIENT_CERT_KEY],
+                client_password=helper_config[CLIENT_CERT_PASSWORD]
             )
             proxy = Proxy(
                 wazuh_backend=helper_config[HAPROXY_BACKEND],

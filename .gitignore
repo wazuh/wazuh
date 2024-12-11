@@ -23,53 +23,8 @@ src/generated_headers/*.h
 src/generated_headers/*.hpp
 
 # Compiled programs
-src/agent-auth
-src/agent_control
-src/clear_stats
-src/isbigendian
-src/list_agents
-src/manage_agents
-src/ossec-agentd
-src/ossec-agentlessd
-src/ossec-analysisd
-src/ossec-authd
-src/ossec-csyslogd
-src/ossec-dbd
-src/ossec-execd
-src/ossec-logcollector
-src/ossec-maild
-src/ossec-makelists
-src/ossec-monitord
-src/ossec-regex
-src/wazuh-regex
-src/parallel-regex
-src/ossec-remoted
-src/ossec-reportd
-src/ossec-syscheckd
-src/ossec-integratord
-src/rootcheck_control
-src/syscheck_control
-src/syscheck_update
-src/verify-agent-conf
-src/wazuh-modulesd
-src/wazuh-auth
-src/wazuh-db
-src/wazuh-agentd
-src/wazuh-agentlessd
-src/wazuh-analysisd
-src/wazuh-authd
-src/wazuh-csyslogd
-src/wazuh-dbd
-src/wazuh-execd
-src/wazuh-logcollector
-src/wazuh-logtest-legacy
-src/wazuh-maild
-src/wazuh-monitord
-src/wazuh-remoted
-src/wazuh-reportd
-src/wazuh-syscheckd
-src/wazuh-integratord
 src/wazuh-keystore
+src/wazuh-keystore-testtool
 
 # Active responses
 src/firewall-drop
@@ -85,23 +40,6 @@ src/restart-wazuh
 src/route-null
 src/kaspersky
 src/wazuh-slack
-
-# Windows agent
-src/win32/*.exe
-src/win32/LICENSE.txt
-src/win32/default-local_internal_options.conf
-src/win32/default-ossec.conf
-src/win32/help_win.txt
-src/win32/internal_options.conf
-src/win32/restart-ossec.cmd
-src/win32/route-null.cmd
-src/win32/netsh-win-2016.cmd
-src/win32/route-null-2012.cmd
-src/win32/netsh.cmd
-src/win32/VERSION
-src/win32/REVISION
-src/libwazuhshared.*
-src/libwazuhext.*
 
 # Eclipse files
 .cproject

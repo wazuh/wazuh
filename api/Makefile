@@ -4,44 +4,40 @@
 #
 # Syntax: make [ all | backup | install | restore | service ]
 
+WAZUH_USER        = wazuh
 WAZUH_GROUP       = wazuh
-INSTALLDIR       ?= /var/ossec
+WAZUH_SERVER      = wazuh-server
+SHARE_INSTALLDIR  ?= /usr/share/${WAZUH_SERVER}
+ETC_INSTALLDIR    ?= /etc/${WAZUH_SERVER}
+BIN_INSTALLDIR    ?= ${SHARE_INSTALLDIR}/bin
+
 
 MV_FILE        = mv -f
 RM_FILE        = rm -f
-INSTALL_DIR    = install -o root -g ${WAZUH_GROUP} -m 0750 -d
-INSTALL_RW_DIR = install -o root -g ${WAZUH_GROUP} -m 0770 -d
-INSTALL_EXEC   = install -o root -g ${WAZUH_GROUP} -m 0750
-INSTALL_FILE   = install -o root -g ${WAZUH_GROUP} -m 0640
-INSTALL_CONFIG_FILE   = install -o root -g ${WAZUH_GROUP} -m 0660
-PYTHON_BIN     = $(INSTALLDIR)/framework/python/bin/python3
+INSTALL_DIR    = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750 -d
+INSTALL_RW_DIR = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0770 -d
+INSTALL_EXEC   = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750
+INSTALL_FILE   = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0640
+INSTALL_CONFIG_FILE   = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0660
+PYTHON_BIN     = $(SHARE_INSTALLDIR)/framework/python/bin/python3
 
 
-.PHONY: all backup install restore
-
-all: backup install restore
-
-backup:
-	# Backup previous configuration
-	. ../api/service/inst-api-functions.sh; backup_old_api ${REVISION}
+.PHONY: install
 
 install:
     # Copy files and create folders
-	$(INSTALL_DIR) $(INSTALLDIR)/api
-	$(INSTALL_RW_DIR) $(INSTALLDIR)/api/configuration
-	$(INSTALL_RW_DIR) $(INSTALLDIR)/api/configuration/ssl
-	$(INSTALL_RW_DIR) $(INSTALLDIR)/api/configuration/security
+	# ETC
+	$(INSTALL_DIR) $(ETC_INSTALLDIR)/api
+	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration
+	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/ssl
+	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/security
 
-	$(INSTALL_CONFIG_FILE) api/configuration/api.yaml ${INSTALLDIR}/api/configuration
 
-	$(INSTALL_DIR) $(INSTALLDIR)/api/scripts
-	$(INSTALL_FILE) scripts/wazuh_apid.py ${INSTALLDIR}/api/scripts
+	# SHARE
+	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/api/scripts
+	$(INSTALL_FILE) scripts/wazuh_apid.py ${SHARE_INSTALLDIR}/api/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
-	
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_apid $(INSTALLDIR)/bin/wazuh-apid
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) api/wrappers/generic_wrapper.sh $(patsubst scripts/%.py,${BIN_INSTALLDIR}/%,$(script));)
 
-restore:
-    # Restore old API config
-	. ../api/service/inst-api-functions.sh; restore_old_api ${REVISION}
+	$(MV_FILE) ${BIN_INSTALLDIR}/wazuh_apid ${BIN_INSTALLDIR}/wazuh-apid

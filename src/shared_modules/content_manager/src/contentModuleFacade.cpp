@@ -52,7 +52,7 @@ void ContentModuleFacade::startScheduling(const std::string& name, size_t interv
     }
     catch (const std::exception& e)
     {
-        logError(WM_CONTENTUPDATER, "Couldn't start scheduled action: %s", e.what());
+        logError(WM_CONTENTUPDATER, "Couldn't start scheduled action: %s.", e.what());
     }
 }
 void ContentModuleFacade::startOndemand(const std::string& name)
@@ -64,7 +64,7 @@ void ContentModuleFacade::startOndemand(const std::string& name)
     }
     catch (const std::exception& e)
     {
-        logError(WM_CONTENTUPDATER, "Couldn't start on-demand action: %s", e.what());
+        logError(WM_CONTENTUPDATER, "Couldn't start on-demand action: %s.", e.what());
     }
 }
 
@@ -77,6 +77,6 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
     }
     catch (const std::exception& e)
     {
-        logError(WM_CONTENTUPDATER, "Couldn't change scheduled interval: %s", e.what());
+        logError(WM_CONTENTUPDATER, "Couldn't change scheduled interval: %s.", e.what());
     }
 }

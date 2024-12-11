@@ -1,4 +1,0 @@
-<!-- Test: no existing attribute -->
-<decoder name="name">
-    <invalid_field>some value</invalid_field>
-</decoder>

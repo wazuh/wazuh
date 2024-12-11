@@ -1,0 +1,120 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "directory-service-object-modified",
+      "category": [
+        "iam",
+        "configuration"
+      ],
+      "code": "5136",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-08-28T17:36:04.129472600Z",
+      "type": [
+        "admin",
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A directory service object was modified",
+    "related": {
+      "user": [
+        "dadmin"
+      ]
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-21-3457937927-2839227994-823803824-1104",
+      "name": "dadmin"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "AppCorrelationID": "-",
+        "AttributeLDAPDisplayName": "userAccountControl",
+        "AttributeSyntaxOID": "2.5.5.9",
+        "AttributeValue": "512",
+        "DSName": "contoso.local",
+        "DSType": "%%14676",
+        "ObjectClass": "user",
+        "ObjectDN": "CN=Sergey,CN=Builtin,DC=contoso,DC=local",
+        "ObjectGUID": "{4FE80A66-5F93-4F73-B215-68678058E613}",
+        "OpCorrelationID": "{02647639-8626-43CE-AFE6-7AA1AD657739}",
+        "OperationType": "%%14675",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x32004",
+        "SubjectUserName": "dadmin",
+        "SubjectUserSid": "S-1-5-21-3457937927-2839227994-823803824-1104"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "5136"
+        },
+        "EventRecordID": {
+          "#text": "410204"
+        },
+        "Execution": {
+          "@ProcessID": "516",
+          "@ThreadID": "4020"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "14081"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-08-28T17:36:04.129472600Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x32004"
+      }
+    }
+  }
+]

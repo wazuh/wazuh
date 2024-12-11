@@ -38,6 +38,7 @@ import aws_tools
 import buckets_s3
 import services
 import subscribers
+import constants
 
 
 def main(argv):
@@ -74,6 +75,14 @@ def main(argv):
                 bucket_type = buckets_s3.server_access.AWSServerAccess
             else:
                 raise Exception("Invalid type of bucket")
+            if options.regions:
+                for input_region in options.regions:
+                    try:
+                        if input_region not in aws_tools.ALL_REGIONS:
+                            raise ValueError(f"Invalid region '{input_region}'")
+                    except ValueError as exc:
+                        aws_tools.debug(f"+++ ERROR: {exc}", 1)
+                        exit(22)
             bucket = bucket_type(reparse=options.reparse,
                                  profile=options.aws_profile,
                                  iam_role_arn=options.iam_role_arn,
@@ -115,12 +124,12 @@ def main(argv):
                         aws_tools.debug(
                             "+++ Warning: No regions were specified, trying to get events from supported regions", 1
                         )
-                        options.regions = services.inspector.SUPPORTED_REGIONS
+                        options.regions = constants.INSPECTOR_SUPPORTED_REGIONS
                     else:
                         aws_tools.debug(
                             "+++ Warning: No regions were specified, trying to get events from all regions", 1
                         )
-                        options.regions = aws_tools.ALL_REGIONS
+                        options.regions = constants.ALL_REGIONS
 
             for region in options.regions:
                 try:
@@ -152,7 +161,7 @@ def main(argv):
                     aws_tools.error(
                         "The AWS Security Lake integration does not make use of the Profile authentication "
                         f"method. Check the available ones for it in "
-                        f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
+                        f"{constants.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
                     sys.exit(3)
                 aws_tools.arg_validate_security_lake_auth_params(options.external_id,
                                                                  options.queue,

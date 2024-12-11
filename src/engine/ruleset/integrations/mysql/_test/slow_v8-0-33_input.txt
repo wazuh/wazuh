@@ -1,0 +1,16 @@
+# Time: 2023-06-09T12:20:51.418903Z
+# User@Host: root[root] @ localhost []  Id:     8
+# Query_time: 3.000207  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1686313248;
+select sleep(3);
+# Time: 2023-06-09T12:21:26.826741Z
+# User@Host: root[root] @ localhost []  Id:     8
+# Query_time: 10.016367  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1
+SET timestamp=1686313276;
+select sleep(10);
+# Time: 2019-03-24T14:01:47.811234Z
+# User@Host: root[root] @ localhost []  Id:    14
+# Query_time: 2.475469  Lock_time: 0.000287 Rows_sent: 10  Rows_examined: 3145718
+use employees;
+SET timestamp=1553436105;
+SELECT last_name, MAX(salary) AS salary FROM employees INNER JOIN salaries ON employees.emp_no = salaries.emp_no GROUP BY last_name ORDER BY salary DESC LIMIT 10;

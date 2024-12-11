@@ -10,7 +10,6 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-github-tier-0-1-lin.yml"
-        - "src/config/wmodules-github.c"
         - "src/wazuh_modules/wm_github.h"
         - "src/wazuh_modules/wm_github.c"
         - "src/Makefile"
@@ -41,7 +40,7 @@ jobs:
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
+          echo 'USER_AGENT_SERVER_IP="1.1.1.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf

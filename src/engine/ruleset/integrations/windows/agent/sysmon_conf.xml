@@ -1,0 +1,88 @@
+<Sysmon schemaversion="4.9">
+<HashAlgorithms>md5</HashAlgorithms>
+<EventFiltering>
+
+ <!--SYSMON EVENT ID 1 : PROCESS CREATION-->
+ 	<RuleGroup name="" groupRelation="or">
+  	<ProcessCreate onmatch="exclude">
+		<ParentImage condition="end with">msedge.exe</ParentImage>
+		<ParentImage condition="end with">services.exe</ParentImage>
+		<ParentImage condition="end with">svchost.exe</ParentImage>
+		<Image condition="end with">chrome.exe</Image>
+		<Image condition="contains">Search</Image>
+	</ProcessCreate>
+ 	</RuleGroup>
+ <!--SYSMON EVENT ID 2 : FILE CREATION TIME RETROACTIVELY CHANGED IN THE FILESYSTEM-->
+    <RuleGroup name="Include Filter for FileCreateTime" groupRelation="or">
+	<FileCreateTime onmatch="include">
+		<TargetFilename condition="contains">\Users</TargetFilename>
+	</FileCreateTime>
+    </RuleGroup>
+	<RuleGroup name="Include Filter for FileCreateTime" groupRelation="or">
+    <FileCreateTime onmatch="exclude">
+		<Image condition="end with">chrome.exe</Image>
+		<Image condition="end with">msedge.exe</Image>
+		<Image condition="end with">svchost.exe</Image>
+        <Image condition="contains">AppData</Image>
+		<Image condition="contains">Google</Image>
+    </FileCreateTime>
+    </RuleGroup>
+	<!--SYSMON EVENT ID 3 : NETWORK CONNECTION INITIATED-->
+	<NetworkConnect onmatch="include"></NetworkConnect>
+	<!--SYSMON EVENT ID 4 : RESERVED FOR SYSMON STATUS MESSAGES, THIS LINE IS INCLUDED FOR DOCUMENTATION PURPOSES ONLY-->
+	<!--SYSMON EVENT ID 5 : PROCESS ENDED-->
+ 	<RuleGroup name="" groupRelation="or">
+  	<ProcessTerminate onmatch="exclude">
+		<Image condition="end with">taskhostw.exe</Image>
+		<Image condition="end with">svchost.exe</Image>
+		<Image condition="end with">dllhost.exe</Image>
+		<Image condition="end with">msedge.exe</Image>
+		<Image condition="end with">chrome.exe</Image>
+		<Image condition="end with">GoogleUpdate.exe</Image>
+		<Image condition="end with">EdgeUpdate</Image>
+		<Image condition="end with">SearchProtocolHost.exe</Image>
+		<Image condition="end with">SearchFilterHost.exe</Image>
+		<Image condition="end with">audiodg.exe</Image>
+		<Image condition="end with">consent.exe</Image>
+		<Image condition="contains">Microsoft Office</Image>
+		<Image condition="contains">servicing</Image>
+		<Image condition="contains">WinSxS</Image>
+		<Image condition="contains">wbem</Image>
+	</ProcessTerminate >
+	</RuleGroup>
+	<!--SYSMON EVENT ID 6 : DRIVER LOADED INTO KERNEL-->
+	<DriverLoad onmatch="include"></DriverLoad>
+	<!--SYSMON EVENT ID 7 : DLL (IMAGE) LOADED BY PROCESS-->
+	<ImageLoad onmatch="include"></ImageLoad>
+	<!--SYSMON EVENT ID 8 : REMOTE THREAD CREATED-->
+	<CreateRemoteThread onmatch="include"></CreateRemoteThread>
+	<!--SYSMON EVENT ID 9 : RAW DISK ACCESS-->
+	<RawAccessRead onmatch="include"></RawAccessRead>
+	<!--SYSMON EVENT ID 10 : INTER-PROCESS ACCESS-->
+	<ProcessAccess onmatch="include"></ProcessAccess>
+	<!--SYSMON EVENT ID 11 : FILE CREATED-->
+	<FileCreate onmatch="include"></FileCreate>
+	<!--SYSMON EVENT ID 12 & 13 & 14 : REGISTRY MODIFICATION-->
+	<RegistryEvent onmatch="include"></RegistryEvent>
+	<!--SYSMON EVENT ID 15 : ALTERNATE DATA STREAM CREATED-->
+	<FileCreateStreamHash onmatch="include"></FileCreateStreamHash>
+	<PipeEvent onmatch="include"></PipeEvent>
+
+<!--SYSMON EVENT ID 23 : ALTERNATE DATA STREAM CREATED-->
+ 	<RuleGroup name="" groupRelation="or">
+  	<FileDelete onmatch="exclude">
+		<Image condition="contains">Program Files (x86)</Image>
+		<Image condition="end with">svchost.exe</Image>
+		<TargetFilename condition="contains">AppData</TargetFilename>
+	</FileDelete>
+	</RuleGroup>
+
+	<RuleGroup name="" groupRelation="or">
+	<FileDelete onmatch="include">
+		<TargetFilename condition="contains">Users</TargetFilename>
+		<TargetFilename condition="contains">inetpub</TargetFilename>
+	</FileDelete>
+	</RuleGroup>
+
+</EventFiltering>
+</Sysmon>

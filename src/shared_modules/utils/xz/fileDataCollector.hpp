@@ -13,6 +13,7 @@
 #define _FILE_DATA_COLLECTOR_HPP
 
 #include "iDataCollector.hpp"
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -74,7 +75,7 @@ namespace Xz
             m_file.write(reinterpret_cast<char*>(m_buffer.data()), m_buffer.size() - unusedBufferLen);
             if (!m_file.good())
             {
-                throw std::runtime_error("Error saving data: " + std::to_string(errno)); // LCOV_EXCL_LINE
+                throw std::runtime_error("Error saving data: " + std::string(std::strerror(errno))); // LCOV_EXCL_LINE
             }
         }
     };

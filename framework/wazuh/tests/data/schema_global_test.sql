@@ -54,13 +54,6 @@ CREATE TABLE IF NOT EXISTS belongs
     PRIMARY KEY (id_agent, id_group)
 );
 
--- manager
-INSERT INTO agent (id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_uname, os_arch,
-                   version, manager_host, node_name, date_add, last_keepalive, status, connection_status, `group`, group_config_status) VALUES
-                   (0,'master','127.0.0.1','Ubuntu','20.04.1 LTS','20','04','Bionic Beaver','ubuntu',
-                   'Linux |master |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.9.0','master','node01',strftime('%s','now','-10 days'),253402300799,
-                    'updated','active',NULL, 'synced');
 
 -- Connected agent with IP and Registered IP filled
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,

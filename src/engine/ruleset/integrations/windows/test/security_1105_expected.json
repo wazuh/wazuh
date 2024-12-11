@@ -1,0 +1,99 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "auditlog-archieved",
+      "category": [
+        "iam"
+      ],
+      "code": "1105",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Eventlog",
+      "start": "2020-12-07T16:12:34.123456Z",
+      "type": [
+        "admin"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-TEST.testd.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "Event log automatic backup",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "WIN-TEST.testd.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "1105"
+        },
+        "EventRecordID": {
+          "#text": "18197"
+        },
+        "Execution": {
+          "@ProcessID": "123",
+          "@ThreadID": "1234"
+        },
+        "Keywords": {
+          "#text": "0x4020000000000000"
+        },
+        "Level": {
+          "#text": "4"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}",
+          "@Name": "Microsoft-Windows-Eventlog"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "105"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-12-07T16:12:34.123456Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "UserData": {
+        "AutoBackup": {
+          "@xmlns": "http://manifests.microsoft.com/win/2004/08/windows/eventlog",
+          "BackupPath": {
+            "#text": "C:\\Windows\\System32\\Winevt\\Logs\\Archive-Security-2020-12-07-16-12-34-123.evtx"
+          },
+          "Channel": {
+            "#text": "Security"
+          }
+        }
+      }
+    }
+  }
+]

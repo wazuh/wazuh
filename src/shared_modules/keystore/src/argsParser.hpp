@@ -47,7 +47,8 @@ public:
     explicit CmdLineArgs(int argc, char* argv[])
         : m_columnFamily {paramValueOf(argc, argv, "-f")}
         , m_key {paramValueOf(argc, argv, "-k")}
-        , m_value {paramValueOf(argc, argv, "-v")}
+        , m_value {paramValueOf(argc, argv, "-v", std::make_pair(false, ""))}
+        , m_valuePath {paramValueOf(argc, argv, "-vp", std::make_pair(false, ""))}
     {
     }
 
@@ -79,6 +80,16 @@ public:
     }
 
     /**
+     * @brief Get the file path with the value.
+     *
+     * @return Path to a file containing the value.
+     */
+    const std::string& getValuePath() const
+    {
+        return m_valuePath;
+    }
+
+    /**
      * @brief Shows the help to the user.
      */
     static void showHelp()
@@ -88,9 +99,15 @@ public:
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-f COLUMN_FAMILY\tSpecifies the target column family for the insertion.\n"
                   << "\t-k KEY\t\t\tSpecifies the key for the key-value pair.\n"
-                  << "\t-v VALUE\t\tSpecifies the value associated with the key.\n"
+                  << "\t-v VALUE\t\tSpecifies the value associated with the key. Only use one value option at the time.\n"
+                  << "\t-vp VALUE_PATH\t\tPath to a file containing the value to read (single line). Only use one value option at the time.\n"
+                  << "\tNOTE: if both value parameters are empty, stdin will be read.\n"
                   << "\nExample:"
                   << "\n\t./wazuh-keystore -f indexer -k username -v admin\n"
+                  << "\n\t./wazuh-keystore -f indexer -k password -vp /path/to/file.txt\n"
+                  << "\n\t./wazuh-keystore -f indexer -k password < /path/to/file.txt\n"
+                  << "\n\techo 'pass' | ./wazuh-keystore -f indexer -k password\n"
+                  << "\n\tcat /path/to/file.txt | ./wazuh-keystore -f indexer -k password\n"
                   << std::endl;
     }
 
@@ -133,6 +150,7 @@ private:
     const std::string m_columnFamily;
     const std::string m_key;
     const std::string m_value;
+    const std::string m_valuePath;
 };
 
 #endif // _CMD_ARGS_PARSER_HPP_

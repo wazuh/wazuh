@@ -4,19 +4,15 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import datetime
-import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
-from requests import exceptions
-from shutil import copyfile, Error
+from shutil import copyfile
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY
-from xml.etree.ElementTree import Element
-from wazuh.core.common import OSSEC_TMP_PATH
+from unittest.mock import call, MagicMock, Mock, patch, ANY
 
 import pytest
-from defusedxml.ElementTree import parse
+import yaml
 from freezegun import freeze_time
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -25,13 +21,10 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.agent import WazuhDBQueryAgents
         from wazuh.core import utils, exception
         from wazuh.core.common import WAZUH_PATH, AGENT_NAME_LEN_LIMIT
-        from wazuh.core.results import WazuhResult
 
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-test_files_path = os.path.join(test_data_path, 'utils')
-wazuh_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 
 # input data for testing q filter
 input_array = [
@@ -152,14 +145,39 @@ mock_nested_dict = {
     "board_serial": "BSS-0123456789"
 }
 
-test_xml = '''
-<!-- Local rules -->
-
-<!-- Modify it at your will. -->
-
-<!-- Example -->
+test_yaml = '''
+key: value
 '''
 
+
+@patch('os.chown')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
+def test_assign_wazuh_ownership(mock_gid, mock_uid, mock_chown):
+    """Test assign_wazuh_ownership function."""
+    with TemporaryDirectory() as tmp_dirname:
+        tmp_file = NamedTemporaryFile(dir=tmp_dirname, delete=False)
+        filename = os.path.join(tmp_dirname, tmp_file.name)
+        utils.assign_wazuh_ownership(filename)
+
+        mock_chown.assert_called_once_with(filename, mock_uid(), mock_gid())
+
+
+@patch('os.chown')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
+def test_assign_wazuh_ownership_write_file(mock_gid, mock_uid, mock_chown):
+    """Test assign_wazuh_ownership function with a non-regular file."""
+    with TemporaryDirectory() as tmp_dirname:
+        tmp_file = NamedTemporaryFile(dir=tmp_dirname, delete=False)
+        filename = os.path.join(tmp_dirname, tmp_file.name)
+
+        with patch('os.path.isfile', return_value=False):
+            with patch('builtins.open') as mock_open:
+                utils.assign_wazuh_ownership(filename)
+                mock_open.assert_called_once_with(filename, 'w')
+
+            mock_chown.assert_called_once_with(filename, mock_uid(), mock_gid())
 
 @pytest.mark.parametrize('month', [
     1,
@@ -484,33 +502,6 @@ def test_chown_r(mock_chown):
         mock_chown.assert_any_call(os.path.join(tmp_dirname, tmp_file.name), 'test_user', 'test_group')
 
 
-@patch('wazuh.core.utils.common.WAZUH_PATH', new='/test/path')
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.remove')
-def test_delete_wazuh_file(mock_remove, mock_exists):
-    """Check delete_file calls functions with expected params"""
-    assert utils.delete_wazuh_file('/test/path/etc/file')
-    mock_remove.assert_called_once_with('/test/path/etc/file')
-
-
-@patch('wazuh.core.utils.common.WAZUH_PATH', new='/test/path')
-def test_delete_wazuh_file_ko():
-    """Check delete_file calls functions with expected params"""
-    with pytest.raises(utils.WazuhError, match=r'\b1907\b'):
-        utils.delete_wazuh_file('/test/different_path/etc/file')
-
-    with pytest.raises(utils.WazuhError, match=r'\b1907\b'):
-        utils.delete_wazuh_file('/test/path/file/../../home')
-
-    with patch('wazuh.core.utils.path.exists', return_value=False):
-        with pytest.raises(utils.WazuhError, match=r'\b1906\b'):
-            utils.delete_wazuh_file('/test/path/etc/file')
-
-    with patch('wazuh.core.utils.path.exists', return_value=True):
-        with pytest.raises(utils.WazuhError, match=r'\b1907\b'):
-            utils.delete_wazuh_file('/test/path/etc/file')
-
-
 @pytest.mark.parametrize('ownership, time, permissions',
                          [((1000, 1000), None, None),
                           ((1000, 1000), (12345, 12345), None),
@@ -664,42 +655,38 @@ def test_plain_dict_to_nested_dict():
     assert result == mock_nested_dict
 
 
-@patch('wazuh.core.utils.compile', return_value='Something')
-def test_basic_load_wazuh_xml(mock_compile):
-    """Test basic load_wazuh_xml functionality."""
+def test_basic_load_wazuh_yaml():
+    """Test basic `load_wazuh_yaml` functionality."""
     with patch('wazuh.core.utils.open') as f:
-        f.return_value.__enter__.return_value = StringIO(test_xml)
-        result = utils.load_wazuh_xml('test_file')
+        f.return_value.__enter__.return_value = StringIO(test_yaml)
+        result = utils.load_wazuh_yaml('test_file')
 
-        assert isinstance(result, Element)
+        assert isinstance(result, dict)
 
 
-def test_load_wazuh_xml():
-    """Test load_wazuh_xml function."""
+def test_load_wazuh_yaml_read_ko():
+    """Test `load_wazuh_yaml` fails gracefully when reading invalid files."""
+    file_path = os.path.join(test_data_path, 'test_load_wazuh_yaml_ko', 'invalid_utf8.yaml')
+    with pytest.raises(WazuhException, match=f'.*{1006}.*'):
+        utils.load_wazuh_yaml(file_path)
 
-    def elements_equal(e1, e2):
-        if e1.tag != e2.tag: return False
-        if e1.text != e2.text: return False
-        if e1.attrib != e2.attrib: return False
-        if len(e1) != len(e2): return False
-        return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
 
-    for rule_file in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml')):
-        path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml'),
-                            rule_file)
-        original = parse(path).getroot()
-        result = utils.load_wazuh_xml(path)
+@patch('wazuh.core.utils.yaml.safe_load', side_effect=yaml.YAMLError)
+def test_load_wazuh_yaml_data_ko(safe_load_mock):
+    """Test `load_wazuh_yaml` fails gracefully when parsing invalid data."""
+    with pytest.raises(WazuhException, match=f'.*{1132}.*'):
+        utils.load_wazuh_yaml('', data='1')
 
-        assert elements_equal(original, result.find('dummy_tag'))
 
-@pytest.mark.parametrize('expected_exception', [
-    (1113)
-])
-def test_load_wazuh_xml_ko(expected_exception):
-    """Test load_wazuh_xml fails gracefully when reading an invalid utf-8 character sequence"""
-    file_path = os.path.join(test_data_path, 'test_load_wazuh_xml_ko/invalid_utf8.xml')
-    with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-        utils.load_wazuh_xml(file_path)
+@patch('wazuh.core.common.WAZUH_SHARED', new='/test')
+def test_get_group_file_path():
+    """Test `get_group_file_path` returns the corrrect path."""
+    group_id = 'default'
+    expected_path = '/test/default.conf'
+    path = utils.get_group_file_path(group_id)
+
+    assert path == expected_path
+
 
 @pytest.mark.parametrize('version1, version2', [
     ('Wazuh v3.5.0', 'Wazuh v3.5.2'),
@@ -1324,25 +1311,6 @@ def test_WazuhDBQuery_protected_get_total_items(mock_socket_conn, mock_conn_db, 
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_total_items_mitre(mock_socket_conn, mock_conn_db, mock_glob,
-                                                      mock_exists):
-    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                               search=None, select=None,
-                               fields={'os.name': 'ubuntu', 'os.version': '18.04'},
-                               default_sort_field=None, query=None,
-                               backend=utils.WazuhDBBackend(agent_id=0, query_format='mitre'), count=5,
-                               get_data=None, date_fields=['date1', 'date2'])
-
-    query._add_select_to_query()
-    query._get_total_items()
-
-    mock_conn_db.assert_called_once_with()
-
-
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
-@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-@patch('socket.socket.connect')
 def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
     """Test utils.WazuhDBQuery._get_total_items function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
@@ -1836,121 +1804,12 @@ def test_select_array(select, required_fields, expected_result):
         assert e.code == 1724
 
 
-@pytest.mark.parametrize('detail, value, attribs, details', [
-    ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
-    ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
-])
-def test_add_dynamic_detail(detail, value, attribs, details):
-    """Test add_dynamic_detail core rule function."""
-    utils.add_dynamic_detail(detail, value, attribs, details)
-    assert detail in details.keys()
-    if detail == next(iter(details.keys())):
-        assert details[detail]['pattern'].endswith(value)
-    else:
-        assert details[detail]['pattern'] == value
-    for key, value in attribs.items():
-        assert details[detail][key] == value
-
-
-@patch('wazuh.core.utils.check_wazuh_limits_unchanged')
-@patch('wazuh.core.utils.check_remote_commands')
-@patch('wazuh.core.utils.check_agents_allow_higher_versions')
-@patch('wazuh.core.utils.check_virustotal_integration')
-@patch('wazuh.core.utils.check_indexer')
-@patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
-                            mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
-    """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
-
-    with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
-        xml_file = f.read()
-
-    m = mock_open(read_data=xml_file)
-
-    with patch('builtins.open', m):
-        utils.validate_wazuh_xml(xml_file)
-    mock_remote_commands.assert_not_called()
-    mock_agents_versions.assert_not_called()
-    mock_check_indexer.assert_not_called()
-    mock_virus_total_integration.assert_not_called()
-
-    with patch('builtins.open', m):
-        utils.validate_wazuh_xml(xml_file, config_file=True)
-    mock_remote_commands.assert_called_once()
-    mock_agents_versions.assert_called_once()
-    mock_check_indexer.assert_called_once()
-    mock_virus_total_integration.assert_called_once()
-
-
-@pytest.mark.parametrize('effect, expected_exception', [
-    (utils.ExpatError, 1113)
-])
-def test_validate_wazuh_xml_ko(effect, expected_exception):
-    """Tests validate_wazuh_xml function works when open function raises an exception.
-    Parameters
-    ----------
-    effect : Exception
-        Exception to be triggered.
-    expected_exception
-        Expected code when triggering the exception.
-    """
-    input_file = os.path.join(test_files_path, 'test_rules.xml')
-
-    with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
-        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            utils.validate_wazuh_xml(input_file)
-
-
-@patch('wazuh.core.utils.full_copy')
-def test_delete_file_with_backup(mock_full_copy):
-    """Test delete_file_with_backup function."""
-    backup_file = 'backup'
-    abs_path = 'testing/dir/subdir/file'
-    delete_function = MagicMock()
-
-    utils.delete_file_with_backup(backup_file, abs_path, delete_function)
-
-    mock_full_copy.assert_called_with(abs_path, backup_file)
-    delete_function.assert_called_once_with(filename=os.path.basename(abs_path))
-
-
-@patch('wazuh.core.utils.full_copy', side_effect=IOError)
-def test_delete_file_with_backup_ko(mock_copyfile):
-    """Test delete_file_with_backup function exceptions."""
-    with pytest.raises(utils.WazuhError, match='.* 1019 .*'):
-        utils.delete_file_with_backup('test', 'test', str)
-
-
 def test_to_relative_path():
     """Test to_relative_path function."""
     path = 'etc/ossec.conf'
     assert utils.to_relative_path(os.path.join(WAZUH_PATH, path)) == path
 
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)
-
-
-@patch('wazuh.core.utils.common.RULES_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_RULES_PATH', new=test_files_path)
-def test_expand_rules():
-    rules = utils.expand_rules()
-    assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                     f'*{utils.common.RULES_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.DECODERS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_DECODERS_PATH', new=test_files_path)
-def test_expand_decoders():
-    decoders = utils.expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                        f'*{utils.common.DECODERS_EXTENSION}'))))
-
-
-@patch('wazuh.core.utils.common.LISTS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_LISTS_PATH', new=test_files_path)
-def test_expand_lists():
-    lists = utils.expand_lists()
-    assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
-        test_files_path, f'*{utils.common.LISTS_EXTENSION}')))))
 
 
 def test_full_copy():
@@ -2015,52 +1874,6 @@ def test_get_utc_now():
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
 
 
-@pytest.mark.parametrize("new_conf, unchanged_limits_conf", [
-    ("<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>no</logall></global><global><limits><eps><test>yes</test></eps></limits></global>"
-     "</ossec_config>", False),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config>", True),
-    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
-     "</ossec_config><ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
-     False)
-])
-@pytest.mark.parametrize("original_conf", [
-    "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
-])
-@pytest.mark.parametrize("limits_conf", [
-    ({'eps': {'allow': True}}),
-    ({'eps': {'allow': False}})
-])
-def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_conf, limits_conf):
-    """Test if ossec.conf limits are protected by the API.
-
-    When 'eps': {'allow': False} is set in the API configuration, the limits in ossec.conf cannot be changed.
-    However, other configuration sections can be added, removed or modified.
-
-    Parameters
-    ----------
-    new_conf : str
-        New ossec.conf to be uploaded.
-    unchanged_limits_conf : bool
-        Whether the limits section in ossec.conf is the same as the original one.
-    original_conf : str
-        Original ossec.conf to be uploaded.
-    limits_conf : dict
-        API configuration for the limits section.
-    """
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['limits'].update(limits_conf)
-
-    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        if limits_conf['eps']['allow'] or unchanged_limits_conf:
-            utils.check_wazuh_limits_unchanged(new_conf, original_conf)
-        else:
-            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_wazuh_limits_unchanged(new_conf, original_conf)
-
-
 @pytest.mark.parametrize("new_conf", [
     ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></ossec_config>"),
     ("<ossec_config><auth><agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
@@ -2078,8 +1891,8 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
 def test_agents_allow_higher_versions(new_conf, agents_conf):
     """Check if ossec.conf agents versions are protected by the API.
 
-    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf 
-    cannot be changed. However, other configuration sections can be added, 
+    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf
+    cannot be changed. However, other configuration sections can be added,
     removed or modified.
 
     Parameters
@@ -2099,202 +1912,3 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
             with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
                 utils.check_agents_allow_higher_versions(new_conf)
 
-
-@pytest.mark.parametrize("new_conf, original_conf, indexer_changed", [
-    (
-        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
-        True,
-     ),
-    (
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
-        False,
-    ),
-    (
-        "<ossec_config><indexer><hosts><host>https://0.0.0.0:9200/</host></hosts></indexer></ossec_config>",
-        "<ossec_config><indexer><hosts><host>https://127.0.0.1:9200/</host></hosts></indexer></ossec_config>",
-        True,
-    ),
-    (
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
-        "</indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
-        True,
-    ),
-    (
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
-        "</indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>filebeat-key.pem</key></ssl></indexer></ossec_config>",
-        True,
-    ),
-    (
-        "<ossec_config><auth><disabled>no</disabled></auth></ossec_config>",
-        "<ossec_config><auth><disabled>yes</disabled></auth></ossec_config>",
-        False,
-    ),
-])
-@pytest.mark.parametrize("indexer_allowed", [
-    True,
-    False,
-])
-def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed):
-    """Check if the ossec.conf indexer section is protected by the API.
-
-    Parameters
-    ----------
-    new_conf : str
-        New ossec.conf to be uploaded.
-    original_conf : str
-        Original ossec.conf.
-    indexer_changed : bool
-        Whether the indexer section of the original and new configurations is equal or not.
-    indexer_allowed : bool
-        Whether it is allowed to modify the indexer API configuration section.
-    """
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['indexer']['allow'] = indexer_allowed
-
-    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        if indexer_allowed:
-            utils.check_indexer(new_conf, original_conf)
-        elif indexer_changed:
-            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_indexer(new_conf, original_conf)
-
-
-@pytest.mark.parametrize(
-    'chk_xml, content', [
-        # basic test case
-        (False, "Test"),
-        # check_xml test case
-        (True, "<Test>'+Tes't</Test>")]
-)
-@patch('wazuh.core.utils.tempfile.mkstemp',
-        return_value=('handle', os.path.join(OSSEC_TMP_PATH, 'file.tmp')))
-@patch('wazuh.core.utils.chmod')
-@patch('wazuh.core.common.wazuh_gid')
-@patch('wazuh.core.common.wazuh_uid')
-def test_upload_file(mock_uid, mock_gid, 
-                     mock_chmod, mock_mks,
-                     chk_xml, content):
-    """Test upload_file function.
-    
-    Parameters
-    ----------
-    mock_uid: Mock
-        mock of the wazuh.core.common.wazuh_uid function.
-    mock_gid: Mock
-        mock of the wazuh.core.common.wazuh_gid function.
-    mock_chmod: Mock
-        mock of the wazuh.core.utils.chmod function.
-    mock_mks
-        Mock of the wazuh.core.utils.tempfile.mkstemp function.
-    chk_xml: bool
-        check_xml_formula_value parameter passed to uploda_file.
-    content: str
-        content parameter passed to upload_file.
-    """
-    filename = "file.xml"
-    mko = mock_open()
-    handle = mko()
-
-    with patch('wazuh.core.utils.open', mko):
-        with patch('wazuh.core.utils.safe_move') as mock_safe_move:
-            result = utils.upload_file(content, file_path=filename,
-                                        check_xml_formula_values=chk_xml)
-            assert isinstance(result, WazuhResult)
-            handle.write.assert_called_once_with(content)
-            tmp_path = os.path.join(OSSEC_TMP_PATH, 'file.tmp')
-            file_path = os.path.join(WAZUH_PATH, filename)
-            mock_safe_move.assert_called_once_with(tmp_path, file_path,
-                                                    ownership=(mock_uid(), mock_gid()),
-                                                    permissions=0o660)
-
-
-@pytest.mark.parametrize(
-    'sm_side_effect, w_side_effect, upload_error', [
-        # IOError exception raised writing file
-        (None, True, (utils.WazuhInternalError, 1005)),
-        # safe_move raises an Error()
-        (Error(), False, (utils.WazuhInternalError, 1016)),
-        # safe_move raises a PermissionError()
-        (PermissionError(), False, (utils.WazuhError, 1006))]
-)
-@patch('wazuh.core.utils.tempfile.mkstemp',
-        return_value=('handle', os.path.join(OSSEC_TMP_PATH, 'file.tmp')))
-@patch('wazuh.core.utils.chmod')
-@patch('wazuh.core.common.wazuh_gid')
-@patch('wazuh.core.common.wazuh_uid')
-def test_upload_file_ko(mock_uid, mock_gid, mock_chmod, mock_mks,
-                     sm_side_effect, w_side_effect, upload_error):
-    """
-    Parameters
-    ----------
-    mock_uid : Mock
-        mock of the wazuh.core.common.wazuh_uid function.
-    mock_gid : Mock
-        mock of the wazuh.core.common.wazuh_gid function.
-    mock_chmod: Mock
-        mock of the wazuh.core.utils.chmod function.
-    mock_mks : Mock
-        Mock of the wazuh.core.utils.tempfile.mkstemp function.
-    sm_side_effect : Exception
-        Exception to raise in the safe_move mock as side_effect.
-    w_side_effect : bool
-        When this parameter is True, file.write function raises an IOError
-        Exception when called.
-    upload_error : tuple[ExceptionType, int]
-        The function checks if the upload_file function raises the ExceptionType
-        defined in the index 0 with the error_code defined in the index 1 of
-        the tuple.
-    """
-    filename = "file.xml"
-    mko = mock_open()
-    handle = mko()
-    if w_side_effect:
-        handle.write.side_effect = IOError()
-
-    with patch('wazuh.core.utils.open', mko):
-        with patch('wazuh.core.utils.safe_move', side_effect=sm_side_effect) as mock_safe_move:
-            with pytest.raises(upload_error[0], match=rf'\b{upload_error[1]}\b'):
-                utils.upload_file("test", file_path=filename)
-
-
-@pytest.mark.parametrize("new_conf", [
-    ("<ossec_config><integration><name>virustotal</name><api_key>KEY</api_key>"
-     "<group>syscheck</group></integration></ossec_config>")])
-@pytest.mark.parametrize("integrations_conf", [
-    ({'virustotal': {'public_key': {'allow': False, 'minimum_quota': 240}}}),
-    ({'virustotal': {'public_key': {'allow': True, 'minimum_quota': 240}}})
-])
-def test_check_virustotal_integration(integrations_conf, new_conf):
-    """Check if the used Virus Total public API key is allowed by the API.
-
-     When 'public_key': {'allow': False} is set in the API configuration, the provided Virus Total API key
-    cannot be public. The default quota of the public API keys is 240 hourly requests.
-
-    Parameters
-    ----------
-    new_conf : str
-        New ossec.conf to be uploaded.
-
-    integrations_conf : dict
-        Virus Total integration configuration.
-    """
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['integrations'].update(integrations_conf)
-    virust_total_min_quouta = integrations_conf['virustotal']['public_key']['minimum_quota']
-
-    with patch('wazuh.core.utils.get') as mock_requests_get:
-        if not integrations_conf['virustotal']['public_key']['allow']:
-            with pytest.raises(exception.WazuhError, match=".* 1130 .*"):
-                mock_response = Mock()
-                mock_response.json.return_value = {
-                    'data': {'api_requests_hourly': {'user': {'allowed': virust_total_min_quouta}}}}
-                mock_requests_get.return_value = mock_response
-                utils.check_virustotal_integration(new_conf)
-
-            with pytest.raises(exception.WazuhError, match=".* 1131 .*"):
-                mock_requests_get.side_effect = exceptions.RequestException
-                utils.check_virustotal_integration(new_conf)

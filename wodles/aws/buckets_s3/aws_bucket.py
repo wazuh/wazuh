@@ -17,28 +17,7 @@ from datetime import datetime
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 import aws_tools
-
-MAX_RECORD_RETENTION = 500
-PATH_DATE_FORMAT = "%Y/%m/%d"
-DB_DATE_FORMAT = "%Y%m%d"
-DEFAULT_DATABASE_NAME = "s3_cloudtrail"
-
-RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/' \
-                          'considerations.html#Connection-configuration-for-retries'
-
-INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
-INVALID_REQUEST_TIME_ERROR_CODE = "RequestTimeTooSkewed"
-THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
-
-UNKNOWN_ERROR_MESSAGE = "Unexpected error: '{error}'."
-INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
-INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
-THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. " \
-                                     "If the problem persists check the following link to learn how to use " \
-                                     f"the Retry configuration to avoid it: '{RETRY_CONFIGURATION_URL}'"
-
-AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws',
-                           'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
+import constants
 
 
 class AWSBucket(wazuh_integration.WazuhAWSDatabase):
@@ -179,7 +158,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_region=:aws_region;"""
 
         # DB name
-        self.db_name = DEFAULT_DATABASE_NAME
+        self.db_name = constants.DEFAULT_AWS_BUCKET_DATABASE_NAME
         # Table name
         self.db_table_name = db_table_name
 
@@ -195,9 +174,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                                                     service_endpoint=service_endpoint,
                                                     iam_role_duration=iam_role_duration,
                                                     skip_on_error=skip_on_error)
-        self.retain_db_records = MAX_RECORD_RETENTION
+        self.retain_db_records = constants.MAX_AWS_BUCKET_RECORD_RETENTION
         self.reparse = reparse
-        self.only_logs_after = datetime.strptime(only_logs_after, DB_DATE_FORMAT) if only_logs_after else None
+        self.only_logs_after = datetime.strptime(only_logs_after, constants.AWS_BUCKET_DB_DATE_FORMAT) if only_logs_after else None
         self.account_alias = account_alias
         self.prefix = prefix
         self.suffix = suffix
@@ -315,7 +294,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     del event[key]
 
         # error_msg will only have a value when event is None and vice versa
-        msg = copy.deepcopy(AWS_BUCKET_MSG_TEMPLATE)
+        msg = copy.deepcopy(constants.AWS_BUCKET_MSG_TEMPLATE)
         msg['aws']['log_info'].update({
             'aws_account_alias': self.account_alias,
             'log_file': log_key,
@@ -348,8 +327,8 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     accounts.append(account_id)
             return accounts
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
-                aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
+            if err.response['Error']['Code'] == constants.THROTTLING_EXCEPTION_ERROR_NAME:
+                aws_tools.debug(f'ERROR: {constants.THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
                 sys.exit(16)
             else:
                 aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -372,8 +351,8 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_tools.debug(f"+++ No regions found for AWS Account {account_id}", 1)
                 return []
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
-                aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
+            if err.response['Error']['Code'] == constants.THROTTLING_EXCEPTION_ERROR_NAME:
+                aws_tools.debug(f'ERROR: {constants.THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
                 sys.exit(16)
             else:
                 aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
@@ -623,8 +602,8 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         except botocore.exceptions.ClientError as error:
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
-                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='iter_files_in_bucket')}: {error}"
+            if error_code == constants.THROTTLING_EXCEPTION_ERROR_NAME:
+                error_message = f"{constants.THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='iter_files_in_bucket')}: {error}"
                 exit_number = 16
             else:
                 error_message = f'ERROR: The "iter_files_in_bucket" request failed: {error}'
@@ -655,17 +634,17 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         except botocore.exceptions.ClientError as error:
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
-                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
+            if error_code == constants.THROTTLING_EXCEPTION_ERROR_NAME:
+                error_message = f"{constants.THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
                 exit_number = 16
-            elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
-                error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
+            elif error_code == constants.INVALID_CREDENTIALS_ERROR_NAME:
+                error_message = constants.INVALID_CREDENTIALS_ERROR_MESSAGE
                 exit_number = 3
-            elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
-                error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
+            elif error_code == constants.INVALID_REQUEST_TIME_ERROR_NAME:
+                error_message = constants.INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
             else:
-                error_message = UNKNOWN_ERROR_MESSAGE.format(error=error)
+                error_message = constants.UNKNOWN_ERROR_MESSAGE.format(error=error)
                 exit_number = 1
 
             aws_tools.error(f"{error_message}")
@@ -731,7 +710,7 @@ class AWSCustomBucket(AWSBucket):
     def __init__(self, db_table_name=None, **kwargs):
         # only special services have a different DB table
         AWSBucket.__init__(self, db_table_name=db_table_name if db_table_name else 'custom', **kwargs)
-        self.retain_db_records = MAX_RECORD_RETENTION
+        self.retain_db_records = constants.MAX_AWS_BUCKET_RECORD_RETENTION
         # get STS client
         profile = kwargs.get('profile', None)
         self.sts_client = self.get_sts_client(profile=profile)

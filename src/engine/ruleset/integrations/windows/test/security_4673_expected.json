@@ -1,0 +1,117 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "privileged-service-called",
+      "category": [
+        "iam"
+      ],
+      "code": "4673",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-10-09T00:37:36.434836600Z",
+      "type": [
+        "admin"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A privileged service was called",
+    "process": {
+      "executable": "C:\\\\Windows\\\\System32\\\\lsass.exe",
+      "name": "lsass.exe",
+      "pid": 496
+    },
+    "related": {
+      "user": [
+        "DC01$"
+      ]
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-18",
+      "name": "DC01$"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "ObjectServer": "NT Local Security Authority / Authentication Service",
+        "PrivilegeList": "SeTcbPrivilege",
+        "ProcessId": "0x1f0",
+        "ProcessName": "C:\\\\Windows\\\\System32\\\\lsass.exe",
+        "Service": "LsaRegisterLogonProcess()",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x3e7",
+        "SubjectUserName": "DC01$",
+        "SubjectUserSid": "S-1-5-18"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4673"
+        },
+        "EventRecordID": {
+          "#text": "1099777"
+        },
+        "Execution": {
+          "@ProcessID": "496",
+          "@ThreadID": "504"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13056"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-10-09T00:37:36.434836600Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x3e7"
+      }
+    }
+  }
+]

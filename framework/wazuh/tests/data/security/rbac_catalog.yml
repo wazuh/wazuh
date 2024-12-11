@@ -18,54 +18,11 @@ get_rbac_actions:
         related_endpoints:
           - GET /agents
   - params:
-      endpoint: DELETE /agents/{agent_id}/group
-    result:
-      agent:modify_group:
-        description: Change the group of agents
-        resources:
-          - "agent:id"
-          - "agent:group"
-        example:
-          actions:
-            - agent:modify_group
-          resources:
-            - agent:id:004
-            - agent:group:us-east
-          effect: allow
-        related_endpoints:
-          - DELETE /agents/{agent_id}/group
-      group:modify_assignments:
-        description: Change the agents assigned to the group
-        resources:
-          - "group:id"
-        example:
-          actions:
-            - group:modify_assignments
-          resources:
-            - group:id:*
-          effect: allow
-        related_endpoints:
-          - DELETE /agents/{agent_id}/group
-  - params:
       endpoint: GET /
     result: {}
   - params:
       endpoint: None
     result:
-      active-response:command:
-        description: Execute active response commands in the agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - active-response:command
-          resources:
-            - agent:id:001
-            - agent:group:atlantic
-          effect: allow
-        related_endpoints:
-          - PUT /active-response
       agent:delete:
         description: Delete agents
         resources:
@@ -93,18 +50,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /agents
-          - GET /agents/{agent_id}/config/{component}/{configuration}
-          - GET /agents/{agent_id}/group/is_sync
-          - GET /agents/{agent_id}/key
-          - GET /agents/{agent_id}/daemons/stats
-          - GET /agents/{agent_id}/stats/{component}
-          - GET /agents/no_group
-          - GET /agents/outdated
-          - GET /agents/stats/distinct
-          - GET /agents/summary/os
-          - GET /agents/summary/status
           - GET /groups/{group_id}/agents
-          - GET /overview/agents
       agent:create:
         description: Create new agents
         resources:
@@ -117,8 +63,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - POST /agents
-          - POST /agents/insert
-          - POST /agents/insert/quick
       agent:modify_group:
         description: Change the group of agents
         resources:
@@ -132,9 +76,6 @@ get_rbac_actions:
             - agent:group:us-east
           effect: allow
         related_endpoints:
-          - DELETE /agents/{agent_id}/group
-          - DELETE /agents/{agent_id}/group/{group_id}
-          - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
       group:modify_assignments:
@@ -148,9 +89,6 @@ get_rbac_actions:
             - group:id:*
           effect: allow
         related_endpoints:
-          - DELETE /agents/{agent_id}/group
-          - DELETE /agents/{agent_id}/group/{group_id}
-          - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
       agent:reconnect:
@@ -181,25 +119,7 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/{agent_id}/restart
-          - PUT /agents/group/{group_id}/restart
-          - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
-      agent:upgrade:
-        description: Upgrade the version of the agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - agent:upgrade
-          resources:
-            - agent:id:001
-            - agent:group:mediterranean
-          effect: allow
-        related_endpoints:
-          - PUT /agents/upgrade
-          - PUT /agents/upgrade_custom
-          - GET /agents/upgrade_result
       group:delete:
         description: Delete agent groups
         resources:
@@ -226,9 +146,6 @@ get_rbac_actions:
           - GET /groups
           - GET /groups/{group_id}/agents
           - GET /groups/{group_id}/configuration
-          - GET /groups/{group_id}/files
-          - GET /groups/{group_id}/files/{file_name}
-          - GET /overview/agents
       group:create:
         description: Create new agent groups
         resources:
@@ -265,42 +182,15 @@ get_rbac_actions:
             - node:id:worker3
           effect: deny
         related_endpoints:
-          - PUT /agents/node/{node_id}/restart
-          - GET /cluster/local/info
-          - GET /cluster/local/config
           - GET /cluster/nodes
           - GET /cluster/healthcheck
-          - GET /cluster/ruleset/synchronization
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
-          - GET /cluster/{node_id}/daemons/stats
-          - GET /cluster/{node_id}/stats
-          - GET /cluster/{node_id}/stats/hourly
-          - GET /cluster/{node_id}/stats/weekly
-          - GET /cluster/{node_id}/stats/analysisd
-          - GET /cluster/{node_id}/stats/remoted
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
-          - GET /cluster/{node_id}/configuration/{component}/{configuration}
-      ciscat:read:
-        description: Access CIS-CAT results for agents
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - ciscat:read
-          resources:
-            - agent:id:001
-            - agent:id:003
-            - agent:group:default
-          effect: deny
-        related_endpoints:
-          - GET /ciscat/{agent_id}/results
-          - GET /experimental/ciscat/results
       cluster:status:
         description: Check Wazuh's cluster general status
         resources:
@@ -313,19 +203,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/status
-      cluster:read_api_config:
-        description: Check Wazuh's cluster nodes API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - cluster:read_api_config
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: allow
-        related_endpoints:
-          - GET /cluster/api/config
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:
@@ -350,345 +227,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
-      lists:read:
-        description: Read CDB lists files
-        resources:
-          - list:file
-        example:
-          actions:
-            - lists:read
-          resources:
-            - list:file:audit-keys
-          effect: deny
-        related_endpoints:
-          - GET /lists
-          - GET /lists/files/{filename}
-          - GET /lists/files
-      lists:update:
-        description: Update or upload CDB lists files
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - lists:update
-          resources:
-            - '*:*:*'
-          effect: allow
-        related_endpoints:
-          - PUT /lists/files/{filename}
-      lists:delete:
-        description: Delete CDB lists files
-        resources:
-          - list:file
-        example:
-          actions:
-            - lists:delete
-          resources:
-            - list:file:audit-keys
-          effect: deny
-        related_endpoints:
-          - PUT /lists/files/{filename}
-          - DELETE /lists/files/{filename}
-      logtest:run:
-        description: Run logtest tool or end a logtest session
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - logtest:run
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /logtest
-          - DELETE /logtest/sessions/{token}
-      manager:read:
-        description: Read Wazuh manager configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:read
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - GET /manager/status
-          - GET /manager/info
-          - GET /manager/configuration
-          - GET /manager/daemons/stats
-          - GET /manager/stats
-          - GET /manager/stats/hourly
-          - GET /manager/stats/weekly
-          - GET /manager/stats/analysisd
-          - GET /manager/stats/remoted
-          - GET /manager/logs
-          - GET /manager/logs/summary
-          - PUT /manager/restart
-          - GET /manager/configuration/validation
-          - GET /manager/configuration/{component}/{configuration}
-      manager:update_config:
-        description: Update current Wazuh manager configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:update_config
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /manager/configuration
-      manager:read_api_config:
-        description: Read Wazuh manager API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:read_api_config
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - GET /manager/api/config
-      manager:restart:
-        description: Restart Wazuh managers
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:restart
-          resources:
-            - "*:*:*"
-          effect: deny
-        related_endpoints:
-          - PUT /manager/restart
-      mitre:read:
-        description: Access information from MITRE database
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - mitre:read
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - GET /mitre/groups
-          - GET /mitre/metadata
-          - GET /mitre/mitigations
-          - GET /mitre/references
-          - GET /mitre/software
-          - GET /mitre/tactics
-          - GET /mitre/techniques
-      rootcheck:clear:
-        description: Clear the agents rootcheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:clear
-          resources:
-            - agent:id:*
-          effect: deny
-        related_endpoints:
-          - DELETE /rootcheck/{agent_id}
-          - DELETE /experimental/rootcheck
-      rootcheck:run:
-        description: Run agents rootcheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /rootcheck
-      rootcheck:read:
-        description: Access information from agents rootcheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:read
-          resources:
-            - agent:id:011
-          effect: allow
-        related_endpoints:
-          - GET /rootcheck/{agent_id}
-          - GET /rootcheck/{agent_id}/last_scan
-      rules:read:
-        description: Read rules files
-        resources:
-          - rule:file
-        example:
-          actions:
-            - rules:read
-          resources:
-            - rule:file:0610-win-ms_logs_rules.xml
-          effect: allow
-        related_endpoints:
-          - GET /rules
-          - GET /rules/groups
-          - GET /rules/requirement/{requirement}
-          - GET /rules/files
-          - GET /rules/files/{filename}
-      rules:update:
-        description: Update or upload custom rule files
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - rules:update
-          resources:
-            - '*:*:*'
-          effect: allow
-        related_endpoints:
-          - PUT /rules/files/{filename}
-      rules:delete:
-        description: Delete custom rule files
-        resources:
-          - rule:file
-        example:
-          actions:
-            - rules:delete
-          resources:
-            - rule:file:0610-win-ms_logs_rules.xml
-          effect: allow
-        related_endpoints:
-          - PUT /rules/files/{filename}
-          - DELETE /rules/files/{filename}
-      sca:read:
-        description: Access agents security configuration assessment
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - sca:read
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - GET /sca/{agent_id}
-          - GET /sca/{agent_id}/checks/{policy_id}
-      syscheck:run:
-        description: Run agents syscheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /syscheck
-      syscheck:read:
-        description: Access information from agents syscheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:read
-          resources:
-            - agent:id:011
-            - agent:group:us-west
-          effect: allow
-        related_endpoints:
-          - GET /syscheck/{agent_id}
-          - GET /syscheck/{agent_id}/last_scan
-      syscheck:clear:
-        description: Clear the agents syscheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:clear
-          resources:
-            - agent:id:*
-          effect: deny
-        related_endpoints:
-          - DELETE /syscheck/{agent_id}
-          - DELETE /experimental/syscheck
-      decoders:read:
-        description: Read decoders files
-        resources:
-          - decoder:file
-        example:
-          actions:
-            - decoders:read
-          resources:
-            - decoder:file:*
-          effect: allow
-        related_endpoints:
-          - GET /decoders
-          - GET /decoders/files
-          - GET /decoders/files/{filename}
-          - GET /decoders/parents
-      decoders:update:
-        description: Update or upload custom decoder files
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - decoders:update
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /decoders/files/{filename}
-      decoders:delete:
-        description: Delete custom decoder files
-        resources:
-          - decoder:file
-        example:
-          actions:
-            - decoders:delete
-          resources:
-            - decoder:file:local_decoder.xml
-          effect: allow
-        related_endpoints:
-          - PUT /decoders/files/{filename}
-          - DELETE /decoders/files/{filename}
-      syscollector:read:
-        description: Access agents syscollector information
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscollector:read
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - GET /experimental/syscollector/hardware
-          - GET /experimental/syscollector/netaddr
-          - GET /experimental/syscollector/netiface
-          - GET /experimental/syscollector/netproto
-          - GET /experimental/syscollector/os
-          - GET /experimental/syscollector/packages
-          - GET /experimental/syscollector/ports
-          - GET /experimental/syscollector/processes
-          - GET /experimental/syscollector/hotfixes
-          - GET /syscollector/{agent_id}/hardware
-          - GET /syscollector/{agent_id}/hotfixes
-          - GET /syscollector/{agent_id}/netaddr
-          - GET /syscollector/{agent_id}/netiface
-          - GET /syscollector/{agent_id}/netproto
-          - GET /syscollector/{agent_id}/os
-          - GET /syscollector/{agent_id}/packages
-          - GET /syscollector/{agent_id}/ports
-          - GET /syscollector/{agent_id}/processes
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:
@@ -821,30 +359,18 @@ get_rbac_actions:
         related_endpoints:
           - PUT /security/config
           - DELETE /security/config
-      task:status:
-        description: Access task's status information
+      order:send:
+        description: "Send orders to the server"
         resources:
           - "*:*"
         example:
           actions:
-            - task:status
+            - order:send
           resources:
             - "*:*:*"
-          effect: deny
+          effect: allow
         related_endpoints:
-          - GET /tasks/status
-      event:ingest:
-        description: "Ingest events"
-        resources:
-          - '*:*'
-        example:
-          actions:
-            - event:ingest
-          resources:
-            - "*:*:*"
-          effect: "allow"
-        related_endpoints:
-          - POST /events
+          - POST /orders
 
 get_rbac_resources:
   - params:
@@ -861,12 +387,6 @@ get_rbac_resources:
         description: Reference agent groups via group ID (i.e. group:id:default)
       node:id:
         description: Reference cluster nodes via node ID (i.e. node:id:worker1)
-      decoder:file:
-        description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
-      list:file:
-        description: Reference list files via its filename (i.e. list:file:audit-keys)
-      rule:file:
-        description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
       policy:id:
         description: Reference security policies via its id (i.e. policy:id:1)
       role:id:

@@ -1,5 +1,0 @@
-<!-- Test: order attribute without regex attribute -->
-<decoder name="test">
-  <prematch>\s</prematch>
-  <order>srcuser</order>
-</decoder>

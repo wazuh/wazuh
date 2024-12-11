@@ -1,0 +1,109 @@
+---
+name: decoder/sophos-antivirus/0
+
+metadata:
+  module: Sophos
+  title: Sophos-Antivirus logs decoder
+  version: [17.5.x, 18.0.x]
+  description: Decoder for Sophos Antivirus
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
+
+parents:
+  - decoder/integrations/0
+
+check:
+  - event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Anti-Virus"
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sophos
+  # - event.dataset: sophos.xg
+
+parse:
+  logpar:
+    # device="SFW" date=2020-05-18 time=14:38:35 timezone="CEST" device_name="XG230" device_id=1234567890123457 log_id=031106210001 log_type="Anti-Virus" log_component="SMTP" log_subtype="Virus" status="" priority=Critical fw_rule_id=22 user_name="" av_policy_name="default-smtp-av" from_email_address="info@farasamed.com" to_email_address="info@elastic-user.local" subject="ZAHLUNG (PROFORMA INVOICE)" mailid="<20200520004312.Horde.lEUeVf2I6PwO5K5TtMndnC7@webmail.sevengayr" mailsize=2254721 virus="TR/AD.AgentTesla.eaz" filename="" quarantine="" src_domainname="farasamed.com" dst_domainname="" src_ip=1.128.3.4 src_country_code=DEU dst_ip=186.8.209.194 dst_country_code=DEU protocol="TCP" src_port=56336 dst_port=25 sent_bytes=0 recv_bytes=0 quarantine_reason="Infected"
+    - event.original: <~tmp.payload_message>
+
+# TODO: All sophos named fields are not currently in the schema.
+normalize:
+  - map:
+      - ~tmp.payload_message: +replace/=""/=" "
+    logpar:
+      - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
+  - map:
+      - destination.bytes: $~tmp.recv_bytes
+      - destination.ip: $~tmp.dst_ip
+      - destination.port: $~tmp.dst_port
+      - destination.user.email: $~tmp.to_email_address
+      - event.action: +downcase/$~tmp.log_subtype
+      - event.code: $~tmp.log_id
+      - event.dataset: sophos.xg
+      - event.id: $~tmp.eventid
+      - event.kind: event
+      - event.module: sophos
+      - event.outcome: success
+  - check:
+      - ~tmp.priority: Unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: Alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: Critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: Error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: Warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: Notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
+      - event.severity: 6
+  - map:
+      - event.timezone: $~tmp.timezone
+      - fileset.name: xg
+      - input.type: log
+      - log.level: $~tmp.priority
+      - observer.product: XG
+      - observer.serial_number: $~tmp.device_id
+      - observer.type: firewall
+      - observer.vendor: Sophos
+      - network.transport: +downcase/$~tmp.protocol
+      - service.type: sophos
+      - sophos.xg.av_policy_name: $~tmp.av_policy_name
+      - sophos.xg.device: $~tmp.device
+      - sophos.xg.device_name: $~tmp.device_name
+      - sophos.xg.dst_country_code: $~tmp.dst_country_code
+      - sophos.xg.log_component: $~tmp.log_component
+      - sophos.xg.log_id: $~tmp.log_id
+      - sophos.xg.log_subtype: $~tmp.log_subtype
+      - sophos.xg.log_type: $~tmp.log_type
+      - sophos.xg.mailid: $~tmp.mailid
+      - sophos.xg.mailsize: $~tmp.mailsize
+      - sophos.xg.priority: $~tmp.priority
+      - sophos.xg.quarantine_reason: $~tmp.quarantine_reason
+      - sophos.xg.src_country_code: $~tmp.src_country_code
+      - sophos.xg.subject: $~tmp.subject
+      - sophos.xg.virus: $~tmp.virus
+      - source.bytes: $~tmp.sent_bytes
+      - source.domain: $~tmp.src_domainname
+      - source.ip: $~tmp.src_ip
+      - source.port: $~tmp.src_port
+      - source.user.email: $~tmp.from_email_address
+      - tags: [forwarded, preserve_original_event, sophos-xg]
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - wazuh.decoders: +array_append/sophos-antivirus
+      - ~tmp: delete()

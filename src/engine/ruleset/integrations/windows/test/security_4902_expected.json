@@ -1,0 +1,94 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "user-audit-policy-created",
+      "category": [
+        "iam",
+        "configuration"
+      ],
+      "code": "4902",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-10-01T00:05:25.814466500Z",
+      "type": [
+        "admin",
+        "creation"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "The Per-user audit policy table was created",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "PuaCount": "1",
+        "PuaPolicyId": "0x703e"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4902"
+        },
+        "EventRecordID": {
+          "#text": "1049490"
+        },
+        "Execution": {
+          "@ProcessID": "520",
+          "@ThreadID": "556"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13568"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-10-01T00:05:25.814466500Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      }
+    }
+  }
+]

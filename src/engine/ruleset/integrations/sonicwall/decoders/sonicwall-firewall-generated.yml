@@ -1,0 +1,159 @@
+---
+name: decoder/sonicwall-firewall-generated/0
+
+metadata:
+  module: Firewall
+  title: Sonicwall-Firewall generated logs decoder
+  description: Decoder for generated Firmware module logs belonging to Sonicwall
+  version: [6.5]
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://www.sonicwall.com/es-mx/support/technical-documentation
+
+parents:
+  - decoder/integrations/0
+
+check:
+  - event.original: +regex_match/id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sonicwall
+  # - event.dataset: sonicwall.firewall
+
+parse:
+  logpar:
+    # undeom id=emullamc sn=tec time="2019/04/15 07:40:49" fw=10.29.118.7 pri=medium c=mveleum m=537 msg="accept1" f=exercita n=sBonorum src= 10.132.171.15 dst= 10.107.216.138:3147:lo5057:ugitsedq5067.internal.test proto=rdp sent=5943 rcvd=1635
+    - event.original: >-
+        <~log.start_message> <~> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
+        src=<~/ignore/ ><source.ip> dst=<~/ignore/ ><destination.ip>:<destination.port>:<observer.egress.interface.name>:<destination.address>
+        proto=<network.protocol> sent=<source.bytes> rcvd=<destination.bytes>
+    # idi id=pexe sn=nes time="2016/02/12 13:12:33" fw=10.254.41.82 pri=low c=Ute m=914 msg="lupt" n=dolore src=10.92.136.230:6437:eth7178:nostrud4819.mail.test dst=10.49.111.67:884:eth3598:oreetdol1714.internal.corp
+    - event.original: >-
+        <~log.start_message> id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
+        src=<~/ignore/ ><source.nat.ip>:<source.nat.port>:<observer.ingress.interface.name>:<host.name> dst=<~/ignore/ ><destination.nat.ip>:<destination.nat.port>:<observer.egress.interface.name>:<source.address>
+    # id=uaturve sn=amquisno time="2019/05/13 21:45:57" fw=10.123.74.66 pri=very-high c=mquiad m=351 msg="CSe" n=lors src=10.135.70.159 dst=10.195.223.82
+    - event.original: >-
+        <~> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
+        src=<~/ignore/ ><source.ip> dst=<~/ignore/ ><destination.ip>
+    # id=quaea sn=ametcons time="2018/05/07 06:39:06" fw=10.74.46.22 pri=very-high c=tetur m=7 Log full; deactivating SonicWALL
+    - event.original: >-
+        <~> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> <~>
+    # id=ritin sn=temporin time="2018-4-22 11:36:32" fw=10.122.76.148 pri=high c=tdol m=794 msg="upt" sid=mex spycat=tatem spypri=untutlab pktdatId=amcor n=ica src=10.13.66.97:2000:enp0s5411 dst=10.176.209.227:6362:eth7037 proto=ipv6/siu fw_action="allow"
+    - event.original: >-
+        <~> time="<@timestamp/%Y-%m-%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" sid=<~rsa.identity.user_sid_dst> <~>
+        src=<~/ignore/ ><source.ip>:<source.port>:<observer.ingress.interface.name> dst=<~/ignore/ ><destination.ip>:<destination.port>:<observer.egress.interface.name>
+        proto=<network.protocol>/<~> fw_action="<~log.fw_action>"
+    # oluptate id=lit sn=santi time="2019/12/14 07:24:31" fw=10.211.112.194 pri=low c=uis m=1079 msg="Clientamcis assigned IP:10.221.220.148" n=apar
+    - event.original: >-
+        <~log.start_message> id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
+    # id=nnumqua sn=eacommod time="2016/01/29 06:09:59" fw=10.208.232.8 pri=very-high c=tur m=1197 msg="itv" sess=odoco n=ria src=10.20.234.169:1001:eth5722 dst=10.208.15.216:4257:lo6125 note= "ntsunti Protocol:udp" npcs=ciade
+    - event.original: >-
+        id=<~log.id> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y\/%m\/%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~>
+        src=<~/ignore/ ><source.ip>:<source.port>:<observer.ingress.interface.name> dst=<~/ignore/ ><destination.ip>:<destination.port>:<observer.egress.interface.name>
+        note=<~/ignore/ >"<~log.note>" npcs=<~rsa.db.index>
+    # id=ntutlabo sn=iusmodte time="2018-6-19 3:46:49" fw=10.108.84.24 pri=low c=iosamnis m=606 msg="volupt" n=rem src=10.113.100.237:3887:eth163 dst=10.251.248.228:6909 srcMac= 01:00:5e:8b:c1:b4 dstMac=01:00:5e:c3:ed:55proto=udp fw_action="deny"
+    # id=alo sn=eosquir time="2016-3-12 3:17:42" fw=10.149.203.46 pri=medium c=mwritten m=1369 msg="ctetur" n=uidolorsrc=10.150.156.22:6378:eth6183dst=10.227.15.1:410:eth1977srcMac=01:00:5e:84:66:6cdstMac=01:00:5e:f7:a9:ffproto=rdp/ommfw_action="allow"
+    - event.original: >-
+        id=<event.code> sn=<~rsa.misc.serial_number> time="<@timestamp/%Y-%m-%d %H:%M:%S>"(? )fw=(? )<host.ip>(? )pri=(? )<log.level>(? )c=(? )<~rsa.misc.category>(? )m=(? )<event.code>(? )msg=(? )"<~log.msg_action>"(? )n=(? )<~rsa.misc.ntype>(? )src=(? )<source.ip>:<source.port>(?:)<?observer.ingress.interface.name>(? )dst=(? )<destination.ip>:<destination.port>(?:)<?observer.egress.interface.name>(? )srcMac=(? )<source.mac>(? )dstMac=(? )<destination.mac>proto=<network.protocol>(? )fw_action=(? )"<~log.fw_action>"
+    # id=undeo sn=loremip time="2016-8-16 8:45:59" fw=10.134.0.141 pri=very-high c=uis m=1149 msg="idolore" n=onse fw_action="cancel"
+    - event.original: >-
+        <~> time="<@timestamp/%Y-%m-%d %H:%M:%S>" <~> m=<event.code> msg="<~log.msg_action>" <~> fw_action="<~log.fw_action>"
+
+normalize:
+  - map:
+      - event.kind: event
+      - event.module: sonicwall
+      - event.dataset: sonicwall.firewall
+      - fileset.name: firewall
+      - input.type: log
+      - observer.product: Firewalls
+      - observer.type: Firewall
+      - observer.vendor: Sonicwall
+      - rsa.internal.messageid: $event.code
+      - rsa.time.event_time: $@timestamp
+      - rsa.network.dinterface: $observer.egress.interface.name
+      - rsa.network.sinterface: $observer.ingress.interface.name
+      - rsa.db.index: $~rsa.db.index
+      - tags: +array_append/forwarded/sonicwall.firewall
+      - rsa.identity.user_sid_dst: $~rsa.identity.user_sid_dst
+      - related.hosts: +array_append/$host.name
+      - related.hosts: +array_append/$source.address
+      - related.hosts: +array_append/$destination.address
+      - rsa.network.host_dst: $destination.address
+      - related.ip: +array_append/$source.ip
+      - related.ip: +array_append/$destination.ip
+      - related.ip: +array_append/$source.nat.ip
+      - related.ip: +array_append/$destination.nat.ip
+      - wazuh.decoders: +array_append/sonicwall-firewall-generated
+  - check:
+      - ~log.start_message: not_exists()
+    logpar:
+      - rsa.time.event_time: <~log.year>-<~log.mounth>-<~log.day>T<~>
+    map:
+      # TODO: It is not yet possible to include escaped characters in auxiliary arguments.
+      # When this functionality is implemented, add it to the decoder
+      - ~aux_slash: '/'
+      - rsa.time.date: +concat/$~log.year/$~aux_slash/$~log.mounth/$~aux_slash/$~log.day
+      - ~aux_slash: delete()
+  - check:
+      - ~log.note: exists()
+    logpar:
+      - ~log.note: <~log.note.header> <~log.note.protocol.header>:<~log.note.protocol.payload>
+    map:
+      - network.protocol: $~log.note.protocol.payload
+      # If the "fw_action" field is present in the log event, then event.action is mapped to the same value of "fw_action".
+      # If fw_action is not present in the log event, the content of the "msg" field is examined and it is verified that
+      # it is equal to some of the allowed values (cancel, deny, allow, accept or block).
+      # If it doesn't match any of those values and also fw_action doesn't exist, then event.action doesn't get mapped.
+  - check:
+      - ~log.fw_action: exists()
+    map:
+      - event.action: $~log.fw_action
+      - rsa.internal.event_desc: $~log.msg_action
+  - check:
+      - ~log.fw_action: not_exists()
+      - ~log.msg_action: accept
+    map:
+      - event.action: $~log.msg_action
+  - check:
+      - ~log.fw_action: not_exists()
+      - ~log.msg_action: allow
+    map:
+      - event.action: $~log.msg_action
+  - check:
+      - ~log.fw_action: not_exists()
+      - ~log.msg_action: block
+    map:
+      - event.action: $~log.msg_action
+  - check:
+      - ~log.fw_action: not_exists()
+      - ~log.msg_action: cancel
+    map:
+      - event.action: $~log.msg_action
+  - check:
+      - ~log.fw_action: not_exists()
+      - ~log.msg_action: deny
+    map:
+      - event.action: $~log.msg_action
+  - check: >-
+        +not_exists/~log.fw_action AND ~log.msg_action!=accept AND
+        ~log.msg_action!=allow AND ~log.msg_action!=block AND
+        ~log.msg_action!=cancel AND ~log.msg_action!=deny
+    map:
+      - event.action: delete()
+  - check:
+      - event.action: not_exists()
+    map:
+      - rsa.internal.msg: $~log.msg_action
+  - check:
+      - source.mac: exists()
+    map:
+      - related.ip: +array_append/$host.ip
+      - rsa.misc.category: $~rsa.misc.category
+      - rsa.misc.serial_number: $~rsa.misc.serial_number
+      - rsa.misc.severity: $log.level
+  - map:
+      - rsa.misc.action: +array_append/$event.action
+      - ~rsa: delete()
+      - ~log: delete()

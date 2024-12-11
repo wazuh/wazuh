@@ -1,0 +1,27 @@
+name: decoder/core-syscollector/0
+# module: wazuh
+
+metadata:
+  title: Syscollector queue decoder.
+  description: >
+    Process events that have the Syscollector queue in the standard OSSEC message format.
+  compatibility: Any service being tagged with the queue 100.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 07/03/2023
+  references:
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
+
+parents:
+  - decoder/core-wazuh-message/0
+
+check:
+  # Value 100 is equal to character 'd' in ASCII
+  - wazuh.queue: 100
+
+normalize:
+  - map:
+      - wazuh.decoders: array_append(core-syscollector)
+      - wazuh.source: wodle

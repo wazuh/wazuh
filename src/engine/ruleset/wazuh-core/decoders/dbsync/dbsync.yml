@@ -1,0 +1,61 @@
+---
+name: decoder/dbsync/0
+
+metadata:
+  module: wazuh-agent/dbsync
+  title: DBSync Decoder
+  description: Decodes dbsync events
+  compatibility: This decoder has been tested on Wazuh version 4.3.9
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2022/11/08
+  references:
+    - https://github.com/wazuh/wazuh/issues/13521
+  versions:
+    - ""
+
+parents:
+  - decoder/core-dbsync/0
+
+check:
+  - event.original: starts_with({)
+
+parse|event.original:
+  - <json_event/json>
+
+normalize:
+  - map:
+    - wazuh.decoders: array_append(dbsync)
+
+  # Integrity check
+  - check:
+      - json_event.type: starts_with(integrity_check_)
+    map:
+      - _query: concat(agent, ' ', $agent.id, ' ', $json_event.component, ' ', $json_event.type, ' ', $json_event.data)
+      - _query_icheck_result: wdb_query($_query)
+
+  - check:
+      - _query_icheck_result: exists()
+    map:
+      - _ar_query: concat('(msg_to_agent) [] N!S ', $agent.id, ' ', $json_event.component, ' ', dbsync, ' ', $_query_icheck_result, ' ', $json_event.data)
+      - ar_result: active_response_send($_ar_query)
+
+  # State check
+  - check:
+      - json_event.type: string_equal(state)
+    map:
+      - _query: concat(agent, ' ', $agent.id, ' ', $json_event.component, ' ', save2, ' ', $json_event.data)
+      - query_state_status: wdb_update($_query)
+
+  # Integrity clear
+  - check:
+      - json_event.type: string_equal(integrity_clear)
+    map:
+      - _query: concat(agent, ' ', $agent.id, ' ', $json_event.component, ' ', integrity_clear, ' ', $json_event.data)
+      - query_iclear_status: wdb_update($_query)
+
+  # Save update failure
+  - check: $query_state_status == false OR $query_iclear_status == false
+    map:
+      - fail_query: $_query

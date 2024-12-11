@@ -1,0 +1,393 @@
+filename:
+  description: >-
+    Name of the file being analyzed.
+  type: keyword
+
+fileset.name:
+  description: >-
+    Name of the fileset this data belongs to.
+  type: keyword
+
+fullreqtime:
+  description: >-
+    Date and time of the request in ISO8601 format.
+  type: keyword
+
+input.type:
+  description: >-
+    The type of input from which this data was obtained.
+  type: keyword
+
+reputation:
+  description: >-
+    A value indicating the reputation of an object or entity, such as an IP address or domain.
+  type: keyword
+
+sophos.xg.ap:
+  description: >-
+    The access point name associated with the event.
+  type: keyword
+
+sophos.xg.app_is_cloud:
+  description: >-
+    A value indicating whether the application is cloud-based.
+  type: boolean
+
+sophos.xg.appfilter_policy_id:
+  description: >-
+    The identifier of the application filtering policy associated with the event.
+  type: keyword
+
+sophos.xg.application_risk:
+  description: >-
+    The risk score associated with the application.
+  type: keyword
+
+sophos.xg.appresolvedby:
+  description: >-
+    The method by which the application was resolved, such as "lookup" or "cache".
+  type: keyword
+
+sophos.xg.auth_client:
+  description: >-
+    The name of the authentication client associated with the event.
+  type: keyword
+
+sophos.xg.auth_mechanism:
+  description: >-
+    The authentication mechanism used in Sophos XG Firewall, such as "LDAP", "RADIUS", "AD", etc.
+  type: keyword
+
+sophos.xg.av_policy_name:
+  description: >-
+    The name of the antivirus policy associated with an event.
+  type: keyword
+
+sophos.xg.backup_mode:
+  description: >-
+    The backup mode of the device.
+  type: keyword
+
+sophos.xg.category:
+  description: >-
+    The category of the event.
+  type: keyword
+
+sophos.xg.category_type:
+  description: >-
+    The type of category of the event.
+  type: keyword
+
+sophos.xg.collisions:
+  description: >-
+    The number of collisions that occurred.
+  type: float
+
+sophos.xg.configuration:
+  description: >-
+    The configuration of the device.
+  type: keyword
+
+sophos.xg.con_id:
+  description: >-
+    The ID of the connection.
+  type: keyword
+
+sophos.xg.connectionname:
+  description: "The name of the connection."
+  type: keyword
+
+sophos.xg.connectiontype:
+  description: >-
+    The type of connection.
+  type: keyword
+
+sophos.xg.connevent:
+  description: >-
+    The connection event.
+  type: keyword
+
+sophos.xg.connid:
+  description: >-
+    The ID of the connection.
+  type: keyword
+
+sophos.xg.cookie:
+  description: >-
+    The cookie value.
+  type: keyword
+
+sophos.xg.device:
+  description: >-
+    The device type.
+  type: keyword
+
+sophos.xg.device_name:
+  description: >-
+    The name of the device.
+  type: keyword
+
+sophos.xg.dst_country_code:
+  description: >-
+    The country code of the destination.
+  type: keyword
+
+sophos.xg.dst_zone_type:
+  description: >-
+    The destination zone type.
+  type: keyword
+
+sophos.xg.email_subject:
+  description: >-
+    The subject of the email.
+  type: keyword
+
+sophos.xg.eventtype:
+  description: >-
+    The type of event.
+  type: keyword
+
+sophos.xg.ether_type:
+  description: >-
+    The Ethernet type.
+  type: keyword
+
+sophos.xg.exceptions:
+  description: >-
+    The exceptions that occurred.
+  type: keyword
+
+sophos.xg.extra:
+  description: >-
+    Additional information about the event, if available.
+  type: keyword
+
+sophos.xg.free:
+  description: >-
+    The amount of free space.
+  type: long
+
+sophos.xg.fw_rule_id:
+  description: >-
+    The ID of the firewall rule.
+  type: keyword
+
+sophos.xg.hb_health:
+  description: >-
+    The health of the heartbeat.
+  type: keyword
+
+sophos.xg.host:
+  description: >-
+    The hostname.
+  type: keyword
+
+sophos.xg.iap:
+  description: >-
+    The IAP ID.
+  type: keyword
+
+sophos.xg.ips_policy_id:
+  description: >-
+    The ID of the IPS policy associated with an event in Sophos XG Firewall.
+  type: keyword
+
+sophos.xg.log_component:
+  description: >-
+    Registry component.
+  type: keyword
+
+sophos.xg.log_id:
+  description: >-
+    Record ID.
+  type: keyword
+
+sophos.xg.log_subtype:
+  description: >-
+    Record subtype.
+  type: keyword
+
+sophos.xg.log_type:
+  description: >-
+    Record type.
+  type: keyword
+
+sophos.xg.mailid:
+  description: >-
+    Email ID.
+  type: keyword
+
+sophos.xg.mailsize:
+  description: >-
+    Email size.
+  type: long
+
+sophos.xg.platform:
+  description: >-
+    operating system platform.
+  type: keyword
+
+sophos.xg.priority:
+  description: >-
+    Alert priority.
+  type: keyword
+
+sophos.xg.quarantine_reason:
+  description: >-
+    Quarantine reason.
+  type: keyword
+
+sophos.xg.querystring:
+  description: >-
+    HTTP query string.
+  type: keyword
+
+sophos.xg.receiveddrops:
+  description: >-
+    Number of received packets that were dropped because the queue was full.
+  type: long
+
+sophos.xg.receivederrors:
+  description: >-
+    Number of packets received that had errors and were dropped.
+  type: long
+
+sophos.xg.receivedkbits:
+  description: >-
+    Total number of kilobits received.
+  type: long
+
+sophos.xg.remotenetwork:
+  description: >-
+    Remote network.
+  type: keyword
+
+sophos.xg.reports:
+  description: >-
+    Report ID.
+  type: keyword
+
+sophos.xg.rule_priority:
+  description: >-
+    Firewall rule priority.
+  type: keyword
+
+sophos.xg.server:
+  description: >-
+    Server.
+  type: keyword
+
+sophos.xg.signature:
+  description: >-
+    Signature of the threat.
+  type: keyword
+
+sophos.xg.source:
+  description: >-
+    Source IP address.
+  type: ip
+
+sophos.xg.spamaction:
+  description: >-
+    Action taken in relation to spam.
+  type: keyword
+
+sophos.xg.ssid:
+  description: >-
+    Wireless access point ID.
+  type: keyword
+
+sophos.xg.system_cpu:
+  description: >-
+    System CPU usage percentage.
+  type: float
+
+sophos.xg.src_country_code:
+  description: >-
+    Country of origin code.
+  type: keyword
+
+sophos.xg.src_zone_type:
+  description: >-
+    Source zone type.
+  type: keyword
+
+sophos.xg.subject:
+  description: >-
+    Email subject.
+  type: keyword
+
+sophos.xg.status:
+  description: >-
+    Alert status.
+  type: keyword
+
+sophos.xg.status_code:
+  description: >-
+    Alert status code.
+  type: keyword
+
+sophos.xg.target:
+  description: >-
+    Destination IP address.
+  type: ip
+
+sophos.xg.temp:
+  description: >-
+    The value of this field varies based on the event. Please refer to the documentation for more information.
+  type: keyword
+
+sophos.xg.threatname:
+  description: >-
+    The name of the threat that was detected.
+  type: keyword
+
+sophos.xg.total_memory:
+  description: >-
+    The total memory used by the device.
+  type: long
+
+sophos.xg.transmitteddrop:
+  description: >-
+    The number of packets that were dropped during transmission.
+  type: long
+
+sophos.xg.transmittederrors:
+  description: >-
+    The number of errors that occurred during transmission.
+  type: long
+
+sophos.xg.transmittedkbits:
+  description: >-
+    The number of kilobits that were transmitted.
+  type: long
+
+sophos.xg.unit:
+  description: >-
+    The unit of measurement for some metrics, such as the number of packets.
+  type: keyword
+
+sophos.xg.used:
+  description: >-
+    The amount of memory currently in use by the device.
+  type: long
+
+sophos.xg.user_name:
+  description: >-
+    The name of the user associated with the event.
+  type: keyword
+
+sophos.xg.user_cpu:
+  description: >-
+    The percentage of CPU usage by the user.
+  type: float
+
+sophos.xg.virus:
+  description: >-
+    The name of the virus that was detected.
+  type: keyword
+
+sophos.xg.xss:
+  description: >-
+    The type of cross-site scripting (XSS) attack that was detected.
+  type: keyword

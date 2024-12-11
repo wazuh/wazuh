@@ -10,6 +10,10 @@ relationships:
       role_ids:
         - administrator
 
+    agent-init:
+      role_ids:
+        - agent_register
+
   roles:
     administrator:
       policy_ids:
@@ -17,18 +21,7 @@ relationships:
         - agents_commands
         - security_all
         - cluster_all
-        - ciscat_read
-        - decoders_all
-        - lists_all
-        - rootcheck_all
-        - rules_all
-        - mitre_read
-        - sca_read
-        - syscheck_all
-        - syscollector_read
-        - logtest_all
-        - task_status
-        - events_ingest
+        - orders_send
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin
@@ -36,16 +29,7 @@ relationships:
     readonly:
       policy_ids:
         - agents_read
-        - ciscat_read
         - cluster_read
-        - decoders_read
-        - lists_read
-        - rootcheck_read
-        - rules_read
-        - mitre_read
-        - sca_read
-        - syscheck_read
-        - syscollector_read
       rule_ids: []
 
     users_admin:
@@ -71,4 +55,9 @@ relationships:
     cluster_admin:
       policy_ids:
         - cluster_all
+      rule_ids: []
+
+    agent_register:
+      policy_ids:
+        - agents_create
       rule_ids: []

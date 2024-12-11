@@ -1,0 +1,31 @@
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+    <EventID>4673</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>13056</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8020000000000000</Keywords>
+    <TimeCreated SystemTime="2015-10-09T00:37:36.434836600Z" />
+    <EventRecordID>1099777</EventRecordID>
+    <Correlation />
+    <Execution ProcessID="496" ThreadID="504" />
+    <Channel>Security</Channel>
+    <Computer>DC01.contoso.local</Computer>
+    <Security />
+  </System>
+  <EventData>
+    <Data Name="SubjectUserSid">S-1-5-18</Data>
+    <Data Name="SubjectUserName">DC01$</Data>
+    <Data Name="SubjectDomainName">CONTOSO</Data>
+    <Data Name="SubjectLogonId">0x3e7</Data>
+    <Data Name="ObjectServer">NT Local Security Authority / Authentication Service</Data>
+    <Data Name="Service">LsaRegisterLogonProcess()</Data>
+    <Data Name="PrivilegeList">SeTcbPrivilege</Data>
+    <Data Name="ProcessId">0x1f0</Data>
+    <Data Name="ProcessName">C:\\Windows\\System32\\lsass.exe</Data>
+  </EventData>
+</Event>
+</Events>

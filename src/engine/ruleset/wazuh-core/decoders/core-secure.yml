@@ -1,0 +1,28 @@
+name: decoder/core-secure/0
+# module: wazuh
+
+metadata:
+  title: Secure queue decoder.
+  description: >
+    Process events that have the Secure queue in the standard OSSEC message format.
+    Currently no messages should be received through this queue.
+  compatibility: Any service being tagged with the queue 52.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 07/03/2023
+  references:
+    - https://documentation.wazuh.com/current/development/message-format.html#secure-message-format
+
+parents:
+  - decoder/core-wazuh-message/0
+
+check:
+  # Value 52 is equal to character '4' in ASCII
+  - wazuh.queue: 52
+
+normalize:
+  - map:
+      - wazuh.decoders: array_append(core-secure)
+      - wazuh.source: wazuh-remoted-unknown

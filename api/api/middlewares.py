@@ -10,23 +10,21 @@ import logging
 import base64
 import jwt
 
+from connexion.exceptions import OAuthProblem
+from connexion.lifecycle import ConnexionRequest
+from connexion.security import AbstractSecurityHandler
+from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from connexion.exceptions import OAuthProblem
-from connexion.lifecycle import ConnexionRequest
-from connexion.security import AbstractSecurityHandler
-
-from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
-
 from wazuh.core.utils import get_utc_now
 
-from api import configuration
 from api.alogging import custom_logging
-from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.configuration import default_api_configuration
+from wazuh.core.authentication import get_keypair, JWT_ALGORITHM
+from wazuh.core.config.client import CentralizedConfig
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
@@ -38,6 +36,9 @@ UNKNOWN_USER_STRING = "unknown_user"
 RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
 LOGIN_ENDPOINT = '/security/user/authenticate'
 
+# Authentication context hash key
+HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
+
 # API secure headers
 server = Server().set("Wazuh")
 csp = ContentSecurityPolicy().set('none')
@@ -45,7 +46,6 @@ xfo = XFrameOptions().deny()
 secure_headers = Secure(server=server, csp=csp, xfo=xfo)
 
 logger = logging.getLogger('wazuh-api')
-start_stop_logger = logging.getLogger('start-stop-api')
 
 ip_stats = dict()
 ip_block = set()
@@ -70,6 +70,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     # first time the json function is awaited. This check avoids raising an
     # exception when the request json content is invalid.
     body = await request.json() if hasattr(request, '_json') else {}
+    hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
 
     if 'password' in query:
         query['password'] = '****'
@@ -86,16 +87,17 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
             if auth_type == 'basic':
                 user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
             elif auth_type == 'bearer':
-                s = jwt.decode(user_passw, generate_keypair()[1],
+                _, public_key = get_keypair()
+                s = jwt.decode(user_passw, public_key,
                             algorithms=[JWT_ALGORITHM],
                             audience='Wazuh API REST',
                             options={'verify_exp': False})
                 user = s['sub']
+                if HASH_AUTH_CONTEXT_KEY in s:
+                    hash_auth_context = s[HASH_AUTH_CONTEXT_KEY]
         except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
             user = UNKNOWN_USER_STRING
 
-    # Get or create authorization context hash
-    hash_auth_context = context.get('token_info', {}).get('hash_auth_context', '')
     # Create hash if run_as login
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
@@ -121,8 +123,8 @@ def check_blocked_ip(request: Request):
 
     """
     global ip_block, ip_stats
-    access_conf = configuration.api_conf['access']
-    block_time = access_conf['block_time']
+    access_conf = CentralizedConfig.get_management_api_config().access
+    block_time = access_conf.block_time
     try:
         if get_utc_now().timestamp() - block_time >= ip_stats[request.client.host]['timestamp']:
             del ip_stats[request.client.host]
@@ -182,7 +184,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """"Check request limits per minute."""
-        max_request_per_minute = configuration.api_conf['access']['max_request_per_minute']
+        max_request_per_minute = CentralizedConfig.get_management_api_config().access.max_request_per_minute
         error_code = check_rate_limit(
             'general_request_counter',
             'general_current_time',
@@ -232,6 +234,17 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
             Returned response.
         """
         prev_time = time.time()
+
+        body = await request.body()
+        if body:
+            try:
+                # Load the request body to the _json field before calling the controller so it's cached before the stream 
+                # is consumed. If there's a json error we skip it so it's handled later.
+                # Related to https://github.com/wazuh/wazuh/issues/24060.
+                _ = await request.json()
+            except json.decoder.JSONDecodeError:
+                pass
+
         response = await call_next(request)
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)
         return response

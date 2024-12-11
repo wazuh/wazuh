@@ -1,0 +1,2818 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1654,
+      "domain": "example.net",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1121
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Attempted Information Leak",
+    "network": {
+      "bytes": 2001,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "example.net"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Attempted Information Leak",
+      "id": "2013028",
+      "name": "ET POLICY curl User-Agent Outbound"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 347,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 32858
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Attempted Information Leak",
+        "gid": 1,
+        "rev": 4,
+        "severity": 2,
+        "signature": "ET POLICY curl User-Agent Outbound",
+        "signature_id": 2013028
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1654,
+        "bytes_toserver": 347,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-03T14:42:44.613469+0000"
+      },
+      "flow_id": 2191386088856669,
+      "http": {
+        "hostname": "example.net",
+        "http_content_type": "text/html",
+        "http_method": "GET",
+        "http_user_agent": "curl/7.58.0",
+        "length": 1121,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 32858,
+      "timestamp": "2018-10-03T14:42:44.836744+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "example.net",
+      "original": "/",
+      "path": "/",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "curl/7.58.0"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1654,
+      "domain": "example.net",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1121
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Attempted Information Leak",
+    "network": {
+      "bytes": 2001,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "example.net"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Attempted Information Leak",
+      "id": "2013028",
+      "name": "ET POLICY curl User-Agent Outbound"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 347,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 32864
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Attempted Information Leak",
+        "gid": 1,
+        "rev": 4,
+        "severity": 2,
+        "signature": "ET POLICY curl User-Agent Outbound",
+        "signature_id": 2013028
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1654,
+        "bytes_toserver": 347,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-03T16:16:26.467217+0000"
+      },
+      "flow_id": 678269478904081,
+      "http": {
+        "hostname": "example.net",
+        "http_content_type": "text/html",
+        "http_method": "GET",
+        "http_user_agent": "curl/7.58.0",
+        "length": 1121,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 32864,
+      "timestamp": "2018-10-03T16:16:26.711841+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "example.net",
+      "original": "/",
+      "path": "/",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "curl/7.58.0"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1654,
+      "domain": "example.net",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1126
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Attempted Information Leak",
+    "network": {
+      "bytes": 2001,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "example.net"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Attempted Information Leak",
+      "id": "2013028",
+      "name": "ET POLICY curl User-Agent Outbound"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 347,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 32870
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Attempted Information Leak",
+        "gid": 1,
+        "rev": 4,
+        "severity": 2,
+        "signature": "ET POLICY curl User-Agent Outbound",
+        "signature_id": 2013028
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1654,
+        "bytes_toserver": 347,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-03T16:44:50.580866+0000"
+      },
+      "flow_id": 1170030461115650.0,
+      "http": {
+        "hostname": "example.net",
+        "http_content_type": "text/html",
+        "http_method": "GET",
+        "http_user_agent": "curl/7.58.0",
+        "length": 1126,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 32870,
+      "timestamp": "2018-10-03T16:44:50.813100+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "example.net",
+      "original": "/",
+      "path": "/",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "curl/7.58.0"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1654,
+      "domain": "example.org",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1121
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Attempted Information Leak",
+    "network": {
+      "bytes": 2001,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "example.org"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Attempted Information Leak",
+      "id": "2013028",
+      "name": "ET POLICY curl User-Agent Outbound"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 347,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 32872
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Attempted Information Leak",
+        "gid": 1,
+        "rev": 4,
+        "severity": 2,
+        "signature": "ET POLICY curl User-Agent Outbound",
+        "signature_id": 2013028
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1654,
+        "bytes_toserver": 347,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-03T16:45:09.036620+0000"
+      },
+      "flow_id": 49628113637132,
+      "http": {
+        "hostname": "example.org",
+        "http_content_type": "text/html",
+        "http_method": "GET",
+        "http_user_agent": "curl/7.58.0",
+        "length": 1121,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 32872,
+      "timestamp": "2018-10-03T16:45:09.267308+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "example.org",
+      "original": "/",
+      "path": "/",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "curl/7.58.0"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1654,
+      "domain": "example.org",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1121
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Attempted Information Leak",
+    "network": {
+      "bytes": 2001,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "example.org"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Attempted Information Leak",
+      "id": "2013028",
+      "name": "ET POLICY curl User-Agent Outbound"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 347,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 32876
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Attempted Information Leak",
+        "gid": 1,
+        "rev": 4,
+        "severity": 2,
+        "signature": "ET POLICY curl User-Agent Outbound",
+        "signature_id": 2013028
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1654,
+        "bytes_toserver": 347,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-03T16:45:34.252519+0000"
+      },
+      "flow_id": 116307482565223,
+      "http": {
+        "hostname": "example.org",
+        "http_content_type": "text/html",
+        "http_method": "GET",
+        "http_user_agent": "curl/7.58.0",
+        "length": 1121,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 32876,
+      "timestamp": "2018-10-03T16:45:34.481113+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "example.org",
+      "original": "/",
+      "path": "/",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "curl/7.58.0"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1654,
+      "domain": "example.org",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1126
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Attempted Information Leak",
+    "network": {
+      "bytes": 2001,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "example.org"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Attempted Information Leak",
+      "id": "2013028",
+      "name": "ET POLICY curl User-Agent Outbound"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 347,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 32892
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Attempted Information Leak",
+        "gid": 1,
+        "rev": 4,
+        "severity": 2,
+        "signature": "ET POLICY curl User-Agent Outbound",
+        "signature_id": 2013028
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1654,
+        "bytes_toserver": 347,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-03T17:02:38.599426+0000"
+      },
+      "flow_id": 1205867738178946,
+      "http": {
+        "hostname": "example.org",
+        "http_content_type": "text/html",
+        "http_method": "GET",
+        "http_user_agent": "curl/7.58.0",
+        "length": 1126,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 32892,
+      "timestamp": "2018-10-03T17:02:38.900976+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "example.org",
+      "original": "/",
+      "path": "/",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "curl/7.58.0"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1654,
+      "domain": "security.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1138
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 2151,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "security.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 497,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 37742
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1654,
+        "bytes_toserver": 497,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-04T09:34:58.924536+0000"
+      },
+      "flow_id": 764842923400056,
+      "http": {
+        "hostname": "security.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 1138,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-security/InRelease"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 37742,
+      "timestamp": "2018-10-04T09:34:59.009897+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "security.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-security/InRelease",
+      "path": "/ubuntu/dists/bionic-security/InRelease",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 417,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 3,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 0
+        },
+        "status_code": 304
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 904,
+      "packets": 7,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 487,
+      "ip": "192.168.1.146",
+      "packets": 4,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 417,
+        "bytes_toserver": 487,
+        "pkts_toclient": 3,
+        "pkts_toserver": 4,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 0,
+        "protocol": "HTTP/1.1",
+        "status": 304,
+        "url": "/ubuntu/dists/bionic/InRelease"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:34:59.168340+0000",
+      "tx_id": 0
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic/InRelease",
+      "path": "/ubuntu/dists/bionic/InRelease",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 3445,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 5,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2601
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 4287,
+      "packets": 11,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 842,
+      "ip": "192.168.1.146",
+      "packets": 6,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 3445,
+        "bytes_toserver": 842,
+        "pkts_toclient": 5,
+        "pkts_toserver": 6,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2601,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-updates/InRelease"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:34:59.288862+0000",
+      "tx_id": 1
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/InRelease",
+      "path": "/ubuntu/dists/bionic-updates/InRelease",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 90543,
+      "domain": "security.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 62,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1241
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 95353,
+      "packets": 126,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "security.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 4810,
+      "ip": "192.168.1.146",
+      "packets": 64,
+      "port": 37742
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 90543,
+        "bytes_toserver": 4810,
+        "pkts_toclient": 62,
+        "pkts_toserver": 64,
+        "start": "2018-10-04T09:34:58.924536+0000"
+      },
+      "flow_id": 764842923400056,
+      "http": {
+        "hostname": "security.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 1241,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-security/main/source/by-hash/SHA256/f5ec03d97ca76c98162d9233c8b7c578c52897e2136428277baf2e7b633a8e72"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 37742,
+      "timestamp": "2018-10-04T09:34:59.289324+0000",
+      "tx_id": 1
+    },
+    "url": {
+      "domain": "security.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-security/main/source/by-hash/SHA256/f5ec03d97ca76c98162d9233c8b7c578c52897e2136428277baf2e7b633a8e72",
+      "path": "/ubuntu/dists/bionic-security/main/source/by-hash/SHA256/f5ec03d97ca76c98162d9233c8b7c578c52897e2136428277baf2e7b633a8e72",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 145014,
+      "domain": "security.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 98,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2687
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 151605,
+      "packets": 185,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "security.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 6591,
+      "ip": "192.168.1.146",
+      "packets": 87,
+      "port": 37742
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 145014,
+        "bytes_toserver": 6591,
+        "pkts_toclient": 98,
+        "pkts_toserver": 87,
+        "start": "2018-10-04T09:34:58.924536+0000"
+      },
+      "flow_id": 764842923400056,
+      "http": {
+        "hostname": "security.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2687,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-security/main/binary-amd64/by-hash/SHA256/c5b8346a3221bc9a23a79ba4dc4e730a6319a77fc9d63872dfc56539a0810015"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 37742,
+      "timestamp": "2018-10-04T09:34:59.356132+0000",
+      "tx_id": 2
+    },
+    "url": {
+      "domain": "security.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-security/main/binary-amd64/by-hash/SHA256/c5b8346a3221bc9a23a79ba4dc4e730a6319a77fc9d63872dfc56539a0810015",
+      "path": "/ubuntu/dists/bionic-security/main/binary-amd64/by-hash/SHA256/c5b8346a3221bc9a23a79ba4dc4e730a6319a77fc9d63872dfc56539a0810015",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 330525,
+      "domain": "security.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 221,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2688
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 341985,
+      "packets": 377,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "security.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 11460,
+      "ip": "192.168.1.146",
+      "packets": 156,
+      "port": 37742
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 330525,
+        "bytes_toserver": 11460,
+        "pkts_toclient": 221,
+        "pkts_toserver": 156,
+        "start": "2018-10-04T09:34:58.924536+0000"
+      },
+      "flow_id": 764842923400056,
+      "http": {
+        "hostname": "security.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2688,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-security/universe/binary-amd64/by-hash/SHA256/e5cc957139a25a0fee47cbf2c0fac8ad5cab50346d6a74abe031748924c5b558"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 37742,
+      "timestamp": "2018-10-04T09:34:59.456919+0000",
+      "tx_id": 3
+    },
+    "url": {
+      "domain": "security.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-security/universe/binary-amd64/by-hash/SHA256/e5cc957139a25a0fee47cbf2c0fac8ad5cab50346d6a74abe031748924c5b558",
+      "path": "/ubuntu/dists/bionic-security/universe/binary-amd64/by-hash/SHA256/e5cc957139a25a0fee47cbf2c0fac8ad5cab50346d6a74abe031748924c5b558",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 96554,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 67,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2601
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 101449,
+      "packets": 131,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 4895,
+      "ip": "192.168.1.146",
+      "packets": 64,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 96554,
+        "bytes_toserver": 4895,
+        "pkts_toclient": 67,
+        "pkts_toserver": 64,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2601,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-backports/InRelease"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:34:59.747122+0000",
+      "tx_id": 2
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-backports/InRelease",
+      "path": "/ubuntu/dists/bionic-backports/InRelease",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 174843,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 119,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2687
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 181775,
+      "packets": 210,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 6932,
+      "ip": "192.168.1.146",
+      "packets": 91,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 174843,
+        "bytes_toserver": 6932,
+        "pkts_toclient": 119,
+        "pkts_toserver": 91,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2687,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-updates/main/source/by-hash/SHA256/65f2e3a4e9d89d9d4b5e3d42e586bc96f48a24466b0ad0b4a707255e44a26b03"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:34:59.953886+0000",
+      "tx_id": 3
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/main/source/by-hash/SHA256/65f2e3a4e9d89d9d4b5e3d42e586bc96f48a24466b0ad0b4a707255e44a26b03",
+      "path": "/ubuntu/dists/bionic-updates/main/source/by-hash/SHA256/65f2e3a4e9d89d9d4b5e3d42e586bc96f48a24466b0ad0b4a707255e44a26b03",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 376452,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 253,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2688
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 388131,
+      "packets": 412,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 11679,
+      "ip": "192.168.1.146",
+      "packets": 159,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 376452,
+        "bytes_toserver": 11679,
+        "pkts_toclient": 253,
+        "pkts_toserver": 159,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2688,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-updates/universe/source/by-hash/SHA256/56cfd9cc2efa61dff7428dddf921c3cd6047ab8e6484a7f1888e4c3f7252f1ef"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:35:00.250560+0000",
+      "tx_id": 4
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/universe/source/by-hash/SHA256/56cfd9cc2efa61dff7428dddf921c3cd6047ab8e6484a7f1888e4c3f7252f1ef",
+      "path": "/ubuntu/dists/bionic-updates/universe/source/by-hash/SHA256/56cfd9cc2efa61dff7428dddf921c3cd6047ab8e6484a7f1888e4c3f7252f1ef",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 468170,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 314,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2687
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 482156,
+      "packets": 504,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 13986,
+      "ip": "192.168.1.146",
+      "packets": 190,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 468170,
+        "bytes_toserver": 13986,
+        "pkts_toclient": 314,
+        "pkts_toserver": 190,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2687,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-updates/main/binary-amd64/by-hash/SHA256/4360137dc8f98b47648da1fef5472ef234fb02115bc2b29873bcaeee62637e70"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:35:00.401788+0000",
+      "tx_id": 5
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/main/binary-amd64/by-hash/SHA256/4360137dc8f98b47648da1fef5472ef234fb02115bc2b29873bcaeee62637e70",
+      "path": "/ubuntu/dists/bionic-updates/main/binary-amd64/by-hash/SHA256/4360137dc8f98b47648da1fef5472ef234fb02115bc2b29873bcaeee62637e70",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 880323,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 588,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2691
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 903684,
+      "packets": 916,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 23361,
+      "ip": "192.168.1.146",
+      "packets": 328,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 880323,
+        "bytes_toserver": 23361,
+        "pkts_toclient": 588,
+        "pkts_toserver": 328,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2691,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-updates/restricted/binary-amd64/by-hash/SHA256/c93fdc7f10cad1263349fd7b5bdd6a7f7163165b96ad263b3e12022e319d0d12"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:35:00.776438+0000",
+      "tx_id": 6
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/restricted/binary-amd64/by-hash/SHA256/c93fdc7f10cad1263349fd7b5bdd6a7f7163165b96ad263b3e12022e319d0d12",
+      "path": "/ubuntu/dists/bionic-updates/restricted/binary-amd64/by-hash/SHA256/c93fdc7f10cad1263349fd7b5bdd6a7f7163165b96ad263b3e12022e319d0d12",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 884342,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 591,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 2687
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 908100,
+      "packets": 921,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 23758,
+      "ip": "192.168.1.146",
+      "packets": 330,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 884342,
+        "bytes_toserver": 23758,
+        "pkts_toclient": 591,
+        "pkts_toserver": 330,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 2687,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/ubuntu/dists/bionic-updates/universe/binary-amd64/by-hash/SHA256/5190f7afbee38b3cb32225db478fdbabd46f76eaa9c5921a13091891bf3e9bbc"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:35:00.897009+0000",
+      "tx_id": 7
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/universe/binary-amd64/by-hash/SHA256/5190f7afbee38b3cb32225db478fdbabd46f76eaa9c5921a13091891bf3e9bbc",
+      "path": "/ubuntu/dists/bionic-updates/universe/binary-amd64/by-hash/SHA256/5190f7afbee38b3cb32225db478fdbabd46f76eaa9c5921a13091891bf3e9bbc",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1467603,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 979,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 0
+        }
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 1504422,
+      "packets": 1503,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 36819,
+      "ip": "192.168.1.146",
+      "packets": 524,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1467603,
+        "bytes_toserver": 36819,
+        "pkts_toclient": 979,
+        "pkts_toserver": 524,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 0,
+        "protocol": "HTTP/1.1",
+        "url": "/ubuntu/dists/bionic-updates/universe/i18n/by-hash/SHA256/9fe539b7036e51327cd85ca5e0a4dd4eb47f69168875de2ac9842a5e36ebd4a4"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:35:01.362208+0000",
+      "tx_id": 8
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/universe/i18n/by-hash/SHA256/9fe539b7036e51327cd85ca5e0a4dd4eb47f69168875de2ac9842a5e36ebd4a4",
+      "path": "/ubuntu/dists/bionic-updates/universe/i18n/by-hash/SHA256/9fe539b7036e51327cd85ca5e0a4dd4eb47f69168875de2ac9842a5e36ebd4a4",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "89.160.20.112",
+      "bytes": 1618380,
+      "domain": "archive.ubuntu.com",
+      "ip": "89.160.20.112",
+      "packets": 1079,
+      "port": 80
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 0
+        }
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Not Suspicious Traffic",
+    "network": {
+      "bytes": 1658832,
+      "packets": 1654,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "archive.ubuntu.com"
+      ],
+      "ip": [
+        "192.168.1.146",
+        "89.160.20.112"
+      ]
+    },
+    "rule": {
+      "category": "Not Suspicious Traffic",
+      "id": "2013504",
+      "name": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management"
+    },
+    "source": {
+      "address": "192.168.1.146",
+      "bytes": 40452,
+      "ip": "192.168.1.146",
+      "packets": 575,
+      "port": 52340
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Not Suspicious Traffic",
+        "gid": 1,
+        "rev": 5,
+        "severity": 3,
+        "signature": "ET POLICY GNU/Linux APT User-Agent Outbound likely related to package management",
+        "signature_id": 2013504
+      },
+      "app_proto": "http",
+      "dest_ip": "89.160.20.112",
+      "dest_port": 80,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 1618380,
+        "bytes_toserver": 40452,
+        "pkts_toclient": 1079,
+        "pkts_toserver": 575,
+        "start": "2018-10-04T09:34:58.926006+0000"
+      },
+      "flow_id": 112424506237238,
+      "http": {
+        "hostname": "archive.ubuntu.com",
+        "http_method": "GET",
+        "http_user_agent": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)",
+        "length": 0,
+        "protocol": "HTTP/1.1",
+        "url": "/ubuntu/dists/bionic-updates/multiverse/binary-amd64/by-hash/SHA256/8ab8cb220c0e50521c589acc2bc2b43a3121210f0b035a0605972bcffd73dd16"
+      },
+      "in_iface": "enp0s3",
+      "proto": "TCP",
+      "src_ip": "192.168.1.146",
+      "src_port": 52340,
+      "timestamp": "2018-10-04T09:35:01.575088+0000",
+      "tx_id": 9
+    },
+    "url": {
+      "domain": "archive.ubuntu.com",
+      "original": "/ubuntu/dists/bionic-updates/multiverse/binary-amd64/by-hash/SHA256/8ab8cb220c0e50521c589acc2bc2b43a3121210f0b035a0605972bcffd73dd16",
+      "path": "/ubuntu/dists/bionic-updates/multiverse/binary-amd64/by-hash/SHA256/8ab8cb220c0e50521c589acc2bc2b43a3121210f0b035a0605972bcffd73dd16",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "Debian APT-HTTP/1.3 (1.6.3ubuntu0.1)"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "10.232.0.237",
+      "domain": "hostname.domain.net",
+      "ip": "10.232.0.237",
+      "port": 9080
+    },
+    "event": {
+      "type": [
+        "protocol"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "network": {
+      "protocol": "tls",
+      "transport": "tcp"
+    },
+    "related": {
+      "hash": [
+        "00112233445566778899AABBCCDDEEFF00112233",
+        "0993626a07ad09e1ce91293be7aa5721",
+        "d92325c876e7279f4eb8c62415e3a6b7"
+      ],
+      "hosts": [
+        "hostname.domain.net"
+      ],
+      "ip": [
+        "10.126.2.140",
+        "10.232.0.237"
+      ]
+    },
+    "source": {
+      "address": "10.126.2.140",
+      "ip": "10.126.2.140",
+      "port": 45884
+    },
+    "suricata": {
+      "dest_ip": "10.232.0.237",
+      "dest_port": 9080,
+      "event_type": "tls",
+      "flow_id": 1091813059495729,
+      "in_iface": "enp5s0",
+      "proto": "TCP",
+      "src_ip": "10.126.2.140",
+      "src_port": 45884,
+      "timestamp": "2018-10-04T09:35:02.796615+0000",
+      "tls": {
+        "fingerprint": "00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00:11:22:33",
+        "issuerdn": "C=US, O=Google Inc, CN=Google Internet Authority G2",
+        "ja3": {
+          "hash": "d92325c876e7279f4eb8c62415e3a6b7",
+          "string": "001,22222-33333-00-44444-66666-333-333-55555-55555-22-55555-44444-22-33-66666-77777-22-88888-99999-333-22-66666-77777-22-99999-96611-22-33-88888-33333-88888-333-22222-33333-333-222-88888-444-99999-22222-666-777-888,22-33-44-55-6,77-88-99-0-11-11-22-33-44-55,0"
+        },
+        "ja3s": {
+          "hash": "0993626a07ad09e1ce91293be7aa5721",
+          "string": "333,55555,66666-22"
+        },
+        "notafter": "2024-07-16T14:52:35",
+        "notbefore": "2019-07-17T14:52:35",
+        "serial": "00:11:22:33:44:55:66:77:88",
+        "sni": "hostname.domain.net",
+        "subject": "C=US, ST=California, L=Mountain View, O=Google Inc, CN=*.google.com",
+        "version": "TLS 1.2"
+      }
+    },
+    "tls": {
+      "client": {
+        "ja3": "d92325c876e7279f4eb8c62415e3a6b7",
+        "server_name": "hostname.domain.net"
+      },
+      "server": {
+        "hash": {
+          "sha1": "00112233445566778899AABBCCDDEEFF00112233"
+        },
+        "issuer": "C=US, O=Google Inc, CN=Google Internet Authority G2",
+        "ja3s": "0993626a07ad09e1ce91293be7aa5721",
+        "not_after": "2024-07-16T14:52:35.000Z",
+        "not_before": "2019-07-17T14:52:35.000Z",
+        "subject": "C=US, ST=California, L=Mountain View, O=Google Inc, CN=*.google.com",
+        "x509": {
+          "issuer": {
+            "common_name": [
+              "Google Internet Authority G2"
+            ],
+            "country": [
+              "US"
+            ],
+            "organization": [
+              "Google Inc"
+            ]
+          },
+          "not_after": "2024-07-16T14:52:35.000Z",
+          "not_before": "2019-07-17T14:52:35.000Z",
+          "serial_number": "001122334455667788",
+          "subject": {
+            "common_name": [
+              "*.google.com"
+            ],
+            "country": [
+              "US"
+            ],
+            "locality": [
+              "Mountain View"
+            ],
+            "organization": [
+              "Google Inc"
+            ],
+            "state_or_province": [
+              "California"
+            ]
+          }
+        }
+      },
+      "version": "1.2",
+      "version_protocol": "tls"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "10.128.2.48",
+      "bytes": 4660,
+      "domain": "host.domain.net",
+      "ip": "10.128.2.48",
+      "packets": 8,
+      "port": 8443
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "message": "",
+    "network": {
+      "bytes": 5734,
+      "packets": 15,
+      "protocol": "tls",
+      "transport": "tcp"
+    },
+    "related": {
+      "hash": [
+        "363FEE2A1CFADEADBEEF4299CFA9B09101EBA9CC",
+        "391231ba5675e42807b9e1f457b2614e",
+        "3f1ea03f5822e8021b60cc3e4b233181"
+      ],
+      "hosts": [
+        "host.domain.net"
+      ],
+      "ip": [
+        "10.137.3.54",
+        "10.128.2.48"
+      ]
+    },
+    "rule": {
+      "category": "",
+      "id": "2610003",
+      "name": "SURICATA TLS on unusual port"
+    },
+    "source": {
+      "address": "10.137.3.54",
+      "bytes": 1074,
+      "ip": "10.137.3.54",
+      "packets": 7,
+      "port": 64389
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "",
+        "gid": 1,
+        "rev": 1,
+        "severity": 3,
+        "signature": "SURICATA TLS on unusual port",
+        "signature_id": 2610003
+      },
+      "app_proto": "tls",
+      "dest_ip": "10.128.2.48",
+      "dest_port": 8443,
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 4660,
+        "bytes_toserver": 1074,
+        "pkts_toclient": 8,
+        "pkts_toserver": 7,
+        "start": "2020-06-26T11:00:02.970011-0400"
+      },
+      "flow_id": 991192778198299,
+      "in_iface": "enp0s31f6",
+      "proto": "TCP",
+      "src_ip": "10.137.3.54",
+      "src_port": 64389,
+      "timestamp": "2020-06-26T11:00:03.342282-0400",
+      "tls": {
+        "fingerprint": "36:3f:ee:2a:1c:fa:de:ad:be:ef:42:99:cf:a9:b0:91:01:eb:a9:cc",
+        "issuerdn": "C=Unknown, ST=Unknown, L=Unknown, O=Unknown, OU=Unknown, CN=Unknown",
+        "ja3": {
+          "hash": "3f1ea03f5822e8021b60cc3e4b233181",
+          "string": "718,4682-2687-2686-41992-41911-53292-53297-41969-22905-41926-41924-94181-94711-15-23-95-12-11-205,0-33-50-53-6-61-39-23-34-85-81,93-04-52,3-9-3"
+        },
+        "ja3s": {
+          "hash": "391231ba5675e42807b9e1f457b2614e",
+          "string": "742,48172,30210-30"
+        },
+        "notafter": "2026-06-25T17:36:29",
+        "notbefore": "2016-06-27T17:36:29",
+        "serial": "72:A9:2C:51",
+        "sni": "host.domain.net",
+        "subject": "C=Unknown, ST=Unknown, L=Unknown, O=Unknown, OU=Unknown, CN=Unknown",
+        "version": "TLS 1.2"
+      }
+    },
+    "tls": {
+      "client": {
+        "ja3": "3f1ea03f5822e8021b60cc3e4b233181",
+        "server_name": "host.domain.net"
+      },
+      "server": {
+        "hash": {
+          "sha1": "363FEE2A1CFADEADBEEF4299CFA9B09101EBA9CC"
+        },
+        "issuer": "C=Unknown, ST=Unknown, L=Unknown, O=Unknown, OU=Unknown, CN=Unknown",
+        "ja3s": "391231ba5675e42807b9e1f457b2614e",
+        "not_after": "2026-06-25T17:36:29.000Z",
+        "not_before": "2016-06-27T17:36:29.000Z",
+        "subject": "C=Unknown, ST=Unknown, L=Unknown, O=Unknown, OU=Unknown, CN=Unknown",
+        "x509": {
+          "issuer": {
+            "common_name": [
+              "Unknown"
+            ],
+            "country": [
+              "Unknown"
+            ],
+            "locality": [
+              "Unknown"
+            ],
+            "organization": [
+              "Unknown"
+            ],
+            "organizational_unit": [
+              "Unknown"
+            ],
+            "state_or_province": [
+              "Unknown"
+            ]
+          },
+          "not_after": "2026-06-25T17:36:29.000Z",
+          "not_before": "2016-06-27T17:36:29.000Z",
+          "serial_number": "72A92C51",
+          "subject": {
+            "common_name": [
+              "Unknown"
+            ],
+            "country": [
+              "Unknown"
+            ],
+            "locality": [
+              "Unknown"
+            ],
+            "organization": [
+              "Unknown"
+            ],
+            "organizational_unit": [
+              "Unknown"
+            ],
+            "state_or_province": [
+              "Unknown"
+            ]
+          }
+        }
+      },
+      "version": "1.2",
+      "version_protocol": "tls"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

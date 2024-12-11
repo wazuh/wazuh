@@ -1,0 +1,246 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "code": "4104",
+      "dataset": "powershell-operational",
+      "kind": "event",
+      "module": "windows",
+      "provider": "Microsoft-Windows-PowerShell",
+      "start": "2020-05-14T11:33:51.393884Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "vagrant"
+    },
+    "log": {
+      "level": "verbose"
+    },
+    "message": "Creating script block text",
+    "powershell": {
+      "file": {
+        "script_block_id": "f5521cbd-656e-4296-b74d-9ffb4eec23b0",
+        "script_block_text": ""
+      },
+      "sequence": "1",
+      "total": "1"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-powershell-operational"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "MessageNumber": "1",
+        "MessageTotal": "1",
+        "Path": "C:\\Users\\vagrant\\Desktop\\patata.ps1",
+        "ScriptBlockId": "f5521cbd-656e-4296-b74d-9ffb4eec23b0",
+        "ScriptBlockText": ""
+      },
+      "System": {
+        "Channel": {
+          "#text": "Microsoft-Windows-PowerShell/Operational"
+        },
+        "Computer": {
+          "#text": "vagrant"
+        },
+        "Correlation": {
+          "@ActivityID": "FB13C9DE-29F7-0000-79DB-13FBF729D601"
+        },
+        "EventID": {
+          "#text": "4104"
+        },
+        "EventRecordID": {
+          "#text": "3582"
+        },
+        "Execution": {
+          "@ProcessID": "4844",
+          "@ThreadID": "4428"
+        },
+        "Keywords": {
+          "#text": "0x0"
+        },
+        "Level": {
+          "#text": "5"
+        },
+        "Opcode": {
+          "#text": "15"
+        },
+        "Provider": {
+          "@Guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A",
+          "@Name": "Microsoft-Windows-PowerShell"
+        },
+        "Security": {
+          "@UserID": "S-1-5-21-1350058589-2282154016-2764056528-1000"
+        },
+        "Task": {
+          "#text": "2"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-05-14T11:33:51.393884Z"
+        },
+        "Version": {
+          "#text": "1"
+        }
+      },
+      "logon": {
+        "channel": "Microsoft-Windows-PowerShell/Operational",
+        "computer_name": "vagrant",
+        "event_id": "4104",
+        "keywords": [
+          "AnyKeyword"
+        ],
+        "process": {
+          "pid": 4844,
+          "thread": {
+            "id": "4428"
+          }
+        },
+        "provider_guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A",
+        "provider_name": "Microsoft-Windows-PowerShell",
+        "record_id": "3582",
+        "task": "2",
+        "version": "1"
+      }
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "code": "4104",
+      "dataset": "powershell-operational",
+      "kind": "event",
+      "module": "windows",
+      "provider": "Microsoft-Windows-PowerShell",
+      "start": "2020-05-14T11:33:51.389266Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "vagrant"
+    },
+    "log": {
+      "level": "verbose"
+    },
+    "message": "Creating script block text",
+    "powershell": {
+      "file": {
+        "script_block_id": "50d2dbda-7361-4926-a94d-d9eadfdb43fa",
+        "script_block_text": ".\\patata.ps1"
+      },
+      "sequence": "1",
+      "total": "1"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-powershell-operational"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "MessageNumber": "1",
+        "MessageTotal": "1",
+        "Path": "",
+        "ScriptBlockId": "50d2dbda-7361-4926-a94d-d9eadfdb43fa",
+        "ScriptBlockText": ".\\patata.ps1"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Microsoft-Windows-PowerShell/Operational"
+        },
+        "Computer": {
+          "#text": "vagrant"
+        },
+        "Correlation": {
+          "@ActivityID": "FB13C9DE-29F7-0001-18E0-13FBF729D601"
+        },
+        "EventID": {
+          "#text": "4104"
+        },
+        "EventRecordID": {
+          "#text": "3580"
+        },
+        "Execution": {
+          "@ProcessID": "4844",
+          "@ThreadID": "4428"
+        },
+        "Keywords": {
+          "#text": "0x0"
+        },
+        "Level": {
+          "#text": "5"
+        },
+        "Opcode": {
+          "#text": "15"
+        },
+        "Provider": {
+          "@Guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A",
+          "@Name": "Microsoft-Windows-PowerShell"
+        },
+        "Security": {
+          "@UserID": "S-1-5-21-1350058589-2282154016-2764056528-1000"
+        },
+        "Task": {
+          "#text": "2"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-05-14T11:33:51.389266Z"
+        },
+        "Version": {
+          "#text": "1"
+        }
+      },
+      "logon": {
+        "channel": "Microsoft-Windows-PowerShell/Operational",
+        "computer_name": "vagrant",
+        "event_id": "4104",
+        "keywords": [
+          "AnyKeyword"
+        ],
+        "process": {
+          "pid": 4844,
+          "thread": {
+            "id": "4428"
+          }
+        },
+        "provider_guid": "A0C1853B-5C40-4B15-8766-3CF1C58F985A",
+        "provider_name": "Microsoft-Windows-PowerShell",
+        "record_id": "3580",
+        "task": "2",
+        "version": "1"
+      }
+    }
+  }
+]

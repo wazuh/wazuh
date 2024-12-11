@@ -1,0 +1,48 @@
+name: decoder/mysql-slowlog/0
+
+metadata:
+  module: mysql
+  dataset: mysql.slowlog
+  title: MySQL Server Slow Query log
+  description: Decoder for MySQL Server Slow Query logs
+  compatibility: This decoder has been tested with logs from MySQL server version 5.7 and 8.0
+  versions:
+    - "MySQL 5.7"
+    - "MySQL 8.0"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-06-01
+  references:
+    - https://dev.mysql.com/doc/refman/5.7/en/slow-query-log.html
+    - https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html
+
+parents:
+  - decoder/integrations/0
+
+check:
+  - event.original: "+starts_with/# Time:"
+#TODO: Once the events arrive tagged, uncomment these lines below
+#   - event.module: mysql
+#   - event.dataset: mysql.slowlog
+
+parse:
+  logpar:
+    # # Time: 2023-06-09T12:20:51.418903Z\n# User@Host: root[root] @ localhost []  Id:     8\n# Query_time: 3.000207  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1\nSET timestamp=1686313248;\nselect sleep(3);
+    # # Time: 2019-03-24T14:01:47.811234Z\n# User@Host: root[root] @ localhost []  Id:    14\n# Query_time: 2.475469  Lock_time: 0.000287 Rows_sent: 10  Rows_examined: 3145718\nuse employees;\nSET timestamp=1553436105;\nSELECT last_name, MAX(salary) AS salary FROM employees INNER JOIN salaries ON employees.emp_no = salaries.emp_no GROUP BY last_name ORDER BY salary DESC LIMIT 10;
+    - event.original: "# Time: <@timestamp/%FT%TZ>\n# User@Host: <user.name>[<?~mysql.slowlog.current_user>] @ <?source.domain> [<?source.ip>]  Id:<~/ignore/ ><process.thread.id>\n# Query_time: <~mysql.slowlog.duration/double>  Lock_time: <~mysql.slowlog.lock_time.sec/double> Rows_sent: <~mysql.slowlog.rows_sent>  Rows_examined: <~mysql.slowlog.rows_examined>\n(?use <~mysql.slowlog.schema>;\n)SET timestamp=<~mysql.slowlog.timestamp/long>;\n<~mysql.slowlog.query>;"
+
+#TODO: The value of ~mysql.slowlog.duration (seconds in float) must be mapped to event.duration (nanoseconds in integer)
+
+normalize:
+  - map:
+      - event.module: mysql
+      - event.dataset: mysql.slowlog
+      - event.kind: event
+      - event.category: +array_append/database
+      - event.type: +array_append/info
+      - event.outcome: unknown
+      - event.start: +date_from_epoch/$~mysql.slowlog.timestamp
+      - event.end: $@timestamp
+      - wazuh.decoders: +array_append/mysql-slowlog
+      - ~mysql.slowlog.timestamp: delete()

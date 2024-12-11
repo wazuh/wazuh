@@ -1,0 +1,31 @@
+name: decoder/core-windows/0
+# module: wazuh
+
+metadata:
+  title: Windows queue decoder
+  description: >
+    Process events that has the Windows queue in the standard OSSEC message format.
+    Handles implementation details of Wazuh, not intended for end users.
+  compatibility: Logcollector event channel log format.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 03/03/2023
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/log-data-collection/how-to-collect-wlogs.html
+
+parents:
+  - decoder/core-wazuh-message/0
+
+check:
+  # Value 102 is equal to character 'f' in ASCII
+  - wazuh.queue: 102
+
+normalize:
+  - map:
+      - wazuh.source: logcollector
+      - event.module: windows
+      # Mapping for old agents
+      - _eventJson: parse_json($event.original)
+      - event.original: $_eventJson.Event

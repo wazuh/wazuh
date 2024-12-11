@@ -30,30 +30,20 @@ else
     HOST=`uname -n`
 fi
 
-OSSEC_INIT="/etc/ossec-init.conf"
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
 INSTYPE="server"
 # Default installation directory
-INSTALLDIR="/var/ossec";
+INSTALLDIR="/";
 PREINSTALLEDDIR=""
 CEXTRA=""
-
-# Internal definitions
-NEWCONFIG="./etc/ossec.mc"
-PRECONFIG="./etc/PRECONFIG"
 
 ## Templates
 TEMPLATE="./etc/templates"
 ERROR="errors"
 MSG="messages"
-
-## Host output
-OSSECMX="devmail.ossec.net mail is handled by 10 ossec.mooo.com."
-OSSECMX2="devmail.ossec.net mail is handled (pri=10) by ossec.mooo.com"
-OSSECMX3="devmail.ossec.net mail is handled by 10 ossec.mooo.COM."
 
 ## Predefined file
 PREDEF_FILE="./etc/preloaded-vars.conf"
@@ -64,9 +54,6 @@ then
     case $(uname) in
     Linux)
         THREADS=$(grep processor /proc/cpuinfo | wc -l)
-        ;;
-    Darwin)
-        THREADS=$(sysctl -n hw.ncpu)
         ;;
     *)
         THREADS=1

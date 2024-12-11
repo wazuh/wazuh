@@ -71,8 +71,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run analysisd integration tests.
-      - name: Run analysisd integration tests
+      # Run remoted integration tests.
+      - name: Run remoted integration tests
         run: |
           cd tests/integration
           sudo python -m pytest --tier 2 test_remoted/

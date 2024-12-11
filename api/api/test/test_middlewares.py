@@ -20,6 +20,8 @@ from api.middlewares import check_rate_limit, check_blocked_ip, MAX_REQUESTS_EVE
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
     SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
 from api.api_exception import ExpectFailedException
+from wazuh.core.authentication import JWT_ALGORITHM
+
 
 @pytest.fixture
 def request_info(request):
@@ -168,7 +170,6 @@ async def test_check_rate_limits_middleware_ko(
 async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                           hash, sec_header, endpoint, method, status_code, mock_req):
     """Test access_log function."""
-    JWT_ALGORITHM = 'ES512'
     response = MagicMock()
     response.status_code = status_code
 
@@ -198,8 +199,8 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                   if isinstance(sec_header[1], str) else '') as mock_b64decode, \
         patch('api.middlewares.jwt.decode',
               return_value=sec_header[1])  as mock_jwt_decode, \
-        patch('api.middlewares.generate_keypair',
-              return_value=(None, None)) as mock_generate_keypair, \
+        patch('api.middlewares.get_keypair',
+              return_value=(None, None)) as mock_get_keypair, \
         patch('api.middlewares.logger.warning',
               return_value=(None, None)) as mock_log_warning, \
         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
@@ -214,7 +215,7 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
             if sec_header[0] == 'basic':
                 mock_b64decode.assert_called_once_with(sec_header[1])
             elif sec_header[0] == 'bearer':
-                mock_generate_keypair.assert_called_once()
+                mock_get_keypair.assert_called_once()
                 mock_jwt_decode.assert_called_once_with(sec_header[1], None, [JWT_ALGORITHM])
 
         if not hash and endpoint == RUN_AS_LOGIN_ENDPOINT:
@@ -233,6 +234,36 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                 method in {'GET', 'POST'}:
             mock_log_warning.assert_called_once_with(
                 f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}")
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_hash_auth_context(mock_req):
+    """Check that `access_log` obtains the authentication context hash from the JWT token."""
+    response = MagicMock()
+    response.status_code = 200
+    user = 'wazuh'
+    hash_auth_context = '5a5e646ea0bc6e3653cfc593d62b16f7'
+    sec_header = ('bearer', {'sub': user, 'hash_auth_context': hash_auth_context})
+    body = {}
+    endpoint = '/agents'
+
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.method = 'GET'
+    mock_req.scope = {'path': endpoint}
+    mock_req.headers = {}
+    mock_req.query_params = {}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.jwt.decode', return_value=sec_header[1]), \
+        patch('api.middlewares.get_keypair', return_value=(None, None)), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header):
+        await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+        mock_custom_logging.assert_called_once_with(
+            user, mock_req.client.host, mock_req.method, endpoint, mock_req.query_params, body, 0.0,
+            response.status_code, hash_auth_context=hash_auth_context, headers=mock_req.headers
+        )
 
 
 @freeze_time(datetime(1970, 1, 1, 0, 0, 0))
@@ -279,8 +310,9 @@ async def test_access_log_ko(mock_req, exception):
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-async def test_wazuh_access_logger_middleware(mock_req):
+async def test_wazuh_access_logger_middleware():
     """Test access logger middleware."""
+    mock_req = AsyncMock()
     response = MagicMock()
     response.status_code = 200
     dispatch_mock = AsyncMock(return_value=response)

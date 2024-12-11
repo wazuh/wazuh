@@ -1,0 +1,76 @@
+### C++ ###
+# Compiled Object files
+*.o
+
+# Compiled Dynamic libraries
+*.so
+
+
+# Compiled Static libraries
+*.a
+*.lib
+
+# Exclude automatic reports
+tools/valgrindReport.log
+
+### CMake ###
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+### CMake Patch ###
+# External projects
+*-prefix/
+
+### Linux ###
+*~
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+# Support for Project snippet scope
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+.ionide
+
+# Test output files
+*.log
+*.csv
+
+# Helper test output file
+test/helper_tests/map/outputs/*
+test/helper_tests/filter/outputs/*
+test/helper_tests/transformation/outputs/*
+
+# Vcpkg
+vcpkg/*

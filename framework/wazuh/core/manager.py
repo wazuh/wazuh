@@ -24,7 +24,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
-
+from wazuh.core.config.client import CentralizedConfig
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
@@ -34,6 +34,8 @@ RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
+USER_AGENT_KEY = 'user-agent'
+DEFAULT_TIMEOUT = 10.0
 
 
 class LoggingFormat(Enum):
@@ -105,7 +107,7 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     LoggingFormat
         Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
     """
-    active_logging = get_active_configuration(agent_id="000", component="com", configuration="logging")['logging']
+    active_logging = get_active_configuration(component="com", configuration="logging")['logging']
     return LoggingFormat.plain if active_logging['plain'] == "yes" else LoggingFormat.json
 
 
@@ -257,23 +259,13 @@ def parse_execd_output(output: str) -> Dict:
     return response
 
 
-def get_api_conf() -> dict:
-    """Return current API configuration.
-
-    Returns
-    -------
-    dict
-        API configuration.
-    """
-    return copy.deepcopy(configuration.api_conf)
-
-
 def _get_ssl_context() -> ssl.SSLContext:
     """Return a default ssl context."""
     return ssl.create_default_context(cafile=certifi.where())
 
 
 def get_update_information_template(
+        uuid: str,
         update_check: bool,
         current_version: str = f"v{wazuh.__version__}",
         last_check_date: Optional[datetime] = None
@@ -282,6 +274,8 @@ def get_update_information_template(
 
     Parameters
     ----------
+    uuid : str
+        Wazuh UID to include in the result.
     update_check : bool
         Indicates if the check is enabled or not.
     current_version : str, optional
@@ -295,6 +289,7 @@ def get_update_information_template(
         Template with the given data.
     """
     return {
+        'uuid': uuid,
         'last_check_date': last_check_date if last_check_date is not None else '',
         'current_version': current_version,
         'update_check': update_check,
@@ -318,15 +313,20 @@ async def query_update_check_service(installation_uid: str) -> dict:
         Updates information.
     """
     current_version = f'v{wazuh.__version__}'
-    headers = {WAZUH_UID_KEY: installation_uid, WAZUH_TAG_KEY: current_version}
+    headers = {
+        WAZUH_UID_KEY: installation_uid,
+        WAZUH_TAG_KEY: current_version,
+        USER_AGENT_KEY: f'Wazuh UpdateCheckService/{current_version}'
+    }
 
     update_information = get_update_information_template(
-        update_check=True, current_version=current_version, last_check_date=get_utc_now()
+        uuid=installation_uid,
+        update_check=True,
+        current_version=current_version,
+        last_check_date=get_utc_now()
     )
 
-    update_information['uuid'] = installation_uid
-
-    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
+    async with httpx.AsyncClient(verify=_get_ssl_context(), timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
         try:
             response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
             response_data = response.json()

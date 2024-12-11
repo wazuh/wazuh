@@ -12,7 +12,10 @@
 #include "argsParser.hpp"
 #include "homedirHelper.hpp"
 #include "keyStore.hpp"
+#include "loggerHelper.h"
 #include <filesystem>
+#include <fstream>
+#include <functional>
 
 namespace Log
 {
@@ -26,6 +29,30 @@ int main(int argc, char* argv[])
     std::string family;
     std::string key;
     std::string value;
+    std::string valuePath;
+
+    Log::assignLogFunction(
+        [](const int logLevel,
+           const std::string&,
+           const std::string&,
+           const int,
+           const std::string&,
+           const std::string& str,
+           va_list args)
+        {
+            char formattedStr[MAXLEN] = {0};
+            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
+
+            if (logLevel == Log::LOGLEVEL_ERROR || logLevel == Log::LOGLEVEL_CRITICAL ||
+                logLevel == Log::LOGLEVEL_WARNING)
+            {
+                std::cerr << formattedStr << "\n";
+            }
+            else
+            {
+                std::cout << formattedStr << "\n";
+            }
+        });
 
     try
     {
@@ -38,8 +65,48 @@ int main(int argc, char* argv[])
         family = args.getColumnFamily();
         key = args.getKey();
         value = args.getValue();
+        valuePath = args.getValuePath();
 
-        Keystore::put(family, key, value);
+        if (value.empty() && valuePath.empty())
+        {
+            std::string valueFromStdin;
+            std::getline(std::cin, valueFromStdin);
+
+            if (!valueFromStdin.empty())
+            {
+                Keystore::put(family, key, valueFromStdin);
+            }
+            else
+            {
+                throw CmdLineArgsException("Error reading from stdin.");
+            }
+        }
+        else if (!value.empty() && valuePath.empty())
+        {
+            Keystore::put(family, key, value);
+        }
+        else if (!valuePath.empty() && value.empty())
+        {
+            std::ifstream file(valuePath);
+            if (!file.is_open())
+            {
+                throw CmdLineArgsException("Error opening file.");
+            }
+
+            std::string content;
+            if (std::getline(file, content))
+            {
+                Keystore::put(family, key, content);
+            }
+            else
+            {
+                throw CmdLineArgsException("Error reading file.");
+            }
+        }
+        else
+        {
+            throw CmdLineArgsException("Invalid arguments.");
+        }
     }
     catch (const CmdLineArgsException& e)
     {

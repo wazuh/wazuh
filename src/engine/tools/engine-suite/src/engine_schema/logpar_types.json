@@ -1,0 +1,7 @@
+{
+    "name": "schema/wazuh-logpar-types/0",
+    "fields": {
+        "url": "url",
+        "user_agent": "useragent"
+    }
+}

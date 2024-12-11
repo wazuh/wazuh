@@ -356,7 +356,7 @@ stages:
         name: "test_i2"
         policy:
           actions:
-            - "agent:upgrade"
+            - "agent:read"
           resources:
             - "agent:id:004"
             - "agent:id:005"
@@ -372,7 +372,7 @@ stages:
               name: test_i2
               policy:
                 actions:
-                  - agent:upgrade
+                  - agent:read
                 effect: deny
                 resources:
                   - agent:id:004
@@ -549,7 +549,7 @@ stages:
           actions:
             - "agent:read"
           resources:
-            - "agent:id:000"
+            - "agent:id:001"
           effect: "allow"
     response:
       status_code: 400

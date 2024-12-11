@@ -1,0 +1,112 @@
+---
+name: decoder/ciscat/0
+
+metadata:
+    module: wazuh-agent/ciscat/ciscat
+    title: Ciscat Decoder
+    description: >
+        Decoder for Wazuh's integration with CIS-CAT logs
+    compatibility: >
+        This decoder has been tested on Wazuh version 4.3.9
+    author:
+        name: Wazuh, Inc.
+        url: https://wazuh.com
+        date: 2022/11/08
+    references:
+        - https://github.com/wazuh/wazuh/issues/13523
+        - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/ciscat/ciscat.html
+    versions:
+      - ""
+
+parents:
+  - decoder/core-ciscat/0
+
+check:
+  - event.original: starts_with({)
+
+parse|event.original:
+    # Example log:
+    # {"type":"scan_info","scan_id":1886296483,"cis":{"benchmark":"CIS Ubuntu Linux 16.04 LTS Benchmark","profile":"xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server","hostname":"10-206-u20-agent4","timestamp":"2022-09-16T15:09:53.048Z","pass":90,"fail":93,"error":0,"unknown":1,"notchecked":36,"score":"49.5%"}}
+    - <json_event/json>
+
+normalize:
+  - map:
+      - wazuh.decoders: array_append(ciscat)
+
+  - check:
+      - json_event.scan_id: not_exists()
+    map:
+      - json_event.scan_id: "NULL"
+
+  - check:
+      - json_event.cis.timestamp: not_exists()
+    map:
+      - json_event.cis.timestamp: "NULL"
+
+  - check:
+      - json_event.cis.benchmark: not_exists()
+    map:
+      - json_event.cis.benchmark: "NULL"
+
+  - check:
+      - json_event.cis.profile: not_exists()
+    map:
+      - json_event.cis.profile: "NULL"
+
+  - check:
+      - json_event.cis.pass: not_exists()
+    map:
+      - json_event.cis.pass: "NULL"
+
+  - check:
+      - json_event.cis.fail: not_exists()
+    map:
+      - json_event.cis.fail: "NULL"
+
+  - check:
+      - json_event.cis.error: not_exists()
+    map:
+      - json_event.cis.error: "NULL"
+
+  - check:
+      - json_event.cis.notchecked: not_exists()
+    map:
+      - json_event.cis.notchecked: "NULL"
+
+  - check:
+      - json_event.cis.unknown: not_exists()
+    map:
+      - json_event.cis.unknown: "NULL"
+
+  - check:
+      - json_event.cis.score: exists()
+    map:
+      - json_event.cis.score: trim(end, %)
+
+  - check:
+      - json_event.cis.score: not_exists()
+    map:
+      - json_event.cis.score: "NULL"
+
+  - check:
+      - json_event.type: string_equal(scan_info)
+    map:
+      - _query: concat('agent ', $agent.id, ' ciscat save ', $json_event.scan_id, ' | ', $json_event.cis.timestamp, ' | ', $json_event.cis.benchmark, ' | ', $json_event.cis.profile, ' | ', $json_event.cis.pass, ' | ', $json_event.cis.fail, ' | ', $json_event.cis.error, ' | ', $json_event.cis.notchecked, ' | ', $json_event.cis.unknown, ' | ', $json_event.cis.score)
+      - _query_response: wdb_update($_query)
+
+      # Normalize the event to be indexed
+      - wazuh.ciscat.type: $json_event.type
+      - wazuh.ciscat.scan_id: $json_event.scan_id
+      - wazuh.ciscat.cis.timestamp: $json_event.cis.timestamp
+      - wazuh.ciscat.cis.benchmark: $json_event.cis.benchmark
+      - wazuh.ciscat.cis.profile: $json_event.cis.profile
+      - wazuh.ciscat.cis.pass: $json_event.cis.pass
+      - wazuh.ciscat.cis.fail: $json_event.cis.fail
+      - wazuh.ciscat.cis.error: $json_event.cis.error
+      - wazuh.ciscat.cis.notchecked: $json_event.cis.notchecked
+      - wazuh.ciscat.cis.unknown: $json_event.cis.unknown
+      - wazuh.ciscat.cis.score: $json_event.cis.score
+      - wazuh.ciscat.cis.hostname: $json_event.cis.hostname
+
+      - wazuh.noIndexing: delete()
+      - json_event: delete()

@@ -1,0 +1,39 @@
+name: decoder/aws-json/0
+
+metadata:
+  title: Wazuh wodle AWS integration JSON Decoder
+  description: Partial JSON decoder for AWS wodle events
+  module: AWS
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4
+  references:
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-s3.html
+  versions:
+    - "4.4"
+  author:
+    name: Wazuh, Inc.
+    date: 2023/05/04
+
+parents:
+  - decoder/integrations/0
+
+# TODO: wodle output should be fixed
+# Wodle output              -> "location": "Wazuh-AWS"
+# How it should be received -> "location": "[NNN] (MMMMM) any->Wazuh-AWS"
+#                                                             <-origin->
+check:
+  - event.original: +starts_with/{
+  - wazuh.location: +string_equal/Wazuh-AWS
+
+parse:
+  logpar:
+    - event.original: <json_event/json>
+
+normalize:
+ - map:
+    - wazuh.decoders: +array_append/aws-json
+
+ - check:
+    - json_event.integration: aws
+   map:
+    - event.module: aws

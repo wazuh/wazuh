@@ -1,0 +1,161 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Oct 11 09:10:48 server01 useradd[10001]: failed adding user 'user01', exit code: 4",
+      "outcome": "failure",
+      "start": "2024-10-11T09:10:48.000Z",
+      "type": [
+        "user",
+        "creation"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "failed adding user 'user01', exit code: 4",
+    "process": {
+      "name": "useradd",
+      "pid": 10001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Oct 14 16:49:59 server02 userdel[10002]: delete user 'user02'",
+      "outcome": "success",
+      "start": "2024-10-14T16:49:59.000Z",
+      "type": [
+        "user",
+        "deletion"
+      ]
+    },
+    "host": {
+      "hostname": "server02",
+      "id": "001"
+    },
+    "message": "delete user 'user02'",
+    "process": {
+      "name": "userdel",
+      "pid": 10002
+    },
+    "related": {
+      "hosts": [
+        "server02"
+      ],
+      "user": [
+        "user02"
+      ]
+    },
+    "user": {
+      "name": "user02"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Oct 19 12:54:40 server03 usermod[10003]: change user 'user03' expiration from '2001-01-01' to '2243-10-16'",
+      "outcome": "success",
+      "start": "2024-10-19T12:54:40.000Z",
+      "type": [
+        "user",
+        "change"
+      ]
+    },
+    "host": {
+      "hostname": "server03",
+      "id": "001"
+    },
+    "message": "change user 'user03' expiration from '2001-01-01' to '2243-10-16'",
+    "process": {
+      "name": "usermod",
+      "pid": 10003
+    },
+    "related": {
+      "hosts": [
+        "server03"
+      ],
+      "user": [
+        "user03"
+      ]
+    },
+    "user": {
+      "name": "user03"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

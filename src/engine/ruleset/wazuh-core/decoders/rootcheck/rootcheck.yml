@@ -1,0 +1,71 @@
+name: decoder/rootcheck/0
+
+metadata:
+  module: wazuh-agent/rootcheck/rootcheck
+  title: Rootcheck Decoder
+  description: >
+    Decodes rootcheck events
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3.9
+  author:
+    name: Wazuh, Inc.
+    email: info@wazuh.com
+    url: https://wazuh.com
+    date: 2022/11/08
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/rootcheck/index.html
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html
+  versions:
+    -
+
+parents:
+  - decoder/core-rootcheck/0
+
+normalize:
+  - map:
+      - _time: system_epoch()
+      - _query: concat('agent ', $agent.id, ' rootcheck save ' , $_time, ' ', $event.original)
+      - _result: wdb_query($_query)
+      - wazuh.rootcheck.file: >-
+          regex_extract($event.original, '(?:f|F)ile \'(.*?)\'')
+      - _title: >-
+          regex_extract($event.original, '(.*?)(?:(?: {)|$)')
+
+  - check:
+      - _result: "1"
+    map:
+      - wazuh.rootcheck.update: true
+
+  - check:
+      - _result: "2"
+    map:
+      - wazuh.rootcheck.fts: true
+
+  - check:
+      - wazuh.rootcheck.file: not_exists()
+    map:
+      - wazuh.rootcheck.file: >-
+          regex_extract($event.original, 'File: (.*?)(?:(?:\\. )|(?:\\.$))')
+
+  - map:
+      - _title: >-
+          regex_extract($_title, 'System Audit: (.*? - .*)')
+
+  - map:
+      - _title: regex_extract($_title, '^(.*\\.)')
+
+  - check:
+      - _title: regex_match('(?:f|F)ile')
+    map:
+      - _pre_file: regex_extract($_title, '(.*?(?:f|F)ile)')
+      - _pos_file: regex_extract($_title, '(?:f|F)ile \'(?:.*?)\'(.*)')
+      - _title: concat($_pre_file, $_pos_file)
+
+  - check:
+      - _title: regex_match(.+)
+    map:
+      - wazuh.rootcheck.title: $_title
+
+  - map:
+      - wazuh.decoders: array_append(rootcheck)
+      - wazuh.noIndexing: delete()

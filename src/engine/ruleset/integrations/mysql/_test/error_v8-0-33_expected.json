@@ -1,0 +1,596 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:49.269222Z 0 [System] [MY-013172] [Server] Received SHUTDOWN from user <via user signal>. Shutting down mysqld (Version: 8.0.33-0ubuntu0.22.04.2).",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:49.269222Z 0 [System] [MY-013172] [Server] Received SHUTDOWN from user <via user signal>. Shutting down mysqld (Version: 8.0.33-0ubuntu0.22.04.2).",
+            "code": "MY-013172",
+            "provider": "Server",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:49.269Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "Received SHUTDOWN from user <via user signal>. Shutting down mysqld (Version: 8.0.33-0ubuntu0.22.04.2)."
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:50.613468Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.33-0ubuntu0.22.04.2) starting as process 19349",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:50.613468Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.0.33-0ubuntu0.22.04.2) starting as process 19349",
+            "code": "MY-010116",
+            "provider": "Server",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:50.613Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "/usr/sbin/mysqld (mysqld 8.0.33-0ubuntu0.22.04.2) starting as process 19349"
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:50.281283Z 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.0.33-0ubuntu0.22.04.2)  (Ubuntu).",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:50.281283Z 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.0.33-0ubuntu0.22.04.2)  (Ubuntu).",
+            "code": "MY-010910",
+            "provider": "Server",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:50.281Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "/usr/sbin/mysqld: Shutdown complete (mysqld 8.0.33-0ubuntu0.22.04.2)  (Ubuntu)."
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:50.663299Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:50.663299Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.",
+            "code": "MY-013576",
+            "provider": "InnoDB",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:50.663Z",
+        "~mysql": {
+            "thread_id": "1"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "InnoDB initialization has started."
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:50.808821Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:50.808821Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.",
+            "code": "MY-013577",
+            "provider": "InnoDB",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:50.808Z",
+        "~mysql": {
+            "thread_id": "1"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "InnoDB initialization has ended."
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:51.000108Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:51.000108Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.",
+            "code": "MY-010068",
+            "provider": "Server",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:51.000Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "Warning"
+        },
+        "message": "CA certificate ca.pem is self signed."
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:51.000126Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:51.000126Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.",
+            "code": "MY-013602",
+            "provider": "Server",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:51.000Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel."
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:51.020914Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '127.0.0.1' port: 33060, socket: /var/run/mysqld/mysqlx.sock",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:51.020914Z 0 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '127.0.0.1' port: 33060, socket: /var/run/mysqld/mysqlx.sock",
+            "code": "MY-011323",
+            "provider": "Server",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:51.020Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "X Plugin ready for connections. Bind-address: '127.0.0.1' port: 33060, socket: /var/run/mysqld/mysqlx.sock"
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T12:04:51.020965Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.33-0ubuntu0.22.04.2'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  (Ubuntu).",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T12:04:51.020965Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.33-0ubuntu0.22.04.2'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  (Ubuntu).",
+            "code": "MY-010931",
+            "provider": "Server",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T12:04:51.020Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "System"
+        },
+        "message": "/usr/sbin/mysqld: ready for connections. Version: '8.0.33-0ubuntu0.22.04.2'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  (Ubuntu)."
+    }
+]

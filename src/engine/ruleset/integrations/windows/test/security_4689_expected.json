@@ -1,0 +1,115 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "exited-process",
+      "category": [
+        "process"
+      ],
+      "code": "4689",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-08-27T17:13:01.826339500Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A process has exited",
+    "process": {
+      "executable": "C:\\\\Windows\\\\System32\\\\notepad.exe",
+      "name": "notepad.exe",
+      "pid": 4016
+    },
+    "related": {
+      "user": [
+        "dadmin"
+      ]
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-21-3457937927-2839227994-823803824-1104",
+      "name": "dadmin"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "ProcessId": "0xfb0",
+        "ProcessName": "C:\\\\Windows\\\\System32\\\\notepad.exe",
+        "Status": "0x0",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x31365",
+        "SubjectUserName": "dadmin",
+        "SubjectUserSid": "S-1-5-21-3457937927-2839227994-823803824-1104"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4689"
+        },
+        "EventRecordID": {
+          "#text": "187030"
+        },
+        "Execution": {
+          "@ProcessID": "4",
+          "@ThreadID": "144"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13313"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-08-27T17:13:01.826339500Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x31365"
+      }
+    }
+  }
+]

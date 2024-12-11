@@ -1,0 +1,27 @@
+name: decoder/core-syscheck/0
+# module: wazuh
+
+metadata:
+  title: Syscheck queue decoder.
+  description: >
+    Process events that have the Syscheck queue in the standard OSSEC message format.
+  compatibility: Any service being tagged with the queue 56.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 07/03/2023
+  references:
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html
+
+parents:
+  - decoder/core-wazuh-message/0
+
+check:
+  # Value 56 is equal to character '8' in ASCII
+  - wazuh.queue: 56
+
+normalize:
+  - map:
+      - wazuh.decoders: array_append(core-syscheck)
+      - wazuh.source: syscheck

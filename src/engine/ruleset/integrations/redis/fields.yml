@@ -1,0 +1,3 @@
+redis.log.role:
+  description: Role of the process.
+  type: keyword

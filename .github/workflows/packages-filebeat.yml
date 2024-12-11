@@ -67,7 +67,6 @@ jobs:
           cp -r _meta alerts archives module.yml wazuh/
           sudo chown -R root:root wazuh
           sudo chmod 755 wazuh
-          sudo chmod 755 wazuh/_meta
           sudo chmod 755 wazuh/alerts
           sudo chmod 755 wazuh/alerts/config
           sudo chmod 755 wazuh/alerts/ingest
@@ -96,9 +95,9 @@ jobs:
           sudo tar -xzvf ${{ env.FILEBEAT_TAR_NAME }}
           for file in ./wazuh/*; do
             if [ -d "$file" ]; then
-              if [ "$(stat -L -c "%a %G %U" "$file")" != "$DIR_PERMS" ]; then echo "Wrong permissions for $file. Expected: $DIR_PERMS. Currently: "$(stat -L -c "%a %G %U" "$file")"."; exit 1; fi
+              if [ "$(stat -L -c "%a %G %U" "$file")" != "$DIR_PERMS" ] && [[ "$file" != *"_meta" ]]; then echo "Wrong permissions for $file. Expected: $DIR_PERMS. Currently: $(stat -L -c "%a %G %U" "$file")."; exit 1; fi
             elif [ -f "$file" ]; then
-              if [ "$(stat -L -c "%a %G %U" "$file")" != "$FILE_PERMS" ]; then echo "Wrong permissions for $file. Expected: $FILE_PERMS. Currently: "$(stat -L -c "%a %G %U" "$file")"."; exit 1; fi
+              if [ "$(stat -L -c "%a %G %U" "$file")" != "$FILE_PERMS" ]; then echo "Wrong permissions for $file. Expected: $FILE_PERMS. Currently: $(stat -L -c "%a %G %U" "$file")."; exit 1; fi
             fi
           done
           if [ $(diff -r wazuh wazuh2) ]; then exit 1; fi

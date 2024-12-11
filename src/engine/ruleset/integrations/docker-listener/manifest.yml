@@ -1,0 +1,3 @@
+name: integration/docker-listener/0
+decoders:
+- decoder/docker-listener/0

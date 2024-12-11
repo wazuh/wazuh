@@ -1,9 +1,0 @@
-<!-- Test: invalid rule overwrite -->
-<group name="testing">
-
-  <rule id="123123" level="3" overwrite="yes" >
-    <program_name>example</program_name>
-    <description>example_description</description>
-  </rule>
-
-</group>

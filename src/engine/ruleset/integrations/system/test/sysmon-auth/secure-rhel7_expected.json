@@ -1,0 +1,374 @@
+[
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "action": "ssh_login",
+            "category": [
+                "authentication"
+            ],
+            "dataset": "system-auth",
+            "kind": "event",
+            "module": "system",
+            "original": "Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 89.160.20.156 port 1786 ssh2",
+            "outcome": "failure",
+            "start": "2024-02-22T16:45:20.000Z",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "hostname": "slave22",
+            "id": "001"
+        },
+        "message": "Failed password for root from 89.160.20.156 port 1786 ssh2",
+        "process": {
+            "name": "sshd",
+            "pid": 2738
+        },
+        "related": {
+            "hosts": [
+                "slave22"
+            ],
+            "ip": [
+                "89.160.20.156"
+            ],
+            "user": [
+                "root"
+            ]
+        },
+        "source": {
+            "address": "89.160.20.156",
+            "domain": "89.160.20.156",
+            "ip": "89.160.20.156",
+            "port": 1786
+        },
+        "user": {
+            "name": "root"
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "system-auth"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
+            "origin": "/tmp/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "dataset": "system-auth",
+            "kind": "event",
+            "module": "system",
+            "original": "Feb 22 16:45:20 slave22 sshd[2738]: pam_succeed_if(sshd:auth): requirement \"uid >= 1000\" not met by user \"root\"",
+            "outcome": "success",
+            "start": "2024-02-22T16:45:20.000Z"
+        },
+        "host": {
+            "hostname": "slave22",
+            "id": "001"
+        },
+        "message": "pam_succeed_if(sshd:auth): requirement \"uid >= 1000\" not met by user \"root\"",
+        "process": {
+            "name": "sshd",
+            "pid": 2738
+        },
+        "related": {
+            "hosts": [
+                "slave22"
+            ],
+            "user": [
+                "root"
+            ]
+        },
+        "user": {
+            "name": "root"
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "system-auth"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
+            "origin": "/tmp/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "action": "ssh_login",
+            "category": [
+                "authentication"
+            ],
+            "dataset": "system-auth",
+            "kind": "event",
+            "module": "system",
+            "original": "Feb 22 16:45:26 slave22 sshd[2738]: fatal: Read from socket failed: Connection reset by peer [preauth]",
+            "outcome": "failure",
+            "start": "2024-02-22T16:45:26.000Z",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "hostname": "slave22",
+            "id": "001"
+        },
+        "message": "fatal: Read from socket failed: Connection reset by peer [preauth]",
+        "process": {
+            "name": "sshd",
+            "pid": 2738
+        },
+        "related": {
+            "hosts": [
+                "slave22"
+            ]
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "system-auth"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
+            "origin": "/tmp/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "category": [
+                "authentication",
+                "session"
+            ],
+            "dataset": "system-auth",
+            "kind": "event",
+            "module": "system",
+            "original": "Feb 22 16:45:26 slave22 sshd[2738]: PAM 4 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=89.160.20.156  user=root",
+            "outcome": "success",
+            "start": "2024-02-22T16:45:26.000Z"
+        },
+        "host": {
+            "hostname": "slave22",
+            "id": "001"
+        },
+        "message": "PAM 4 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=89.160.20.156  user=root",
+        "process": {
+            "name": "sshd",
+            "pid": 2738
+        },
+        "related": {
+            "hosts": [
+                "slave22"
+            ],
+            "ip": [
+                "89.160.20.156"
+            ],
+            "user": [
+                "root"
+            ]
+        },
+        "source": {
+            "address": "89.160.20.156",
+            "domain": "89.160.20.156",
+            "ip": "89.160.20.156"
+        },
+        "user": {
+            "effective": {
+                "id": "0"
+            },
+            "id": "0",
+            "name": "root"
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "system-auth"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
+            "origin": "/tmp/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "dataset": "system-auth",
+            "kind": "event",
+            "module": "system",
+            "original": "Feb 22 16:45:26 slave22 sshd[2738]: PAM service(sshd) ignoring max retries; 5 > 3",
+            "outcome": "success",
+            "start": "2024-02-22T16:45:26.000Z"
+        },
+        "host": {
+            "hostname": "slave22",
+            "id": "001"
+        },
+        "message": "PAM service(sshd) ignoring max retries; 5 > 3",
+        "process": {
+            "name": "sshd",
+            "pid": 2738
+        },
+        "related": {
+            "hosts": [
+                "slave22"
+            ]
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "system-auth"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
+            "origin": "/tmp/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "category": [
+                "authentication"
+            ],
+            "dataset": "system-auth",
+            "kind": "event",
+            "module": "system",
+            "original": "Feb 22 16:45:32 slave22 sshd[2742]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=89.160.20.156  user=root",
+            "outcome": "failure",
+            "start": "2024-02-22T16:45:32.000Z"
+        },
+        "host": {
+            "hostname": "slave22",
+            "id": "001"
+        },
+        "message": "pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=89.160.20.156  user=root",
+        "process": {
+            "name": "sshd",
+            "pid": 2742
+        },
+        "related": {
+            "hosts": [
+                "slave22"
+            ],
+            "ip": [
+                "89.160.20.156"
+            ],
+            "user": [
+                "root"
+            ]
+        },
+        "source": {
+            "address": "89.160.20.156",
+            "domain": "89.160.20.156",
+            "ip": "89.160.20.156"
+        },
+        "user": {
+            "effective": {
+                "id": "0"
+            },
+            "id": "0",
+            "name": "root"
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "system-auth"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
+            "origin": "/tmp/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "category": [
+                "process"
+            ],
+            "dataset": "system-auth",
+            "kind": "event",
+            "module": "system",
+            "original": "Feb 22 17:04:51 slave22 sudo:     tsg : TTY=pts/0 ; PWD=/home/tsg ; USER=root ; COMMAND=/bin/cp /var/log/secure .",
+            "outcome": "success",
+            "start": "2024-02-22T17:04:51.000Z"
+        },
+        "host": {
+            "hostname": "slave22",
+            "id": "001"
+        },
+        "message": "tsg : TTY=pts/0 ; PWD=/home/tsg ; USER=root ; COMMAND=/bin/cp /var/log/secure .",
+        "process": {
+            "command_line": "/bin/cp /var/log/secure .",
+            "name": "sudo",
+            "working_directory": "/home/tsg"
+        },
+        "related": {
+            "hosts": [
+                "slave22"
+            ],
+            "user": [
+                "tsg",
+                "root"
+            ]
+        },
+        "user": {
+            "effective": {
+                "name": "root"
+            },
+            "name": "tsg"
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "system-auth"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
+            "origin": "/tmp/syslog.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]

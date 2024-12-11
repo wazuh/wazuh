@@ -14,11 +14,11 @@ import pytest
 from connexion import ProblemException
 
 from api.controllers.util import JSON_CONTENT_TYPE
+from api.models import agent_registration_model
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
-        from api.models import base_model_ as bm
-        from api.models import event_ingest_model
+        from api.models import base_model_ as bm, agent_registration_model
         from api.util import deserialize_model
         from wazuh import WazuhError
 
@@ -282,23 +282,39 @@ def test_all_models(deserialize_mock, module_name):
                 instance = module_class()
                 for p in [p for p in module_class.__dict__ if not p.startswith('__')]:
                     # Assert that all its attributes have defined properties (getter and setter)
-                    setattr(instance, p, 'test')
-                    assert getattr(instance, p) == 'test'
+                    value = ''
+                    if module_class.__name__ == 'AgentRegistrationModel' and p == 'key':
+                        value = '7b8276c3bf96aff5709346d368f04aed'
+                    else:
+                        value = 'test'
+
+                    setattr(instance, p, value)
+                    assert getattr(instance, p) == value
 
                 # Test the only possible overwritten method: `from_dict`
                 getattr(module_class, 'from_dict')('test')
                 deserialize_mock.assert_called_with('test', module_class)
 
 
-@pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
-async def test_event_ingest_model_validation(size, raises):
-    request = {'events': [{"foo": 1}, {"bar": 2}]}
-    event_ingest_model.MAX_EVENTS_PER_REQUEST = size
+@pytest.mark.parametrize('key', (
+    '7b8276c3bf96aff5709346d368f04aed',
+    'test',
+    '7b8276c3bf96aff5709346d368f04aedA'
+))
+async def test_agent_registration_model_validation(key):
+    request = {
+        'id': '01929571-49b5-75e8-a3f6-1d2b84f4f71a',
+        'name': 'testing',
+        'key': key,
+        'type': 'endpoint',
+        'version': '5.0.0'
+    }
 
-    if raises:
+    if len(key) != agent_registration_model.KEY_LENGTH:
         with pytest.raises(ProblemException) as exc:
-            await event_ingest_model.EventIngestModel.get_kwargs(request)
+            await agent_registration_model.AgentRegistrationModel.get_kwargs(request)
 
-        assert exc.value.title == 'Events bulk size exceeded'
+        assert exc.value.title == 'Invalid key length'
+        assert exc.value.detail == 'The key must be 32 characters long'
     else:
-        await event_ingest_model.EventIngestModel.get_kwargs(request)
+        await agent_registration_model.AgentRegistrationModel.get_kwargs(request)

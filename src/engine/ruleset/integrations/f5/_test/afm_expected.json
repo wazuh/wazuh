@@ -1,0 +1,125 @@
+{
+    "wazuh": {
+        "queue": 49,
+        "location": "[001] (ubuntu-agent) any->/var/log/f5/f5-afm.log",
+        "message": "iusm modtempo olab6078.home olaboris tur itv [F5@odoco acl_policy_name=ria acl_policy_type=min acl_rule_name=ite action=Closed hostname=tatemac3541.api.corp bigip_mgmt_ip=10.228.193.207 context_name=liqua context_type=ciade date_time=Jan 29 2016 06:09:59 dest_ip=10.125.114.51 dst_geo=umq dest_port=2288 device_product=pexe device_vendor=nes device_version=1.2262 drop_reason=reveri errdefs_msgno=boNemoe errdefs_msg_name=equepor flow_id=eni ip_protocol=ipv6 severity=low partition_name=ehend route_domain=ritquiin sa_translation_pool=umqui sa_translation_type=reeufugi source_ip=10.208.121.85 src_geo=sperna source_port=884 source_user=billoi translated_dest_ip=10.165.201.71 translated_dest_port=6153 translated_ip_protocol=tatemU translated_route_domain=deF translated_source_ip=10.11.196.142 translated_source_port=5222 translated_vlan=iatnu vlan=3810",
+        "origin": "/var/log/f5/f5-afm.log",
+        "registered_ip": "any",
+        "decoders": [
+            "core-ossec-message",
+            "core-localfile",
+            "integrations",
+            "f5-afm"
+        ],
+        "source": "logcollector"
+    },
+    "agent": {
+        "id": "001",
+        "name": "ubuntu-agent",
+        "type": "wazuh"
+    },
+    "event": {
+        "original": "iusm modtempo olab6078.home olaboris tur itv [F5@odoco acl_policy_name=ria acl_policy_type=min acl_rule_name=ite action=Closed hostname=tatemac3541.api.corp bigip_mgmt_ip=10.228.193.207 context_name=liqua context_type=ciade date_time=Jan 29 2016 06:09:59 dest_ip=10.125.114.51 dst_geo=umq dest_port=2288 device_product=pexe device_vendor=nes device_version=1.2262 drop_reason=reveri errdefs_msgno=boNemoe errdefs_msg_name=equepor flow_id=eni ip_protocol=ipv6 severity=low partition_name=ehend route_domain=ritquiin sa_translation_pool=umqui sa_translation_type=reeufugi source_ip=10.208.121.85 src_geo=sperna source_port=884 source_user=billoi translated_dest_ip=10.165.201.71 translated_dest_port=6153 translated_ip_protocol=tatemU translated_route_domain=deF translated_source_ip=10.11.196.142 translated_source_port=5222 translated_vlan=iatnu vlan=3810",
+        "action": "Closed",
+        "code": "boNemoe",
+        "dataset": "f5.bigipafm",
+        "module": "f5"
+    },
+    "host": {
+        "id": "001",
+        "ip": "10.228.193.207",
+        "name": "tatemac3541.api.corp"
+    },
+    "@timestamp": "2016-01-29T06:09:59.000Z",
+    "destination": {
+        "geo": {
+            "country_name": "umq"
+        },
+        "nat": {
+            "ip": "10.165.201.71",
+            "port": 6153
+        },
+        "port": 2288
+    },
+    "log": {
+        "level": "low"
+    },
+    "network": {
+        "protocol": "ipv6"
+    },
+    "observer": {
+        "product": "pexe",
+        "type": "Firewall",
+        "vendor": "F5",
+        "version": 1.2262
+    },
+    "related": {
+        "hosts": [
+            "tatemac3541.api.corp"
+        ],
+        "ip": [
+            "10.228.193.207",
+            "10.208.121.85",
+            "10.165.201.71",
+            "10.11.196.142"
+        ],
+        "user": [
+            "billoi"
+        ]
+    },
+    "rsa": {
+        "internal": {
+            "messageid": "BIGIP_AFM"
+        },
+        "investigations": {
+            "ec_activity": "Disable",
+            "ec_subject": "NetworkComm",
+            "ec_theme": "Communication"
+        },
+        "misc": {
+            "action": [
+                "Closed"
+            ],
+            "context": "liqua",
+            "event_type": "equepor",
+            "obj_name": "odoco",
+            "policy_name": "ria",
+            "rule_name": "ite",
+            "severity": "low",
+            "version": 1.2262
+        },
+        "network": {
+            "alias_host": [
+                "tatemac3541.api.corp"
+            ],
+            "vlan": 3810
+        },
+        "time": {
+            "event_time_str": "2016-01-29T06:09:59.000Z"
+        }
+    },
+    "rule": {
+        "name": "ite"
+    },
+    "service": {
+        "type": "f5"
+    },
+    "source": {
+        "geo": {
+            "country_name": "sperna"
+        },
+        "ip": "10.208.121.85",
+        "nat": {
+            "ip": "10.11.196.142",
+            "port": 5222
+        },
+        "port": 884
+    },
+    "tags": [
+        "f5.bigipafm",
+        "forwarded"
+    ],
+    "user": {
+        "name": "billoi"
+    }
+}

@@ -1,0 +1,105 @@
+name: decoder/windows-powershell/0
+
+metadata:
+  module: Windows Powershell
+  title: Decoder for Windows Powershell events
+  description: Decoder for Windows Powershell events
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
+  compatibility: This decoder was tested on Windows 10, but should work on all versions of Windows Vista onwards.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/10/10
+  references:
+    - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
+
+parents:
+  - decoder/windows-event/0
+
+check:
+  - windows.System.Channel.#text: Windows PowerShell
+
+normalize:
+ - map:
+   # TODO: check this replaces
+   - windows.EventData.2: replace(\\t, '')
+   - windows.EventData.2: replace(\   , \  )
+   - windows.EventData.2: replace(\  ,\,)
+ - parse|windows.EventData.2:
+    - <_event_data/kv/=/,/"/'>
+
+ - map:
+   - wazuh.decoders: array_append(windows-powershell)
+   - event.dataset: powershell
+   - event.kind: event
+   - event.category: array_append(process)
+   - event.sequence: $_event_data.SequenceNumber
+
+  ## Process fields.
+   - process.entity_id: $_event_data.HostId
+   - process.command_line: $_event_data.HostApplication
+   - process.title: $_event_data.HostName
+   - process.executable: $_event_data.ScriptName
+
+  ## User fields.
+   - _user_parts: split($_event_data.UserId, \\)
+   - user.domain: $_user_parts.0
+   - user.name: $_user_parts.1
+   - related.user: array_append($user.name)
+
+  ## PowerShell fields.
+   - powershell.engine.new_state: $_event_data.NewEngineState
+   - powershell.engine.previous_state: $_event_data.PreviousEngineState
+   - powershell.provider.new_state: $_event_data.NewProviderState
+   - powershell.provider.name: $_event_data.ProviderName
+   - powershell.total: $_event_data.DetailTotal
+   - powershell.sequence: $_event_data.DetailSequence
+   - powershell.engine.version: $_event_data.EngineVersion
+   - powershell.pipeline_id: $_event_data.PipelineId
+   - powershell.runspace_id: $_event_data.RunspaceId
+   - powershell.process.executable_version: $_event_data.HostVersion
+   - powershell.command.value: $_event_data.CommandLine
+   - powershell.command.path: $_event_data.CommandPath
+   - powershell.command.name: $_event_data.CommandName
+   - powershell.command.type: $_event_data.CommandType
+
+  # Add file information.
+   - file.path: $_event_data.ScriptName
+   - _file_data: parse_file($file.path)
+   - file.directory: $_file_data.path
+   - file.extension: $_file_data.ext
+   - file.name: $_file_data.name
+
+  # Set message of id
+   - message: kvdb_get(windows_powershell_id_to_message, $event.code)
+
+ - check: $event.code == '400'
+   map:
+    - event.type: array_append(start)
+
+ - check: $event.code == '403'
+   map:
+    - event.type: array_append(end)
+
+ - check: $event.code != '400' AND $event.code != '403'
+   map:
+    - event.type: array_append(info)
+
+# windows.logon
+ - check: $windows.System.Keywords.#text == '0x0'
+   map:
+   - windows.logon.keywords: array_append(AnyKeyword)
+
+ - map:
+   - windows.logon.activity_id: $windows.System.Task.@ActivityID
+   - windows.logon.channel: $windows.System.Channel.#text
+   - windows.logon.computer_name: $windows.System.Computer.#text
+   - windows.logon.event_id: $windows.System.EventID.#text
+   - windows.logon.keywords: kvdb_decode_bitmask(windows_powershell_bitmask_tables, Keywords, $windows.System.Keywords.#text)
+   - windows.logon.process.pid: parse_long($windows.System.Execution.@ProcessID)
+   - windows.logon.process.thread.id: $windows.System.Execution.@ThreadID
+   - windows.logon.provider_guid: $windows.System.Provider.@Guid
+   - windows.logon.provider_name: $windows.System.Provider.@Name
+   - windows.logon.record_id: $windows.System.EventRecordID.#text
+   - windows.logon.task: $windows.System.Task.#text
+   - windows.logon.user.identifier: $windows.User.identifier
+   - windows.logon.version: $windows.System.Version.#text

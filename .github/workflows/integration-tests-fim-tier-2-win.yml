@@ -1,4 +1,4 @@
-name: Integration tests for FIM on Windows - Tier 0 and 1
+name: Integration tests for FIM on Windows - Tier 2
 
 on:
   workflow_dispatch:

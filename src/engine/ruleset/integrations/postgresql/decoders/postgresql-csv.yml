@@ -1,0 +1,74 @@
+---
+name: decoder/postgresql-csv/0
+
+metadata:
+  title: PostgreSQL CSV Decoder
+  description: Decoder for PostgreSQL in CSV log format
+  references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
+  product.name: postgresql
+  product.versions:
+    - v15
+    - v14
+    - v13
+    - v12
+    - v11
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-05
+
+parents:
+  - decoder/integrations/0
+
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: postgresql
+#   - event.dataset: postgresql.log
+
+parse:
+  logpar:
+      # 1992-07-10 01:07:24.374 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"CHECKPOINT",1992-07-10 01:06:20 UTC,3/0,0,LOG,00000,"duration: 15.136 ms  statement: checkpoint;",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,,0,LOG,00000,"disconnection: session time: 0:00:22.123 user=postgres database=postgres host=192.191.190.189 port=45678",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:48.164 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle in transaction",1992-07-10 10:45:14 UTC,3/4,0,FATAL,25P03,"terminating connection due to idle-in-transaction timeout",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:48.113 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle",1992-07-10 10:45:14 UTC,3/4,0,LOG,00000,"statement: BEGIN;",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:33.257 UTC,"postgres","postgres",86,"107.64.99.7:20200",b0061e5.69,23,"idle",1992-07-10 10:45:14 UTC,3/3,0,LOG,00000,"statement: SET idle_in_transaction_session_timeout = 50;",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:33.257 UTC,"postgres","postgres",86,"107.64.99.7:20200",5ff26a0c.56,10,"idle",1992-07-10 10:45:14 UTC,3/9,0,LOG,00000,"statement: SELECT name FROM  (SELECT pg_catalog.lower(name) AS name FROM pg_catalog.pg_settings   WHERE context != 'internal'   UNION ALL SELECT 'all') ss  WHERE substring(name,1,6)='log_st' LIMIT 1000",,,,,,,,,"psql","client backend"
+      # 1992-07-10 10:45:33.257 UTC,,,80,,5cc26a05.50,2,,1992-07-10 10:45:14 UTC,,0,LOG,00000,"checkpoint complete: wrote 1 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.014 s; sync files=1, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB",,,,,,,,,"","checkpointer"
+      - event.original: <~timestamp/date/1992-07-10 01:07:24.374 UTC>,<~csv/csv/user_name/log_database/process_pid/connection_from/log_session_id/session_line_num/log_command_tag/log_session_start_time/log_virtual_transaction_id/log_transaction_id/log_level/log_sql_state_code/message/log_detail/log_hint/internal_query/internal_query_pos/log_context/log_query/query_pos/log_location/log_application_name/log_backend_type>
+
+      # 1992-07-10 00:05:12.999 UTC,"postgres","postgres",34,"107.64.99.7:20200",b0061e5.69,23,"idle",1992-07-10 10:45:14 UTC,3/2,0,LOG,00000,"statement: SELECT name FROM  (SELECT pg_catalog.lower(name) AS name FROM pg_catalog.pg_settings   WHERE context != 'internal'   UNION ALL SELECT 'all') ss  WHERE substring(name,1,10)='log_connec' LIMIT 1000",,,,,,,,,"psql"
+      # 1992-07-10 00:17:53.742 UTC,"postgres","postgres",54,"107.64.99.7:20200",b0061e5.69,23,"ALTER SYSTEM",1992-07-10 10:45:14 UTC,3/0,0,LOG,00000,"duration: 6.589 ms",,,,,,,,,"psql"
+      # 1992-07-10 00:51:56.843 UTC,"postgres","postgres",105,"107.64.99.7:20200",b0061e5.69,23,"SELECT",1992-07-10 10:45:14 UTC,3/136,0,LOG,00000,"duration: 0.455 ms  execute py:0x2fcc12d7ae81: SELECT * from information_schema.tables WHERE table_name = $1","parameters: $1 = 'tables'",,,,,,,,""
+      - event.original: <~timestamp/date/1992-07-10 01:07:24.374 UTC>,<~csv/csv/user_name/log_database/process_pid/connection_from/log_session_id/session_line_num/log_command_tag/log_session_start_time/log_virtual_transaction_id/log_transaction_id/log_level/log_sql_state_code/message/log_detail/log_hint/internal_query/internal_query_pos/log_context/log_query/query_pos/log_location/log_application_name>
+
+normalize:
+  - map:
+      - event.category: +array_append/database
+      - event.dataset: postgresql.log
+      - event.kind: event
+      - event.module: postgresql
+      - fileset.name: log                 #assumed fixed value
+      - input.type: log                   #assumed fixed value
+      - postgresql.log.timestamp: $~timestamp
+      - service.type: postgresql
+
+      - log.level: +rename/$~csv.log_level
+      - postgresql.internal_query: +rename/$~csv.internal_query
+      - postgresql.log.application_name: +rename/$~csv.log_application_name
+      - postgresql.log.backend_type: +rename/$~csv.log_backend_type
+      - postgresql.log.command_tag: +rename/$~csv.log_command_tag
+      - postgresql.log.context: +rename/$~csv.log_context
+      - postgresql.log.database: +rename/$~csv.log_database
+      - postgresql.log.detail: +rename/$~csv.log_detail
+      - postgresql.log.hint: +rename/$~csv.log_hint
+      - postgresql.log.location: +rename/$~csv.log_location
+      - postgresql.log.query: +rename/$~csv.log_query
+      - postgresql.log.session_id: +rename/$~csv.log_session_id
+      - postgresql.log.session_line_num: +rename/$~csv.session_line_num # TODO: this must be a long
+      - postgresql.log.session_start_time: +rename/$~csv.log_session_start_time
+      - postgresql.log.sql_state_code: +rename/$~csv.log_sql_state_code
+      - postgresql.log.transaction_id: +rename/$~csv.log_transaction_id
+      - postgresql.log.virtual_transaction_id: +rename/$~csv.log_virtual_transaction_id
+      - process.pid: +rename/$~csv.process_pid
+      - user.name: +rename/$~csv.user_name
+
+      - wazuh.decoders: +array_append/postgresql-csv

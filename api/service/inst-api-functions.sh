@@ -59,11 +59,6 @@ backup_old_api_4x() {
 
             install -o root -g ${WAZUH_GROUP} -m 0770 -d "${API_PATH_BACKUP}"/configuration
 
-            # Backup API yaml if exists
-            if [ -e "${API_PATH}"/configuration/api.yaml ]; then
-                cp -rLfp "${API_PATH}"/configuration/api.yaml "${API_PATH_BACKUP}"/configuration/
-            fi
-
             # Backup security files if the folder exists and its not empty
             if [ -d "${API_PATH}"/configuration/security ]; then
                 if [ -n "$(ls -A "${API_PATH}"/configuration/security)" ]; then
@@ -118,11 +113,6 @@ restore_old_api_4x() {
     # Create ssl folder if it does not exists in the new api
     if [ ! -d "${API_PATH}"/configuration/ssl ]; then
         install -o root -g ${WAZUH_GROUP} -m 0770 -d "${API_PATH}"/configuration/ssl
-    fi
-
-    # Copy API yaml if exists
-    if [ -e "${API_PATH_BACKUP}"/configuration/api.yaml ]; then
-        cp -rLfp "${API_PATH_BACKUP}"/configuration/api.yaml "${API_PATH}"/configuration/
     fi
 
     # Copy security folder if exists and its not empty

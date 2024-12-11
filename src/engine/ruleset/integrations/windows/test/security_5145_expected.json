@@ -1,0 +1,137 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "network-share-object-access-checked",
+      "category": [
+        "network",
+        "file"
+      ],
+      "code": "5145",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-09-17T23:54:48.941761700Z",
+      "type": [
+        "info",
+        "access"
+      ]
+    },
+    "file": {
+      "directory": "\\\\??\\\\C:\\\\Documents",
+      "extension": "exe",
+      "name": "Bginfo.exe",
+      "path": "\\\\??\\\\C:\\\\Documents\\Bginfo.exe",
+      "target_path": "\\\\\\\\\\*\\\\Documents\\Bginfo.exe"
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A network share object was checked to see whether client can be granted desired access",
+    "related": {
+      "ip": [
+        "fe80::31ea:6c3c:f40d:1973"
+      ],
+      "user": [
+        "dadmin"
+      ]
+    },
+    "source": {
+      "ip": "fe80::31ea:6c3c:f40d:1973",
+      "port": 56926
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-21-3457937927-2839227994-823803824-1104",
+      "name": "dadmin"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "AccessList": "%%1541 %%4416 %%4423",
+        "AccessMask": "0x100081",
+        "AccessMaskList": [
+          "Create Child",
+          "List Object",
+          "SYNCHRONIZE"
+        ],
+        "AccessReason": "%%1541: %%1801 D:(A;;FA;;;WD) %%4416: %%1801 D:(A;;FA;;;WD) %%4423: %%1801 D:(A;;FA;;;WD)",
+        "IpAddress": "fe80::31ea:6c3c:f40d:1973",
+        "IpPort": "56926",
+        "ObjectType": "File",
+        "RelativeTargetName": "Bginfo.exe",
+        "ShareLocalPath": "\\\\??\\\\C:\\\\Documents",
+        "ShareName": "\\\\\\\\\\*\\\\Documents",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x38d34",
+        "SubjectUserName": "dadmin",
+        "SubjectUserSid": "S-1-5-21-3457937927-2839227994-823803824-1104"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "5145"
+        },
+        "EventRecordID": {
+          "#text": "267092"
+        },
+        "Execution": {
+          "@ProcessID": "516",
+          "@ThreadID": "524"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "12811"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-09-17T23:54:48.941761700Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x38d34"
+      }
+    }
+  }
+]

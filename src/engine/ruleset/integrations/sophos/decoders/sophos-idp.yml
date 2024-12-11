@@ -1,0 +1,112 @@
+---
+name: decoder/sophos-idp/0
+
+metadata:
+  module: Sophos
+  title: Sophos-Idp logs decoder
+  version: [17.5.x, 18.0.x]
+  description: Decoder for Sophos Idp
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
+
+parents:
+  - decoder/integrations/0
+
+check:
+  - event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="IDP"
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sophos
+  # - event.dataset: sophos.xg
+
+parse:
+  logpar:
+    # device="SFW" date=2020-05-18 time=14:38:55 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=020804407002 log_type="IDP" log_component="Signatures" log_subtype="Drop" priority=Warning idp_policy_id=7 fw_rule_id=23 user_name="" signature_id=1616 signature_msg="PROTOCOL-DNS named version attempt" classification="Attempted Information Leak" rule_priority=1 src_ip=89.160.20.156 src_country_code=CHN dst_ip=67.43.156.12 dst_country_code=R1 protocol="UDP" src_port=58914 dst_port=53 platform="BSD,Linux,Mac,Other,Solaris,Unix,Windows" category="protocol-dns" target="Server"
+    # device="SFW" date=2020-05-18 time=14:38:56 timezone="CEST" device_name="XG230" device_id=1234567890123457 log_id=020804407002 log_type="IDP" log_component="Signatures" log_subtype="Drop" priority=Warning idp_policy_id=7 fw_rule_id=25 user_name="" signature_id=53589 signature_msg="SERVER-WEBAPP DrayTek multiple products command injection attempt" classification="Web Application Attack" rule_priority=2 src_ip=67.43.156.12 src_country_code=NLD dst_ip=172.16.68.20 dst_country_code=R1 protocol="TCP" src_port=59476 dst_port=80 platform="Linux,Mac,Other,Unix,Windows" category="server-webapp" target="Server"
+    # device="SFW" date=2018-05-23 time=16:20:34 timezone="BST" device_name="XG750" device_id=SFDemo-f64dd6be log_id=020703406001 log_type="IDP" log_component="Anomaly" log_subtype="Detect" priority=Warning idp_policy_id=1 fw_rule_id=2 user_name="" signature_id=26022 signature_msg="FILE-PDF EmbeddedFile contained within a PDF" classification="A Network Trojan was detected" rule_priority=1 src_ip=10.0.0.168 src_country_code=R1 dst_ip=10.1.1.234 dst_country_code=R1 protocol="TCP" src_port=28938 dst_port=25 platform="Windows" category="Malware Communication" target="Server"
+    # device="SFW" date=2018-05-23 time=16:16:43 timezone="BST" device_name="XG750" device_id=SFDemo-f64dd6be log_id=020704406002 log_type="IDP" log_component="Anomaly" log_subtype="Drop" priority=Warning idp_policy_id=1 fw_rule_id=2 user_name="" signature_id=26022 signature_msg="FILE-PDF EmbeddedFile contained within a PDF" classification="A Network Trojan was detected" rule_priority=1 src_ip=10.0.1.31 src_country_code=R1 dst_ip=10.1.0.115 dst_country_code=R1 protocol="TCP" src_port=40140 dst_port=25 platform="Windows" category="Malware Communication" target="Server"
+    - event.original: <~tmp.payload_message>
+
+# TODO: All sophos named fields are not currently in the schema.
+normalize:
+  - map:
+      - ~tmp.payload_message: +replace/=""/=" "
+    logpar:
+      - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
+  - map:
+      - destination.ip: $~tmp.dst_ip
+      - destination.port: $~tmp.dst_port
+      - event.action: $~tmp.log_subtype
+      - event.code: $~tmp.log_id
+      - event.dataset: sophos.xg
+      - event.kind: event
+      - event.module: sophos
+      - event.outcome: success
+      - event.reason: $~tmp.reason
+  - check:
+      - ~tmp.priority: Unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: Alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: Critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: Error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: Warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: Notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
+      - event.severity: 6
+  - map:
+      # TODO: need converter timezone abbrevation to UTC offset, for example 'IST' to -02:00
+      - event.timezone: $~tmp.timezone
+      - fileset.name: xg
+      - input.type: log
+      - log.level: $~tmp.priority
+      - network.transport: +downcase/$~tmp.protocol
+      - observer.product: XG
+      - observer.serial_number: $~tmp.device_id
+      - observer.type: firewall
+      - observer.vendor: Sophos
+      - related.ip: [$~tmp.src_ip, $~tmp.dst_ip]
+      - rule.category: $~tmp.classification
+      - rule.id: $~tmp.signature_id
+      - rule.name: $~tmp.signature_msg
+      - service.type: sophos
+      - sophos.xg.category: $~tmp.category
+      - sophos.xg.device: $~tmp.device
+      - sophos.xg.device_name: $~tmp.device_name
+      - sophos.xg.dst_country_code: $~tmp.dst_country_code
+      - sophos.xg.fw_rule_id: $~tmp.fw_rule_id
+      - sophos.xg.idp_policy_id: $~tmp.idp_policy_id
+      - sophos.xg.log_component: $~tmp.log_component
+      - sophos.xg.log_id: $~tmp.log_id
+      - sophos.xg.log_subtype: $~tmp.log_subtype
+      - sophos.xg.log_type: $~tmp.log_type
+      - sophos.xg.platform: $~tmp.platform
+      - sophos.xg.priority: $~tmp.priority
+      - sophos.xg.rule_priority: $~tmp.rule_priority
+      - sophos.xg.src_country_code: $~tmp.src_country_code
+      - sophos.xg.target: $~tmp.target
+      - source.ip: $~tmp.src_ip
+      - source.port: $~tmp.src_port
+      - tags: [forwarded, preserve_original_even, sophos-xg]
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - wazuh.decoders: +array_append/sophos-idp
+      - ~tmp: delete()

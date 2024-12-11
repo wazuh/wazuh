@@ -14,8 +14,8 @@ from wazuh.core import common
 from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.manager import query_update_check_service
+from wazuh.core.config.client import CentralizedConfig
 
-from api import configuration
 from api.constants import (
     INSTALLATION_UID_KEY,
     INSTALLATION_UID_PATH,
@@ -84,16 +84,18 @@ async def get_update_information() -> None:
 
 @contextlib.asynccontextmanager
 async def lifespan_handler(_: ConnexionMiddleware):
-    """Logs the API startup/shutdown messages and register background tasks."""
+    """Logs the API startup/shutdown messages, register background tasks and initialize indexer client."""
 
     tasks: list[asyncio.Task] = []
 
-    if running_in_master_node() and update_check_is_enabled():
+    if running_in_master_node():
         tasks.append(asyncio.create_task(check_installation_uid()))
-        tasks.append(asyncio.create_task(get_update_information()))
+        if update_check_is_enabled():
+            tasks.append(asyncio.create_task(get_update_information()))
 
     # Log the initial server startup message.
-    logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')
+    management_api_config = CentralizedConfig.get_management_api_config()
+    logger.info(f'Listening on {management_api_config.host}:{management_api_config.port}.')
 
     yield
 

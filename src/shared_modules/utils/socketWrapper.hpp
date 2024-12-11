@@ -596,7 +596,7 @@ public:
         auto sock = T::accept(m_sock, (struct sockaddr*)&addr, &socketLength);
         if (sock == INVALID_SOCKET)
         {
-            throw std::runtime_error {"Failed to accept socket" + std::to_string(errno)};
+            throw std::runtime_error {"Failed to accept socket" + std::string(std::strerror(errno))};
         }
 
         const uint32_t uiOpt {BUFFER_MAX_SIZE};
@@ -685,8 +685,7 @@ public:
                 if (ret <= 0)
                 {
                     m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, bufferSize - amountSent);
-                    throw std::runtime_error {"Error sending data to socket: " + std::to_string(errno) + " " +
-                                              std::string(strerror(errno))};
+                    throw std::runtime_error {"Error sending data to socket: " + std::string(std::strerror(errno))};
                 }
                 else
                 {
@@ -733,14 +732,14 @@ public:
                 if (T::fchmod(m_sock, 0666) != 0)
                 {
                     closeSocket();
-                    throw std::runtime_error {"Failed to fchmod socket " + std::to_string(errno)};
+                    throw std::runtime_error {"Failed to fchmod socket " + std::string(std::strerror(errno))};
                 }
             }
 
             if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
             {
                 closeSocket();
-                throw std::runtime_error {"Failed to bind socket " + std::to_string(errno)};
+                throw std::runtime_error {"Failed to bind socket " + std::string(std::strerror(errno))};
             }
 
             if (connectInfo.type == SocketType::UNIX)
@@ -749,14 +748,14 @@ public:
                 if (T::chmod(sunAddr->sun_path, 0666) != 0)
                 {
                     closeSocket();
-                    throw std::runtime_error {"Failed to chmod socket " + std::to_string(errno)};
+                    throw std::runtime_error {"Failed to chmod socket " + std::string(std::strerror(errno))};
                 }
             }
 
             if (T::listen(m_sock, SOMAXCONN) != 0)
             {
                 closeSocket();
-                throw std::runtime_error {"Failed to listen socket " + std::to_string(errno)};
+                throw std::runtime_error {"Failed to listen socket " + std::string(std::strerror(errno))};
             }
 
             const uint32_t uiOpt {BUFFER_MAX_SIZE};

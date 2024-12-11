@@ -1,0 +1,38 @@
+name: rule/execution-python-script-in-cmdline/0
+
+metadata:
+  module: Windows
+  title: Python Script Execution via Command Line
+  description: Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use
+    this method to execute malicious scripts and avoiding writing it to disk.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/09/15
+
+check :
+  - event.type: array_contains(start)
+  - event.category: array_contains(process)
+  - process.name: python.exe
+  - process.args: array_contains_any(-c, import, sys)
+
+normalize:
+  - map:
+      - event.risk_score: 47.0
+
+      - rule.description: Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use
+          this method to execute malicious scripts and avoiding writing it to disk.
+      - rule.license: Wazuh Inc.
+      - rule.name: Python Script Execution via Command Line
+
+      - threat.framework: MITRE ATT&CK
+      - threat.tactic.id: array_append(TA0002)
+      - threat.tactic.name: array_append(Execution)
+      - threat.tactic.reference: array_append(https://attack.mitre.org/tactics/TA0002)
+      - threat.technique.id: array_append(T1059)
+      - threat.technique.name: array_append('Command and Scripting Interpreter')
+      - threat.technique.reference: array_append(https://attack.mitre.org/techniques/T1059/)
+      - threat.technique.subtechnique.id: array_append(T1059.006, T1059.003)
+      - threat.technique.subtechnique.name: array_append(Python, 'Windows Command Shell')
+      - threat.technique.subtechnique.reference: array_append(https://attack.mitre.org/techniques/T1059/003/, https://attack.mitre.org/techniques/T1059/003/)
+
+      - vulnerability.severity: medium

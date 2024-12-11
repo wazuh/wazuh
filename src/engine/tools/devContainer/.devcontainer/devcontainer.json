@@ -1,0 +1,108 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/cpp
+{
+	"name": "Engine Development",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {
+			"theme": "bira",
+			"plugins": "git docker docker-compose",
+			"setLocale": true,
+			"desiredLocale": "en_US.UTF-8"
+		},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/go:1": {},
+		"ghcr.io/devcontainers/features/python:1": {},
+		"ghcr.io/devcontainers/features/sshd:1": {},
+		// TODO: Review the following feature
+		"ghcr.io/devcontainers-contrib/features/actions-runner:1": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/msclock/features/vcpkg:2.0.0": {
+			"vcpkgroot": "/usr/local/vcpkg",
+			"vcpkgdownload": "/usr/local/vcpkg-downloads",
+			"vcpkgversion": "latest"
+		}
+	},
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools",
+				"twxs.cmake",
+				"ms-vscode.cmake-tools",
+				"ms-azuretools.vscode-docker",
+				"redhat.vscode-yaml",
+				"DotJoshJohnson.xml",
+				"shardulm94.trailing-spaces",
+				"Gruntfuggly.todo-tree",
+				"alexcvzz.vscode-sqlite",
+				"richie5um2.vscode-sort-json",
+				"mechatroner.rainbow-csv",
+				"ms-python.debugpy",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-vsliveshare.vsliveshare",
+				"ms-vsliveshare.vsliveshare-pack",
+				"ms-python.isort",
+				"golang.go",
+				"github.vscode-github-actions",
+				"cschlosser.doxdocgen",
+				"matepek.vscode-catch2-test-adapter",
+				"amiralizadeh9480.cpp-helper",
+				"ms-vscode.cpptools-extension-pack",
+				"rogalmic.bash-debug",
+				"ms-python.autopep8",
+				"eamodio.gitlens",
+				"pbkit.vscode-pbkit",
+				"eriklynd.json-tools",
+				"mads-hartmann.bash-ide-vscode"
+			]
+		}
+	},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "root",
+
+	"remoteEnv": {
+		// Set the workspace folder to the container workspace folder.
+		"WAZUH_REPO": "${containerWorkspaceFolder}/wazuh",
+		"ENGINE_SRC": "${containerWorkspaceFolder}/wazuh/src/engine",
+		"ENGINE_BUILD": "${containerWorkspaceFolder}/wazuh/src/engine/build",
+		"ENGINE_RULESET": "${containerWorkspaceFolder}/intelligence-data/engine",
+		"ENGINE_PYTHONPATH_API": "${containerWorkspaceFolder}/wazuh/src/engine/tools/api-communication/",
+		"ENGINE_PYTHONPATH_SUITE": "${containerWorkspaceFolder}/wazuh/src/engine/tools/engine-suite/",
+		"ENGINE_PYTHONPATH_TEST": "${containerWorkspaceFolder}/wazuh/src/engine/test/engine-test-utils/",
+		"ENGINE_PYTHONPATH_HEALTH": "${containerWorkspaceFolder}/wazuh/src/engine/test/health_test/engine-health-test/",
+		"ENGINE_PYTHONPATH_HELPER": "${containerWorkspaceFolder}/wazuh/src/engine/test/helper_tests/engine-helper-test/",
+		"ENGINE_PYTHONPATH_IT": "${containerWorkspaceFolder}/wazuh/src/engine/test/integration_tests/engine-it/",
+		"ENGINE_PYTHONPATH_DBG": "${containerWorkspaceFolder}/wazuh/src/engine/tools/api-communication/src:${containerWorkspaceFolder}/wazuh/src/engine/tools/engine-suite/src:${containerWorkspaceFolder}/wazuh/src/engine/test/engine-test-utils/src:${containerWorkspaceFolder}/wazuh/src/engine/test/health_test/engine-health-test/src:${containerWorkspaceFolder}/wazuh/src/engine/test/helper_tests/engine-helper-test/src:${containerWorkspaceFolder}/wazuh/src/engine/test/integration_tests/engine-it/src",
+		"TMP_CLEAN_ENV": "/tmp/clean_env",
+		"TMP_PY_VENV": "${containerWorkspaceFolder}/venv"
+	},
+
+	"postCreateCommand": {
+		// Configure zsh
+	    "zsh_cnf_0": "echo \"setopt APPEND_HISTORY;setopt INC_APPEND_HISTORY\" >> ~/.zshrc",
+		"zsh_cnf_1": "echo \"export HISTFILE=${containerWorkspaceFolder}/.zsh_history\" >> ~/.zshrc",
+		"zsh_cnf_2": "echo \"export HISTSIZE=1000000000\" >> ~/.zshrc",
+		"zsh_cnf_3": "echo \"export SAVEHIST=1000000000\" >> ~/.zshrc",
+		// Download repo and install engine
+		"clone_and_install": "if [ ! -d \"${WAZUH_REPO}\" ]; then git clone --recursive https://github.com/wazuh/wazuh.git \"${WAZUH_REPO}\" ; fi; git config --global --add safe.directory \"${WAZUH_REPO}\"; cd  \"${WAZUH_REPO}\"; USER_LANGUAGE=en USER_NO_STOP=y USER_CA_STORE=/path/to/my_cert.pem DOWNLOAD_CONTENT=y ./install.sh;"
+	},
+
+	// Post start commands
+	"postStartCommand": {
+		// OpenSearch config
+		"swapp-off": "/bin/sh -c 'swapoff -a' || true",
+		"set-max-vm-map-count": "/bin/sh -c 'sysctl -w vm.max_map_count=262144'",
+		"set-max-file-descriptors": "/bin/sh -c 'ulimit -n 65536'",
+		"welcome": "echo '\\e[1;33mWelcome to the Wazuh Engine Development container!\\n\\e[0mRun task \\e[1;32m'Build clean python env'\\e[0m to install the python dependencies.'"
+	}
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+}

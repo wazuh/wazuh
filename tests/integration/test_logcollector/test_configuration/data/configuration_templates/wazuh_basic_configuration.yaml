@@ -1,9 +1,0 @@
-- sections:
-    - section: localfile
-      elements:
-        - command:
-            value: 'COMMAND'
-        - log_format:
-            value: 'LOG_FORMAT'
-        - alias:
-            value: 'ALIAS'

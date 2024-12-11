@@ -87,7 +87,7 @@ private:
         const auto onError {
             [&returnCode](const std::string& errorMessage, const long errorCode)
             {
-                logWarn(WM_CONTENTUPDATER, "Error '%d' when downloading file: %s", errorCode, errorMessage.c_str());
+                logWarn(WM_CONTENTUPDATER, "Error '%d' when downloading file: %s.", errorCode, errorMessage.c_str());
                 returnCode = false;
             }};
 

@@ -1,0 +1,494 @@
+---
+name: decoder/auditd-kv/0
+
+metadata:
+  title: Auditd Decoder
+  description: Decoder for parsing the msg field of Linux auditd logs
+  references:
+    - https://linux.die.net/man/8/auditd
+    - https://docs.elastic.co/en/integrations/auditd
+  product.name: auditd
+  author:
+      name: Wazuh, Inc.
+      url: https://wazuh.com
+      date: 2023/01/30
+
+parents:
+  - decoder/auditd/0
+
+check:
+  - ~kv_msg: exists()
+
+parse:
+  logpar:
+    - ~kv_msg: '<~kv_map/kv/=/ /"/\\>'
+
+normalize:
+  - map:
+      - auditd.log: +merge/$~kv_map
+      - auditd.log.node: +rename/$~node
+      #TODO: issue on +string_equal can't use it as a value
+      - ~null_parenthesis: (null)
+      - ~kv_msg: delete()
+      - wazuh.decoders: +array_append/auditd-kv
+
+  # Start of hexa to string fields transformation
+  # for each audit.log.X
+  # -> remove field if value is '?' '(null)' or 'empty' (null value after parser)
+  # -> key is "exe", "cmd", "data", "path", "comm", "file", "name", "watch", "cwd",
+  #   "acct", "dir", "vm", "old-chardev", "new-chardev", "old-disk", "new-disk", "old-fs",
+  #   "new-fs", "old-net", "new-net", "device", "cgroup", "apparmor", "operation",
+  #   "denied_mask", "info", "profile", "requested_mask", "old-rng", "new-rng", "ocomm",
+  #   "grp", "new_group", "invalid_context", "sw", "root_dir", "proctitle"
+  # -> convert value to hex if it can
+  # -> remove quotes from start or end
+  # -> key is arch or value is c000003e -> ".. .arch" : "x86_64"
+
+  - check: +is_null/$auditd.log.exe OR $auditd.log.exe==? OR +string_equal/$auditd.log.exe/$~null_parenthesis
+    map:
+      - auditd.log.exe: delete()
+  - map:
+      - auditd.log.exe: +decode_base16/$auditd.log.exe
+      - auditd.log.exe: +trim/both/"
+      - auditd.log.exe: +trim/both/'
+
+  - check: +is_null/$auditd.log.cmd OR auditd.log.cmd==? OR +string_equal/$auditd.log.cmd/$~null_parenthesis
+    map:
+      - auditd.log.cmd: delete()
+  - map:
+      - auditd.log.cmd: +decode_base16/$auditd.log.cmd
+      - auditd.log.cmd: +trim/both/"
+      - auditd.log.cmd: +trim/both/'
+
+  - check: +is_null/$auditd.log.data OR auditd.log.data==? OR +string_equal/$auditd.log.data/$~null_parenthesis
+    map:
+      - auditd.log.data: delete()
+  - map:
+      - auditd.log.data: +decode_base16/$auditd.log.data
+      - auditd.log.data: +trim/both/"
+      - auditd.log.data: +trim/both/'
+
+  - check: +is_null/$auditd.log.path OR auditd.log.path==? OR +string_equal/$auditd.log.path/$~null_parenthesis
+    map:
+      - auditd.log.path: delete()
+  - map:
+      - auditd.log.path: +decode_base16/$auditd.log.path
+      - auditd.log.path: +trim/both/"
+      - auditd.log.path: +trim/both/'
+
+  - check: +is_null/$auditd.log.comm OR auditd.log.comm==? OR +string_equal/$auditd.log.comm/$~null_parenthesis
+    map:
+      - auditd.log.comm: delete()
+  - map:
+      - auditd.log.comm: +decode_base16/$auditd.log.comm
+      - auditd.log.comm: +trim/both/"
+      - auditd.log.comm: +trim/both/'
+
+  - check: +is_null/$auditd.data.file OR auditd.data.file==? OR +string_equal/$auditd.data.file/$~null_parenthesis
+    map:
+      - auditd.data.file: delete()
+  - map:
+      - auditd.data.file: +decode_base16/$auditd.data.file
+      - auditd.data.file: +trim/both/"
+      - auditd.data.file: +trim/both/'
+
+  - check: +is_null/$auditd.log.name OR auditd.log.name==? OR +string_equal/$auditd.log.name/$~null_parenthesis
+    map:
+      - auditd.log.name: delete()
+  - map:
+      - auditd.log.name: +decode_base16/$auditd.log.name
+      - auditd.log.name: +trim/both/"
+      - auditd.log.name: +trim/both/'
+
+  - check: +is_null/$auditd.data.watch OR auditd.data.watch==? OR +string_equal/$auditd.data.watch/$~null_parenthesis
+    map:
+      - auditd.data.watch: delete()
+  - map:
+      - auditd.data.watch: +decode_base16/$auditd.data.watch
+      - auditd.data.watch: +trim/both/"
+      - auditd.data.watch: +trim/both/'
+
+  - check: +is_null/$auditd.log.cwd OR auditd.log.cwd==? OR +string_equal/$auditd.log.cwd/$~null_parenthesis
+    map:
+      - auditd.log.cwd: delete()
+  - map:
+      - auditd.log.cwd: +decode_base16/$auditd.log.cwd
+      - auditd.log.cwd: +trim/both/"
+      - auditd.log.cwd: +trim/both/'
+
+  - check: +is_null/$auditd.log.acct OR auditd.log.acct==? OR +string_equal/$auditd.log.acct/$~null_parenthesis
+    map:
+      - auditd.log.acct: delete()
+  - map:
+      - auditd.log.acct: +decode_base16/$auditd.log.acct
+      - auditd.log.acct: +trim/both/"
+      - auditd.log.acct: +trim/both/'
+
+  - check: +is_null/$auditd.data.dir OR auditd.data.dir==? OR +string_equal/$auditd.data.dir/$~null_parenthesis
+    map:
+      - auditd.data.dir: delete()
+  - map:
+      - auditd.data.dir: +decode_base16/$auditd.data.dir
+      - auditd.data.dir: +trim/both/"
+      - auditd.data.dir: +trim/both/'
+
+  - check: +is_null/$auditd.data.vm OR auditd.data.vm==? OR +string_equal/$auditd.data.vm/$~null_parenthesis
+    map:
+      - auditd.data.vm: delete()
+  - map:
+      - auditd.data.vm: +decode_base16/$auditd.data.vm
+      - auditd.data.vm: +trim/both/"
+      - auditd.data.vm: +trim/both/'
+
+  - check: +is_null/$auditd.data.old-chardev OR auditd.data.old-chardev==? OR +string_equal/$auditd.data.old-chardev/$~null_parenthesis
+    map:
+      - auditd.data.old-chardev: delete()
+  - map:
+      - auditd.data.old-chardev: +decode_base16/$auditd.data.old-chardev
+      - auditd.data.old-chardev: +trim/both/"
+      - auditd.data.old-chardev: +trim/both/'
+
+  - check: +is_null/$auditd.data.new-chardev OR auditd.data.new-chardev==? OR +string_equal/$auditd.data.new-chardev/$~null_parenthesis
+    map:
+      - auditd.data.new-chardev: delete()
+  - map:
+      - auditd.data.new-chardev: +decode_base16/$auditd.data.new-chardev
+      - auditd.data.new-chardev: +trim/both/"
+      - auditd.data.new-chardev: +trim/both/'
+
+  - check: +is_null/$auditd.data.old-disk OR auditd.data.old-disk==? OR +string_equal/$auditd.data.old-disk/$~null_parenthesis
+    map:
+      - auditd.data.old-disk: delete()
+  - map:
+      - auditd.data.old-disk: +decode_base16/$auditd.data.old-disk
+      - auditd.data.old-disk: +trim/both/"
+      - auditd.data.old-disk: +trim/both/'
+
+  - check: +is_null/$auditd.data.new-disk OR auditd.data.new-disk==? OR +string_equal/$auditd.data.new-disk/$~null_parenthesis
+    map:
+      - auditd.data.new-disk: delete()
+  - map:
+      - auditd.data.new-disk: +decode_base16/$auditd.data.new-disk
+      - auditd.data.new-disk: +trim/both/"
+      - auditd.data.new-disk: +trim/both/'
+
+  - check: +is_null/$auditd.data.old-fs OR auditd.data.old-fs==? OR +string_equal/$auditd.data.old-fs/$~null_parenthesis
+    map:
+      - auditd.data.old-fs: delete()
+  - map:
+      - auditd.data.old-fs: +decode_base16/$auditd.data.old-fs
+      - auditd.data.old-fs: +trim/both/"
+      - auditd.data.old-fs: +trim/both/'
+
+  - check: +is_null/$auditd.data.new-fs OR auditd.data.new-fs==? OR +string_equal/$auditd.data.new-fs/$~null_parenthesis
+    map:
+      - auditd.data.new-fs: delete()
+  - map:
+      - auditd.data.new-fs: +decode_base16/$auditd.data.new-fs
+      - auditd.data.new-fs: +trim/both/"
+      - auditd.data.new-fs: +trim/both/'
+
+  - check: +is_null/$auditd.data.old-net OR auditd.data.old-net==? OR +string_equal/$auditd.data.old-net/$~null_parenthesis
+    map:
+      - auditd.data.old-net: delete()
+  - map:
+      - auditd.data.old-net: +decode_base16/$auditd.data.old-net
+      - auditd.data.old-net: +trim/both/"
+      - auditd.data.old-net: +trim/both/'
+
+  - check: +is_null/$auditd.data.new-net OR auditd.data.new-net==? OR +string_equal/$auditd.data.new-net/$~null_parenthesis
+    map:
+      - auditd.data.new-net: delete()
+  - map:
+      - auditd.data.new-net: +decode_base16/$auditd.data.new-net
+      - auditd.data.new-net: +trim/both/"
+      - auditd.data.new-net: +trim/both/'
+
+  - check: +is_null/$auditd.data.device OR auditd.data.device==? OR +string_equal/$auditd.data.device/$~null_parenthesis
+    map:
+      - auditd.data.device: delete()
+  - map:
+      - auditd.data.device: +decode_base16/$auditd.data.device
+      - auditd.data.device: +trim/both/"
+      - auditd.data.device: +trim/both/'
+
+  - check: +is_null/$auditd.data.cgroup OR auditd.data.cgroup==? OR +string_equal/$auditd.data.cgroup/$~null_parenthesis
+    map:
+      - auditd.data.cgroup: delete()
+  - map:
+      - auditd.data.cgroup: +decode_base16/$auditd.data.cgroup
+      - auditd.data.cgroup: +trim/both/"
+      - auditd.data.cgroup: +trim/both/'
+
+  - check: +is_null/$auditd.data.apparmor OR auditd.data.apparmor==? OR +string_equal/$auditd.data.apparmor/$~null_parenthesis
+    map:
+      - auditd.data.apparmor: delete()
+  - map:
+      - auditd.data.apparmor: +decode_base16/$auditd.data.apparmor
+      - auditd.data.apparmor: +trim/both/"
+      - auditd.data.apparmor: +trim/both/'
+
+  - check: +is_null/$auditd.log.operation OR auditd.log.operation==? OR +string_equal/$auditd.log.operation/$~null_parenthesis
+    map:
+      - auditd.log.operation: delete()
+  - map:
+      - auditd.log.operation: +decode_base16/$auditd.log.operation
+      - auditd.log.operation: +trim/both/"
+      - auditd.log.operation: +trim/both/'
+
+  - check: +is_null/$auditd.log.denied_mask OR auditd.log.denied_mask==? OR +string_equal/$auditd.log.denied_mask/$~null_parenthesis
+    map:
+      - auditd.log.denied_mask: delete()
+  - map:
+      - auditd.log.denied_mask: +decode_base16/$auditd.log.denied_mask
+      - auditd.log.denied_mask: +trim/both/"
+      - auditd.log.denied_mask: +trim/both/'
+
+  - check: +is_null/$auditd.log.info OR auditd.log.info==? OR +string_equal/$auditd.log.info/$~null_parenthesis
+    map:
+      - auditd.log.info: delete()
+  - map:
+      - auditd.log.info: +decode_base16/$auditd.log.info
+      - auditd.log.info: +trim/both/"
+      - auditd.log.info: +trim/both/'
+
+  - check: +is_null/$auditd.log.profile OR auditd.log.profile==? OR +string_equal/$auditd.log.profile/$~null_parenthesis
+    map:
+      - auditd.log.profile: delete()
+  - map:
+      - auditd.log.profile: +decode_base16/$auditd.log.profile
+      - auditd.log.profile: +trim/both/"
+      - auditd.log.profile: +trim/both/'
+
+  - check: +is_null/$auditd.log.requested_mask OR auditd.log.requested_mask==? OR +string_equal/$auditd.log.requested_mask/$~null_parenthesis
+    map:
+      - auditd.log.requested_mask: delete()
+  - map:
+      - auditd.log.requested_mask: +decode_base16/$auditd.log.requested_mask
+      - auditd.log.requested_mask: +trim/both/"
+      - auditd.log.requested_mask: +trim/both/'
+
+  - check: +is_null/$auditd.data.old-rng OR auditd.data.old-rng==? OR +string_equal/$auditd.data.old-rng/$~null_parenthesis
+    map:
+      - auditd.data.old-rng: delete()
+  - map:
+      - auditd.data.old-rng: +decode_base16/$auditd.data.old-rng
+      - auditd.data.old-rng: +trim/both/"
+      - auditd.data.old-rng: +trim/both/'
+
+  - check: +is_null/auditd.data.new-rng OR auditd.data.new-rng==? OR +string_equal/$auditd.data.new-rng/$~null_parenthesis
+    map:
+      - auditd.data.new-rng: delete()
+  - map:
+      - auditd.data.new-rng: +decode_base16/$auditd.data.new-rng
+      - auditd.data.new-rng: +trim/both/"
+      - auditd.data.new-rng: +trim/both/'
+
+  - check: +is_null/$auditd.data.ocomm OR auditd.data.ocomm==? OR +string_equal/$auditd.data.ocomm/$~null_parenthesis
+    map:
+      - auditd.data.ocomm: delete()
+  - map:
+      - auditd.data.ocomm: +decode_base16/$auditd.data.ocomm
+      - auditd.data.ocomm: +trim/both/"
+      - auditd.data.ocomm: +trim/both/'
+
+  - check: +is_null/$auditd.data.grp OR auditd.data.grp==? OR +string_equal/$auditd.data.grp/$~null_parenthesis
+    map:
+      - auditd.data.grp: delete()
+  - map:
+      - auditd.data.grp: +decode_base16/$auditd.data.grp
+      - auditd.data.grp: +trim/both/"
+      - auditd.data.grp: +trim/both/'
+
+  - check: +is_null/$auditd.log.new_group OR auditd.log.new_group==? OR +string_equal/$auditd.log.new_group/$~null_parenthesis
+    map:
+      - auditd.log.new_group: delete()
+  - map:
+      - auditd.log.new_group: +decode_base16/$auditd.log.new_group
+      - auditd.log.new_group: +trim/both/"
+      - auditd.log.new_group: +trim/both/'
+
+  - check: +is_null/$auditd.data.invalid_context OR auditd.data.invalid_context==? OR +string_equal/$auditd.data.invalid_context/$~null_parenthesis
+    map:
+      - auditd.data.invalid_context: delete()
+  - map:
+      - auditd.data.invalid_context: +decode_base16/$auditd.data.invalid_context
+      - auditd.data.invalid_context: +trim/both/"
+      - auditd.data.invalid_context: +trim/both/'
+
+  - check: +is_null/$auditd.log.sw OR auditd.log.sw==? OR +string_equal/$auditd.log.sw/$~null_parenthesis
+    map:
+      - auditd.log.sw: delete()
+  - map:
+      - auditd.log.sw: +decode_base16/$auditd.log.sw
+      - auditd.log.sw: +trim/both/"
+      - auditd.log.sw: +trim/both/'
+
+  - check: +is_null/$auditd.log.root_dir OR auditd.log.root_dir==? OR +string_equal/$auditd.log.root_dir/$~null_parenthesis
+    map:
+      - auditd.log.root_dir: delete()
+  - map:
+      - auditd.log.root_dir: +decode_base16/$auditd.log.root_dir
+      - auditd.log.root_dir: +trim/both/"
+      - auditd.log.root_dir: +trim/both/'
+
+  - check: +is_null/$auditd.log.proctitle OR auditd.log.proctitle==? OR +string_equal/$auditd.log.proctitle/$~null_parenthesis
+    map:
+      - auditd.log.proctitle: delete()
+  - map:
+      - auditd.log.proctitle: +decode_base16/$auditd.log.proctitle
+      - auditd.log.proctitle: +trim/both/"
+      - auditd.log.proctitle: +trim/both/'
+
+  - check:
+      - auditd.log.arch: c000003e
+  - map:
+      - auditd.log.arch: x86_64
+  # End of hexa to string fields transformation
+
+  # - If auditd.log.record_type is_null ******************************************** EXIT
+  # - from KVDB_TYPE obtain object named {auditd.log.record_type}
+  # - If object is_null AND auditd.log.syscall is_not_null
+  # -- > from KVDB_SYSCALLS obtain object
+  # -- -- > if is_null get '*' -> {"category": "process", "type": "info"} ********** EXIT
+  # - Iterate through object obtained from either KVDB
+  # -- > if each object doesn't contain a 'has_fields' field or
+  # -- > auditd.log.[has_fields_value] is not_null
+  # -- -- > add each object's event field to event ("action","category","type")
+  # -- -- > contains copy? iterate in it
+  # -- -- -- > for each element in 'from' field set VALUE = auditd.log.<from_field_val>
+  # -- -- -- > if VALUE is not a null string set TARGET = <object>[to] + suffx
+  # -- -- -- > Being suffix = ".id" if VALUE is a numeric value and ".name" if not.
+  # -- -- -- > map each TARGET = VALUE
+
+  # auditd KVDBs event field requests
+  - check: exists($auditd.log.record_type)
+    map:
+      - ~temp_event: +kvdb_get/auditd-types/$auditd.log.record_type
+  - check: not_exists($~temp_event) AND exists($auditd.log.syscall)
+    map:
+      - ~temp_event: +kvdb_get/auditd-syscall/$auditd.log.record_type
+  - check: +not_exists($~temp_event)
+    map:
+      - ~temp_event: +kvdb_get/auditd-syscall/*
+  - check: exists($~temp_event.event)
+    map:
+      # TODO: Check types -> array is transformed to object
+      - ~event: +merge/$~temp_event.event
+
+  #TODO: pending auditd KVDBs copy fields mapping
+  # * iterations through copy objects
+  # * mapping values to an specific dynamic field (dependent on event)
+
+  - check: auditd.log.syscall==execve AND auditd.log.record_type==SYSCALL
+    map:
+      - event.category: [process]
+      - event.type: info
+
+  - check: auditd.log.record_type==SYSTEM_BOOT OR auditd.log.record_type==SYSTEM_SHUTDOWN
+    map:
+      - event.category: [host]
+      - event.type: info
+
+  - check: auditd.log.record_type==VIRT_CONTROL OR auditd.log.record_type==VIRT_MACHINE_ID
+    map:
+      - event.category: [host]
+
+  - check: >-
+      auditd.log.syscall==accept OR +int_equal/auditd.log.syscall/43 OR
+      auditd.log.syscall==recvfrom OR +int_equal/auditd.log.syscall/45 OR
+      auditd.log.syscall==recvmsg OR +int_equal/auditd.log.syscall/47 OR
+      auditd.log.syscall==accept4 OR +int_equal/auditd.log.syscall/288
+    map:
+      - network.direction: ingress
+
+  - check: >-
+      auditd.log.syscall==connect OR +int_equal/auditd.log.syscall/42 OR
+      auditd.log.syscall==sendto OR +int_equal/auditd.log.syscall/44 OR
+      auditd.log.syscall==sendmsg OR +int_equal/auditd.log.syscall/46
+    map:
+      - network.direction: egress
+
+  - check: auditd.log.op==start AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: start
+
+  - check: auditd.log.op==stop AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: end
+
+  - check: auditd.log.op==create AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: creation
+
+  - check: auditd.log.op==delete AND auditd.log.record_type==VIRT_CONTROL
+    map:
+      - event.type: deletion
+
+  - check:
+      - auditd.log.record_type: VIRT_MACHINE_ID
+    map:
+      - event.category: [host]
+      - event.type: creation
+      - container.name: $auditd.data.vm
+      - container.runtime: $auditd.log.virt
+
+  - check:
+      - auditd.log.user: not_exists()
+    map:
+      - user.name: +rename/$auditd.log.acct
+
+  - check:
+      - auditd.data.success: no
+    map:
+      - auditd.data.success: false
+
+  - check:
+      - auditd.data.success: yes
+    map:
+      - auditd.data.success: true
+
+  - check:
+      - auditd.log.src: not_exists()
+    map:
+      - auditd.log.src: $auditd.log.addr
+
+  - map:
+      - auditd.log.record_type: +downcase/$auditd.log.record_type
+      - destination.address: $auditd.log.dst
+      - event.action: +downcase/$auditd.log.record_type
+      - event.outcome: +rename/$auditd.log.res
+      - host.architecture: +rename/$auditd.log.arch
+      - message: +rename/$auditd.log.msg
+      - process.args_count: +rename/$auditd.log.argc
+      - process.args: "+split/$auditd.log.cmd/ " # It ends with a space
+      - process.executable: +rename/$auditd.log.exe
+      - process.exit_code: +rename/$auditd.log.exit
+      - process.name: +rename/$auditd.log.comm
+      - process.parent.pid: +rename/$auditd.log.ppid
+      - process.pid: +rename/$auditd.log.pid
+      - process.working_directory: +rename/$auditd.log.cwd
+      - source.address: +parse_ip/$auditd.log.src
+      - source.address: +parse_ip/$auditd.log.addr
+      - source.as.number: +rename/$source.as.asn
+      - source.as.organization.name: +rename/$source.as.organization_name
+      - user.audit.group.id: +rename/$auditd.log.agid
+      - user.audit.id: +rename/$auditd.log.auid
+      - user.effective.group.id: +rename/$auditd.log.egid
+      - user.effective.id: +rename/$auditd.log.euid
+      - user.filesystem.group.id: +rename/$auditd.log.fsgid
+      - user.filesystem.id: +rename/$auditd.log.fsuid
+      - user.group.id: +rename/$auditd.log.gid
+      - user.id: +rename/$auditd.log.uid
+      - user.name: +rename/$auditd.log.acct
+      - user.name: +rename/$auditd.log.user
+      - user.owner.group.id: +rename/$auditd.log.ogid
+      - user.owner.id: +rename/$auditd.log.ouid
+      - user.saved.group.id: +rename/$auditd.log.sgid
+      - user.saved.id: +rename/$auditd.log.suid
+      - user.terminal: +rename/$auditd.log.terminal
+      - auditd.log.kv: delete()
+      - auditd.log.sub_kv: delete()
+      - auditd.log.epoch: delete()
+      - auditd.log.copy: delete()
+      - ~temp_event: delete()

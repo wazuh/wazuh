@@ -1,0 +1,1188 @@
+{
+  "1100": {
+    "category": [
+      "process"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "logging-service-shutdown"
+  },
+  "1102": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "audit-log-cleared"
+  },
+  "1104": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin"
+    ],
+    "action": "logging-full"
+  },
+  "1105": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin"
+    ],
+    "action": "auditlog-archieved"
+  },
+  "1108": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin"
+    ],
+    "action": "logging-processing-error"
+  },
+  "4610": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "access"
+    ],
+    "action": "authentication-package-loaded"
+  },
+  "4611": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "trusted-logon-process-registered"
+  },
+  "4614": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "access"
+    ],
+    "action": "notification-package-loaded"
+  },
+  "4616": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "system-time-changed"
+  },
+  "4622": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "access"
+    ],
+    "action": "security-package-loaded"
+  },
+  "4624": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "logged-in"
+  },
+  "4625": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "logon-failed"
+  },
+  "4634": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "logged-out"
+  },
+  "4647": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "logged-out"
+  },
+  "4648": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "logged-in-explicit"
+  },
+  "4657": {
+    "category": [
+      "registry",
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "registry-value-modified"
+  },
+  "4662": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "object-operation-performed"
+  },
+  "4670": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "permissions-changed"
+  },
+  "4672": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin"
+    ],
+    "action": "logged-in-special"
+  },
+  "4673": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin"
+    ],
+    "action": "privileged-service-called"
+  },
+  "4674": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin"
+    ],
+    "action": "privileged-operation"
+  },
+  "4688": {
+    "category": [
+      "process"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "created-process"
+  },
+  "4689": {
+    "category": [
+      "process"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "exited-process"
+  },
+  "4697": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "service-installed"
+  },
+  "4698": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "creation",
+      "admin"
+    ],
+    "action": "scheduled-task-created"
+  },
+  "4699": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "deletion",
+      "admin"
+    ],
+    "action": "scheduled-task-deleted"
+  },
+  "4700": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "change",
+      "admin"
+    ],
+    "action": "scheduled-task-enabled"
+  },
+  "4701": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "change",
+      "admin"
+    ],
+    "action": "scheduled-task-disabled"
+  },
+  "4702": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "change",
+      "admin"
+    ],
+    "action": "scheduled-task-updated"
+  },
+  "4706": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "creation"
+    ],
+    "action": "domain-trust-added"
+  },
+  "4707": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "deletion"
+    ],
+    "action": "domain-trust-removed"
+  },
+  "4713": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "kerberos-policy-changed"
+  },
+  "4714": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "encrypted-data-recovery-policy-changed"
+  },
+  "4715": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "object-audit-policy-changed"
+  },
+  "4716": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "trusted-domain-information-changed"
+  },
+  "4717": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "system-security-access-granted"
+  },
+  "4718": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "deletion"
+    ],
+    "action": "system-security-access-removed"
+  },
+  "4719": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "changed-audit-config"
+  },
+  "4720": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "creation"
+    ],
+    "action": "added-user-account"
+  },
+  "4722": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "change"
+    ],
+    "action": "enabled-user-account"
+  },
+  "4723": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "change"
+    ],
+    "action": "changed-password"
+  },
+  "4724": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "change"
+    ],
+    "action": "reset-password"
+  },
+  "4725": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "deletion"
+    ],
+    "action": "disabled-user-account"
+  },
+  "4726": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "deletion"
+    ],
+    "action": "deleted-user-account"
+  },
+  "4727": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "creation"
+    ],
+    "action": "added-group-account"
+  },
+  "4728": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "added-member-to-group"
+  },
+  "4729": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "removed-member-from-group"
+  },
+  "4730": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "deletion"
+    ],
+    "action": "deleted-group-account"
+  },
+  "4731": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "creation"
+    ],
+    "action": "added-group-account"
+  },
+  "4732": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "added-member-to-group"
+  },
+  "4733": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "removed-member-from-group"
+  },
+  "4734": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "deletion"
+    ],
+    "action": "deleted-group-account"
+  },
+  "4735": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "modified-group-account"
+  },
+  "4737": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "modified-group-account"
+  },
+  "4738": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "change"
+    ],
+    "action": "modified-user-account"
+  },
+  "4739": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "domain-policy-changed"
+  },
+  "4740": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "change"
+    ],
+    "action": "locked-out-user-account"
+  },
+  "4741": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "creation",
+      "admin"
+    ],
+    "action": "added-computer-account"
+  },
+  "4742": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "change",
+      "admin"
+    ],
+    "action": "changed-computer-account"
+  },
+  "4743": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "deletion",
+      "admin"
+    ],
+    "action": "deleted-computer-account"
+  },
+  "4744": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "creation"
+    ],
+    "action": "added-distribution-group-account"
+  },
+  "4745": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "changed-distribution-group-account"
+  },
+  "4746": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "added-member-to-distribution-group"
+  },
+  "4747": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "removed-member-from-distribution-group"
+  },
+  "4748": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "deletion"
+    ],
+    "action": "deleted-distribution-group-account"
+  },
+  "4749": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "creation"
+    ],
+    "action": "added-distribution-group-account"
+  },
+  "4750": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "changed-distribution-group-account"
+  },
+  "4751": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "added-member-to-distribution-group"
+  },
+  "4752": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "removed-member-from-distribution-group"
+  },
+  "4753": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "deletion"
+    ],
+    "action": "deleted-distribution-group-account"
+  },
+  "4754": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "creation"
+    ],
+    "action": "added-group-account"
+  },
+  "4755": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "modified-group-account"
+  },
+  "4756": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "added-member-to-group"
+  },
+  "4757": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "removed-member-from-group"
+  },
+  "4758": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "deletion"
+    ],
+    "action": "deleted-group-account"
+  },
+  "4759": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "creation"
+    ],
+    "action": "added-distribution-group-account"
+  },
+  "4760": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "changed-distribution-group-account"
+  },
+  "4761": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "added-member-to-distribution-group"
+  },
+  "4762": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "removed-member-from-distribution-group"
+  },
+  "4763": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "deletion"
+    ],
+    "action": "deleted-distribution-group-account"
+  },
+  "4764": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "change"
+    ],
+    "action": "type-changed-group-account"
+  },
+  "4767": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "change"
+    ],
+    "action": "unlocked-user-account"
+  },
+  "4768": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "kerberos-authentication-ticket-requested"
+  },
+  "4769": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "kerberos-service-ticket-requested"
+  },
+  "4770": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "kerberos-service-ticket-renewed"
+  },
+  "4771": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "kerberos-preauth-failed"
+  },
+  "4776": {
+    "category": [
+      "authentication"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "credential-validated"
+  },
+  "4778": {
+    "category": [
+      "authentication",
+      "session"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "session-reconnected"
+  },
+  "4779": {
+    "category": [
+      "authentication",
+      "session"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "session-disconnected"
+  },
+  "4781": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "change"
+    ],
+    "action": "renamed-user-account"
+  },
+  "4797": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "info"
+    ],
+    "action": "query-existence-of-blank-password"
+  },
+  "4798": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "info"
+    ],
+    "action": "group-membership-enumerated"
+  },
+  "4799": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "group",
+      "info"
+    ],
+    "action": "user-member-enumerated"
+  },
+  "4817": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "object-audit-changed"
+  },
+  "4902": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "creation"
+    ],
+    "action": "user-audit-policy-created"
+  },
+  "4904": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "security-event-source-added"
+  },
+  "4905": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "deletion"
+    ],
+    "action": "security-event-source-removed"
+  },
+  "4906": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "crash-on-audit-changed"
+  },
+  "4907": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "audit-setting-changed"
+  },
+  "4908": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "special-group-table-changed"
+  },
+  "4912": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "per-user-audit-policy-changed"
+  },
+  "4950": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "windows-firewall-setting-changed"
+  },
+  "4954": {
+    "category": [
+      "configuration"
+    ],
+    "type": [
+      "change"
+    ],
+    "action": "windows-firewall-group-policy-changed"
+  },
+  "4964": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "admin",
+      "group"
+    ],
+    "action": "logged-in-special"
+  },
+  "5024": {
+    "category": [
+      "process"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "windows-firewall-service-started"
+  },
+  "5025": {
+    "category": [
+      "process"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "windows-firewall-service-stopped"
+  },
+  "5033": {
+    "category": [
+      "driver"
+    ],
+    "type": [
+      "start"
+    ],
+    "action": "windows-firewall-driver-started"
+  },
+  "5034": {
+    "category": [
+      "driver"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "windows-firewall-driver-stopped"
+  },
+  "5037": {
+    "category": [
+      "driver"
+    ],
+    "type": [
+      "end"
+    ],
+    "action": "windows-firewall-driver-error"
+  },
+  "5136": {
+    "category": [
+      "iam",
+      "configuration"
+    ],
+    "type": [
+      "admin",
+      "change"
+    ],
+    "action": "directory-service-object-modified"
+  },
+  "5140": {
+    "category": [
+      "network",
+      "file"
+    ],
+    "type": [
+      "info",
+      "access"
+    ],
+    "action": "network-share-object-accessed"
+  },
+  "5145": {
+    "category": [
+      "network",
+      "file"
+    ],
+    "type": [
+      "info",
+      "access"
+    ],
+    "action": "network-share-object-access-checked"
+  },
+  "5152": {
+    "category": [
+      "network"
+    ],
+    "type": [
+      "connection",
+      "info",
+      "denied"
+    ],
+    "action": "windows-firewall-packet-drop"
+  },
+  "5156": {
+    "category": [
+      "network"
+    ],
+    "type": [
+      "connection",
+      "info",
+      "allowed"
+    ],
+    "action": "windows-firewall-connection"
+  },
+  "5157": {
+    "category": [
+      "network"
+    ],
+    "type": [
+      "connection",
+      "info",
+      "denied"
+    ],
+    "action": "windows-firewall-packet-block"
+  },
+  "5158": {
+    "category": [
+      "network"
+    ],
+    "type": [
+      "info"
+    ],
+    "action": "windows-firewall-bind-local-port"
+  },
+  "5379": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "info"
+    ],
+    "action": "credential-manager-credentials-were-read"
+  },
+  "5380": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "info"
+    ],
+    "action": "vault-credential-find"
+  },
+  "5381": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "info"
+    ],
+    "action": "vault-credentials-were-read"
+  },
+  "5382": {
+    "category": [
+      "iam"
+    ],
+    "type": [
+      "user",
+      "info"
+    ],
+    "action": "vault-credentials-were-read"
+  }
+}

@@ -1,0 +1,374 @@
+rsa.counters.dclass_c1:
+  description: >
+    This is a generic counter key that should be used with the label dclass.c1.str only.
+  type: long
+
+rsa.counters.dclass_c1_str:
+  description: >
+    This is a generic counter string key that should be used with the label dclass.c1 only.
+  type: keyword
+
+rsa.db.index:
+  description: >
+    This key captures IndexID of the index.
+  type: keyword
+
+rsa.internal.event_desc:
+  description: >
+    This key is used to capture a description of an event available directly or inferred.
+  type: keyword
+
+rsa.internal.messageid:
+  description: >
+    This key is used to capture the deepest category id within a log type like message types or error codes.
+  type: keyword
+
+rsa.investigations.ec_activity:
+  description: >
+    This key captures the particular event activity (Ex:Logoff).
+  type: keyword
+
+rsa.investigations.ec_subject:
+  description: >
+    This key captures the Subject of a particular Event (Ex:User).
+  type: keyword
+
+rsa.investigations.ec_theme:
+  description: >
+    This key captures the Theme of a particular Event (Ex:Authentication).
+  type: keyword
+
+rsa.misc.action:
+  description: >
+    This key is used to capture the action performed in the given session.
+  type: keyword
+
+rsa.misc.category:
+  description: >
+    This key is used to capture the category of an event given by the vendor in the session.
+  type: keyword
+
+rsa.misc.change_attrib:
+  description: >
+    This key is used to capture the name of the attribute that's changing in a session.
+  type: keyword
+
+rsa.misc.change_new:
+  description: >
+    This key is used to capture the new values of the attribute that's changing in a session.
+  type: keyword
+
+rsa.misc.client:
+  description: >
+    This key is used to capture only the name of the client application requesting resources of the server.
+  type: keyword
+
+rsa.misc.context:
+  description: >
+    This key captures Information which adds additional context to the event.
+  type: keyword
+
+rsa.misc.disposition:
+  description: >
+    This key captures the The end state of an action.
+  type: keyword
+
+rsa.misc.event_type:
+  description: >
+    This key captures the event category type as specified by the event source.
+  type: keyword
+
+rsa.misc.log_session_id:
+  description: >
+    This key is used to capture a sessionid from the session directly.
+  type: keyword
+
+rsa.misc.obj_name:
+  description: >
+    This is used to capture name of object.
+  type: keyword
+
+rsa.misc.policy_name:
+  description: >
+    This key is used to capture the Policy Name only.
+  type: keyword
+
+rsa.misc.result:
+  description: >
+    This key is used to capture the outcome/result string value of an action in a session.
+  type: keyword
+
+rsa.misc.result_code:
+  description: >
+    This key is used to capture the outcome/result numeric value of an action in a session.
+  type: keyword
+
+rsa.misc.rule_name:
+  description: >
+    This key captures the Rule Name.
+  type: keyword
+
+rsa.misc.severity:
+  description: >
+    This key is used to capture the severity given the session.
+  type: keyword
+
+rsa.misc.version:
+  description: >
+    This key captures Version of the application or OS which is generating the event.
+  type: keyword
+
+rsa.network.alias_host:
+  description: >
+    This key should be used when the source or destination context of a hostname is not clear.Also it captures the Device Hostname. Any Hostname that isnt ad.computer.
+  type: keyword
+
+rsa.network.network_service:
+  description: >
+    This is used to capture layer 7 protocols/service names.
+  type: keyword
+
+rsa.network.vlan:
+  description: >
+    This key should only be used to capture the ID of the Virtual LAN.
+  type: keyword
+
+rsa.time.event_time:
+  description: >
+    This key is used to capture the time mentioned in a raw session that represents the actual time an event occured in a standard normalized form.
+  type: date
+
+rsa.time.event_time_str:
+  description: >
+    This key is used to capture the incomplete time mentioned in a session as a string.
+  type: keyword
+
+rsa.web.fqdn:
+  description: >
+    Fully Qualified Domain Names.
+  type: keyword
+
+rsa.identity.logon_type:
+  description: >
+    The type of logon event that occurred.
+  type: keyword
+
+rsa.investigations.event_cat_name:
+  description: >
+    The name of the category of the event being investigated.
+  type: keyword
+
+rsa.misc.comments:
+  description: >
+    Additional information or notes about the event being logged.
+  type: keyword
+
+rsa.misc.content_type:
+  description: >
+    The type of content being analyzed, such as "email" or "web".
+  type: keyword
+
+rsa.misc.group:
+  description: >
+    The name of the group associated with the event.
+  type: keyword
+
+rsa.misc.group_object:
+  description: >
+    The object representing the group associated with the event.
+  type: keyword
+
+rsa.misc.node:
+  description: >
+    The name of the node on which the event was detected.
+  type: keyword
+
+rsa.misc.obj_type:
+  description: >
+    The type of object associated with the event.
+  type: keyword
+
+rsa.misc.policy_id:
+  description: >
+    The identifier of the policy associated with the event.
+  type: keyword
+
+rsa.misc.rule:
+  description: >
+    The name of the rule that triggered the event.
+  type: keyword
+
+rsa.misc.vsys:
+  description: >
+    The name of the virtual system associated with the event.
+  type: keyword
+
+rsa.network.dinterface:
+  description: >
+    The name of the destination interface for the network traffic associated with the event.
+  type: keyword
+
+rsa.network.host_dst:
+  description: >
+    The name of the destination host for the network traffic associated with the event.
+  type: keyword
+
+rsa.network.sinterface:
+  description: >
+    The name of the source interface for the network traffic associated with the event.
+  type: keyword
+
+rsa.web.web_cookie:
+  description: >
+    The value of the web cookie associated with the event.
+  type: keyword
+
+rsa.db_index:
+  description: >
+    The database index of the event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.email.email_dst:
+  description: >
+    The destination email address for an email event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.email.email_src:
+  description: >
+    The source email address for an email event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.email.subject:
+  description: >
+    The subject of an email event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.investigations.ec_outcome:
+  description: >
+    The outcome of an investigation as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.investigations.event_vcat:
+  description: >
+    The event category of an investigation as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.checksum:
+  description: >
+    The checksum of a file or packet as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.event_source:
+  description: >
+    The source of the event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.event_state:
+  description: >
+    The state of the event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.fcatnum:
+  description: >
+    The event category number as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.filter:
+  description: >
+    The filter used to find events as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.hardware_id:
+  description: >
+    The hardware ID of the reporting device as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.msgIdPart1:
+  description: >
+    The first part of the message ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.msgIdPart2:
+  description: >
+    The second part of the message ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.OS:
+  description: >
+    The operating system of the reporting device as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.reference_id1:
+  description: >
+    The first reference ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.reference_id:
+  description: >
+    The reference ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.sig_id:
+  description: >
+    The signature ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.virusname:
+  description: >
+    The name of the virus reported by RSA Security Analytics.
+  type: keyword
+
+rsa.network.domain:
+  description: >
+    The domain of the network event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.network.interface:
+  description: >
+    The interface of the network event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.threat.threat_desc:
+  description: >
+    The description of the threat as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.time.duration_time:
+  description: >
+    The duration of an event, in seconds.
+  type: long
+
+rsa.time.timezone:
+  description: >
+    The time zone associated with an event.
+  type: keyword
+
+rsa.web.reputation_num:
+  description: >
+    The reputation number associated with a web event.
+  type: long
+
+rsa.web.web_ref_domain:
+  description: >
+    The referenced domain associated with a web event.
+  type: keyword
+
+rsa.identity.user_sid_dst:
+  description: >
+    The Security Identifier (SID) of the user account on the destination system.
+  type: keyword
+
+rsa.internal.msg:
+  description: >
+    A message associated with the event.
+  type: keyword
+
+rsa.misc.serial_number:
+  description: >
+    A serial number associated with the event.
+  type: keyword
+
+rsa.time.date:
+  description: >
+    The date and time when the event occurred.
+  type: keyword

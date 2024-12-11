@@ -1,0 +1,39 @@
+name: rule/defense-evasion-deleting-websvr-access-logs/0
+
+metadata:
+  module: Windows
+  title: Defense Evasion.
+  description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic
+    evidence on a system.
+  author:
+    name: Wazuh, Inc.
+    date: 2023/09/15
+  references:
+    - https://attack.mitre.org/tactics/TA0005/
+
+check : >-
+    array_contains($event.type, deletion) AND array_contains($event.category, file)
+    AND (regex_match($file.path, '^[A-Za-z]:\\\\inetpub\\\\logs\\\\LogFiles\\\\[0-9A-Za-z_]+\\.log')
+        OR regex_match($file.path, '^/var/log/apache[0-9A-Za-z_]+/access\\.log')
+        OR $file.path == /etc/httpd/logs/access_log
+        OR $file.path == /var/log/httpd/access_log
+        OR regex_match($file.path, '^/var/www/[0-9A-Za-z_]+/logs/access\\.log'))
+
+normalize:
+  - map:
+      - event.risk_score: 47.0
+
+      - rule.description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic
+          evidence on a system.
+      - rule.license: Wazuh Inc.
+      - rule.name: WebServer Access Logs Deleted
+
+      - threat.framework: MITRE ATT&CK
+      - threat.tactic.id: array_append(TA0005)
+      - threat.tactic.name: array_append('Defense Evasion')
+      - threat.tactic.reference: array_append(https://attack.mitre.org/tactics/TA0005/)
+      - threat.technique.id: array_append(T1070)
+      - threat.technique.name: array_append('Indicator Removal')
+      - threat.technique.reference: array_append(https://attack.mitre.org/techniques/T1070/)
+
+      - vulnerability.severity: medium

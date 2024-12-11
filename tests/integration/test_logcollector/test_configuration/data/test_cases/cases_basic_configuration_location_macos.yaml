@@ -1,9 +1,0 @@
-- name: Basic configuration location macos
-  description: Basic configuration location macos
-  configuration_parameters:
-    LOCATION: 'macos'
-    LOG_FORMAT: 'macos'
-  metadata:
-    location: 'macos'
-    log_format: 'macos'
-    validate_config: True

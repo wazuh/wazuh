@@ -10,9 +10,9 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-msgraph-tier-0-1-lin.yml"
-        - "src/config/wmodules-ms-graph.c"
         - "src/wazuh_modules/wm_ms_graph.h"
         - "src/wazuh_modules/wm_ms_graph.c"
+        - "src/config/wmodules-ms-graph.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_msgraph/**"
@@ -37,21 +37,20 @@ jobs:
           sed -i 's/https:\/\/%s\/%s/http:\/\/%s\/%s/g' src/wazuh_modules/wm_ms_graph.h
           curl -L http://packages.wazuh.com/utils/m365proxy/m365proxy.tar.gz | \
           tar zvx -C /tmp/
-      # Build wazuh agent for linux.
-      - name: Build wazuh agent for linux
+
+      # Build wazuh server for linux.
+      - name: Build wazuh server for linux
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2
-      # Install wazuh agent for linux.
-      - name: Install wazuh agent for linux
+          make deps -C src TARGET=server -j2
+          make -C src TARGET=server -j2
+      # Install wazuh server for linux.
+      - name: Install wazuh server for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
+          echo 'USER_INSTALL_TYPE="server"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -60,8 +59,6 @@ jobs:
           echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf

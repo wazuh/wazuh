@@ -1,0 +1,42 @@
+#TODO: Once the issue https://github.com/opensearch-project/OpenSearch/issues/8528 has been resolved, replace this decoder with another one that handles events in JSON format. See commit: 372b5ce250c89c8f856841c1c9b4d9bd92ce43bc
+name: decoder/wazuh-indexer-task-plain/0
+
+metadata:
+  module: wazuh-indexer
+  title: Wazuh indexer task logs
+  description: Decoder for Wazuh indexer task logs in plain text
+  compatibility: This decoder has been tested with logs from Wazuh version 4.4
+  versions:
+    - "4.4"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-07-03
+  references:
+    - "https://documentation.wazuh.com/current/getting-started/components/wazuh-indexer.html"
+    - "https://opensearch.org/docs/latest/monitoring-your-cluster/logs/"
+
+# TODO: Once the events arrive tagged, uncomment following lines
+# check:
+  # - event.module: wazuh-indexer
+  # - event.dataset: wazuh-indexer-task
+
+parse|event.original:
+  # [2023-07-03T21:22:29,799][INFO ][t.d.search               ] [node-1] taskId:[75588], type:[direct], action:[indices:data/read/search[phase/query]], description:[shardId[[.kibana_1][0]]], start_time_millis:[1688419283771], resource_stats:[{120=[{cpu_time_in_nanos=1130030, memory_in_bytes=39704}, stats_type=worker_stats, is_active=false, threadId=120]}], metadata:[source[{"from":0,"size":1000,"query":{"bool":{"filter":[{"bool":{"should":[{"bool":{"must":[{"term":{"type":{"value":"application_usage_transactional","boost":1.0}}}],"must_not":[{"exists":{"field":"namespace","boost":1.0}},{"exists":{"field":"namespaces","boost":1.0}}],"adjust_pure_negative":true,"boost":1.0}}],"adjust_pure_negative":true,"minimum_should_match":"1","boost":1.0}}],"adjust_pure_negative":true,"boost":1.0}},"seq_no_primary_term":true,"track_total_hits":2147483647}]]
+  - "[<_timestamp>][<log.level>][<log.logger>] [<_node.name>] taskId:[<_task.id>], type:[direct], action:[<_task.action>], description:[<_task.description>], start_time_millis:[<_task.start_time_millis>], resource_stats:[<_task.resource_stats>], metadata:<_task.metadata>"
+
+normalize:
+  - map:
+      - _timestamp: replace(',','.')
+  - parse|_timestamp:
+      - <@timestamp/%FT%T>
+  - map:
+      - event.module: wazuh-indexer
+      - event.dataset: wazuh-indexer-task
+      - wazuh.decoders: array_append(wazuh-indexer-task-plain)
+      - event.kind: event
+      - event.category: array_append(database)
+      - event.type: array_append(info)
+      - host.name: $_node.name
+      - log.level: trim(end, ' ')
+      - log.logger: trim(end, ' ')

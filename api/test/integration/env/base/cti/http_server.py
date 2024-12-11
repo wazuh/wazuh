@@ -37,6 +37,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
 
+            # Return JSON mock response
             data = json.dumps(MOCK_RESPONSE).encode('utf-8')
             self.wfile.write(data)
         else:

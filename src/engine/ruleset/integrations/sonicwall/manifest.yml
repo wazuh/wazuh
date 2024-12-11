@@ -1,0 +1,5 @@
+decoders:
+- decoder/sonicwall-syslog/0
+- decoder/sonicwall-firewall-generated/0
+- decoder/sonicwall-firewall/0
+name: integration/sonicwall/0

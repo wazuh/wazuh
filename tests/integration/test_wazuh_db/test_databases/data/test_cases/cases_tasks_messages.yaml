@@ -1,9 +1,0 @@
-- name: Synchronization value
-  description: Check tasks db synchronization value
-  configuration_parameters:
-  metadata:
-    test_case:
-    - input: task sql PRAGMA synchronous
-      output: ok [{"synchronous":2}]
-      stage: tasks db sync type
-      use_regex: "no"

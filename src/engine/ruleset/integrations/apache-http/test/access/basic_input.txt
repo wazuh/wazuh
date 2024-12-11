@@ -1,0 +1,10 @@
+::1 - - [26/Jun/2020:16:16:29 +0200] "GET /favicon.ico HTTP/1.1" 404 209
+192.168.3.1 - - [26/Jun/2020:16:22:13 +0200] "GET /hello HTTP/1.1" 404 499 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:50.0) Gecko/20100101 Firefox/50.0"
+::1 - - [26/Jun/2020:16:16:48 +0200] "-" 408 -
+172.17.0.1 - - [29/May/2021:19:02:48 +0200] "GET /stringpatch HTTP/1.1" 404 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
+monitoring-server - - [29/May/2021:19:02:48 +0200] "GET /status HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
+127.0.0.1 - - [02/Feb/2019:05:38:45 +0100] "-" 408 152 "-" "-"
+monitoring-server - - [29/May/2021:19:02:48 +0200] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="-"
+89.160.20.12 - - [29/May/2021:19:02:48 +0200] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="10.0.0.2,10.0.0.1"
+2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6 - - [29/May/2021:19:02:48 +0200] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="10.225.192.17, 10.2.2.121"
+monitoring-server - - [17/May/2022:21:41:43 +0000] "GET / HTTP/1.1" 200 45 "-" "curl/7.79.1" X-Forwarded-For="192.168.0.2"

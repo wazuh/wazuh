@@ -1,0 +1,197 @@
+name: Engine code style and documentation
+
+on:
+  workflow_dispatch:
+  pull_request:
+  # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+
+
+jobs:
+  documentation:
+    if: false
+    name: Engine documentation generation
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Dependencies for documentation:
+      # - doxygen 
+      # - graphviz
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: doxygen graphviz
+          version: 1.0
+
+      - name: Generate documentation
+        shell: bash
+        run: |
+
+          INCLUDES=$(find "$(pwd)/src/engine/source" -type d -name "include" -print0 | tr '\0' ' ')
+          # Generate the doxygen configuration file
+          CONFIG_FILE=src/doxygen_config.cfg
+          {
+              cat src/Doxyfile
+              echo "OUTPUT_DIRECTORY = src/doc"
+              echo "INPUT = ${INCLUDES}"
+          } > ${CONFIG_FILE}
+
+          # Generate the documentation
+          sudo dot -c
+          ERRORS_FILE=src/doxygen_errors.txt
+          doxygen -s ${CONFIG_FILE} 2> ${ERRORS_FILE}
+
+          # Check if there are errors
+          if [ -s "${ERRORS_FILE}" ]; then
+            echo "-----------------------------------------------"
+            echo "FAILED: Doxygen documentation generation failed"
+            echo "-----------------------------------------------"
+            exit 1
+          else
+            echo "----------------------------------------------------"
+            echo "PASSED: Doxygen documentation generated successfully"
+            echo "----------------------------------------------------"
+          fi
+
+      # Upload errors as an artifact, when failed
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Doxygen errors
+          path: src/doxygen_errors.txt
+          retention-days: 1
+
+      # Upload the documentation as an artifact, when successful
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Doxygen Documentation
+          path: src/doc
+          retention-days: 1
+
+  documentation-apidoc:
+    name: Engine OPENAPI documentation generation
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # Dependencies for apidoc:
+      # - apidoc
+      # - apidoc-openapi-3-1
+      - name: Install api documentation dependencies
+        run: |
+          sudo npm install -g apidoc
+          sudo npm install -g apidoc-openapi-3-1
+
+      # Generate apidoc
+      - name: Generate APIDOC OPENAPI documentation
+        shell: bash
+        run: |
+          cd src/engine
+          ERRORS_APIDOC_FILE=apidoc_errors.txt
+          ERRORS_OPENAPI_FILE=openapi_errors.txt
+          apidoc -i . -o . -f source/main.cpp 2> ${ERRORS_APIDOC_FILE}
+          npx apidoc-openapi-3-1 2> ${ERRORS_OPENAPI_FILE}
+
+          # Check if there are errors
+          if [ -s "${ERRORS_APIDOC_FILE}" -o -s "${ERRORS_OPENAPI_FILE}" ]; then
+            echo "-----------------------------------------------"
+            echo "FAILED: APIDOC/OPENAPI documentation generation failed"
+            echo "-----------------------------------------------"
+            exit 1
+          else
+            echo "----------------------------------------------------"
+            echo "PASSED: APIDOC/OPENAPI documentation generated successfully"
+            echo "$(ls -lh)"
+            echo "$(pwd)"
+            echo "----------------------------------------------------"
+          fi
+
+      - name: Redocly CLI Test
+        uses: fluximus-prime/redocly-cli-github-action@v1
+        with:
+          args: 'build-docs src/engine/swagger.json --output src/engine/engine.html'
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: APIDOC/OPENAPI errors
+          path: |
+            src/engine/apidoc_errors.txt
+            src/engine/openapi_errors.txt
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: APIDOC OPENAPI Documentation
+          path: |
+            src/engine/swagger.json
+            src/engine/index.html
+            src/engine/assets
+            src/engine/engine.html
+          retention-days: 1
+
+
+  style:
+    name: Engine coding style check
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Dependencies for testing:
+      # - clang-format 
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+            packages: clang-format 
+            version: 1.0
+
+      - name: Check Coding style
+        shell: bash
+        run: |
+            # Don't apply changes, just check
+            arguments="--dry-run "
+            CONFIG_FILE=src/engine/.clang-format
+            arguments+="--style=file "
+            arguments+="-assume-filename=$CONFIG_FILE "
+
+            # Retrieve all the source files for the desired module
+            sourceFiles=$(find src/engine -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
+            arguments+="-i $sourceFiles "
+
+            ERRORS_FILE=clang_format_errors.txt
+            clang-format $arguments 2> ${ERRORS_FILE}
+
+            # Print clanformat version used.
+            echo "Clang-format version: $(clang-format --version)"
+
+            # Print the command.
+            echo "clang-format $arguments"
+
+            # Check if there are errors
+            if [ -s "${ERRORS_FILE}" ]; then
+            echo "---------------------------------"
+            echo "FAILED: Clang-format check failed"
+            echo "---------------------------------"
+            exit 1
+            else
+            echo "---------------------------------"
+            echo "PASSED: Clang-format check passed"
+            echo "---------------------------------"
+            fi
+
+        # Upload errors as an artifact, when failed
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+            name: Clang-format errors
+            path: clang_format_errors.txt
+            retention-days: 1

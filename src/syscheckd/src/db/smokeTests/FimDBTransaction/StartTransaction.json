@@ -1,9 +1,0 @@
-{
-    "action": "StartTransaction",
-    "body":
-    {
-        "table": "file_entry",
-        "thread_number": 2,
-        "queue_size": 100
-    }
-}

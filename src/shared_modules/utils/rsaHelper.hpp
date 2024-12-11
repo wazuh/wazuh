@@ -24,16 +24,15 @@
 constexpr int RSA_PRIVATE {0};
 constexpr int RSA_PUBLIC {1};
 constexpr int RSA_CERT {2};
-constexpr int RSA_SIZE {256};
 
 template<typename T = OpenSSLPrimitives, typename U = OSPrimitives>
-class RSAHelper final
+class TRSAHelper final
     : public T
     , public U
 {
 public:
-    explicit RSAHelper() = default;
-    virtual ~RSAHelper() = default;
+    explicit TRSAHelper() = default;
+    virtual ~TRSAHelper() = default;
 
     /**
      * Encrypts the input vector with the provided key
@@ -64,7 +63,8 @@ public:
 
         if (encryptedLen < 0)
         {
-            throw std::runtime_error("RSA encryption failed");
+            throw std::runtime_error("RSA encryption failed: " +
+                                     std::string(T::ERR_reason_error_string(T::ERR_get_error())));
         }
 
         output = std::string(encryptedValue.begin(), encryptedValue.end());
@@ -82,7 +82,6 @@ public:
      */
     int rsaDecrypt(const std::string& filePath, const std::string& input, std::string& output)
     {
-
         RSA* rsa = nullptr;
 
         createRSA(rsa, filePath, RSA_PRIVATE);
@@ -93,7 +92,7 @@ public:
         DEFER([&]() { T::RSA_free(rsa); });
 
         // Decrypt the ciphertext using RSA private key
-        const auto decryptedLen = T::RSA_private_decrypt(RSA_SIZE,
+        const auto decryptedLen = T::RSA_private_decrypt(input.length(),
                                                          reinterpret_cast<const unsigned char*>(input.data()),
                                                          reinterpret_cast<unsigned char*>(decryptedText.data()),
                                                          rsa,
@@ -101,7 +100,8 @@ public:
 
         if (decryptedLen < 0)
         {
-            throw std::runtime_error("RSA decryption failed");
+            throw std::runtime_error("RSA decryption failed: " +
+                                     std::string(T::ERR_reason_error_string(T::ERR_get_error())));
         }
 
         // Display the decrypted plaintext
@@ -199,5 +199,7 @@ private:
         }
     }
 };
+
+using RSAHelper = TRSAHelper<>;
 
 #endif // _RSAHELPER_HPP
