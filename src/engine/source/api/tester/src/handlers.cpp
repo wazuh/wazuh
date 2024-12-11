@@ -253,9 +253,10 @@ adapter::RouteHandler sessionDelete(const std::shared_ptr<::router::ITesterAPI>&
 }
 
 adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                                 const std::weak_ptr<api::policy::IPolicy>& policy)
+                                 const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wPolicyManager = policy](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eTester::SessionGet_Request;
         using ResponseType = eTester::SessionGet_Response;
@@ -331,9 +332,10 @@ adapter::RouteHandler sessionReload(const std::shared_ptr<::router::ITesterAPI>&
 }
 
 adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                               const std::weak_ptr<api::policy::IPolicy>& policy)
+                               const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wPolicyManager = policy](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eTester::TableGet_Request;
         using ResponseType = eTester::TableGet_Response;
@@ -362,9 +364,10 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 }
 
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                              const std::weak_ptr<store::IStoreReader>& store)
+                              const std::shared_ptr<store::IStoreReader>& store)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = store](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wStore = std::weak_ptr<store::IStoreReader>(store)](const auto& req, auto& res)
     {
         using RequestType = eTester::RunPost_Request;
         using ResponseType = eTester::RunPost_Response;
