@@ -27,6 +27,27 @@ adapter::RouteHandler policiesGet(const std::shared_ptr<policy::IPolicy>& policy
 
 /* Policy namespaces handlers */
 adapter::RouteHandler policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+
+inline void registerHandlers(const std::shared_ptr<policy::IPolicy>& policyManager,
+                             const std::shared_ptr<httpsrv::Server>& server)
+{
+    server->addRoute(httpsrv::Method::POST, "/policy/store/post", storePost(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/store/delete", storeDelete(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/store/get", storeGet(policyManager));
+
+    server->addRoute(httpsrv::Method::POST, "/policy/asset/post", policyAssetPost(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/asset/delete", policyAssetDelete(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/asset/get", policyAssetGet(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/asset/clean_deleted", policyCleanDeleted(policyManager));
+
+    server->addRoute(httpsrv::Method::POST, "/policy/default_parent/get", policyDefaultParentGet(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/default_parent/post", policyDefaultParentPost(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/default_parent/delete", policyDefaultParentDelete(policyManager));
+
+    server->addRoute(httpsrv::Method::POST, "/policy/list", policiesGet(policyManager));
+    server->addRoute(httpsrv::Method::POST, "/policy/namespaces/list", policyNamespacesGet(policyManager));
+}
+
 } // namespace api::policy::handlers
 
 #endif /* _API_POLICY_HANDLERS_HPP */
