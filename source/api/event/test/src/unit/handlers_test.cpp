@@ -39,7 +39,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
                                  {
                                      return pushEvent(orchestrator,
-                                                      [](const auto&)
+                                                      [](auto&&)
                                                       {
                                                           std::queue<base::Event> events;
                                                           auto event = std::make_shared<json::Json>();
@@ -67,7 +67,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
                                  {
                                      return pushEvent(orchestrator,
-                                                      [](const auto&) -> std::queue<base::Event>
+                                                      [](auto&&) -> std::queue<base::Event>
                                                       { throw std::runtime_error("error"); });
                                  },
                                  []()
@@ -91,7 +91,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
                                  {
                                      return pushEvent(orchestrator,
-                                                      [](const auto&)
+                                                      [](auto&&)
                                                       {
                                                           std::queue<base::Event> events;
                                                           auto event = std::make_shared<json::Json>();
