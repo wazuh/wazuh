@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 /usr/sbin/sshd
-wazuh-engine server start
+WAZUH_CONFIG_SKIP_API=true /usr/share/wazuh-server/bin/wazuh-engine
