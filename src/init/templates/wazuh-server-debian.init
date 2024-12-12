@@ -22,8 +22,7 @@ WAZUH_HOME=WAZUH_HOME_TMP
 WAZUH_SERVER="${WAZUH_HOME}usr/share/wazuh-server/bin/wazuh-server"
 
 start() {
-    # TODO: Remove root flag
-    ${WAZUH_SERVER} start -r
+    ${WAZUH_SERVER} start
 }
 
 stop() {
