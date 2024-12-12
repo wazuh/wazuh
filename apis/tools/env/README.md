@@ -34,7 +34,7 @@ certs/gen_certs.sh
 You should then have the keys and certificates inside the `certs` folder
 
 ```console
-wazuh@wazuh:~/wazuh/apis/tools/env/5.0$ ls -la certs/
+wazuh@wazuh:~/wazuh/apis/tools/env$ ls -la certs/
 total 12460
 drwxr-xr-x 2 wazuh wazuh     4096 Nov 28 13:12 .
 drwxr-xr-x 7 wazuh wazuh     4096 Nov 28 09:01 ..
@@ -69,7 +69,7 @@ drwxr-xr-x 7 wazuh wazuh     4096 Nov 28 09:01 ..
 Download the latest plugins from the wazuh-indexer GitHub repository, decompress and include them in the `wazuh-indexer` directory. The directory should end up with the following files
 
 ```console
-wazuh@wazuh:~/wazuh/apis/tools/env/5.0$ ls -la wazuh-indexer/
+wazuh@wazuh:~/wazuh/apis/tools/env$ ls -la wazuh-indexer/
 total 7920
 drwxr-xr-x 2 wazuh wazuh    4096 Dec  4 23:37 .
 drwxr-xr-x 7 wazuh wazuh    4096 Dec  4 23:38 ..

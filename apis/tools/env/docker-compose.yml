@@ -23,12 +23,12 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
-      - ../../../../api/scripts:/usr/share/wazuh-server/api/scripts
-      - ../../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
-      - ../../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
-      - ../../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
+      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
+      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     ports:
@@ -62,12 +62,12 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
-      - ../../../../api/scripts:/usr/share/wazuh-server/api/scripts
-      - ../../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
-      - ../../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
-      - ../../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
+      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
+      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     depends_on:
@@ -102,12 +102,12 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
-      - ../../../../api/scripts:/usr/share/wazuh-server/api/scripts
-      - ../../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
-      - ../../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
-      - ../../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
+      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
+      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     depends_on:

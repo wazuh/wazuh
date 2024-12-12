@@ -1,4 +1,4 @@
 wazuh-indexer-setup-*.zip
 wazuh-indexer-command-manager-*.zip
-env/5.0/certs/*
-!env/5.0/certs/gen_certs.sh
+env/certs/*
+!env/certs/gen_certs.sh
