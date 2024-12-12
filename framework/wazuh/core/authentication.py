@@ -30,7 +30,7 @@ def get_keypair() -> Tuple[str, str]:
         If there was an error trying to load the JWT secret.
     """
     if not keypair_exists():
-        raise WazuhInternalError(6003)
+        raise WazuhInternalError(6003, extra_message='key pair files not found')
 
     with open(_private_key_path, mode='r') as key_file:
         private_key = key_file.read()

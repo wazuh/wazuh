@@ -1,0 +1,181 @@
+name: dev-wazuh
+
+services:
+  wazuh-manager:
+    build:
+      context: ./wazuh-server
+      target: server
+    image: dev-wazuh-server
+    container_name: wazuh-manager
+    hostname: wazuh-manager
+    volumes:
+      # Server certificates
+      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      - ./certs/wazuh-manager.pem:/etc/wazuh-server/server.pem
+      - ./certs/wazuh-manager.key:/etc/wazuh-server/server.key
+      # Indexer certificates
+      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
+      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      # Default configuration
+      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
+      # Source code mappings
+      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
+      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
+      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      # Vulnerability Detector feed
+      - vd_feed:/var/lib/wazuh-server/queue
+    ports:
+      # Management API
+      - 55000:55000
+      # Communications API
+      - 27000:27000
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-manager
+      - manager-node
+      - manager
+    depends_on:
+      - wazuh-indexer
+
+  wazuh-worker1:
+    image: dev-wazuh-server
+    hostname: wazuh-worker1
+    container_name: wazuh-worker1
+    volumes:
+      # Server certificates
+      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      - ./certs/wazuh-worker1.pem:/etc/wazuh-server/server.pem
+      - ./certs/wazuh-worker1.key:/etc/wazuh-server/server.key
+      # Indexer certificates
+      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
+      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      # Default configuration
+      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
+      # Source code mappings
+      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
+      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
+      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      # Vulnerability Detector feed
+      - vd_feed:/var/lib/wazuh-server/queue
+    depends_on:
+      - wazuh-manager
+      - wazuh-indexer
+    ports:
+      # Management API
+      - 55001:55000
+      # Communications API
+      - 27001:27000
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-manager
+      - worker1
+      - worker
+
+  wazuh-worker2:
+    image: dev-wazuh-server
+    hostname: wazuh-worker2
+    container_name: wazuh-worker2
+    volumes:
+      # Server certificates
+      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      - ./certs/wazuh-worker2.pem:/etc/wazuh-server/server.pem
+      - ./certs/wazuh-worker2.key:/etc/wazuh-server/server.key
+      # Indexer certificates
+      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
+      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      # Default configuration
+      - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
+      # Source code mappings
+      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
+      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
+      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      # Vulnerability Detector feed
+      - vd_feed:/var/lib/wazuh-server/queue
+    depends_on:
+      - wazuh-manager
+      - wazuh-indexer
+    ports:
+      # Management API
+      - 55002:55000
+      # Communications API
+      - 27002:27000
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-manager
+      - worker2
+      - worker
+
+  wazuh-indexer:
+    build:
+      context: ./wazuh-indexer
+    image: dev-wazuh-indexer
+    hostname: wazuh-indexer
+    container_name: wazuh-indexer
+    volumes:
+      - ./certs/root-ca.pem:/usr/share/opensearch/config/root-ca.pem
+      - ./certs/wazuh-indexer.pem:/usr/share/opensearch/config/indexer.pem
+      - ./certs/wazuh-indexer.key:/usr/share/opensearch/config/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/usr/share/opensearch/config/indexer-key.pem
+    ports:
+      - 9200:9200
+    environment:
+      - node.name=wazuh-indexer
+      - discovery.type=single-node
+      - plugins.security.ssl.transport.pemcert_filepath=indexer.pem
+      - plugins.security.ssl.transport.pemkey_filepath=indexer-key.pem
+      - plugins.security.ssl.transport.pemtrustedcas_filepath=root-ca.pem
+      - plugins.security.ssl.http.enabled=true
+      - plugins.security.ssl.http.pemcert_filepath=indexer.pem
+      - plugins.security.ssl.http.pemkey_filepath=indexer-key.pem
+      - plugins.security.ssl.http.pemtrustedcas_filepath=root-ca.pem
+      # Allow using server certificates to authenticate
+      - plugins.security.ssl.http.clientauth_mode=NONE
+      - plugins.security.allow_default_init_securityindex=true
+      - cluster.blocks.create_index=false
+      # Prevent execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+
+  nginx-lb:
+    build:
+      context: ./nginx-lb
+    image: dev-nginx-lb
+    container_name: nginx-lb
+    restart: on-failure:5
+    entrypoint:
+      - /scripts/entrypoint.sh
+    depends_on:
+      - wazuh-manager
+      - wazuh-worker1
+      - wazuh-worker2
+
+  wazuh-agent:
+    build:
+      context: ./wazuh-agent
+      target: agent
+    image: dev-wazuh-agent
+    container_name: wazuh-agent
+    volumes:
+      - ./wazuh-agent/wazuh-agent.yml:/etc/wazuh-agent/wazuh-agent.yml
+    environment:
+      USER: wazuh
+      PASSWORD: wazuh
+    depends_on:
+      - wazuh-manager
+      - wazuh-worker1
+      - wazuh-worker2
+      - nginx-lb
+
+volumes:
+  vd_feed:

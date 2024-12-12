@@ -1,0 +1,22 @@
+agent:
+  thread_count: 4
+  server_url: https://nginx-lb:27000
+  retry_interval: 30s
+inventory:
+  enabled: true
+  interval: 1h
+  scan_on_start: true
+  hardware: true
+  system: true
+  networks: true
+  packages: true
+  ports: true
+  ports_all: true
+  processes: true
+  hotfixes: true
+logcollector:
+  enabled: true
+  localfiles:
+    - /var/log/auth.log
+  reload_interval: 1m
+  file_wait: 500ms

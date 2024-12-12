@@ -142,7 +142,7 @@ async def test_get_indexer_client( get_indexer_config_mock, create_indexer_mock)
             user='user',
             password='password',
             ssl=None,
-            retries=1,
+            retries=3,
         )
         assert indexer == client_mock
     client_mock.close.assert_called_once()

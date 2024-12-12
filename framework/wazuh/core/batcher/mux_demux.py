@@ -163,7 +163,7 @@ class MuxDemuxRunner(Process):
             Current stack frame (unused).
         """
         signal_name = signal.Signals(signum).name
-        logger.info(f'MuxDemuxQueue (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
+        logger.info(f'MuxDemuxRunner (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
         self._shutdown_event.set()
 
     def run(self) -> None:
@@ -183,6 +183,10 @@ class MuxDemuxRunner(Process):
                 item = self.queue.internal_get_response_from_demux()
                 if isinstance(item, Item):
                     self.queue.internal_store_response(item)
+            except EOFError:
+                # Mux demux manager queue closed, exit
+                logger.info('Shutting down MuxDemuxRunner')
+                return
             except Exception as e:
                 if self._shutdown_event.is_set():
                     return
