@@ -8,9 +8,6 @@ services:
     image: dev-wazuh-server
     container_name: wazuh-manager
     hostname: wazuh-manager
-    profiles:
-      - standalone
-      - cluster
     volumes:
       # Server certificates
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
@@ -48,8 +45,6 @@ services:
     image: dev-wazuh-server
     hostname: wazuh-worker1
     container_name: wazuh-worker1
-    profiles:
-      - cluster
     volumes:
       # Server certificates
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
@@ -88,8 +83,6 @@ services:
     image: dev-wazuh-server
     hostname: wazuh-worker2
     container_name: wazuh-worker2
-    profiles:
-      - cluster
     volumes:
       # Server certificates
       - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
@@ -130,9 +123,6 @@ services:
     image: dev-wazuh-indexer
     hostname: wazuh-indexer
     container_name: wazuh-indexer
-    profiles:
-      - standalone
-      - cluster
     volumes:
       - ./certs/root-ca.pem:/usr/share/opensearch/config/root-ca.pem
       - ./certs/wazuh-indexer.pem:/usr/share/opensearch/config/indexer.pem
@@ -162,8 +152,6 @@ services:
       context: ./nginx-lb
     image: dev-nginx-lb
     container_name: nginx-lb
-    profiles:
-      - cluster
     restart: on-failure:5
     entrypoint:
       - /scripts/entrypoint.sh
@@ -178,8 +166,6 @@ services:
       target: agent
     image: dev-wazuh-agent
     container_name: wazuh-agent
-    profiles:
-      - cluster
     volumes:
       - ./wazuh-agent/wazuh-agent.yml:/etc/wazuh-agent/wazuh-agent.yml
     environment:
