@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <api/catalog/catalog.hpp>
+#include <api/event/ndJsonParser.hpp>
 #include <api/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <base/logging.hpp>
@@ -521,6 +522,14 @@ int main(int argc, char* argv[])
                                 });
             LOG_DEBUG("VD API endpoint registered.");
 
+            // Finally start the API server
+            apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
+        }
+
+        // Server
+        {
+            g_engineServer = std::make_shared<httpsrv::Server>("EVENT_SRV");
+
             // clang-format off
             /**
              * @api {post} /events/stateless Receive Events for Security Policy Processing
@@ -592,39 +601,10 @@ int main(int argc, char* argv[])
              *     }
              */
             // clang-format on
-            apiServer->addRoute(httpsrv::Method::POST,
-                                "/events/stateless",
-                                [orchestrator](const auto& req, auto& res)
-                                {
-                                    try
-                                    {
-                                        orchestrator->postRawNdjson(std::string(req.body));
-                                        res.status = httplib::StatusCode::NoContent_204;
-                                    }
-                                    catch (const std::runtime_error& e)
-                                    {
-                                        res.status = httplib::StatusCode::BadRequest_400;
-                                    }
-                                });
-
-            // Start the API server
-            apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
-        }
-
-        // Server
-        {
-            g_engineServer = std::make_shared<httpsrv::Server>("EVENT_SRV");
-
-            // Register the event handler
-            g_engineServer->addRoute(httpsrv::Method::POST,
-                                     "/events",
-                                     api::event::handlers::pushEvent(orchestrator,
-                                                                     [](const auto& req) -> std::queue<base::Event>
-                                                                     {
-                                                                         // TODO: Implement the Raw NDJson prtocol
-                                                                         // parser
-                                                                         return {};
-                                                                     }));
+            g_engineServer->addRoute(
+                httpsrv::Method::POST,
+                "/events/stateless",
+                api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser()));
         }
     }
     catch (const std::exception& e)
