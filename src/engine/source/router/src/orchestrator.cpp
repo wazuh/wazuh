@@ -32,59 +32,6 @@ void validatePointer(const T& ptr, const std::string& name)
         throw std::runtime_error {"Configuration error: " + name + " cannot be empty"};
 }
 
-/**
- * @brief create the base::Event list from batch of raw json
- *
- * @param std::list<std::string_view> list of json (ndjson)
- * @param std::size_t maxEvents maximum number of events to create
- * @return std::vector<base::Event> list of base::Event created from the batch
- * @throw std::runtime_error if any event is invalid
- */
-inline std::vector<base::Event> createEventsFromBatch(const std::list<std::string_view>& batch,
-                                                      const std::size_t maxEvents)
-{
-    const std::size_t headerSize = 2; // Header and subheader
-    const auto isSubHeader = [](const base::Event& event) -> bool
-    {
-        return event->isString("/module");
-    }; // '/module' is a mandatory field and not present in wazuh common schema
-
-    // Extract the header for futher merge with the events.
-    json::Json agentInfo {};
-    try
-    {
-        agentInfo = std::move(json::Json(batch.front().data()));
-    }
-    catch (const std::exception& e)
-    {
-        LOG_DEBUG("Error parsing agent info: '{}'", e.what());
-        throw std::runtime_error {"Error parsing agent info, invalid header, discarting ndjson"};
-    }
-
-    std::vector<base::Event> events {};
-    events.reserve(maxEvents);
-    for (auto it = std::next(batch.begin(), headerSize); it != batch.end() && events.size() < maxEvents; ++it)
-    {
-        try
-        {
-            auto event = std::make_shared<json::Json>(it->data());
-            if (event->isString("/module"))
-            {
-                LOG_TRACE("Ignoring subheader event");
-                continue;
-            }
-            event->merge(true, agentInfo);
-            events.emplace_back(event);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_DEBUG("Error parsing event '{}': '{}', ignore event", *it, e.what());
-        }
-    }
-
-    return events;
-}
-
 } // namespace
 
 // Private
@@ -467,64 +414,29 @@ std::list<prod::Entry> Orchestrator::getEntries() const
     return m_workers.front()->getRouter()->getEntries();
 }
 
-void Orchestrator::postRawNdjson(std::string&& batch)
+base::OptError Orchestrator::postStrEvent(std::string_view event)
 {
-    const std::size_t min_header_size = 2; // Header + subheader
-    const std::size_t min_size = 3;        // min_header_size + 1 event
-
-    if (batch.empty())
+    if (event.empty())
     {
-        LOG_TRACE("Router: Received empty ndjson");
-        throw std::runtime_error {"ndjson is empty"};
+        return base::Error {"Event cannot be empty"};
     }
 
-    // Extract each json raw from ndjson
-    std::list<std::string_view> rawJson {};
+    base::OptError err = std::nullopt;
+    try
     {
-        std::replace(batch.begin(), batch.end(), '\n', '\0'); // Use string as buffer
-        const char* start = batch.data();
-        const char* end = start + batch.size();
-        while (start < end)
-        {
-            const char* next = std::find(start, end, '\0');
-            if (start != next)
-            {
-                rawJson.emplace_back(start, next - start);
-            }
-            start = next + 1;
-        }
+        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
+        this->postEvent(std::move(ev));
+    }
+    catch (const std::exception& e)
+    {
+        err = base::Error {e.what()};
     }
 
-    // Validate the batch
-    if (rawJson.size() < min_size)
+    if (err)
     {
-        LOG_DEBUG("Router: Received ndjson with less than '{}' lines", min_size);
-        throw std::runtime_error {"ndjson is too small"};
+        return err;
     }
-
-    // Check if the event queue has enough space
-    const std::size_t eventToSend = rawJson.size() - min_header_size; // Apox, because the subheader is ignored
-    const std::size_t freeSlots = m_eventQueue->aproxFreeSlots();     // On high load, can not be accurate
-    const std::size_t discardedEvents = freeSlots < eventToSend ? eventToSend - freeSlots : 0;
-
-    if (discardedEvents > 0)
-    {
-        LOG_DEBUG(
-            "Router: {} events discarded, not enough space in the queue ({} free slots)", discardedEvents, freeSlots);
-        if (freeSlots == 0)
-        {
-            return;
-        }
-    }
-
-    std::vector<base::Event> events = createEventsFromBatch(rawJson, freeSlots);
-    for (const auto& event : events)
-    {
-        if (!m_eventQueue->tryPush(event))
-        {
-            LOG_DEBUG("Router: Event queue is full, discarding event");
-        }
-    }
+    return std::nullopt;
 }
 
 base::OptError Orchestrator::changeEpsSettings(uint eps, uint refreshInterval)

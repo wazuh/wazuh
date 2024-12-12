@@ -25,6 +25,7 @@ if(ENGINE_BUILD_TEST)
 
     add_executable(api_event_utest
         ${UNIT_SRC_DIR}/handlers_test.cpp
+        ${UNIT_SRC_DIR}/ndJsonParser_test.cpp
     )
     target_include_directories(api_event_utest
         PRIVATE

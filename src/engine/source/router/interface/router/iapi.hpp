@@ -31,14 +31,6 @@ public:
     // Production: Ingest
     virtual void postEvent(base::Event&& event) = 0;
 
-    /**
-     * @brief Post a batch of raw events
-     *
-     * Post a batch of raw events to the router according to https://github.com/wazuh/wazuh/issues/26719
-     * @param batch Batch of raw events
-     */
-    virtual void postRawNdjson(std::string&& batch) = 0;
-
     // Orchestrator: Change EPS settings
     virtual base::OptError changeEpsSettings(uint eps, uint refreshInterval) = 0;
 
