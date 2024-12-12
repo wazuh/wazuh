@@ -1,6 +1,8 @@
 import json
 import yaml
 import sys
+
+# Todo: Use the shared Dumper class after CLI is merged
 try:
     from yaml import CDumper as BaseDumper
 except ImportError:
@@ -8,24 +10,22 @@ except ImportError:
 
 from google.protobuf.json_format import MessageToDict
 
-from engine_test.events_collector import EventsCollector
-from engine_test.formats.syslog import SyslogFormat
-from engine_test.formats.json import JsonFormat
-from engine_test.formats.eventchannel import EventChannelFormat
-from engine_test.formats.macos import MacosFormat
-from engine_test.formats.remote_syslog import RemoteSyslogFormat
-from engine_test.formats.audit import AuditFormat
-from engine_test.formats.command import CommandFormat
-from engine_test.formats.full_command import FullCommandFormat
-from engine_test.formats.multi_line import MultilineFormat
-from engine_test.event_format import Formats
-from engine_test.crud_integration import CrudIntegration
+from engine_test.input_collector import InputEventCollector
+
+from engine_test.event_splitters.base_splitter import SplitterEvent
+from engine_test.event_splitters.single_line import SingleLineSplitter
+from engine_test.event_splitters.multi_line import MultilineSplitter
+from engine_test.event_splitters.dynamic_multi_line import DynamicMultilineSplitter
+from engine_test.event_splitters.eventchannel import EventChannelSplitter
+
+from engine_test.conf.integration import Formats, IntegrationConf
 
 from engine_test.api_connector import ApiConnector
 
 from api_communication.proto import tester_pb2 as api_tester
 
-class EngineDumper(BaseDumper):
+# TODO Use the shared Dumper class after cli is merged, change name to this file
+class EngineDumper(BaseDumper): # TODO Use the shared Dumper class
     def represent_scalar(self, tag, value, style=None):
         # If the value contains a single quote, force double quotes
         if style is None and "'" in value:
@@ -35,53 +35,50 @@ class EngineDumper(BaseDumper):
             style = '|'
         return super(EngineDumper, self).represent_scalar(tag, value, style)
 
-class Integration(CrudIntegration):
-    def __init__(self, args):
+
+class IntegrationTester():
+    '''
+    Class to test the integration with the API
+    '''
+    def __init__(self, args: dict, integration: IntegrationConf):
+        '''
+        Receive the arguments and the integration configuration
+        '''
         self.args = args
-
-        # Get the integration
-        try:
-            integration_name = self.args['integration-name']
-        except KeyError as ex:
-            print("Integration name not foud. Error: {}".format(ex))
-            exit(1)
-
-        self.integration = self.get_integration(integration_name)
-        if not self.integration:
-            print("Integration not found!")
-            exit(1)
+        self.iconf: IntegrationConf = integration
 
         # Get the format of integration
-        self.format = self.get_format(self.integration)
-        if not self.format:
-            print("Format of integration not found!")
-            exit(1)
+        self.event_parser = self.get_splitter(self.iconf)
 
-        self.args['full_location'] = self.format.get_full_location(self.args)
-        # TODO: move escape :| :
         # Client to API TEST
         self.api_client = ApiConnector(args)
         self.api_client.create_session()
 
     def run(self):
+        '''
+        Run the integration test
+        '''
         events_parsed = []
+        json_header = self.iconf.get_template().get_header() + "\n"
         try:
             while True:
                 try:
                     events = []
-                    # Get the events
-                    events = EventsCollector.collect(self.format)
-                    # Split the events
-                    events = self.format.get_events(events)
-                    # Format each event
-                    events = [self.format.format_event(event) for event in events]
+                    # Collect the events
+                    events = InputEventCollector.collect(Formats.is_collected_as_multiline(self.iconf.format))
+                    # Parse the events, split them
+                    events = self.event_parser.split_events(events)
                     # Remove invalid events
                     events = list(filter(None, events))
+                    # Create ndjson events and add the header to each event
+                    events = [json_header + self.iconf.get_template().get_event(event) for event in events]
 
+                    # Process the events
                     if len(events) > 0:
                         for event in events:
-                            response = self.process_event(event, self.format)
+                            response = self.process_event(event)
                             events_parsed.append(response)
+
                 except KeyboardInterrupt as ex:
                     break
 
@@ -96,7 +93,10 @@ class Integration(CrudIntegration):
             self.write_output_file(events_parsed)
             self.api_client.delete_session()
 
-    def process_event(self, event, format):
+    def process_event(self, event):
+        '''
+        Process the event through the API and return the response
+        '''
 
         # Get the values to send
         response : api_tester.RunPost_Response()
@@ -164,25 +164,20 @@ class Integration(CrudIntegration):
         except Exception as ex:
             print("Failed to register the output file. Error: {}".format(ex))
 
-    def get_format(self, integration):
+    def get_splitter(self, iconf : IntegrationConf) -> SplitterEvent:
+        '''
+        Get the parser according to the integration configuration
+        '''
         try:
-            if integration['format'] == Formats.SYSLOG.value['name']:
-                return SyslogFormat(integration, self.args)
-            if integration['format'] == Formats.JSON.value['name']:
-                return JsonFormat(integration, self.args)
-            if integration['format'] == Formats.EVENTCHANNEL.value['name']:
-                return EventChannelFormat(integration, self.args)
-            if integration['format'] == Formats.MACOS.value['name']:
-                return MacosFormat(integration, self.args)
-            if integration['format'] == Formats.REMOTE_SYSLOG.value['name']:
-                return RemoteSyslogFormat(integration, self.args)
-            if integration['format'] == Formats.AUDIT.value['name']:
-                return AuditFormat(integration, self.args)
-            if integration['format'] == Formats.COMMAND.value['name']:
-                return CommandFormat(integration, self.args)
-            if integration['format'] == Formats.FULL_COMMAND.value['name']:
-                return FullCommandFormat(integration, self.args)
-            if integration['format'] == Formats.MULTI_LINE.value['name']:
-                return MultilineFormat(integration, self.args, integration['lines'])
+            if iconf.format == Formats.SINGLE_LINE:
+                return SingleLineSplitter()
+            elif iconf.format == Formats.MULTI_LINE:
+                return MultilineSplitter(iconf.lines)
+            elif iconf.format == Formats.DYNAMIC_MULTI_LINE:
+                return DynamicMultilineSplitter()
+            elif iconf.format == Formats.WINDOWS_EVENTCHANNEL:
+                return EventChannelSplitter()
+            else:
+                raise Exception(f"Invalid format: {format}")
         except Exception as ex:
             print("An error occurred while trying to obtain the integration format. Error: {}".format(ex))

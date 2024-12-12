@@ -371,7 +371,6 @@ def load_indexer_output(engine_handler: EngineHandler) -> None:
                 "date": "2024/12/01"
             }
         },
-        "check": "not_exists($wazuh.noIndexing) OR $wazuh.noIndexing == false",
         "outputs": [
             {
                 "wazuh-indexer": {
@@ -476,18 +475,31 @@ def modify_core_wazuh_decoder(file_path: Path, add_hash: bool = True):
     with file_path.open('r') as file:
         content = yaml.safe_load(file)
 
-    for entry in content['normalize']:
-        if 'map' in entry:
-            if add_hash:
-                if not any(isinstance(item, dict) and 'event_hash' in item for item in entry['map']):
-                    entry['map'].append({'event_hash': 'sha1($event.original)'})
-                    print("Added 'event_hash' mapping.")
-                else:
-                    print("'event_hash' already exists.")
-            else:
-                entry['map'] = [item for item in entry['map'] if not (isinstance(item, dict) and 'event_hash' in item)]
-                print("Removed 'event_hash' from normalize.")
-            break
+    # for entry in content['normalize']:
+    #     if 'map' in entry:
+    #         if add_hash:
+    #             if not any(isinstance(item, dict) and 'event_hash' in item for item in entry['map']):
+    #                 entry['map'].append({'event_hash': 'sha1($event.original)'})
+    #                 print("Added 'event_hash' mapping.")
+    #             else:
+    #                 print("'event_hash' already exists.")
+    #         else:
+    #             entry['map'] = [item for item in entry['map'] if not (isinstance(item, dict) and 'event_hash' in item)]
+    #             print("Removed 'event_hash' from normalize.")
+    #         break
+
+    entry = content.setdefault('normalize', [{}])[0]
+    entry['map'] = entry.get('map', [])
+
+    if add_hash:
+        if not any(isinstance(item, dict) and 'event_hash' in item for item in entry['map']):
+            entry['map'].append({'event_hash': 'sha1($event.original)'})
+            print("Added 'event_hash' mapping.")
+        else:
+            print("'event_hash' already exists.")
+    else:
+        del content['normalize']
+        print("Removed 'event_hash' from normalize.")
 
     with file_path.open('w') as file:
         yaml.dump(content, file, default_flow_style=False, sort_keys=False)
@@ -509,7 +521,8 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
     print("Environment validated.")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
@@ -591,7 +604,8 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
     print("Environment validated.")
 
     print("Starting engine...")
-    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+    engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
 
     results: List[Result] = []
     rules: List[Path] = []

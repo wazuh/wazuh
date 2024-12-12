@@ -16,7 +16,7 @@ def run(args, resource_handler: rs.ResourceHandler):
 
     resource_handler.create_dir(integration_name)
     resource_handler.create_dir(f'{integration_name}/test')
-    resource_handler.create_file(f'{integration_name}/test/engine-test.conf')
+    resource_handler.create_file(f'{integration_name}/test/engine-test.conf', '{}\n')
     resource_handler.create_file(f'{integration_name}/documentation.yml')
     integration_doc = {}
     integration_doc['name'] = f'integration/{integration_name}/0'

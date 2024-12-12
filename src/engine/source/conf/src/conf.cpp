@@ -78,7 +78,6 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     // OLD Server module
     // TODO Deprecate this configuration after the migration to the new httplib server
     addUnit<int>(key::SERVER_THREAD_POOL_SIZE, "WAZUH_SERVER_THREAD_POOL_SIZE", 1);
-    addUnit<std::string>(key::SERVER_EVENT_SOCKET, "WAZUH_SERVER_EVENT_SOCKET", "/run/wazuh-server/queue");
     addUnit<int>(key::SERVER_EVENT_QUEUE_SIZE, "WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
 
     addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/run/wazuh-server/engine-api.socket");

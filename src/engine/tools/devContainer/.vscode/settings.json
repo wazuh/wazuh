@@ -1,5 +1,8 @@
 {
     "python.defaultInterpreterPath": ".venv/bin/python",
+    "autopep8.args": [
+        "--max-line-length", "119"
+    ],
     "python.analysis.include": [
         "${env:ENGINE_SRC}/tools/api-communication/src",
         "${env:ENGINE_SRC}/tools/engine-suite/src",
@@ -123,5 +126,5 @@
     "editor.rulers": [80, 90, 120],
     "workbench.colorCustomizations": {
         "editorRuler.foreground": "#7220a8"
-    },
+    }
 }
