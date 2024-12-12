@@ -34,29 +34,29 @@ pip3 install ${ENGINE_SRC}/test/engine-test-utils
 pip3 install ${ENGINE_SRC}/test/health_test/engine-health-test
 pip3 install ${ENGINE_SRC}/test/integration_tests/engine-it
 pip3 install ${ENGINE_SRC}/test/helper_tests/engine-helper-test
+pip3 install --upgrade requests
 
 
 # Launch the engine and save the PID
 echo "Launching the engine"
-/bin/wazuh-engine server start &
+WAZUH_CONFIG_SKIP_API=true /usr/share/wazuh-server/bin/wazuh-engine &
 echo $! > /tmp/engine.pid
 # Check for the socket to be created
 while [ ! -S /run/wazuh-server/engine.socket ]; do
     sleep 2
 done
 # Add GeoIP databases
-wazuh-engine geo add /tmp/GeoLite2-City.mmdb city
-wazuh-engine geo add /tmp/GeoLite2-ASN.mmdb asn
+echo "Adding GeoIP databases"
+engine-geo add /tmp/GeoLite2-City.mmdb city
+engine-geo add /tmp/GeoLite2-ASN.mmdb asn
+# Clean up the ruleset
+echo "Cleaning up the ruleset"
+engine-router delete default
+engine-clear -f
+engine-clear -f # Run it twice to make sure it's empty (BUG in the engine-clear script)
+
 echo "Stopping the engine"
 kill -SIGTERM $(cat /tmp/engine.pid)
-
-
-
-# Basic test config
-echo "Creating basic test config"
-engine-test add -i windows -f eventchannel
-engine-test add -i syslog -f syslog -o /tmp/syslog.log
-engine-test add -i remote-syslog -f remote-syslog -o 127.0.0.1
 
 # TODO Remove after change the `output/file-output-wazuh-core/0` in ruleset
 mkdir -p "/var/ossec/logs/alerts/"
