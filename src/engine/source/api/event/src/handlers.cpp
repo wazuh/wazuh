@@ -20,7 +20,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         std::queue<base::Event> events;
         try
         {
-            events = protocolHandler(req.body);
+            events = protocolHandler(std::string(req.body));
         }
         catch (const std::exception& e)
         {

@@ -9,7 +9,7 @@
 
 namespace api::event::handlers
 {
-using ProtolHandler = std::function<std::queue<base::Event>(const std::string&)>;
+using ProtolHandler = std::function<std::queue<base::Event>(std::string&&)>;
 
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
                                 ProtolHandler protocolHandler);
