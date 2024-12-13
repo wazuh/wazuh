@@ -24,8 +24,8 @@ GenerateService()
 
 InstallCommon()
 {
-  WAZUH_GROUP='wazuh'
-  WAZUH_USER='wazuh'
+  WAZUH_GROUP='wazuh-server'
+  WAZUH_USER='wazuh-server'
   INSTALL="install"
   WAZUH_CONTROL_SRC='./init/wazuh-server.sh'
 
