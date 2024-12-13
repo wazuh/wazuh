@@ -17,7 +17,19 @@ class ConfigSections(str, Enum):
     COMMUNICATIONS_API = 'communications_api'
 
     @classmethod
-    def _missing_(cls, value: str):
+    def _missing_(cls, value: str) -> None:
+        """Missing enum value handler.
+        
+        Parameters
+        ----------
+        value : str
+            Enum value.
+        
+        Raises
+        ------
+        ValueError
+            Invalid value error.
+        """
         raise ValueError(value)
 
 
