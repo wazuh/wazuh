@@ -16,6 +16,10 @@ class ConfigSections(str, Enum):
     MANAGEMENT_API = 'management_api'
     COMMUNICATIONS_API = 'communications_api'
 
+    @classmethod
+    def _missing_(cls, value: str):
+        raise ValueError(value)
+
 
 class Config(WazuhConfigBaseModel):
     """Main configuration class for the application.

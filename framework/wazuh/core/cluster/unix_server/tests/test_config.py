@@ -1,6 +1,8 @@
+import json
+
 import pytest
 from unittest.mock import patch
-from fastapi import status, HTTPException
+from fastapi import status
 
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.cluster.unix_server.config import get_config
@@ -69,13 +71,14 @@ async def test_get_config_valid_sections(patch_load, sections):
     assert expected == got.body.decode('utf-8')
 
 
-@pytest.mark.parametrize('sections', [
-    'example',
-    'engine,err'
+@pytest.mark.parametrize('sections, value', [
+    ('example', 'example'),
+    ('engine,err', 'err')
 ])
-async def test_get_config_invalid_sections(patch_load, sections):
+async def test_get_config_invalid_sections(sections, value):
     """Verify that the `get_config` function works as expected with invalid sections."""
-    with pytest.raises(HTTPException) as exc:
-        _ = await get_config(sections)
+    response = await get_config(sections)
 
-    assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
+    content = json.loads(response.body)
+    assert content['code'] == status.HTTP_400_BAD_REQUEST
+    assert content['message'] == f"Invalid configuration section: '{value}'"
