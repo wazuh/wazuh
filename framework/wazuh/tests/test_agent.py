@@ -48,12 +48,13 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
         from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
         from wazuh.core.tests.test_agent import InitAgent
+        from wazuh.core.utils import GROUP_FILE_EXT
 
         from api.util import remove_nones_to_dict
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
-test_shared_path = os.path.join(test_agent_path, 'shared')
+test_groups_path = os.path.join(test_agent_path, 'groups')
 test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
 test_data = InitAgent(data_path=test_data_path)
@@ -369,7 +370,7 @@ async def test_agent_add_agent_ko(mock_group_exists, create_indexer_mock, name, 
     (['group-1', 'group-2', 'group-3'], None, ['group-1', 'group-2']),
     ([], '', []) # An empty group_list should return nothing
 ])
-@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_GROUPS', new=test_groups_path)
 async def test_agent_get_agent_groups(group_list, q, expected_result):
     """Test `get_agent_groups` from agent module.
 
@@ -406,14 +407,14 @@ async def test_agent_get_agent_groups_exceptions(mock_get_groups, system_groups,
     'non-existent-group',
     'invalid-group'
 ])
-@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_GROUPS', new=test_groups_path)
 @patch('wazuh.core.common.wazuh_gid', return_value=getgrnam('root'))
 @patch('wazuh.core.common.wazuh_uid', return_value=getpwnam('root'))
 @patch('wazuh.agent.chown')
 async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     """Test `create_group` function from agent module.
 
-    When a group is created a folder with the same name is created in `common.WAZUH_SHARED`.
+    When a group is created a folder with the same name is created in `common.WAZUH_GROUPS`.
 
     Parameters
     ----------
@@ -421,7 +422,7 @@ async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
         Name of the group to be created.
     """
     expected_msg = f"Group '{group_id}' created."
-    path_to_group = os.path.join(test_shared_path, f'{group_id}.conf')
+    path_to_group = os.path.join(test_groups_path, f'{group_id}{GROUP_FILE_EXT}')
     try:
         result = await create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
@@ -441,12 +442,12 @@ async def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
 
 @pytest.mark.parametrize('group_id, exception, exception_code', [
     ('default', WazuhError, 1711),
-    ('group-1.conf', WazuhError, 1722),
+    (f'group-1{GROUP_FILE_EXT}', WazuhError, 1722),
     ('invalid!', WazuhError, 1722),
     ('delete-me', WazuhInternalError, 1005),
     ('agent-template', WazuhError, 1713)
 ])
-@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_GROUPS', new=test_groups_path)
 async def test_create_group_exceptions(group_id, exception, exception_code):
     """Test `create_group` function from agent module raises the expected exceptions if an invalid `group_id` is
     specified.
@@ -466,7 +467,7 @@ async def test_create_group_exceptions(group_id, exception, exception_code):
         assert e.code == exception_code
     finally:
         # Remove the new group file to avoid affecting the next tests
-        path = os.path.join(test_shared_path, f'{group_id}.conf')
+        path = os.path.join(test_groups_path, f'{group_id}{GROUP_FILE_EXT}')
         if os.path.exists(path) and group_id != 'agent-template':
             os.remove(path)
 
@@ -611,7 +612,7 @@ async def test_agent_remove_agents_from_group_exceptions(group_mock, create_inde
 @pytest.mark.parametrize('group_list', [
     ['group-1']
 ])
-@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_GROUPS', new=test_groups_path)
 async def test_agent_get_group_conf(group_list):
     """Test `get_group_conf` function from agent module.
 
@@ -629,7 +630,7 @@ async def test_agent_get_group_conf(group_list):
 @pytest.mark.parametrize('group_list', [
     ['update']
 ])
-@patch('wazuh.core.common.WAZUH_SHARED', new=test_shared_path)
+@patch('wazuh.core.common.WAZUH_GROUPS', new=test_groups_path)
 @patch('wazuh.core.configuration.update_group_configuration')
 async def test_agent_upload_group_file(mock_update, group_list):
     """Test `upload_group_file` function from agent module.

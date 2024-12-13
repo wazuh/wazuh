@@ -1087,7 +1087,7 @@ def get_groups() -> set:
         Names of all groups in the system.
     """
     groups = set()
-    for group_file in listdir(common.WAZUH_SHARED):
+    for group_file in listdir(common.WAZUH_GROUPS):
         filepath = Path(group_file)
         if filepath.suffix == GROUP_FILE_EXT:
             groups.add(filepath.stem)
