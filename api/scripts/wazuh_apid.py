@@ -128,7 +128,7 @@ def configure_ssl(params: dict, config: APISSLConfig):
             if ssl_protocol in (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1_1):
                 logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
 
-        # Check and assign ownership to wazuh user for server.key and server.crt files
+        # Check and assign ownership to wazuh user for the api.key and api.crt files
         utils.assign_wazuh_ownership(config.key)
         utils.assign_wazuh_ownership(config.cert)
 
