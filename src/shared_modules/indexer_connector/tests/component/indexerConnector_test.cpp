@@ -542,7 +542,38 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
  * @brief Test the connection and posterior publication of invalid data to an available server.
  *
  */
-TEST_F(IndexerConnectorTest, PublishInvalidData)
+TEST_F(IndexerConnectorTest, PublishInvalidNoOperation)
+{
+    // Callback function that checks if the callback was executed or not.
+    auto callbackCalled {false};
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+                                    {
+                                        std::ignore = data;
+                                        callbackCalled = true;
+                                    }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Trigger publication and expect that it is not made.
+    nlohmann::json publishData;
+    publishData["id"] = "111";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+                 std::runtime_error);
+    ASSERT_EQ(callbackCalled, false);
+}
+
+/**
+ * @brief Test the connection and posterior publication of invalid data to an available server.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishInvalidNoID)
 {
     // Callback function that checks if the callback was executed or not.
     auto callbackCalled {false};
@@ -566,6 +597,39 @@ TEST_F(IndexerConnectorTest, PublishInvalidData)
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
+    ASSERT_EQ(callbackCalled, false);
+}
+
+/**
+ * @brief Test the connection and posterior publication of invalid data to an available server.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishNoInsertData)
+{
+    // Callback function that checks if the callback was executed or not.
+    auto callbackCalled {false};
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+                                    {
+                                        std::ignore = data;
+                                        callbackCalled = true;
+                                    }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Trigger publication and expect that it is not made.
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+                 std::runtime_error);
+    ASSERT_EQ(callbackCalled, false);
 }
 
 /**

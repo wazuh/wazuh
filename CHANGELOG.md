@@ -13,11 +13,17 @@ All notable changes to this project will be documented in this file.
 - Fixed inconsistencies between reported context and vulnerability data. ([#25479](https://github.com/wazuh/wazuh/issues/25479))
 - Fixed concurrency issues in LRU caches ([#26073](https://github.com/wazuh/wazuh/pull/26073))
 - Removed all CVEs related to a deleted agent from the indexer. ([#26232](https://github.com/wazuh/wazuh/pull/26232))
+- Prevented an infinite loop when indexing events in the Vulnerability Detector. ([#26922](https://github.com/wazuh/wazuh/pull/26922))
+- Fixed segmentation fault in `DescriptionsHelper::vulnerabilityDescription`. ([#26842](https://github.com/wazuh/wazuh/pull/26842))
+- Fixed vulnerability scanner re-scan triggers in cluster environment. ([#24034](https://github.com/wazuh/wazuh/pull/24034))
+- Fixed an issue where elements in the delayed list were not purged when changing nodes. ([#27145](https://github.com/wazuh/wazuh/pull/27145))
+- Added logic to avoid re-scanning disconnected agents. ([#27145](https://github.com/wazuh/wazuh/pull/27145))
 
 #### Changed
 - Added self-recovery mechanism for rocksDB databases. ([#24333](https://github.com/wazuh/wazuh/pull/24333))
 - Improve logging for indexer connector monitoring class. ([#25189](https://github.com/wazuh/wazuh/pull/25189))
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
+- Updated CURL version to 8.10.0. ([#23266](https://github.com/wazuh/wazuh/issues/23266))
 
 ### Agent
 
@@ -29,6 +35,15 @@ All notable changes to this project will be documented in this file.
 - Fixed permission error on Windows 11 agents after remote upgrade. ([#25429](https://github.com/wazuh/wazuh/pull/25429))
 - Fixed increase of the variable containing file size in FIM for Windows. ([#24387](https://github.com/wazuh/wazuh/pull/24387))
 - Fixed timeout issue when upgrading Windows agent via WPK. ([#25699](https://github.com/wazuh/wazuh/pull/25699))
+- Allowed unknown syslog identifiers in Logcollector's journald reader. ([#26748](https://github.com/wazuh/wazuh/pull/26748))
+- Prevented agent termination during package upgrades in containers by removing redundant kill commands. ([#26828](https://github.com/wazuh/wazuh/pull/26828))
+- Fixed handle leak in FIM's realtime mode on Windows. ([#26861](https://github.com/wazuh/wazuh/pull/26861))
+- Fixed errors on AIX 7.2 by adapting the blibpath variable. ([#26900](https://github.com/wazuh/wazuh/pull/26900))
+- Sanitized agent paths to prevent issues with parent folder references. ([#26944](https://github.com/wazuh/wazuh/pull/26944))
+- Fixed an issue in the DEB package that prevented the agent from restarting after an upgrade. ([#26633](https://github.com/wazuh/wazuh/pull/26633))
+- Improved file path handling in agent communications to avoid references to parent folders. ([#26944](https://github.com/wazuh/wazuh/pull/26944))  
+- Set RPM package vendor to `UNKNOWN_VALUE` when the value is missing. ([#27054](https://github.com/wazuh/wazuh/pull/27054))  
+- Updated Solaris package generation to use the correct `wazuh-packages` reference. ([#27059](https://github.com/wazuh/wazuh/issues/27059))  
 
 #### Changed
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
@@ -52,6 +67,27 @@ All notable changes to this project will be documented in this file.
 - Upgraded `certifi` and removed unused packages. ([#25324](https://github.com/wazuh/wazuh/pull/25324))
 - Upgraded external `cryptography` library dependency version to 43.0.1. ([#25893](https://github.com/wazuh/wazuh/pull/25893))
 - Upgraded external `starlette` and `uvicorn` dependencies. ([#26252](https://github.com/wazuh/wazuh/pull/26252))
+
+### Ruleset
+
+#### Added
+- Create SCA Policy for Windows Server 2012 (non R2). ([#21794](https://github.com/wazuh/wazuh/pull/21794))
+
+#### Changed
+- Rework SCA Policy for Windows Server 2019. ([#21434](https://github.com/wazuh/wazuh/pull/21434))
+- Rework SCA Policy for Red Hat Enterprise Linux 9. ([#24667](https://github.com/wazuh/wazuh/pull/24667))
+- Rework SCA Policy for Microsoft Windows Server 2012 R2. ([#24991](https://github.com/wazuh/wazuh/pull/24991))
+- Rework SCA Policy for Ubuntu Linux 18.04 LTS. Fix incorrect checks in Ubuntu 22.04 LTS. ([#24957](https://github.com/wazuh/wazuh/pull/24957))
+- Rework SCA Policy for Amazon Linux 2 SCA. ([#24969](https://github.com/wazuh/wazuh/pull/24969))
+- Rework SCA for SUSE Linux Enterprise 15 SCA. ([#24975](https://github.com/wazuh/wazuh/pull/24975))
+- Rework SCA Policy for Apple macOS 13.0 Ventura. ([#24992](https://github.com/wazuh/wazuh/pull/24992))
+- Rework SCA Policy for Microsoft Windows 11 Enterprise. ([#25710](https://github.com/wazuh/wazuh/pull/25710))
+
+#### Fixed
+- Fixed Logical errors in Windows Server 2022 SCA checks. ([#22597](https://github.com/wazuh/wazuh/pull/22597))
+- Fixed wrong regulatory compliance in several Windows rules. ([#25224](https://github.com/wazuh/wazuh/pull/25224))
+- Fixed incorrect checks in Ubuntu 22.04 LTS. ([#24733](https://github.com/wazuh/wazuh/pull/24733))
+- Removal of check with high CPU utilization in multiple SCA. ([#25190](https://github.com/wazuh/wazuh/pull/25190))
 
 
 ## [v4.9.2]

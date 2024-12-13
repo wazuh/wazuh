@@ -148,11 +148,11 @@ STATIC INLINE char * find_library_path(const char * library_name) {
     while (getline(&line, &len, maps_file) != -1) {
         if (strstr(line, library_name) != NULL) {
             char * path_start = strchr(line, '/');
-            if (path_start == NULL) {                
+            if (path_start == NULL) {
                 break; // Never happens
             }
             char * path_end = strchr(path_start, '\n');
-            if (path_end == NULL) {                
+            if (path_end == NULL) {
                 break; // Never happens
             }
             *path_end = '\0';
@@ -310,8 +310,8 @@ void w_journal_context_update_timestamp(w_journal_context_t * ctx) {
     }
 }
 
-int w_journal_context_seek_most_recent(w_journal_context_t * ctx) {  
-    
+int w_journal_context_seek_most_recent(w_journal_context_t * ctx) {
+
     if (ctx == NULL) {
         return -1;
     }
@@ -330,7 +330,7 @@ int w_journal_context_seek_most_recent(w_journal_context_t * ctx) {
 }
 
 int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timestamp) {
-    
+
     if (ctx == NULL) {
         return -1;
     }
@@ -366,7 +366,7 @@ int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timesta
 }
 
 int w_journal_context_next_newest(w_journal_context_t * ctx) {
-    
+
     if (ctx == NULL) {
         return -1;
     }
@@ -553,7 +553,7 @@ STATIC INLINE char * entry_as_syslog(w_journal_context_t * ctx) {
     }
     char * timestamp = w_timestamp_to_string(ctx->timestamp);
 
-    if (!hostname || !syslog_identifier || !message || !timestamp) {
+    if (!hostname || !message || !timestamp) {
         mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NOT_SYSLOG, ctx->timestamp);
         os_free(hostname);
         os_free(syslog_identifier);
@@ -561,6 +561,10 @@ STATIC INLINE char * entry_as_syslog(w_journal_context_t * ctx) {
         os_free(pid);
         os_free(timestamp);
         return NULL;
+    }
+
+    if (syslog_identifier == NULL) {
+        syslog_identifier = strdup("unknown");
     }
 
     char * syslog_msg = create_plain_syslog(timestamp, hostname, syslog_identifier, pid, message);
