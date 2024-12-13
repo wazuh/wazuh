@@ -1582,6 +1582,36 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
     };
 }
 
+// field:  get_date
+MapOp opBuilderHelperGetDate(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Check parameters
+    utils::assertSize(opArgs, 0);
+
+    // Tracing
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace = fmt::format("{} -> Failed to generate current date", name);
+
+    // Return Op
+    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        // Get the current time point
+        auto now = std::chrono::system_clock::now();
+        auto tp = date::floor<std::chrono::seconds>(now);
+        auto result = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
+
+        if (result.empty())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
+        }
+
+        json::Json resultJson;
+        resultJson.setString(result);
+        RETURN_SUCCESS(runState, resultJson, successTrace);
+    };
+}
+
 //*************************************************
 //*              Checksum and hash                *
 //*************************************************
