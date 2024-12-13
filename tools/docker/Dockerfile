@@ -15,7 +15,7 @@ ENV ENGINE_BUILD=$ENGINE_SRC/build
 # Force use the specific commit of master to aviod breaking changes like:
 # - Python packages
 # - Engine configuration and CLI
-ENV ENGINE_COMMIT_ID=3fd4d415a8e7a185a5e1f58b5197ed0fd0c112d2
+ENV ENGINE_COMMIT_ID=5ca2998e1d97a7056611da6288a13a88cfd3ccf9
 ENV ENGINE_PRESET=release
 ENV ENGINE_ON_BACKGROUND=1
 ENV MM_LICENCE_KEY=
@@ -32,14 +32,19 @@ RUN apt-get update && apt-get install -y \
     cmake \
     git \
     openssh-server \
-    python3 \
-    python3-pip \
+    software-properties-common \
     curl \
     zip \
     lzip \
     unzip \
     tar
 ENV DEBIAN_FRONTEND=dialog
+
+# Update python
+RUN add-apt-repository ppa:deadsnakes/ppa -y
+RUN apt-get update && apt-get install -y python3.12
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
 # Install vcpkg
 ENV VCPKG_ROOT=/root/vcpkg
