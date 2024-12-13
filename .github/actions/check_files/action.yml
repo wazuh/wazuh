@@ -1,0 +1,96 @@
+name: "Check installed files"
+description: "Validates that the installed files are the ones expected and with the right stats"
+
+inputs:
+  expected_files:
+    required: true
+    description: "Path to the 'expected files' CSV file"
+  report_file:
+    required: false
+    description: "Path to the report file"
+    default: "/tmp/report.md"
+  current_status:
+    required: false
+    description: "Path to the current status CSV file"
+    default: "/tmp/current.csv"
+  installation_directory:
+    required: false
+    description: "Path to the wazuh Installation directory"
+    default: "/var/ossec"
+  wazuh_uid:
+    required: true
+    description: "Wazuh user ID"
+  wazuh_gid:
+    required: true
+    description: "Wazuh group ID"
+  size_check:
+    required: false
+    description: "Check the size of the files"
+    default: "true"
+  ignore:
+    required: false
+    description: "Ignore files from the check"
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+  - name: Setup Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: '3.12'
+
+  - name: Create python virtual environment
+    shell: bash
+    run: |
+      cd $GITHUB_ACTION_PATH
+      python3 -m venv venv
+      source venv/bin/activate
+      pip3 install --upgrade pip
+      pip3 install -r requirements.txt
+
+  - name: Get the files stats
+    shell: bash
+    run: |
+      cd ${GITHUB_ACTION_PATH}
+
+      size_check=""
+      if [ "${{ inputs.size_check }}" == "true" ]; then size_check="--size_check"; fi
+
+      ignore=""
+      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
+
+      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+
+  - name: Upload current stats
+    if: success()
+    uses: actions/upload-artifact@v4
+    with:
+      name: current_stats
+      path: ${{ inputs.current_status }}
+
+  - name: Compare results
+    shell: bash
+    run: |
+      cd ${GITHUB_ACTION_PATH}
+
+      size_check=""
+      if [ "${{ inputs.size_check }}" == "true" ]; then size_check="--size_check"; fi
+
+      ignore=""
+      if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
+
+      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+
+  - name: Upload validation results
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: validation_results
+      path: ${{ inputs.report_file }}
+
+  - name: Generate report
+    if: always()
+    shell: bash
+    run: |
+      cat ${{ inputs.report_file }} >> $GITHUB_STEP_SUMMARY

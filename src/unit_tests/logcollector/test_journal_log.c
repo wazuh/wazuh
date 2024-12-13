@@ -3760,14 +3760,11 @@ void test_entry_as_syslog_missing_tag(void ** state) {
     // Get timestamp
     will_return(__wrap_gmtime_r, timestamp);
 
-    // Debug msg
-    expect_string(__wrap__mdebug2,
-                  formatted_msg,
-                  "(9002): Failed to get the required fields, discarted log with timestamp '1618849174000000'");
-
     // Check the result
     char * retval = entry_as_syslog(ctx);
-    assert_null(retval);
+    assert_non_null(retval);
+    assert_string_equal(retval, "Apr 19 16:19:34 <hostname> unknown[<spid>]: <message>");
+    os_free(retval);
 
     // >>>> Start context free
     expect_value(__wrap_dlclose, handle, (void *) 0x123456);
