@@ -95,6 +95,7 @@ link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/external/lzma/build/)
 link_directories(${SRC_FOLDER}/external/zlib/)
 link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
+link_directories(${SRC_FOLDER}/external/tracy-0.11.1/build/)
 
 include_directories(${SRC_FOLDER}/shared_modules/common)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
@@ -115,6 +116,9 @@ include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
 include_directories(${SRC_FOLDER}/external/zlib/)
 include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+include_directories(${SRC_FOLDER}/external/tracy-0.11.1/public)
+
+add_compile_definitions(TRACY_ENABLE=ON TRACY_ENABLE=ON TRACY_ON_DEMAND=ON TRACY_ONLY_IPV4=ON)
 
 add_subdirectory(shared_modules/utils)
 add_subdirectory(shared_modules/router)

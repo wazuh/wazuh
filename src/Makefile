@@ -71,6 +71,7 @@ EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
 EXTERNAL_ROCKSDB=external/rocksdb/
+EXTERNAL_TRACY=external/tracy-0.11.1/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
@@ -941,6 +942,7 @@ POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
+TRACY_LIB = $(EXTERNAL_ROCKSDB)build/libTracyClient.so.0.11.1
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
@@ -958,7 +960,7 @@ endif
 
 # Adding libraries only for server
 ifeq (${TARGET},server)
-	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
+	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB) $(TRACY_LIB)
 	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
 
@@ -995,7 +997,7 @@ external: build_gtest build_benchmark
 endif
 
 ifeq (${TARGET},server)
-external: $(ROCKSDB_LIB)
+external: $(ROCKSDB_LIB) $(TRACY_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -1059,6 +1061,11 @@ endif
 
 ${ROCKSDB_LIB}:
 	cd $(EXTERNAL_ROCKSDB) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GFLAGS=0 -DWITH_TESTS=0 -DWITH_BENCHMARK_TOOLS=0 -DWITH_TOOLS=0 -DUSE_RTTI=1 -DROCKSDB_BUILD_SHARED=1 -DWITH_BZ2=1 -DBZIP2_INCLUDE_DIR=$(realpath $(EXTERNAL_BZIP2)) -DBZIP2_LIBRARIES=$(realpath $(BZIP2_LIB)) -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DWITH_ALL_TESTS=0 -DWITH_RUNTIME_DEBUG=0 -DWITH_TRACE_TOOLS=0 -DPORTABLE=1 && ${MAKE}
+
+## tracy ##
+${TRACY_LIB}:
+	cd $(EXTERNAL_TRACY) && mkdir -p build && cd build && cmake .. -DTRACY_ENABLE=ON -DTRACY_ON_DEMAND=ON -DBUILD_SHARED_LIBS=ON -DTRACY_ONLY_IPV4=ON && ${MAKE}
+	cd $(EXTERNAL_TRACY) && cd capture/ && mkdir -p build && cd build && cmake .. && ${MAKE}
 
 ### flatbuffers ###
 ${FLATBUFFERS_LIB}:
@@ -1364,6 +1371,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
+CURL_REDIRECT := curl -Lo
 DEPS_VERSION = 35
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
@@ -1440,7 +1448,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers tracy
 endif
 endif
 
@@ -1514,6 +1522,14 @@ external/nlohmann.tar.gz:
 endif
 endif
 endif
+
+# tracy library
+RESOURCE_URL_TRACY="https://github.com/wolfpld/tracy/archive/refs/tags/v0.11.1.tar.gz"
+external/tracy.tar.gz:
+	$(CURL_REDIRECT) $@ $(RESOURCE_URL_TRACY)
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
 
 # Remaining dependencies
 ifneq (,$(PRECOMPILED_RES))
@@ -2721,6 +2737,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
+	rm -rf $(EXTERNAL_TRACY)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	rm -rf $(EXTERNAL_LZMA)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*
