@@ -207,7 +207,7 @@ extern "C" struct group* __wrap_getgrnam(const char* name)
 extern "C" int __wrap_chown(const char* path, uid_t owner, gid_t group)
 {
     // Simulate a successful chown operation for the "/tmp/success" file
-    if (strcmp(path, "/tmp/wazuh-server/root-ca-merged.pem") == 0)
+    if (strcmp(path, "/var/lib/wazuh-server/tmp/root-ca-merged.pem") == 0)
     {
         return 0; // Return success
     }
@@ -265,7 +265,7 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
     // Setup for the test
     const std::string certFileOne = "./root-ca-one.pem";
     const std::string certFileTwo = "./root-ca-two.pem";
-    const std::string mergedCertFile = "/tmp/wazuh-server/root-ca-merged.pem";
+    const std::string mergedCertFile = "/var/lib/wazuh-server/tmp/root-ca-merged.pem";
 
     // Create the first certificate file
     std::ofstream outputFile(certFileOne);
