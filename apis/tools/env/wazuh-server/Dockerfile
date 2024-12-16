@@ -60,15 +60,15 @@ ENV GROUP=wazuh-server
 RUN groupadd -f "$GROUP" && useradd "$USER" -d "/" -s "/sbin/nologin" -g "$GROUP"
 
 # Copy directories from builder
-COPY --from=builder /etc/wazuh-server /etc/wazuh-server
+COPY --from=builder --chown=${USER}:${GROUP} /etc/wazuh-server /etc/wazuh-server
 
-COPY --from=builder /run/wazuh-server /run/wazuh-server
+COPY --from=builder --chown=${USER}:${GROUP} /run/wazuh-server /run/wazuh-server
 
-COPY --from=builder /var/log/wazuh-server /var/log/wazuh-server
+COPY --from=builder --chown=${USER}:${GROUP} /var/log/wazuh-server /var/log/wazuh-server
 
-COPY --from=builder /var/lib/wazuh-server /var/lib/wazuh-server
+COPY --from=builder --chown=${USER}:${GROUP} /var/lib/wazuh-server /var/lib/wazuh-server
 
-COPY --from=builder /usr/share/wazuh-server /usr/share/wazuh-server
+COPY --from=builder --chown=${USER}:${GROUP} /usr/share/wazuh-server /usr/share/wazuh-server
 
 # Install debugging tools
 RUN apt update && apt install -y vim curl sqlite3
