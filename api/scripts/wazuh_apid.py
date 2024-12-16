@@ -289,7 +289,6 @@ def get_script_arguments() -> Namespace:
         Arguments passed to the script.
     """
     parser = ArgumentParser()
-    parser.add_argument('-d', '--daemon', action='store_true', dest='daemon', help='Run as a daemon')
     parser.add_argument('-r', '--root', action='store_true', dest='root', help='Run as root')
     parser.add_argument('-v', '--version', action='store_true', dest='version', help='Print version')
     return parser.parse_args()
@@ -334,14 +333,9 @@ if __name__ == '__main__':
     # Check for unused PID files
     utils.clean_pid_files(API_MAIN_PROCESS)
 
-    # Foreground/Daemon
-    if args.daemon:
-        pyDaemonModule.pyDaemon()
-    else:
-        logger.info('Starting API in foreground')
-
     # Drop privileges to wazuh
     if not args.root:
+        logger.info('Starting API')
         if management_config.drop_privileges:
             os.setgid(common.wazuh_gid())
             os.setuid(common.wazuh_uid())

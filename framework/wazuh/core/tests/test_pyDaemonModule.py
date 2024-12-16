@@ -11,30 +11,6 @@ from wazuh.core.exception import WazuhException
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 
-@pytest.mark.parametrize('effect', [
-   None,
-   OSError(10000, 'Error')
-])
-@patch('wazuh.core.pyDaemonModule.sys.exit')
-@patch('wazuh.core.pyDaemonModule.os.setsid')
-@patch('wazuh.core.pyDaemonModule.sys.stderr.write')
-@patch('wazuh.core.pyDaemonModule.sys.stdin.fileno')
-@patch('wazuh.core.pyDaemonModule.os.dup2')
-@patch('wazuh.core.pyDaemonModule.os.chdir')
-def test_pyDaemon(mock_chdir, mock_dup, mock_fileno, mock_write, mock_setsid, mock_exit, effect):
-    """Tests pyDaemon function works"""
-
-    with patch('wazuh.core.pyDaemonModule.os.fork', return_value=255, side_effect=effect):
-        pyDaemon()
-
-    if effect == None:
-        mock_exit.assert_called_with(0)
-    else:
-        mock_exit.assert_called_with(1)
-    mock_setsid.assert_called_once_with()
-    mock_chdir.assert_called_once_with('/')
-
-
 @patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path('/tmp'))
 def test_create_pid():
     """Tests create_pid function works"""
