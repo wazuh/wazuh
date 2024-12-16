@@ -5,9 +5,9 @@ server:
     name: server_01
     type: master
     ssl:
-      key: /etc/wazuh-server/server.key
-      cert: /etc/wazuh-server/server.crt
-      ca: /etc/wazuh-server/server.ca
+      key: /etc/wazuh-server/certs/server.key
+      cert: /etc/wazuh-server/certs/server.crt
+      ca: /etc/wazuh-server/certs/server.ca
 indexer:
   hosts:
     - host: localhost
@@ -24,8 +24,8 @@ communications_api:
   host: localhost
   port: 27000
   ssl:
-    key: /etc/wazuh-server/api/configuration/ssl/server.key
-    cert: /etc/wazuh-server/api/configuration/ssl/server.crt
+    key: /etc/wazuh-server/certs/api.key
+    cert: /etc/wazuh-server/certs/api.crt
     use_ca: false
     ca: <CA_FILE_PATH>
 management_api:
@@ -34,7 +34,7 @@ management_api:
     - ::1
   port: 55000
   ssl:
-    key: /etc/wazuh-server/api/configuration/ssl/server.key
-    cert: /etc/wazuh-server/api/configuration/ssl/server.crt
+    key: /etc/wazuh-server/certs/api.key
+    cert: /etc/wazuh-server/certs/api.crt
     use_ca: false
     ca: <CA_FILE_PATH>

@@ -6,9 +6,9 @@ server:
     name: server_01
     type: master
     ssl:
-      key: /etc/wazuh-server/server.key
-      cert: /etc/wazuh-server/server.pem
-      ca: /etc/wazuh-server/root-ca.pem
+      key: /etc/wazuh-server/certs/server.key
+      cert: /etc/wazuh-server/certs/server.pem
+      ca: /etc/wazuh-server/certs/root-ca.pem
   logging:
     level: debug2
 indexer:
@@ -19,10 +19,10 @@ indexer:
   password: admin
   ssl:
     use_ssl: true
-    key: /etc/wazuh-server/indexer-key.pem
-    certificate: /etc/wazuh-server/indexer.pem
+    key: /etc/wazuh-server/certs/indexer-key.pem
+    certificate: /etc/wazuh-server/certs/indexer.pem
     certificate_authorities:
-      - /etc/wazuh-server/root-ca.pem
+      - /etc/wazuh-server/certs/root-ca.pem
     verify_certificates: true
 communications_api:
   host: '0.0.0.0'

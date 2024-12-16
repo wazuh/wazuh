@@ -10,13 +10,13 @@ services:
     hostname: wazuh-manager
     volumes:
       # Server certificates
-      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
-      - ./certs/wazuh-manager.pem:/etc/wazuh-server/server.pem
-      - ./certs/wazuh-manager.key:/etc/wazuh-server/server.key
+      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
+      - ./certs/wazuh-manager.pem:/etc/wazuh-server/certs/server.pem
+      - ./certs/wazuh-manager.key:/etc/wazuh-server/certs/server.key
       # Indexer certificates
-      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
-      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
+      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
@@ -47,13 +47,13 @@ services:
     container_name: wazuh-worker1
     volumes:
       # Server certificates
-      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
-      - ./certs/wazuh-worker1.pem:/etc/wazuh-server/server.pem
-      - ./certs/wazuh-worker1.key:/etc/wazuh-server/server.key
+      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
+      - ./certs/wazuh-worker1.pem:/etc/wazuh-server/certs/server.pem
+      - ./certs/wazuh-worker1.key:/etc/wazuh-server/certs/server.key
       # Indexer certificates
-      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
-      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
+      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
@@ -85,13 +85,13 @@ services:
     container_name: wazuh-worker2
     volumes:
       # Server certificates
-      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
-      - ./certs/wazuh-worker2.pem:/etc/wazuh-server/server.pem
-      - ./certs/wazuh-worker2.key:/etc/wazuh-server/server.key
+      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
+      - ./certs/wazuh-worker2.pem:/etc/wazuh-server/certs/server.pem
+      - ./certs/wazuh-worker2.key:/etc/wazuh-server/certs/server.key
       # Indexer certificates
-      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/indexer.pem
-      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/indexer-key.pem
-      - ./certs/root-ca.pem:/etc/wazuh-server/root-ca.pem
+      - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
+      - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
+      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings

@@ -710,7 +710,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @pytest.mark.asyncio
 @patch('wazuh.core.agent.remove')
 @patch('wazuh.core.agent.path.exists', return_value=True)
-@patch('wazuh.core.common.WAZUH_SHARED', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.WAZUH_GROUPS', new=os.path.join(test_data_path, 'etc', 'groups'))
 @patch('wazuh.core.indexer.Indexer._get_opensearch_client')
 @patch('wazuh.core.indexer.Indexer.connect')
 @patch('wazuh.core.indexer.Indexer.close')
@@ -1100,19 +1100,19 @@ async def test_get_agents_info(create_indexer_mock):
 def test_get_groups():
     """Test that get_groups() returns expected agent groups"""
     expected_result = {'group-1', 'group-2'}
-    shared = os.path.join(test_data_path, 'shared')
+    groups = os.path.join(test_data_path, 'groups')
 
-    with patch('wazuh.core.common.WAZUH_SHARED', new=shared):
+    with patch('wazuh.core.common.WAZUH_GROUPS', new=groups):
         try:
-            os.makedirs(shared)
+            os.makedirs(groups)
             for group in list(expected_result):
-                with open(os.path.join(shared, f'{group}.conf'), 'w') as f:
+                with open(os.path.join(groups, f'{group}.yml'), 'w') as f:
                     f.write('')
 
             result = get_groups()
             assert result == expected_result
         finally:
-            rmtree(shared)
+            rmtree(groups)
 
 
 @pytest.mark.parametrize('group, group_agents, expected_agents', [

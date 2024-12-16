@@ -503,7 +503,7 @@ async def create_group(group_id: str) -> WazuhResult:
     if group_id.lower() == "default" or path.exists(group_path):
         raise WazuhError(1711, extra_message=group_id)
 
-    # Create group in /etc/shared
+    # Create group in /etc/wazuh-server/groups
     try:
         with open(group_path, 'w') as f:
             # TODO(#25121): Write group configuration template

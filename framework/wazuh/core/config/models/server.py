@@ -2,7 +2,7 @@ from pydantic import PositiveInt, conint, confloat, PrivateAttr, Field
 from typing import List, Optional
 from enum import Enum
 
-from wazuh.core.common import WAZUH_ETC, WAZUH_SHARED
+from wazuh.core.common import WAZUH_ETC, WAZUH_GROUPS
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import SSLConfig
 from wazuh.core.config.models.logging import LoggingConfig, LoggingLevel
@@ -274,7 +274,7 @@ DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
             extra_valid=False,
         ),
         SharedFiles(
-            dir=WAZUH_SHARED.as_posix(),
+            dir=WAZUH_GROUPS.as_posix(),
             description='group files',
             permissions=432,
             source='master',

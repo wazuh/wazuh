@@ -26,13 +26,6 @@ PYTHON_BIN     = $(SHARE_INSTALLDIR)/framework/python/bin/python3
 
 install:
     # Copy files and create folders
-	# ETC
-	$(INSTALL_DIR) $(ETC_INSTALLDIR)/api
-	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration
-	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/ssl
-	$(INSTALL_RW_DIR) $(ETC_INSTALLDIR)/api/configuration/security
-
-
 	# SHARE
 	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/api/scripts
 	$(INSTALL_FILE) scripts/wazuh_apid.py ${SHARE_INSTALLDIR}/api/scripts

@@ -238,9 +238,9 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}var/log/wazuh-server
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}var/log/wazuh-server/engine
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}etc/wazuh-server
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}etc/wazuh-server/api
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}etc/wazuh-server/certs
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}etc/wazuh-server/cluster
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}etc/wazuh-server/shared
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}etc/wazuh-server/groups
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}run/wazuh-server/cluster
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}run/wazuh-server/socket
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}usr/share/wazuh-server/lib

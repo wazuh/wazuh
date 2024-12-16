@@ -97,7 +97,7 @@ default_api_configuration = {
 
 def generate_private_key(private_key_path: str, public_exponent: int = 65537,
                          key_size: int = 2048) -> rsa.RSAPrivateKey:
-    """Generate a private key in 'CONFIG_PATH/ssl/server.key'.
+    """Generate a private key in 'CERTS_PATH/api.key'.
 
     Parameters
     ----------
@@ -131,7 +131,7 @@ def generate_private_key(private_key_path: str, public_exponent: int = 65537,
 
 def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
     """Generate a self-signed certificate using a generated private key. The certificate will be created in
-    'CONFIG_PATH/ssl/server.crt'.
+    'CERTS_PATH/api.crt'.
 
     Parameters
     ----------
