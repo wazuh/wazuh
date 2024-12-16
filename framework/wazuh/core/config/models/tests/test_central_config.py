@@ -1,6 +1,14 @@
 import pytest
 
-from wazuh.core.config.models.central_config import Config, EngineConfig, ManagementAPIConfig, CommsAPIConfig, IndexerConfig
+from wazuh.core.config.models.central_config import Config, EngineConfig, ManagementAPIConfig, CommsAPIConfig, \
+    IndexerConfig, ConfigSections
+
+
+def test_config_sections_ko():
+    """Validate that the `ConfigSections` class instantiation with an invalid value raises an error."""
+    value = 'test'
+    with pytest.raises(ValueError, match=rf'.*{value}.*'):
+        ConfigSections(value)
 
 
 @pytest.mark.parametrize('init_values, expected', [
