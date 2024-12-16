@@ -23,7 +23,7 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<BrewWrapper>(ctx.first));
     }
-    else if (ctx.second == PKG)
+    else if (ctx.second == PKG || ctx.second == RCP)
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<PKGWrapper>(ctx.first));
     }

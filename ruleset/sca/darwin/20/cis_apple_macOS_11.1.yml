@@ -34,7 +34,7 @@ checks:
   # 1.1 Verify all Apple provided software is current (Automated) - Not Implemented
 
   # 1.2 Enable Auto Update (Automated)
-  - id: 18000
+  - id: 18001
     title: "Enable Auto Update."
     description: 'Auto Update verifies that your system has the newest security patches and software updates. If "Automatically check for updates" is not selected background updates for new malware definition files from Apple for XProtect and Gatekeeper will not occur.'
     rationale: "It is important that a system has the newest updates applied so as to prevent unauthorized persons from exploiting identified vulnerabilities."
@@ -50,7 +50,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -> 1"
 
   # 1.3 Enable Download new updates when available (Automated)
-  - id: 18001
+  - id: 18002
     title: "Enable Download new updates when available."
     description: 'In the GUI both "Install macOS updates" and "Install app updates from the App Store" are dependent on whether "Download new updates when available" is selected'
     rationale: "It is important that a system has the newest updates downloaded so that they can be applied."
@@ -63,7 +63,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -> 1"
 
   # 1.4 Enable app update installs (Automated)
-  - id: 18002
+  - id: 18003
     title: "Enable app update installs."
     description: "Ensure that application updates are installed after they are available from Apple. These updates do not require reboots or admin privileges for end users."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
@@ -76,7 +76,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> 1"
 
   # 1.5 Enable system data files and security update installs (Automated)
-  - id: 18003
+  - id: 18004
     title: "Enable system data files and security update installs."
     description: "Ensure that system and security updates are installed after they are available from Apple.  This setting enables definition updates for XProtect and Gatekeeper, with this setting in place new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
@@ -93,7 +93,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -> 1"
 
   # 1.6 Enable macOS update installs (Automated)
-  - id: 18004
+  - id: 18005
     title: "Enable macOS update installs."
     description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off so the admin can call the users first to let them know it's ok to install. A dependable repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
@@ -112,7 +112,7 @@ checks:
   ############################################################
 
   # 2.1.1 Turn off Bluetooth, if no paired devices exist (Automated)
-  - id: 18005
+  - id: 18006
     title: "Turn off Bluetooth, if no paired devices exist."
     description: "Bluetooth devices use a wireless communications system that replaces the cables used by other peripherals to connect to a system. It is by design a peer-to-peer network technology and typically lacks centralized administration and security enforcement infrastructure."
     rationale: "Bluetooth is particularly susceptible to a diverse set of security vulnerabilities involving identity detection, location tracking, denial of service, unintended control and access of data and voice channels, and unauthorized device control and data access."
@@ -126,7 +126,7 @@ checks:
       - "c:system_profiler SPBluetoothDataType -> r:Connectable: Yes"
 
   # 2.1.2 Show Bluetooth status in menu bar (Automated)
-  - id: 18006
+  - id: 18007
     title: "Show Bluetooth status in menu bar."
     description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
     rationale: "Enabling Show Bluetooth status in menu bar is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active. "
@@ -142,7 +142,7 @@ checks:
   #2.2 Date & Time
   ############################################################
   # 2.2.1 Enable "Set time and date automatically" (Automated)
-  - id: 18007
+  - id: 18008
     title: "Enable Set time and date automatically."
     description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries."
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes.  This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
@@ -155,7 +155,7 @@ checks:
       - 'c:systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
 
   # 2.2.2 Ensure time set is within appropriate limits (Automated)
-  - id: 18008
+  - id: 18009
     title: "Ensure time set is within appropriate limits."
     description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries. Ensure that time on the computer is within acceptable limits. Truly accurate time is measured within milliseconds, for this audit a drift under four and a half minutes passes the control check. Since Kerberos is one of the important features of macOS integration into Directory systems the guidance here is to warn you before there could be an impact to operations. From the perspective of accurate time this check is not strict, it may be too great for your organization, adjust to a smaller offset value as needed. Note: ntpdate has been deprecated with 10.14. sntp replaces that command."
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features. Audit check is for more than 4 minutes and 30 seconds ahead or behind."
@@ -172,7 +172,7 @@ checks:
   #2.3 Desktop & Screen Saver
   ############################################################
   # 2.3.1 Set an inactivity interval of 20 minutes or less for the screen saver (Automated)
-  - id: 18009
+  - id: 18010
     title: "Set an inactivity interval of 20 minutes or less for the screen saver."
     description: "A locking screensaver is one of the standard security controls to limit access to a computer and the current user's session when the computer is temporarily unused or unattended. In macOS the screensaver starts after a value selected in a drop down menu, 10 minutes and 20 minutes are both options and either is acceptable. Any value can be selected through the command line or script but a number that is not reflected in the GUI can be problematic. 20 minutes is the default for new accounts."
     rationale: "Setting an inactivity interval for the screensaver prevents unauthorized persons from viewing a system left unattended for an extensive period of time."
@@ -185,7 +185,7 @@ checks:
       - "c:defaults -currentHost read com.apple.screensaver idleTime -> r:does not exist"
 
   # 2.3.2 Secure screen saver corners (Automated)
-  - id: 18010
+  - id: 18011
     title: "Secure screen saver corners."
     description: "Hot Corners can be configured to disable the screen saver by moving the mouse cursor to a corner of the screen."
     rationale: "Setting a hot corner to disable the screen saver poses a potential security risk since an unauthorized person could use this to bypass the login screen and gain access to the system."
@@ -206,7 +206,7 @@ checks:
   #2.4 Sharing
   ############################################################
   # 2.4.1 Disable Remote Apple Events (Automated)
-  - id: 18011
+  - id: 18012
     title: "Disable Remote Apple Events."
     description: "Apple Events is a technology that allows one program to communicate with other programs. Remote Apple Events allows a program on one computer to communicate with a program on a different computer."
     rationale: "Disabling Remote Apple Events mitigates the risk of an unauthorized program gaining access to the system."
@@ -219,7 +219,7 @@ checks:
       - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
 
   # 2.4.2 Disable Internet Sharing (Automated)
-  - id: 18012
+  - id: 18013
     title: "Disable Internet Sharing."
     description: "Internet Sharing uses the open source natd process to share an internet connection with other computers and devices on a local network. This allows the Mac to function as a router and share the connection to other, possibly unauthorized, devices."
     rationale: "Disabling Internet Sharing reduces the remote attack surface of the system."
@@ -232,7 +232,7 @@ checks:
       - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
 
   # 2.4.3 Disable Screen Sharing (Automated)
-  - id: 18013
+  - id: 18014
     title: "Disable Screen Sharing."
     description: "Screen sharing allows a computer to connect to another computer on a network and display the computer's screen. While sharing the computer's screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer."
     rationale: "Disabling screen sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
@@ -245,7 +245,7 @@ checks:
       - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.screensharing\" => true''" -> 1'
 
   # 2.4.4 Disable Printer Sharing (Automated)
-  - id: 18014
+  - id: 18015
     title: "Disable Printer Sharing."
     description: "By enabling Printer sharing the computer is set up as a print server to accept print jobs from other computers. Dedicated print servers or direct IP printing should be used instead."
     rationale: "Disabling Printer Sharing mitigates the risk of attackers attempting to exploit the print server to gain access to the system."
@@ -260,7 +260,7 @@ checks:
       - 'c:sh -c "cupsctl | grep _share_printers | cut -d ''='' -f2" -> 0'
 
   # 2.4.5 Disable Remote Login (Automated)
-  - id: 18015
+  - id: 18016
     title: "Disable Remote Login."
     description: "Remote Login allows an interactive terminal connection to a computer."
     rationale: "Disabling Remote Login mitigates the risk of an unauthorized person gaining access to the system via Secure Shell (SSH). While SSH is an industry standard to connect to posix servers, the scope of the benchmark is for Apple macOS clients, not servers. macOS does have an IP based firewall available (pf, ipfw has been deprecated) that is not enabled or configured. There are more details and links in section 7.5. macOS no longer has TCP Wrappers support built-in and does not have strong Brute-Force password guessing mitigations, or frequent patching of openssh by Apple. Most macOS computers are mobile workstations, managing IP based firewall rules on mobile devices can be very resource intensive. All of these factors can be parts of running a hardened SSH server."
@@ -273,7 +273,7 @@ checks:
       - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
 
   # 2.4.6 Disable DVD or CD Sharing (Automated)
-  - id: 18016
+  - id: 18017
     title: "Disable DVD or CD Sharing."
     description: "DVD or CD Sharing allows users to remotely access the system's optical drive."
     rationale: "Disabling DVD or CD Sharing minimizes the risk of an attacker using the optical drive as a vector for attack and exposure of sensitive data."
@@ -286,7 +286,7 @@ checks:
       - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.ODSAgent\" => true''" -> 1'
 
   # 2.4.7 Disable Bluetooth Sharing (Automated)
-  - id: 18017
+  - id: 18018
     title: "Disable Bluetooth Sharing ."
     description: "Bluetooth Sharing allows files to be exchanged with Bluetooth enabled devices."
     rationale: "Disabling Bluetooth Sharing minimizes the risk of an attacker using Bluetooth to remotely attack the system."
@@ -299,7 +299,7 @@ checks:
       - "c:defaults -currentHost read com.apple.Bluetooth PrefKeyServicesEnabled -> 0"
 
   # 2.4.8 Disable File Sharing (Automated)
-  - id: 18018
+  - id: 18019
     title: "Disable File Sharing."
     description: "Apple's File Sharing uses a combination of SMB (Windows sharing) and AFP (Mac sharing)"
     rationale: "By disabling file sharing, the remote attack surface and risk of unauthorized access to files stored on the system is reduced."
@@ -312,7 +312,7 @@ checks:
       - 'c:sh -c "launchctl print-disabled system | grep -c ''\"com.apple.smbd\" => true''" -> 1'
 
   # 2.4.9 Disable Remote Management (Automated)
-  - id: 18019
+  - id: 18020
     title: "Disable Remote Management."
     description: "Remote Management is the client portion of Apple Remote Desktop (ARD). Remote Management can be used by remote administrators to view the current Screen, install software, report on, and generally manage client Macs. The screen sharing options in Remote Management are identical to those in the Screen Sharing section. In fact, only one of the two can be configured. If Remote Management is used, refer to the Screen Sharing section above on issues regard screen sharing. Remote Management should only be enabled when a Directory is in place to manage the accounts with access. Computers will be available on port 5900 on a macOS System and could accept connections from untrusted hosts depending on the configuration, definitely a concern for mobile systems."
     rationale: "Remote management should only be enabled on trusted networks with strong user controls present in a Directory system. Mobile devices without strict controls are vulnerable to exploit and monitoring."
@@ -325,7 +325,7 @@ checks:
       - "not p:ARDAgent"
 
   # 2.4.10 Disable Content Caching (Automated)
-  - id: 18020
+  - id: 18021
     title: "Disable Content Caching."
     description: "Starting with 10.13 (macOS High Sierra) Apple introduced a service to make it easier deploy data from Apple, including software updates, where there are bandwidth constraints to the Internet and fewer constraints and greater bandwidth on the local subnet. This capability can be very valuable for organizations that have throttled and possibly metered Internet connections. In heterogeneous enterprise networks with multiple subnets the effectiveness of this capability would be determined on how many Macs were on each subnet at the time new large updates were made available upstream. This capability requires the use of mac OS clients as P2P nodes for updated Apple content. Unless there is a business requirement to manage operational Internet connectivity bandwidth user endpoints should not store content and act as a cluster to provision data."
     rationale: "The main use case for Mac computers is as mobile user endpoints. P2P sharing services should not be enabled on laptops that are using untrusted networks. Content Caching can allow a computer to be a server for local nodes on an untrusted network. While there are certainly logical controls that could be used to mitigate risk they add to the management complexity, since the value of the service is in specific use cases organizations with the use case described above can accept risk as necessary."
@@ -338,7 +338,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.AssetCache.plist Activated -> 0"
 
   # 2.4.11 Disable Media Sharing (Automated)
-  - id: 18021
+  - id: 18022
     title: "Disable Media Sharing."
     description: "Starting with macOS 10.15 Apple has provided a control to allow a user to share Apple downloaded content on all Apple devices that are signed in with the same Apple ID. This allows a user to share downloaded Movies, Music or TV shows with other controlled macOS, iOS and iPadOS devices as well as photos with Apple TVs. With this capability guest users can also use media downloaded on the computer. Best practice is not to use the computer as a server but to utilize Apple's cloud storage to download and use content stored there if content stored with Apple is used on multiple devices."
     rationale: "Disabling Media Sharing reduces the remote attack surface of the system."
@@ -353,7 +353,7 @@ checks:
       - "c:defaults read com.apple.amp.mediasharingd home-sharing-enabled -> 0"
 
   # 2.4.12 Ensure AirDrop Is Disabled (Automated)
-  - id: 18022
+  - id: 18069
     title: "Ensure AirDrop Is Disabled."
     description: "While there are positives to AirDrop, there are privacy concerns that could expose personal information. For that reason, AirDrop should be disabled, and should only be enabled when needed and disabled afterwards."
     rationale: "AirDrop can allow malicious files to be downloaded from unknown sources. Contacts Only limits may expose personal information to devices in the same area."

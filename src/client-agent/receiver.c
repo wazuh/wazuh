@@ -218,6 +218,11 @@ int receive_msg()
                     continue;
                 }
 
+                if (w_ref_parent_folder(validate_file)) {
+                    mwarn("Invalid file '%s', vulnerable to directory traversal attack. Ignoring.", validate_file);
+                    continue;
+                }
+
                 *validate_file = '\0';
 
                 /* Copy the file sum */

@@ -135,7 +135,7 @@
 #define FIM_PROCESS_PRIORITY                "(6320): Setting process priority to: '%d'"
 #define FIM_SEND                            "(6321): Sending FIM event: %s"
 #define FIM_AUDIT_ALREADY_ADDED             "(6322): Already added audit rule for monitoring directory: '%s'"
-#define FIM_REALTIME_DIRECTORYCHANGES       "(6323): Unable to set 'ReadDirectoryChangesW' for directory: '%s'"
+#define FIM_REALTIME_DIRECTORYCHANGES       "(6323): Unable to set 'ReadDirectoryChangesW' for path: '%s'. Error(%lu): '%s'"
 #define FIM_HASHES_FAIL                     "(6324): Couldn't generate hashes for '%s'"
 #define FIM_EXTRACT_PERM_FAIL               "(6325): It was not possible to extract the permissions of '%s'. Error: %d"
 #define FIM_RBTREE_DUPLICATE_INSERT         "(6326): Couldn't insert entry, duplicate path: '%s'"

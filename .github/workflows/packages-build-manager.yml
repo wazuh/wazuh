@@ -4,6 +4,12 @@ name: Package - Build Wazuh manager
 on:
   workflow_dispatch:
     inputs:
+      upload_package:
+        description: |
+          Set to true to upload the package to the S3 bucket. By default is 'true'
+        default: true
+        type: boolean
+        required: false
       docker_image_tag:
         description: |
           Tag name of the Docker image to be downloaded.
@@ -92,6 +98,10 @@ on:
 
 jobs:
   Build-manager-packages:
+    env:
+      SHOULD_UPLOAD: ${{ inputs.upload_package }}
+      SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
+
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
@@ -161,8 +171,10 @@ jobs:
 
       - name: Test install built manager
         run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
           if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
-          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
+          sudo docker run -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
+          
           # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
           if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
             echo "Installation successfully."
@@ -171,7 +183,20 @@ jobs:
             exit 1;
           fi
 
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          expected_files: manager_base_${{ inputs.system }}.csv
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
+          size_check: "false"
+          ignore: "site-packages,/var/ossec/framework/python"
+
       - name: Set up AWS CLI
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
@@ -179,6 +204,7 @@ jobs:
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload package to S3
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
         working-directory: packages
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
@@ -186,7 +212,7 @@ jobs:
           echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
-        if: ${{ inputs.checksum }}
+        if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
@@ -194,6 +220,7 @@ jobs:
           echo "S3 sha512 URI: ${s3uri}"
 
       - name: Upload debug symbols to S3
+        if: ${{ env.SHOULD_UPLOAD == 'true' }}
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${symbols_name}"

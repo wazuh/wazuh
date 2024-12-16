@@ -53,6 +53,8 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/System/Applications", PKG},
     { "/System/Applications/Utilities", PKG},
     { "/System/Library/CoreServices", PKG},
+    { "/private/var/db/receipts", RCP},
+    { "/Library/Apple/System/Library/Receipts", RCP},
     { "/usr/local/Cellar", BREW},
     { "/opt/local/var/macports/registry", MACPORTS}
 };
@@ -150,25 +152,23 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
         for (const auto& package : packages)
         {
-            if (PKG == pkgType)
+            if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
+                    (RCP == pkgType && Utils::endsWith(package, ".plist")))
             {
-                if (Utils::endsWith(package, ".app"))
+                try
                 {
-                    try
-                    {
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+                    nlohmann::json jsPackage;
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
 
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                        {
-                            // Only return valid content packages
-                            callback(jsPackage);
-                        }
-                    }
-                    catch (const std::exception& e)
+                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                     {
-                        std::cerr << e.what() << std::endl;
+                        // Only return valid content packages
+                        callback(jsPackage);
                     }
+                }
+                catch (const std::exception& e)
+                {
+                    std::cerr << e.what() << std::endl;
                 }
             }
             else if (BREW == pkgType)

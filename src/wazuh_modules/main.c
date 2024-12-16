@@ -177,7 +177,7 @@ void wm_cleanup()
     // Delete PID file
 
     if (DeletePID(ARGV0) < 0) {
-        merror("Couldn't delete PID file.");
+        mdebug1("Couldn't delete PID file.");
     }
 }
 

@@ -37,7 +37,7 @@ private:
     void download(UpdaterContext& context) override
     {
         // Set the content type as offset.
-        context.data.at("type") = "offsets";
+        context.data["type"] = "offsets";
 
         logDebug2(WM_CONTENTUPDATER, "Initial API offset: %d", context.currentOffset);
         // Get the parameters needed to download the content.

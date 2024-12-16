@@ -214,7 +214,11 @@ ifeq ($(INSTALLDIR),)
 	INSTALLDIR = /var/ossec
 endif
 		CMAKE_OPTS+=-DINSTALL_PREFIX=${INSTALLDIR}
+ifeq (${uname_S},AIX)
+		OSSEC_LDFLAGS+='-Wl,-blibpath:${INSTALLDIR}/lib:/opt/freeware/lib:/usr/lib:/lib'
+else
 		OSSEC_LDFLAGS+='-Wl,-blibpath:${INSTALLDIR}/lib:/usr/lib:/lib'
+endif
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+='-Wl,-blibpath:${INSTALLDIR}/lib:/usr/lib:/lib'
 		PATH:=${PATH}:/usr/vac/bin
@@ -1974,7 +1978,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 		ar -x libwazuhext/$$lib; \
 		mv *.o libwazuhext/; \
 	done
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -Wl,-blibpath:/opt/freeware/lib:/usr/lib:/lib -latomic
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -latomic
 else
 ifeq (${uname_S},HP-UX)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
