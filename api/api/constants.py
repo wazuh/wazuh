@@ -4,8 +4,6 @@
 from wazuh.core import common
 
 CERTS_PATH = common.WAZUH_ETC / 'certs'
-SECURITY_PATH = common.WAZUH_ETC / 'api' / 'configuration' / 'security'
-SECURITY_CONFIG_PATH = SECURITY_PATH / 'security.yaml'
 
 INSTALLATION_UID_PATH = common.WAZUH_LIB / 'installation_uid'
 INSTALLATION_UID_KEY = 'installation_uid'
