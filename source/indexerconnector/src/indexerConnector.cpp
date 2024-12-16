@@ -30,7 +30,7 @@ constexpr auto PASSWORD_KEY {"password"};
 constexpr auto ELEMENTS_PER_BULK {1000};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
-constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
+constexpr auto MERGED_CA_PATH {"/var/lib/wazuh-server/tmp/root-ca-merged.pem"};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
