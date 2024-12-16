@@ -42,7 +42,7 @@ class CommandsManager(BaseIndex):
                 url=f'{self.PLUGIN_URL}/commands',
                 body={'commands': commands_to_send},
             )
-        except exceptions.RequestError as e:
+        except (exceptions.RequestError, exceptions.TransportError) as e:
             raise WazuhError(1761, extra_message=str(e))
 
         document_ids = []

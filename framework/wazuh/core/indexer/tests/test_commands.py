@@ -57,9 +57,13 @@ class TestCommandsManager:
         assert response.document_ids == document_ids
         assert response.result == return_value.get(IndexerKey.RESULT)
     
-    async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
+    @pytest.mark.parametrize("exc", [
+        exceptions.RequestError,
+        exceptions.TransportError
+    ])
+    async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock, exc):
         """Check the error handling of the `create` method."""
-        client_mock.transport.perform_request.side_effect = exceptions.RequestError(400, 'error')
+        client_mock.transport.perform_request.side_effect = exc(400, 'error')
         with pytest.raises(WazuhError, match='.*1761.*'):
             await index_instance.create([self.create_command])
 
