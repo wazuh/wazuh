@@ -3,6 +3,53 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.2]
 
+### Manager
+
+#### Added
+
+- Added new compilation flags for the Vulnerability Detector module. ([#26652](https://github.com/wazuh/wazuh/pull/26652))  
+
+#### Fixed
+
+- Fixed inconsistent vulnerability severity categorization by correcting CVSS version prioritization. ([#26720](https://github.com/wazuh/wazuh/pull/26720))  
+- Fixed a potential crash in Wazuh-DB by improving the PID parsing method. ([#26769](https://github.com/wazuh/wazuh/pull/26769))  
+
+### Agent
+
+#### Added
+
+- Improved Syscollector hotfix coverage on Windows by integrating WMI and WUA APIs. ([#26706](https://github.com/wazuh/wazuh/pull/26706))
+- Extended Syscollector capabilities to detect installed .pkg packages. ([#26782](https://github.com/wazuh/wazuh/pull/26782))
+
+#### Changed
+
+- Updated standard Python and NPM package location in Syscollector to align with common installation paths. ([#26236](https://github.com/wazuh/wazuh/pull/26236))
+
+### Agent
+
+#### Added
+
+- Support remote (WPK) agent upgrade on arm64 macOS. ([#18545](https://github.com/wazuh/wazuh/pull/18545))
+
+#### Fixed
+
+- Fixed a bug that might make wazuh-modulesd crash on startup. ([#26647](https://github.com/wazuh/wazuh/pull/26647))
+- Fixed invalid UTF-8 character checking in FIM. Thanks to @zbalkan. ([#26289](https://github.com/wazuh/wazuh/pull/26289))
+- Improved URL validations in Maltiverse Integration. ([#27100](https://github.com/wazuh/wazuh/pull/27100))
+
+### Ruleset
+
+#### Added
+
+- Added SCA content for Windows Server 2025. ([#26732](https://github.com/wazuh/wazuh/issues/26732))
+- Added SCA content for Fedora 41. ([#26736](https://github.com/wazuh/wazuh/issues/26736))
+- Create SCA policy for Distribution Independent Linux. ([#26837](https://github.com/wazuh/wazuh/issues/26837))
+- Create SCA policy for Ubuntu 24.04 LTS. ([#23194](https://github.com/wazuh/wazuh/issues/23194))
+
+#### Changed
+
+- SCA rule Improvement for MacOS 15 SCA. ([#26982](https://github.com/wazuh/wazuh/issues/26982))
+
 
 ## [v4.10.1]
 
