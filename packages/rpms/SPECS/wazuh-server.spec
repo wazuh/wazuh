@@ -77,7 +77,6 @@ scl enable devtoolset-11 ./install.sh
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
 
 # Copy the installed files into RPM_BUILD_ROOT directory
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}run/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/wazuh-server
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}usr/bin
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}var/log
@@ -90,7 +89,6 @@ cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-apid ${RPM_BUILD_ROOT}%{
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-comms-apid ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
-cp -pr %{_localstatedir}run/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}run/
 cp -pr %{_localstatedir}var/lib/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/
 cp -pr %{_localstatedir}var/log/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/log/
 cp -pr %{_localstatedir}usr/share/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/
@@ -177,7 +175,6 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}usr/bin/wazuh-apid
   rm -rf %{_localstatedir}usr/bin/wazuh-comms-apid
   rm -rf %{_localstatedir}usr/bin/wazuh-server
-  rm -rf %{_localstatedir}run/wazuh-server
   rm -rf %{_localstatedir}var/lib/wazuh-server
   rm -rf %{_localstatedir}usr/share/wazuh-server
   rm -rf %{_localstatedir}etc/wazuh-server
@@ -232,7 +229,6 @@ rm -fr %{buildroot}
 
 %files
 %defattr(-, %{_wazuh_user}, %{_wazuh_group})
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}run/wazuh-server
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/vd
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/tmp
@@ -241,11 +237,9 @@ rm -fr %{buildroot}
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/log/wazuh-server
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/log/wazuh-server/engine
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/certs
+%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/api
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/cluster
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/groups
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}run/wazuh-server/cluster
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}run/wazuh-server/socket
+%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/shared
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/lib
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/framework
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}usr/share/wazuh-server/api

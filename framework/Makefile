@@ -12,7 +12,6 @@ SHARE_INSTALLDIR       ?= /usr/share/${WAZUH_SERVER}
 LOG_INSTALLDIR         ?= /var/log/${WAZUH_SERVER}
 LIB_INSTALLDIR         ?= /var/lib/${WAZUH_SERVER}
 ETC_INSTALLDIR         ?= /etc/${WAZUH_SERVER}
-RUN_INSTALLDIR         ?= /run/${WAZUH_SERVER}
 BIN_INSTALLDIR         ?= ${SHARE_INSTALLDIR}/bin
 
 CC           = gcc
@@ -54,11 +53,6 @@ install:
 	$(INSTALL_DIR) $(ETC_INSTALLDIR)/cluster
 	$(INSTALL_DIR) $(ETC_INSTALLDIR)/certs
 	$(INSTALL_DIR) $(ETC_INSTALLDIR)/groups
-
-	# RUN
-	$(INSTALL_DIR) $(RUN_INSTALLDIR)
-	$(INSTALL_DIR) $(RUN_INSTALLDIR)/cluster
-	$(INSTALL_DIR) $(RUN_INSTALLDIR)/socket
 
 	# SHARE
 	$(INSTALL_FILE) scripts/*.py ${SHARE_INSTALLDIR}/framework/scripts

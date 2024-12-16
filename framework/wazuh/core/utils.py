@@ -7,6 +7,7 @@ import hashlib
 import json
 import operator
 import os
+import psutil
 import re
 import stat
 import sys
@@ -16,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, path
-import psutil
+from pathlib import Path
 from shutil import move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 
@@ -36,6 +37,18 @@ t_cache = TTLCache(maxsize=4500, ttl=60)
 
 GROUP_FILE_EXT = '.yml'
 
+
+def create_wazuh_dir(dirpath: Path):
+    """Create a directory if it doesn't exist and assign ownership.
+
+    Parameters
+    ----------
+    dirpath : Path
+        Directory to create.
+    """
+    if not dirpath.exists():
+        dirpath.mkdir()
+        chown(dirpath, common.wazuh_uid(), common.wazuh_gid())
 
 def assign_wazuh_ownership(filepath: str):
     """Create a file if it doesn't exist and assign ownership.
