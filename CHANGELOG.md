@@ -1,6 +1,27 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.10.1]
+
+### Manager  
+
+#### Fixed  
+- Fixed integration tests for Remoted to ensure proper execution. ([#25939](https://github.com/wazuh/wazuh/pull/25939))  
+- Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled. ([#26132](https://github.com/wazuh/wazuh/pull/26132))  
+- Fixed concurrent access errors in the Vulnerability Detector's OS scan column family. ([#26378](https://github.com/wazuh/wazuh/pull/26378))  
+
+### Agent
+
+#### Added
+
+- Improved Syscollector hotfix coverage on Windows by integrating WMI and WUA APIs. ([#26706](https://github.com/wazuh/wazuh/pull/26706))
+- Extended Syscollector capabilities to detect installed .pkg packages. ([#26782](https://github.com/wazuh/wazuh/pull/26782))
+
+#### Changed
+
+- Updated standard Python and NPM package location in Syscollector to align with common installation paths. ([#26236](https://github.com/wazuh/wazuh/pull/26236))
+
+
 ## [v4.10.0]
 
 ### Manager
