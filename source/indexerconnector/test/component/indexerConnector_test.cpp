@@ -33,6 +33,8 @@
 
 #define BUFFER_SIZE 256
 
+const auto MERGED_CA_PATH {"./root-ca-merged.pem"};
+
 class IndexerConnectorTest : public ::testing::Test
 {
 protected:
@@ -207,7 +209,7 @@ extern "C" struct group* __wrap_getgrnam(const char* name)
 extern "C" int __wrap_chown(const char* path, uid_t owner, gid_t group)
 {
     // Simulate a successful chown operation for the "/tmp/success" file
-    if (strcmp(path, "/var/lib/wazuh-server/tmp/root-ca-merged.pem") == 0)
+    if (strcmp(path, MERGED_CA_PATH) == 0)
     {
         return 0; // Return success
     }
@@ -265,7 +267,6 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
     // Setup for the test
     const std::string certFileOne = "./root-ca-one.pem";
     const std::string certFileTwo = "./root-ca-two.pem";
-    const std::string mergedCertFile = "/var/lib/wazuh-server/tmp/root-ca-merged.pem";
 
     // Create the first certificate file
     std::ofstream outputFile(certFileOne);
@@ -282,14 +283,15 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
                                            .hosts = {A_ADDRESS},
                                            .sslOptions = {.cacert = {certFileOne, certFileTwo},
                                                           .cert = "/etc/filebeat/certs/filebeat.pem",
-                                                          .key = "/etc/filebeat/certs/filebeat-key.pem"},
+                                                          .key = "/etc/filebeat/certs/filebeat-key.pem",
+                                                          .merged_ca_path = MERGED_CA_PATH},
                                            .timeout = INDEXER_TIMEOUT};
 
     // Attempt to create the connector and expect no exceptions for valid certificates
     ASSERT_NO_THROW({ IndexerConnector indexerConnector(indexerConfig); });
 
     // Check that the content of the merged file is as expected
-    std::ifstream file(mergedCertFile);
+    std::ifstream file(MERGED_CA_PATH);
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     file.close();
 
