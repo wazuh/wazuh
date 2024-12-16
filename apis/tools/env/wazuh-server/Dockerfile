@@ -53,8 +53,8 @@ RUN /tmp/build.sh
 
 FROM ubuntu:24.04 AS server
 
-ENV USER=wazuh
-ENV GROUP=wazuh
+ENV USER=wazuh-server
+ENV GROUP=wazuh-server
 
 # Add group and user
 RUN groupadd -f "$GROUP" && useradd "$USER" -d "/" -s "/sbin/nologin" -g "$GROUP"
