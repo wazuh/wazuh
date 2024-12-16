@@ -1,4 +1,23 @@
 TEMPLATE:# AWS Cloudtrail event names - https://www.gorillastack.com/news/important-aws-cloudtrail-security-events-tracking used as reference
+CreateTrail:Cloudtrail
+DeleteTrail:Cloudtrail
+UpdateTrail:Cloudtrail
+DeleteOrganizationConfigRule:AWS Config
+DeleteConfigurationAggregator:AWS Config
+DeleteConfigurationRecorder:AWS Config
+DeleteConformancePack:AWS Config
+DeleteOrganizationConformancePack:AWS Config
+DeleteRemediationConfiguration:AWS Config
+DeleteRetentionConfiguration:AWS Config
+DeleteGlobalCluster:RDS
+CreateGlobalCluster:RDS
+StopDBCluster:RDS
+StopDBInstance:RDS
+StartExportTask:RDS
+PasswordRecoveryRequested:IAM
+ScheduleKeyDeletion:Legacy Wazuh CDB
+AssumeRole:STS
+GetCallerIdentity:STS
 AttachLoadBalancers:Autoscaling
 DetachLoadBalancers:Autoscaling
 PutScalingPolicy:Autoscaling
