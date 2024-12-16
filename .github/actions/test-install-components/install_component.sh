@@ -39,3 +39,10 @@ fi
 
 WAZUH_MANAGER="10.0.0.2" $linux $install "/packages/$package_name"| tee /packages/status.log
 grep -i " installed.*wazuh-$target" $installed_log| tee -a /packages/status.log
+
+# Retrieve wazuh gid and uid
+wazuh_gid=$(getent group wazuh | cut -d: -f3)
+wazuh_uid=$(getent passwd wazuh | cut -d: -f3)
+
+echo $wazuh_gid > /tests/wazuh_gid
+echo $wazuh_uid > /tests/wazuh_uid

@@ -49,7 +49,7 @@ namespace PackageLinuxHelper
             ret["architecture"] = package.architecture;
             ret["source"]       = UNKNOWN_VALUE;
             ret["format"]       = "rpm";
-            ret["vendor"]       = package.vendor;
+            ret["vendor"]       = package.vendor.empty() ? UNKNOWN_VALUE : package.vendor;
             ret["description"]  = package.description;
             // The multiarch field won't have a default value
         }

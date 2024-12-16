@@ -28,8 +28,10 @@ requirements:
     - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*10\p13'
 
 checks:
+  # 1.1 Verify all Apple provided software is current (Scored) - Not Implemented
+
   # 1.2 Enable Auto Update (Scored)
-  - id: 9500
+  - id: 9501
     title: "Enable Auto Update"
     description: 'Auto Update verifies that your system has the newest security patches and software updates. If "Automatically check for updates" is not selected background updates for new malware definition files from Apple for XProtect and Gatekeeper will not occur.'
     rationale: "It is important that a system has the newest updates applied so as to prevent unauthorized persons from exploiting identified vulnerabilities."
@@ -44,7 +46,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -> 1"
 
   # 1.3 Enable app update installs (Scored)
-  - id: 9501
+  - id: 9502
     title: "Enable app update installs"
     description: "Ensure that application updates are installed after they are available from Apple. These updates do not require reboots or admin privileges for end users."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
@@ -56,7 +58,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> 1"
 
   # 1.4 Enable system data files and security update installs (Scored)
-  - id: 9502
+  - id: 9503
     title: "Enable system data files and security update installs"
     description: "Ensure that system and security updates are installed after they are available from Apple.  This setting enables definition updates for XProtect and Gatekeeper, with this setting in place new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
@@ -72,7 +74,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -> 1"
 
   # 1.5 Enable macOS update installs (Scored)
-  - id: 9503
+  - id: 9504
     title: "Enable macOS update installs"
     description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off so the admin can call the users first to let them know it's ok to install. A dependable repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
@@ -84,7 +86,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -> 1"
 
   # 2.2.1 Enable "Set time and date automatically" (Scored)
-  - id: 9504
+  - id: 9505
     title: 'Enable "Set time and date automatically"'
     description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries."
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes.  This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
@@ -96,7 +98,7 @@ checks:
       - 'c:systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
 
   # 2.4.1 Disable Remote Apple Events (Scored)
-  - id: 9505
+  - id: 9506
     title: "Disable Remote Apple Events"
     description: "Apple Events is a technology that allows one program to communicate with other programs. Remote Apple Events allows a program on one computer to communicate with a program on a different computer."
     rationale: "Disabling Remote Apple Events mitigates the risk of an unauthorized program gaining access to the system."
@@ -108,7 +110,7 @@ checks:
       - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
 
   # 2.4.4 Disable Printer Sharing (Scored)
-  - id: 9506
+  - id: 9507
     title: "Disable Printer Sharing"
     description: "By enabling Printer sharing the computer is set up as a print server to accept print jobs from other computers. Dedicated print servers or direct IP printing should be used instead."
     rationale: "Disabling Printer Sharing mitigates the risk of attackers attempting to exploit the print server to gain access to the system."
@@ -120,7 +122,7 @@ checks:
       - 'c:system_profiler SPPrintersDataType -> r:Shared:\s*\t*Yes'
 
   # 2.4.5 Disable Remote Login (Scored)
-  - id: 9507
+  - id: 9508
     title: "Disable Remote Login"
     description: "Remote Login allows an interactive terminal connection to a computer."
     rationale: "Disabling Remote Login mitigates the risk of an unauthorized person gaining access to the system via Secure Shell (SSH). While SSH is an industry standard to connect to posix servers, the scope of the benchmark is for Apple macOS clients, not servers."
@@ -132,7 +134,7 @@ checks:
       - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
 
   # 2.4.8 Disable File Sharing (Scored)
-  - id: 9508
+  - id: 9509
     title: "Disable File Sharing"
     description: "Apple's File Sharing uses a combination of SMB (Windows sharing) and AFP (Mac sharing)"
     rationale: "By disabling file sharing, the remote attack surface and risk of unauthorized access to files stored on the system is reduced."
@@ -145,7 +147,7 @@ checks:
       - 'f:/Library/Preferences/SystemConfiguration/com.apple.smb.server.plist -> r:\<array|\<Array|\<ARRAY'
 
   # 2.5.1 Disable "Wake for network access" (Scored)
-  - id: 9509
+  - id: 9510
     title: 'Disable "Wake for network access"'
     description: "This feature allows other users to be able to access your computer's shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on unmanaged network where untrusted devices could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
@@ -157,7 +159,7 @@ checks:
       - 'c:pmset -g -> r:womp && !r:\s0$'
 
   # 2.6.1.1 Enable FileVault (Scored)
-  - id: 9510
+  - id: 9511
     title: "Enable FileVault"
     description: "FileVault secures a system's data by automatically encrypting its boot volume and requiring a password or recovery key to access it."
     rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it."
@@ -169,7 +171,7 @@ checks:
       - 'c:fdesetup status -> r:^FileVault\s*\t*is\s*\t*On$'
 
   # 2.6.2 Enable Gatekeeper (Scored)
-  - id: 9511
+  - id: 9512
     title: "Enable Gatekeeper"
     description: "Gatekeeper is Apple's application white-listing control that restricts downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization."
     rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
@@ -181,7 +183,7 @@ checks:
       - 'c:spctl --status -> r:^assessments\s*\t*enabled$'
 
   # 2.6.3 Enable Firewall (Scored)
-  - id: 9512
+  - id: 9513
     title: "Enable Firewall"
     description: "A firewall is a piece of software that blocks unwanted incoming connections to a system.  Apple has posted general documentation about the application firewall."
     rationale: "A firewall minimizes the threat of unauthorized users from gaining access to your system while connected to a network or the Internet."
@@ -195,7 +197,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
 
   # 2.6.4 Enable Firewall Stealth Mode (Scored)
-  - id: 9513
+  - id: 9514
     title: "Enable Firewall Stealth Mode"
     description: "While in Stealth mode the computer will not respond to unsolicited probes, dropping that traffic."
     rationale: "Stealth mode on the firewall minimizes the threat of system discovery tools while connected to a network or the Internet."
@@ -209,7 +211,7 @@ checks:
       - "c:/usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode -> r:^Stealth mode enabled"
 
   # 2.10 Enable Secure Keyboard Entry in terminal.app (Scored)
-  - id: 9514
+  - id: 9515
     title: "Enable Secure Keyboard Entry in terminal.app"
     description: "Secure Keyboard Entry prevents other applications on the system and/or network from detecting and recording what is typed into Terminal."
     rationale: "Enabling Secure Keyboard Entry minimizes the risk of a key logger from detecting what is entered in Terminal."
@@ -221,7 +223,7 @@ checks:
       - "c:defaults read -app Terminal SecureKeyboardEntry -> 1"
 
   # 2.11 Java 6 is not the default Java runtime (Scored)
-  - id: 9515
+  - id: 9516
     title: "Java 6 is not the default Java runtime"
     description: "Apple had made Java part of the core Operating System for macOS. Apple is no longer providing Java updates for macOS and updated JREs and JDK are made available by Oracle.  The latest version of Java 6 made available by Apple has many unpatched vulnerabilities and should not be the default runtime for Java applets that request one from the Operating System"
     rationale: "Java has been one of the most exploited environments and Java 6, which was provided as an OS component by Apple, is no longer maintained by Apple or Oracle. The old versions provided by Apple are both unsupported and missing the more modern security controls that have limited current exploits. The EOL version may still be installed and should be removed from the computer or not be in the default path."
@@ -233,7 +235,7 @@ checks:
       - "c:/usr/libexec/java_home -> r:1.6.0"
 
   # 2.13 Ensure EFI version is valid and being regularly checked (Scored)
-  - id: 9516
+  - id: 9517
     title: "Ensure EFI version is valid and being regularly checked"
     description: "In order to mitigate firmware attacks Apple has created a automated Firmware check to ensure that the EFI version running is a known good version from Apple. There is also an automated process to check it every seven days."
     rationale: "If the Firmware of a computer has been compromised the Operating System that the Firmware loads cannot be trusted either."
@@ -246,7 +248,7 @@ checks:
       - 'c:launchctl list -> r:^-\s*\t*0\s*\t*com.apple.driver.eficheck$'
 
   # 3.1 Enable security auditing (Scored)
-  - id: 9517
+  - id: 9518
     title: "Enable security auditing"
     description: "macOS's audit facility, auditd, receives notifications from the kernel when certain system calls, such as open, fork, and exit, are made. These notifications are captured and written to an audit log."
     rationale: "Logs generated by auditd may be useful when investigating a security incident as they may help reveal the vulnerable application and the actions taken by a malicious actor."
@@ -258,7 +260,7 @@ checks:
       - "c:launchctl list -> r:com.apple.auditd"
 
   # 3.2 Configure Security Auditing Flags (Scored)
-  - id: 9518
+  - id: 9519
     title: "Configure Security Auditing Flags"
     description: "Auditing is the capture and maintenance of information about security-related events."
     rationale: "Maintaining an audit trail of system activity logs can help identify configuration errors, troubleshoot service disruptions, and analyze compromises or attacks that have occurred, have begun, or are about to begin. Audit logs are necessary to provide a trail of evidence in case the system or network is compromised."
@@ -270,7 +272,7 @@ checks:
       - "f:/etc/security/audit_control -> r:^flags && r:lo && r:ad && r:fd && r:fm && r:-all"
 
   # 4.1 Disable Bonjour advertising service (Scored)
-  - id: 9519
+  - id: 9520
     title: "Disable Bonjour advertising service"
     description: "Bonjour is an auto-discovery mechanism for TCP/IP devices which enumerate devices and services within a local subnet. DNS on macOS is integrated with Bonjour and should not be turned off, but the Bonjour advertising service can be disabled."
     rationale: 'Bonjour can simplify device discovery from an internal rogue or compromised host. An attacker could use Bonjour''s multicast DNS feature to discover a vulnerable or poorly- configured service or additional information to aid a targeted attack. Implementing this control disables the continuous broadcasting of "I''m here!" messages. Typical end-user endpoints should not have to advertise services to other computers.'
@@ -282,7 +284,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -> 1"
 
   # 4.4 Ensure http server is not running (Scored)
-  - id: 9520
+  - id: 9521
     title: "Ensure http server is not running"
     description: "macOS used to have a graphical front-end to the embedded Apache web server in the Operating System. Personal web sharing could be enabled to allow someone on another computer to download files or information from the user's computer. Personal web sharing from a user endpoint has long been considered questionable and Apple has removed that capability from the GUI. Apache however is still part of the Operating System and can be easily turned on to share files and provide remote connectivity to an end user computer.  Web sharing should only be done through hardened web servers and appropriate cloud services."
     rationale: "Web serving should not be done from a user desktop. Dedicated webservers or appropriate cloud storage should be used. Open ports make it easier to exploit the computer."
@@ -295,7 +297,7 @@ checks:
       - "p:/usr/sbin/httpd"
 
   # 4.5 Ensure nfs server is not running (Scored)
-  - id: 9521
+  - id: 9522
     title: "Ensure nfs server is not running"
     description: "macOS can act as an NFS fileserver. NFS sharing could be enabled to allow someone on another computer to mount shares and gain access to information from the user's computer. File sharing from a user endpoint has long been considered questionable and Apple has removed that capability from the GUI. NFSD is still part of the Operating System and can be easily turned on to export shares and provide remote connectivity to an end user computer."
     rationale: "File serving should not be done from a user desktop, dedicated servers should be used.  Open ports make it easier to exploit the computer."
@@ -309,7 +311,7 @@ checks:
       - "f:/etc/exports"
 
   # 5.11 Do not enable the "root" account (Scored)
-  - id: 9522
+  - id: 9523
     title: 'Do not enable the "root" account'
     description: "The root account is a superuser account that has access privileges to perform any actions and read/write to any file on the computer. With some Linux distros the system administrator may commonly uses the root account to perform administrative functions."
     rationale: "Enabling and using the root account puts the system at risk since any successful exploit or mistake while the root account is in use could have unlimited access privileges within the system. Using the sudo command allows users to perform functions as a root user while limiting and password protecting the access privileges. By default the root account is not enabled on a macOS computer. An administrator can escalate privileges using the sudo command (use -s or -i to get a root shell)."
@@ -321,7 +323,7 @@ checks:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
 
   # 5.12 Disable automatic login (Scored)
-  - id: 9523
+  - id: 9524
     title: "Disable automatic login"
     description: "The automatic login feature saves a user's system access credentials and bypasses the login screen, instead the system automatically loads to the user's desktop screen."
     rationale: "Disabling automatic login decreases the likelihood of an unauthorized person gaining access to a system."
@@ -333,7 +335,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow -> r:autoLoginUser"
 
   # 5.23 System Integrity Protection status (Scored)
-  - id: 9524
+  - id: 9525
     title: "System Integrity Protection status"
     description: "System Integrity Protection is a security feature introduced in OS X 10.11 El Capitan.  System Integrity Protection restricts access to System domain locations and restricts runtime attachment to system processes. Any attempt to attempt to inspect or attach to a system process will fail. Kernel Extensions are now restricted to /Library/Extensions and are required to be signed with a Developer ID."
     rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
@@ -345,7 +347,7 @@ checks:
       - "c:/usr/bin/csrutil status -> r:^System Integrity Protection status: enabled"
 
   # 6.1.3 Disable guest account login (Scored)
-  - id: 9525
+  - id: 9526
     title: "Disable guest account login"
     description: "The guest account allows users access to the system without having to create an account or password. Guest users are unable to make setting changes, cannot remotely login to the system and all created files, caches, and passwords are deleted upon logging out."
     rationale: "Disabling the guest account mitigates the risk of an untrusted user doing basic reconnaissance and possibly using privilege escalation attacks to take control of the system."
@@ -357,7 +359,7 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist GuestEnabled -> 0"
 
   # 6.1.5 Remove Guest home folder (Scored)
-  - id: 9526
+  - id: 9527
     title: "Remove Guest home folder"
     description: "The guest account login should have been disabled, so there is no need for the legacy Guest home folder to remain in the file system. When normal user accounts are removed you have the option to archive it, leave it in place or delete. In the case of the guest folder the folder remains in place without a GUI option to remove it. If at some point in the future a Guest account is needed it will be re-created. The presence of the Guest home folder can cause automated audits to fail when looking for compliant settings within all User folders as well. Rather than ignoring the folders continued existence it is best removed."
     rationale: "The Guest home folders are unneeded after the Guest account is disabled and could be used inappropriately."
@@ -369,7 +371,7 @@ checks:
       - "d:/Users/Guest"
 
   # 6.2 Turn on filename extensions (Scored)
-  - id: 9527
+  - id: 9528
     title: "Turn on filename extensions"
     description: "A filename extension is a suffix added to a base filename that indicates the base filename's file format."
     rationale: "Visible filename extensions allows the user to identify the file type and the application it is associated with which leads to quick identification of misrepresented malicious files."
@@ -381,7 +383,7 @@ checks:
       - "c:defaults read NSGlobalDomain AppleShowAllExtensions -> 1"
 
   # 6.3 Disable the automatic run of safe files in Safari (Scored)
-  - id: 9528
+  - id: 9529
     title: "Disable the automatic run of safe files in Safari"
     description: "Safari will automatically run or execute what it considers safe files. This can include installers and other files that execute on the operating system. Safari bases file safety by using a list of filetypes maintained by Apple. The list of files include text, image, video and archive formats that would be run in the context of the OS rather than the browser."
     rationale: "Hackers have taken advantage of this setting via drive-by attacks. These attacks occur when a user visits a legitimate website that has been corrupted. The user unknowingly downloads a malicious file either by closing an infected pop-up or hovering over a malicious banner. An attacker can create a malicious file that will fall within Safari's safe file list that will download and execute without user input."

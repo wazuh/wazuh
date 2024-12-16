@@ -898,8 +898,8 @@ checks:
   ###############################################
   # 2.1.1 Disable chargen services (Scored)
 
-  - id: 4051
-    title: "Ensure chargen services are not enabled."
+  - id: 4052
+    title: "Ensure chargen services are not enabled"
     description: "chargen is a network service that responds with 0 to 512 ASCII characters for each connection it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
     remediation: "Run the following commands to disable chargen-dgram and chargen-stream: # chkconfig chargen-dgram off; # chkconfig chargen-stream off"
@@ -918,7 +918,7 @@ checks:
       - 'c:chkconfig --list chargen-stream -> r:^\s*\t*chargen-stream:\s*\t*on'
 
   # 2.1.2 Disable daytime services (Scored)
-  - id: 4052
+  - id: 4053
     title: "Ensure daytime services are not enabled"
     description: "daytime is a network service that responds with the server's current date and time. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
@@ -938,7 +938,7 @@ checks:
       - 'c:chkconfig --list daytime-stream -> r:^\s*\t*daytime-stream:\s*\t*on'
 
   # 2.1.3 Disable discard services (Scored)
-  - id: 4053
+  - id: 4054
     title: "Ensure discard services are not enabled"
     description: "discardis a network service that simply discards all data it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
@@ -958,7 +958,7 @@ checks:
       - 'c:chkconfig --list discard-stream -> r:^\s*\t*discard-stream:\s*\t*on'
 
   # 2.1.4 Disable echo-dgram (Scored)
-  - id: 4054
+  - id: 4055
     title: "Ensure echo services are not enabled"
     description: "echo is a network service that responds to clients with the data sent to it by the client. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
@@ -978,7 +978,7 @@ checks:
       - 'c:chkconfig --list echo-stream -> r:^\s*\t*echo-stream:\s*\t*on'
 
   # 2.1.5 Disable time-stream (Scored)
-  - id: 4055
+  - id: 4056
     title: "Ensure time services are not enabled"
     description: "time is a network service that responds with the server's current date and time as a 32 bit integer. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
@@ -998,7 +998,7 @@ checks:
       - 'c:chkconfig --list time-stream -> r:^\s*\t*time-stream:\s*\t*on'
 
   # 2.1.6 Remove rsh-server (Scored)
-  - id: 4056
+  - id: 4057
     title: "Ensure rsh server is not enabled"
     description: "The Berkeley rsh-server ( rsh , rlogin , rexec ) package contains legacy services that exchange credentials in clear-text."
     rationale: "These legacy services contain numerous security exposures and have been replaced with the more secure SSH package."
@@ -1019,7 +1019,7 @@ checks:
       - 'c:chkconfig --list rsh -> r:^\s*\t*rsh:\s*\t*on'
 
   # 2.1.7 Remove talk server (Scored)
-  - id: 4057
+  - id: 4058
     title: "Ensure talk server is not enabled"
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client (allows initiate of talk sessions) is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
@@ -1038,7 +1038,7 @@ checks:
       - 'c:chkconfig --list talk -> r:^\s*\t*talk:\s*\t*on'
 
   # 2.1.8 Remove telnet-server (Scored)
-  - id: 4058
+  - id: 4059
     title: "Ensure telnet server is not enabled"
     description: "The telnet-server package contains the telnet daemon, which accepts connections from users from other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
@@ -1057,7 +1057,7 @@ checks:
       - 'c:chkconfig --list telnet -> r:^\s*\t*telnet:\s*\t*on'
 
   # 2.1.9 Ensure tftp server is not enabled (Scored)
-  - id: 4059
+  - id: 4060
     title: "Ensure tftp server is not enabled"
     description: "Trivial File Transfer Protocol (TFTP) is a simple file transfer protocol, typically used to automatically transfer configuration or boot machines from a boot server. The package tftp-server is used to define and support a TFTP server."
     rationale: "TFTP does not support authentication nor does it ensure the confidentiality or integrity of data. It is recommended that TFTP be removed, unless there is a specific need for TFTP. In that case, extreme caution must be used when configuring the services."
@@ -1076,7 +1076,7 @@ checks:
       - 'c:chkconfig --list tftp -> r:^\s*\t*tftp:\s*\t*on'
 
   # 2.1.10 Remove rsync service (Scored)
-  - id: 4060
+  - id: 4061
     title: "Ensure rsync service is not enabled"
     description: "The rsyncd service can be used to synchronize files between systems over network links."
     rationale: "The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
@@ -1095,7 +1095,7 @@ checks:
       - 'c:chkconfig --list rsync -> r:^\s*\t*rsync:\s*\t*on'
 
   # 2.1.11 Remove xinetd (Scored)
-  - id: 4061
+  - id: 4062
     title: "Ensure xinetd is not enabled"
     description: "The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
     rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled."
@@ -1118,7 +1118,7 @@ checks:
   ###############################################
 
   # 2.2.1.1 Ensure time synchronization is in use (Not Scored)
-  - id: 4062
+  - id: 4063
     title: "Ensure time synchronization is in use"
     description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them."
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
@@ -1135,7 +1135,7 @@ checks:
       - "not c:rpm -q chrony -> r:^package chrony is not installed"
 
   # 2.2.1.2 Configure Network Time Protocol (NTP) (Scored)
-  - id: 4063
+  - id: 4064
     title: "Ensure ntp is configured"
     description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at https://www.ntp.org. ntp can be configured to be a client and/or a server."
     rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
@@ -1154,7 +1154,7 @@ checks:
       - 'f:/etc/sysconfig/ntpd -> r:^OPTIONS\s*=\s* && r:-u ntp:ntp'
 
   # 2.2.1.3 Configure Network Time Protocol (Chrony) (Scored)
-  - id: 4064
+  - id: 4065
     title: "Ensure chrony is configured"
     description: "chrony is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at https://www.ntp.org. ntp can be configured to be a client and/or a server."
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
@@ -1171,7 +1171,7 @@ checks:
       - 'f:/etc/sysconfig/chronyd -> r:^OPTIONS\s*=\s* && r:-u chrony'
 
   # 2.2.2 Remove X Windows (Scored)
-  - id: 4065
+  - id: 4066
     title: "Ensure X Window System is not installed"
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
@@ -1187,7 +1187,7 @@ checks:
       - "c:rpm -qa xorg-x11* -> r:^xorg-x11"
 
   # 2.2.3 Disable Avahi Server (Scored)
-  - id: 4066
+  - id: 4067
     title: "Ensure Avahi Server is not enabled"
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface."
@@ -1203,7 +1203,7 @@ checks:
       - 'c:chkconfig --list avahi-daemon -> r:^\s*\t*avahi-daemon\.*on'
 
   # 2.2.4 Ensure CUPS is not enabled (Scored)
-  - id: 4067
+  - id: 4068
     title: "Ensure CUPS is not enabled"
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface."
@@ -1219,7 +1219,7 @@ checks:
       - 'c:chkconfig --list cups -> r:^\s*\t*cups\.*on'
 
   # 2.2.5 Remove DHCP Server (Scored)
-  - id: 4068
+  - id: 4069
     title: "Ensure DHCP Server is not enabled"
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this service be disabled to reduce the potential attack surface."
@@ -1237,7 +1237,7 @@ checks:
       - 'c:chkconfig --list dhcpd -> r:^\s*\t*dhcpd\.*on'
 
   # 2.2.6 Remove LDAP Server (Scored)
-  - id: 4069
+  - id: 4070
     title: "Ensure LDAP Server is not enabled"
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be disabled to reduce the potential attack surface."
@@ -1255,7 +1255,7 @@ checks:
       - 'c:chkconfig --list slapd -> r:^\s*\t*slapd\.*on'
 
   # 2.2.7 Disable NFS and RPC (Scored)
-  - id: 4070
+  - id: 4071
     title: "Ensure NFS and RPC are not enabled"
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
@@ -1272,7 +1272,7 @@ checks:
       - 'c:chkconfig --list rpcbind -> r:^\s*\t*rpcbind\.*on'
 
   # 2.2.8 Ensure DNS Server is not enabled (Scored)
-  - id: 4071
+  - id: 4072
     title: "Ensure DNS Server is not enabled"
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the service be disabled to reduce the potential attack surface."
@@ -1288,7 +1288,7 @@ checks:
       - 'c:chkconfig --list named -> r:^\s*\t*named\.*on'
 
   # 2.2.9 Remove FTP Server (Scored)
-  - id: 4072
+  - id: 4073
     title: "Ensure FTP Server is not enabled"
     description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the service be disabled to reduce the potential attack surface."
@@ -1304,7 +1304,7 @@ checks:
       - 'c:chkconfig --list vsftpd -> r:^\s*\t*vsftpd\.*on'
 
   # 2.2.10 Remove HTTP Server (Scored)
-  - id: 4073
+  - id: 4074
     title: "Ensure HTTP server is not enabled"
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the service be disabled to reduce the potential attack surface."
@@ -1320,7 +1320,7 @@ checks:
       - 'c:chkconfig --list httpd -> r:^\s*\t*httpd\.*on'
 
   # 2.2.11 Remove Dovecot (IMAP and POP3 services) (Scored)
-  - id: 4074
+  - id: 4075
     title: "Ensure IMAP and POP3 server is not enabled"
     description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the service be disabled to reduce the potential attack surface."
@@ -1336,7 +1336,7 @@ checks:
       - 'c:chkconfig --list dovecot -> r:^\s*\t*dovecot\.*on'
 
   # 2.2.12 Remove Samba (Scored)
-  - id: 4075
+  - id: 4076
     title: "Ensure Samba is not enabled"
     description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be disabled to reduce the potential attack surface."
@@ -1352,7 +1352,7 @@ checks:
       - 'c:chkconfig --list smb -> r:^\s*\t*smb\.*on'
 
   # 2.2.13 Remove HTTP Proxy Server (Scored)
-  - id: 4076
+  - id: 4077
     title: "Ensure HTTP Proxy Server is not enabled"
     description: "Squid is a standard proxy server used in many distributions and environments."
     rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be disabled to reduce the potential attack surface."
@@ -1368,7 +1368,7 @@ checks:
       - 'c:chkconfig --list squid -> r:^\s*\t*squid\.*on'
 
   # 2.2.14 Remove SNMP Server (Not Scored)
-  - id: 4077
+  - id: 4078
     title: "Ensure SNMP Server is not enabled"
     description: "The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system."
     rationale: "The SNMP server can communicate using SNMP v1, which transmits data in the clear and does not require authentication to execute commands. Unless absolutely necessary, it is recommended that the SNMP service not be used. If SNMP is required the server should be configured to disallow SNMP v1."
@@ -1384,7 +1384,7 @@ checks:
       - 'c:chkconfig --list snmpd -> r:^\s*\t*snmpd\.*on'
 
   # 2.2.15 Ensure mail transfer agent is configured for local-only mode (Scored)
-  - id: 4078
+  - id: 4079
     title: "Ensure mail transfer agent is configured for local-only mode"
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
     rationale: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
@@ -1400,7 +1400,7 @@ checks:
       - 'c:netstat -an -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.+LISTEN'
 
   # 2.2.16 Remove NIS Server (Scored)
-  - id: 4079
+  - id: 4080
     title: "Ensure NIS Server is not enabled"
     description: "The Network Information Service (NIS) (formally known as Yellow Pages) is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
@@ -1422,7 +1422,7 @@ checks:
   # 2.3 Service Clients
   ###############################################
   # 2.3.1 Remove NIS Client (Scored)
-  - id: 4080
+  - id: 4081
     title: "Ensure NIS Client is not installed"
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
@@ -1441,7 +1441,7 @@ checks:
       - "c:rpm -q ypbind -> package ypbind is not installed"
 
   # 2.3.2 Ensure rsh client is not installed (Scored)
-  - id: 4081
+  - id: 4082
     title: "Ensure rsh client is not installed"
     description: "The rsh package contains the client commands for the rsh services."
     rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
@@ -1460,7 +1460,7 @@ checks:
       - "c:rpm -q rsh -> package rsh is not installed"
 
   # 2.3.3 Ensure talk client is not installed (Scored)
-  - id: 4082
+  - id: 4083
     title: "Ensure talk client is not installed"
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
@@ -1479,7 +1479,7 @@ checks:
       - "c:rpm -q talk -> package talk is not installed"
 
   # 2.3.4 Ensure telnet client is not installed (Scored)
-  - id: 4083
+  - id: 4084
     title: "Ensure telnet client is not installed"
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
@@ -1498,7 +1498,7 @@ checks:
       - "c:rpm -q telnet -> package telnet is not installed"
 
   # 2.3.5 Ensure LDAP client is not installed (Scored)
-  - id: 4084
+  - id: 4085
     title: "Ensure LDAP client is not installed"
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
@@ -1523,7 +1523,7 @@ checks:
   # 3.1 Modify Network Parameters (Host Only)
   ###############################################
   # 3.1.1 Disable IP Forwarding (Scored)
-  - id: 4085
+  - id: 4086
     title: "Ensure IP forwarding is disabled"
     description: "The net.ipv4.ip_forward flag is used to tell the system whether it can forward packets or not."
     rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
@@ -1540,7 +1540,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
 
   # 3.1.2 Disable Send Packet Redirects (Scored)
-  - id: 4086
+  - id: 4087
     title: "Ensure packet redirect sending is disabled"
     description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
     rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
@@ -1562,7 +1562,7 @@ checks:
   # 3.2 Modify Network Parameters (Host and Router)
   ###############################################
   # 3.2.1 Disable Source Routed Packet Acceptance (Scored)
-  - id: 4087
+  - id: 4088
     title: "Ensure source routed packets are not accepted"
     description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
     rationale: "Setting net.ipv4.conf.all.accept_source_route and net.ipv4.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
@@ -1581,7 +1581,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
 
   # 3.2.2 Disable ICMP Redirect Acceptance (Scored)
-  - id: 4088
+  - id: 4089
     title: "Ensure ICMP redirects are not accepted"
     description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables."
     rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
@@ -1600,7 +1600,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
 
   # 3.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
-  - id: 4089
+  - id: 4090
     title: "Ensure secure ICMP redirects are not accepted"
     description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
     rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
@@ -1619,7 +1619,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
 
   # 3.2.4 Log Suspicious Packets (Scored)
-  - id: 4090
+  - id: 4091
     title: "Ensure suspicious packets are logged"
     description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
     rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
@@ -1638,7 +1638,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
 
   # 3.2.5 Enable Ignore Broadcast Requests (Scored)
-  - id: 4091
+  - id: 4092
     title: "Ensure broadcast ICMP requests are ignored"
     description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
     rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address."
@@ -1655,7 +1655,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
   # 3.2.6 Enable Bad Error Message Protection (Scored)
-  - id: 4092
+  - id: 4093
     title: "Ensure bogus ICMP responses are ignored"
     description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
     rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
@@ -1672,7 +1672,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.2.7 Enable RFC-recommended Source Route Validation (Scored)
-  - id: 4093
+  - id: 4094
     title: "Ensure Reverse Path Filtering is enabled"
     description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
     rationale: "Setting these flags is a good way to deter attackers from sending your server bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
@@ -1691,7 +1691,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
 
   # 3.2.8 Enable TCP SYN Cookies (Scored)
-  - id: 4094
+  - id: 4095
     title: "Ensure TCP SYN Cookies is enabled"
     description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent."
     rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
@@ -1711,7 +1711,7 @@ checks:
   # 3.3 IPv6
   ###############################################
   # 3.3.1 Ensure IPv6 router advertisements are not accepted (Not Scored)
-  - id: 4095
+  - id: 4096
     title: "Ensure IPv6 router advertisements are not accepted"
     description: "This setting disables the system's ability to accept IPv6 router advertisements."
     rationale: "It is recommended that systems not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
@@ -1733,7 +1733,7 @@ checks:
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0'
 
   # 3.3.2 Ensure IPv6 redirects are not accepted (Not Scored)
-  - id: 4096
+  - id: 4097
     title: "Ensure IPv6 redirects are not accepted"
     description: "This setting prevents the system from accepting ICMP redirects. ICMP redirects tell the system about alternate routes for sending traffic."
     rationale: "It is recommended that systems not accept ICMP redirects as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
@@ -1755,7 +1755,7 @@ checks:
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirect /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0'
 
   # 3.3.3 Ensure IPv6 is disabled (Not Scored)
-  - id: 4097
+  - id: 4098
     title: "Ensure IPv6 is disabled"
     description: "Although IPv6 has many advantages over IPv4, few organizations have implemented IPv6."
     rationale: "If IPv6 is not to be used, it is recommended that it be disabled to reduce the attack surface of the system."
@@ -1777,7 +1777,7 @@ checks:
   # 3.4 TCP Wrappers
   ###############################################
   # 3.4.1 Ensure TCP Wrappers is installed (Scored)
-  - id: 4098
+  - id: 4099
     title: "Ensure TCP Wrappers is installed"
     description: "TCP Wrappers provides a simple access list and standardized logging method for services capable of supporting it. In the past, services that were called from inetd and xinetd supported the use of tcp wrappers. As inetd and xinetd have been falling in disuse, any service that can support tcp wrappers will have the libwrap.so library attached to it."
     rationale: "TCP Wrappers provide a good simple access list mechanism to services that may not have that support built in. It is recommended that all services that can support TCP Wrappers, use it."
@@ -1792,7 +1792,7 @@ checks:
       - "c:rpm -q tcp_wrappers-libs -> r:^tcp_wrappers-libs-"
 
   # 3.4.3 Ensure /etc/hosts.deny is configured (Scored)
-  - id: 4099
+  - id: 4100
     title: "Ensure /etc/hosts.deny is configured"
     description: "The /etc/hosts.deny file specifies which IP addresses are not permitted to connect to the host. It is intended to be used in conjunction with the /etc/hosts.allow file."
     rationale: "The /etc/hosts.allow file supports access control by IP and helps ensure that only authorized systems can connect to the system."
@@ -1806,7 +1806,7 @@ checks:
       - 'f:/etc/hosts.deny -> r:^ALL\s*:\s*ALL'
 
   # 3.4.4 Ensure permissions on /etc/hosts.allow are configured (Scored)
-  - id: 4100
+  - id: 4101
     title: "Ensure permissions on /etc/hosts.allow are configured."
     description: "The /etc/hosts.allow file contains networking information that is used by many applications and therefore must be readable for these applications to operate."
     rationale: "It is critical to ensure that the /etc/hosts.allow file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -1820,7 +1820,7 @@ checks:
       - 'c:stat -L /etc/hosts.allow -> r:^Access: \(0644/-rw-r--r--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)'
 
   # 3.4.5 Ensure permissions on /etc/hosts.deny are configured (Scored)
-  - id: 4101
+  - id: 4102
     title: "Ensure permissions on /etc/hosts.deny are configured."
     description: "The /etc/hosts.deny file contains network information that is used by many system applications and therefore must be readable for these applications to operate."
     rationale: "It is critical to ensure that the /etc/hosts.deny file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -1839,7 +1839,7 @@ checks:
   # 3.5 Uncommon Network Protocols
   ###############################################
   # 3.5.1 Ensure DCCP is disabled (Not Scored)
-  - id: 4102
+  - id: 4103
     title: "Ensure DCCP is disabled"
     description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery."
     rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
@@ -1859,7 +1859,7 @@ checks:
       - "not c:lsmod -> r:dccp"
 
   # 3.5.2 Ensure SCTP is disabled (Not Scored)
-  - id: 4103
+  - id: 4104
     title: "Ensure SCTP is disabled"
     description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
@@ -1879,7 +1879,7 @@ checks:
       - "not c:lsmod -> r:sctp"
 
   # 3.5.3 Ensure RDS is disabled (Not Scored)
-  - id: 4104
+  - id: 4105
     title: "Ensure RDS is disabled"
     description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
@@ -1899,7 +1899,7 @@ checks:
       - "not c:lsmod -> r:rds"
 
   # 3.5.4 Ensure TIPC is disabled (Not Scored)
-  - id: 4105
+  - id: 4106
     title: "Ensure TIPC is disabled"
     description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
@@ -1922,7 +1922,7 @@ checks:
   # 3.6 Firewall Configuration
   ###############################################
   # 3.6.1 Ensure iptables is installed (Scored)
-  - id: 4106
+  - id: 4107
     title: "Ensure iptables is installed"
     description: "iptables allows configuration of the IPv4 tables in the linux kernel and the rules stored within them. Most firewall configuration utilities operate as a front end to iptables ."
     rationale: "iptables is required for firewall management and configuration."
@@ -1936,7 +1936,7 @@ checks:
       - "c:rpm -q iptables -> r:iptables-"
 
   # 3.6.2 Ensure default deny firewall policy (Scored)
-  - id: 4107
+  - id: 4108
     title: "Ensure default deny firewall policy"
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
@@ -1953,7 +1953,7 @@ checks:
       - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)'
 
   # 3.6.3 Ensure loopback traffic is configured (Scored)
-  - id: 4108
+  - id: 4109
     title: "Ensure loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8)."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
@@ -1978,7 +1978,7 @@ checks:
   ###############################################
 
   # 4.1.1.1 Ensure audit log storage size is configured (Not Scored)
-  - id: 4109
+  - id: 4110
     title: "Ensure audit log storage size is configured"
     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
@@ -1992,7 +1992,7 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^max_log_file\s*=\s*\d+'
 
   # 4.1.1.2 Ensure system is disabled when audit logs are full (Scored)
-  - id: 4110
+  - id: 4111
     title: "Ensure system is disabled when audit logs are full"
     description: "The auditd daemon can be configured to halt the system when the audit logs are full."
     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability."
@@ -2008,7 +2008,7 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^admin_space_left_action\s*=\s*halt'
 
   # 4.1.1.3 Ensure audit logs are not automatically deleted (Scored)
-  - id: 4111
+  - id: 4112
     title: "Ensure audit logs are not automatically deleted"
     description: "The max_log_file_action setting determines how to handle the audit log file reaching the max file size. A value of keep_logs will rotate the logs but never delete old logs."
     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
@@ -2022,7 +2022,7 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^max_log_file_action\s*=\s*keep_logs'
 
   # 4.1.2 Ensure auditd service is enabled (Scored)
-  - id: 4112
+  - id: 4113
     title: "Ensure auditd service is enabled"
     description: "Turn on the auditd daemon to record system events."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
@@ -2037,7 +2037,7 @@ checks:
       - "c:chkconfig --list auditd -> r:2:on && r:3:on && r:4:on && r:5:on"
 
   # 4.1.3 Ensure auditing for processes that start prior to auditd is enabled (Scored)
-  - id: 4113
+  - id: 4114
     title: "Ensure auditing for processes that start prior to auditd is enabled"
     description: "Configure grub so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd, so that potential malicious activity cannot go undetected."
@@ -2054,7 +2054,7 @@ checks:
       - 'f:/boot/grub/grub.conf -> r:^\s*\t*kernel && !r:audit=1'
 
   # 4.1.4 Ensure events that modify date and time information are collected (Scored)
-  - id: 4114
+  - id: 4115
     title: "Ensure events that modify date and time information are collected"
     description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier "time-change".'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
@@ -2075,7 +2075,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /etc/localtime && r:-p wa && r:-k time-change"
 
   # 4.1.5 Ensure events that modify user/group information are collected (Scored)
-  - id: 4115
+  - id: 4116
     title: "Ensure events that modify user/group information are collected"
     description: 'Record events affecting the group , passwd (user IDs), shadow and gshadow (passwords) or /etc/security/opasswd (old passwords, based on remember parameter in the PAM configuration) files. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
@@ -2098,7 +2098,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /etc/security/opasswd && r:-p wa && r:-k identity"
 
   # 4.1.6 Ensure events that modify the system's network environment are collected (Scored)
-  - id: 4116
+  - id: 4117
     title: "Ensure events that modify the system's network environment are collected"
     description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre-login), /etc/hosts (file containing host names and associated IP addresses), /etc/sysconfig/network file and /etc/sysconfig/network-scripts/ directory (containing network interface scripts and configurations)."
     rationale: 'Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/sysconfig/network and /etc/sysconfig/network-scripts/ is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier "system-locale."'
@@ -2122,7 +2122,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /etc/sysconfig/network-scripts/ && r:-p wa && r:-k system-locale"
 
   # 4.1.7 Ensure events that modify the system's Mandatory Access Controls are collected (Scored)
-  - id: 4117
+  - id: 4118
     title: "Ensure events that modify the system's Mandatory Access Controls are collected"
     description: "Monitor SELinux mandatory access controls. The parameters below monitor any write access (potential additional, deletion or modification of files in the directory) or attribute changes to the /etc/selinux or directory."
     rationale: "Changes to files in these directories could indicate that an unauthorized user is attempting to modify access controls and change security contexts, leading to a compromise of the system."
@@ -2142,7 +2142,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /usr/share/selinux/ && r:-p wa && r:-k MAC-policy"
 
   # 4.1.8 Ensure login and logout events are collected (Scored)
-  - id: 4118
+  - id: 4119
     title: "Ensure login and logout events are collected"
     description: "Monitor login and logout events. The parameters below track changes to files associated with login/logout events. The file /var/log/lastlog maintain records of the last time a user successfully logged in. The /var/run/failock directory maintains records of login failures via the pam_faillock module."
     rationale: "Monitoring login/logout events could provide a system administrator with information associated with brute force attacks against user logins."
@@ -2162,7 +2162,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /var/run/faillock/ && r:-p wa && r:-k logins"
 
   # 4.1.9 Ensure session initiation information is collected (Scored)
-  - id: 4119
+  - id: 4120
     title: "Ensure session initiation information is collected"
     description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp file tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins.".'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
@@ -2178,7 +2178,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /var/log/btmp && r:-p wa && r:-k logins"
 
   # 4.1.10 Ensure discretionary access control permission modification events are collected (Scored)
-  - id: 4120
+  - id: 4121
     title: "Ensure discretionary access control permission modification events are collected"
     description: 'Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >= 500) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier "perm_mod."'
     rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
@@ -2199,7 +2199,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S setxattr && r:-S lsetxattr && r:-S fsetxattr && r:-S removexattr && r:-S lremovexattr && r:-S fremovexattr && r:-F auid>=500 && r:-F auid!=4294967295 && r:-k perm_mod"
 
   # 4.1.11 Ensure unsuccessful unauthorized file access attempts are collected (Scored)
-  - id: 4121
+  - id: 4122
     title: "Ensure unsuccessful unauthorized file access attempts are collected"
     description: 'Monitor for unsuccessful attempts to access files. The parameters below are associated  with system calls that control creation ( creat ), opening ( open , openat ) and truncation (  truncate , ftruncate ) of files. An audit log record will only be written if the user is a non-  privileged user (auid > = 500), is not a Daemon event (auid=4294967295) and if the  system call returned EACCES (permission denied to the file) or EPERM (some other  permanent error associated with the specific system call). All audit records will be tagged  with the identifier "access."'
     rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system."
@@ -2219,7 +2219,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-S ftruncate && r:-F exit=-EPERM && r:-F auid>=500 && r:-F auid!=4294967295 && r:-k access"
 
   # 4.1.13 Ensure successful file system mounts are collected (Scored)
-  - id: 4122
+  - id: 4123
     title: "Ensure successful file system mounts are collected"
     description: "Monitor the use of the mount system call. The mount (and umount ) system call controls the mounting and unmounting of file systems. The parameters below configure the system to create an audit record when the mount system call is used by a non-privileged user."
     rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open , creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document."
@@ -2238,7 +2238,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=500 && r:-F auid!=4294967295 && r:-k mounts"
 
   # 4.1.14 Ensure file deletion events by users are collected (Scored)
-  - id: 4123
+  - id: 4124
     title: "Ensure file deletion events by users are collected"
     description: 'Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for the unlink (remove a file), unlinkat (remove a file attribute), rename (rename a file) and renameat (rename a file attribute) system calls and tags them with the identifier "delete".'
     rationale: "Monitoring these calls from non-privileged users could provide a system administrator with evidence that inappropriate removal of files and file attributes associated with protected files is occurring. While this audit option will look at all events, system administrators will want to look for specific privileged files that are being deleted or altered."
@@ -2252,7 +2252,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=500 && r:-F auid!=4294967295 && r:-k delete"
 
   # 4.1.15 Ensure changes to system administration scope (sudoers) is collected (Scored)
-  - id: 4124
+  - id: 4125
     title: "Ensure changes to system administration scope (sudoers) is collected"
     description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope."'
     rationale: "Changes in the /etc/sudoers file can indicate that an unauthorized change has been made to scope of system administrator activity."
@@ -2272,7 +2272,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope"
 
   # 4.1.16 Ensure system administrator actions (sudolog) are collected (Scored)
-  - id: 4125
+  - id: 4126
     title: "Ensure system administrator actions (sudolog) are collected"
     description: "Monitor the sudo log file. If the system has been properly configured to disable the use of the su command and force all administrators to have to log in first and then use sudo to execute privileged commands, then all administrator commands will be logged to /var/log/sudo.log . Any time a command is executed, an audit event will be triggered as the /var/log/sudo.log file will be opened for write and the executed administration command will be written to the log."
     rationale: "Changes in /var/log/sudo.log indicate that an administrator has executed a command or the log file itself has been tampered with. Administrators will want to correlate the events written to the audit trail with the records written to /var/log/sudo.log to verify if unauthorized commands have been executed."
@@ -2291,7 +2291,7 @@ checks:
       - "f:/etc/audit/audit.rules -> r:-w /var/log/sudo.log && r:-p wa && r:-k actions"
 
   # 4.1.17 Ensure kernel module loading and unloading is collected (Scored)
-  - id: 4126
+  - id: 4127
     title: "Ensure kernel module loading and unloading is collected"
     description: 'Monitor the loading and unloading of kernel modules. The programs insmod (install a kernel module), rmmod (remove a kernel module), and modprobe (a more sophisticated program to load and unload modules, as well as some other features) control loading and unloading of modules. The init_module (load a module) and delete_module (delete a module) system calls control loading and unloading of modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of "modules".'
     rationale: "Monitoring the use of insmod , rmmod and modprobe could provide system administrators with evidence that an unauthorized user loaded or unloaded a kernel module, possibly compromising the security of the system. Monitoring of the init_module and delete_module system calls would reflect an unauthorized user attempting to use a different program to load and unload modules."
@@ -2313,7 +2313,7 @@ checks:
       - 'f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b\d\d && r:-S init_module && r:-S delete_module && r:-k modules'
 
   # 4.1.18 Ensure the audit configuration is immutable (Scored)
-  - id: 4127
+  - id: 4128
     title: "Ensure the audit configuration is immutable"
     description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
@@ -2332,7 +2332,7 @@ checks:
   ###############################################
 
   # 4.2.1.1 Ensure rsyslog Service is enabled (Scored)
-  - id: 4128
+  - id: 4129
     title: "Ensure rsyslog Service is enabled"
     description: "Once the rsyslog package is installed it needs to be activated."
     rationale: "If the rsyslog service is not activated the system may default to the syslogd service or lackblogging instead."
@@ -2346,7 +2346,7 @@ checks:
     rules:
       - "c:chkconfig --list rsyslog -> r:2:on && r:3:on && r:4:on && r:5:on"
   # 4.2.1.3 Ensure rsyslog default file permissions configured (Scored)
-  - id: 4129
+  - id: 4130
     title: "Ensure rsyslog default file permissions configured"
     description: "rsyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
@@ -2359,7 +2359,7 @@ checks:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0600|^\$FileCreateMode 0640|^\$FileCreateMode 0440|^\$FileCreateMode 0400|^\$FileCreateMode 0040|^\$FileCreateMode 0000'
 
   # 4.2.1.4 Ensure rsyslog is configured to send logs to a remote log host (Scored)
-  - id: 4130
+  - id: 4131
     title: "Ensure rsyslog is configured to send logs to a remote log host"
     description: "The rsyslog utility supports the ability to send logs it gathers to a remote log host running syslogd(8) or to receive messages from remote hosts, reducing administrative overhead."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
@@ -2374,7 +2374,7 @@ checks:
       - 'c:grep *.*[^I][^I]*@ /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> !r:# && r:*.* @@\.+'
 
   # 4.2.2.1 Ensure syslog-ng service is enabled (Scored)
-  - id: 4131
+  - id: 4132
     title: "Ensure syslog-ng service is enabled"
     description: "Once the syslog-ng package is installed it needs to be activated."
     rationale: "If the syslog-ng service is not activated the system may default to the syslogd service or lack logging instead."
@@ -2389,7 +2389,7 @@ checks:
       - "c:chkconfig --list syslog-ng -> r:2:on && r:3:on && r:4:on && r:5:on"
 
   # 4.2.2.3 Ensure syslog-ng default file permissions configured (Scored)
-  - id: 4132
+  - id: 4133
     title: "Ensure syslog-ng default file permissions configured"
     description: "syslog-ng will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive syslog-ng data is archived and protected."
@@ -2404,7 +2404,7 @@ checks:
       - 'f:/etc/syslog-ng/syslog-ng.conf -> r:^options && r:perm\(0600\)|perm\(0640\)|perm\(0440\)|perm\(0400\)|perm\(0000\)'
 
   # 4.2.2.4 Ensure syslog-ng is configured to send logs to a remote log host (Not Scored)
-  - id: 4133
+  - id: 4134
     title: "Ensure syslog-ng is configured to send logs to a remote log host"
     description: "The syslog-ng utility supports the ability to send logs it gathers to a remote log host or to receive messages from remote hosts, reducing administrative overhead."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
@@ -2420,7 +2420,7 @@ checks:
       - 'f:/etc/syslog-ng/syslog-ng.conf -> !r:^# && r:log\.+source\.+destination'
 
   # 4.2.3 Ensure rsyslog or syslog-ng is installed (Scored)
-  - id: 4134
+  - id: 4135
     title: "Ensure rsyslog or syslog-ng is installed"
     description: "The rsyslog and syslog-ng software are recommended replacements to the original syslogd daemon which provide improvements over syslogd , such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
     rationale: "The security enhancements of rsyslog and syslog-ng such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
@@ -2436,7 +2436,7 @@ checks:
       - "not c:rpm -q syslog-ng -> package syslog-ng is not installed"
 
   # 4.2.4 Ensure permissions on all logfiles are configured (Scored)
-  - id: 4135
+  - id: 4136
     title: "Ensure permissions on all logfiles are configured"
     description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitivebdata is archived and protected."
@@ -2458,7 +2458,7 @@ checks:
   ###############################################
 
   # 5.1.1 Ensure cron daemon is enabled (Scored)
-  - id: 4136
+  - id: 4137
     title: "Ensure cron daemon is enabled"
     description: "The cron daemon is used to execute batch jobs on the system."
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
@@ -2474,7 +2474,7 @@ checks:
       - "c:chkconfig --list crond -> r:2:on && r:3:on && r:4:on && r:5:on"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
-  - id: 4137
+  - id: 4138
     title: "Ensure permissions on /etc/crontab are configured"
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
@@ -2490,7 +2490,7 @@ checks:
       - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Scored)
-  - id: 4138
+  - id: 4139
     title: "Ensure permissions on /etc/cron.hourly are configured"
     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2506,7 +2506,7 @@ checks:
       - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Scored)
-  - id: 4139
+  - id: 4140
     title: "Ensure permissions on /etc/cron.daily are configured"
     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2522,7 +2522,7 @@ checks:
       - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Scored)
-  - id: 4140
+  - id: 4141
     title: "Ensure permissions on /etc/cron.weekly are configured"
     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2538,7 +2538,7 @@ checks:
       - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Scored)
-  - id: 4141
+  - id: 4142
     title: "Ensure permissions on /etc/cron.monthly are configured"
     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
@@ -2554,7 +2554,7 @@ checks:
       - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Scored)
-  - id: 4142
+  - id: 4143
     title: "Ensure permissions on /etc/cron.d are configured"
     description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow , cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
@@ -2570,7 +2570,7 @@ checks:
       - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.8 Ensure at/cron is restricted to authorized users (Scored)
-  - id: 4143
+  - id: 4144
     title: "Ensure at/cron is restricted to authorized users"
     description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow , cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
@@ -2592,7 +2592,7 @@ checks:
   # 5.2 Configure SSH
   ###############################################
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured (Scored)
-  - id: 4144
+  - id: 4145
     title: "Ensure permissions on /etc/ssh/sshd_config are configured"
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
@@ -2608,7 +2608,7 @@ checks:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.2.2 Set SSH Protocol to 2 (Scored)
-  - id: 4145
+  - id: 4146
     title: "Ensure SSH Protocol is set to 2"
     description: "SSH supports two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
     rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
@@ -2625,7 +2625,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:Protocol\s*\t*2'
 
   # 5.2.3 Set LogLevel to INFO (Scored)
-  - id: 4146
+  - id: 4147
     title: "Ensure SSH LogLevel is set to INFO"
     description: "The INFO parameter specifies that login and logout activity will be logged."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
@@ -2642,7 +2642,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:LogLevel\s*\t*INFO'
 
   # 5.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
-  - id: 4147
+  - id: 4148
     title: "Ensure SSH MaxAuthTries is set to 4 or less"
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
@@ -2658,7 +2658,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.2.6 Set SSH IgnoreRhosts to Yes (Scored)
-  - id: 4148
+  - id: 4149
     title: "Ensure SSH IgnoreRhosts is enabled"
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
@@ -2675,7 +2675,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:IgnoreRhosts\s*\t*yes'
 
   # 5.2.7 Set SSH HostbasedAuthentication to No (Scored)
-  - id: 4149
+  - id: 4150
     title: "Ensure SSH HostbasedAuthentication is disabled"
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
@@ -2692,7 +2692,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:HostbasedAuthentication\s*\t*no'
 
   # 5.2.8 Disable SSH Root Login (Scored)
-  - id: 4150
+  - id: 4151
     title: "Ensure SSH root login is disabled"
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su . This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
@@ -2709,7 +2709,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:PermitRootLogin\s*\t*no'
 
   # 5.2.9 Set SSH PermitEmptyPasswords to No (Scored)
-  - id: 4151
+  - id: 4152
     title: "Ensure SSH PermitEmptyPasswords is disabled"
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
@@ -2726,7 +2726,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Scored)
-  - id: 4152
+  - id: 4153
     title: "Ensure SSH PermitUserEnvironment is disabled"
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)"
@@ -2743,7 +2743,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:PermitUserEnvironment\s*\t*no'
 
   # 5.2.12 Ensure SSH Idle Timeout Interval is configured (Scored)
-  - id: 4153
+  - id: 4154
     title: "Ensure SSH Idle Timeout Interval is configured"
     description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. When the ClientAliveInterval variable is set, ssh sessions that have no activity for the specified length of time are terminated. When the ClientAliveCountMax variable is set, sshd will send client alive messages at every ClientAliveInterval interval. When the number of consecutive client alive messages are sent with no response from the client, the ssh session is terminated. For example, if the ClientAliveInterval is set to 15 seconds and the ClientAliveCountMax is set to 3, the client ssh session will be terminated after 45 seconds of idle time."
     rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening. While the recommended setting is 300 seconds (5 minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0. In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages will be sent."
@@ -2758,7 +2758,7 @@ checks:
       - 'f:$sshd_file -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare <= 3'
 
   # 5.2.13 Ensure SSH LoginGraceTime is set to one minute or less (Scored)
-  - id: 4154
+  - id: 4155
     title: "Ensure SSH LoginGraceTime is set to one minute or less"
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
@@ -2772,7 +2772,7 @@ checks:
       - 'f:$sshd_file -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60'
 
   # 5.2.14 Ensure SSH access is limited (Scored)
-  - id: 4155
+  - id: 4156
     title: "Ensure SSH access is limited"
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. AllowGroups The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. DenyUsers The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. DenyGroups The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
@@ -2790,7 +2790,7 @@ checks:
       - 'f:$sshd_file -> r:^\s*DenyGroups'
 
   # 5.2.15 Ensure SSH warning banner is configured (Scored)
-  - id: 4156
+  - id: 4157
     title: "Ensure SSH warning banner is configured"
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
@@ -2808,7 +2808,7 @@ checks:
   # 5.3 Configure PAM
   ###############################################
   # 5.3.1 Ensure password creation requirements are configured (Scored)
-  - id: 4157
+  - id: 4158
     title: "Ensure password creation requirements are configured"
     description: "The pam_cracklib.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -2824,7 +2824,7 @@ checks:
       - 'c:grep pam_cracklib.so /etc/pam.d/system-auth -> r:try_first_pass && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
 
   # 5.3.3 Ensure password reuse is limited (Scored)
-  - id: 4158
+  - id: 4159
     title: "Ensure password reuse is limited"
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note that these change only apply to accounts configured on the local system."
@@ -2840,7 +2840,7 @@ checks:
       - 'f:/etc/pam.d/system-auth -> n:^password\s+sufficient\s+pam_unix.so\.+remember=(\d+)|^password\s+required\s+pam_pwhistory.so\.+remember=(\d+) compare >= 5'
 
   # 5.3.4 Ensure password hashing algorithm is SHA-512 (Scored)
-  - id: 4159
+  - id: 4160
     title: "Ensure password hashing algorithm is SHA-512"
     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note that these change only apply to accounts configured on the local system."
@@ -2861,7 +2861,7 @@ checks:
   # 5.4.1 Set Shadow Password Suite Parameters
   ###############################################
   # 5.4.1.1 Ensure password expiration is 365 days or less (Scored)
-  - id: 4160
+  - id: 4161
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
@@ -2876,7 +2876,7 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
 
   # 5.4.1.2 Ensure minimum days between password changes is 7 or more (Scored)
-  - id: 4161
+  - id: 4162
     title: "Ensure minimum days between password changes is 7 or more"
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
@@ -2891,7 +2891,7 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 7'
 
   # 5.4.1.3 Ensure password expiration warning days is 7 or more (Scored)
-  - id: 4162
+  - id: 4163
     title: "Ensure password expiration warning days is 7 or more"
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
@@ -2906,7 +2906,7 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
 
   # 5.4.1.4 Ensure inactive password lock is 30 days or less (Scored)
-  - id: 4163
+  - id: 4164
     title: "Ensure inactive password lock is 30 days or less"
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
@@ -2921,7 +2921,7 @@ checks:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*(\d+) compare <= 30'
 
   # 5.4.3 Ensure default group for the root account is GID 0 (Scored)
-  - id: 4164
+  - id: 4165
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
@@ -2936,7 +2936,7 @@ checks:
       - 'f:/etc/passwd -> r:^root:\w:\w:0'
 
   # 5.4.4 Ensure default user umask is 027 or more restrictive (Scored)
-  - id: 4165
+  - id: 4166
     title: "Ensure default user umask is 027 or more restrictive"
     description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files ( .profile , .bashrc , etc.) in their home directories."
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
@@ -2953,7 +2953,7 @@ checks:
       - 'd:/etc/profile.d -> .sh -> n:^\s*\t*umask\s+(\d+) compare >= 027'
 
   # 5.4.5 Ensure default user shell timeout is 900 seconds or less (Scored)
-  - id: 4166
+  - id: 4167
     title: "Ensure default user shell timeout is 900 seconds or less"
     description: "The default TMOUT determines the shell timeout for users. The TMOUT value is measured in seconds."
     rationale: "Having no timeout value associated with a shell could allow an unauthorized user access to another user's shell session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening."
@@ -2970,7 +2970,7 @@ checks:
       - 'f:/etc/profile -> n:^\s*\t*TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
 
   # 5.6 Ensure access to the su command is restricted (Scored)
-  - id: 4167
+  - id: 4168
     title: "Ensure access to the su command is restricted."
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo , which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su , the su command will only allow users in the wheel group to execute su ."
     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
@@ -2996,7 +2996,7 @@ checks:
   ###############################################
 
   # 6.1.2 Configure /etc/passwd permissions (Scored)
-  - id: 4168
+  - id: 4169
     title: "Ensure permissions on /etc/passwd are configured"
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3012,7 +3012,7 @@ checks:
       - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.3 Configure /etc/shadow permissions (Scored)
-  - id: 4169
+  - id: 4170
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
@@ -3028,7 +3028,7 @@ checks:
       - 'c:stat -L /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Configure /etc/group permissions (Scored)
-  - id: 4170
+  - id: 4171
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
@@ -3044,7 +3044,7 @@ checks:
       - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Configure /etc/gshadow permissions (Scored)
-  - id: 4171
+  - id: 4172
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group"
@@ -3060,7 +3060,7 @@ checks:
       - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.6 Configure /etc/passwd- permissions (Scored)
-  - id: 4172
+  - id: 4173
     title: "Ensure permissions on /etc/passwd- are configured"
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3076,7 +3076,7 @@ checks:
       - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.7 Configure /etc/shadow- permissions (Scored)
-  - id: 4173
+  - id: 4174
     title: "Ensure permissions on /etc/shadow- are configured"
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3092,7 +3092,7 @@ checks:
       - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.8 Configure /etc/group- permissions (Scored)
-  - id: 4174
+  - id: 4175
     title: "Ensure permissions on /etc/group- are configured"
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3108,7 +3108,7 @@ checks:
       - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.9 Configure /etc/gshadow- permissions (Scored)
-  - id: 4175
+  - id: 4176
     title: "Ensure permissions on /etc/gshadow- are configured"
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
@@ -3127,7 +3127,7 @@ checks:
   # 6.2 Review User and Group Settings
   ###############################################
   # 6.2.1 Check passwords fields (Scored)
-  - id: 4176
+  - id: 4177
     title: "Ensure password fields are not empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -3142,7 +3142,7 @@ checks:
       - 'f:/etc/shadow -> !r:^# && r:^\w+::'
 
   # 6.2.2 Delete legacy entries in /etc/passwd (Scored)
-  - id: 4177
+  - id: 4178
     title: 'Ensure no legacy "+" entries exist in /etc/passwd'
     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
@@ -3161,7 +3161,7 @@ checks:
       - "f:/etc/passwd -> !r:^# && r:^+:"
 
   # 6.2.3 Delete legacy entries in /etc/shadow (Scored)
-  - id: 4178
+  - id: 4179
     title: 'Ensure no legacy "+" entries exist in /etc/shadow'
     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
@@ -3180,7 +3180,7 @@ checks:
       - "f:/etc/shadow -> !r:^# && r:^+:"
 
   # 6.2.4 Delete legacy entries in /etc/group (Scored)
-  - id: 4179
+  - id: 4180
     title: 'Ensure no legacy "+" entries exist in /etc/group'
     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
@@ -3199,7 +3199,7 @@ checks:
       - "f:/etc/group -> !r:^# && r:^+:"
 
   # 6.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
-  - id: 4180
+  - id: 4181
     title: "Ensure root is the only UID 0 account"
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
