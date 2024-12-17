@@ -7,11 +7,7 @@ case "$1" in
 
         OS=$(lsb_release -si)
         VER=$(lsb_release -sr)
-        DIR="/var/wazuh-server"
-        USER="wazuh"
-        GROUP="wazuh"
-        WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
-        WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
+        WAZUH_TMP_DIR="/tmp"
         OSMYSHELL="/sbin/nologin"
 
         if [ -d /run/systemd/system ]; then
@@ -22,13 +18,6 @@ case "$1" in
             if [ -f "/bin/false" ]; then
                 OSMYSHELL="/bin/false"
             fi
-        fi
-
-        if ! getent group ${GROUP} > /dev/null 2>&1; then
-            addgroup --system ${GROUP}  > /dev/null 2>&1
-        fi
-        if ! getent passwd ${USER} > /dev/null 2>&1; then
-            adduser --system --home ${DIR} --shell ${OSMYSHELL} --ingroup ${GROUP} ${USER} > /dev/null 2>&1
         fi
 
         # Remove old service file /etc/systemd/system/wazuh-server.service if present
