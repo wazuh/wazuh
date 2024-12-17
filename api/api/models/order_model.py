@@ -95,10 +95,6 @@ class Order(Model):
         user: str = None,
         target: Target = None,
         action: Action = None,
-        timeout: int = None,
-        status: str = None,
-        order_id: str = None,
-        request_id: str = None,
         document_id: str = None,
     ):
         self.swagger_types = {
@@ -106,10 +102,6 @@ class Order(Model):
             'user': str,
             'target': Target,
             'action': Action,
-            'timeout': int,
-            'status': str,
-            'order_id': str,
-            'request_id': str,
             'document_id': str,
         }
 
@@ -118,10 +110,6 @@ class Order(Model):
             'user': 'user',
             'target': 'target',
             'action': 'action',
-            'timeout': 'timeout',
-            'status': 'status',
-            'order_id': 'order_id',
-            'request_id': 'request_id',
             'document_id': 'document_id',
         }
 
@@ -129,10 +117,6 @@ class Order(Model):
         self._user = user
         self._target = target
         self._action = action
-        self._timeout = timeout
-        self._status = status
-        self._order_id = order_id
-        self._request_id = request_id
         self._document_id = document_id
 
     @property
@@ -167,38 +151,6 @@ class Order(Model):
     def action(self, action: Action):
         self._action = action
 
-    @property
-    def timeout(self) -> int:
-        return self._timeout
-
-    @timeout.setter
-    def timeout(self, timeout: int):
-        self._timeout = timeout
-
-    @property
-    def status(self) -> str:
-        return self._status
-
-    @status.setter
-    def status(self, status: str):
-        self._status = status
-
-    @property
-    def order_id(self) -> str:
-        return self._order_id
-
-    @order_id.setter
-    def order_id(self, order_id: str):
-        self._order_id = order_id
-
-    @property
-    def request_id(self) -> str:
-        return self._request_id
-
-    @request_id.setter
-    def request_id(self, request_id: str):
-        self._request_id = request_id
-    
     @property
     def document_id(self) -> str:
         return self._document_id

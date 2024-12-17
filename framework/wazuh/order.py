@@ -28,13 +28,13 @@ async def send_orders(orders: List[Order]) -> AffectedItemsWazuhResult:
         none_msg="No orders were published"
     )
 
-    order_ids = [item['order_id'] for item in orders]
+    document_ids = [item['document_id'] for item in orders]
     try:
         lc = local_client.LocalClient()
         await distribute_orders(lc, orders)
-        result.affected_items.extend(order_ids)
+        result.affected_items.extend(document_ids)
     except (WazuhError, WazuhClusterError) as e:
-        for id_ in order_ids:
+        for id_ in document_ids:
             result.add_failed_item(id_=id_, error=e)
 
     result.total_affected_items = len(result.affected_items)
