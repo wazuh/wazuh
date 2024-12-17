@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 from typing import List
 
 from fastapi import Request
@@ -98,7 +97,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
                 if i == 0:
                     agent_metadata = AgentMetadata.model_validate_json(part)
                 elif i % 2 == 0:
-                    data.append(json.loads(part))
+                    data.append(part)
                 else:
                     header = Header.model_validate_json(part)
                     headers.append(header)
@@ -168,7 +167,6 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
     results: List[TaskResult] = []
 
     for r in tasks_results:
-        print(f"Event {r}")
         status = r[IndexerKey.STATUS]
         if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
             task_result = TaskResult(
