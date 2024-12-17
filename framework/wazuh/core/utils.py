@@ -50,6 +50,7 @@ def create_wazuh_dir(dirpath: Path):
         dirpath.mkdir()
         chown(dirpath, common.wazuh_uid(), common.wazuh_gid())
 
+
 def assign_wazuh_ownership(filepath: str):
     """Create a file if it doesn't exist and assign ownership.
 

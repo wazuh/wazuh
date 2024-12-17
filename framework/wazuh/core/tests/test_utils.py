@@ -150,6 +150,27 @@ key: value
 '''
 
 
+@pytest.mark.parametrize('exists', [True, False])
+@patch('wazuh.core.utils.chown')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
+def test_create_wazuh_dir(mock_gid, mock_uid, mock_chown, exists):
+    """Test create_wazuh_dir function."""
+    dirpath = MagicMock()
+    dirpath.exists = MagicMock(return_value=exists)
+
+    utils.create_wazuh_dir(dirpath)
+
+    dirpath.exists.assert_called_once()
+
+    if not exists:
+        dirpath.mkdir.assert_called_once()
+        mock_chown.assert_called_once_with(dirpath, mock_uid(), mock_gid())
+    else:
+        dirpath.mkdir.assert_not_called()
+        mock_chown.assert_not_called()
+
+
 @patch('os.chown')
 @patch('wazuh.core.common.wazuh_uid')
 @patch('wazuh.core.common.wazuh_gid')
@@ -1911,4 +1932,3 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         else:
             with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
                 utils.check_agents_allow_higher_versions(new_conf)
-
