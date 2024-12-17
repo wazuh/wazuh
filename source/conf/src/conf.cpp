@@ -48,7 +48,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", "/var/lib/wazuh-server/engine/kvdb/");
 
     // Indexer connector
-    addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5x");
+    addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5.x-0001");
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOST", {"http://127.0.0.1:9200"});
     addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
     addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "WazuhEngine5+");
