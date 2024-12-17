@@ -16,7 +16,7 @@ from wazuh.core.indexer.models.events import Operation
 
 from wazuh.core.batcher.buffer import Buffer
 from wazuh.core.batcher.timer import TimerManager
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, Packet
 from wazuh.core.batcher.config import BatcherConfig
 
 logger = logging.getLogger('wazuh-comms-api')
@@ -40,7 +40,7 @@ class Batcher:
         self._timer: TimerManager = TimerManager(max_time_seconds=config.max_time_seconds)
         self._shutdown_event: Optional[asyncio.Event] = None
 
-    async def _get_from_queue(self) -> Item:
+    async def _get_from_queue(self) -> Packet:
         """Retrieve an item from the mux queue. If the queue is empty, waits and retries until an item is received
         or the task is cancelled.
 
@@ -54,19 +54,19 @@ class Batcher:
         asyncio.CancelledError
             If the task is cancelled during the operation.
         """
-        item = None
+        packet = None
         while True:
             try:
-                item = self.q.receive_from_mux(block=False)
-                return item
+                packet = self.q.receive_from_mux(block=False)
+                return packet
             except queue.Empty:
                 await asyncio.sleep(QUEUE_READ_INTERVAL)
             except asyncio.CancelledError:
-                if item is not None:
-                    self.q.send_to_mux(item)
+                if packet is not None:
+                    self.q.send_to_mux(packet)
                 break
 
-    async def _send_buffer(self, items: List[Item]):
+    async def _send_buffer(self, input_packets: list[Packet]):
         """Send a batch of items to the indexer in bulk and update the demux queue with the response items.
 
         Parameters
@@ -79,6 +79,11 @@ class Batcher:
         Exception
             If an error occurs during the sending of the buffer.
         """
+        output_packets = [Packet(id=packet.id, ids=packet.ids) for packet in input_packets]
+        items = []
+        for packet in input_packets:
+            items.extend(packet.items)
+
         try:
             async with get_indexer_client() as indexer_client:
                 bulk_list = create_bulk_list(items=items)
@@ -92,10 +97,18 @@ class Batcher:
                         if operation.value in response_item:
                             action_found = True
                             item = Item(id=item_id, content=response_item[operation.value], operation=operation)
-                            self.q.send_to_demux(item)
+
+                            # Adds it to the respective packet
+                            for packet in output_packets:
+                                if packet.has_item(item.id):
+                                    packet.add_item(item)
 
                     if not action_found:
                         logger.error(f"Error processing batcher response, no known action in: {response_item}")
+
+            for packet in output_packets:
+                self.q.send_to_demux(packet)
+
         except RequestError as exc:
             logger.error(f'Error sending opensearch request: {exc}')
         except Exception as e:
@@ -136,13 +149,13 @@ class Batcher:
 
                 # Process completed tasks
                 for task in done:
-                    if isinstance(task.result(), Item):
-                        item = task.result()
+                    if isinstance(task.result(), Packet):
+                        packet = task.result()
 
                         if self._buffer.get_length() == 0:
                             self._timer.create_timer_task()
 
-                        self._buffer.add_item(item)
+                        self._buffer.add_item(packet)
 
                         if self._buffer.check_count_limit() or self._buffer.check_size_limit():
                             self.create_flush_buffer_task()

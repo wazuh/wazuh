@@ -1,9 +1,12 @@
 import os
 import logging
 import signal
+import sys
 from multiprocessing import Queue, Process, Event
 from multiprocessing.managers import DictProxy, SyncManager
 from typing import Any
+
+from wazuh.core.indexer.models.events import AgentMetadata, Header, get_module_index_name
 
 
 logger = logging.getLogger('wazuh-comms-api')
@@ -30,6 +33,44 @@ class Item:
         self.index_name = index_name
 
 
+class Packet:
+    def __init__(self, id: None | int = None, ids: None | list[int] = None):
+        if ids is None:
+            ids = []
+        self.id: None | int = id
+        self.items: list[Item] = []
+        self.ids: list[ids] = ids
+
+    def add_id(self, id: int):
+        self.id = id
+
+    def has_item(self, id: int):
+        return id in self.ids
+
+    def get_len(self) -> int:
+        return len(self.items)
+
+    def get_size(self) -> int:
+        return sum(sys.getsizeof(item.content) for item in self.items)
+
+    def build_and_add_item(self, agent_metadata: AgentMetadata, header: Header, data: dict = None):
+        content = agent_metadata.model_dump() | data if data else None
+        item = Item(
+            id=header.id,
+            operation=header.operation,
+            content=content,
+            index_name=get_module_index_name(header.module, header.type)
+        )
+        self.add_item(item)
+
+    def add_item(self, item: Item):
+        self.items.append(item)
+        self.ids.append(item.id)
+
+        if len(self.items) > 1 and self.id is None:
+            self.id = self.items[0].id
+
+
 class MuxDemuxQueue:
     """Class for managing items between mux and demux components.
 
@@ -47,7 +88,7 @@ class MuxDemuxQueue:
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
 
-    def send_to_mux(self, item: Item):
+    def send_to_mux(self, packet: Packet):
         """Put a item into the mux queue with an associated unique identifier.
 
         Parameters
@@ -55,9 +96,9 @@ class MuxDemuxQueue:
         item : Item
             Item to be put into the mux queue.
         """
-        self.mux_queue.put(item)
+        self.mux_queue.put(packet)
 
-    def receive_from_mux(self, block: bool = True) -> Item:
+    def receive_from_mux(self, block: bool = True) -> Packet:
         """Retrieve a item from the mux queue. If the queue
         is empty and block is False it raises a queue.Empty error.
 
@@ -68,7 +109,7 @@ class MuxDemuxQueue:
         """
         return self.mux_queue.get(block=block)
 
-    def send_to_demux(self, item: Item):
+    def send_to_demux(self, packet: Packet):
         """Put a item into the demux queue.
 
         Parameters
@@ -76,7 +117,7 @@ class MuxDemuxQueue:
         item : Item
             Item to be put into the demux queue.
         """
-        self.demux_queue.put(item)
+        self.demux_queue.put(packet)
 
     def is_response_pending(self, item_id: int) -> bool:
         """Check if a response is available for a given unique identifier.
@@ -93,7 +134,7 @@ class MuxDemuxQueue:
         """
         return item_id not in self.responses
 
-    def receive_from_demux(self, item_id: int) -> dict:
+    def receive_from_demux(self, item_id: int) -> Packet:
         """Retrieve and remove a response from the dictionary for a given unique identifier.
 
         Parameters
@@ -120,7 +161,7 @@ class MuxDemuxQueue:
         """
         return self.demux_queue.get()
 
-    def internal_store_response(self, item: Item):
+    def internal_store_response(self, packet: Packet):
         """Update the responses dictionary with the item content.
 
         Parameters
@@ -128,14 +169,15 @@ class MuxDemuxQueue:
         item : Item
             Item whose content will be added to the response dictionary.
         """
-        if item.id not in self.responses:
-            self.responses[item.id] = [item.content]
+        if packet.id not in self.responses:
+            self.responses[packet.id] = packet
         else:
             # Using self.responses[item.id].append() doesn't work because
             # it doesn't hold the reference of nested objects
-            responses = self.responses[item.id]
-            responses.append(item.content)
-            self.responses[item.id] = responses
+            response = self.responses[packet.id]
+            response.items.extend(packet.items)
+            response.ids.extend(packet.ids)
+            self.responses[packet.id] = response
 
 
 class MuxDemuxRunner(Process):
@@ -180,9 +222,9 @@ class MuxDemuxRunner(Process):
 
         while not self._shutdown_event.is_set():
             try:
-                item = self.queue.internal_get_response_from_demux()
-                if isinstance(item, Item):
-                    self.queue.internal_store_response(item)
+                packet = self.queue.internal_get_response_from_demux()
+                if isinstance(packet, Packet):
+                    self.queue.internal_store_response(packet)
             except EOFError:
                 # Mux demux manager queue closed, exit
                 logger.info('Shutting down MuxDemuxRunner')
