@@ -161,6 +161,38 @@ namespace Utils
         return tokens;
     }
 
+    static std::vector<uint32_t> splitToNumber(const std::string& str, const char delimiter)
+    {
+        std::vector<uint32_t> tokens;
+        tokens.reserve(10);
+
+        auto start = str.begin();
+        auto end = str.begin();
+
+        while ((end = std::find(start, str.end(), delimiter)) != str.end())
+        {
+            uint32_t num = 0;
+            for (auto it = start; it != end; ++it)
+            {
+                num = num * 10 + (*it - '0');
+            }
+            tokens.push_back(num);
+            start = end + 1;
+        }
+
+        if (start != str.end())
+        {
+            uint32_t num = 0;
+            for (auto it = start; it != str.end(); ++it)
+            {
+                num = num * 10 + (*it - '0');
+            }
+            tokens.push_back(num);
+        }
+
+        return tokens;
+    }
+
     static std::string splitIndex(const std::string& str, const char delimiter, const size_t index)
     {
         std::string retVal;

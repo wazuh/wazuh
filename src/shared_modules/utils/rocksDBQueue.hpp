@@ -20,6 +20,7 @@
 #include <queue>
 #include <stdexcept>
 #include <string>
+#include <tracy/Tracy.hpp>
 
 // RocksDB integration as queue
 template<typename T, typename U = T>
@@ -126,6 +127,7 @@ public:
 
     void push(const T& data)
     {
+        ZoneScoped;
         // RocksDB enqueue element.
         if (const auto status = m_db->Put(rocksdb::WriteOptions(), std::to_string(m_last + 1), data); !status.ok())
         {
@@ -138,6 +140,7 @@ public:
 
     void pop()
     {
+        ZoneScoped;
         // If the queue is empty, nothing to do.
         if (m_size == 0)
         {
@@ -194,6 +197,7 @@ public:
 
     void frontQueue(std::queue<U>& queue, const uint64_t elementsQuantity)
     {
+        ZoneScoped;
         if (m_size < elementsQuantity)
         {
             throw std::runtime_error("Failed to get elements, queue have less elements than requested");
@@ -226,6 +230,7 @@ public:
 
     U front()
     {
+        ZoneScoped;
         U value;
         // If the queue is empty, return an empty value.
         if (m_size == 0)

@@ -21,6 +21,7 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
+#include <tracy/Tracy.hpp>
 
 template<typename T,
          typename U,
@@ -66,6 +67,7 @@ public:
 
     void push(const T& value)
     {
+        ZoneScoped;
         if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))

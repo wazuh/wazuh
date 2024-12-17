@@ -1224,9 +1224,9 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8
         fi
     fi
-    if [ -f external/tracy-0.11.1/build/libTracyClient.so.0.11.1 ]
+    if [ -f external/tracy/build/libTracyClient.so.0.11.1 ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/tracy-0.11.1/build/libTracyClient.so.0.11.1 ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/tracy/build/libTracyClient.so.0.11.1 ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libTracyClient.so.0.11.1
