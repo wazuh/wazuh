@@ -68,6 +68,19 @@
             ]
         },
         /*********************************************************************************
+        *                        Installation scripts debug configurations
+        *********************************************************************************/
+        {
+            "name": "Wazuh installer script",
+            "type": "bashdb",
+            "request": "launch",
+            "program": "${env:WAZUH_REPO}/install.sh",
+            "args": [],
+            "cwd": "${env:WAZUH_REPO}",
+            "showDebugOutput": true,
+            "terminalKind": "integrated"
+        },
+        /*********************************************************************************
         *                        Go tools debug configurations
         *********************************************************************************/
         {
