@@ -4,8 +4,8 @@
 #
 # Syntax: make [ all | build | install | examples | clean ]
 
-WAZUH_USER        = wazuh
-WAZUH_GROUP       = wazuh
+WAZUH_USER        = wazuh-server
+WAZUH_GROUP       = wazuh-server
 WAZUH_SERVER	  = wazuh-server
 
 SHARE_INSTALLDIR       ?= /usr/share/${WAZUH_SERVER}

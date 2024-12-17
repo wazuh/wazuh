@@ -8,7 +8,7 @@ DIR="/var/wazuh-server"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
 VERSION="$2"
 MAJOR=$(echo "$VERSION" | cut -dv -f2 | cut -d. -f1)
-WAZUH_USER="wazuh"
+WAZUH_USER="wazuh-server"
 
 # environment configuration
 if [ ! -d ${WAZUH_TMP_DIR} ]; then

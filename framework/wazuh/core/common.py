@@ -189,8 +189,8 @@ _context_cache = dict()
 cache_event = Event()
 _WAZUH_UID = None
 _WAZUH_GID = None
-GROUP_NAME = 'wazuh'
-USER_NAME = 'wazuh'
+GROUP_NAME = 'wazuh-server'
+USER_NAME = 'wazuh-server'
 
 # TODO: Keep until we remove the different deprecated functionalities that are importing it.
 WAZUH_PATH = ''

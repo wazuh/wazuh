@@ -19,6 +19,6 @@ then
     sed -i "s:type\: master:type\: worker:g" /etc/wazuh-server/wazuh-server.yml
 fi
 
-/usr/share/wazuh-server/bin/wazuh-server start -r &
+/usr/share/wazuh-server/bin/wazuh-server start &
 
 wait $!
