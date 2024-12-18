@@ -49,12 +49,12 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/name_test.cpp
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhRequest_test.cpp
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhResponse_test.cpp
-    ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
-    ${UNIT_SRC_DIR}/utils/threadEventDispatcher_test.cpp
-    ${UNIT_SRC_DIR}/utils/rocksDBWrapper_test.cpp
     ${UNIT_SRC_DIR}/utils/rocksDBSafeQueuePrefix_test.cpp
     ${UNIT_SRC_DIR}/utils/rocksDBSafeQueue_test.cpp
-    ${UNIT_SRC_DIR}/parseEvent_test.cpp
+    ${UNIT_SRC_DIR}/utils/rocksDBWrapper_test.cpp
+    ${UNIT_SRC_DIR}/utils/threadEventDispatcher_test.cpp
+    ${UNIT_SRC_DIR}/utils/threadSafeQueue_test.cpp
+    ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
     ${UNIT_SRC_DIR}/json_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
