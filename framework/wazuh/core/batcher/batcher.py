@@ -79,7 +79,7 @@ class Batcher:
         Exception
             If an error occurs during the sending of the buffer.
         """
-        output_packets = [Packet(id=packet.id, ids=packet.ids) for packet in input_packets]
+        output_packets = [Packet(id=packet.id) for packet in input_packets]
         items: List[Item] = []
         for packet in input_packets:
             items.extend(packet.items)
@@ -99,9 +99,10 @@ class Batcher:
                             item = Item(id=item_id, content=response_item[operation.value], operation=operation)
 
                             # Adds it to the respective packet
-                            for packet in output_packets:
-                                if packet.has_item(item.id):
-                                    packet.add_item(item)
+                            for input_packet in input_packets:
+                                for output_packet in output_packets:
+                                    if input_packet.has_item(item.id) and input_packet.id == output_packet.id:
+                                        output_packet.add_item(item)
 
                     if not action_found:
                         logger.error(f"Error processing batcher response, no known action in: {response_item}")

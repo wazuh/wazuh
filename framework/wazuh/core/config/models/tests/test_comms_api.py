@@ -5,8 +5,8 @@ from wazuh.core.config.models.comms_api import BatcherConfig, CommsAPIConfig
 
 
 @pytest.mark.parametrize('init_values, expected', [
-    ({}, {'max_elements': 5, 'max_size': 3000}),
-    ({'max_elements': 2, 'max_size': 200}, {'max_elements': 2, 'max_size': 200})
+    ({}, {'max_elements': 5, 'max_size': 3000, 'wait_time': 0.15}),
+    ({'max_elements': 2, 'max_size': 200, 'wait_time': 1}, {'max_elements': 2, 'max_size': 200, 'wait_time': 1})
 ])
 def test_batcher_config_default_values(init_values, expected):
     """Check the correct initialization of the `BatcherConfig` class."""
@@ -14,6 +14,7 @@ def test_batcher_config_default_values(init_values, expected):
 
     assert config.max_elements == expected['max_elements']
     assert config.max_size == expected['max_size']
+    assert config.wait_time == expected['wait_time']
 
 
 @pytest.mark.parametrize('init_values', [

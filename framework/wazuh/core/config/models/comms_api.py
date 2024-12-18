@@ -1,4 +1,4 @@
-from pydantic import PositiveInt
+from pydantic import PositiveInt, PositiveFloat
 
 from api.constants import API_CERT_PATH, API_KEY_PATH
 from wazuh.core.config.models.base import WazuhConfigBaseModel
@@ -15,9 +15,12 @@ class BatcherConfig(WazuhConfigBaseModel):
         The maximum number of elements in the batch. Default: 5.
     max_size : PositiveInt
         The maximum size in bytes of the batch. Default: 3000.
+    wait_time : PositiveFloat
+        The time in seconds to wait before sending the batch. Default: 0.15.
     """
     max_elements: PositiveInt = 5
     max_size: PositiveInt = 3000
+    wait_time: PositiveFloat = 0.15
 
 
 class CommsAPIConfig(WazuhConfigBaseModel):

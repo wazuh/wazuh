@@ -2,8 +2,8 @@ import os
 import logging
 import signal
 import sys
-from multiprocessing import Queue, Process
-from multiprocessing.managers import DictProxy, SyncManager, Event
+from multiprocessing import Queue, Process, Event
+from multiprocessing.managers import DictProxy, SyncManager
 from multiprocessing.synchronize import Event as EventType
 from typing import Any, Dict
 
@@ -35,18 +35,21 @@ class Item:
 
 
 class Packet:
-    def __init__(self, id: None | int = None, ids: None | list[int] = None):
-        if ids is None:
-            ids = []
+    def __init__(self, id: int = None, items: list[Item] = None):
+        if items is None:
+            items = []
         self.id: None | int = id
-        self.items: list[Item] = []
-        self.ids: list[ids] = ids
+        self.items: list[Item] = items
 
     def add_id(self, id: int):
         self.id = id
 
     def has_item(self, id: int):
-        return id in self.ids
+        for item in self.items:
+            if item.id == id:
+                return True
+
+        return False
 
     def get_len(self) -> int:
         return len(self.items)
@@ -54,7 +57,7 @@ class Packet:
     def get_size(self) -> int:
         return sum(sys.getsizeof(item.content) for item in self.items)
 
-    def build_and_add_item(self, agent_metadata: AgentMetadata, header: Header, data: dict = None):
+    def build_and_add_item(self, agent_metadata: AgentMetadata, header: Header, data: bytes = None):
         content = agent_metadata.model_dump() | data if data else None
         item = Item(
             id=header.id,
@@ -65,11 +68,10 @@ class Packet:
         self.add_item(item)
 
     def add_item(self, item: Item):
-        self.items.append(item)
-        self.ids.append(item.id)
-
-        if len(self.items) > 1 and self.id is None:
+        if len(self.items) == 0 and self.id is None:
             self.id = item.id
+
+        self.items.append(item)
 
 
 class MuxDemuxQueue:
