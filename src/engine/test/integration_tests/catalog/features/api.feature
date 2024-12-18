@@ -399,7 +399,7 @@ Feature: Catalog API Management
     When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
-        check: $wazuh.origin == /var/log/apache2/access.log
+        check: $log.file.path == /var/log/apache2/access.log
         parse|message:
           - <event.code> <event.kind> <event.action>
         normalize:
