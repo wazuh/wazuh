@@ -14,7 +14,6 @@ All notable changes to this project will be documented in this file.
 - Fixed concurrency issues in LRU caches ([#26073](https://github.com/wazuh/wazuh/pull/26073))
 - Removed all CVEs related to a deleted agent from the indexer. ([#26232](https://github.com/wazuh/wazuh/pull/26232))
 - Prevented an infinite loop when indexing events in the Vulnerability Detector. ([#26922](https://github.com/wazuh/wazuh/pull/26922))
-- Fixed segmentation fault in `DescriptionsHelper::vulnerabilityDescription`. ([#26842](https://github.com/wazuh/wazuh/pull/26842))
 - Fixed vulnerability scanner re-scan triggers in cluster environment. ([#24034](https://github.com/wazuh/wazuh/pull/24034))
 - Fixed an issue where elements in the delayed list were not purged when changing nodes. ([#27145](https://github.com/wazuh/wazuh/pull/27145))
 - Added logic to avoid re-scanning disconnected agents. ([#27145](https://github.com/wazuh/wazuh/pull/27145))
