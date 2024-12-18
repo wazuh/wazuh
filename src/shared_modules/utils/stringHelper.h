@@ -490,6 +490,10 @@ namespace Utils
             uint32_t num = 0;
             for (auto it = start; it != end; ++it)
             {
+                if (*it < '0' || *it > '9')
+                {
+                    throw std::runtime_error("Invalid number.");
+                }
                 num = num * 10 + (*it - '0');
             }
             tokens.push_back(num);
@@ -501,6 +505,10 @@ namespace Utils
             uint32_t num = 0;
             for (auto it = start; it != str.end(); ++it)
             {
+                if (*it < '0' || *it > '9')
+                {
+                    throw std::runtime_error("Invalid number.");
+                }
                 num = num * 10 + (*it - '0');
             }
             tokens.push_back(num);
