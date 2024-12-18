@@ -25,17 +25,17 @@ void Keystore::fileCreate(const std::filesystem::path& keyStorePath)
     {
         if (!std::filesystem::exists(keyStorePath.parent_path()))
         {
-            throw std::runtime_error("The parent directory of the key store file '"
-                                     + std::string(keyStorePath.filename()) + "' does not exist.");
+            throw std::runtime_error("The parent directory of the key store file '" + std::string(keyStorePath)
+                                     + "' does not exist.");
         }
 
-        std::ofstream file(keyStorePath.filename());
+        std::ofstream file(keyStorePath);
         if (!file.is_open())
         {
             throw std::runtime_error("Error creating key store file due to: " + std::string(strerror(errno)));
         }
         file.close();
-        std::filesystem::permissions(keyStorePath.filename(),
+        std::filesystem::permissions(keyStorePath,
                                      std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
                                          | std::filesystem::perms::group_read);
     }

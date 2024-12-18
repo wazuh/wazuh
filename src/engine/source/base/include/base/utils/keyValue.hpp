@@ -12,7 +12,6 @@
 #ifndef _KEY_VALUE_HPP
 #define _KEY_VALUE_HPP
 
-#include <algorithm>
 #include <map>
 #include <string>
 
