@@ -455,6 +455,12 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
                         "Directory '/tmp' needs read, write & execution "
                         "permission for 'wazuh' user")
 
+                error_message = 'Some daemon fail to start'
+                start_daemons_mock.side_effect = wazuh_server.DaemonStartError(error_message)
+                wazuh_server.start()
+                main_logger_mock.assert_any_call(error_message)
+
+
 
 @patch('scripts.wazuh_server.shutdown_server')
 @patch('scripts.wazuh_server.os.kill')

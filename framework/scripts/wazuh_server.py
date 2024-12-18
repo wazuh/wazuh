@@ -37,6 +37,9 @@ MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
 
 
+class DaemonStartError(Exception):
+    pass
+
 #
 # Aux functions
 #
@@ -89,7 +92,7 @@ def start_daemon(name: str, args: List[str]):
             pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         main_logger.info(f'Started {name} (pid: {pid})')
     except Exception as e:
-        main_logger.error(f'Error starting {name}: {e}')
+        raise DaemonStartError(f'Error starting {name}: {e}')
 
 
 def start_daemons(root: bool):
@@ -382,6 +385,8 @@ def start():
         main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution " "permission for 'wazuh' user")
+    except DaemonStartError as e:
+        main_logger.error(e)
     except Exception as e:
         main_logger.error(f'Unhandled exception: {e}')
     finally:
