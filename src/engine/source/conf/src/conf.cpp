@@ -90,6 +90,10 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/lib/wazuh-server/engine/tzdb");
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
+
+    // Metrics module
+    addUnit<int64_t>(key::METRICS_EXPORT_INTERVAL, "WAZUH_METRICS_EXPORT_INTERVAL", 10000);
+    addUnit<int64_t>(key::METRICS_EXPORT_TIMEOUT, "WAZUH_METRICS_EXPORT_TIMEOUT", 1000);
 };
 
 void Conf::validate(const json::Json& config) const

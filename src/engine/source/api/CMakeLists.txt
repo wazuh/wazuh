@@ -17,7 +17,6 @@ add_library(api STATIC
   ${ENGINE_API_SOURCE_DIR}/catalog/handlers.cpp
   ${ENGINE_API_SOURCE_DIR}/graph/handlers.cpp
   ${ENGINE_API_SOURCE_DIR}/kvdb/handlers.cpp
-  ${ENGINE_API_SOURCE_DIR}/metrics/handlers.cpp
   ${ENGINE_API_SOURCE_DIR}/policy/handlers.cpp
   ${ENGINE_API_SOURCE_DIR}/policy/policy.cpp
   ${ENGINE_API_SOURCE_DIR}/registry.cpp
@@ -34,7 +33,6 @@ target_include_directories(api
   ${ENGINE_API_SOURCE_DIR}/catalog
   ${ENGINE_API_SOURCE_DIR}/graph
   ${ENGINE_API_SOURCE_DIR}/kvdb
-  ${ENGINE_API_SOURCE_DIR}/metrics
   ${ENGINE_API_SOURCE_DIR}/policy
   ${ENGINE_API_SOURCE_DIR}/router
   ${ENGINE_API_SOURCE_DIR}/tester
@@ -45,7 +43,6 @@ target_link_libraries(api
     base
     eMessages
     kvdb::ikvdb
-    metrics
     router::irouter
     store::fileDriver
     store::istore

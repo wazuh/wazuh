@@ -15,12 +15,6 @@
 #include <kvdb/kvdbHandler.hpp>
 #include <kvdb/kvdbHandlerCollection.hpp>
 
-namespace metricsManager
-{
-class IMetricsManager;
-class IMetricsScope;
-} // namespace metricsManager
-
 namespace kvdbManager
 {
 
@@ -52,10 +46,8 @@ public:
      * @brief Construct a new KVDBManager object
      *
      * @param options Options for the KVDBManager.
-     * @param metricsManager Pointer to the Metrics Manager.
      */
-    KVDBManager(const KVDBManagerOptions& options,
-                const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
+    KVDBManager(const KVDBManagerOptions& options);
 
     /**
      * @copydoc IKVDBManager::initialize
@@ -170,12 +162,6 @@ private:
      *
      */
     std::shared_ptr<KVDBHandlerCollection> m_kvdbHandlerCollection;
-
-    /**
-     * @brief Pointer to the Metrics Manager through MetricsScope.
-     *
-     */
-    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScope;
 
     /**
      * @brief Create a Column Family object and store in map.

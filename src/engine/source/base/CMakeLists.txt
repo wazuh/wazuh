@@ -38,6 +38,7 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 
 add_library(base_test INTERFACE)
 target_include_directories(base_test INTERFACE ${TEST_DIR}/include)
+target_link_libraries(base_test INTERFACE base GTest::gmock)
 add_library(base::test ALIAS base_test)
 
 add_executable(base_utest
@@ -55,6 +56,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp
+    ${UNIT_SRC_DIR}/utils/singletonLocator_test.cpp
 )
 target_include_directories(base_utest
     PRIVATE

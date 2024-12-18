@@ -13,8 +13,9 @@
 #include <gtest/gtest.h>
 #include <uvw.hpp>
 
-#include "fakeMetric.hpp"
 #include <base/logging.hpp>
+#include <base/mockSingletonManager.hpp>
+#include <metrics/noOpManager.hpp>
 #include <server/endpoints/unixStream.hpp>
 #include <server/protocolHandler.hpp>
 
@@ -204,6 +205,18 @@ protected:
     }
 
     void TearDown() override { unlink(m_socketPath.c_str()); }
+
+    static void SetUpTestSuite()
+    {
+        static metrics::mocks::NoOpManager mockManager;
+        SingletonLocator::registerManager<metrics::IManager, base::test::MockSingletonManager<metrics::IManager>>();
+        auto& mockStrategy = dynamic_cast<base::test::MockSingletonManager<metrics::IManager>&>(
+            SingletonLocator::manager<metrics::IManager>());
+        ON_CALL(mockStrategy, instance()).WillByDefault(testing::ReturnRef(mockManager));
+        EXPECT_CALL(mockStrategy, instance()).Times(testing::AnyNumber());
+    }
+
+    static void TearDownTestSuite() { SingletonLocator::unregisterManager<metrics::IManager>(); }
 };
 
 // Helper function to create and connect a Unix domain socket client
@@ -307,8 +320,7 @@ startLoopThread(std::shared_ptr<uvw::Loop> loop, std::shared_ptr<ResourceCounter
 
 TEST_F(UnixStreamTest, BindAndClose)
 {
-    UnixStream server(
-        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    UnixStream server(m_socketPath, m_factory);
     server.bind(m_loop);
     server.close();
     m_loop->run<uvw::Loop::Mode::ONCE>();
@@ -317,8 +329,7 @@ TEST_F(UnixStreamTest, BindAndClose)
 TEST_F(UnixStreamTest, EchoMessage)
 {
     // Configure UnixStream server
-    UnixStream server(
-        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    UnixStream server(m_socketPath, m_factory);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
 
@@ -355,8 +366,7 @@ TEST_F(UnixStreamTest, EchoMessage)
 TEST_F(UnixStreamTest, MultipleEchoMessages)
 {
     // Configure UnixStream server
-    UnixStream server(
-        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    UnixStream server(m_socketPath, m_factory);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
 
@@ -425,8 +435,7 @@ TEST_F(UnixStreamTest, MultipleEchoMessages)
 TEST_F(UnixStreamTest, MultipleConnections)
 {
     // Configure UnixStream server
-    UnixStream server(
-        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    UnixStream server(m_socketPath, m_factory);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
 
@@ -504,11 +513,7 @@ TEST_F(UnixStreamTest, QueueWorker_SameClient)
     const std::size_t taskQueueSize = 16;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath,
-                      m_factory,
-                      std::make_shared<FakeMetricScope>(),
-                      std::make_shared<FakeMetricScope>(),
-                      taskQueueSize);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
@@ -576,11 +581,7 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
     const std::size_t taskQueueSize = 16;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath,
-                      m_factory,
-                      std::make_shared<FakeMetricScope>(),
-                      std::make_shared<FakeMetricScope>(),
-                      taskQueueSize);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
@@ -668,11 +669,7 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
     std::size_t busyMessage = 0;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath,
-                      m_factory,
-                      std::make_shared<FakeMetricScope>(),
-                      std::make_shared<FakeMetricScope>(),
-                      taskQueueSize);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
@@ -836,11 +833,7 @@ TEST_F(UnixStreamTest, ClouseResourcePerAbruptClosure)
     const std::size_t taskQueueSize = 16;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath,
-                      m_factory,
-                      std::make_shared<FakeMetricScope>(),
-                      std::make_shared<FakeMetricScope>(),
-                      taskQueueSize);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize);
     server.bind(m_loop);
 
     auto counters = std::make_shared<ResourceCounter>();
@@ -915,12 +908,7 @@ TEST_F(UnixStreamTest, ClouseResourcePerTimeout)
     auto timeout = 100;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath,
-                      m_factory,
-                      std::make_shared<FakeMetricScope>(),
-                      std::make_shared<FakeMetricScope>(),
-                      taskQueueSize,
-                      timeout);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize, timeout);
     server.bind(m_loop);
     auto counters = std::make_shared<ResourceCounter>();
     auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop, counters);
