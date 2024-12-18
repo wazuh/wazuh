@@ -168,7 +168,6 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
     results: List[TaskResult] = []
 
     for r in tasks_results:
-        print(f"Event {r}")
         status = r[IndexerKey.STATUS]
         if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
             task_result = TaskResult(

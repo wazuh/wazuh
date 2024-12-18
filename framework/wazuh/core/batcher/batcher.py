@@ -80,7 +80,7 @@ class Batcher:
             If an error occurs during the sending of the buffer.
         """
         output_packets = [Packet(id=packet.id, ids=packet.ids) for packet in input_packets]
-        items = []
+        items: List[Item] = []
         for packet in input_packets:
             items.extend(packet.items)
 

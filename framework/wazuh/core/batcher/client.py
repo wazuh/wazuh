@@ -1,8 +1,4 @@
-import asyncio
-from typing import Optional
-
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, Packet
-from wazuh.core.indexer.models.events import AgentMetadata, Header, get_module_index_name
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Packet
 
 
 class BatcherClient:
@@ -17,9 +13,8 @@ class BatcherClient:
         Defaults to 0.1 seconds.
 
     """
-    def __init__(self, queue: MuxDemuxQueue, wait_frequency: float = 0.05):
+    def __init__(self, queue: MuxDemuxQueue):
         self.queue = queue
-        self.wait_frequency = wait_frequency
 
     def send_event(self, packet: Packet):
         """Send an event through the RouterQueue.
@@ -48,8 +43,4 @@ class BatcherClient:
         Optional[dict]
             Indexer response if available, None otherwise.
         """
-        while True:
-            if not self.queue.is_response_pending(item_id):
-                return self.queue.receive_from_demux(item_id)
-            
-            await asyncio.sleep(self.wait_frequency)
+        return self.queue.receive_from_demux(item_id)

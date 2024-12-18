@@ -304,7 +304,6 @@ if __name__ == '__main__':
     batcher_config = BatcherConfig(
         max_elements=comms_api_config.batcher.max_elements,
         max_size=comms_api_config.batcher.max_size,
-        max_time_seconds=comms_api_config.batcher.wait_time
     )
     mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
 

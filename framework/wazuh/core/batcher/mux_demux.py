@@ -2,9 +2,10 @@ import os
 import logging
 import signal
 import sys
-from multiprocessing import Queue, Process, Event
-from multiprocessing.managers import DictProxy, SyncManager
-from typing import Any
+from multiprocessing import Queue, Process
+from multiprocessing.managers import DictProxy, SyncManager, Event
+from multiprocessing.synchronize import Event as EventType
+from typing import Any, Dict
 
 from wazuh.core.indexer.models.events import AgentMetadata, Header, get_module_index_name
 
@@ -68,7 +69,7 @@ class Packet:
         self.ids.append(item.id)
 
         if len(self.items) > 1 and self.id is None:
-            self.id = self.items[0].id
+            self.id = item.id
 
 
 class MuxDemuxQueue:
@@ -82,11 +83,14 @@ class MuxDemuxQueue:
         Queue for multiplexing items.
     demux_queue : Queue
         Queue for demultiplexing items.
+    subscriptions : DictProxy
+        Dictionary for managing subscriptions to responses.
     """
-    def __init__(self, proxy_dict: DictProxy, mux_queue: Queue, demux_queue: Queue):
+    def __init__(self, proxy_dict: DictProxy, mux_queue: Queue, demux_queue: Queue, subscriptions_dict: DictProxy):
         self.responses = proxy_dict
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
+        self._subscriptions: Dict[str, EventType] = subscriptions_dict
 
     def send_to_mux(self, packet: Packet):
         """Put a item into the mux queue with an associated unique identifier.
@@ -147,6 +151,12 @@ class MuxDemuxQueue:
         dict
             Indexer response.
         """
+        event = Event()
+        self._subscriptions.update({item_id: event})
+        signaled = event.wait(60)
+        if not signaled:
+            return
+
         response = self.responses[item_id]
         del self.responses[item_id]
         return response
@@ -172,12 +182,14 @@ class MuxDemuxQueue:
         if packet.id not in self.responses:
             self.responses[packet.id] = packet
         else:
-            # Using self.responses[item.id].append() doesn't work because
+            # Using self.responses[packet.id].append() doesn't work because
             # it doesn't hold the reference of nested objects
             response = self.responses[packet.id]
             response.items.extend(packet.items)
             response.ids.extend(packet.ids)
             self.responses[packet.id] = response
+
+        self._subscriptions[packet.id].set()
 
 
 class MuxDemuxRunner(Process):
@@ -250,7 +262,8 @@ class MuxDemuxManager:
         self.queue = self.manager.MuxDemuxQueue(
             self.manager.dict(),
             self.manager.Queue(),
-            self.manager.Queue()
+            self.manager.Queue(),
+            self.manager.dict()
         )
         self.queue_process = MuxDemuxRunner(queue=self.queue)
         self.queue_process.start()
