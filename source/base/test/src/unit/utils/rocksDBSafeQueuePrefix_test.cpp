@@ -225,8 +225,9 @@ TEST_F(RocksDBSafeQueuePrefixTest, PopWithDeletedIndex)
         db->delete_("001_" + std::to_string(3));
         db->delete_("001_" + std::to_string(8));
     }
-    queue = std::make_unique<base::utils::queue::TSafeMultiQueue<std::string, std::string, RocksDBQueueCF<std::string>>>(
-        RocksDBQueueCF<std::string>("test.db"));
+    queue =
+        std::make_unique<base::utils::queue::TSafeMultiQueue<std::string, std::string, RocksDBQueueCF<std::string>>>(
+            RocksDBQueueCF<std::string>("test.db"));
 
     std::queue<std::string> queueElements;
     while (queue->size("001") != 0)
