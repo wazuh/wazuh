@@ -10,19 +10,33 @@
  */
 
 #include <filesystem>
+#include <memory>
+#include <string>
+#include <thread>
 
-#include "rocksDBSafeQueue_test.hpp"
-#include "rocksDBWrapper.hpp"
+#include <gtest/gtest.h>
 
-void RocksDBSafeQueueTest::SetUp()
+#include <base/utils/rocksDBQueue.hpp>
+#include <base/utils/threadSafeQueue.hpp>
+
+class RocksDBSafeQueueTest : public ::testing::Test
 {
-    std::error_code ec;
-    std::filesystem::remove_all("test.db", ec);
-    queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-        RocksDBQueue<std::string>("test.db"));
-};
+protected:
+    RocksDBSafeQueueTest() = default;
+    ~RocksDBSafeQueueTest() override = default;
 
-void RocksDBSafeQueueTest::TearDown() {};
+    void SetUp() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all("test.db", ec);
+        queue = std::make_unique<base::utils::queue::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+            RocksDBQueue<std::string>("test.db"));
+    }
+
+    void TearDown() override {}
+
+    std::unique_ptr<base::utils::queue::SafeQueue<std::string, RocksDBQueue<std::string>>> queue;
+};
 
 TEST_F(RocksDBSafeQueueTest, PopInCancelledQueue)
 {
@@ -141,7 +155,7 @@ TEST_F(RocksDBSafeQueueTest, CreateFolderRecursively)
     const std::string DATABASE_NAME {"folder1/folder2/test.db"};
 
     EXPECT_NO_THROW({
-        (std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+        (std::make_unique<base::utils::queue::SafeQueue<std::string, RocksDBQueue<std::string>>>(
             RocksDBQueue<std::string>(DATABASE_NAME)));
     });
 
