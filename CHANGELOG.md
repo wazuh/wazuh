@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Fixed
+
 - Added support for multiple Certificate Authorities files in the indexer connector. ([#24620](https://github.com/wazuh/wazuh/pull/24620))
 - Removed hardcoded cipher text size from the RSA decryption method. ([#24529](https://github.com/wazuh/wazuh/pull/24529))
 - Avoid infinite loop while updating the vulnerability detector content. ([#25094](https://github.com/wazuh/wazuh/pull/25094))
@@ -19,14 +20,19 @@ All notable changes to this project will be documented in this file.
 - Added logic to avoid re-scanning disconnected agents. ([#27145](https://github.com/wazuh/wazuh/pull/27145))
 
 #### Changed
+
 - Added self-recovery mechanism for rocksDB databases. ([#24333](https://github.com/wazuh/wazuh/pull/24333))
 - Improve logging for indexer connector monitoring class. ([#25189](https://github.com/wazuh/wazuh/pull/25189))
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
 - Updated CURL version to 8.10.0. ([#23266](https://github.com/wazuh/wazuh/issues/23266))
+- Improved Vulnerability Scanner performance by optimizing the PEP440 version matcher. ([#27320](https://github.com/wazuh/wazuh/pull/27320))
+- Improved Vulnerability Scanner performance by optimizing version matcher object creation. ([#27324](https://github.com/wazuh/wazuh/pull/27324))
+- Improved Vulnerability Scanner performance by optimizing global data handling. ([#27321](https://github.com/wazuh/wazuh/pull/27321))
 
 ### Agent
 
 #### Fixed
+
 - Fixed macOS agent upgrade timeout. ([#25452](https://github.com/wazuh/wazuh/pull/25452))
 - Fixed macOS agent startup error by properly redirecting cat command errors in wazuh-control. ([#24531](https://github.com/wazuh/wazuh/pull/24531))
 - Fixed inconsistent package inventory size information in Syscollector across operating systems ([#24516](https://github.com/wazuh/wazuh/pull/24516))
@@ -45,6 +51,7 @@ All notable changes to this project will be documented in this file.
 - Updated Solaris package generation to use the correct `wazuh-packages` reference. ([#27059](https://github.com/wazuh/wazuh/issues/27059))  
 
 #### Changed
+
 - Added generation of debug symbols. ([#23760](https://github.com/wazuh/wazuh/pull/23760))
 - Changed how the AWS module handles non-existent regions. ([#23998](https://github.com/wazuh/wazuh/pull/23998))
 - Changed macOS packages building tool. ([#2006](https://github.com/wazuh/wazuh-packages/issues/2006))
@@ -57,11 +64,13 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+
 - Created new endpoint for agent uninstall process. ([#24621](https://github.com/wazuh/wazuh/pull/24621))
 
 ### Other
 
 #### Changed
+
 - Updated the embedded Python version up to 3.10.15. ([#25374](https://github.com/wazuh/wazuh/issues/25374))
 - Upgraded `certifi` and removed unused packages. ([#25324](https://github.com/wazuh/wazuh/pull/25324))
 - Upgraded external `cryptography` library dependency version to 43.0.1. ([#25893](https://github.com/wazuh/wazuh/pull/25893))
@@ -70,9 +79,11 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+
 - Create SCA Policy for Windows Server 2012 (non R2). ([#21794](https://github.com/wazuh/wazuh/pull/21794))
 
 #### Changed
+
 - Rework SCA Policy for Windows Server 2019. ([#21434](https://github.com/wazuh/wazuh/pull/21434))
 - Rework SCA Policy for Red Hat Enterprise Linux 9. ([#24667](https://github.com/wazuh/wazuh/pull/24667))
 - Rework SCA Policy for Microsoft Windows Server 2012 R2. ([#24991](https://github.com/wazuh/wazuh/pull/24991))
@@ -83,6 +94,7 @@ All notable changes to this project will be documented in this file.
 - Rework SCA Policy for Microsoft Windows 11 Enterprise. ([#25710](https://github.com/wazuh/wazuh/pull/25710))
 
 #### Fixed
+
 - Fixed Logical errors in Windows Server 2022 SCA checks. ([#22597](https://github.com/wazuh/wazuh/pull/22597))
 - Fixed wrong regulatory compliance in several Windows rules. ([#25224](https://github.com/wazuh/wazuh/pull/25224))
 - Fixed incorrect checks in Ubuntu 22.04 LTS. ([#24733](https://github.com/wazuh/wazuh/pull/24733))
