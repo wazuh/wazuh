@@ -17,7 +17,8 @@ from wazuh.core.indexer.models.events import Operation
 from wazuh.core.batcher.buffer import Buffer
 from wazuh.core.batcher.timer import TimerManager
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, Packet
-from wazuh.core.batcher.config import BatcherConfig
+
+from wazuh.core.config.models.comms_api import BatcherConfig
 
 logger = logging.getLogger('wazuh-comms-api')
 
@@ -37,7 +38,7 @@ class Batcher:
     def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
         self.q: MuxDemuxQueue = mux_demux_queue
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
-        self._timer: TimerManager = TimerManager(max_time_seconds=config.max_time_seconds)
+        self._timer: TimerManager = TimerManager(max_time_seconds=config.wait_time)
         self._shutdown_event: Optional[asyncio.Event] = None
 
     async def _get_from_queue(self) -> Packet:
