@@ -298,6 +298,7 @@ int main(int argc, char* argv[])
                 icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
                 icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                 icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::MERGED_CA_PATH);
             }
 
             icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);

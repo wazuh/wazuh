@@ -44,6 +44,7 @@ struct IndexerConnectorOptions
         std::vector<std::string> cacert; ///< The list of CA certificates to trust.
         std::string cert;                ///< The certificate to connect to OpenSearch.
         std::string key;                 ///< The key to connect to OpenSearch.
+        std::string merged_ca_path;      ///< The path containing the merged ca.
     } sslOptions;                        ///< The SSL options to connect to OpenSearch.
 
     uint32_t timeout = 60000u;  ///< The timeout in milliseconds to connect to OpenSearch.

@@ -19,6 +19,7 @@ constexpr std::string_view INDEXER_PASSWORD = "/indexer/password";
 constexpr std::string_view INDEXER_SSL_CA_LIST = "/indexer/ssl/certificate_authorities";
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "/indexer/ssl/certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "/indexer/ssl/key";
+constexpr std::string_view MERGED_CA_PATH = "/var/lib/wazuh-server/tmp/root-ca-merged.pem";
 constexpr std::string_view INDEXER_SSL_USE_SSL = "/indexer/ssl/use_ssl";
 constexpr std::string_view INDEXER_SSL_VERIFY_CERTS = "/indexer/ssl/verify_certificates";
 
