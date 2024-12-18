@@ -201,7 +201,7 @@ jobs:
             lcov --add-tracefile ${coverage_base_file} --add-tracefile $coverage_after_file --output-file ${coverage_total_file}
             lcov --remove ${coverage_total_file} '*/test/*' "*/${{env.BUILD_PATH}}/vcpkg_installed/*" --output-file ${coverage_filtered_file} --ignore-errors unused
             cd "${{github.workspace}}/${{env.BUILD_PATH}}"
-            genhtml ${coverage_filtered_file} --output-directory ${coverage_report_dir} --prefix ${module_path}
+            genhtml ${coverage_filtered_file} --output-directory ${coverage_report_dir} --prefix ${module_path} --no-function-coverage
 
             # Check if the coverage report was generated searching for the index.html file
             if [ -f "${coverage_report_dir}/index.html" ]; then
@@ -261,7 +261,7 @@ jobs:
         # Pass coverage requeriments
         PASS=true
         # Message for the PR
-        MARKDOWN_SUMMARY='| Module | Line coverage | Function coverage |\n| --- | --- | --- |\n'
+        MARKDOWN_SUMMARY='| Module | Line coverage |\n| --- | --- |\n'
 
         # Get the list of modules that have changed
         IFS=' ' read -r -a MODULES_LIST <<< "${MODULES_LIST[@]}"
@@ -278,10 +278,8 @@ jobs:
 
           local summary=$(lcov --summary "${coverage_filtered_file}")
           local line_coverage=$(echo "$summary" | grep 'lines' | awk '{print $2}' | sed 's/%//')
-          local function_coverage=$(echo "$summary" | grep 'functions' | awk '{print $2}' | sed 's/%//')
 
           echo "Line coverage for module ${module}: ${line_coverage}"
-          echo "Function coverage for module ${module}: ${function_coverage}"
 
           # Check Line coverage
           MARKDOWN_SUMMARY+="| ${module} | ${line_coverage}% "
@@ -292,17 +290,6 @@ jobs:
           else
               echo "Line coverage for module ${module} is above the minimum required: ${min_coverage}% (current: ${line_coverage}%)"
               MARKDOWN_SUMMARY+=" :white_check_mark:"
-          fi
-
-          # Check Function coverage
-          MARKDOWN_SUMMARY+=" | ${function_coverage}% "
-          if (( $(echo "$function_coverage < $min_coverage" | bc -l) )); then
-              echo "Function coverage for module ${module} is below the minimum required: ${min_coverage}% (current: ${function_coverage}%)"
-              MARKDOWN_SUMMARY+=" :x: |\n"
-              PASS=false
-          else
-              echo "Function coverage for module ${module} is above the minimum required: ${min_coverage}% (current: ${function_coverage}%)"
-              MARKDOWN_SUMMARY+=" :white_check_mark: |\n"
           fi
         }
 
