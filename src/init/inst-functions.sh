@@ -31,8 +31,6 @@ InstallCommon()
 
   ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
-  # Folder for the engine api socket
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-engine
   # Folder for persistent databases (vulnerability scanner, ruleset, connector).
   ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine
   # Folder for persistent databases (vulnerability scanner).
@@ -155,9 +153,6 @@ InstallEngine()
   checkDownloadContent
   mkdir -p ${INSTALLDIR}usr/share/wazuh-server/bin
   ${INSTALL} -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} engine/build/main ${INSTALLDIR}usr/share/wazuh-server/bin/wazuh-engine
-
-  # Folder for the engine socket.
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}run/wazuh-server/
 
   # Folder for persistent databases (vulnerability scanner, ruleset, connector).
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/

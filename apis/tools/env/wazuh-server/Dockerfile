@@ -62,8 +62,6 @@ RUN groupadd -f "$GROUP" && useradd "$USER" -d "/" -s "/sbin/nologin" -g "$GROUP
 # Copy directories from builder
 COPY --from=builder --chown=${USER}:${GROUP} /etc/wazuh-server /etc/wazuh-server
 
-COPY --from=builder --chown=${USER}:${GROUP} /run/wazuh-server /run/wazuh-server
-
 COPY --from=builder --chown=${USER}:${GROUP} /var/log/wazuh-server /var/log/wazuh-server
 
 COPY --from=builder --chown=${USER}:${GROUP} /var/lib/wazuh-server /var/lib/wazuh-server

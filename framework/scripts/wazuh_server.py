@@ -16,12 +16,12 @@ import time
 
 from wazuh.core import pyDaemonModule
 from wazuh.core.authentication import generate_keypair, keypair_exists
-from wazuh.core.common import WAZUH_SHARE, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH
+from wazuh.core.common import WAZUH_SHARE, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import NodeType
 from wazuh.core.cluster.cluster import clean_up
 from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version, ping_unix_socket
-from wazuh.core.utils import clean_pid_files
+from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
 from wazuh.core.cluster.unix_server.server import start_unix_server
 from wazuh.core.config.models.server import ServerConfig
@@ -350,6 +350,10 @@ def start():
 
     # Clean cluster files from previous executions
     clean_up()
+
+    # Create /run/wazuh-server
+    create_wazuh_dir(WAZUH_RUN)
+
     # Check for unused PID files
     clean_pid_files(SERVER_DAEMON_NAME)
 
