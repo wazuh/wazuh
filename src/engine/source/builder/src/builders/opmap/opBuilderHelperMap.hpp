@@ -298,6 +298,19 @@ MapOp opBuilderHelperEpochTimeFromSystem(const std::vector<OpArg>& opArgs,
 MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Builds an operation to generate the current date in ISO 8601 format.
+ *
+ * This function returns a callable operation that produces the current date
+ * in the format "%Y-%m-%dT%H:%M:%SZ". The date is generated in UTC time zone.
+ *
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @throw std::runtime when type of number of paramter missmatch
+ * @return base::Expression
+ */
+MapOp opBuilderHelperGetDate(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
 //*************************************************
 //*              Checksum and hash                *
 //*************************************************

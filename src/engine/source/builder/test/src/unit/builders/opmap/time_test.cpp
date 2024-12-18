@@ -51,6 +51,10 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({}, opBuilderHelperEpochTimeFromSystem, SUCCESS()),
         MapT({makeValue(R"("value")")}, opBuilderHelperEpochTimeFromSystem, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperEpochTimeFromSystem, FAILURE()),
+        /*** Get Date ***/
+        MapT({}, opBuilderHelperGetDate, SUCCESS()),
+        MapT({makeValue(R"("value")")}, opBuilderHelperGetDate, FAILURE()),
+        MapT({makeRef("ref")}, opBuilderHelperGetDate, FAILURE()),
         /*** Date From Epoch ***/
         MapT({}, opBuilderHelperDateFromEpochTime, FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperDateFromEpochTime, FAILURE()),
@@ -74,6 +78,8 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         /*** Epoch From System ***/
         MapT("{}", opBuilderHelperEpochTimeFromSystem, {}, SUCCESS(IGNORE_MAP_RESULT)),
+        /*** Get date ***/
+        MapT("{}", opBuilderHelperGetDate, {}, SUCCESS(IGNORE_MAP_RESULT)),
         /*** Date From Epoch ***/
         MapT(R"({"ref": 1706172785})",
              opBuilderHelperDateFromEpochTime,
