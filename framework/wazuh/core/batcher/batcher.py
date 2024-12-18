@@ -36,7 +36,7 @@ class Batcher:
         Configuration parameters for batching, such as maximum elements and size.
     """
     def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
-        self.q: MuxDemuxQueue = mux_demux_queue
+        self.queue: MuxDemuxQueue = mux_demux_queue
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
         self._timer: TimerManager = TimerManager(max_time_seconds=config.wait_time)
         self._shutdown_event: Optional[asyncio.Event] = None
@@ -58,13 +58,13 @@ class Batcher:
         packet = None
         while True:
             try:
-                packet = self.q.receive_from_mux(block=False)
+                packet = self.queue.receive_from_mux(block=False)
                 return packet
             except queue.Empty:
                 await asyncio.sleep(QUEUE_READ_INTERVAL)
             except asyncio.CancelledError:
                 if packet is not None:
-                    self.q.send_to_mux(packet)
+                    self.queue.send_to_mux(packet)
                 break
 
     async def _send_buffer(self, input_packets: list[Packet]):
@@ -109,7 +109,7 @@ class Batcher:
                         logger.error(f"Error processing batcher response, no known action in: {response_item}")
 
             for packet in output_packets:
-                self.q.send_to_demux(packet)
+                self.queue.send_to_demux(packet)
 
         except RequestError as exc:
             logger.error(f'Error sending opensearch request: {exc}')
@@ -117,7 +117,7 @@ class Batcher:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
             logger.error(f"Error sending item to buffer: {''.join(tb_str)}")
 
-    def create_flush_buffer_task(self):
+    def flush_buffer(self):
         """Create a task to flush the current buffer and reset it. This task sends the buffered items to the indexer
         and clears the buffer.
         """
@@ -155,18 +155,18 @@ class Batcher:
                         packet = task.result()
 
                         if self._buffer.get_length() == 0:
-                            self._timer.create_timer_task()
+                            self._timer.start_timer()
 
                         self._buffer.add_item(packet)
 
                         if self._buffer.check_count_limit() or self._buffer.check_size_limit():
-                            self.create_flush_buffer_task()
+                            self.flush_buffer()
                     else:
                         # Cancel the reading task if it is still pending
                         for p_task in pending:
                             p_task.cancel()
 
-                        self.create_flush_buffer_task()
+                        self.flush_buffer()
 
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)

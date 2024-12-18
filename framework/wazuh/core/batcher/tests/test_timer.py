@@ -5,10 +5,10 @@ from framework.wazuh.core.batcher.timer import TimerManager
 
 @pytest.mark.asyncio
 @patch('asyncio.sleep', return_value=None)  # Patches asyncio.sleep to return immediately
-async def test_event_timer(mock_sleep):
-    """Check that the `create_timer_task` method works as expected."""
+async def test_start_timer(mock_sleep):
+    """Check that the `start_timer` method works as expected."""
     timer_manager = TimerManager(max_time_seconds=1)
-    timer_manager.create_timer_task()
+    timer_manager.start_timer()
 
     await timer_manager.wait_timeout_event()
 
@@ -21,7 +21,7 @@ async def test_event_timer(mock_sleep):
 async def test_reset_timer(mock_sleep):
     """Check that the `reset_timer` method works as expected."""
     timer_manager = TimerManager(max_time_seconds=5)
-    timer_manager.create_timer_task()
+    timer_manager.start_timer()
     timer_manager.reset_timer()
 
     assert not timer_manager._timeout_event.is_set()
