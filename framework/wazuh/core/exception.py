@@ -311,7 +311,6 @@ class WazuhException(Exception):
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
-        3041: 'Error while sending orders to the Communications API unix server',
 
         # HAProxy Helper exceptions
         3041: "Server status check timed out after adding new servers",
@@ -323,6 +322,9 @@ class WazuhException(Exception):
         3047: "Invalid HAProxy Dataplane API specification configured",
         3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
         3049: "Unexpected response from HAProxy Dataplane API",
+
+        # Orders distribution exceptions
+        3050: 'Error while sending orders to the Communications API unix server',
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.

@@ -942,7 +942,7 @@ async def test_handler_send_orders(json_loads_mock, close_mock, post_mock):
 async def test_handler_send_orders_ko(json_loads_mock, close_mock, post_mock):
     """Check if `send_orders` is called with expected parameters."""
     handler = cluster_common.Handler(cluster_items)
-    with pytest.raises(exception.WazuhError, match=r'.*3041.*'):
+    with pytest.raises(exception.WazuhError, match=r'.*3050.*'):
         await handler.send_orders(b'[{"source": "Users/Services", "user": "Management API"}]')
 
 
