@@ -92,27 +92,34 @@ def test_start_daemons_ko(mock_popen):
             pass
 
     wazuh_server.main_logger = LoggerMock
+    wazuh_server.debug_mode_ = 0
     pid = 2
+    wait_mock = Mock()
     process_mock = Mock()
-    attrs = {'poll.return_value': 1, 'wait.return_value': 1}
+    attrs = {'wait': wait_mock}
     process_mock.configure_mock(**attrs)
     mock_popen.return_value = process_mock
 
     with patch.object(wazuh_server, 'main_logger') as main_logger_mock, \
         patch.object(wazuh_server.pyDaemonModule, 'get_parent_pid', return_value=pid):
-        wazuh_server.start_daemons(False)
+
+        with pytest.raises(wazuh_server.DaemonStartError, match='Error starting wazuh-engined: return code 1'):
+            wait_mock.side_effect = (1,)
+            wazuh_server.start_daemons(False)
+
+        with pytest.raises(wazuh_server.DaemonStartError, match='Error starting wazuh-comms-apid: return code 1'):
+            wait_mock.side_effect = (0, 1)
+            wazuh_server.start_daemons(False)
+
+        with pytest.raises(wazuh_server.DaemonStartError, match='Error starting wazuh-apid: return code 1'):
+            wait_mock.side_effect = (0, 0, 1)
+            wazuh_server.start_daemons(False)
 
     mock_popen.assert_has_calls([
         call([wazuh_server.ENGINE_BINARY_PATH, 'server', '-l', 'info', 'start']),
         call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.MANAGEMENT_API_SCRIPT_PATH]),
         call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.COMMS_API_SCRIPT_PATH]),
     ], any_order=True)
-
-    main_logger_mock.error.assert_has_calls([
-        call('Error starting wazuh-engined: return code 1'),
-        call('Error starting wazuh-apid: return code 1'),
-        call('Error starting wazuh-comms-apid: return code 1'),
-    ])
 
 
 @patch('scripts.wazuh_server.os.kill')
