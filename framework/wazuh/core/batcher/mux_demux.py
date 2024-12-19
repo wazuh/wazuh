@@ -121,12 +121,12 @@ class MuxDemuxQueue:
         """
         self.demux_queue.put(packet)
 
-    def is_response_pending(self, item_id: int) -> bool:
+    def is_response_pending(self, packet_id: int) -> bool:
         """Check if a response is available for a given unique identifier.
 
         Parameters
         ----------
-        item_id : int
+        packet_id : int
             Unique identifier to check.
 
         Returns
@@ -134,14 +134,14 @@ class MuxDemuxQueue:
         bool
             True if response is available, False otherwise.
         """
-        return item_id not in self.responses
+        return packet_id not in self.responses
 
-    def receive_from_demux(self, item_id: int) -> Packet:
+    def receive_from_demux(self, packet_id: int) -> Packet:
         """Retrieve and remove a response from the dictionary for a given unique identifier.
 
         Parameters
         ----------
-        item_id : int
+        packet_id : int
             Unique identifier of the response.
 
         Returns
@@ -149,11 +149,11 @@ class MuxDemuxQueue:
         dict
             Indexer response.
         """
-        response = self.responses[item_id]
-        del self.responses[item_id]
+        response = self.responses[packet_id]
+        del self.responses[packet_id]
         return response
 
-    def internal_get_response_from_demux(self) -> Item:
+    def internal_get_response_from_demux(self) -> Packet:
         """Retrieve an item from the demux queue.
 
         Returns

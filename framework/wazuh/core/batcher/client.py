@@ -32,12 +32,12 @@ class BatcherClient:
         """
         self.queue.send_to_mux(packet)
 
-    async def get_response(self, item_id: int) -> Packet:
+    async def get_response(self, packet_id: int) -> Packet:
         """Asynchronously wait for a response to become available and retrieve it.
 
         Parameters
         ----------
-        item_id : int
+        packet_id : int
             Unique identifier for the response.
 
         Returns
@@ -46,7 +46,7 @@ class BatcherClient:
             Indexer response if available, None otherwise.
         """
         while True:
-            if not self.queue.is_response_pending(item_id):
-                return self.queue.receive_from_demux(item_id)
+            if not self.queue.is_response_pending(packet_id):
+                return self.queue.receive_from_demux(packet_id)
             
             await asyncio.sleep(self.wait_frequency)
