@@ -17,7 +17,6 @@ adapter::RouteHandler routePatchPriority(const std::shared_ptr<::router::IRouter
 
 adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router,
                                const std::shared_ptr<api::policy::IPolicy>& policy);
-adapter::RouteHandler queuePost(const std::shared_ptr<::router::IRouterAPI>& router);
 
 adapter::RouteHandler changeEpsSettings(const std::shared_ptr<::router::IRouterAPI>& router);
 adapter::RouteHandler getEpsSettings(const std::shared_ptr<::router::IRouterAPI>& router);
@@ -35,7 +34,6 @@ inline void registerHandlers(const std::shared_ptr<::router::IRouterAPI>& router
     server->addRoute(httpsrv::Method::POST, "/router/route/patchPriority", routePatchPriority(router));
 
     server->addRoute(httpsrv::Method::POST, "/router/table/get", tableGet(router, policy));
-    server->addRoute(httpsrv::Method::POST, "/router/queue/post", queuePost(router));
 
     server->addRoute(httpsrv::Method::POST, "/router/eps/changeSettings", changeEpsSettings(router));
     server->addRoute(httpsrv::Method::POST, "/router/eps/getSettings", getEpsSettings(router));

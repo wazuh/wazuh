@@ -883,13 +883,3 @@ TEST_F(OrchestratorTest, entriesGetSuccessRouter)
     m_orchestrator->expectGetEntriesSuccessRouter();
     EXPECT_FALSE(m_orchestrator->getEntries().empty());
 }
-
-TEST_F(OrchestratorTest, postStrEventEmptyFailture)
-{
-    EXPECT_TRUE(base::isError(m_orchestrator->postStrEvent("")));
-}
-
-TEST_F(OrchestratorTest, postStrEventFailtureInProtocol)
-{
-    EXPECT_TRUE(base::isError(m_orchestrator->postStrEvent("message:1:any")));
-}
