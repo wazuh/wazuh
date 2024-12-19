@@ -91,7 +91,7 @@ class Batcher:
                 response = await indexer_client.bulk(data=bulk_list)
 
                 item_ids: List[uuid.UUID] = [item.id for item in items]
-                for response_item, item_id in zip(response["items"], item_ids):
+                for response_item, item_id in zip(response['items'], item_ids):
                     action_found = False
 
                     for operation in Operation:
@@ -102,7 +102,7 @@ class Batcher:
                             # Adds it to the respective packet
                             for input_packet in input_packets:
                                 for output_packet in output_packets:
-                                    if input_packet.has_item(item.id) and input_packet.id == output_packet.id:
+                                    if input_packet.id == output_packet.id and input_packet.has_item(item.id):
                                         output_packet.add_item(item)
 
                     if not action_found:
