@@ -34,6 +34,15 @@ class Item:
 
 
 class Packet:
+    """Class for managing and processing packets containing multiple items.
+
+    Parameters
+    ----------
+    id : int, optional
+        Identifier for the packet. Defaults to None.
+    items : list[Item], optional
+        List of items included in the packet. Defaults to an empty list.
+    """
     def __init__(self, id: int = None, items: list[Item] = None):
         if items is None:
             items = []
@@ -41,9 +50,28 @@ class Packet:
         self.items: list[Item] = items
 
     def add_id(self, id: int):
+        """Sets the packet's identifier.
+
+        Parameters
+        ----------
+        id : int
+            Identifier to be assigned to the packet.
+        """
         self.id = id
 
-    def has_item(self, id: int):
+    def has_item(self, id: int) -> bool:
+        """Checks if the packet contains an item with the specified identifier.
+
+        Parameters
+        ----------
+        id : int
+            Identifier of the item to check.
+
+        Returns
+        -------
+        bool
+            True if the item is found, False otherwise.
+        """
         for item in self.items:
             if item.id == id:
                 return True
@@ -51,12 +79,37 @@ class Packet:
         return False
 
     def get_len(self) -> int:
+        """Returns the number of items in the packet.
+
+        Returns
+        -------
+        int
+            Number of items in the packet.
+        """
         return len(self.items)
 
     def get_size(self) -> int:
+        """Calculates the total size of all items' content in the packet.
+
+        Returns
+        -------
+        int
+            Total size of all items' content in bytes.
+        """
         return sum(sys.getsizeof(item.content) for item in self.items)
 
     def build_and_add_item(self, agent_metadata: AgentMetadata, header: Header, data: bytes = None):
+        """Builds an item using metadata, header, and optional data, then adds it to the packet.
+
+        Parameters
+        ----------
+        agent_metadata : AgentMetadata
+            Metadata about the agent to include in the item's content.
+        header : Header
+            Header information for the item.
+        data : bytes, optional
+            Optional additional data to include in the item's content. Defaults to None.
+        """
         content = agent_metadata.model_dump() | data if data else None
         item = Item(
             id=header.id,
@@ -67,6 +120,13 @@ class Packet:
         self.add_item(item)
 
     def add_item(self, item: Item):
+        """Adds an item to the packet. If the packet has no identifier, sets it using the item's ID.
+
+        Parameters
+        ----------
+        item : Item
+            The item to add to the packet.
+        """
         if len(self.items) == 0 and self.id is None:
             self.id = item.id
 
@@ -178,7 +238,6 @@ class MuxDemuxQueue:
             # it doesn't hold the reference of nested objects
             response = self.responses[packet.id]
             response.items.extend(packet.items)
-            response.ids.extend(packet.ids)
             self.responses[packet.id] = response
 
 
