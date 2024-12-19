@@ -111,7 +111,7 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
         if not os.path.exists(keyfile) or not os.path.exists(certfile):
             private_key = generate_private_key(keyfile)
             logger.info(f"Generated private key file in {keyfile}")
-            
+
             generate_self_signed_certificate(private_key, certfile)
             logger.info(f"Generated certificate file in {certfile}")
     except ssl.SSLError as exc:
@@ -249,7 +249,7 @@ def signal_handler(
 def terminate_processes(
     parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process, commands_manager: CommandsManager
 ) -> None:
-    """Terminate all related resources, and delete child and main processes 
+    """Terminate all related resources, and delete child and main processes
     if the current process ID matches the parent process ID.
 
     Parameters
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     comms_api_config = CentralizedConfig.get_comms_api_config()
 
     utils.clean_pid_files(MAIN_PROCESS)
-    
+
     log_config_dict = setup_logging(logging_config=comms_api_config.logging)
     logger = logging.getLogger('wazuh-comms-api')
 
@@ -318,13 +318,17 @@ if __name__ == '__main__':
 
     logger.info(f'Listening on {comms_api_config.host}:{comms_api_config.port}')
 
+    exit_code = 0
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
         options = get_gunicorn_options(pid, log_config_dict, comms_api_config)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
         logger.error(f'Error when trying to start the Wazuh Communications API. {e}')
-        exit(1)
+        exit_code = 1
     except Exception as e:
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
-        exit(1)
+        exit_code = 1
+    finally:
+        terminate_processes(pid, mux_demux_manager, batcher_process, commands_manager)
+        exit(exit_code)
