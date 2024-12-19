@@ -54,7 +54,7 @@ class BulkMetadata:
         Returns
         -------
         bytes
-            Metadata in a dictionary format.
+            Metadata in bytes.
         """
         return f'{{"{self.operation}": {{"_index": "{self.index}", "_id": "{self.doc_id}"}}}}'.encode()
 
