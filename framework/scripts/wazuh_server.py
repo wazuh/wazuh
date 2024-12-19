@@ -38,6 +38,7 @@ MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
 
 
 class DaemonStartError(Exception):
+    """Exception raised when a server daemon fails to start."""
     pass
 
 #
