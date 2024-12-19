@@ -2,7 +2,7 @@ from unittest.mock import patch, AsyncMock, call
 
 import pytest
 
-from framework.wazuh.core.batcher.client import BatcherClient
+from framework.wazuh.core.batcher.client import BatcherClient, Packet
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.models.agent import Host, OS
 from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module
@@ -20,7 +20,7 @@ def test_send_event(queue_mock):
         version='5.0.0',
         host=Host(
             architecture='x86_64',
-            ip='127.0.0.1',
+            ip=['127.0.0.1'],
             os=OS(
                 name='Debian 12',
                 type='Linux'
@@ -32,7 +32,9 @@ def test_send_event(queue_mock):
         'value': 1
     }
 
-    batcher.send_event(agent_metadata, header, data)
+    packet = Packet()
+    packet.build_and_add_item(agent_metadata, header, data)
+    batcher.send_event(packet)
     queue_mock.send_to_mux.assert_called_once()
 
 

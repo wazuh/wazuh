@@ -36,7 +36,6 @@ from comms_api.routers.exceptions import HTTPError, http_error_handler, validati
 from comms_api.routers.router import router
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
-from wazuh.core.batcher.config import BatcherConfig
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
 from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.client import CentralizedConfig
@@ -301,12 +300,7 @@ if __name__ == '__main__':
     else:
         logger.info('Starting API as root')
 
-    batcher_config = BatcherConfig(
-        max_elements=comms_api_config.batcher.max_elements,
-        max_size=comms_api_config.batcher.max_size,
-        max_time_seconds=comms_api_config.batcher.wait_time
-    )
-    mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
+    mux_demux_manager, batcher_process = create_batcher_process(config=comms_api_config.batcher)
 
     # Start HTTP over unix socket server
     commands_manager = CommandsManager()

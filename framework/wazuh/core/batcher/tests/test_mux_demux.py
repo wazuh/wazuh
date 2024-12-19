@@ -1,7 +1,97 @@
+import sys
 from queue import Queue
 from unittest.mock import call, patch, Mock
 
-from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, MuxDemuxManager
+from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, MuxDemuxManager, Packet
+from wazuh.core.indexer.bulk import Operation
+from wazuh.core.indexer.models.agent import Host, OS
+from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module, get_module_index_name
+
+
+def test_packet_initialization():
+    """Check that the `__init__` method works as expected."""
+    packet = Packet()
+
+    assert packet.id is None
+    assert packet.items == []
+
+    example_item = Item(1, 'create')
+    initialized_packet = Packet(1, [example_item])
+    assert initialized_packet.id == 1
+    assert initialized_packet.items == [example_item]
+
+
+def test_packet_has_item():
+    """Check that the `has_item` method works as expected."""
+    packet = Packet()
+    packet.add_item(Item(1, 'create'))
+
+    assert packet.has_item(1)
+    assert not packet.has_item(2)
+
+
+def test_packet_get_len():
+    """Check that the `get_len` method works as expected."""
+    packet = Packet()
+    packet.add_item(Item(1, 'create'))
+    packet.add_item(Item(2, 'create'))
+
+    assert packet.get_len() == 2
+
+
+def test_packet_get_size():
+    """Check that the `get_size` method works as expected."""
+    packet = Packet()
+    item = Item(1, 'create', {'example': 'data'})
+    packet.add_item(item)
+    packet.add_item(item)
+
+    size_of_msg = sys.getsizeof(item.content)
+    assert packet.get_size() == size_of_msg * 2
+
+
+def test_packet_build_and_add_item():
+    """Check that the `build_and_add_item` method works as expected."""
+    agent_metadata = AgentMetadata(agent=Agent(
+        id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
+        name='test',
+        groups=['group1', 'group2'],
+        type='endpoint',
+        version='5.0.0',
+        host=Host(
+            architecture='x86_64',
+            ip='127.0.0.1',
+            os=OS(
+                name='Debian 12',
+                type='Linux'
+            )
+        ),
+    ))
+    header = Header(id='1234', module=Module.SCA, operation=Operation.CREATE)
+
+    packet = Packet()
+    packet.build_and_add_item(agent_metadata, header)
+
+    assert packet.items[0].id == header.id
+    assert packet.items[0].operation == header.operation
+    assert packet.items[0].content is None
+    assert packet.items[0].index_name == get_module_index_name(header.module, header.type)
+
+
+def test_packet_add_item():
+    """Check that the `add_item` method works as expected."""
+    packet = Packet()
+    item = Item(1, 'create', {'example': 'data'})
+    packet.add_item(item)
+
+    assert packet.get_len() == 1
+    assert packet.id == item.id
+
+    second_item = Item(2, 'create', {'example': 'data'})
+    packet.add_item(second_item)
+
+    assert packet.get_len() == 2
+    assert packet.id == item.id
 
 
 def test_send_to_mux():
@@ -134,11 +224,13 @@ def test_internal_store_response():
 
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     example_value = "test"
+    packet = Packet()
+    packet.add_item(Item(id=example_uid, content=example_value, operation='create'))
 
-    queue.internal_store_response(Item(id=example_uid, content=example_value, operation='create'))
+    queue.internal_store_response(packet)
 
     assert example_uid in dict_test
-    assert dict_test[example_uid] == [example_value]
+    assert dict_test[example_uid] == packet
 
 
 @patch('framework.wazuh.core.batcher.mux_demux.SyncManager')
