@@ -85,14 +85,11 @@ class MuxDemuxQueue:
         Queue for multiplexing items.
     demux_queue : Queue
         Queue for demultiplexing items.
-    subscriptions : DictProxy
-        Dictionary for managing subscriptions to responses.
     """
-    def __init__(self, proxy_dict: DictProxy, mux_queue: Queue, demux_queue: Queue, subscriptions_dict: DictProxy):
+    def __init__(self, proxy_dict: DictProxy, mux_queue: Queue, demux_queue: Queue):
         self.responses = proxy_dict
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
-        self._subscriptions: Dict[str, EventType] = subscriptions_dict
 
     def send_to_mux(self, packet: Packet):
         """Put a item into the mux queue with an associated unique identifier.
@@ -153,12 +150,6 @@ class MuxDemuxQueue:
         dict
             Indexer response.
         """
-        event = Event()
-        self._subscriptions.update({item_id: event})
-        signaled = event.wait(60)
-        if not signaled:
-            return
-
         response = self.responses[item_id]
         del self.responses[item_id]
         return response
@@ -190,8 +181,6 @@ class MuxDemuxQueue:
             response.items.extend(packet.items)
             response.ids.extend(packet.ids)
             self.responses[packet.id] = response
-
-        self._subscriptions[packet.id].set()
 
 
 class MuxDemuxRunner(Process):
@@ -237,8 +226,7 @@ class MuxDemuxRunner(Process):
         while not self._shutdown_event.is_set():
             try:
                 packet = self.queue.internal_get_response_from_demux()
-                if isinstance(packet, Packet):
-                    self.queue.internal_store_response(packet)
+                self.queue.internal_store_response(packet)
             except EOFError:
                 # Mux demux manager queue closed, exit
                 logger.info('Shutting down MuxDemuxRunner')
@@ -264,8 +252,7 @@ class MuxDemuxManager:
         self.queue = self.manager.MuxDemuxQueue(
             self.manager.dict(),
             self.manager.Queue(),
-            self.manager.Queue(),
-            self.manager.dict()
+            self.manager.Queue()
         )
         self.queue_process = MuxDemuxRunner(queue=self.queue)
         self.queue_process.start()
