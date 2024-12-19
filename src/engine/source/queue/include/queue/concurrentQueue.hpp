@@ -151,6 +151,7 @@ private:
                     m_metrics.m_used->update(1L);
                     return;
                 }
+                std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
             m_metrics.m_flooded->update(1UL);
             return;

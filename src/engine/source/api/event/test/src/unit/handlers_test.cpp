@@ -73,8 +73,7 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  []()
                                  {
                                      httplib::Response res;
-                                     res.status = httplib::StatusCode::BadRequest_400;
-                                     res.body = "error";
+                                     res.status = httplib::StatusCode::OK_200;
                                      return res;
                                  },
                                  [](auto& mock) {}),
