@@ -134,7 +134,21 @@ class Packet:
 
         self.items.append(item)
     
-    def build_content(self, agent_metadata: bytes, data: bytes = None) -> bytes:        
+    def build_content(self, agent_metadata: bytes, data: bytes = None) -> bytes:
+        """Build event body.
+        
+        Parameters
+        ----------
+        agent_metadata : bytes
+            Agent metadata.
+        data : bytes
+            Event data.
+        
+        Returns
+        -------
+        bytes
+            Agent metadata and event joined.
+        """
         return b'{' + agent_metadata[1:-1] + b',' + data[1:-1] + b'}'
 
 class MuxDemuxQueue:
