@@ -172,12 +172,9 @@ if [ $1 = 0 ];then
   fi
 
   # Remove lingering folders and files
-  rm -rf %{_localstatedir}usr/bin/wazuh-engine
-  rm -rf %{_localstatedir}usr/bin/wazuh-keystore
-  rm -rf %{_localstatedir}usr/bin/wazuh-apid
-  rm -rf %{_localstatedir}usr/bin/wazuh-comms-apid
-  rm -rf %{_localstatedir}usr/bin/wazuh-server
+  rm -rf %{_localstatedir}run/wazuh-server
   rm -rf %{_localstatedir}var/lib/wazuh-server
+  rm -rf %{_localstatedir}var/log/wazuh-server
   rm -rf %{_localstatedir}usr/share/wazuh-server
   rm -rf %{_localstatedir}etc/wazuh-server
 fi

@@ -3,18 +3,21 @@
 # Wazuh, Inc 2015
 set -e
 
+WAZUH_USER="wazuh-server"
+WAZUH_GROUP="wazuh-server"
+
 case "$1" in
     remove|failed-upgrade|abort-install|abort-upgrade|disappear)
 
     ;;
 
     purge)
-        if getent passwd wazuh > /dev/null 2>&1 ; then
-            deluser wazuh  > /dev/null 2>&1
+        if getent passwd $WAZUH_USER > /dev/null 2>&1 ; then
+            deluser $WAZUH_USER  > /dev/null 2>&1
         fi
 
-        if getent group wazuh > /dev/null 2>&1; then
-            delgroup wazuh  > /dev/null 2>&1
+        if getent group $WAZUH_GROUP > /dev/null 2>&1; then
+            delgroup $WAZUH_GROUP  > /dev/null 2>&1
         fi
 
         if [ -d "/var/lib/wazuh-server/" ]; then
@@ -23,6 +26,14 @@ case "$1" in
 
         if [ -d "/run/wazuh-server" ]; then
             rm -rf /run/wazuh-server || true
+        fi
+
+        if [ -d "/etc/wazuh-server" ]; then
+            rm -rf /etc/wazuh-server || true
+        fi
+
+        if [ -d "/var/log/wazuh-server" ]; then
+            rm -rf /var/log/wazuh-server || true
         fi
     ;;
 
