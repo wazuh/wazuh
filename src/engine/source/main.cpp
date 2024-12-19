@@ -298,6 +298,21 @@ int main(int argc, char* argv[])
                 icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
                 icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                 icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+                icConfig.sslOptions.skipVerifyPeer = !confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTS);
+            }
+            else
+            {
+                // If not use SSL, check if url start with https
+                for (const auto& host : icConfig.hosts)
+                {
+                    if (base::utils::string::startsWith(host, "https://"))
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "The host '{}' for indexer connector is using HTTPS but the SSL options are not "
+                            "enabled.",
+                            host));
+                    }
+                }
             }
 
             icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
