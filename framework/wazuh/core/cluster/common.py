@@ -964,7 +964,7 @@ class Handler(asyncio.Protocol):
 
         Raises
         ------
-        WazuhError(3041)
+        WazuhError(3050)
             Connection or timeout error.
 
         Returns
@@ -976,7 +976,7 @@ class Handler(asyncio.Protocol):
         """
         self.logger.info('Sending orders to the Communications API')
 
-        transport = httpx.AsyncHTTPTransport(uds=common.COMMS_API_SOCKET)
+        transport = httpx.AsyncHTTPTransport(uds=common.COMMS_API_SOCKET_PATH)
         client = httpx.AsyncClient(transport=transport, timeout=httpx.Timeout(10))
 
         orders_list = json.loads(orders)
@@ -996,7 +996,7 @@ class Handler(asyncio.Protocol):
 
             self.logger.debug(f'Orders send response: {response}')
         except (httpx.ConnectError, httpx.TimeoutException) as e:
-            raise exception.WazuhError(3041, extra_message=str(e))
+            raise exception.WazuhError(3050, extra_message=str(e))
 
         await client.aclose()
 
