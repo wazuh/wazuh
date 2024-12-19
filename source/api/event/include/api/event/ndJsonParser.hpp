@@ -11,21 +11,32 @@
 #include <fmt/format.h>
 
 #include <base/baseTypes.hpp>
+#include <base/logging.hpp>
 
 namespace api::event::protocol
 {
 using ProtocolHandler = std::function<std::queue<base::Event>(std::string&&)>;
 
-inline ProtocolHandler getNDJsonParser()
+inline ProtocolHandler getNDJsonParser(bool prodMode = true)
 {
-    return [](std::string&& batch) -> std::queue<base::Event>
+    return [prodMode,
+            lambdaName = logging::getLambdaName(__FUNCTION__, fmt::format("getNDJsonParser(prodMode={})", prodMode))](
+               std::string&& batch) -> std::queue<base::Event>
     {
-        const std::size_t headerSize = 2; // Header + subheader
+        const std::size_t headerSize = [&]() -> std::size_t
+        {
+            if (prodMode)
+            {
+                return 2;
+            }
+            return 1;
+        }();
         const std::size_t min_size = headerSize + 1;
 
         if (batch.empty())
         {
-            throw std::runtime_error {"NDJson parser error: Received empty data"};
+            LOG_DEBUG_L(lambdaName.c_str(), "Ignored empty event batch");
+            throw std::runtime_error {"NDJson parser error, empty batch"};
         }
 
         // Extract each json raw from ndjson
@@ -48,8 +59,12 @@ inline ProtocolHandler getNDJsonParser()
         // Validate the batch
         if (rawJson.size() < min_size)
         {
-            throw std::runtime_error {
-                fmt::format("NDJson parser error: Received ndjson with less than '{}' lines", min_size)};
+            LOG_DEBUG_L(lambdaName.c_str(),
+                        "Ignored event batch: {}, reason: invalid size {} < {}",
+                        batch,
+                        rawJson.size(),
+                        min_size);
+            throw std::runtime_error {"NDJson parser error, invalid size"};
         }
 
         // Extract the header for futher merge with the events.
@@ -60,18 +75,25 @@ inline ProtocolHandler getNDJsonParser()
         }
         catch (const std::exception& e)
         {
+            LOG_DEBUG_L(lambdaName.c_str(), "Ignored event batch: {}, reason: invalid header {}", batch, e.what());
             throw std::runtime_error {fmt::format("NDJson parser error, invalid header: {}", e.what())};
         }
 
         // Extract first subheader
         json::Json subheader {};
-        try
+        if (prodMode)
         {
-            subheader = std::move(json::Json(std::next(rawJson.begin())->data()));
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error {fmt::format("NDJson parser error, invalid subheader: {}", e.what())};
+            try
+            {
+                subheader = std::move(json::Json(std::next(rawJson.begin())->data()));
+            }
+            catch (const std::exception& e)
+            {
+                LOG_DEBUG_L(lambdaName.c_str(),
+                            "Ignored subheader: {}, reason: {}",
+                            std::next(rawJson.begin())->data(),
+                            e.what());
+            }
         }
 
         // Merge the header with the events
@@ -85,15 +107,26 @@ inline ProtocolHandler getNDJsonParser()
                 // Ignore subheader events
                 if (event->isString("/module"))
                 {
-                    continue;
+                    if (prodMode)
+                    {
+                        continue;
+                    }
                 }
                 event->merge(true, agentInfo);
                 events.push(std::move(event));
             }
             catch (const std::exception& e)
             {
-                throw std::runtime_error {
-                    fmt::format("NDJson parser error, invalid event at line {}: {}", *it, e.what())};
+                // Ignore invalid events
+                LOG_DEBUG_L(lambdaName.c_str(), "Ignored event: {}, reason: {}", it->data(), e.what());
+                if (prodMode)
+                {
+                    continue;
+                }
+                else
+                {
+                    throw std::runtime_error {fmt::format("NDJson parser error, invalid event: {}", e.what())};
+                }
             }
         }
 
