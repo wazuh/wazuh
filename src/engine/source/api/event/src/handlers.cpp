@@ -24,8 +24,8 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         }
         catch (const std::exception& e)
         {
-            res.status = httplib::StatusCode::BadRequest_400;
-            res.set_content(e.what(), "text/plain");
+            // Silenty ignore invalid events as per the spec
+            res.status = httplib::StatusCode::OK_200;
             return;
         }
 
