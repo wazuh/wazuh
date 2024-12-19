@@ -154,8 +154,10 @@ private:
                     m_metrics.m_used->addValue(1UL);
                     return;
                 }
+                std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
             m_metrics.m_flooded->addValue(1UL);
+            LOG_DEBUG("The queue is full, discarded event: {}", element->str());
             return;
         }
 

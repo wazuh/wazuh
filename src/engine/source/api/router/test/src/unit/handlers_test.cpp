@@ -372,54 +372,6 @@ INSTANTIATE_TEST_SUITE_P(
             { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name name: Name cannot be empty"); },
             [](auto&) {}),
         /***********************************************************************
-         * QueuePost
-         **********************************************************************/
-        // Success
-        HandlerT(
-            []()
-            {
-                eEngine::router::QueuePost_Request protoReq;
-                protoReq.set_wazuh_event("event");
-                return createRequest<eEngine::router::QueuePost_Request>(protoReq);
-            },
-            [](const std::shared_ptr<::router::IRouterAPI>& router) { return queuePost(router); },
-            []()
-            {
-                eEngine::GenericStatus_Response protoRes;
-                protoRes.set_status(eEngine::ReturnStatus::OK);
-                return userResponse<eEngine::GenericStatus_Response>(protoRes);
-            },
-            [](auto& mock) { EXPECT_CALL(mock, postStrEvent("event")).WillOnce(testing::Return(base::noError())); }),
-        // Handler Error
-        HandlerT(
-            []()
-            {
-                eEngine::router::QueuePost_Request protoReq;
-                protoReq.set_wazuh_event("event");
-                return createRequest<eEngine::router::QueuePost_Request>(protoReq);
-            },
-            [](const std::shared_ptr<::router::IRouterAPI>& router) { return queuePost(router); },
-            []() { return userErrorResponse<eEngine::GenericStatus_Response>("error"); },
-            [](auto& mock)
-            { EXPECT_CALL(mock, postStrEvent("event")).WillOnce(testing::Return(base::Error {"error"})); }),
-        // Wrong request type
-        HandlerT(
-            []()
-            {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
-            },
-            [](const std::shared_ptr<::router::IRouterAPI>& router) { return queuePost(router); },
-            []()
-            {
-                return userErrorResponse<eEngine::GenericStatus_Response>(
-                    "Failed to parse protobuff json request: INVALID_ARGUMENT:Unexpected token.\nnot json proto "
-                    "reque\n^");
-            },
-            [](auto&) {}),
-        /***********************************************************************
          * ChangeEpsSettings
          **********************************************************************/
         // Success

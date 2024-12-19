@@ -188,9 +188,10 @@ adapter::RouteHandler routeDelete(const std::shared_ptr<::router::IRouterAPI>& r
 }
 
 adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router,
-                               const std::weak_ptr<api::policy::IPolicy>& policy)
+                               const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wRouter = router, wPolicyManager = policy](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -305,9 +306,10 @@ adapter::RouteHandler routePatchPriority(const std::shared_ptr<::router::IRouter
 }
 
 adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router,
-                               const std::weak_ptr<api::policy::IPolicy>& policy)
+                               const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wRouter = router, wPolicyManager = policy](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;
@@ -336,36 +338,6 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& rout
         {
             eTable->Add(eRouteEntryFromEntry(entry, wPolicyManager));
         }
-        eResponse.set_status(eEngine::ReturnStatus::OK);
-        res = adapter::userResponse(eResponse);
-    };
-}
-
-adapter::RouteHandler queuePost(const std::shared_ptr<::router::IRouterAPI>& router)
-{
-    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router)](const auto& req, auto& res)
-    {
-        using RequestType = eRouter::QueuePost_Request;
-        using ResponseType = eEngine::GenericStatus_Response;
-
-        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::router::IRouterAPI>(req, wRouter);
-        if (adapter::isError(result))
-        {
-            res = adapter::getErrorResp(result);
-            return;
-        }
-
-        auto [router, protoReq] = adapter::getRes(result);
-
-        // Execute the command
-        const auto& error = router->postStrEvent(protoReq.wazuh_event());
-        if (base::isError(error))
-        {
-            res = adapter::userErrorResponse<ResponseType>(error.value().message);
-            return;
-        }
-
-        ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };
