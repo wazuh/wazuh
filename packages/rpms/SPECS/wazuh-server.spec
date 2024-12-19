@@ -233,7 +233,6 @@ rm -fr %{buildroot}
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/tmp
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/engine
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/engine/tzdb
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/keystore
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/log/wazuh-server
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/log/wazuh-server/engine
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server
