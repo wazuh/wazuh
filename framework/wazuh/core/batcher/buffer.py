@@ -1,6 +1,4 @@
-from typing import List
-
-from wazuh.core.batcher.mux_demux import Item, Packet
+from wazuh.core.batcher.mux_demux import Packet
 
 
 class Buffer:

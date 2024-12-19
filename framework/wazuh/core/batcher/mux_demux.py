@@ -4,8 +4,7 @@ import signal
 import sys
 from multiprocessing import Queue, Process, Event
 from multiprocessing.managers import DictProxy, SyncManager
-from multiprocessing.synchronize import Event as EventType
-from typing import Any, Dict
+from typing import Any
 
 from wazuh.core.indexer.models.events import AgentMetadata, Header, get_module_index_name
 
