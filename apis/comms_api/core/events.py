@@ -143,13 +143,9 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
         packet.build_and_add_item(agent_metadata=events.agent_metadata, header=header, data=data)
 
     batcher_client.send_event(packet)
-    task = asyncio.create_task(
-        (lambda u: batcher_client.get_response(u))(packet.id)
-    )
+    response = await batcher_client.get_response(packet.id)
 
-    # Wait for all of them and create response
-    tasks_results = await task
-    return parse_tasks_results([item.content for item in tasks_results.items])
+    return parse_tasks_results([item.content for item in response.items])
 
 
 def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
