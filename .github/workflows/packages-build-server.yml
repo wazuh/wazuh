@@ -88,6 +88,10 @@ on:
         type: string
         required: false
 
+env:
+  S3_PRECOMPILED_STORE: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/engine-store/store.tar.gz
+  LOCAL_PRECOMPILED_STORE_PATH: src/engine/engine_precompiled_store.tar.gz # Also used in the build script
+
 jobs:
   Build-server-packages:
     runs-on: ubuntu-latest
@@ -117,6 +121,19 @@ jobs:
       - name: Download docker image for package building
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Download pre-compiled store
+        run: |
+          aws s3 cp ${{ env.S3_PRECOMPILED_STORE }} $GITHUB_WORKSPACE/${{ env.LOCAL_PRECOMPILED_STORE_PATH }}
+          # Save the store in the workspace
+
 
       - name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
         working-directory: packages
@@ -173,13 +190,6 @@ jobs:
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
           if-no-files-found: error
-      
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-          aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload package to S3
         working-directory: packages
