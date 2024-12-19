@@ -47,8 +47,8 @@ class Batcher:
 
         Returns
         -------
-        Item
-            Item retrieved from the mux queue.
+        Packet
+            Packet retrieved from the mux queue.
 
         Raises
         ------
@@ -72,8 +72,8 @@ class Batcher:
 
         Parameters
         ----------
-        items : List[Item]
-            List of items to be sent.
+        input_packets : list[Packet]
+            List of packets to be sent.
 
         Raises
         ------

@@ -23,12 +23,8 @@ class BatcherClient:
 
         Parameters
         ----------
-        agent_metadata : AgentMetadata
-            Agent metadata.
-        header : Header
-            Event header.
-        data : dict
-            Event data.
+        packet: Packet
+            Packet to send to the Batcher.
         """
         self.queue.send_to_mux(packet)
 

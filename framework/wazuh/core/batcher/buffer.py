@@ -21,8 +21,8 @@ class Buffer:
 
         Parameters
         ----------
-        item : Item
-            Item to add to buffer.
+        packet : Packet
+            Packet to add to buffer.
 
         Returns
         -------
@@ -72,8 +72,8 @@ class Buffer:
 
         Returns
         -------
-        List[Item]
-            Copy of the list of items in buffer.
+        list[Packet]
+            Copy of the list of packets in buffer.
         """
         return self._buffer.copy()
 

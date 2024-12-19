@@ -91,33 +91,33 @@ class MuxDemuxQueue:
         self.demux_queue = demux_queue
 
     def send_to_mux(self, packet: Packet):
-        """Put a item into the mux queue with an associated unique identifier.
+        """Put a packet into the mux queue with an associated unique identifier.
 
         Parameters
         ----------
-        item : Item
-            Item to be put into the mux queue.
+        packet : Packet
+            Packet to be put into the mux queue.
         """
         self.mux_queue.put(packet)
 
     def receive_from_mux(self, block: bool = True) -> Packet:
-        """Retrieve a item from the mux queue. If the queue
+        """Retrieve a packet from the mux queue. If the queue
         is empty and block is False it raises a queue.Empty error.
 
         Returns
         -------
-        Item
-            Item retrieved from the mux queue.
+        Packet
+            Packet retrieved from the mux queue.
         """
         return self.mux_queue.get(block=block)
 
     def send_to_demux(self, packet: Packet):
-        """Put a item into the demux queue.
+        """Put a packet into the demux queue.
 
         Parameters
         ----------
-        item : Item
-            Item to be put into the demux queue.
+        packet : Packet
+            Packet to be put into the demux queue.
         """
         self.demux_queue.put(packet)
 
@@ -168,8 +168,8 @@ class MuxDemuxQueue:
 
         Parameters
         ----------
-        item : Item
-            Item whose content will be added to the response dictionary.
+        packet : Packet
+            Packet whose content will be added to the response dictionary.
         """
         if packet.id not in self.responses:
             self.responses[packet.id] = packet
