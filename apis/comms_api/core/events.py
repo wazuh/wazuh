@@ -96,7 +96,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
                 if i == 0:
                     agent_metadata = AgentMetadata.model_validate_json(part)
                 elif i % 2 == 0:
-                    data.append(json.loads(part))
+                    data.append(part)
                 else:
                     header = Header.model_validate_json(part)
                     headers.append(header)

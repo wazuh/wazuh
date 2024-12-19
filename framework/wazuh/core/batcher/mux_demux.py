@@ -21,12 +21,12 @@ class Item:
         Unique identifier for the item.
     operation : str
         Kind of operation to perform. Can be either 'create', 'delete' or 'update'.
-    content : dict
-        Item content as a dictionary. Can be either a stateful event, a response from OpenSearch or None.
+    content : bytes
+        Item content as bytes. Can be either a stateful event, a response from OpenSearch or None.
     index_name : str
         Name of the index the item should be created in. Should be set when inserting an item to the mux_queue only.
     """
-    def __init__(self, id: int, operation: str, content: dict = None, index_name: str = None):
+    def __init__(self, id: int, operation: str, content: bytes = None, index_name: str = None):
         self.id = id
         self.content = content
         self.operation = operation
@@ -47,7 +47,6 @@ class Packet:
         for item in self.items:
             if item.id == id:
                 return True
-
         return False
 
     def get_len(self) -> int:
@@ -57,7 +56,10 @@ class Packet:
         return sum(sys.getsizeof(item.content) for item in self.items)
 
     def build_and_add_item(self, agent_metadata: AgentMetadata, header: Header, data: bytes = None):
-        content = agent_metadata.model_dump() | data if data else None
+        content = None
+        if data is not None:
+            content = self.build_content(agent_metadata.model_dump_json().encode(), data)
+
         item = Item(
             id=header.id,
             operation=header.operation,
@@ -71,7 +73,23 @@ class Packet:
             self.id = item.id
 
         self.items.append(item)
-
+    
+    def build_content(self, agent_metadata: bytes, data: bytes = None) -> bytes:
+        """Build event body.
+        
+        Parameters
+        ----------
+        agent_metadata : bytes
+            Agent metadata.
+        data : bytes
+            Event data.
+        
+        Returns
+        -------
+        bytes
+            Agent metadata and event joined.
+        """
+        return b'{' + agent_metadata[1:-1] + b',' + data[1:-1] + b'}'
 
 class MuxDemuxQueue:
     """Class for managing items between mux and demux components.
@@ -178,7 +196,6 @@ class MuxDemuxQueue:
             # it doesn't hold the reference of nested objects
             response = self.responses[packet.id]
             response.items.extend(packet.items)
-            response.ids.extend(packet.ids)
             self.responses[packet.id] = response
 
 
