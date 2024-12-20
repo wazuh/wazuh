@@ -2,7 +2,6 @@ from enum import Enum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
-
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
@@ -22,6 +21,7 @@ VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
 
 class Agent(BaseModel):
     """Agent model in the context of events."""
+
     id: str
     name: str
     groups: List[str]
@@ -32,11 +32,13 @@ class Agent(BaseModel):
 
 class AgentMetadata(BaseModel):
     """Agent metadata."""
+
     agent: Agent
 
 
 class TaskResult(BaseModel):
     """Stateful event bulk task result data model."""
+
     index: str
     id: str
     result: str
@@ -45,6 +47,7 @@ class TaskResult(BaseModel):
 
 class Module(str, Enum):
     """Stateful event module name."""
+
     FIM = 'fim'
     INVENTORY = 'inventory'
     SCA = 'sca'
@@ -54,6 +57,7 @@ class Module(str, Enum):
 
 class Header(BaseModel):
     """Stateful event header."""
+
     id: Optional[str] = None
     module: Module
     type: Optional[str] = None
@@ -62,6 +66,7 @@ class Header(BaseModel):
 
 class InventoryType(str, Enum):
     """Stateful events inventory types."""
+
     HARDWARE = 'hardware'
     HOTFIXES = 'hotfixes'
     PACAKGES = 'packages'
@@ -75,7 +80,7 @@ STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
     Module.FIM: FIM_INDEX,
     Module.SCA: SCA_INDEX,
     Module.VULNERABILITY: VULNERABILITY_INDEX,
-    Module.COMMAND: CommandsManager.INDEX
+    Module.COMMAND: CommandsManager.INDEX,
 }
 
 INVENTORY_EVENTS: Dict[InventoryType, str] = {
@@ -85,7 +90,7 @@ INVENTORY_EVENTS: Dict[InventoryType, str] = {
     InventoryType.NETWORKS: INVENTORY_NETWORKS_INDEX,
     InventoryType.SYSTEM: INVENTORY_SYSTEM_INDEX,
     InventoryType.PORTS: INVENTORY_PORTS_INDEX,
-    InventoryType.PROCESSES: INVENTORY_PROCESSES_INDEX
+    InventoryType.PROCESSES: INVENTORY_PROCESSES_INDEX,
 }
 
 
@@ -98,14 +103,14 @@ def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
         Event module.
     type : Optional[str]
         Event module type
-    
+
     Raises
     ------
     WazuhError(1763)
         Invalid inventory module type error.
     WazuhError(1765)
         Invalid module name.
-    
+
     Returns
     -------
     str
@@ -114,18 +119,14 @@ def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
     if module == Module.INVENTORY:
         types = list(INVENTORY_EVENTS.keys())
         if type not in types:
-            extra_info = {
-                'types': ', '.join(types[:-1]) + ' or ' + types[-1]
-            }
+            extra_info = {'types': ', '.join(types[:-1]) + ' or ' + types[-1]}
             raise WazuhError(1763, extra_message=extra_info)
-        
+
         return INVENTORY_EVENTS[type]
 
     try:
         return STATEFUL_EVENTS_INDICES[module]
     except KeyError:
         modules = list(STATEFUL_EVENTS_INDICES.keys())
-        extra_info = {
-            'modules': ', '.join(modules[:-1]) + ' or ' + modules[-1]
-        }
+        extra_info = {'modules': ', '.join(modules[:-1]) + ' or ' + modules[-1]}
         raise WazuhError(1765, extra_message=extra_info)

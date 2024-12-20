@@ -9,9 +9,10 @@ import pytest
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        from api.encoder import prettify, dumps
-        from wazuh.core.results import WazuhResult
         from wazuh.core.indexer.agent import Agent
+        from wazuh.core.results import WazuhResult
+
+        from api.encoder import dumps, prettify
 
 
 def custom_hook(dct):
@@ -27,11 +28,14 @@ def custom_hook(dct):
     return dct
 
 
-@pytest.mark.parametrize('o', [
-    {'key': 'v1'},
-    WazuhResult({'k1': 'v1'}, str_priority='v2'),
-    Agent(id='0191e730-f9eb-7794-b2d1-949405d7d6ce', name='test')
-])
+@pytest.mark.parametrize(
+    'o',
+    [
+        {'key': 'v1'},
+        WazuhResult({'k1': 'v1'}, str_priority='v2'),
+        Agent(id='0191e730-f9eb-7794-b2d1-949405d7d6ce', name='test'),
+    ],
+)
 def test_encoder_dumps(o):
     """Test dumps method from API encoder using WazuhAPIJSONEncoder."""
     encoded = dumps(o)

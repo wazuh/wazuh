@@ -5,15 +5,14 @@
 import json
 import logging
 import os
-import re
 from os import path as os_path
 from typing import Union
 
+import wazuh.core.config.client
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.utils import load_wazuh_yaml, validate_wazuh_configuration, get_group_file_path
-import wazuh.core.config.client
+from wazuh.core.utils import get_group_file_path, load_wazuh_yaml, validate_wazuh_configuration
 
 logger = logging.getLogger('wazuh')
 
@@ -25,7 +24,7 @@ logger = logging.getLogger('wazuh')
 #   entry.
 #   * Last -> there can be multiple sections in the configuration but only the last one will be returned.
 #   The rest are ignored.
-GETCONFIG_COMMAND = "getconfig"
+GETCONFIG_COMMAND = 'getconfig'
 UPDATE_CHECK_OSSEC_FIELD = 'update_check'
 GLOBAL_KEY = 'global'
 YES_VALUE = 'yes'
@@ -183,15 +182,38 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
         The active configuration the agent is currently using.
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
-    component_socket_mapping = {'agent': 'analysis', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
-                                'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
-                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
-                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
-    component_socket_dir_mapping = {'agent': 'sockets', 'agentless': 'sockets', 'analysis': 'sockets',
-                                    'auth': 'sockets', 'com': 'sockets', 'csyslog': 'sockets', 'integrator': 'sockets',
-                                    'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
-                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-db': 'db',
-                                    'wmodules': 'sockets'}
+    component_socket_mapping = {
+        'agent': 'analysis',
+        'agentless': 'agentless',
+        'analysis': 'analysis',
+        'auth': 'auth',
+        'com': 'com',
+        'csyslog': 'csyslog',
+        'integrator': 'integrator',
+        'logcollector': 'logcollector',
+        'mail': 'mail',
+        'monitor': 'monitor',
+        'request': 'remote',
+        'syscheck': 'syscheck',
+        'wazuh-db': 'wdb',
+        'wmodules': 'wmodules',
+    }
+    component_socket_dir_mapping = {
+        'agent': 'sockets',
+        'agentless': 'sockets',
+        'analysis': 'sockets',
+        'auth': 'sockets',
+        'com': 'sockets',
+        'csyslog': 'sockets',
+        'integrator': 'sockets',
+        'logcollector': 'sockets',
+        'mail': 'sockets',
+        'monitor': 'sockets',
+        'request': 'sockets',
+        'syscheck': 'sockets',
+        'wazuh-db': 'db',
+        'wmodules': 'sockets',
+    }
 
     if not component or not configuration:
         raise WazuhError(1307)
@@ -208,12 +230,13 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
 
         # Verify component configuration
         if not os.path.exists(dest_socket):
-            raise WazuhError(1121,
-                             extra_message=f"Please verify that the component '{component}' is properly configured")
+            raise WazuhError(
+                1121, extra_message=f"Please verify that the component '{component}' is properly configured"
+            )
 
         # Simple socket message
         if component_socket_mapping[component] not in sockets_json_protocol:
-            msg = f"{GETCONFIG_COMMAND} {configuration}"
+            msg = f'{GETCONFIG_COMMAND} {configuration}'
 
             # Socket connection
             try:
@@ -229,9 +252,9 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
             # Receive response
             try:
                 # Receive data length
-                rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+                rec_msg_ok, rec_msg = s.receive().decode().split(' ', 1)
             except ValueError:
-                raise WazuhInternalError(1118, extra_message="Data could not be received")
+                raise WazuhInternalError(1118, extra_message='Data could not be received')
             finally:
                 s.close()
 
@@ -239,9 +262,11 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
 
         # JSON socket message
         else:  # component_socket_mapping[component] in sockets_json_protocol
-            msg = wazuh_socket.create_wazuh_socket_message(origin={'module': common.origin_module.get()},
-                                                           command=GETCONFIG_COMMAND,
-                                                           parameters={'section': configuration})
+            msg = wazuh_socket.create_wazuh_socket_message(
+                origin={'module': common.origin_module.get()},
+                command=GETCONFIG_COMMAND,
+                parameters={'section': configuration},
+            )
 
             # Socket connection
             try:
@@ -258,7 +283,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
             try:
                 response = s.receive(raw=True)
             except ValueError:
-                raise WazuhInternalError(1118, extra_message="Data could not be received")
+                raise WazuhInternalError(1118, extra_message='Data could not be received')
             finally:
                 s.close()
 
@@ -270,7 +295,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
         dest_socket = common.REMOTED_SOCKET
 
         # Simple socket message
-        msg = f"{str(agent_id).zfill(3)} {component} {GETCONFIG_COMMAND} {configuration}"
+        msg = f'{str(agent_id).zfill(3)} {component} {GETCONFIG_COMMAND} {configuration}'
 
         # Socket connection
         try:
@@ -286,9 +311,9 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
         # Receive response
         try:
             # Receive data length
-            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+            rec_msg_ok, rec_msg = s.receive().decode().split(' ', 1)
         except ValueError:
-            raise WazuhInternalError(1118, extra_message="Data could not be received")
+            raise WazuhInternalError(1118, extra_message='Data could not be received')
         finally:
             s.close()
 
@@ -302,15 +327,17 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
         # Include password if auth->use_password enabled and authd.pass file exists
         if data.get('auth', {}).get('use_password') == 'yes':
             try:
-                with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
+                with open(os_path.join(common.WAZUH_PATH, 'etc', 'authd.pass'), 'r') as f:
                     data['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass
 
         return data
     else:
-        raise WazuhError(1117 if "No such file or directory" in rec_data or "Cannot send request" in rec_data else 1116,
-                         extra_message=f'{component}:{configuration}')
+        raise WazuhError(
+            1117 if 'No such file or directory' in rec_data or 'Cannot send request' in rec_data else 1116,
+            extra_message=f'{component}:{configuration}',
+        )
 
 
 def update_check_is_enabled() -> bool:

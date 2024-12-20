@@ -5,12 +5,12 @@ from typing import Dict, List, Optional
 
 from fastapi import status
 from uuid6 import UUID
-
-from comms_api.routers.exceptions import HTTPError
 from wazuh.core.indexer.models.commands import Command
 
+from comms_api.routers.exceptions import HTTPError
 
-class CommandsManager():
+
+class CommandsManager:
     """Expose commands received from the local server to the Communications API worker processes."""
 
     def __init__(self):
@@ -21,7 +21,7 @@ class CommandsManager():
 
     def add_commands(self, commands: List[Command]) -> None:
         """Add a command to the dictionary and call the corresponding subscribers callbacks.
-        
+
         Parameters
         ----------
         commands : List[Command]
@@ -36,7 +36,7 @@ class CommandsManager():
             if agent_id not in self._commands:
                 self._commands[agent_id] = [command]
                 continue
-            
+
             # Using self._commands[agent_id].append() doesn't work because
             # it doesn't hold the reference of nested objects
             command_list = self._commands[agent_id]
@@ -48,11 +48,11 @@ class CommandsManager():
                 self._subscriptions[agent_id].set()
 
     async def get_commands(self, agent_id: UUID) -> Optional[List[Command]]:
-        """Get commands from the manager. 
+        """Get commands from the manager.
 
-        It returns immediately if there are commands for the agent specified, otherwise it waits for new commands until 
+        It returns immediately if there are commands for the agent specified, otherwise it waits for new commands until
         the timeout is reached.
-        
+
         Parameters
         ----------
         agent_id : UUID
@@ -91,7 +91,7 @@ async def pull_commands(commands_manager: CommandsManager, agent_id: UUID) -> Li
         Commands manager.
     agent_id : UUID
         Agent universally unique identifier.
-    
+
     Returns
     -------
     List[Command]
@@ -103,5 +103,5 @@ async def pull_commands(commands_manager: CommandsManager, agent_id: UUID) -> Li
             message='Request exceeded the processing time limit',
             status_code=status.HTTP_408_REQUEST_TIMEOUT,
         )
-    
+
     return commands

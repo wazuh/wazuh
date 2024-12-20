@@ -9,7 +9,7 @@ from connexion.lifecycle import ConnexionResponse
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.order import send_orders
 
-from api.controllers.util import json_response, JSON_CONTENT_TYPE
+from api.controllers.util import JSON_CONTENT_TYPE, json_response
 from api.models.base_model_ import Body
 from api.models.order_model import Orders
 from api.util import raise_if_exc, remove_nones_to_dict
@@ -37,14 +37,15 @@ async def post_orders(pretty: bool = False, wait_for_complete: bool = False) -> 
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
     f_kwargs = await Orders.get_kwargs(request)
 
-    dapi = DistributedAPI(f=send_orders,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=send_orders,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request.context['token_info']['rbac_policies'],
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 

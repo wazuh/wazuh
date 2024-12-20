@@ -1,17 +1,19 @@
-from pydantic import PositiveInt, Field
-from typing import List
 from enum import Enum
+from typing import List
+
+from pydantic import Field, PositiveInt
+from wazuh.core.config.models.base import WazuhConfigBaseModel
+from wazuh.core.config.models.logging import APILoggingConfig
+from wazuh.core.config.models.ssl_config import APISSLConfig
 
 from api.constants import API_CERT_PATH, API_KEY_PATH
-from wazuh.core.config.models.base import WazuhConfigBaseModel
-from wazuh.core.config.models.ssl_config import APISSLConfig
-from wazuh.core.config.models.logging import APILoggingConfig
 
 
 class RBACMode(str, Enum):
     """Enum representing the different RBAC modes"""
-    white = "white"
-    black = "black"
+
+    white = 'white'
+    black = 'black'
 
 
 class ManagementAPIIntervals(WazuhConfigBaseModel):
@@ -22,6 +24,7 @@ class ManagementAPIIntervals(WazuhConfigBaseModel):
     request_timeout : PositiveInt
         The timeout for requests in seconds. Default is 10.
     """
+
     request_timeout: PositiveInt = 10
 
 
@@ -41,10 +44,11 @@ class CorsConfig(WazuhConfigBaseModel):
     allow_credentials : bool
         Whether to allow credentials in CORS requests. Default is False.
     """
+
     enabled: bool = False
-    source_route: str = "*"
-    expose_headers: str = "*"
-    allow_headers: str = "*"
+    source_route: str = '*'
+    expose_headers: str = '*'
+    allow_headers: str = '*'
     allow_credentials: bool = False
 
 
@@ -60,6 +64,7 @@ class AccessConfig(WazuhConfigBaseModel):
     max_request_per_minute : PositiveInt
         The maximum number of requests allowed per minute. Default is 300.
     """
+
     max_login_attempts: PositiveInt = 50
     block_time: PositiveInt = 300
     max_request_per_minute: PositiveInt = 300
@@ -93,7 +98,8 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
     logging : APILoggingConfig
         Logging configuration for the management API. Default is an instance of APILoggingConfig.
     """
-    host: List[str] = Field(default=["localhost", "::1"], min_length=2)
+
+    host: List[str] = Field(default=['localhost', '::1'], min_length=2)
     port: PositiveInt = 55000
     drop_privileges: bool = True
     max_upload_size: PositiveInt = 10485760
@@ -101,10 +107,7 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
     rbac_mode: RBACMode = RBACMode.white
 
     intervals: ManagementAPIIntervals = ManagementAPIIntervals()
-    ssl: APISSLConfig = APISSLConfig(
-        key=API_KEY_PATH.as_posix(),
-        cert=API_CERT_PATH.as_posix()
-    )
+    ssl: APISSLConfig = APISSLConfig(key=API_KEY_PATH.as_posix(), cert=API_CERT_PATH.as_posix())
     logging: APILoggingConfig = APILoggingConfig()
     cors: CorsConfig = CorsConfig()
     access: AccessConfig = AccessConfig()

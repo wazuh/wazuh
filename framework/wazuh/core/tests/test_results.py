@@ -10,19 +10,35 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult, _goes_before_than, nested_itemgetter, merge
-        from wazuh import WazuhException, WazuhError
+        from wazuh import WazuhError, WazuhException
+        from wazuh.core.results import (
+            AffectedItemsWazuhResult,
+            WazuhResult,
+            _goes_before_than,
+            merge,
+            nested_itemgetter,
+        )
 
-param_name = ['affected_items', 'total_affected_items', 'sort_fields', 'sort_casting', 'sort_ascending',
-              'all_msg', 'some_msg', 'none_msg']
+param_name = [
+    'affected_items',
+    'total_affected_items',
+    'sort_fields',
+    'sort_casting',
+    'sort_ascending',
+    'all_msg',
+    'some_msg',
+    'none_msg',
+]
 WAZUH_EXCEPTION_CODE = 1725
 FAILED_AGENT_ID = '999'
 
 
 @pytest.fixture(scope='function')
 def get_wazuh_result():
-    return WazuhResult(dct={"data": {"items": [{"item1": "data1"}, {"item2": "OK"}], "message": "Everything ok"}},
-                       str_priority=['KO', 'OK'])
+    return WazuhResult(
+        dct={'data': {'items': [{'item1': 'data1'}, {'item2': 'OK'}], 'message': 'Everything ok'}},
+        str_priority=['KO', 'OK'],
+    )
 
 
 @pytest.fixture(scope='function')
@@ -41,20 +57,23 @@ def get_wazuh_failed_item():
     return item
 
 
-@pytest.mark.parametrize('dikt, priority', [
-    ({"data": {"items": [{"item1": "data1"}, {"item2": "OK"}], "message": "Everything ok"}}, ['KO', 'OK']),
-    ({"data": {"items": [{"item1": "data1"}, {"item2": "data2"}], "message": "Everything ok"}}, None),
-])
+@pytest.mark.parametrize(
+    'dikt, priority',
+    [
+        ({'data': {'items': [{'item1': 'data1'}, {'item2': 'OK'}], 'message': 'Everything ok'}}, ['KO', 'OK']),
+        ({'data': {'items': [{'item1': 'data1'}, {'item2': 'data2'}], 'message': 'Everything ok'}}, None),
+    ],
+)
 def test_results_WazuhResult__merge_str(dikt, priority, get_wazuh_affected_item):
     """Test method `_merge_str` from `WazuhResult`.
 
-        Parameters
-        ----------
-        dikt : dict
-            Dict with basic information for the class declaration.
-        priority : list
-            Used to set the WazuhResult priority.
-        """
+    Parameters
+    ----------
+    dikt : dict
+        Dict with basic information for the class declaration.
+    priority : list
+        Used to set the WazuhResult priority.
+    """
     wazuh_result = WazuhResult(deepcopy(dikt), str_priority=priority)
     assert isinstance(wazuh_result, WazuhResult)
     item2 = wazuh_result.dikt['data']['items'][1]['item2']
@@ -83,14 +102,17 @@ def test_results_WazuhResult_decode_json(get_wazuh_result):
     assert decoded_result == wazuh_result
 
 
-@pytest.mark.parametrize('param_value', [
-    # affected_items,total_affected_items, sort_fields, sort_casting, sort_ascending,
-    # all_msg, some_msg, none_msg
-    [['001', '002'], 2, None, ['int'], [True, True], 'Sample message', 'Sample message', 'Sample message'],
-    [['001', '003'], None, None, ['int'], [True, False], 'Sample message', 'Sample message', 'Sample message'],
-    [[], 0, None, None, ['int'], None, 'Sample message', 'Sample message', 'Sample message'],
-    [['001'], None, None, ['str'], None, 'Sample message', 'Sample message', 'Sample message']
-])
+@pytest.mark.parametrize(
+    'param_value',
+    [
+        # affected_items,total_affected_items, sort_fields, sort_casting, sort_ascending,
+        # all_msg, some_msg, none_msg
+        [['001', '002'], 2, None, ['int'], [True, True], 'Sample message', 'Sample message', 'Sample message'],
+        [['001', '003'], None, None, ['int'], [True, False], 'Sample message', 'Sample message', 'Sample message'],
+        [[], 0, None, None, ['int'], None, 'Sample message', 'Sample message', 'Sample message'],
+        [['001'], None, None, ['str'], None, 'Sample message', 'Sample message', 'Sample message'],
+    ],
+)
 def test_results_AffectedItemsWazuhResult(get_wazuh_affected_item, param_value):
     """Test class `AffectedItemsWazuhResult`.
 
@@ -157,12 +179,15 @@ def test_results_AffectedItemsWazuhResult___or__(get_wazuh_failed_item):
     assert or_result_2.failed_items == failed_item.failed_items
 
 
-@pytest.mark.parametrize('or_item, expected_result', [
-    (WazuhError(WAZUH_EXCEPTION_CODE, ids=['001']), AffectedItemsWazuhResult),
-    (WazuhError(WAZUH_EXCEPTION_CODE), WazuhException),
-    (WazuhException(WAZUH_EXCEPTION_CODE), WazuhException),
-    ({'Invalid type': None}, None)
-])
+@pytest.mark.parametrize(
+    'or_item, expected_result',
+    [
+        (WazuhError(WAZUH_EXCEPTION_CODE, ids=['001']), AffectedItemsWazuhResult),
+        (WazuhError(WAZUH_EXCEPTION_CODE), WazuhException),
+        (WazuhException(WAZUH_EXCEPTION_CODE), WazuhException),
+        ({'Invalid type': None}, None),
+    ],
+)
 def test_results_AffectedItemsWazuhResult___or___exceptions(or_item, expected_result):
     """Test raised exceptions from method `__or__` from class `AffectedItemsWazuhResult`."""
     affected_result = AffectedItemsWazuhResult()
@@ -188,10 +213,26 @@ def test_results_AffectedItemsWazuhResult_properties():
     """Test getters and setters from class `AffectedItemsWazuhResult`."""
     affected_result = AffectedItemsWazuhResult()
     # Lacks 'failed_items', 'total_failed_items' and 'message'
-    property_list = ['affected_items', 'sort_fields', 'sort_casting', 'sort_ascending', 'total_affected_items',
-                     'all_msg', 'some_msg', 'none_msg']
-    values_list = [['001', '002'], 2, param_name, ['int'], [True, True], 'Sample message', 'Sample message',
-                   'Sample message']
+    property_list = [
+        'affected_items',
+        'sort_fields',
+        'sort_casting',
+        'sort_ascending',
+        'total_affected_items',
+        'all_msg',
+        'some_msg',
+        'none_msg',
+    ]
+    values_list = [
+        ['001', '002'],
+        2,
+        param_name,
+        ['int'],
+        [True, True],
+        'Sample message',
+        'Sample message',
+        'Sample message',
+    ]
 
     assert len(property_list) == len(values_list)
     # Check getters and setters dynamically
@@ -222,10 +263,10 @@ def test_results_AffectedItemsWazuhResult_message_property():
     assert (msg == item_msg for msg, item_msg in zip(messages, [none_msg_result, all_msg_result, some_msg_result]))
 
 
-@pytest.mark.parametrize('self_field, other_field, key, expected_result', [
-    ('Sample1', 'Sample2', 'older_than', 'Sample1'),
-    ('Sample1', 'Sample2', None, 'Sample1|Sample2')
-])
+@pytest.mark.parametrize(
+    'self_field, other_field, key, expected_result',
+    [('Sample1', 'Sample2', 'older_than', 'Sample1'), ('Sample1', 'Sample2', None, 'Sample1|Sample2')],
+)
 def test_results_AffectedItemsWazuhResult__merge_str(self_field, other_field, key, expected_result):
     """Test method `_merge_str` from class `AffectedItemsWazuhResult`."""
     affected_result = AffectedItemsWazuhResult()
@@ -256,15 +297,20 @@ def test_results_AffectedItemsWazuhResult_render(get_wazuh_affected_item):
     assert render_result
     assert (field in ['data', 'message'] for field in render_result)
     assert render_result['data']
-    assert (field in ['affected_items', 'total_affected_items', 'total_failed_items', 'failed_items']
-            for field in render_result['data'])
+    assert (
+        field in ['affected_items', 'total_affected_items', 'total_failed_items', 'failed_items']
+        for field in render_result['data']
+    )
 
 
-@pytest.mark.parametrize('item, expressions, expected_result', [
-    ({'a': {'b': 3}, 'c.1': 5}, ['a.b', 'c\\.1'], (3, 5)),
-    ({'a': {'b': 3}, 'c.1': 5}, ['a.b', 'f'], (3, None)),
-    ([{'a': {'b': 3}, 'c.1': 5}], ['c\\.1'], [{'a': {'b': 3}, 'c.1': 5}])
-])
+@pytest.mark.parametrize(
+    'item, expressions, expected_result',
+    [
+        ({'a': {'b': 3}, 'c.1': 5}, ['a.b', 'c\\.1'], (3, 5)),
+        ({'a': {'b': 3}, 'c.1': 5}, ['a.b', 'f'], (3, None)),
+        ([{'a': {'b': 3}, 'c.1': 5}], ['c\\.1'], [{'a': {'b': 3}, 'c.1': 5}]),
+    ],
+)
 def test_results_nested_itemgetter(item, expressions, expected_result):
     """Test function `nested_itemgetter` from module results
 
@@ -280,16 +326,19 @@ def test_results_nested_itemgetter(item, expressions, expected_result):
     assert expected_result == nested_itemgetter(*expressions)(item)
 
 
-@pytest.mark.parametrize('a, b, ascending, casters, expected_result', [
-    (['sample'], ['elpmas'], None, None, False),
-    (['sample'], ['elpmas'], [False], [list], True),
-    (['sample'], ['elpmas'], [True], [str], False),
-    (['elpmas'], ['sample'], [True], [None], True),
-    ([None], [None], [True], [None], False),
-    ([None], ['sample'], [True], [None], True),
-    (['sample'], [None], [True], [None], False),
-    (['equal'], ['equal'], None, [str], False)
-])
+@pytest.mark.parametrize(
+    'a, b, ascending, casters, expected_result',
+    [
+        (['sample'], ['elpmas'], None, None, False),
+        (['sample'], ['elpmas'], [False], [list], True),
+        (['sample'], ['elpmas'], [True], [str], False),
+        (['elpmas'], ['sample'], [True], [None], True),
+        ([None], [None], [True], [None], False),
+        ([None], ['sample'], [True], [None], True),
+        (['sample'], [None], [True], [None], False),
+        (['equal'], ['equal'], None, [str], False),
+    ],
+)
 def test_results__goes_before_than(a, b, ascending, casters, expected_result):
     """Test function `_goes_before_than` from module results.
 
@@ -311,11 +360,14 @@ def test_results__goes_before_than(a, b, ascending, casters, expected_result):
     assert _goes_before_than(a, b, ascending=ascending, casters=casters) == expected_result
 
 
-@pytest.mark.parametrize('iterables, criteria, ascending, types, expected_result', [
-    ((['001', '002'], ['003', '004']), None, [True], ['int'], ['001', '002', '003', '004']),
-    ((['001', '002'], ['003', '004']), None, [False], ['int'], ['003', '004', '001', '002']),
-    ((['001', '002'], ['003', '004']), ['1'], [True], ['int'], ['001', '002', '003', '004']),
-])
+@pytest.mark.parametrize(
+    'iterables, criteria, ascending, types, expected_result',
+    [
+        ((['001', '002'], ['003', '004']), None, [True], ['int'], ['001', '002', '003', '004']),
+        ((['001', '002'], ['003', '004']), None, [False], ['int'], ['003', '004', '001', '002']),
+        ((['001', '002'], ['003', '004']), ['1'], [True], ['int'], ['001', '002', '003', '004']),
+    ],
+)
 def test_results_merge(iterables, criteria, ascending, types, expected_result):
     """Test function `merge` from module results.
 

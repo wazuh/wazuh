@@ -10,11 +10,9 @@ from api.validator import _group_names
 
 
 class InputValidator:
-    """
-    Class to do Input Validation.
-    """
+    """Class to do Input Validation."""
 
-    def check_name(self, name: str, regex_str: str = r"\w+") -> bool:
+    def check_name(self, name: str, regex_str: str = r'\w+') -> bool:
         """Abstract function to check a name matches a regex (\\w+ by default).
 
         Parameters

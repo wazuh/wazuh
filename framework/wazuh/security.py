@@ -6,18 +6,36 @@ import re
 from copy import deepcopy
 from functools import lru_cache
 
-from api.authentication import get_security_conf
 from wazuh.core import common
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
-    load_spec, sanitize_rbac_policy, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
+from wazuh.core.security import (
+    REQUIRED_FIELDS,
+    SORT_FIELDS,
+    SORT_FIELDS_GET_USERS,
+    invalid_roles_tokens,
+    invalid_run_as_tokens,
+    invalid_users_tokens,
+    load_spec,
+    revoke_tokens,
+    sanitize_rbac_policy,
+)
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
-from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
-from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
-from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
-from wazuh.core.config.client import CentralizedConfig
+from wazuh.rbac.orm import (
+    MAX_ID_RESERVED,
+    AuthenticationManager,
+    PoliciesManager,
+    RolesManager,
+    RolesPoliciesManager,
+    RolesRulesManager,
+    RulesManager,
+    SecurityError,
+    UserRolesManager,
+)
+
+from api.authentication import get_security_conf
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
@@ -56,8 +74,9 @@ def get_user_me(token: dict) -> AffectedItemsWazuhResult:
                     role['policies'][index_p].pop('roles')
             user_info['roles'].append(role)
 
-    affected_items.append(user_info) if user_info else result.add_failed_item(id_=common.current_user.get(),
-                                                                              error=WazuhError(5001))
+    affected_items.append(user_info) if user_info else result.add_failed_item(
+        id_=common.current_user.get(), error=WazuhError(5001)
+    )
     data = process_array(affected_items)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
@@ -65,12 +84,22 @@ def get_user_me(token: dict) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=['security:read'], resources=['user:id:{user_ids}'],
-                  post_proc_kwargs={'exclude_codes': [5001]})
-async def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
-              sort_ascending: bool = True, search_text: str = None, select: str = None,
-              complementary_search: bool = False, search_in_fields: list = None,
-              q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+@expose_resources(
+    actions=['security:read'], resources=['user:id:{user_ids}'], post_proc_kwargs={'exclude_codes': [5001]}
+)
+async def get_users(
+    user_ids: list = None,
+    offset: int = 0,
+    limit: int = common.DATABASE_LIMIT,
+    sort_by: dict = None,
+    sort_ascending: bool = True,
+    search_text: str = None,
+    select: str = None,
+    complementary_search: bool = False,
+    search_in_fields: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> AffectedItemsWazuhResult:
     """Get the information of a specified user.
 
     Parameters
@@ -103,9 +132,11 @@ async def get_users(user_ids: list = None, offset: int = 0, limit: int = common.
     AffectedItemsWazuhResult
         User information.
     """
-    result = AffectedItemsWazuhResult(none_msg='No user was returned',
-                                      some_msg='Some users were not returned',
-                                      all_msg='All specified users were returned')
+    result = AffectedItemsWazuhResult(
+        none_msg='No user was returned',
+        some_msg='Some users were not returned',
+        all_msg='All specified users were returned',
+    )
     affected_items = list()
     with AuthenticationManager() as auth:
         for user_id in user_ids:
@@ -113,10 +144,21 @@ async def get_users(user_ids: list = None, offset: int = 0, limit: int = common.
             user = auth.get_user_id(user_id)
             affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS_GET_USERS,
-                         required_fields=REQUIRED_FIELDS, q=q, distinct=distinct)
+    data = process_array(
+        affected_items,
+        search_text=search_text,
+        search_in_fields=search_in_fields,
+        select=select,
+        complementary_search=complementary_search,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending,
+        offset=offset,
+        limit=limit,
+        allowed_sort_fields=SORT_FIELDS_GET_USERS,
+        required_fields=REQUIRED_FIELDS,
+        q=q,
+        distinct=distinct,
+    )
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -139,10 +181,11 @@ async def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> Affect
     AffectedItemsWazuhResult
         Status message.
     """
-    result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
-                                               f"{'enabled' if allow_run_as else 'disabled'} for the user",
-                                      all_msg=f"Parameter allow_run_as has been "
-                                              f"{'enabled' if allow_run_as else 'disabled'} for the user")
+    result = AffectedItemsWazuhResult(
+        none_msg=f"The parameter allow_run_as could not be "
+        f"{'enabled' if allow_run_as else 'disabled'} for the user",
+        all_msg=f"Parameter allow_run_as has been " f"{'enabled' if allow_run_as else 'disabled'} for the user",
+    )
     with AuthenticationManager() as auth:
         user_id = int(user_id)
         query = auth.edit_run_as(user_id, allow_run_as)
@@ -179,8 +222,7 @@ async def create_user(username: str = None, password: str = None) -> AffectedIte
     elif not _user_password.match(password):
         raise WazuhError(5007)
 
-    result = AffectedItemsWazuhResult(none_msg='User could not be created',
-                                      all_msg='User was successfully created')
+    result = AffectedItemsWazuhResult(none_msg='User could not be created', all_msg='User was successfully created')
     with AuthenticationManager() as auth:
         if auth.add_user(username, password):
             operation = auth.get_user(username)
@@ -207,6 +249,7 @@ async def update_user(user_id: str = None, password: str = None, current_user: s
         Password for the new user.
     current_user : str
         Name of the user that made the request.
+
     Raises
     ------
     WazuhError(4001)
@@ -236,8 +279,7 @@ async def update_user(user_id: str = None, password: str = None, current_user: s
             if current_user_id > MAX_ID_RESERVED:
                 raise WazuhError(5011)
 
-    result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
-                                      none_msg='User could not be updated')
+    result = AffectedItemsWazuhResult(all_msg='User was successfully updated', none_msg='User could not be updated')
     with AuthenticationManager() as auth:
         query = auth.update_user(int(user_id[0]), password)
         if query is False:
@@ -250,8 +292,11 @@ async def update_user(user_id: str = None, password: str = None, current_user: s
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['user:id:{user_ids}'],
-                  post_proc_kwargs={'exclude_codes': [5001, 5004, 5008]})
+@expose_resources(
+    actions=['security:delete'],
+    resources=['user:id:{user_ids}'],
+    post_proc_kwargs={'exclude_codes': [5001, 5004, 5008]},
+)
 async def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
     """Remove a specified list of users.
 
@@ -265,9 +310,11 @@ async def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Status message.
     """
-    result = AffectedItemsWazuhResult(none_msg='No user was deleted',
-                                      some_msg='Some users were not deleted',
-                                      all_msg='Users were successfully deleted')
+    result = AffectedItemsWazuhResult(
+        none_msg='No user was deleted',
+        some_msg='Some users were not deleted',
+        all_msg='Users were successfully deleted',
+    )
     with AuthenticationManager() as auth:
         for user_id in user_ids:
             user_id = int(user_id)
@@ -292,12 +339,22 @@ async def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002]})
-async def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
-              select: str = None, sort_ascending: bool = True, search_text: str = None,
-              complementary_search: bool = False, search_in_fields: list = None,
-              q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+@expose_resources(
+    actions=['security:read'], resources=['role:id:{role_ids}'], post_proc_kwargs={'exclude_codes': [4002]}
+)
+async def get_roles(
+    role_ids: list = None,
+    offset: int = 0,
+    limit: int = common.DATABASE_LIMIT,
+    sort_by: dict = None,
+    select: str = None,
+    sort_ascending: bool = True,
+    search_text: str = None,
+    complementary_search: bool = False,
+    search_in_fields: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> AffectedItemsWazuhResult:
     """Return information from all system roles, does not return information from its associated policies.
 
     Parameters
@@ -331,9 +388,11 @@ async def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.
         Roles information.
     """
     affected_items = list()
-    result = AffectedItemsWazuhResult(none_msg='No role was returned',
-                                      some_msg='Some roles were not returned',
-                                      all_msg='All specified roles were returned')
+    result = AffectedItemsWazuhResult(
+        none_msg='No role was returned',
+        some_msg='Some roles were not returned',
+        all_msg='All specified roles were returned',
+    )
     with RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
@@ -343,18 +402,30 @@ async def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.
                 # Role id does not exist
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4002))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS,
-                         q=q, distinct=distinct)
+    data = process_array(
+        affected_items,
+        search_text=search_text,
+        search_in_fields=search_in_fields,
+        select=select,
+        complementary_search=complementary_search,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending,
+        offset=offset,
+        limit=limit,
+        allowed_sort_fields=SORT_FIELDS,
+        required_fields=REQUIRED_FIELDS,
+        q=q,
+        distinct=distinct,
+    )
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4008]})
+@expose_resources(
+    actions=['security:delete'], resources=['role:id:{role_ids}'], post_proc_kwargs={'exclude_codes': [4002, 4008]}
+)
 async def remove_roles(role_ids: list) -> AffectedItemsWazuhResult:
     """Remove a certain role from the system.
 
@@ -368,9 +439,11 @@ async def remove_roles(role_ids: list) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Result of the operation.
     """
-    result = AffectedItemsWazuhResult(none_msg='No role was deleted',
-                                      some_msg='Some roles were not deleted',
-                                      all_msg='All specified roles were deleted')
+    result = AffectedItemsWazuhResult(
+        none_msg='No role was deleted',
+        some_msg='Some roles were not deleted',
+        all_msg='All specified roles were deleted',
+    )
     with RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
@@ -405,8 +478,7 @@ async def add_role(name: str = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Result of the operation.
     """
-    result = AffectedItemsWazuhResult(none_msg='Role was not created',
-                                      all_msg='Role was successfully created')
+    result = AffectedItemsWazuhResult(none_msg='Role was not created', all_msg='Role was successfully created')
     with RolesManager() as rm:
         status = rm.add_role(name=name)
         if status == SecurityError.ALREADY_EXIST:
@@ -443,8 +515,7 @@ async def update_role(role_id: str = None, name: str = None) -> AffectedItemsWaz
     """
     if name is None:
         raise WazuhError(4001)
-    result = AffectedItemsWazuhResult(none_msg='Role was not updated',
-                                      all_msg='Role was successfully updated')
+    result = AffectedItemsWazuhResult(none_msg='Role was not updated', all_msg='Role was successfully updated')
     with RolesManager() as rm:
         status = rm.update_role(role_id=role_id[0], name=name)
         if status == SecurityError.ALREADY_EXIST:
@@ -464,12 +535,22 @@ async def update_role(role_id: str = None, name: str = None) -> AffectedItemsWaz
     return result
 
 
-@expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4007]})
-async def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
-                 select: str = None, sort_ascending: bool = True, search_text: str = None,
-                 complementary_search: bool = False, search_in_fields: list = None,
-                 q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+@expose_resources(
+    actions=['security:read'], resources=['policy:id:{policy_ids}'], post_proc_kwargs={'exclude_codes': [4007]}
+)
+async def get_policies(
+    policy_ids: list,
+    offset: int = 0,
+    limit: int = common.DATABASE_LIMIT,
+    sort_by: dict = None,
+    select: str = None,
+    sort_ascending: bool = True,
+    search_text: str = None,
+    complementary_search: bool = False,
+    search_in_fields: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> AffectedItemsWazuhResult:
     """Return the information of a certain policy.
 
     Parameters
@@ -502,9 +583,11 @@ async def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DA
     AffectedItemsWazuhResult
         Policies information.
     """
-    result = AffectedItemsWazuhResult(none_msg='No policy was returned',
-                                      some_msg='Some policies were not returned',
-                                      all_msg='All specified policies were returned')
+    result = AffectedItemsWazuhResult(
+        none_msg='No policy was returned',
+        some_msg='Some policies were not returned',
+        all_msg='All specified policies were returned',
+    )
     affected_items = list()
     with PoliciesManager() as pm:
         for p_id in policy_ids:
@@ -515,18 +598,30 @@ async def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DA
                 # Policy id does not exist
                 result.add_failed_item(id_=int(p_id), error=WazuhError(4007))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS,
-                         q=q, distinct=distinct)
+    data = process_array(
+        affected_items,
+        search_text=search_text,
+        search_in_fields=search_in_fields,
+        select=select,
+        complementary_search=complementary_search,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending,
+        offset=offset,
+        limit=limit,
+        allowed_sort_fields=SORT_FIELDS,
+        required_fields=REQUIRED_FIELDS,
+        q=q,
+        distinct=distinct,
+    )
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4007, 4008]})
+@expose_resources(
+    actions=['security:delete'], resources=['policy:id:{policy_ids}'], post_proc_kwargs={'exclude_codes': [4007, 4008]}
+)
 async def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     """Remove policies from the system.
 
@@ -540,9 +635,11 @@ async def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Result of operation.
     """
-    result = AffectedItemsWazuhResult(none_msg='No policy was deleted',
-                                      some_msg='Some policies were not deleted',
-                                      all_msg='All specified policies were deleted')
+    result = AffectedItemsWazuhResult(
+        none_msg='No policy was deleted',
+        some_msg='Some policies were not deleted',
+        all_msg='All specified policies were deleted',
+    )
     with PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
@@ -563,8 +660,7 @@ async def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=['security:create'], resources=['*:*:*'],
-                  post_proc_kwargs={'exclude_codes': [4006, 4009]})
+@expose_resources(actions=['security:create'], resources=['*:*:*'], post_proc_kwargs={'exclude_codes': [4006, 4009]})
 async def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
     """Create a policy in the system.
 
@@ -580,8 +676,7 @@ async def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazu
     AffectedItemsWazuhResult
         Result of the operation.
     """
-    result = AffectedItemsWazuhResult(none_msg='Policy was not created',
-                                      all_msg='Policy was successfully created')
+    result = AffectedItemsWazuhResult(none_msg='Policy was not created', all_msg='Policy was successfully created')
     sanitize_rbac_policy(policy)
     with PoliciesManager() as pm:
         status = pm.add_policy(name=name, policy=policy)
@@ -621,8 +716,7 @@ async def update_policy(policy_id: str = None, name: str = None, policy: dict = 
     """
     if name is None and policy is None:
         raise WazuhError(4001)
-    result = AffectedItemsWazuhResult(none_msg='Policy was not updated',
-                                      all_msg='Policy was successfully updated')
+    result = AffectedItemsWazuhResult(none_msg='Policy was not updated', all_msg='Policy was successfully updated')
     policy is not None and sanitize_rbac_policy(policy)
     with PoliciesManager() as pm:
         status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
@@ -643,12 +737,22 @@ async def update_policy(policy_id: str = None, name: str = None, policy: dict = 
     return result
 
 
-@expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4022]})
-async def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
-              select: str = None, sort_ascending: bool = True, search_text: str = None,
-              complementary_search: bool = False, search_in_fields: list = None,
-              q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
+@expose_resources(
+    actions=['security:read'], resources=['rule:id:{rule_ids}'], post_proc_kwargs={'exclude_codes': [4022]}
+)
+async def get_rules(
+    rule_ids: list = None,
+    offset: int = 0,
+    limit: int = common.DATABASE_LIMIT,
+    sort_by: dict = None,
+    select: str = None,
+    sort_ascending: bool = True,
+    search_text: str = None,
+    complementary_search: bool = False,
+    search_in_fields: list = None,
+    q: str = '',
+    distinct: bool = False,
+) -> AffectedItemsWazuhResult:
     """Return information from all the security rules. It does not return information from its associated roles.
 
     Parameters
@@ -682,9 +786,11 @@ async def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.
         Rules information.
     """
     affected_items = list()
-    result = AffectedItemsWazuhResult(none_msg='No security rule was returned',
-                                      some_msg='Some security rules were not returned',
-                                      all_msg='All specified security rules were returned')
+    result = AffectedItemsWazuhResult(
+        none_msg='No security rule was returned',
+        some_msg='Some security rules were not returned',
+        all_msg='All specified security rules were returned',
+    )
 
     with RulesManager() as rum:
         for ru_id in rule_ids:
@@ -695,10 +801,21 @@ async def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.
                 # Rule id does not exist
                 result.add_failed_item(id_=ru_id, error=WazuhError(4022))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS,
-                         q=q, distinct=distinct)
+    data = process_array(
+        affected_items,
+        search_text=search_text,
+        search_in_fields=search_in_fields,
+        select=select,
+        complementary_search=complementary_search,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending,
+        offset=offset,
+        limit=limit,
+        allowed_sort_fields=SORT_FIELDS,
+        required_fields=REQUIRED_FIELDS,
+        q=q,
+        distinct=distinct,
+    )
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -721,8 +838,9 @@ async def add_rule(name: str = None, rule: dict = None) -> AffectedItemsWazuhRes
     AffectedItemsWazuhResult
         Result of the operation.
     """
-    result = AffectedItemsWazuhResult(none_msg='Security rule was not created',
-                                      all_msg='Security rule was successfully created')
+    result = AffectedItemsWazuhResult(
+        none_msg='Security rule was not created', all_msg='Security rule was successfully created'
+    )
     with RulesManager() as rum:
         status = rum.add_rule(name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
@@ -736,8 +854,9 @@ async def add_rule(name: str = None, rule: dict = None) -> AffectedItemsWazuhRes
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4022, 4008]})
+@expose_resources(
+    actions=['security:delete'], resources=['rule:id:{rule_ids}'], post_proc_kwargs={'exclude_codes': [4022, 4008]}
+)
 async def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
     """Remove a rule from the system.
 
@@ -751,9 +870,11 @@ async def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Result of the operation.
     """
-    result = AffectedItemsWazuhResult(none_msg='No security rule was deleted',
-                                      some_msg='Some security rules were not deleted',
-                                      all_msg='All specified security rules were deleted')
+    result = AffectedItemsWazuhResult(
+        none_msg='No security rule was deleted',
+        some_msg='Some security rules were not deleted',
+        all_msg='All specified security rules were deleted',
+    )
     with RulesManager() as rum:
         for r_id in rule_ids:
             rule = rum.get_rule(int(r_id))
@@ -799,8 +920,9 @@ async def update_rule(rule_id: str = None, name: str = None, rule: dict = None) 
     """
     if name is None and rule is None:
         raise WazuhError(4001)
-    result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
-                                      all_msg='Security rule was successfully updated')
+    result = AffectedItemsWazuhResult(
+        none_msg='Security rule was not updated', all_msg='Security rule was successfully updated'
+    )
     with RulesManager() as rum:
         status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
@@ -840,8 +962,11 @@ def get_username(user_id: str) -> AffectedItemsWazuhResult:
     return username
 
 
-@expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]})
+@expose_resources(
+    actions=['security:update'],
+    resources=['user:id:{user_id}', 'role:id:{role_ids}'],
+    post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]},
+)
 async def set_user_role(user_id: list, role_ids: list, position: int = None) -> AffectedItemsWazuhResult:
     """Create a relationship between a user and a role.
 
@@ -868,9 +993,11 @@ async def set_user_role(user_id: list, role_ids: list, position: int = None) -> 
         raise WazuhError(4018)
 
     username = get_username(user_id=user_id)
-    result = AffectedItemsWazuhResult(none_msg=f'No link was created to user {username}',
-                                      some_msg=f'Some roles were not linked to user {username}',
-                                      all_msg=f'All roles were linked to user {username}')
+    result = AffectedItemsWazuhResult(
+        none_msg=f'No link was created to user {username}',
+        some_msg=f'Some roles were not linked to user {username}',
+        all_msg=f'All roles were linked to user {username}',
+    )
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
@@ -898,10 +1025,12 @@ async def set_user_role(user_id: list, role_ids: list, position: int = None) -> 
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['user:id:{user_id}'],
-                  post_proc_func=None)
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4016, 4008]})
+@expose_resources(actions=['security:delete'], resources=['user:id:{user_id}'], post_proc_func=None)
+@expose_resources(
+    actions=['security:delete'],
+    resources=['role:id:{role_ids}'],
+    post_proc_kwargs={'exclude_codes': [4002, 4016, 4008]},
+)
 async def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a user and a role.
 
@@ -926,9 +1055,11 @@ async def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhRe
     if username == 'unknown':
         raise WazuhResourceNotFound(5001)
 
-    result = AffectedItemsWazuhResult(none_msg=f'No role was unlinked from user {username}',
-                                      some_msg=f'Some roles were not unlinked from user {username}',
-                                      all_msg=f'All roles were unlinked from user {username}')
+    result = AffectedItemsWazuhResult(
+        none_msg=f'No role was unlinked from user {username}',
+        some_msg=f'Some roles were not unlinked from user {username}',
+        all_msg=f'All roles were unlinked from user {username}',
+    )
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
@@ -951,8 +1082,11 @@ async def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhRe
     return result
 
 
-@expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]})
+@expose_resources(
+    actions=['security:update'],
+    resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
+    post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]},
+)
 async def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> AffectedItemsWazuhResult:
     """Create a relationship between a role and one or more rules.
 
@@ -970,10 +1104,11 @@ async def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> A
     AffectedItemsWazuhResult
         Result of the operation.
     """
-
-    result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
-                                      some_msg=f'Some security rules were not linked to role {role_id[0]}',
-                                      all_msg=f'All security rules were linked to role {role_id[0]}')
+    result = AffectedItemsWazuhResult(
+        none_msg=f'No link was created to role {role_id[0]}',
+        some_msg=f'Some security rules were not linked to role {role_id[0]}',
+        all_msg=f'All security rules were linked to role {role_id[0]}',
+    )
     success = False
     with RolesRulesManager() as rrm:
         for rule_id in rule_ids:
@@ -999,10 +1134,12 @@ async def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> A
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'],
-                  post_proc_func=None)
-@expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4008, 4022, 4024]})
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'], post_proc_func=None)
+@expose_resources(
+    actions=['security:delete'],
+    resources=['rule:id:{rule_ids}'],
+    post_proc_kwargs={'exclude_codes': [4008, 4022, 4024]},
+)
 async def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a role and one or more rules.
 
@@ -1023,15 +1160,16 @@ async def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhRe
     AffectedItemsWazuhResult
         Result of the operation.
     """
-
     role = get_role(role_id[0])
 
     if not role:
         raise WazuhResourceNotFound(4002)
 
-    result = AffectedItemsWazuhResult(none_msg=f'No security rule was unlinked from role {role_id[0]}',
-                                      some_msg=f'Some security rules were not unlinked from role {role_id[0]}',
-                                      all_msg=f'All security rules were unlinked from role {role_id[0]}')
+    result = AffectedItemsWazuhResult(
+        none_msg=f'No security rule was unlinked from role {role_id[0]}',
+        some_msg=f'Some security rules were not unlinked from role {role_id[0]}',
+        all_msg=f'All security rules were unlinked from role {role_id[0]}',
+    )
     success = False
     with RolesRulesManager() as rrm:
         for rule_id in rule_ids:
@@ -1055,8 +1193,11 @@ async def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhRe
     return result
 
 
-@expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]})
+@expose_resources(
+    actions=['security:update'],
+    resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+    post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]},
+)
 async def set_role_policy(role_id: str, policy_ids: list, position: int = None) -> AffectedItemsWazuhResult:
     """Create a relationship between a role and a policy.
 
@@ -1074,9 +1215,11 @@ async def set_role_policy(role_id: str, policy_ids: list, position: int = None) 
     AffectedItemsWazuhResult
         Role-Policies information.
     """
-    result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
-                                      some_msg=f'Some policies were not linked to role {role_id[0]}',
-                                      all_msg=f'All policies were linked to role {role_id[0]}')
+    result = AffectedItemsWazuhResult(
+        none_msg=f'No link was created to role {role_id[0]}',
+        some_msg=f'Some policies were not linked to role {role_id[0]}',
+        all_msg=f'All policies were linked to role {role_id[0]}',
+    )
     success = False
     with RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
@@ -1118,7 +1261,6 @@ def get_role(role_id: str) -> bool:
     bool
         True if the role_id exists, False otherwise.
     """
-
     role_check = False
 
     with RolesManager() as rm:
@@ -1129,10 +1271,12 @@ def get_role(role_id: str) -> bool:
     return role_check
 
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'],
-                  post_proc_func=None)
-@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4007, 4008, 4010]})
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'], post_proc_func=None)
+@expose_resources(
+    actions=['security:delete'],
+    resources=['policy:id:{policy_ids}'],
+    post_proc_kwargs={'exclude_codes': [4007, 4008, 4010]},
+)
 async def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a role and a policy
 
@@ -1153,15 +1297,16 @@ async def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWaz
     AffectedItemsWazuhResult
          Result of operation.
     """
-
     role = get_role(role_id[0])
 
     if not role:
         raise WazuhResourceNotFound(4002)
 
-    result = AffectedItemsWazuhResult(none_msg=f'No policy was unlinked from role {role_id[0]}',
-                                      some_msg=f'Some policies were not unlinked from role {role_id[0]}',
-                                      all_msg=f'All policies were unlinked from role {role_id[0]}')
+    result = AffectedItemsWazuhResult(
+        none_msg=f'No policy was unlinked from role {role_id[0]}',
+        some_msg=f'Some policies were not unlinked from role {role_id[0]}',
+        all_msg=f'All policies were unlinked from role {role_id[0]}',
+    )
     success = False
     with RolesPoliciesManager() as rpm:
         for policy_id in policy_ids:
@@ -1200,9 +1345,13 @@ def revoke_current_user_tokens() -> WazuhResult:
     return WazuhResult({'message': f'User {common.current_user.get()} was successfully logged out'})
 
 
-@expose_resources(actions=['security:revoke'], resources=['*:*:*'],
-                  post_proc_kwargs={'default_result_kwargs': {
-                      'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}})
+@expose_resources(
+    actions=['security:revoke'],
+    resources=['*:*:*'],
+    post_proc_kwargs={
+        'default_result_kwargs': {'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}
+    },
+)
 async def wrapper_revoke_tokens() -> WazuhResult:
     """Revoke all tokens.
 
@@ -1290,8 +1439,9 @@ def get_rbac_actions(endpoint: str = None) -> WazuhResult:
             try:
                 for ref in payload['x-rbac-actions']:
                     action = list(ref.values())[0].split('/')[-1]
-                    if endpoint and \
-                            f'{method.upper()} {path}'.encode('ascii', 'ignore') != endpoint.encode('ascii', 'ignore'):
+                    if endpoint and f'{method.upper()} {path}'.encode('ascii', 'ignore') != endpoint.encode(
+                        'ascii', 'ignore'
+                    ):
                         continue
                     if action not in data.keys():
                         data[action] = deepcopy(info_data['x-rbac-catalog']['actions'][action])

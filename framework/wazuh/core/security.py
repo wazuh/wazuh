@@ -6,10 +6,10 @@ import os
 from functools import lru_cache
 
 import yaml
+from wazuh.core.authentication import generate_keypair
+from wazuh.rbac.orm import DB_FILE, RolesManager, TokenManager, check_database_integrity
 
 from api import __path__ as api_path
-from wazuh.core.authentication import generate_keypair
-from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']

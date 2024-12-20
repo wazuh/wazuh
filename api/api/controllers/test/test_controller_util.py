@@ -5,15 +5,20 @@
 
 import pytest
 from connexion.lifecycle import ConnexionResponse
+
 from api.controllers.util import json_response
 
-@pytest.mark.parametrize('pretty, body, status_code, content_type', 
-                            [(False, '{"a": "1", "b": "2"}', 200, 'application/json'), 
-                            (True, '{\n   "a": "1",\n   "b": "2"\n}', 401, 'application/json')
-                         ])
+
+@pytest.mark.parametrize(
+    'pretty, body, status_code, content_type',
+    [
+        (False, '{"a": "1", "b": "2"}', 200, 'application/json'),
+        (True, '{\n   "a": "1",\n   "b": "2"\n}', 401, 'application/json'),
+    ],
+)
 def test_json_response(pretty, body, status_code, content_type):
     """Veryfy if the response body is converted to json and prettyfied."""
-    data = {"a": "1", "b": "2"}
+    data = {'a': '1', 'b': '2'}
     response = json_response(data=data, pretty=pretty, content_type=content_type, status_code=status_code)
     assert isinstance(response, ConnexionResponse)
     assert response.body == body

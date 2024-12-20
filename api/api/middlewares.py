@@ -2,45 +2,44 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import binascii
-import json
-import hashlib
-import time
-import logging
 import base64
-import jwt
+import binascii
+import hashlib
+import json
+import logging
+import time
 
+import jwt
 from connexion.exceptions import OAuthProblem
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
-from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
+from secure import ContentSecurityPolicy, Secure, Server, XFrameOptions
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-
+from wazuh.core.authentication import JWT_ALGORITHM, get_keypair
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.utils import get_utc_now
 
 from api.alogging import custom_logging
-from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
+from api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException
 from api.configuration import default_api_configuration
-from wazuh.core.authentication import get_keypair, JWT_ALGORITHM
-from wazuh.core.config.client import CentralizedConfig
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
 
 # Variable used to specify an unknown user
-UNKNOWN_USER_STRING = "unknown_user"
+UNKNOWN_USER_STRING = 'unknown_user'
 
 # Run_as login endpoint path
-RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
+RUN_AS_LOGIN_ENDPOINT = '/security/user/authenticate/run_as'
 LOGIN_ENDPOINT = '/security/user/authenticate'
 
 # Authentication context hash key
 HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 
 # API secure headers
-server = Server().set("Wazuh")
+server = Server().set('Wazuh')
 csp = ContentSecurityPolicy().set('none')
 xfo = XFrameOptions().deny()
 secure_headers = Secure(server=server, csp=csp, xfo=xfo)
@@ -57,7 +56,6 @@ events_current_time = None
 
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
     """Generate Log message from the request."""
-
     time_diff = time.time() - prev_time
 
     context = request.context if hasattr(request, 'context') else {}
@@ -85,13 +83,16 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         try:
             auth_type, user_passw = AbstractSecurityHandler.get_auth_header_value(request)
             if auth_type == 'basic':
-                user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
+                user, _ = base64.b64decode(user_passw).decode('latin1').split(':', 1)
             elif auth_type == 'bearer':
                 _, public_key = get_keypair()
-                s = jwt.decode(user_passw, public_key,
-                            algorithms=[JWT_ALGORITHM],
-                            audience='Wazuh API REST',
-                            options={'verify_exp': False})
+                s = jwt.decode(
+                    user_passw,
+                    public_key,
+                    algorithms=[JWT_ALGORITHM],
+                    audience='Wazuh API REST',
+                    options={'verify_exp': False},
+                )
                 user = s['sub']
                 if HASH_AUTH_CONTEXT_KEY in s:
                     hash_auth_context = s[HASH_AUTH_CONTEXT_KEY]
@@ -100,14 +101,21 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
     # Create hash if run_as login
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
-        hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
-                                            digest_size=16).hexdigest()
+        hash_auth_context = hashlib.blake2b(json.dumps(body).encode(), digest_size=16).hexdigest()
 
-    custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
-                   hash_auth_context=hash_auth_context, headers=headers)
-    if response.status_code == 403 and \
-        path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-            method in {'GET', 'POST'}:
+    custom_logging(
+        user,
+        host,
+        method,
+        path,
+        query,
+        body,
+        time_diff,
+        response.status_code,
+        hash_auth_context=hash_auth_context,
+        headers=headers,
+    )
+    if response.status_code == 403 and path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and method in {'GET', 'POST'}:
         logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
 
 
@@ -134,17 +142,13 @@ def check_blocked_ip(request: Request):
     if request.client.host in ip_block:
         raise BlockedIPException(
             status=403,
-            title="Permission Denied",
-            detail="Limit of login attempts reached. The current IP has been blocked due "
-                    "to a high number of login attempts")
+            title='Permission Denied',
+            detail='Limit of login attempts reached. The current IP has been blocked due '
+            'to a high number of login attempts',
+        )
 
 
-def check_rate_limit(
-    request_counter_key: str,
-    current_time_key: str,
-    max_requests: int,
-    error_code: int
-) -> int:
+def check_rate_limit(request_counter_key: str, current_time_key: str, max_requests: int, error_code: int) -> int:
     """Check that the maximum number of requests per minute
     passed in `max_requests` is not exceeded.
 
@@ -183,20 +187,14 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
     """Rate Limits Middleware."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """"Check request limits per minute."""
+        """ "Check request limits per minute."""
         max_request_per_minute = CentralizedConfig.get_management_api_config().access.max_request_per_minute
-        error_code = check_rate_limit(
-            'general_request_counter',
-            'general_current_time',
-            max_request_per_minute,
-            6001)
+        error_code = check_rate_limit('general_request_counter', 'general_current_time', max_request_per_minute, 6001)
 
         if request.url.path == '/events':
             error_code = check_rate_limit(
-                'events_request_counter',
-                'events_current_time',
-                MAX_REQUESTS_EVENTS_DEFAULT,
-                6005)
+                'events_request_counter', 'events_current_time', MAX_REQUESTS_EVENTS_DEFAULT, 6005
+            )
 
         if error_code:
             raise MaxRequestsException(code=error_code)
@@ -208,9 +206,8 @@ class CheckBlockedIP(BaseHTTPMiddleware):
     """Rate Limits Middleware."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """"Update and check if the client IP is locked."""
-        if request.url.path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
-           and request.method in {'GET', 'POST'}:
+        """ "Update and check if the client IP is locked."""
+        if request.url.path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and request.method in {'GET', 'POST'}:
             check_blocked_ip(request)
         return await call_next(request)
 
@@ -238,7 +235,7 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         body = await request.body()
         if body:
             try:
-                # Load the request body to the _json field before calling the controller so it's cached before the stream 
+                # Load the request body to the _json field before calling the controller so it's cached before the stream
                 # is consumed. If there's a json error we skip it so it's handled later.
                 # Related to https://github.com/wazuh/wazuh/issues/24060.
                 _ = await request.json()
@@ -272,41 +269,43 @@ class SecureHeadersMiddleware(BaseHTTPMiddleware):
         secure_headers.framework.starlette(resp)
         return resp
 
+
 class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
     """Middleware to check for the 'Expect' header in incoming requests."""
 
     async def dispatch(self, request: ConnexionRequest, call_next: RequestResponseEndpoint) -> Response:
         """Check for specific request headers and generate error 417 if conditions are not met.
-                
+
         Parameters
         ----------
             request : Request
             HTTP Request received.
         call_next :  RequestResponseEndpoint
             Endpoint callable to be executed.
-        
+
         Returns
         -------
             Returned response.
         """
-        
         if 'Expect' not in request.headers:
             response = await call_next(request)
             return response
         else:
-            expect_value = request.headers["Expect"].lower()
-            
+            expect_value = request.headers['Expect'].lower()
+
             if expect_value != '100-continue':
-                raise ExpectFailedException(status=417, title="Expectation failed", detail="Unknown Expect")
-            
+                raise ExpectFailedException(status=417, title='Expectation failed', detail='Unknown Expect')
+
             if 'Content-Length' in request.headers:
-                content_length = int(request.headers["Content-Length"])
-                max_upload_size = default_api_configuration["max_upload_size"]
+                content_length = int(request.headers['Content-Length'])
+                max_upload_size = default_api_configuration['max_upload_size']
                 if content_length > max_upload_size:
-                    raise ExpectFailedException(status=417, title="Expectation failed",
-                                                detail=f"Maximum content size limit ({max_upload_size}) exceeded "
-                                                       f"({content_length} bytes read)")
-                
+                    raise ExpectFailedException(
+                        status=417,
+                        title='Expectation failed',
+                        detail=f'Maximum content size limit ({max_upload_size}) exceeded '
+                        f'({content_length} bytes read)',
+                    )
+
         response = await call_next(request)
         return response
-    

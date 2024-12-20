@@ -2,13 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from wazuh.core.exception import WazuhClusterError
+
 from api.models.order_model import Order
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -23,10 +22,13 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.order import send_orders
 
 
-@pytest.mark.parametrize('side_effect,message', [
-    (None, 'All orders were published'),
-    (WazuhClusterError(3023), 'No orders were published'),
-])
+@pytest.mark.parametrize(
+    'side_effect,message',
+    [
+        (None, 'All orders were published'),
+        (WazuhClusterError(3023), 'No orders were published'),
+    ],
+)
 @patch('wazuh.order.distribute_orders')
 @patch('wazuh.order.local_client.LocalClient')
 async def test_send_orders(local_client_mock, distribute_orders_mock, side_effect, message):

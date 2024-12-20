@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
+from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhIndexerError
 
 from comms_api.authentication.authentication import JWTBearer
-from comms_api.core.events import send_stateful_events, send_stateless_events, parse_stateful_events
+from comms_api.core.events import parse_stateful_events, send_stateful_events, send_stateless_events
 from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.exceptions import HTTPError, validation_exception_handler
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhEngineError, WazuhError, WazuhIndexerError
 
 
 @timeout(30)

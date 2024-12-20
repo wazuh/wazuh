@@ -1,14 +1,15 @@
 from typing import List
 
-from api.models.order_model import Order
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.control import distribute_orders
-from wazuh.core.exception import WazuhError, WazuhClusterError
+from wazuh.core.exception import WazuhClusterError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources
 
+from api.models.order_model import Order
 
-@expose_resources(actions=["order:send"], resources=["*:*:*"], post_proc_func=None)
+
+@expose_resources(actions=['order:send'], resources=['*:*:*'], post_proc_func=None)
 async def send_orders(orders: List[Order]) -> AffectedItemsWazuhResult:
     """Send orders to the local server and distribute them to other nodes and components.
 
@@ -23,9 +24,7 @@ async def send_orders(orders: List[Order]) -> AffectedItemsWazuhResult:
         Result with the published orders.
     """
     result = AffectedItemsWazuhResult(
-        all_msg="All orders were published",
-        some_msg="Some orders were published",
-        none_msg="No orders were published"
+        all_msg='All orders were published', some_msg='Some orders were published', none_msg='No orders were published'
     )
 
     document_ids = [item['document_id'] for item in orders]

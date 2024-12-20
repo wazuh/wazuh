@@ -1,13 +1,12 @@
-import os
 import logging
+import os
 import signal
 import sys
-from multiprocessing import Queue, Process, Event
+from multiprocessing import Event, Process, Queue
 from multiprocessing.managers import DictProxy, SyncManager
 from typing import Any
 
 from wazuh.core.indexer.models.events import AgentMetadata, Header, get_module_index_name
-
 
 logger = logging.getLogger('wazuh-comms-api')
 
@@ -26,6 +25,7 @@ class Item:
     index_name : str
         Name of the index the item should be created in. Should be set when inserting an item to the mux_queue only.
     """
+
     def __init__(self, id: int, operation: str, content: bytes = None, index_name: str = None):
         self.id = id
         self.content = content
@@ -43,6 +43,7 @@ class Packet:
     items : list[Item], optional
         List of items included in the packet. Defaults to an empty list.
     """
+
     def __init__(self, id: int = None, items: list[Item] = None):
         if items is None:
             items = []
@@ -117,7 +118,7 @@ class Packet:
             id=header.id,
             operation=header.operation,
             content=content,
-            index_name=get_module_index_name(header.module, header.type)
+            index_name=get_module_index_name(header.module, header.type),
         )
         self.add_item(item)
 
@@ -133,23 +134,24 @@ class Packet:
             self.id = item.id
 
         self.items.append(item)
-    
+
     def build_content(self, agent_metadata: bytes, data: bytes = None) -> bytes:
         """Build event body.
-        
+
         Parameters
         ----------
         agent_metadata : bytes
             Agent metadata.
         data : bytes
             Event data.
-        
+
         Returns
         -------
         bytes
             Agent metadata and event joined.
         """
         return b'{' + agent_metadata[1:-1] + b', ' + data[1:-1] + b'}'
+
 
 class MuxDemuxQueue:
     """Class for managing items between mux and demux components.
@@ -163,6 +165,7 @@ class MuxDemuxQueue:
     demux_queue : Queue
         Queue for demultiplexing items.
     """
+
     def __init__(self, proxy_dict: DictProxy, mux_queue: Queue, demux_queue: Queue):
         self.responses = proxy_dict
         self.mux_queue = mux_queue
@@ -320,16 +323,13 @@ class MuxDemuxManager:
     The MuxDemuxManager handles the creation, management, and shutdown of the MuxDemuxQueue
     and its associated process.
     """
+
     def __init__(self):
         SyncManager.register('MuxDemuxQueue', MuxDemuxQueue)
         self.manager = SyncManager()
         self.manager.start()
 
-        self.queue = self.manager.MuxDemuxQueue(
-            self.manager.dict(),
-            self.manager.Queue(),
-            self.manager.Queue()
-        )
+        self.queue = self.manager.MuxDemuxQueue(self.manager.dict(), self.manager.Queue(), self.manager.Queue())
         self.queue_process = MuxDemuxRunner(queue=self.queue)
         self.queue_process.start()
 

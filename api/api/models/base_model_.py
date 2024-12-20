@@ -5,14 +5,14 @@
 import pprint
 import typing
 from json import JSONDecodeError
-from typing import List, Dict  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 import six
 from connexion import ProblemException
+from wazuh.core.exception import WazuhError, WazuhNotAcceptable
 
 from api import util
-from api.util import raise_if_exc, get_invalid_keys
-from wazuh.core.exception import WazuhError, WazuhNotAcceptable
+from api.util import get_invalid_keys, raise_if_exc
 
 T = typing.TypeVar('T')
 
@@ -43,18 +43,18 @@ class Model(object):
         for attr, _ in six.iteritems(self.swagger_types):
             value = getattr(self, attr)
             if isinstance(value, list):
-                result[attr] = list(map(
-                    lambda x: x.to_dict() if hasattr(x, "to_dict") else x,
-                    value
-                ))
-            elif hasattr(value, "to_dict"):
+                result[attr] = list(map(lambda x: x.to_dict() if hasattr(x, 'to_dict') else x, value))
+            elif hasattr(value, 'to_dict'):
                 result[attr] = value.to_dict()
             elif isinstance(value, dict):
-                result[attr] = dict(map(
-                    lambda item: (item[0], item[1].to_dict())
-                    if hasattr(item[1], "to_dict") else util.serialize(item),
-                    value.items()
-                ))
+                result[attr] = dict(
+                    map(
+                        lambda item: (item[0], item[1].to_dict())
+                        if hasattr(item[1], 'to_dict')
+                        else util.serialize(item),
+                        value.items(),
+                    )
+                )
             else:
                 result[attr] = util.serialize(value)
 
@@ -81,7 +81,6 @@ class Model(object):
 
 
 class AllOf:
-
     def __init__(self, *models):
         self.models = models
 
@@ -93,20 +92,15 @@ class AllOf:
 
 
 class Data(Model):
-
     def __init__(self, data: Model = None):  # noqa: E501
         """Data - a model defined in Swagger
 
         :param data: The data of this Data.  # noqa: E501
         :type data: Model
         """
-        self.swagger_types = {
-            'data': Model
-        }
+        self.swagger_types = {'data': Model}
 
-        self.attribute_map = {
-            'data': 'data'
-        }
+        self.attribute_map = {'data': 'data'}
 
         self._data = data
 
@@ -125,7 +119,6 @@ class Data(Model):
     def data(self) -> Model:
         """Gets the data of this Data.
 
-
         :return: The data of this Data.
         :rtype: Model
         """
@@ -135,29 +128,22 @@ class Data(Model):
     def data(self, data: Model):
         """Sets the data of this Data.
 
-
         :param data: The data of this Data.
         :type data: Model
         """
-
         self._data = data
 
 
 class Items(Model):
-
     def __init__(self, items: List[Model] = None):  # noqa: E501
         """Items - a model defined in Swagger
 
         :param items: The items of this Items.  # noqa: E501
         :type items: Model
         """
-        self.swagger_types = {
-            'items': List[Model]
-        }
+        self.swagger_types = {'items': List[Model]}
 
-        self.attribute_map = {
-            'items': 'items'
-        }
+        self.attribute_map = {'items': 'items'}
 
         self._items = items
 
@@ -176,7 +162,6 @@ class Items(Model):
     def items(self) -> List[Model]:
         """Gets the items of this Data.
 
-
         :return: The items of this Data.
         :rtype: Model
         """
@@ -186,11 +171,9 @@ class Items(Model):
     def items(self, items: List[Model]):
         """Sets the items of this Items.
 
-
         :param items: The items of this Items.
         :type items: Model
         """
-
         self._items = items
 
 
@@ -207,8 +190,7 @@ class Body(Model):
             invalid = get_invalid_keys(dikt, f_kwargs)
 
             if invalid:
-                raise ProblemException(status=400, title='Bad Request', 
-                                       detail=f'Invalid field found {invalid}')
+                raise ProblemException(status=400, title='Bad Request', detail=f'Invalid field found {invalid}')
 
         if additional_kwargs is not None:
             f_kwargs.update(additional_kwargs)

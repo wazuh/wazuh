@@ -4,24 +4,31 @@
 
 import ipaddress
 import re
-import threading
 from base64 import b64encode
-from datetime import datetime, timezone
 from functools import lru_cache
-from pathlib import Path
 from os import listdir, path, remove
+from pathlib import Path
 from typing import List
 
 from wazuh.core import common, configuration
-from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Agent as IndexerAgent
-from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_date_from_timestamp, get_group_file_path, \
-    GROUP_FILE_EXT
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.utils import (
+    GROUP_FILE_EXT,
+    WazuhDBBackend,
+    WazuhDBQuery,
+    WazuhDBQueryDistinct,
+    WazuhDBQueryGroupBy,
+    WazuhVersion,
+    get_date_from_timestamp,
+    get_fields_to_nest,
+    get_group_file_path,
+    plain_dict_to_nested_dict,
+)
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
@@ -30,10 +37,23 @@ from wazuh.core.wdb import WazuhDBConnection
 class WazuhDBQueryAgents(WazuhDBQuery):
     """Class used to query Wazuh agents."""
 
-    def __init__(self, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None,
-                 select: list = None, count: bool = True, get_data: bool = True, query: str = '', filters: dict = None,
-                 default_sort_field: str = 'id', min_select_fields: set = None, remove_extra_fields: bool = True,
-                 distinct: bool = False, rbac_negate: bool = True):
+    def __init__(
+        self,
+        offset: int = 0,
+        limit: int = common.DATABASE_LIMIT,
+        sort: dict = None,
+        search: dict = None,
+        select: list = None,
+        count: bool = True,
+        get_data: bool = True,
+        query: str = '',
+        filters: dict = None,
+        default_sort_field: str = 'id',
+        min_select_fields: set = None,
+        remove_extra_fields: bool = True,
+        distinct: bool = False,
+        rbac_negate: bool = True,
+    ):
         """Class constructor.
 
         Parameters
@@ -71,12 +91,28 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if min_select_fields is None:
             min_select_fields = {'id'}
         backend = WazuhDBBackend(query_format='global')
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
-                              filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
-                              default_sort_order='ASC', query=query, backend=backend,
-                              min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive', 'dateAdd'}, extra_fields={'internal_key'},
-                              distinct=distinct, rbac_negate=rbac_negate)
+        WazuhDBQuery.__init__(
+            self,
+            offset=offset,
+            limit=limit,
+            table='agent',
+            sort=sort,
+            search=search,
+            select=select,
+            filters=filters,
+            fields=Agent.fields,
+            default_sort_field=default_sort_field,
+            default_sort_order='ASC',
+            query=query,
+            backend=backend,
+            min_select_fields=min_select_fields,
+            count=count,
+            get_data=get_data,
+            date_fields={'lastKeepAlive', 'dateAdd'},
+            extra_fields={'internal_key'},
+            distinct=distinct,
+            rbac_negate=rbac_negate,
+        )
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_date(self, date_filter: dict, filter_db_name: str):
@@ -94,7 +130,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         """
         if field == 'os.version':
             # Order by os major version and os minor version
-            return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
+            return 'CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}'.format(self.sort['order'])
         return WazuhDBQuery._sort_query(self, field)
 
     def _add_search_to_query(self):
@@ -107,8 +143,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             WazuhDBQuery._add_search_to_query(self)
             self.fields['id'] = 'id'
             self.query = self.query[:-1] + ' OR id LIKE :search_id)'
-            self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() \
-                else re.sub(f"[{self.special_characters}]", '_', self.search['value'])
+            self.request['search_id'] = (
+                int(self.search['value'])
+                if self.search['value'].isdigit()
+                else re.sub(f'[{self.special_characters}]', '_', self.search['value'])
+            )
 
     def _format_data_into_dictionary(self) -> dict:
         """Compute 'status' field, format id with zero padding and remove non-user-requested fields. Also, remove extra
@@ -126,8 +165,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         aux = list()
         for item in self._data:
             # As this is a timestamp, we remove it when its value is 0
-            if item.get("disconnection_time") == 0:
-                del item["disconnection_time"]
+            if item.get('disconnection_time') == 0:
+                del item['disconnection_time']
             aux_dict = dict()
             for key, value in item.items():
                 if key in selected_fields:
@@ -145,9 +184,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         """Parse legacy filters."""
         if 'older_than' in self.legacy_filters and self.legacy_filters['older_than'] != '0s':
             if self.legacy_filters['older_than']:
-                self.q = (self.q + ';' if self.q else '') + \
-                         "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
-                             self.legacy_filters['older_than'])
+                self.q = (
+                    self.q + ';' if self.q else ''
+                ) + '(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)'.format(
+                    self.legacy_filters['older_than']
+                )
             del self.legacy_filters['older_than']
 
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
@@ -174,19 +215,22 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             rbac_value = None
 
         if rbac_value is not None and (rbac_value or not self.rbac_negate):
-            self.query_filters += [{'value': rbac_value,
-                                    'field': 'rbac_id',
-                                    'operator': operator,
-                                    'separator': 'AND',
-                                    'level': 0}]
+            self.query_filters += [
+                {'value': rbac_value, 'field': 'rbac_id', 'operator': operator, 'separator': 'AND', 'level': 0}
+            ]
 
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
-                                'field': '{}${}'.format(name, i),
-                                'operator': '=',
-                                'separator': 'AND' if len(value) <= 1 or len(value) == i + 1 else 'OR',
-                                'level': 0 if i == len(value) - 1 else 1}
-                               for name, value in legacy_filters_as_list.items()
-                               for i, subvalue in enumerate(value) if not self._pass_filter(name, subvalue)]
+        self.query_filters += [
+            {
+                'value': None if subvalue == 'null' else subvalue,
+                'field': '{}${}'.format(name, i),
+                'operator': '=',
+                'separator': 'AND' if len(value) <= 1 or len(value) == i + 1 else 'OR',
+                'level': 0 if i == len(value) - 1 else 1,
+            }
+            for name, value in legacy_filters_as_list.items()
+            for i, subvalue in enumerate(value)
+            if not self._pass_filter(name, subvalue)
+        ]
 
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
@@ -210,11 +254,14 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
                 self.request[field_filter] = f"%,{q_filter['value']},%"
             elif q_filter['operator'] == 'LIKE':
-                self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
+                self.query += f'{self.fields[field_name]} LIKE :{field_filter}'
                 self.request[field_filter] = f"%{q_filter['value']}%"
             else:
-                raise WazuhError(1409, f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
-                                       f"Used operator: {q_filter['operator']}")
+                raise WazuhError(
+                    1409,
+                    f"Valid operators for 'group' field: {', '.join(valid_group_operators)}. "
+                    f"Used operator: {q_filter['operator']}",
+                )
         else:
             WazuhDBQuery._process_filter(self, field_name, field_filter, q_filter)
 
@@ -222,10 +269,23 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 class WazuhDBQueryGroup(WazuhDBQuery):
     """Class used to query Wazuh groups."""
 
-    def __init__(self, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None,
-                 select: list = None, get_data: bool = True, query: str = '', filters: dict = None, count: bool = True,
-                 default_sort_field: str = 'name', min_select_fields: set = None, remove_extra_fields: bool = True,
-                 rbac_negate: bool = True, distinct: bool = False):
+    def __init__(
+        self,
+        offset: int = 0,
+        limit: int = common.DATABASE_LIMIT,
+        sort: dict = None,
+        search: dict = None,
+        select: list = None,
+        get_data: bool = True,
+        query: str = '',
+        filters: dict = None,
+        count: bool = True,
+        default_sort_field: str = 'name',
+        min_select_fields: set = None,
+        remove_extra_fields: bool = True,
+        rbac_negate: bool = True,
+        distinct: bool = False,
+    ):
         """Class constructor.
 
         Parameters
@@ -262,12 +322,26 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         if min_select_fields is None:
             min_select_fields = {'name'}
         backend = WazuhDBBackend(query_format='global')
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='`group`', sort=sort, search=search,
-                              select=select,
-                              filters=filters, fields={'name': 'name'},
-                              default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              rbac_negate=rbac_negate, distinct=distinct)
+        WazuhDBQuery.__init__(
+            self,
+            offset=offset,
+            limit=limit,
+            table='`group`',
+            sort=sort,
+            search=search,
+            select=select,
+            filters=filters,
+            fields={'name': 'name'},
+            default_sort_field=default_sort_field,
+            default_sort_order='ASC',
+            query=query,
+            backend=backend,
+            min_select_fields=min_select_fields,
+            count=count,
+            get_data=get_data,
+            rbac_negate=rbac_negate,
+            distinct=distinct,
+        )
         self.remove_extra_fields = remove_extra_fields
 
     def _add_sort_to_query(self):
@@ -291,11 +365,11 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         str
             Default query.
         """
-        return "SELECT name, count(id_group) AS count from `group` LEFT JOIN `belongs` on id=id_group WHERE "
+        return 'SELECT name, count(id_group) AS count from `group` LEFT JOIN `belongs` on id=id_group WHERE '
 
     def _get_total_items(self):
         """Get total items."""
-        total_items_query = "SELECT COUNT(*) FROM ({}) AS total_groups".format(self.query)
+        total_items_query = 'SELECT COUNT(*) FROM ({}) AS total_groups'.format(self.query)
         self.total_items = self.backend.execute(total_items_query, self.request, True)
 
     def _execute_data_query(self):
@@ -306,9 +380,11 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         """Parses legacy filters."""
         if 'older_than' in self.legacy_filters and self.legacy_filters['older_than'] != '0s':
             if self.legacy_filters['older_than']:
-                self.q = (self.q + ';' if self.q else '') + \
-                         "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
-                             self.legacy_filters['older_than'])
+                self.q = (
+                    self.q + ';' if self.q else ''
+                ) + '(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)'.format(
+                    self.legacy_filters['older_than']
+                )
             del self.legacy_filters['older_than']
 
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
@@ -335,19 +411,22 @@ class WazuhDBQueryGroup(WazuhDBQuery):
             rbac_value = None
 
         if rbac_value is not None:
-            self.query_filters += [{'value': rbac_value,
-                                    'field': 'rbac_name',
-                                    'operator': operator,
-                                    'separator': 'AND',
-                                    'level': 0}]
+            self.query_filters += [
+                {'value': rbac_value, 'field': 'rbac_name', 'operator': operator, 'separator': 'AND', 'level': 0}
+            ]
 
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
-                                'field': '{}${}'.format(name, i),
-                                'operator': '=',
-                                'separator': 'AND' if len(value) <= 1 or len(value) == i + 1 else 'OR',
-                                'level': 0 if i == len(value) - 1 else 1}
-                               for name, value in legacy_filters_as_list.items()
-                               for i, subvalue in enumerate(value) if not self._pass_filter(name, subvalue)]
+        self.query_filters += [
+            {
+                'value': None if subvalue == 'null' else subvalue,
+                'field': '{}${}'.format(name, i),
+                'operator': '=',
+                'separator': 'AND' if len(value) <= 1 or len(value) == i + 1 else 'OR',
+                'level': 0 if i == len(value) - 1 else 1,
+            }
+            for name, value in legacy_filters_as_list.items()
+            for i, subvalue in enumerate(value)
+            if not self._pass_filter(name, subvalue)
+        ]
 
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
@@ -370,8 +449,16 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
             Fields to filter by.
         """
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
-        WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
-                                     default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
+        WazuhDBQueryGroupBy.__init__(
+            self,
+            *args,
+            table=self.table,
+            fields=self.fields,
+            filter_fields=filter_fields,
+            default_sort_field=self.default_sort_field,
+            backend=self.backend,
+            **kwargs,
+        )
         self.remove_extra_fields = True
 
     def _format_data_into_dictionary(self) -> str:
@@ -409,19 +496,48 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
 class Agent:
     """Wazuh Agent object."""
-    # TODO(#25121): Remove old fields.
-    fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'connection_status',
-              'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-              'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
-              'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
-              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
-              'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build': 'os_build',
-              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
-              'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
-              'group_config_status': 'group_config_status', 'status_code': 'status_code'}
 
-    new_fields = {'id': 'id', 'name': 'name', 'key': 'key', 'groups': 'groups', 'type': 'type', 'version': 'version',
-                 'type': 'type', 'last_login': 'last_login', 'persistent_connection_mode': 'persistent_connection_mode'}
+    # TODO(#25121): Remove old fields.
+    fields = {
+        'id': 'id',
+        'name': 'name',
+        'ip': 'coalesce(ip,register_ip)',
+        'status': 'connection_status',
+        'os.name': 'os_name',
+        'os.version': 'os_version',
+        'os.platform': 'os_platform',
+        'version': 'version',
+        'manager': 'manager_host',
+        'dateAdd': 'date_add',
+        'group': '`group`',
+        'mergedSum': 'merged_sum',
+        'configSum': 'config_sum',
+        'os.codename': 'os_codename',
+        'os.major': 'os_major',
+        'os.minor': 'os_minor',
+        'os.uname': 'os_uname',
+        'os.arch': 'os_arch',
+        'os.build': 'os_build',
+        'node_name': 'node_name',
+        'lastKeepAlive': 'last_keepalive',
+        'internal_key': 'internal_key',
+        'registerIP': 'register_ip',
+        'disconnection_time': 'disconnection_time',
+        'group_config_status': 'group_config_status',
+        'status_code': 'status_code',
+    }
+
+    new_fields = {
+        'id': 'id',
+        'name': 'name',
+        'key': 'key',
+        'groups': 'groups',
+        'type': 'type',
+        'version': 'version',
+        'type': 'type',
+        'last_login': 'last_login',
+        'persistent_connection_mode': 'persistent_connection_mode',
+    }
 
     def __init__(self, id: str = None, name: str = None, ip: str = None, key: str = None, force: dict = None):
         """Initialize an agent.
@@ -475,12 +591,26 @@ class Agent:
         return str(self.to_dict())
 
     def to_dict(self) -> dict:
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
-                      'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
-                      'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
-                      'group': self.group, 'manager': self.manager, 'node_name': self.node_name,
-                      'disconnection_time': self.disconnection_time, 'group_config_status': self.group_config_status,
-                      'status_code': self.status_code}
+        dictionary = {
+            'id': self.id,
+            'name': self.name,
+            'ip': self.ip,
+            'internal_key': self.internal_key,
+            'os': self.os,
+            'version': self.version,
+            'dateAdd': self.dateAdd,
+            'lastKeepAlive': self.lastKeepAlive,
+            'status': self.status,
+            'key': self.key,
+            'configSum': self.configSum,
+            'mergedSum': self.mergedSum,
+            'group': self.group,
+            'manager': self.manager,
+            'node_name': self.node_name,
+            'disconnection_time': self.disconnection_time,
+            'group_config_status': self.group_config_status,
+            'status_code': self.status_code,
+        }
 
         return dictionary
 
@@ -497,9 +627,17 @@ class Agent:
         WazuhResourceNotFound(1701)
             Agent does not exist.
         """
-        with WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
-                                query="id={}".format(self.id), count=False, get_data=True,
-                                remove_extra_fields=False) as db_query:
+        with WazuhDBQueryAgents(
+            offset=0,
+            limit=None,
+            sort=None,
+            search=None,
+            select=select,
+            query='id={}'.format(self.id),
+            count=False,
+            get_data=True,
+            remove_extra_fields=False,
+        ) as db_query:
             try:
                 data = db_query.run()['items'][0]
             except IndexError:
@@ -516,8 +654,9 @@ class Agent:
             Select fields to return. Format: ["field1","field2"].
         """
         self.load_info_from_db(select)
-        fields = set(self.fields.keys()) & set(select) if select is not None \
-            else set(self.fields.keys()) - {'internal_key'}
+        fields = (
+            set(self.fields.keys()) & set(select) if select is not None else set(self.fields.keys()) - {'internal_key'}
+        )
         return {field: getattr(self, field) for field in map(lambda x: x.split('.')[0], fields) if getattr(self, field)}
 
     def compute_key(self) -> str:
@@ -528,7 +667,7 @@ class Agent:
         str
             Agent key.
         """
-        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.registerIP, self.internal_key)
+        str_key = '{0} {1} {2} {3}'.format(self.id, self.name, self.registerIP, self.internal_key)
         return b64encode(str_key.encode()).decode()
 
     def get_key(self) -> str:
@@ -627,7 +766,7 @@ class Agent:
         dict
             Message.
         """
-        msg = {"function": "remove", "arguments": {"id": str(self.id).zfill(3), "purge": purge}}
+        msg = {'function': 'remove', 'arguments': {'id': str(self.id).zfill(3), 'purge': purge}}
 
         authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
@@ -742,20 +881,20 @@ class Agent:
         if key and len(key) < 64:
             raise WazuhError(1709)
 
-        msg = ""
+        msg = ''
         if name and ip:
-            msg = {"function": "add", "arguments": {"name": name, "ip": ip}}
+            msg = {'function': 'add', 'arguments': {'name': name, 'ip': ip}}
 
             if force is not None:
                 # This force field must always be present
-                force.update({"key_mismatch": True})
-                msg["arguments"]["force"] = force
+                force.update({'key_mismatch': True})
+                msg['arguments']['force'] = force
 
             if id:
-                msg["arguments"].update({"id": id})
+                msg['arguments'].update({'id': id})
 
             if key:
-                msg["arguments"].update({"key": key})
+                msg['arguments'].update({'key': key})
 
         try:
             authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
@@ -810,9 +949,17 @@ class Agent:
             return 'null'
 
     @staticmethod
-    def get_agents_overview(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: str = None,
-                            select: set = None, filters: dict = None, q: str = "", count: bool = True,
-                            get_data: bool = True) -> dict:
+    def get_agents_overview(
+        offset: int = 0,
+        limit: int = common.DATABASE_LIMIT,
+        sort: dict = None,
+        search: str = None,
+        select: set = None,
+        filters: dict = None,
+        q: str = '',
+        count: bool = True,
+        get_data: bool = True,
+    ) -> dict:
         """Gets a list of available agents with basic attributes.
 
         Parameters
@@ -841,10 +988,22 @@ class Agent:
         dict
             Information gathered from the database query.
         """
-        pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
-                                    filters=filters) if filters and 'id' in filters else {'filters': filters}
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query=q, count=count, get_data=get_data, **pfilters)
+        pfilters = (
+            get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'), filters=filters)
+            if filters and 'id' in filters
+            else {'filters': filters}
+        )
+        db_query = WazuhDBQueryAgents(
+            offset=offset,
+            limit=limit,
+            sort=sort,
+            search=search,
+            select=select,
+            query=q,
+            count=count,
+            get_data=get_data,
+            **pfilters,
+        )
         data = db_query.run()
 
         return data
@@ -929,8 +1088,9 @@ class Agent:
                 await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=[agent_id])
                 return
 
-            await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=[agent_id],
-                                                            override=override)
+            await indexer_client.agents.add_agents_to_group(
+                group_name=group_id, agent_ids=[agent_id], override=override
+            )
 
     @staticmethod
     async def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
@@ -1003,7 +1163,7 @@ class Agent:
             Agent's active configuration.
         """
         if WazuhVersion(agent_version) < WazuhVersion(common.ACTIVE_CONFIG_VERSION):
-            raise WazuhInternalError(1735, extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}")
+            raise WazuhInternalError(1735, extra_message=f'Minimum required version is {common.ACTIVE_CONFIG_VERSION}')
 
         return configuration.get_active_configuration(agent_id=self.id, component=component, configuration=config)
 
@@ -1128,7 +1288,7 @@ def get_manager_name() -> str:
     """
     # TODO(#25121): This function needs to be redifined according to the required used case.
     wdb_conn = WazuhDBConnection()
-    manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
+    manager_name = wdb_conn.execute('global sql SELECT name FROM agent WHERE (id = 0)')[0]['name']
     wdb_conn.close()
 
     return manager_name

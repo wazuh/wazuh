@@ -2,13 +2,20 @@ from dataclasses import asdict
 from typing import List
 
 from opensearchpy import exceptions
-
-from .base import BaseIndex, IndexerKey, POST_METHOD
-from .utils import convert_enums
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
-    ResponseResult
- 
+from wazuh.core.indexer.models.commands import (
+    Action,
+    Command,
+    CreateCommandResponse,
+    ResponseResult,
+    Source,
+    Target,
+    TargetType,
+)
+
+from .base import POST_METHOD, BaseIndex, IndexerKey
+from .utils import convert_enums
+
 COMMAND_USER_NAME = 'Management API'
 
 
@@ -20,12 +27,12 @@ class CommandsManager(BaseIndex):
 
     async def create(self, commands: List[Command]) -> CreateCommandResponse:
         """Create a new command.
-        
+
         Parameters
         ----------
         commands : List[Command]
             New commands list.
-        
+
         Returns
         -------
         CreateCommandResponse
@@ -58,12 +65,12 @@ class CommandsManager(BaseIndex):
 
 def create_restart_command(agent_id: str) -> Command:
     """Create a restart command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
-    
+
     Returns
     -------
     Command
@@ -77,10 +84,7 @@ def create_restart_command(agent_id: str) -> Command:
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='restart',
-            version='5.0.0'
-        ),
+        action=Action(name='restart', version='5.0.0'),
         user=COMMAND_USER_NAME,
         timeout=100,
     )
@@ -88,14 +92,14 @@ def create_restart_command(agent_id: str) -> Command:
 
 def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
     """Create a set group command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
     groups : List[str]
         Group names list.
-    
+
     Returns
     -------
     Command
@@ -107,11 +111,7 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='set-group',
-            args=groups,
-            version='5.0.0'
-        ),
+        action=Action(name='set-group', args=groups, version='5.0.0'),
         user=COMMAND_USER_NAME,
         timeout=100,
     )
@@ -119,12 +119,12 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
 
 def create_update_group_command(agent_id: str) -> Command:
     """Create a update group command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
-    
+
     Returns
     -------
     Command
@@ -136,10 +136,7 @@ def create_update_group_command(agent_id: str) -> Command:
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='update-group',
-            version='5.0.0'
-        ),
+        action=Action(name='update-group', version='5.0.0'),
         user=COMMAND_USER_NAME,
         timeout=100,
     )

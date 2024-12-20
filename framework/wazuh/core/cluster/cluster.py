@@ -27,11 +27,11 @@ from wazuh.core.cluster.utils import (
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
     IMBALANCE_TOLERANCE,
-    REMOVE_DISCONNECTED_NODE_AFTER
+    REMOVE_DISCONNECTED_NODE_AFTER,
 )
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
-from wazuh.core.config.client import CentralizedConfig
 
 logger = logging.getLogger('wazuh')
 
@@ -59,6 +59,7 @@ HAPROXY_HELPER_SCHEMA = {
 # Cluster
 #
 
+
 def validate_haproxy_helper_config(config: dict):
     """Validate the values of the give HAProxy helper configuration.
 
@@ -75,10 +76,7 @@ def validate_haproxy_helper_config(config: dict):
     try:
         validate(config, HAPROXY_HELPER_SCHEMA, cls=validators.Draft202012Validator)
     except ValidationError as error:
-        raise WazuhError(
-            3004,
-            f'Invalid value for {error.path.pop()}. {error.message}'
-        )
+        raise WazuhError(3004, f'Invalid value for {error.path.pop()}. {error.message}')
 
 
 def validate_file_path(config: dict, key: str):
@@ -125,7 +123,7 @@ def check_cluster_config(config):
         Cluster configuration.
 
     Raises
-    -------
+    ------
     WazuhError
         If any of above conditions is not met.
     """
@@ -135,10 +133,10 @@ def check_cluster_config(config):
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
 
     if not isinstance(config['port'], int):
-        raise WazuhError(3004, "Port has to be an integer.")
+        raise WazuhError(3004, 'Port has to be an integer.')
 
     if not MIN_PORT < config['port'] < MAX_PORT:
-        raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
+        raise WazuhError(3004, f'Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.')
 
     cert_keys = ['cafile', 'certfile', 'keyfile']
     if len(cert_keys) > len(set(config[key] for key in cert_keys)):
@@ -149,8 +147,10 @@ def check_cluster_config(config):
 
     if len(config['nodes']) > 1:
         logger.warning(
-            "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-                format(config['nodes'][0]))
+            'Found more than one node in configuration. Only master node should be specified. Using {} as master.'.format(
+                config['nodes'][0]
+            )
+        )
 
     validate_haproxy_helper_config(config.get(HAPROXY_HELPER, {}))
 
@@ -166,8 +166,8 @@ def get_node():
     data = {}
     server_config = CentralizedConfig.get_server_config()
 
-    data["node"] = server_config.node.name
-    data["type"] = server_config.node.type
+    data['node'] = server_config.node.name
+    data['type'] = server_config.node.type
 
     return data
 
@@ -176,8 +176,17 @@ def get_node():
 # Files
 #
 
-def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, previous_status=None,
-             get_hash=True):
+
+def walk_dir(
+    dirname,
+    recursive,
+    files,
+    excluded_files,
+    excluded_extensions,
+    get_cluster_item_key,
+    previous_status=None,
+    get_hash=True,
+):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
 
     Parameters
@@ -236,7 +245,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                                 pass
                             # Create dict with metadata for the current file.
                             # The TYPE string is a placeholder to define the type of merge performed.
-                            file_metadata = {"mod_time": file_mod_time, 'cluster_item_key': get_cluster_item_key}
+                            file_metadata = {'mod_time': file_mod_time, 'cluster_item_key': get_cluster_item_key}
                             if '.merged' not in file_:
                                 file_metadata['merged'] = False
                             else:
@@ -248,7 +257,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                             # Use the relative file path as a key to save its metadata dictionary.
                             walk_files[relative_file_path] = file_metadata
                     except FileNotFoundError as e:
-                        result_logs['debug'][root_].append(f"File {file_} was deleted in previous iteration: {e}")
+                        result_logs['debug'][root_].append(f'File {file_} was deleted in previous iteration: {e}')
                     except PermissionError as e:
                         result_logs['error'][root_].append(f"Can't read metadata from file {file_}: {e}")
             else:
@@ -283,20 +292,26 @@ def get_files_status(previous_status=None, get_hash=True):
     final_items = {}
     result_logs = {'debug': defaultdict(dict), 'warning': defaultdict(list), 'error': defaultdict(dict)}
     for file_config in server_config.files:
-        if file_config.dir == "excluded_files" or file_config.dir == "excluded_extensions":
+        if file_config.dir == 'excluded_files' or file_config.dir == 'excluded_extensions':
             continue
         try:
-            items, logs = walk_dir(file_config.dir, file_config.recursive, file_config.names,
-                                   server_config.excluded_files,
-                                   server_config.excluded_extensions,
-                                   file_config.dir, previous_status, get_hash)
+            items, logs = walk_dir(
+                file_config.dir,
+                file_config.recursive,
+                file_config.names,
+                server_config.excluded_files,
+                server_config.excluded_extensions,
+                file_config.dir,
+                previous_status,
+                get_hash,
+            )
             if 'debug' in logs and logs['debug']:
                 result_logs['debug'][file_config.dir].update(dict(logs['debug']))
             if 'error' in logs and logs['error']:
                 result_logs['error'][file_config.dir].update(dict(logs['error']))
             final_items.update(items)
         except Exception as e:
-            result_logs['warning'][file_config.dir].append(f"Error getting file status: {e}.")
+            result_logs['warning'][file_config.dir].append(f'Error getting file status: {e}.')
 
     return final_items, result_logs
 
@@ -380,13 +395,15 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                 with open(path.join(common.WAZUH_ETC, file), 'rb') as rf:
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
-                        result_logs['warning'][file].append(f'File too large to be synced: '
-                                                            f'{path.join(common.WAZUH_ETC, file)}')
+                        result_logs['warning'][file].append(
+                            f'File too large to be synced: ' f'{path.join(common.WAZUH_ETC, file)}'
+                        )
                         update_cluster_control(file, cluster_control_json)
                         continue
                     # Compress the content of each file and surrounds it with separators.
-                    new_file = f'{file}{PATH_SEP}'.encode() + zlib.compress(new_file, level=compress_level) + \
-                               FILE_SEP.encode()
+                    new_file = (
+                        f'{file}{PATH_SEP}'.encode() + zlib.compress(new_file, level=compress_level) + FILE_SEP.encode()
+                    )
 
                 if (len(new_file) + zip_size) <= max_zip_size:
                     # Append the new compressed file to previous ones only if total size is under max allowed.
@@ -394,27 +411,30 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                     wf.write(new_file)
                 else:
                     # Otherwise, remove it from cluster_control_json.
-                    result_logs['warning'][file].append('Maximum zip size exceeded. '
-                                                        'Not all files will be compressed during this sync.')
+                    result_logs['warning'][file].append(
+                        'Maximum zip size exceeded. ' 'Not all files will be compressed during this sync.'
+                    )
                     exceeded_size = True
                     update_cluster_control(file, cluster_control_json)
             except zlib.error as e:
                 raise WazuhError(3001, str(e))
             except Exception as e:
-                result_logs['debug'][file].append("Exception raised: " + str(WazuhException(3001, str(e))))
+                result_logs['debug'][file].append('Exception raised: ' + str(WazuhException(3001, str(e))))
                 update_cluster_control(file, cluster_control_json, exists=False)
 
         try:
             # Compress and save cluster_control data as a JSON.
-            wf.write(f'files_metadata.json{PATH_SEP}'.encode() +
-                     zlib.compress(json.dumps(cluster_control_json).encode(), level=compress_level))
+            wf.write(
+                f'files_metadata.json{PATH_SEP}'.encode()
+                + zlib.compress(json.dumps(cluster_control_json).encode(), level=compress_level)
+            )
         except Exception as e:
             raise WazuhError(3001, str(e))
 
     return zip_file_path, result_logs
 
 
-async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):
+async def async_decompress_files(zip_path, ko_files_name='files_metadata.json'):
     """Async wrapper for decompress_files() function.
 
     Parameters
@@ -434,7 +454,7 @@ async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):
     return decompress_files(zip_path, ko_files_name)
 
 
-def decompress_files(compress_path, ko_files_name="files_metadata.json"):
+def decompress_files(compress_path, ko_files_name='files_metadata.json'):
     """Decompress files in a directory and load the files_metadata.json as a dict.
 
     To avoid consuming too many memory resources, the compressed file is read in chunks
@@ -554,8 +574,12 @@ def compare_files(good_files, check_files, node_name):
     # to not change the function, as previously it returned an iterator for the 'extra_valid' files as well, but these
     # are no longer in use.
     condition_func = lambda x: next(
-        (file_config.extra_valid for file_config in server_config.files if file_config.dir == check_files[x]['cluster_item_key']),
-        False
+        (
+            file_config.extra_valid
+            for file_config in server_config.files
+            if file_config.dir == check_files[x]['cluster_item_key']
+        ),
+        False,
     )
     _extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(), condition_func)
     extra_files = {key: check_files[key] for key in extra}
@@ -577,9 +601,12 @@ def compare_files(good_files, check_files, node_name):
     if shared_e_v:
         # Merge all shared extra valid files into a single one. Create a tuple (merged_filepath, {metadata_dict}).
         # The TYPE and ITEM_KEY strings are placeholders for the merge type and the cluster item key.
-        shared_merged = [(merge_info(merge_type='TYPE', files=shared_e_v, file_type='-shared',
-                                     node_name=node_name)[1],
-                          {'cluster_item_key': 'ITEM_KEY', 'merged': True, 'merge-type': 'TYPE'})]
+        shared_merged = [
+            (
+                merge_info(merge_type='TYPE', files=shared_e_v, file_type='-shared', node_name=node_name)[1],
+                {'cluster_item_key': 'ITEM_KEY', 'merged': True, 'merge-type': 'TYPE'},
+            )
+        ]
 
         # Dict merging all 'shared' filepaths (keys) and the merged_filepath (key) created above.
         shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
@@ -589,7 +616,7 @@ def compare_files(good_files, check_files, node_name):
     return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
 
 
-def clean_up(node_name=""):
+def clean_up(node_name=''):
     """Clean all temporary files generated in the cluster.
 
     Optionally, it cleans all temporary files of node node_name.
@@ -631,10 +658,10 @@ def clean_up(node_name=""):
         remove_directory_contents(rm_path)
         logger.debug(f"Removed '{rm_path}'.")
     except Exception as e:
-        logger.error(f"Error cleaning up: {str(e)}.")
+        logger.error(f'Error cleaning up: {str(e)}.')
 
 
-def merge_info(merge_type, node_name, files=None, file_type=""):
+def merge_info(merge_type, node_name, files=None, file_type=''):
     """Merge multiple files into one.
 
     The merged file has the format below (header: content length, filename, modification time; content of the file):
@@ -664,11 +691,11 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
     merge_path = path.join(common.WAZUH_QUEUE, merge_type)
     output_file = path.join('cluster', node_name, merge_type + file_type + '.merged')
     files_to_send = 0
-    files = "all" if files is None else {path.basename(f) for f in files}
+    files = 'all' if files is None else {path.basename(f) for f in files}
 
     with open(path.join(common.WAZUH_RUN, output_file), 'wb') as o_f:
         for filename in listdir(merge_path):
-            if files != "all" and filename not in files:
+            if files != 'all' and filename not in files:
                 continue
 
             full_path = path.join(merge_path, filename)
@@ -678,7 +705,7 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
             with open(full_path, 'rb') as f:
                 data = f.read()
 
-            header = f"{len(data)} {filename} {get_date_from_timestamp(stat_data.st_mtime)}"
+            header = f'{len(data)} {filename} {get_date_from_timestamp(stat_data.st_mtime)}'
 
             o_f.write((header + '\n').encode() + data)
 
@@ -707,7 +734,7 @@ def unmerge_info(merge_type, path_file, filename):
         Filename of the merged file.
 
     Yields
-    -------
+    ------
     str
         Splitted relative file path.
     data : str
@@ -716,7 +743,7 @@ def unmerge_info(merge_type, path_file, filename):
         Modification time of the splitted file.
     """
     src_path = path.abspath(path.join(path_file, filename))
-    dst_path = path.join("queue", merge_type)
+    dst_path = path.join('queue', merge_type)
 
     bytes_read = 0
     total_bytes = stat(src_path).st_size

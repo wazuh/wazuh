@@ -8,20 +8,20 @@ from wazuh.core.cluster.utils import (
     AGENT_CHUNK_SIZE,
     AGENT_RECONNECTION_STABILITY_TIME,
     AGENT_RECONNECTION_TIME,
+    CLIENT_CERT,
+    CLIENT_CERT_KEY,
+    CLIENT_CERT_PASSWORD,
     EXCLUDED_NODES,
     FREQUENCY,
     HAPROXY_ADDRESS,
     HAPROXY_BACKEND,
+    HAPROXY_CERT,
     HAPROXY_HELPER,
     HAPROXY_PASSWORD,
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
     HAPROXY_RESOLVER,
     HAPROXY_USER,
-    HAPROXY_CERT,
-    CLIENT_CERT,
-    CLIENT_CERT_KEY,
-    CLIENT_CERT_PASSWORD,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
 )
@@ -635,7 +635,7 @@ class TestHAPHelper:
                                     haproxy_cert_file=HAPROXY_CERT_VALUE,
                                     client_cert_file=None,
                                     client_key_file=None,
-                                    client_password=None
+                                    client_password=None,
                                 )
 
                                 proxy_mock.assert_called_once_with(

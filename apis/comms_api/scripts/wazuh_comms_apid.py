@@ -4,43 +4,48 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import atexit
 import logging
 import logging.config
 import os
 import signal
 import ssl
 import sys
-import atexit
 from argparse import ArgumentParser, Namespace
 from functools import partial
-from sys import exit
-from typing import Any, Callable
 from multiprocessing import Process
 from multiprocessing.util import _exit_function
+from sys import exit
+from typing import Any, Callable
 
 from brotli_asgi import BrotliMiddleware
-from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
-from gunicorn.app.base import BaseApplication
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
-from api.alogging import set_logging
-from api.configuration import generate_private_key, generate_self_signed_certificate
-from api.middlewares import SecureHeadersMiddleware
 from comms_api.core.batcher import create_batcher_process
 from comms_api.core.commands import CommandsManager
 from comms_api.core.unix_server.server import start_unix_server
 from comms_api.middlewares.logging import LoggingMiddleware
-from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler, \
-    exception_handler, starlette_http_exception_handler
+from comms_api.routers.exceptions import (
+    HTTPError,
+    exception_handler,
+    http_error_handler,
+    starlette_http_exception_handler,
+    validation_exception_handler,
+)
 from comms_api.routers.router import router
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from gunicorn.app.base import BaseApplication
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from wazuh.core import common, pyDaemonModule, utils
-from wazuh.core.exception import WazuhCommsAPIError
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
+from wazuh.core.batcher.mux_demux import MuxDemuxManager, MuxDemuxQueue
 from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.logging import APILoggingConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
+from wazuh.core.config.models.logging import APILoggingConfig
+from wazuh.core.exception import WazuhCommsAPIError
+
+from api.alogging import set_logging
+from api.configuration import generate_private_key, generate_self_signed_certificate
+from api.middlewares import SecureHeadersMiddleware
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 LOGGING_TAG = 'Communications API'
@@ -110,10 +115,10 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
     try:
         if not os.path.exists(keyfile) or not os.path.exists(certfile):
             private_key = generate_private_key(keyfile)
-            logger.info(f"Generated private key file in {keyfile}")
-            
+            logger.info(f'Generated private key file in {keyfile}')
+
             generate_self_signed_certificate(private_key, certfile)
-            logger.info(f"Generated certificate file in {certfile}")
+            logger.info(f'Generated certificate file in {certfile}')
     except ssl.SSLError as exc:
         raise WazuhCommsAPIError(2700, extra_message=str(exc))
     except IOError as exc:
@@ -205,11 +210,7 @@ class StandaloneApplication(BaseApplication):
         super().__init__()
 
     def load_config(self):
-        config = {
-            key: value
-            for key, value in self.options.items()
-            if key in self.cfg.settings and value is not None
-        }
+        config = {key: value for key, value in self.options.items() if key in self.cfg.settings and value is not None}
         for key, value in config.items():
             self.cfg.set(key.lower(), value)
 
@@ -223,7 +224,7 @@ def signal_handler(
     parent_pid: int,
     mux_demux_manager: MuxDemuxManager,
     batcher_process: Process,
-    commands_manager: CommandsManager
+    commands_manager: CommandsManager,
 ) -> None:
     """Handle incoming signals to gracefully shutdown the API.
 
@@ -242,14 +243,14 @@ def signal_handler(
     commands_manager : CommandsManager
         Commands manager.
     """
-    logger.info(f"Received signal {signal.Signals(signum).name}, shutting down")
+    logger.info(f'Received signal {signal.Signals(signum).name}, shutting down')
     terminate_processes(parent_pid, mux_demux_manager, batcher_process, commands_manager)
 
 
 def terminate_processes(
     parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process, commands_manager: CommandsManager
 ) -> None:
-    """Terminate all related resources, and delete child and main processes 
+    """Terminate all related resources, and delete child and main processes
     if the current process ID matches the parent process ID.
 
     Parameters
@@ -282,13 +283,13 @@ if __name__ == '__main__':
     try:
         CentralizedConfig.load()
     except Exception as e:
-        print(f"Error when trying to load the configuration. {e}")
+        print(f'Error when trying to load the configuration. {e}')
         sys.exit(1)
 
     comms_api_config = CentralizedConfig.get_comms_api_config()
 
     utils.clean_pid_files(MAIN_PROCESS)
-    
+
     log_config_dict = setup_logging(logging_config=comms_api_config.logging)
     logger = logging.getLogger('wazuh-comms-api')
 
@@ -310,9 +311,12 @@ if __name__ == '__main__':
     signal.signal(
         signal.SIGTERM,
         partial(
-            signal_handler, parent_pid=pid, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process,
-            commands_manager=commands_manager
-        )
+            signal_handler,
+            parent_pid=pid,
+            mux_demux_manager=mux_demux_manager,
+            batcher_process=batcher_process,
+            commands_manager=commands_manager,
+        ),
     )
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 

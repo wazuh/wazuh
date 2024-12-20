@@ -11,7 +11,7 @@ from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.rbac.decorators import expose_resources, async_list_handler
+from wazuh.rbac.decorators import async_list_handler, expose_resources
 
 node_id = get_node().get('node')
 
@@ -25,9 +25,9 @@ async def get_node_wrapper() -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected information was returned',
-                                      none_msg='No information was returned'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected information was returned', none_msg='No information was returned'
+    )
     try:
         result.affected_items.append(get_node())
     except WazuhError as e:
@@ -50,8 +50,9 @@ async def get_status_json() -> WazuhResult:
 
 
 @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
-async def get_health_nodes(lc: local_client.LocalClient,
-                           filter_node: Union[str, list] = None) -> AffectedItemsWazuhResult:
+async def get_health_nodes(
+    lc: local_client.LocalClient, filter_node: Union[str, list] = None
+) -> AffectedItemsWazuhResult:
     """Wrapper for get_health.
 
     Parameters
@@ -66,10 +67,11 @@ async def get_health_nodes(lc: local_client.LocalClient,
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected nodes healthcheck information was returned',
-                                      some_msg='Some nodes healthcheck information was not returned',
-                                      none_msg='No healthcheck information was returned'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected nodes healthcheck information was returned',
+        some_msg='Some nodes healthcheck information was not returned',
+        none_msg='No healthcheck information was returned',
+    )
 
     data = await get_health(lc, filter_node=filter_node)
     for v in data['nodes'].values():
@@ -82,8 +84,9 @@ async def get_health_nodes(lc: local_client.LocalClient,
 
 
 @expose_resources(actions=['cluster:read'], resources=['node:id:{filter_node}'], post_proc_func=async_list_handler)
-async def get_nodes_info(lc: local_client.LocalClient, filter_node: Union[str, list] = None,
-                         **kwargs: dict) -> AffectedItemsWazuhResult:
+async def get_nodes_info(
+    lc: local_client.LocalClient, filter_node: Union[str, list] = None, **kwargs: dict
+) -> AffectedItemsWazuhResult:
     """Wrapper for get_nodes.
 
     Parameters
@@ -98,10 +101,11 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node: Union[str, l
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected nodes information was returned',
-                                      some_msg='Some nodes information was not returned',
-                                      none_msg='No information was returned'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected nodes information was returned',
+        some_msg='Some nodes information was not returned',
+        none_msg='No information was returned',
+    )
 
     nodes = set(filter_node).intersection(set(common.cluster_nodes.get()))
     non_existent_nodes = set(filter_node) - nodes

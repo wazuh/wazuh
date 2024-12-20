@@ -2,13 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import logging
 import json
+import logging
 import re
 
-from api.api_exception import APIError
-
 from wazuh.core.config.models.logging import APILoggingConfig
+
+from api.api_exception import APIError
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
@@ -16,18 +16,18 @@ request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 logger = logging.getLogger('wazuh-api')
 
 # Variable used to specify an unknown user
-UNKNOWN_USER_STRING = "unknown_user"
+UNKNOWN_USER_STRING = 'unknown_user'
 WARNING = 'WARNING'
 INFO = 'INFO'
 
 
 def set_logging(logging_config: APILoggingConfig, tag: str) -> dict:
     """Set up logging for API.
-    
+
     This function creates a logging configuration dictionary, configure the wazuh-api logger
     and returns the logging configuration dictionary that will be used in uvicorn logging
     configuration.
-    
+
     Parameters
     ----------
     logging_config :  APILoggingConfig
@@ -45,68 +45,59 @@ def set_logging(logging_config: APILoggingConfig, tag: str) -> dict:
         Logging configuration dictionary.
     """
     log_level = logging_config.get_level()
-    handlers = {
-        'console': {}
-    }
+    handlers = {'console': {}}
 
     hdls = [k for k, v in handlers.items() if isinstance(v, dict)]
     if not hdls:
         raise APIError(2011)
 
     log_config_dict = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "default": {
-                "()": "uvicorn.logging.DefaultFormatter",
-                "fmt": "%(levelprefix)s %(message)s",
-                "use_colors": None,
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'default': {
+                '()': 'uvicorn.logging.DefaultFormatter',
+                'fmt': '%(levelprefix)s %(message)s',
+                'use_colors': None,
             },
-            "access": {
-                "()": "uvicorn.logging.AccessFormatter",
-                "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+            'access': {
+                '()': 'uvicorn.logging.AccessFormatter',
+                'fmt': '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
             },
-            "log": {
-                "()": "uvicorn.logging.DefaultFormatter",
-                "fmt": f"%(asctime)s %(levelname)s: [{tag}] %(message)s",
-                "datefmt": "%Y/%m/%d %H:%M:%S",
-                "use_colors": None,
+            'log': {
+                '()': 'uvicorn.logging.DefaultFormatter',
+                'fmt': f'%(asctime)s %(levelname)s: [{tag}] %(message)s',
+                'datefmt': '%Y/%m/%d %H:%M:%S',
+                'use_colors': None,
             },
         },
-        "filters": {
-            'plain-filter': {'()': 'wazuh.core.wlogging.CustomFilter',
-                             'log_type': 'log'}
-        },
-        "handlers": {
-            "default": {
-                "formatter": "default",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stderr",
+        'filters': {'plain-filter': {'()': 'wazuh.core.wlogging.CustomFilter', 'log_type': 'log'}},
+        'handlers': {
+            'default': {
+                'formatter': 'default',
+                'class': 'logging.StreamHandler',
+                'stream': 'ext://sys.stderr',
             },
-            "access": {
-                "formatter": "access",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout"
-            },
-            "console": {
+            'access': {'formatter': 'access', 'class': 'logging.StreamHandler', 'stream': 'ext://sys.stdout'},
+            'console': {
                 'formatter': 'log',
                 'class': 'logging.StreamHandler',
                 'stream': 'ext://sys.stdout',
-                'filters': ['plain-filter']
+                'filters': ['plain-filter'],
             },
         },
-        "loggers": {
-            "wazuh": {"handlers": hdls, "level": log_level, "propagate": False},
-            "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
-            "wazuh-comms-api": {"handlers": hdls, "level": log_level, "propagate": False}
-        }
+        'loggers': {
+            'wazuh': {'handlers': hdls, 'level': log_level, 'propagate': False},
+            'wazuh-api': {'handlers': hdls, 'level': log_level, 'propagate': False},
+            'wazuh-comms-api': {'handlers': hdls, 'level': log_level, 'propagate': False},
+        },
     }
 
     # configure file handlers
 
     # Configure the uvicorn loggers. They will be created by the uvicorn server.
-    log_config_dict['loggers']['uvicorn'] = {"handlers": hdls, "level": WARNING, "propagate": False}
-    log_config_dict['loggers']['uvicorn.error'] = {"handlers": hdls, "level": WARNING, "propagate": False}
+    log_config_dict['loggers']['uvicorn'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
+    log_config_dict['loggers']['uvicorn.error'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
     log_config_dict['loggers']['uvicorn.access'] = {'level': WARNING}
 
     # Configure the gunicorn loggers. They will be created by the gunicorn process.
@@ -117,9 +108,9 @@ def set_logging(logging_config: APILoggingConfig, tag: str) -> dict:
     return log_config_dict
 
 
-def custom_logging(user, remote, method, path, query,
-                   body, elapsed_time, status, hash_auth_context='',
-                   headers: dict = None):
+def custom_logging(
+    user, remote, method, path, query, body, elapsed_time, status, hash_auth_context='', headers: dict = None
+):
     """Provide the log entry structure depending on the logging format.
 
     Parameters
@@ -153,7 +144,7 @@ def custom_logging(user, remote, method, path, query,
         'parameters': query,
         'body': body,
         'time': f'{elapsed_time:.3f}s',
-        'status_code': status
+        'status_code': status,
     }
 
     if not hash_auth_context:
@@ -169,8 +160,9 @@ def custom_logging(user, remote, method, path, query,
             body = {'events': len(events)}
             json_info['body'] = body
 
-    log_info += f'with parameters {json.dumps(query)} and body '\
-                f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
+    log_info += (
+        f'with parameters {json.dumps(query)} and body ' f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
+    )
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})

@@ -5,8 +5,6 @@
 from os import chmod, chown, path
 from typing import List, Optional, Union
 
-from api.models.agent_registration_model import Host
-
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
     Agent,
@@ -17,18 +15,16 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_update_group_command
 from wazuh.core.indexer.models.agent import Host as IndexerAgentHost
 from wazuh.core.indexer.models.commands import ResponseResult
-from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_update_group_command
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.utils import (
-    get_hash,
-    process_array,
-    get_group_file_path
-)
+from wazuh.core.utils import get_group_file_path, get_hash, process_array
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
+
+from api.models.agent_registration_model import Host
 
 node_id = get_node().get('node')
 
@@ -58,7 +54,7 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
 
     if LAST_LOGIN_KEY in filters and filters[LAST_LOGIN_KEY] is not None:
         query_filters.append(
-            {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f"{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}"}}}
+            {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f'{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}'}}}
         )
         filters.pop(LAST_LOGIN_KEY)
 
@@ -66,16 +62,12 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
         if value is not None:
             query_filters.append({IndexerKey.TERM: {key: value}})
 
-    return {
-        IndexerKey.QUERY: {
-            IndexerKey.BOOL: {
-                IndexerKey.FILTER: query_filters
-            }
-        }
-    }
+    return {IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: query_filters}}}
 
-@expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1707]})
+
+@expose_resources(
+    actions=['agent:reconnect'], resources=['agent:id:{agent_list}'], post_proc_kwargs={'exclude_codes': [1701, 1707]}
+)
 def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
     """Force reconnect a list of agents.
 
@@ -89,10 +81,11 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='Force reconnect command was sent to all agents',
-                                      some_msg='Force reconnect command was not sent to some agents',
-                                      none_msg='Force reconnect command was not sent to any agent'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg='Force reconnect command was sent to all agents',
+        some_msg='Force reconnect command was not sent to some agents',
+        none_msg='Force reconnect command was not sent to any agent',
+    )
 
     system_agents = get_agents_info()
     with WazuhQueue(common.AR_SOCKET) as wq:
@@ -111,8 +104,11 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
     return result
 
 
-@expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+@expose_resources(
+    actions=['agent:restart'],
+    resources=['agent:id:{agent_list}'],
+    post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
+)
 async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
@@ -129,7 +125,7 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
     result = AffectedItemsWazuhResult(
         all_msg='Restart command was sent to all agents',
         some_msg='Restart command was not sent to some agents',
-        none_msg='Restart command was not sent to any agent'
+        none_msg='Restart command was not sent to any agent',
     )
 
     async with get_indexer_client() as indexer_client:
@@ -165,7 +161,7 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(
-    actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_kwargs={'exclude_codes': [1701]}
+    actions=['agent:read'], resources=['agent:id:{agent_list}'], post_proc_kwargs={'exclude_codes': [1701]}
 )
 async def get_agents(
     agent_list: list,
@@ -200,7 +196,7 @@ async def get_agents(
     result = AffectedItemsWazuhResult(
         all_msg='All selected agents information was returned',
         some_msg='Some agents information was not returned',
-        none_msg='No agent information was returned'
+        none_msg='No agent information was returned',
     )
 
     query = build_agents_query(agent_list, filters)
@@ -214,10 +210,19 @@ async def get_agents(
     return result
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-async def get_agents_in_group(group_list: list, offset: int = 0, limit: int = None, sort_by: list = None,
-                     sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
-                     q: str = None, select: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+@expose_resources(actions=['group:read'], resources=['group:id:{group_list}'], post_proc_func=None)
+async def get_agents_in_group(
+    group_list: list,
+    offset: int = 0,
+    limit: int = None,
+    sort_by: list = None,
+    sort_ascending: bool = True,
+    search_text: str = None,
+    complementary_search: bool = False,
+    q: str = None,
+    select: str = None,
+    distinct: bool = False,
+) -> AffectedItemsWazuhResult:
     """Gets the list of agents that belong to a specific group.
 
     Parameters
@@ -253,10 +258,11 @@ async def get_agents_in_group(group_list: list, offset: int = 0, limit: int = No
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
-                                      some_msg='Some groups information was not returned',
-                                      none_msg='No group information was returned'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected groups information was returned',
+        some_msg='Some groups information was not returned',
+        none_msg='No group information was returned',
+    )
 
     group_id = group_list[0]
     system_groups = get_groups()
@@ -267,9 +273,20 @@ async def get_agents_in_group(group_list: list, offset: int = 0, limit: int = No
     async with get_indexer_client() as indexer_client:
         agents = await indexer_client.agents.get_group_agents(group_id)
 
-    data = process_array(agents, offset=offset, limit=limit, sort_by=sort_by, sort_ascending=sort_ascending,
-            search_text=search_text, complementary_search=complementary_search, q=q, select=select,
-            distinct=distinct, allowed_select_fields=Agent.new_fields, allowed_sort_fields=Agent.new_fields)
+    data = process_array(
+        agents,
+        offset=offset,
+        limit=limit,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending,
+        search_text=search_text,
+        complementary_search=complementary_search,
+        q=q,
+        select=select,
+        distinct=distinct,
+        allowed_select_fields=Agent.new_fields,
+        allowed_sort_fields=Agent.new_fields,
+    )
 
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
@@ -277,9 +294,15 @@ async def get_agents_in_group(group_list: list, offset: int = 0, limit: int = No
     return result
 
 
-@expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
-async def delete_agents(agent_list: list, filters: Optional[dict] = None,) -> AffectedItemsWazuhResult:
+@expose_resources(
+    actions=['agent:delete'],
+    resources=['agent:id:{agent_list}'],
+    post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]},
+)
+async def delete_agents(
+    agent_list: list,
+    filters: Optional[dict] = None,
+) -> AffectedItemsWazuhResult:
     """Delete a list of agents or all of them if receive an empty list.
 
     Parameters
@@ -297,12 +320,12 @@ async def delete_agents(agent_list: list, filters: Optional[dict] = None,) -> Af
     result = AffectedItemsWazuhResult(
         all_msg='All selected agents were deleted',
         some_msg='Some agents were not deleted',
-        none_msg='No agents were deleted'
+        none_msg='No agents were deleted',
     )
 
     async with get_indexer_client() as indexer:
-        available_agents = [item.id for item in
-            await indexer.agents.search(query=build_agents_query(agent_list, filters))
+        available_agents = [
+            item.id for item in await indexer.agents.search(query=build_agents_query(agent_list, filters))
         ]
         not_found_agents = set(agent_list) - set(available_agents)
 
@@ -319,7 +342,7 @@ async def delete_agents(agent_list: list, filters: Optional[dict] = None,) -> Af
     return result
 
 
-@expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
+@expose_resources(actions=['agent:create'], resources=['*:*:*'], post_proc_func=None)
 async def add_agent(
     id: str,
     name: str,
@@ -356,7 +379,7 @@ async def add_agent(
         Group doesn't exist.
     WazuhError(1762)
         Failed while creating the update-group order.
-    
+
     Returns
     -------
     WazuhResult
@@ -384,7 +407,9 @@ async def add_agent(
                 ip=host['ip'],
                 hostname=host['hostname'],
                 os=host['os'],
-            ) if host else None
+            )
+            if host
+            else None,
         )
 
         command = create_update_group_command(agent_id=id)
@@ -395,12 +420,22 @@ async def add_agent(
     return WazuhResult({'data': new_agent})
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'exclude_codes': [1710]})
-async def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort_by: list = None,
-                     sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
-                     hash_algorithm: str = 'md5', q: str = None, select: str = None,
-                     distinct: bool = False) -> AffectedItemsWazuhResult:
+@expose_resources(
+    actions=['group:read'], resources=['group:id:{group_list}'], post_proc_kwargs={'exclude_codes': [1710]}
+)
+async def get_agent_groups(
+    group_list: list = None,
+    offset: int = 0,
+    limit: int = None,
+    sort_by: list = None,
+    sort_ascending: bool = True,
+    search_text: str = None,
+    complementary_search: bool = False,
+    hash_algorithm: str = 'md5',
+    q: str = None,
+    select: str = None,
+    distinct: bool = False,
+) -> AffectedItemsWazuhResult:
     """Gets the existing groups.
 
     Parameters
@@ -434,10 +469,11 @@ async def get_agent_groups(group_list: list = None, offset: int = 0, limit: int 
         Affected items.
     """
     affected_groups = list()
-    result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
-                                      some_msg='Some groups information was not returned',
-                                      none_msg='No group information was returned'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected groups information was returned',
+        some_msg='Some groups information was not returned',
+        none_msg='No group information was returned',
+    )
 
     if group_list:
         system_groups = get_groups()
@@ -456,17 +492,25 @@ async def get_agent_groups(group_list: list = None, offset: int = 0, limit: int 
 
             affected_groups.append(group)
 
-        data = process_array(affected_groups, offset=offset, limit=limit,
-                            sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
-                            complementary_search=complementary_search, q=q,
-                            select=select, distinct=distinct)
+        data = process_array(
+            affected_groups,
+            offset=offset,
+            limit=limit,
+            sort_by=sort_by,
+            sort_ascending=sort_ascending,
+            search_text=search_text,
+            complementary_search=complementary_search,
+            q=q,
+            select=select,
+            distinct=distinct,
+        )
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
 
     return result
 
 
-@expose_resources(actions=["group:create"], resources=["*:*:*"], post_proc_func=None)
+@expose_resources(actions=['group:create'], resources=['*:*:*'], post_proc_func=None)
 async def create_group(group_id: str) -> WazuhResult:
     """Creates a group.
 
@@ -495,12 +539,12 @@ async def create_group(group_id: str) -> WazuhResult:
     if not InputValidator().group(group_id):
         raise WazuhError(1722)
 
-    if group_id.lower() == "agent-template":
+    if group_id.lower() == 'agent-template':
         raise WazuhError(1713, extra_message=group_id)
 
     group_path = get_group_file_path(group_id)
 
-    if group_id.lower() == "default" or path.exists(group_path):
+    if group_id.lower() == 'default' or path.exists(group_path):
         raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/wazuh-server/groups
@@ -518,8 +562,9 @@ async def create_group(group_id: str) -> WazuhResult:
     return WazuhResult({'message': msg})
 
 
-@expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"],
-                  post_proc_kwargs={'exclude_codes': [1710, 1712]})
+@expose_resources(
+    actions=['group:delete'], resources=['group:id:{group_list}'], post_proc_kwargs={'exclude_codes': [1710, 1712]}
+)
 async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
     """Delete a list of groups and remove it from every agent assignations.
 
@@ -533,9 +578,11 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected groups were deleted',
-                                      some_msg='Some groups were not deleted',
-                                      none_msg='No group was deleted')
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected groups were deleted',
+        some_msg='Some groups were not deleted',
+        none_msg='No group was deleted',
+    )
 
     system_groups = get_groups()
     for group_id in group_list:
@@ -572,12 +619,16 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1751, 1752]})
-async def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
-                           replace_list: list = None) -> AffectedItemsWazuhResult:
+@expose_resources(actions=['group:modify_assignments'], resources=['group:id:{replace_list}'], post_proc_func=None)
+@expose_resources(actions=['group:modify_assignments'], resources=['group:id:{group_list}'], post_proc_func=None)
+@expose_resources(
+    actions=['agent:modify_group'],
+    resources=['agent:id:{agent_list}'],
+    post_proc_kwargs={'exclude_codes': [1701, 1751, 1752]},
+)
+async def assign_agents_to_group(
+    group_list: list = None, agent_list: list = None, replace: bool = False, replace_list: list = None
+) -> AffectedItemsWazuhResult:
     """Assign a list of agents to a group.
 
     Parameters
@@ -603,12 +654,13 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
         Affected items.
     """
     group_id = group_list[0]
-    result = AffectedItemsWazuhResult(all_msg=f'All selected agents were assigned to {group_id}'
-                                              f'{" and removed from the other groups" if replace else ""}',
-                                      some_msg=f'Some agents were not assigned to {group_id}'
-                                               f'{" and removed from the other groups" if replace else ""}',
-                                      none_msg='No agents were assigned to {0}'.format(group_id)
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg=f'All selected agents were assigned to {group_id}'
+        f'{" and removed from the other groups" if replace else ""}',
+        some_msg=f'Some agents were not assigned to {group_id}'
+        f'{" and removed from the other groups" if replace else ""}',
+        none_msg='No agents were assigned to {0}'.format(group_id),
+    )
     # Check if the group exists
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
@@ -658,9 +710,12 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
-@expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1734]})
+@expose_resources(actions=['group:modify_assignments'], resources=['group:id:{group_list}'], post_proc_func=None)
+@expose_resources(
+    actions=['agent:modify_group'],
+    resources=['agent:id:{agent_list}'],
+    post_proc_kwargs={'exclude_codes': [1701, 1734]},
+)
 async def remove_agents_from_group(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Remove the assignations of a list of agents with a specified group.
 
@@ -682,10 +737,11 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
         Affected items.
     """
     group_id = group_list[0]
-    result = AffectedItemsWazuhResult(all_msg=f'All selected agents were removed from group {group_id}',
-                                      some_msg=f'Some agents were not removed from group {group_id}',
-                                      none_msg=f'No agent was removed from group {group_id}'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg=f'All selected agents were removed from group {group_id}',
+        some_msg=f'Some agents were not removed from group {group_id}',
+        none_msg=f'No agent was removed from group {group_id}',
+    )
 
     system_groups = get_groups()
     if group_id not in system_groups:
@@ -697,8 +753,8 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
         query = {IndexerKey.MATCH_ALL: {}}
 
     async with get_indexer_client() as indexer_client:
-        available_agents = [item.id for item in
-            await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='agent.id')
+        available_agents = [
+            item.id for item in await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='agent.id')
         ]
 
         for not_found_id in set(agent_list) - set(available_agents):
@@ -725,7 +781,7 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
     return result
 
 
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
+@expose_resources(actions=['group:read'], resources=['group:id:{group_list}'], post_proc_func=None)
 async def get_group_conf(group_list: list = None) -> WazuhResult:
     """Read the configuration of the specified group.
 
@@ -746,7 +802,7 @@ async def get_group_conf(group_list: list = None) -> WazuhResult:
     return WazuhResult({'data': configuration.get_group_conf(group_id=group_id)})
 
 
-@expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
+@expose_resources(actions=['group:update_config'], resources=['group:id:{group_list}'], post_proc_func=None)
 async def update_group_file(group_list: list = None, file_data: str = None) -> WazuhResult:
     """Update a group file.
 
