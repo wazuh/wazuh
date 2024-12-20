@@ -149,7 +149,7 @@ class Packet:
         bytes
             Agent metadata and event joined.
         """
-        return b'{' + agent_metadata[1:-1] + b',' + data[1:-1] + b'}'
+        return b'{' + agent_metadata[1:-1] + b', ' + data[1:-1] + b'}'
 
 class MuxDemuxQueue:
     """Class for managing items between mux and demux components.
