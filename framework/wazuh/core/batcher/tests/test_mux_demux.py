@@ -94,6 +94,18 @@ def test_packet_add_item():
     assert packet.id == item.id
 
 
+def test_packet_build_content():
+    """Check that the `build_content` method works as expected."""
+    agent_metadata = b'{"key": "value"}'
+    data = b'{"foo": "bar"}'
+    expected = b'{"key": "value", "foo": "bar"}'
+
+    packet = Packet()
+    actual = packet.build_content(agent_metadata, data)
+
+    assert actual == expected
+
+
 def test_send_to_mux():
     """Check that the `send_to_mux` method works as expected."""
     mux_queue = Queue()
