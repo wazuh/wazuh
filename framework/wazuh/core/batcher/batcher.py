@@ -42,7 +42,7 @@ class Batcher:
         self._shutdown_event: Optional[asyncio.Event] = None
 
     async def _get_from_queue(self) -> Packet:
-        """Retrieve an item from the mux queue. If the queue is empty, waits and retries until an item is received
+        """Retrieve a packet from the mux queue. If the queue is empty, waits and retries until a packet is received
         or the task is cancelled.
 
         Returns
@@ -67,12 +67,12 @@ class Batcher:
                     self.queue.send_to_mux(packet)
                 break
 
-    async def _send_buffer(self, input_packets: list[Packet]):
-        """Send a batch of items to the indexer in bulk and update the demux queue with the response items.
+    async def _send_buffer(self, input_packets: List[Packet]):
+        """Send a batch of packets to the indexer in bulk and update the demux queue with the response packets.
 
         Parameters
         ----------
-        input_packets : list[Packet]
+        input_packets : List[Packet]
             List of packets to be sent.
 
         Raises
@@ -157,7 +157,7 @@ class Batcher:
                         if self._buffer.get_length() == 0:
                             self._timer.start_timer()
 
-                        self._buffer.add_item(packet)
+                        self._buffer.add_packet(packet)
 
                         if self._buffer.check_count_limit() or self._buffer.check_size_limit():
                             self.flush_buffer()

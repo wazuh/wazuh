@@ -16,8 +16,8 @@ class Buffer:
         self.max_size = max_size
         self._buffer: list[Packet] = []
 
-    def add_item(self, packet: Packet):
-        """Add an item to the buffer.
+    def add_packet(self, packet: Packet):
+        """Add a packet to the buffer.
 
         Parameters
         ----------
@@ -27,8 +27,8 @@ class Buffer:
         Returns
         -------
         bool
-            `True` if the item was successfully added to the buffer, `False` if adding
-            the item would exceed the buffer's limits.
+            `True` if the packet was successfully added to the buffer, `False` if adding
+            the packet would exceed the buffer's limits.
         """
         if self.check_count_limit() or self.check_size_limit():
             return False
