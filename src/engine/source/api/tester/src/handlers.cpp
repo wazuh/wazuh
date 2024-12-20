@@ -253,9 +253,10 @@ adapter::RouteHandler sessionDelete(const std::shared_ptr<::router::ITesterAPI>&
 }
 
 adapter::RouteHandler sessionGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                                 const std::weak_ptr<api::policy::IPolicy>& policy)
+                                 const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wPolicyManager = policy](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eTester::SessionGet_Request;
         using ResponseType = eTester::SessionGet_Response;
@@ -331,9 +332,10 @@ adapter::RouteHandler sessionReload(const std::shared_ptr<::router::ITesterAPI>&
 }
 
 adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& tester,
-                               const std::weak_ptr<api::policy::IPolicy>& policy)
+                               const std::shared_ptr<api::policy::IPolicy>& policy)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wPolicyManager = policy](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wPolicyManager = std::weak_ptr<api::policy::IPolicy>(policy)](const auto& req, auto& res)
     {
         using RequestType = eTester::TableGet_Request;
         using ResponseType = eTester::TableGet_Response;
@@ -362,9 +364,12 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 }
 
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                              const std::weak_ptr<store::IStoreReader>& store)
+                              const std::shared_ptr<store::IStoreReader>& store,
+                              const event::protocol::ProtocolHandler& protocolHandler)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), wStore = store](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            wStore = std::weak_ptr<store::IStoreReader>(store),
+            protocolHandler](const auto& req, auto& res)
     {
         using RequestType = eTester::RunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -420,23 +425,22 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         }
 
         // Create The event to test
-        std::string eventStr {};
+        auto ndJsonEvents = protoReq.ndjson_event();
+        std::queue<base::Event> events;
+        try
         {
-            std::stringstream streamLocation;
-            // Escape the ':' character in the location (Wazuh protocol)
-            for (const auto& c : protoReq.location())
-            {
-                if (c == ':')
-                {
-                    streamLocation << "|:";
-                }
-                else
-                {
-                    streamLocation << c;
-                }
-            }
+            events = protocolHandler(std::move(ndJsonEvents));
+        }
+        catch (const std::exception& e)
+        {
+            res = adapter::userErrorResponse<ResponseType>(fmt::format("Error parsing events: {}", e.what()));
+            return;
+        }
 
-            eventStr = protoReq.queue() + ":" + streamLocation.str() + ":" + protoReq.message();
+        if (events.size() != 1)
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Can only test one event at a time, but got {}", events.size()));
         }
 
         // Run the test
@@ -455,7 +459,7 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
             res = adapter::userResponse(eResponse);
         };
 
-        auto error = tester->ingestTest(eventStr, opt, responseCallback);
+        auto error = tester->ingestTest(std::move(events.front()), opt, responseCallback);
         if (error)
         {
             res = adapter::userErrorResponse<ResponseType>(error.value().message);
