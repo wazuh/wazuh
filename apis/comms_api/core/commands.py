@@ -1,3 +1,4 @@
+import asyncio
 from multiprocessing.managers import SyncManager
 from multiprocessing.synchronize import Event
 from typing import Dict, List, Optional
@@ -46,7 +47,7 @@ class CommandsManager():
             if agent_id in self._subscriptions:
                 self._subscriptions[agent_id].set()
 
-    def get_commands(self, agent_id: UUID, timeout: float = 30) -> Optional[List[Command]]:
+    async def get_commands(self, agent_id: UUID) -> Optional[List[Command]]:
         """Get commands from the manager. 
 
         It returns immediately if there are commands for the agent specified, otherwise it waits for new commands until 
@@ -65,10 +66,10 @@ class CommandsManager():
             Commands list or None if the timeout is reached.
         """
         if agent_id not in self._commands:
-            event = self._manager.Event()
+            event = asyncio.Event()
             self._subscriptions.update({agent_id: event})
 
-            signaled = event.wait(timeout)
+            signaled = await event.wait()
 
             self._subscriptions.pop(agent_id, None)
             if not signaled:
@@ -96,7 +97,7 @@ async def pull_commands(commands_manager: CommandsManager, agent_id: UUID) -> Li
     List[Command]
         List of commands.
     """
-    commands = commands_manager.get_commands(agent_id)
+    commands = await commands_manager.get_commands(agent_id)
     if commands is None:
         raise HTTPError(
             message='Request exceeded the processing time limit',

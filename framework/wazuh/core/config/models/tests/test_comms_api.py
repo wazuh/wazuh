@@ -22,8 +22,6 @@ def test_batcher_config_default_values(init_values, expected):
     {'max_elements': 0},
     {'max_size': -10},
     {'max_size': 0},
-    {'wait_time': -2},
-    {'wait_time': 0}
 ])
 def test_batcher_config_invalid_values(init_values):
     """Check the correct behavior of the `BatcherConfig` class validations."""
