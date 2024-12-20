@@ -21,6 +21,7 @@ from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import NodeType
 from wazuh.core.cluster.cluster import clean_up
 from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version, ping_unix_socket
+from wazuh.core.exception import WazuhDaemonError
 from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
 from wazuh.core.cluster.unix_server.server import start_unix_server
@@ -89,7 +90,7 @@ def start_daemon(name: str, args: List[str]):
             pyDaemonModule.create_pid(ENGINE_DAEMON_NAME, pid)
         main_logger.info(f'Started {name} (pid: {pid})')
     except Exception as e:
-        main_logger.error(f'Error starting {name}: {e}')
+        raise WazuhDaemonError(f'Error starting {name}: {e}')
 
 
 def start_daemons(root: bool):
@@ -382,6 +383,8 @@ def start():
         main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution " "permission for 'wazuh' user")
+    except WazuhDaemonError as e:
+        main_logger.error(e)
     except Exception as e:
         main_logger.error(f'Unhandled exception: {e}')
     finally:

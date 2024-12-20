@@ -631,6 +631,14 @@ class WazuhIndexerError(WazuhInternalError):
     _default_title = "Wazuh Indexer Error"
 
 
+class WazuhDaemonError(WazuhInternalError):
+    """
+    This type of exception is raised inside the server daemons.
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Daemon Error"
+
+
 class WazuhError(WazuhException):
     """
     This type of exception is raised as a controlled response to a bad request from user
