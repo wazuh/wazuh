@@ -103,15 +103,15 @@ def test_start_daemons_ko(mock_popen):
     with patch.object(wazuh_server, 'main_logger') as main_logger_mock, \
         patch.object(wazuh_server.pyDaemonModule, 'get_parent_pid', return_value=pid):
 
-        with pytest.raises(wazuh_server.DaemonStartError, match='Error starting wazuh-engined: return code 1'):
+        with pytest.raises(wazuh_server.WazuhDaemonError, match='Error starting wazuh-engined: return code 1'):
             wait_mock.side_effect = (1,)
             wazuh_server.start_daemons(False)
 
-        with pytest.raises(wazuh_server.DaemonStartError, match='Error starting wazuh-comms-apid: return code 1'):
+        with pytest.raises(wazuh_server.WazuhDaemonError, match='Error starting wazuh-comms-apid: return code 1'):
             wait_mock.side_effect = (0, 1)
             wazuh_server.start_daemons(False)
 
-        with pytest.raises(wazuh_server.DaemonStartError, match='Error starting wazuh-apid: return code 1'):
+        with pytest.raises(wazuh_server.WazuhDaemonError, match='Error starting wazuh-apid: return code 1'):
             wait_mock.side_effect = (0, 0, 1)
             wazuh_server.start_daemons(False)
 
@@ -463,7 +463,7 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
                         "permission for 'wazuh' user")
 
                 error_message = 'Some daemon fail to start'
-                start_daemons_mock.side_effect = wazuh_server.DaemonStartError(error_message)
+                start_daemons_mock.side_effect = wazuh_server.WazuhDaemonError(error_message)
                 wazuh_server.start()
                 main_logger_mock.assert_any_call(error_message)
 
