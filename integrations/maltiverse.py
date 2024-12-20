@@ -53,7 +53,6 @@ And restart Wazuh Manager:
 #    6 - Unable to connect to Wazuh
 #    7 - Unexpected error sending message to Wazuh
 
-
 import hashlib
 import ipaddress
 import json

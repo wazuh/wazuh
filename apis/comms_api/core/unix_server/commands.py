@@ -5,14 +5,14 @@ from comms_api.models.commands import Commands
 
 async def post_commands(request: Request, commands: Commands) -> Response:
     """Post commands to the Communications API.
-    
+
     Parameters
     ----------
     request : Request
         Incoming HTTP request.
     commands : Commands
         Commands list.
-    
+
     Returns
     -------
     Response

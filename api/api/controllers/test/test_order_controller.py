@@ -24,7 +24,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["order_controller"], indirect=True)
+@pytest.mark.parametrize('mock_request', ['order_controller'], indirect=True)
 @patch('api.configuration.api_conf')
 @patch('api.controllers.order_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.order_controller.remove_nones_to_dict')
@@ -33,10 +33,7 @@ with patch('wazuh.common.wazuh_uid'):
 async def test_post_orders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'post_orders' endpoint is working as expected."""
     with patch('api.controllers.order_controller.Body.validate_content_type'):
-        with patch(
-            'api.controllers.order_controller.Orders.get_kwargs', return_value=AsyncMock()
-        ) as mock_getkwargs:
-
+        with patch('api.controllers.order_controller.Orders.get_kwargs', return_value=AsyncMock()) as mock_getkwargs:
             result = await post_orders()
             mock_dapi.assert_called_once_with(
                 f=send_orders,
@@ -45,7 +42,7 @@ async def test_post_orders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_ex
                 is_async=True,
                 wait_for_complete=False,
                 logger=ANY,
-                rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                rbac_permissions=mock_request.context['token_info']['rbac_policies'],
             )
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             mock_remove.assert_called_once_with(mock_getkwargs.return_value)

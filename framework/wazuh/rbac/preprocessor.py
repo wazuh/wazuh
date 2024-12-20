@@ -42,8 +42,7 @@ class PreProcessor:
             if split_resource[-1] == '*':
                 for key in list(self.odict[action].keys()):
                     resource_name = ':'.join(resource[0].split(':')[0:-1]) if len(split_resource) > 1 else '*:*:*'
-                    if (key.startswith(resource_name) or key.startswith('agent:group')) \
-                            and len(key.split('&')) == 1:
+                    if (key.startswith(resource_name) or key.startswith('agent:group')) and len(key.split('&')) == 1:
                         self.odict[action].pop(key)
 
     @staticmethod
@@ -78,11 +77,12 @@ class PreProcessor:
         WazuhError(4500)
             The specified resources are invalid.
         """
-        resource_regex = \
-            r'^(\*)|' \
-            r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+\&)+' \
-            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+))|' \
+        resource_regex = (
+            r'^(\*)|'
+            r'(([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+\&)+'
+            r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+))|'
             r'([a-zA-Z0-9_.]+:[a-zA-Z0-9_.]+:[a-zA-Z0-9_.*/-]+)$'
+        )
         for action in policy['actions']:
             if action not in self.odict.keys():
                 self.odict[action] = dict()
@@ -91,7 +91,7 @@ class PreProcessor:
                     raise WazuhError(4500)
                 resource_type = PreProcessor.is_combination(resource)
                 if len(resource_type[1]) > 2:
-                    raise WazuhError(4500, extra_remediation="The maximum length for permission combinations is two")
+                    raise WazuhError(4500, extra_remediation='The maximum length for permission combinations is two')
                 resource = resource_type[1] if resource != '*' else ['*:*:*']
                 self.remove_previous_elements(resource, action)
                 self.odict[action]['&'.join(resource)] = policy['effect']
@@ -178,8 +178,6 @@ def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) 
         else:
             roles = get_roles(user_id=user_id)
 
-        result = {
-            'roles': roles
-        }
+        result = {'roles': roles}
 
         return WazuhResult(result)

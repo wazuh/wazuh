@@ -10,8 +10,7 @@ class CustomAffectedItems(AffectedItemsWazuhResult):
 
     def __init__(self, empty: bool = False):
         if not empty:
-            super().__init__(dikt={'dikt_key': 'dikt_value'},
-                             affected_items=[{'id': '001'}])
+            super().__init__(dikt={'dikt_key': 'dikt_value'}, affected_items=[{'id': '001'}])
         else:
             super().__init__()
 

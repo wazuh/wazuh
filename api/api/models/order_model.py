@@ -11,17 +11,9 @@ class Action(Model):
     """Order action model."""
 
     def __init__(self, name: str = None, args: List[str] = None, version: str = None):
-        self.swagger_types = {
-            'name': str,
-            'args': List[str],
-            'version': str
-        }
+        self.swagger_types = {'name': str, 'args': List[str], 'version': str}
 
-        self.attribute_map = {
-            'name': 'name',
-            'args': 'args',
-            'version': 'version'
-        }
+        self.attribute_map = {'name': 'name', 'args': 'args', 'version': 'version'}
 
         self._name = name
         self._args = args
@@ -56,15 +48,9 @@ class Target(Model):
     """Order target model."""
 
     def __init__(self, id: str = None, type: str = None):
-        self.swagger_types = {
-            'id': str,
-            'type': str
-        }
+        self.swagger_types = {'id': str, 'type': str}
 
-        self.attribute_map = {
-            'id': 'id',
-            'type': 'type'
-        }
+        self.attribute_map = {'id': 'id', 'type': 'type'}
 
         self._id = id
         self._type = type
