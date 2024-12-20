@@ -6637,25 +6637,29 @@
       "type": "keyword",
       "array": false
     },
-    "wazuh.queue": {
-      "type": "long",
-      "array": false
+    "agent.groups": {
+      "type": "keyword",
+      "array": true
     },
-    "wazuh.location": {
-      "type": "text",
-      "array": false
-    },
-    "wazuh.message": {
-      "type": "text",
-      "array": false
-    },
-    "wazuh.origin": {
+    "agent.host.hostname": {
       "type": "keyword",
       "array": false
     },
-    "wazuh.registered_ip": {
+    "agent.host.os.platform": {
       "type": "keyword",
       "array": false
+    },
+    "agent.host.os.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.ip": {
+      "type": "ip",
+      "array": true
     },
     "wazuh.decoders": {
       "type": "keyword",
@@ -6664,114 +6668,6 @@
     "wazuh.rules": {
       "type": "keyword",
       "array": true
-    },
-    "wazuh.source": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.syscollector.hardware": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.hotfix": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.netinfo.addr": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.netinfo.iface": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.netinfo.proto": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.os": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.port": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.process": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.program": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.rootcheck.file": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.rootcheck.update": {
-      "type": "boolean",
-      "array": false
-    },
-    "wazuh.rootcheck.fts": {
-      "type": "boolean",
-      "array": false
-    },
-    "wazuh.rootcheck.title": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.type": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.scan_id": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.timestamp": {
-      "type": "date",
-      "array": false
-    },
-    "wazuh.ciscat.cis.benchmark": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.cis.profile": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.cis.pass": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.fail": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.error": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.notchecked": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.unknown": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.score": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.hostname": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.noIndexing": {
-      "type": "boolean",
-      "array": false
     }
   }
 }
