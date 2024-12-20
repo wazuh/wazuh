@@ -211,6 +211,7 @@ TEST_F(RocksDBSafeQueuePrefixTest, PopWithDeletedIndex)
 
     for (int i = 0; i < ITERATION_COUNT; i++)
     {
+        std::cout << "Pushing " << i + 1 << std::endl;
         queue->push("001", std::to_string(i + 1));
     }
 
@@ -234,6 +235,7 @@ TEST_F(RocksDBSafeQueuePrefixTest, PopWithDeletedIndex)
     {
         queueElements.push(queue->front().first);
         EXPECT_NO_THROW(queue->pop("001"));
+        std::cout << queueElements.back() << " " << queueElements.front() << std::endl;
     }
 
     if (queueElements.size() != ELEMENTS_TO_POP)

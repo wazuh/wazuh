@@ -153,12 +153,22 @@ public:
                 ++index;
             }
 
-            ++it->second.head;
-            --it->second.size;
-
-            if (it->second.size == 0)
+            // Dequeue element.
+            if (const auto status =
+                    m_db->Delete(rocksdb::WriteOptions(), std::string(id) + "_" + std::to_string(index));
+                !status.ok())
             {
-                m_queueMetadata.erase(it);
+                throw std::runtime_error("Failed to dequeue element: " + index);
+            }
+            else
+            {
+                ++it->second.head;
+                --it->second.size;
+
+                if (it->second.size == 0)
+                {
+                    m_queueMetadata.erase(it);
+                }
             }
         }
         else
