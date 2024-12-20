@@ -25,6 +25,7 @@ ignore = [
     "F405", # Star imports
     "D107", # Init docstring
     "D413", # Blank line after last section
+    "N818", # Error suffix
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
