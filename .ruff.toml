@@ -1,0 +1,48 @@
+# Include the PyServer team-owned directories.
+include = [
+    "framework/**/*.py",
+    "api/**/*.py",
+    "apis/**/*.py",
+    "wodles/**/*.py",
+    "integrations/**/*.py",
+]
+line-length = 120
+indent-width = 4
+target-version = "py310"
+
+[lint]
+select = [
+    "E4", # Imports
+    "E7", # Statements
+    "E9", # IO error
+    "F", # Pyflakes rules
+    "I001", # Unsorted imports
+    "C901", # McCabe complexity
+    "D", # Pydocstyle rules
+    "N", # Pep8 rules
+]
+ignore = [
+    "F405", # Star imports
+    "D107", # Init docstring
+    "D413", # Blank line after last section
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[lint.per-file-ignores]
+"wodles/**/*.py" = ["E402"]
+"api/test/integration/env/configurations/**/*.py" = ["E402"]
+"__init__.py" = ["F401"]
+
+[format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = 120
