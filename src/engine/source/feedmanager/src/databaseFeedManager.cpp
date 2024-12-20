@@ -138,7 +138,7 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
     }
     catch (const std::exception& e)
     {
-        logError(WM_VULNSCAN_LOGTAG, "Feed update failed: %s.", e.what());
+        logError(WM_VULNSCAN_LOGTAG, "Feed update failed: {}.", e.what());
     } */
 }
 
