@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.10.3]
+## [v4.12.0]
 
 ### Manager
 
@@ -49,9 +49,6 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - SCA rule Improvement for MacOS 15 SCA. ([#26982](https://github.com/wazuh/wazuh/issues/26982))
-
-
-## [v4.10.2]
 
 
 ## [v4.10.1]
