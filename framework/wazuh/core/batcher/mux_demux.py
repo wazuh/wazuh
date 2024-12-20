@@ -236,8 +236,8 @@ class MuxDemuxQueue:
 
         Returns
         -------
-        Item
-            Item retrieved from the demux queue.
+        Packet
+            Packet retrieved from the demux queue.
         """
         return self.demux_queue.get()
 
