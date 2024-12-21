@@ -408,3 +408,11 @@ var/.x/psotnic              ! Suspicious file ::rootkits/Suspicious.php
 */ecmf                      ! Suspicious file ::rootkits/Suspicious.php
 */mirkforce                 ! Suspicious file ::rootkits/Suspicious.php
 */mfclean                   ! Suspicious file ::rootkits/Suspicious.php
+
+
+# Rootcheck rule for detecting trojaned version of file
+# Updated to avoid false positives for /bin/diff
+
+# Trojaned version of file '/bin/diff' detected
+# Specific check to avoid false positive
+file|/bin/diff|^/bin/diff$|file.h|proc.h|/dev/[^n]|^/bin/.*sh
