@@ -16,6 +16,7 @@
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
+#include "stringHelper.h"
 #include <filesystem>
 #include <queue>
 #include <stdexcept>
@@ -35,7 +36,7 @@ public:
         tableOptions.block_cache = m_readCache;
 
         // Write buffer manager is used to manage the memory used for writing data to the disk.
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(64 * 1024 * 1024);
+        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
 
         rocksdb::Options options;
         options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));
@@ -50,7 +51,8 @@ public:
         options.num_levels = 4;
 
         options.write_buffer_size = 32 * 1024 * 1024;
-        options.max_write_buffer_number = 2;
+        options.max_write_buffer_number = 4;
+        options.max_background_jobs = 4;
 
         rocksdb::DB* db;
 
@@ -127,9 +129,12 @@ public:
     void push(const T& data)
     {
         // RocksDB enqueue element.
-        if (const auto status = m_db->Put(rocksdb::WriteOptions(), std::to_string(m_last + 1), data); !status.ok())
+        if (const auto status =
+                m_db->Put(rocksdb::WriteOptions(), Utils::padString(std::to_string(m_last + 1), '0', 20), data);
+            !status.ok())
         {
-            throw std::runtime_error("Failed to enqueue element: " + std::to_string(m_last + 1));
+            throw std::runtime_error("Failed to enqueue element: " +
+                                     Utils::padString(std::to_string(m_last + 1), '0', 20));
         }
         // If enqueue is successful, increment the last element.
         ++m_last;
@@ -148,8 +153,10 @@ public:
         std::string value;
 
         // Find the first element in the queue from m_first (included).
-        while (index <= m_last &&
-               !m_db->KeyMayExist(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value))
+        while (index <= m_last && !m_db->KeyMayExist(rocksdb::ReadOptions(),
+                                                     m_db->DefaultColumnFamily(),
+                                                     Utils::padString(std::to_string(index), '0', 20),
+                                                     &value))
         {
             // If the key does not exist, it means that the queue is not continuous.
             // This incremental is only for the head, because this is a part of recovery algorithm when the queue
@@ -164,9 +171,10 @@ public:
         }
 
         // RocksDB dequeue element.
-        if (const auto status = m_db->Delete(rocksdb::WriteOptions(), std::to_string(index)); !status.ok())
+        if (const auto status = m_db->Delete(rocksdb::WriteOptions(), Utils::padString(std::to_string(index), '0', 20));
+            !status.ok())
         {
-            throw std::runtime_error("Failed to dequeue element: " + std::to_string(index));
+            throw std::runtime_error("Failed to dequeue element: " + Utils::padString(std::to_string(index), '0', 20));
         }
         else
         {
@@ -206,8 +214,10 @@ public:
         while (counter < elementsQuantity)
         {
             U value;
-            if (const auto status =
-                    m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value);
+            if (const auto status = m_db->Get(rocksdb::ReadOptions(),
+                                              m_db->DefaultColumnFamily(),
+                                              Utils::padString(std::to_string(index), '0', 20),
+                                              &value);
                 status.ok())
             {
                 queue.push(std::move(value));
@@ -238,8 +248,10 @@ public:
 
         while (index <= m_last)
         {
-            if (const auto status =
-                    m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value);
+            if (const auto status = m_db->Get(rocksdb::ReadOptions(),
+                                              m_db->DefaultColumnFamily(),
+                                              Utils::padString(std::to_string(index), '0', 20),
+                                              &value);
                 status.ok())
             {
                 break;
@@ -261,11 +273,14 @@ public:
     {
         U value;
 
-        if (const auto status =
-                m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(m_first + index), &value);
+        if (const auto status = m_db->Get(rocksdb::ReadOptions(),
+                                          m_db->DefaultColumnFamily(),
+                                          Utils::padString(std::to_string(m_first + index), '0', 20),
+                                          &value);
             !status.ok())
         {
-            throw std::runtime_error("Failed to get element at index: " + std::to_string(m_first + index));
+            throw std::runtime_error("Failed to get element at index: " +
+                                     Utils::padString(std::to_string(m_first + index), '0', 20));
         }
 
         return value;
