@@ -1,12 +1,16 @@
 import socket
 import struct
+import httpx
+import json
 from typing import Optional, Tuple
 
-import json
 from google.protobuf.json_format import MessageToDict
+from google.protobuf.json_format import ParseDict
 from google.protobuf.message import Message
 
-from api_communication.command import get_command
+from api_communication.endpoints import get_endpoint
+from api_communication.proto.engine_pb2 import GenericStatus_Response
+from api_communication.proto.engine_pb2 import ReturnStatus
 
 
 class APIClient:
@@ -20,71 +24,42 @@ class APIClient:
             api_socket (str): Path to the API socket
         """
         self.api_socket = api_socket
+        self.transport = httpx.HTTPTransport(uds=api_socket)
 
-    def _send(self, request: dict, client_socket) -> Optional[str]:
-        """Send a request to the API socket
+    def _set_error_msg(self, error) -> str:
+        """Set the error message
 
         Args:
-            request (dict): JSON request
+            error (Exception): Error object
 
         Returns:
-            Optional[str]: Error message if an error occurred, None otherwise
+            str: Error message
         """
 
-        try:
-            request_raw = json.dumps(request)
-            payload = bytes(request_raw, 'utf-8')
+        msg = "Unknown HTTP error"
 
-            # Pack the message with the length of the payload
-            sec_msg = bytearray()
-            sec_msg.extend(struct.pack('<i', len(payload)))
-            sec_msg.extend(payload)
+        # TimeoutException
+        if isinstance(error, httpx.TimeoutException):
+            if isinstance(error, httpx.ConnectTimeout):
+                msg = 'Timed out while connecting host'
+            if isinstance(error, httpx.ReadTimeout):
+                msg = 'Timed out while receiving data from the host'
+            if isinstance(error, httpx.WriteTimeout):
+                msg = 'Timed out while sending data to the host'
 
-            # Send the message
-            client_socket.sendall(sec_msg)
-        except Exception as e:
-            return f'Error while sending request: {e}'
-        else:
-            return None
+        # NetworkError
+        if isinstance(error, httpx.NetworkError):
+            if isinstance(error, httpx.ConnectError):
+                msg = 'Failed to establish a connection'
+            if isinstance(error, httpx.ReadError):
+                msg = 'Failed to receive data from the network'
+            if isinstance(error, httpx.WriteError):
+                msg = 'Failed to send data through the network'
+            if isinstance(error, httpx.CloseError):
+                msg = 'Failed to close the connection'
 
-    def _receive_all(self, sock, size: int) -> Optional[bytes]:
-        data = b""
-        while len(data) < size:
-            packet = sock.recv(size - len(data))
-            if not packet:
-                return None
-            data += packet
-        return data
-
-    def _receive(self, client_socket) -> Tuple[Optional[str], dict]:
-        """Receive a response from the API socket
-
-        Returns:
-            Tuple[Optional[str], dict]: Error message if an error occurred, response otherwise
-        """
-
-        try:
-            # Receive the 4 bytes of message length
-            response_length_bytes = client_socket.recv(4)
-
-            # Unpack all 4 bytes to get the length of the response message
-            response_length = struct.unpack('<i', response_length_bytes)[0]
-
-            # Receive the complete response using the receive_al function
-            response = self._receive_all(client_socket, response_length)
-
-            # Decode and convert the response to a readable string (if necessary)
-            if not response:
-                return 'No response received', {}
-
-            response_str = response.decode("utf-8")
-
-            # Convert response to JSON
-            response_json = json.loads(response_str)
-        except Exception as e:
-            return f'Error while receiving response: {e}', {}
-        else:
-            return None, response_json
+        msg += f': {error}'
+        return msg
 
     def send_recv(self, message: Message) -> Tuple[Optional[str], dict]:
         """Send a message to the API socket and receive the response
@@ -102,40 +77,98 @@ class APIClient:
         except Exception as e:
             return f'Error while converting message to dict: {e}', {}
 
-        err, command = get_command(message)
+        err, endpoint = get_endpoint(message)
         if err:
             return err, {}
 
-        request = {
-            'version': 1,
-            'command': command,
-            'origin': {'name': 'engine-integration-test', 'module': 'engine-integration-test'},
-            'parameters': params
-        }
-
-        # Start the connection
-        try:
-            client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            client_socket.connect(self.api_socket)
-        except Exception as e:
-            return f'Error while connecting to API socket{self.api_socket}: {e}', {}
+        body = json.dumps(params)
+        header = {'Content-Type': 'text/plain'}
 
         # Send the request
-        err = self._send(request, client_socket)
+        try:
+            client = httpx.Client(transport=self.transport)
+            response = client.post(
+                f'http://localhost/{endpoint}', data=body, headers=header)
+
+            if response.status_code != 200:
+                # Check if the error contains a message
+                if not response.text:
+                    return f'Error {response.status_code} while sending request', {}
+            return None, response.json()
+
+        except httpx.HTTPError as e:
+            return f'HTTP error: {self._set_error_msg(e)}', {}
+
+        except Exception as e:
+            return f'Unknown error: {e}', {}
+
+    def jsend(self, json_body: dict, reqProtoMsg: Message, resProtoMsg: Message = GenericStatus_Response()) -> Tuple[Optional[str], dict]:
+        """Send a message to the API socket and receive the response
+
+        Args:
+            json_body (dict): JSON message to send
+            reqProtoMsg (Message): Proto message type to send
+            resProtoMsg (Message): Proto message type to receive
+
+        Returns:
+            Tuple[Optional[str], Message]: Error message if an error occurred or the response is an error, response json otherwise
+        """
+
+        # Prepare the request
+        body = json.dumps(json_body)
+        header = {'Content-Type': 'text/plain'}
+        err, endpoint = get_endpoint(reqProtoMsg)
+
         if err:
-            client_socket.close()
-            return err, {}
+            return f'Cannot get endpoint from message: {err}', {}
 
-        # Receive the response
-        err, response = self._receive(client_socket)
-        if err:
-            client_socket.close()
-            return err, {}
+        # Send the request
+        response: httpx.Response = None
+        try:
+            client = httpx.Client(transport=self.transport)
+            response = client.post(
+                f'http://localhost/{endpoint}', data=body, headers=header)
 
-        client_socket.close()
+        except httpx.HTTPError as e:
+            return f'HTTP error: {self._set_error_msg(e)}', {}
 
-        if 'code' in response and response['code'] != 0:
-            return f'Protocol Error {response["code"]}', {}
+        except Exception as e:
+            return f'Unknown error: {e}', {}
 
-        # Obtain the response message
-        return None, response['data']
+        # Error from server
+        if response.status_code != 200:
+            # Check if the error contains a message
+            if not response.text:
+                return f'Error {response.status_code} while sending request', {}
+
+        # Response from server endpoint handler
+        try:
+            json_response = json.loads(response.text)
+            protoRes = ParseDict(json_response, resProtoMsg)
+        except Exception as e:
+            return f'Error while parsing response: {e}', {}
+
+        # Treat response as a generic status response
+        if protoRes.status != ReturnStatus.OK:
+            return f'Error from server: {protoRes.error}', {}
+
+        # Return the response
+        return None, json_response
+
+    def send(self, reqProtoMsg: Message, resProtoMsg: Message = GenericStatus_Response()) -> Tuple[Optional[str], dict]:
+        """Send a message to the API socket and receive the response
+
+        Args:
+            reqProtoMsg (Message): Proto message to send
+            resProtoMsg (Message): Proto message to receive
+
+        Returns:
+            Tuple[Optional[str], Message]: Error message if an error occurred, response json otherwise
+        """
+
+        try:
+            json_body = MessageToDict(reqProtoMsg)
+        except Exception as e:
+            return f'Error while converting message to dict: {e}', {}
+
+        return self.jsend(json_body, reqProtoMsg, resProtoMsg)
