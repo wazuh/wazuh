@@ -4,6 +4,7 @@
 
 <!--
   Palo Alto v8.X - v10.X decoders.
+  The log messages sent from the firewalls need to be in IETF format instad of the default BSD.
 -->
 
 <!-- 
@@ -180,6 +181,25 @@
   <parent>paloalto</parent>
   <regex type="pcre2" offset="after_regex">^,([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)</regex>
   <order>application_subcategory, application_category, application_technology, application_risk, application_characteristic, application_container, application_saas, application_sanctioned_state</order>
+</decoder>
+
+<!-- Palo Alto GlobalProtect decoders -->
+<!-- Supported versions
+  10.1: Format: FUTURE_USE, Receive Time, Serial Number, Type, Threat/Content Type, FUTURE_USE, Generated Time, Virtual System, Event ID, Stage, Authentication Method, Tunnel Type, Source User, Source Region, Machine Name, Public IP, Public IPv6, Private IP, Private IPv6, Host ID, Serial Number, Client Version, Client OS, Client OS Version, Repeat Count, Reason, Error, Description, Status, Location, Login Duration, Connect Method, Error Code, Portal, Sequence Number, Action Flags, High Res Timestamp, Selection Type, Response Time, Priority, Attempted Gateways, Gateway, Device Group Hierarchy Level 1, Device Group Hierarchy Level 2, Device Group Hierarchy Level 3, Device Group Hierarchy Level 4, Virtual System Name, Device Name, Virtual System ID
+  10.2: Format: FUTURE_USE, Receive Time, Serial Number, Type, Threat/Content Type, FUTURE_USE, Generated Time, Virtual System, Event ID, Stage, Authentication Method, Tunnel Type, Source User, Source Region, Machine Name, Public IP, Public IPv6, Private IP, Private IPv6, Host ID, Serial Number, Client Version, Client OS, Client OS Version, Repeat Count, Reason, Error, Description, Status, Location, Login Duration, Connect Method, Error Code, Portal, Sequence Number, Action Flags, High Res Timestamp, Selection Type, Response Time, Priority, Attempted Gateways, Gateway, Device Group Hierarchy Level 1, Device Group Hierarchy Level 2, Device Group Hierarchy Level 3, Device Group Hierarchy Level 4, Virtual System Name, Device Name, Virtual System ID
+  -->
+
+<decoder name="paloalto-globalprotect-fields">
+  <parent>paloalto</parent>
+  <prematch type="pcre2">^[^,]*,\d+\/\d+\/\d+\s\d+:\d+:\d+,\d+,GLOBALPROTECT,</prematch>
+  <regex type="pcre2">^[^,]*,(\d+\/\d+\/\d+\s\d+:\d+:\d+),(\d+),(GLOBALPROTECT)</regex>
+  <order>receive_time, serial_number, type</order>
+</decoder>
+
+<decoder name="paloalto-globalprotect-fields">
+  <parent>paloalto</parent>
+  <regex type="pcre2" offset="after_regex">^,[^,]*,[^,]*,([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),(\"[^\"]*\"|[^,]*),([^,]*),([^,]*),([^,]*),(\"[^\"]*\"|[^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)</regex>
+  <order>generated_time, virtual_system, event_id, stage, authentication_method, tunnel_type, source_user, source_region, machine_name, public_ip, public_ipv6, private_ip, private_ipv6, host_id, machine_serial, client_version, client_os, client_os_version, repeat_count, reason, error, description, login_status, location, login_duration, connect_method, error_code, portal, sequence_number, action_flags, high_res_timestamp, selection_type, response_time, priority, attempted_gateways, gateway, device_group_hierarchy_level_1, device_group_hierarchy_level_2, device_group_hierarchy_level_3, device_group_hierarchy_level_4, virtual_system_name, device_name, virtual_system_id</order>
 </decoder>
 
 <!-- Generic decoder for others modules not decoded further-->
