@@ -36,19 +36,22 @@ private:
         std::chrono::time_point<std::chrono::system_clock> postponeTime;
     };
 
+    enum KeyFields : size_t
+    {
+        ID_QUEUE = 0,
+        QUEUE_NUMBER = 1
+    };
+
     void initializeQueueData()
     {
-        constexpr auto ID_QUEUE = 0;
-        constexpr auto QUEUE_NUMBER = 1;
-
         auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
         it->SeekToFirst();
         while (it->Valid())
         {
             // Split key to get the ID and queue number.
             const auto data = base::utils::string::split(it->key().ToString(), '_');
-            const auto& id = data.at(ID_QUEUE);
-            const auto queueNumber = std::stoull(data.at(QUEUE_NUMBER));
+            const auto& id = data.at(KeyFields::ID_QUEUE);
+            const auto queueNumber = std::stoull(data.at(KeyFields::QUEUE_NUMBER));
 
             if (m_queueMetadata.find(id.data()) == m_queueMetadata.end())
             {
@@ -118,13 +121,16 @@ public:
 
         if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            ++it->second.tail;
-            if (const auto status =
-                    m_db->Put(rocksdb::WriteOptions(), std::string(id) + "_" + std::to_string(it->second.tail), data);
+            // Try to enqueue element with a RValue reference, if it fails, throw an exception but dont change the tail
+            // to avoid data inconsistency.
+            if (const auto status = m_db->Put(
+                    rocksdb::WriteOptions(), std::string(id) + "_" + std::to_string(it->second.tail + 1), data);
                 !status.ok())
             {
                 throw std::runtime_error("Failed to enqueue element");
             }
+            // If enqueue is successful, increment the last element.
+            ++it->second.tail;
             ++it->second.size;
         }
     }
@@ -133,18 +139,36 @@ public:
     {
         if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            // RocksDB dequeue element.
-            if (!m_db->Delete(rocksdb::WriteOptions(), std::string(id) + "_" + std::to_string(it->second.head)).ok())
+            std::string value;
+            auto index = it->second.head;
+
+            while (!m_db->KeyMayExist(rocksdb::ReadOptions(),
+                                      m_db->DefaultColumnFamily(),
+                                      std::string(id) + "_" + std::to_string(index),
+                                      &value))
             {
-                throw std::runtime_error("Failed to dequeue element, can't delete it");
+                // If the key does not exist, it means that the queue is not continuous.
+                // This incremental is only for the head, because this is a part of recovery algorithm when the
+                // queue not is continuous.
+                ++index;
             }
 
-            ++it->second.head;
-            --it->second.size;
-
-            if (it->second.size == 0)
+            // Dequeue element.
+            if (const auto status =
+                    m_db->Delete(rocksdb::WriteOptions(), std::string(id) + "_" + std::to_string(index));
+                !status.ok())
             {
-                m_queueMetadata.erase(it);
+                throw std::runtime_error("Failed to dequeue element: " + index);
+            }
+            else
+            {
+                ++it->second.head;
+                --it->second.size;
+
+                if (it->second.size == 0)
+                {
+                    m_queueMetadata.erase(it);
+                }
             }
         }
         else
@@ -204,19 +228,38 @@ public:
         }
     }
 
-    U front(std::string_view id) const
+    U front(std::string_view id)
     {
         U value;
+
         if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            if (!m_db->Get(rocksdb::ReadOptions(),
-                           m_db->DefaultColumnFamily(),
-                           std::string(id) + "_" + std::to_string(it->second.head),
-                           &value)
-                     .ok())
+            if (it->second.size == 0)
             {
-                throw std::runtime_error("Failed to get front element, id: " + std::string {id}
-                                         + " key: " + std::to_string(it->second.head));
+                throw std::runtime_error("Failed to get front element, queue is empty");
+            }
+
+            // If the queue have bumps between elements, get the first element in increasing order.
+            auto index = it->second.head;
+
+            while (index <= it->second.tail)
+            {
+                if (const auto status = m_db->Get(rocksdb::ReadOptions(),
+                                                  m_db->DefaultColumnFamily(),
+                                                  std::string(id) + "_" + std::to_string(index),
+                                                  &value);
+                    status.ok())
+                {
+                    break;
+                }
+                else
+                {
+                    if (status != rocksdb::Status::NotFound())
+                    {
+                        throw std::runtime_error("Failed to get elements, error: " + status.code());
+                    }
+                }
+                ++index;
             }
         }
         else
