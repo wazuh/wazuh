@@ -91,13 +91,13 @@ InstallServer()
 checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.10.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}var/lib/wazuh-server/tmp/${VD_FILENAME}
+    VD_BASE_PATH=${INSTALLDIR}var/lib/wazuh-server/tmp/
+    VD_FULL_PATH=${VD_BASE_PATH}${VD_FILENAME}
 
     if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
         echo "Download ${VD_FILENAME} file"
-        mkdir -p ${INSTALLDIR}var/lib/wazuh-server/tmp/
+        mkdir -p ${VD_BASE_PATH}
         wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
-
         chmod 640 ${VD_FULL_PATH}
         chown ${WAZUH_USER}:${WAZUH_GROUP} ${VD_FULL_PATH}
     fi
@@ -106,12 +106,13 @@ checkDownloadContent()
 installEngineStore()
 {
     STORE_FILENAME='engine_store_0.0.2_5.0.0.tar.gz'
-    STORE_FULL_PATH=${INSTALLDIR}tmp/wazuh-server/${STORE_FILENAME}
+    STORE_BASE_PATH=${INSTALLDIR}var/lib/wazuh-server/tmp/
+    STORE_FULL_PATH=${STORE_BASE_PATH}${STORE_FILENAME}
     STORE_URL=https://packages.wazuh.com/deps/engine_store_model_database/${STORE_FILENAME}
     DEST_FULL_PATH=${INSTALLDIR}var/lib/wazuh-server
 
     echo "Downloading ${STORE_FILENAME} file..."
-    mkdir -p ${INSTALLDIR}tmp/wazuh-server
+    mkdir -p ${STORE_BASE_PATH}
     if ! wget -O ${STORE_FULL_PATH} ${STORE_URL}; then
         echo "Error: Failed to download ${STORE_FILENAME} from ${STORE_URL}"
         exit 1
@@ -143,7 +144,6 @@ installEngineStore()
     fi
 
     echo "Engine store installed successfully."
-
 }
 
 
