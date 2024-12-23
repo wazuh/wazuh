@@ -716,11 +716,10 @@ class WazuhIndexerError(WazuhInternalError):
 
 
 class WazuhDaemonError(WazuhInternalError):
-    """
-    This type of exception is raised inside the server daemons.
-    """
-    _default_type = "about:blank"
-    _default_title = "Wazuh Daemon Error"
+    """This type of exception is raised inside the server daemons."""
+
+    _default_type = 'about:blank'
+    _default_title = 'Wazuh Daemon Error'
 
 
 class WazuhError(WazuhException):
