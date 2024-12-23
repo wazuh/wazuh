@@ -30,7 +30,6 @@ from wazuh.core.cluster.utils import (
     REMOVE_DISCONNECTED_NODE_AFTER,
 )
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
@@ -127,8 +126,6 @@ def check_cluster_config(config):
     WazuhError
         If any of above conditions is not met.
     """
-    iv = InputValidator()
-
     if config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
 

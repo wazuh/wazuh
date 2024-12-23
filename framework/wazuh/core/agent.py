@@ -534,7 +534,6 @@ class Agent:
         'groups': 'groups',
         'type': 'type',
         'version': 'version',
-        'type': 'type',
         'last_login': 'last_login',
         'persistent_connection_mode': 'persistent_connection_mode',
     }

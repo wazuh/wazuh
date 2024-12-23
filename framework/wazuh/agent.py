@@ -45,18 +45,17 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
         The query with the given parameters.
     """
     # TODO: The query build should be improved in https://github.com/wazuh/wazuh/issues/25289
-
-    LAST_LOGIN_KEY = 'last_login'
+    last_login_key = 'last_login'
 
     query_filters = []
     if agent_list:
         query_filters.append({IndexerKey.TERMS: {IndexerKey._ID: agent_list}})
 
-    if LAST_LOGIN_KEY in filters and filters[LAST_LOGIN_KEY] is not None:
+    if last_login_key in filters and filters[last_login_key] is not None:
         query_filters.append(
-            {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f'{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}'}}}
+            {IndexerKey.RANGE: {last_login_key: {IndexerKey.LTE: f'{IndexerKey.NOW}-{filters[last_login_key]}'}}}
         )
-        filters.pop(LAST_LOGIN_KEY)
+        filters.pop(last_login_key)
 
     for key, value in filters.items():
         if value is not None:

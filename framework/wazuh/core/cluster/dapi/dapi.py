@@ -423,10 +423,7 @@ class DistributedAPI:
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
-        res = json.loads(
-            await client.send_file(os.path.join(common.WAZUH_PATH, self.f_kwargs['tmp_file']), node_name),
-            object_hook=c_common.as_wazuh_object,
-        )
+        await client.send_file(os.path.join(common.WAZUH_PATH, self.f_kwargs['tmp_file']), node_name)
         os.remove(os.path.join(common.WAZUH_PATH, self.f_kwargs['tmp_file']))
 
     async def execute_remote_request(self) -> Dict:

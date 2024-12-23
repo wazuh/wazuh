@@ -348,10 +348,8 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
         # Distribute orders to other nodes
         self.logger.info('Sending orders to the other nodes')
-        for client in self.server.node.clients:
-            asyncio.create_task(
-                self.log_exceptions(self.server.node.clients[client].send_request(b'dist_orders', orders))
-            )
+        for cl in self.server.node.clients:
+            asyncio.create_task(self.log_exceptions(self.server.node.clients[cl].send_request(b'dist_orders', orders)))
 
         return b'ok', b'Orders forwarded to other nodes'
 

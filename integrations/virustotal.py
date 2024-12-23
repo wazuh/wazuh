@@ -89,13 +89,12 @@ def main(args):
 
 
 def process_args(args) -> None:
-    """This is the core function, creates a message with all valid fields
-    and overwrite or add with the optional fields
+    """Create a message with all valid fields and overwrite or add with the optional fields.
 
     Parameters
     ----------
     args : list[str]
-        The argument list from main call
+        The argument list from main call.
     """
     debug('# Running VirusTotal script')
 
@@ -119,8 +118,7 @@ def process_args(args) -> None:
 
 
 def debug(msg: str) -> None:
-    """Log the message in the log file with the timestamp, if debug flag
-    is enabled
+    """Log the message in the log file with the timestamp, if debug flag is enabled.
 
     Parameters
     ----------
@@ -176,7 +174,7 @@ def request_info_from_api(alert, alert_output, api_key):
 
 
 def request_virustotal_info(alert: any, apikey: str):
-    """Generate the JSON object with the message to be send
+    """Generate the JSON object with the message to be send.
 
     Parameters
     ----------
@@ -188,7 +186,7 @@ def request_virustotal_info(alert: any, apikey: str):
     Returns
     -------
     msg: str
-        The JSON message to send
+        The JSON message to send.
     """
     alert_output = {'virustotal': {}, 'integration': 'virustotal'}
 
@@ -223,7 +221,7 @@ def request_virustotal_info(alert: any, apikey: str):
     }
 
     # Check if VirusTotal has any info about the hash
-    if vt_response_data.get('attributes', {}).get('last_analysis_stats', {}).get('malicious') != None:
+    if vt_response_data.get('attributes', {}).get('last_analysis_stats', {}).get('malicious') is not None:
         alert_output['virustotal']['found'] = 1
 
     # Info about the file found in VirusTotal
@@ -246,19 +244,19 @@ def request_virustotal_info(alert: any, apikey: str):
 
 
 def query_api(hash: str, apikey: str) -> any:
-    """Send a request to VT API and fetch information to build message
+    """Send a request to VT API and fetch information to build message.
 
     Parameters
     ----------
     hash : str
-        Hash need it for parameters
-    apikey: str
-        Authentication API key
+        Hash need it for parameters.
+    apikey : str
+        Authentication API key.
 
     Returns
     -------
-    data: any
-        JSON with the response
+    data : any
+        JSON with the response.
 
     Raises
     ------
@@ -315,7 +313,7 @@ def send_msg(msg: any, agent: any = None) -> None:
 
 
 def get_json_alert(file_location: str) -> any:
-    """Read JSON alert object from file
+    """Read JSON alert object from file.
 
     Parameters
     ----------
@@ -332,7 +330,7 @@ def get_json_alert(file_location: str) -> any:
     FileNotFoundError
         If no JSON file is found.
     JSONDecodeError
-        If no valid JSON file are used
+        If no valid JSON file are used.
     """
     try:
         with open(file_location) as alert_file:

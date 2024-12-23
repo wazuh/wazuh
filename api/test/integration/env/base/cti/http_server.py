@@ -28,7 +28,7 @@ MOCK_RESPONSE = {
 class Handler(BaseHTTPRequestHandler):
     """Custom HTTP request handler to respond to Wazuh's CTI service requests."""
 
-    def do_GET(self):
+    def do_GET(self):  # noqa: N802
         if re.search('/cti/v1/ping', self.path):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

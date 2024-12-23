@@ -691,17 +691,17 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             int
                 Error code.
             """
-            COMPLETE = 0
-            FAILED = 1
-            PARTIAL = 2
+            complete = 0
+            failed = 1
+            partial = 2
 
             if self.total_affected_items > 0 and self.total_failed_items > 0:
-                return PARTIAL
+                return partial
             elif self.total_affected_items > 0:
-                return COMPLETE
+                return complete
             elif self.total_failed_items > 0:
-                return FAILED
-            return COMPLETE
+                return failed
+            return complete
 
         ordered_failed_items = sorted(self.failed_items.items(), key=lambda x: x[0].code)
         result = {
