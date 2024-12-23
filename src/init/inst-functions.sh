@@ -103,32 +103,59 @@ checkDownloadContent()
     fi
 }
 
+# Install the fallback store
+installFallbackStore()
+{
+    # Creating fallback store directories
+    local STORE_PATH=${INSTALLDIR}var/lib/wazuh-server/engine/store
+    local SCHEMA_PATH=${STORE_PATH}/schema
+    local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
+    local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-types
+
+    mkdir -p "${ENGINE_SCHEMA_PATH}"
+    mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
+
+    # Copying the store files
+    echo "Copying store files..."
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-types.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
+
+    if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ]; then
+        echo "Error: Failed to copy store files."
+        exit 1
+    fi
+
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_PATH}
+    find ${STORE_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+}
+
 installEngineStore()
 {
-    STORE_FILENAME='engine_store_0.0.2_5.0.0.tar.gz'
-    STORE_FULL_PATH=${INSTALLDIR}tmp/wazuh-server/${STORE_FILENAME}
-    STORE_URL=https://packages.wazuh.com/deps/engine_store_model_database/${STORE_FILENAME}
     DEST_FULL_PATH=${INSTALLDIR}var/lib/wazuh-server
+    LOCAL_PRECOMPILED_STORE_PATH="${ENGINE_SRC_PATH}/engine_precompiled_store.tar.gz"
 
-    echo "Downloading ${STORE_FILENAME} file..."
-    mkdir -p ${INSTALLDIR}tmp/wazuh-server
-    if ! wget -O ${STORE_FULL_PATH} ${STORE_URL}; then
-        echo "Error: Failed to download ${STORE_FILENAME} from ${STORE_URL}"
+    echo "Checking for precompiled store file...$LOCAL_PRECOMPILED_STORE_PATH"
+    if [ -f "${LOCAL_PRECOMPILED_STORE_PATH}" ]; then
+        echo "Using precompiled store file ${LOCAL_PRECOMPILED_STORE_PATH}"
+    else
+        echo "Installing fallback store..."
+        installFallbackStore
+        return
+    fi
+
+
+    chmod 640 ${LOCAL_PRECOMPILED_STORE_PATH}
+    chown ${WAZUH_USER}:${WAZUH_GROUP} ${LOCAL_PRECOMPILED_STORE_PATH}
+
+    echo "Extracting ${LOCAL_PRECOMPILED_STORE_PATH} to ${DEST_FULL_PATH}..."
+    if ! tar -xzf ${LOCAL_PRECOMPILED_STORE_PATH} -C ${DEST_FULL_PATH}; then
+        echo "Error: Failed to extract ${LOCAL_PRECOMPILED_STORE_PATH} to ${DEST_FULL_PATH}"
         exit 1
     fi
 
-    chmod 640 ${STORE_FULL_PATH}
-    chown ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_FULL_PATH}
-
-    echo "Extracting ${STORE_FILENAME} to ${DEST_FULL_PATH}..."
-    if ! tar -xzf ${STORE_FULL_PATH} -C ${DEST_FULL_PATH}; then
-        echo "Error: Failed to extract ${STORE_FILENAME} to ${DEST_FULL_PATH}"
-        exit 1
-    fi
-
-    echo "Removing tar file ${STORE_FULL_PATH}..."
-    if ! rm -f ${STORE_FULL_PATH}; then
-        echo "Warning: Failed to remove tar file ${STORE_FULL_PATH}."
+    echo "Removing tar file ${LOCAL_PRECOMPILED_STORE_PATH}..."
+    if ! rm -f ${LOCAL_PRECOMPILED_STORE_PATH}; then
+        echo "Warning: Failed to remove tar file ${LOCAL_PRECOMPILED_STORE_PATH}."
     fi
 
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${DEST_FULL_PATH}/engine/store
@@ -189,7 +216,8 @@ InstallWazuh()
 
 BuildEngine()
 {
-  cd engine
+  ENGINE_SRC_PATH=$(pwd)/engine
+  cd "${ENGINE_SRC_PATH}"
 
   # Configure the engine
   cmake --preset=relwithdebinfo --no-warn-unused-cli
