@@ -1,0 +1,4 @@
+[
+    "Translation for package 'Kubernetes - Minikube - A Local Kubernetes Development Environment' on platform 'windows' found in Level 2 cache.",
+    "Match found, the package 'minikube', is vulnerable to 'CVE-2023-1944'. Current version: '1.12.3' (less than '' or equal to '1.29.0'). - Agent '' (ID: '017', Version: '')."
+]
