@@ -25,7 +25,10 @@ ignore = [
     "F405", # Star imports
     "D100", # Module comment
     "D107", # Init docstring
+    "D203", # Blank line before docstring
+    "D204", # Blank line after docstring
     "D205", # Blank line between summary and description
+    "D213", # Summary and description second line start
     "D413", # Blank line after last section
     "N818", # Error suffix
 ]
