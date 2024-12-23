@@ -30,16 +30,6 @@ InstallCommon()
   WAZUH_CONTROL_SRC='./init/wazuh-server.sh'
 
   ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
-
-  # Folder for persistent databases (vulnerability scanner, ruleset, connector).
-  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine
-  # Folder for persistent databases (vulnerability scanner).
-  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/vd
-  # Folder for persistent databases (ruleset).
-  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/ruleset
-  # Folder for persistent queues for the indexer connector.
-  ${INSTALL} -d -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-engine/indexer-connector
-
 }
 
 InstallPython()
