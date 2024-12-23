@@ -6,32 +6,43 @@ import json
 import os
 import re
 from importlib import reload
-from unittest.mock import patch, call, MagicMock
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 import yaml
-from sqlalchemy import create_engine, Column, String
+from sqlalchemy import Column, String, create_engine
 from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import text
-
 from wazuh.core.utils import get_utc_now
-from wazuh.rbac.tests.utils import init_db, MockRolePolicy, MockedUserRole, MockRoleRules
-from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User, SecurityError, Roles, Rules, \
-    Policies, UserRoles, RolesPolicies, RolesRules
+from wazuh.rbac.orm import (
+    MAX_ID_RESERVED,
+    WAZUH_USER_ID,
+    WAZUH_WUI_USER_ID,
+    Policies,
+    Roles,
+    RolesPolicies,
+    RolesRules,
+    Rules,
+    SecurityError,
+    User,
+    UserRoles,
+)
+from wazuh.rbac.tests.utils import MockedUserRole, MockRolePolicy, MockRoleRules, init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
-in_memory_db_path = ":memory:"
+in_memory_db_path = ':memory:'
 
 
 @pytest.fixture(scope='function')
 def db_setup():
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+        with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('wazuh.core.common.WAZUH_SERVER_YML', new=test_data_path):
                     import wazuh.rbac.orm as rbac
+
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
 
@@ -40,7 +51,7 @@ def db_setup():
     yield rbac
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope='function')
 def fresh_in_memory_db():
     # Clear mappers
     sqlalchemy_orm.clear_mappers()
@@ -48,6 +59,7 @@ def fresh_in_memory_db():
     # Create fresh in-memory db
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         import wazuh.rbac.orm as orm
+
         reload(orm)
 
         orm.db_manager.close_sessions()
@@ -63,6 +75,7 @@ def test_database_init(db_setup):
     """Check users db is properly initialized"""
     with db_setup.RolesManager() as rm:
         assert rm.get_role('wazuh') != db_setup.SecurityError.ROLE_NOT_EXIST
+
 
 def add_token(db_setup):
     """Store a new token rule in the database"""
@@ -161,10 +174,8 @@ def test_add_policy(db_setup):
         # New policy
         policy = {
             'actions': ['agents:update'],
-            'resources': [
-                'agent:id:001', 'agent:id:002', 'agent:id:003'
-            ],
-            'effect': 'allow'
+            'resources': ['agent:id:001', 'agent:id:002', 'agent:id:003'],
+            'effect': 'allow',
         }
         pm.add_policy(name='newPolicy', policy=policy)
         assert pm.get_policy('newPolicy')
@@ -300,13 +311,7 @@ def test_delete_all_security_rules(db_setup):
 def test_delete_policies(db_setup):
     """Check delete policies in the database"""
     with db_setup.PoliciesManager() as pm:
-        policy = {
-            'actions': ['agents:update'],
-            'resources': [
-                'agent:id:001', 'agent:id:003'
-            ],
-            'effect': 'allow'
-        }
+        policy = {'actions': ['agents:update'], 'resources': ['agent:id:001', 'agent:id:003'], 'effect': 'allow'}
         assert pm.add_policy(name='toDelete', policy=policy) is True
         len_policies = len(pm.get_policies())
         assert pm.delete_policy_by_name(policy_name='toDelete')
@@ -317,13 +322,7 @@ def test_delete_all_policies(db_setup):
     """Check delete policies in the database"""
     with db_setup.PoliciesManager() as pm:
         assert pm.delete_all_policies()
-        policy = {
-            'actions': ['agents:update'],
-            'resources': [
-                'agent:id:001', 'agent:id:003'
-            ],
-            'effect': 'allow'
-        }
+        policy = {'actions': ['agents:update'], 'resources': ['agent:id:001', 'agent:id:003'], 'effect': 'allow'}
         pm.add_policy(name='toDelete', policy=policy)
         policy['actions'] = ['agents:delete']
         pm.add_policy(name='toDelete1', policy=policy)
@@ -337,7 +336,7 @@ def test_edit_run_as(db_setup):
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='runas', password='testingA6!')
         assert am.edit_run_as(user_id='106', allow_run_as=True)
-        assert am.edit_run_as(user_id='106', allow_run_as="INVALID") == db_setup.SecurityError.INVALID
+        assert am.edit_run_as(user_id='106', allow_run_as='INVALID') == db_setup.SecurityError.INVALID
         assert not am.edit_run_as(user_id='999', allow_run_as=False)
 
 
@@ -376,13 +375,7 @@ def test_update_rule(db_setup):
 def test_update_policy(db_setup):
     """Check update a policy in the database"""
     with db_setup.PoliciesManager() as pm:
-        policy = {
-            'actions': ['agents:update'],
-            'resources': [
-                'agent:id:004', 'agent:id:003'
-            ],
-            'effect': 'allow'
-        }
+        policy = {'actions': ['agents:update'], 'resources': ['agent:id:004', 'agent:id:003'], 'effect': 'allow'}
         pm.add_policy(name='toUpdate', policy=policy)
         tid = pm.get_policy_id(policy_id=110)['id']
         tname = pm.get_policy(name='toUpdate')['name']
@@ -411,13 +404,7 @@ def add_policy_role(db_setup):
             roles_ids.append(rm.get_role('advanced')['id'])
 
         with db_setup.PoliciesManager() as pm:
-            policy = {
-                'actions': ['agents:update'],
-                'resources': [
-                    'agent:id:002', 'agent:id:003'
-                ],
-                'effect': 'allow'
-            }
+            policy = {'actions': ['agents:update'], 'resources': ['agent:id:002', 'agent:id:003'], 'effect': 'allow'}
             pm.add_policy('normalPolicy', policy)
             policies_ids.append(pm.get_policy('normalPolicy')['id'])
             policy['effect'] = 'deny'
@@ -506,6 +493,7 @@ def add_role_rule(db_setup):
 
         return role_ids, rule_ids
 
+
 def add_role_policy(db_setup):
     """Store a new role-policy relation in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
@@ -524,13 +512,7 @@ def add_role_policy(db_setup):
             roles_ids.append(rm.get_role('advancedUnit')['id'])
 
         with db_setup.PoliciesManager() as pm:
-            policy = {
-                'actions': ['agents:update'],
-                'resources': [
-                    'agent:id:005', 'agent:id:003'
-                ],
-                'effect': 'allow'
-            }
+            policy = {'actions': ['agents:update'], 'resources': ['agent:id:005', 'agent:id:003'], 'effect': 'allow'}
             pm.add_policy('normalPolicyUnit', policy)
             policies_ids.append(pm.get_policy('normalPolicyUnit')['id'])
             policy['actions'] = ['agents:create']
@@ -606,13 +588,7 @@ def test_add_role_policy_level(db_setup):
             role_id = rm.get_role('normal')['id']
 
         with db_setup.PoliciesManager() as pm:
-            policy = {
-                'actions': ['agents:update'],
-                'resources': [
-                    'agent:id:005', 'agent:id:003'
-                ],
-                'effect': 'allow'
-            }
+            policy = {'actions': ['agents:update'], 'resources': ['agent:id:005', 'agent:id:003'], 'effect': 'allow'}
             pm.add_policy('normalPolicy', policy)
             policies_ids.append(pm.get_policy('normalPolicy')['id'])
             policy['actions'] = ['agents:create']
@@ -681,9 +657,7 @@ def test_exist_policy_role(db_setup):
 
 
 def test_exist_role_policy(db_setup):
-    """
-    Check role-policy relation exist in the database
-    """
+    """Check role-policy relation exist in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = add_role_policy(db_setup)
         for policy in policies_ids:
@@ -850,8 +824,9 @@ def test_update_role_from_user(db_setup):
     with db_setup.UserRolesManager() as urm:
         user_ids, roles_ids = add_user_roles(db_setup)
         urm.remove_role_in_user(user_id=user_ids[0], role_id=roles_ids[-1])
-        assert urm.replace_user_role(user_id=user_ids[0], actual_role_id=roles_ids[0],
-                                     new_role_id=roles_ids[-1]) is True
+        assert (
+            urm.replace_user_role(user_id=user_ids[0], actual_role_id=roles_ids[0], new_role_id=roles_ids[-1]) is True
+        )
 
         assert not urm.exist_user_role(user_id=user_ids[0], role_id=roles_ids[0])
         assert urm.exist_user_role(user_id=user_ids[0], role_id=roles_ids[-1])
@@ -862,8 +837,12 @@ def test_update_policy_from_role(db_setup):
     with db_setup.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = add_role_policy(db_setup)
         rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policies_ids[-1])
-        assert rpm.replace_role_policy(role_id=roles_ids[0], current_policy_id=policies_ids[0],
-                                       new_policy_id=policies_ids[-1]) is True
+        assert (
+            rpm.replace_role_policy(
+                role_id=roles_ids[0], current_policy_id=policies_ids[0], new_policy_id=policies_ids[-1]
+            )
+            is True
+        )
 
         assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0])
         assert rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1])
@@ -871,31 +850,31 @@ def test_update_policy_from_role(db_setup):
 
 def test_databasemanager___init__(fresh_in_memory_db):
     """Test class constructor for `DatabaseManager`."""
-    assert hasattr(fresh_in_memory_db.db_manager, "engines")
-    assert hasattr(fresh_in_memory_db.db_manager, "sessions")
+    assert hasattr(fresh_in_memory_db.db_manager, 'engines')
+    assert hasattr(fresh_in_memory_db.db_manager, 'sessions')
 
 
-@patch("wazuh.rbac.orm.create_engine")
-@patch("wazuh.rbac.orm.sessionmaker")
+@patch('wazuh.rbac.orm.create_engine')
+@patch('wazuh.rbac.orm.sessionmaker')
 def test_databasemanager_connect(sessionmaker_mock, create_engine_mock, fresh_in_memory_db):
     """Test `connect` method for class `DatabaseManager`."""
     dbm = fresh_in_memory_db.db_manager
-    db_path = "/random/path/to/database.db"
+    db_path = '/random/path/to/database.db'
     dbm.connect(db_path)
 
     assert dbm.engines[db_path]
     assert dbm.sessions[db_path]
 
     sessionmaker_mock.assert_called_once_with(bind=dbm.engines[db_path])
-    create_engine_mock.assert_called_once_with(f"sqlite:///{db_path}", echo=False)
+    create_engine_mock.assert_called_once_with(f'sqlite:///{db_path}', echo=False)
 
 
-@patch("wazuh.rbac.orm.create_engine")
-@patch("wazuh.rbac.orm.sessionmaker")
+@patch('wazuh.rbac.orm.create_engine')
+@patch('wazuh.rbac.orm.sessionmaker')
 def test_databasemanager_close_sessions(sessionmaker_mock, create_engine_mock, fresh_in_memory_db):
     """Test `close_sessions` method for class `DatabaseManager`."""
     dbm = fresh_in_memory_db.db_manager
-    db_path = "/random/path/to/database.db"
+    db_path = '/random/path/to/database.db'
     dbm.connect(db_path)
 
     dbm.close_sessions()
@@ -904,11 +883,11 @@ def test_databasemanager_close_sessions(sessionmaker_mock, create_engine_mock, f
     sessionmaker_mock.assert_has_calls([call()().close()])
 
 
-@patch("wazuh.rbac.orm._Base.metadata.create_all")
+@patch('wazuh.rbac.orm._Base.metadata.create_all')
 def test_databasemanager_create_database(create_db_mock, fresh_in_memory_db):
     """Test `create_database` method for class `DatabaseManager`."""
     dbm = fresh_in_memory_db.db_manager
-    db_path = "random/path/to_database.db"
+    db_path = 'random/path/to_database.db'
     engine_mock = MagicMock()
     dbm.engines = engine_mock
 
@@ -921,7 +900,7 @@ def test_databasemanager_create_database(create_db_mock, fresh_in_memory_db):
 def test_databasemanager_get_database_version(fresh_in_memory_db):
     """Test `get_database_version` method for class `DatabaseManager`."""
     # Assert its version is 0 using the method (value set by default)
-    assert fresh_in_memory_db.db_manager.get_database_version(in_memory_db_path) == "0"
+    assert fresh_in_memory_db.db_manager.get_database_version(in_memory_db_path) == '0'
 
 
 def test_databasemanager_insert_default_resources(fresh_in_memory_db):
@@ -931,7 +910,7 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
     """
 
     def _get_default_resources(resource: str) -> dict:
-        with open(os.path.join(default_path, f"{resource}.yaml"), 'r') as r_stream:
+        with open(os.path.join(default_path, f'{resource}.yaml'), 'r') as r_stream:
             return yaml.safe_load(r_stream)
 
     # Insert default resources
@@ -939,54 +918,63 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
     default_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'default')
 
     # Check default users
-    default_users = _get_default_resources("users")
+    default_users = _get_default_resources('users')
     with fresh_in_memory_db.AuthenticationManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
         users = auth.get_users()
-        assert len([user for user in users if user['user_id'] < fresh_in_memory_db.MAX_ID_RESERVED]) \
-               == len(default_users[next(iter(default_users))])
+        assert len([user for user in users if user['user_id'] < fresh_in_memory_db.MAX_ID_RESERVED]) == len(
+            default_users[next(iter(default_users))]
+        )
 
     # Check default roles
-    default_roles = _get_default_resources("roles")
+    default_roles = _get_default_resources('roles')
     with fresh_in_memory_db.RolesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as rm:
         roles = rm.get_roles()
-        assert len([role for role in roles if role.id < fresh_in_memory_db.MAX_ID_RESERVED]) \
-               == len(default_roles[next(iter(default_roles))])
+        assert len([role for role in roles if role.id < fresh_in_memory_db.MAX_ID_RESERVED]) == len(
+            default_roles[next(iter(default_roles))]
+        )
 
     # Check default policies
-    default_policies = [policy for policy_group in _get_default_resources("policies")['default_policies'].values()
-                        for policy in policy_group['policies']]
+    default_policies = [
+        policy
+        for policy_group in _get_default_resources('policies')['default_policies'].values()
+        for policy in policy_group['policies']
+    ]
 
     with fresh_in_memory_db.PoliciesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as pm:
         policies = pm.get_policies()
-        assert len([policy for policy in policies if policy.id < fresh_in_memory_db.MAX_ID_RESERVED]) \
-               == len(default_policies)
+        assert len([policy for policy in policies if policy.id < fresh_in_memory_db.MAX_ID_RESERVED]) == len(
+            default_policies
+        )
 
     # Check default rules
-    default_rules = _get_default_resources("rules")
+    default_rules = _get_default_resources('rules')
     with fresh_in_memory_db.RulesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as rum:
         rules = rum.get_rules()
-        assert len([rule for rule in rules if rule.id < fresh_in_memory_db.MAX_ID_RESERVED]) \
-               == len(default_rules[next(iter(default_rules))])
+        assert len([rule for rule in rules if rule.id < fresh_in_memory_db.MAX_ID_RESERVED]) == len(
+            default_rules[next(iter(default_rules))]
+        )
 
 
 def test_databasemanager_get_table(fresh_in_memory_db):
     """Test `get_table` method for class `DatabaseManager`."""
 
     class EnhancedUser(fresh_in_memory_db.User):
-        new_column = Column("new_column", String(32), nullable=False, default="default_value")
+        new_column = Column('new_column', String(32), nullable=False, default='default_value')
 
         def __init__(self, new_column=None):
             self.new_column = new_column
 
     session = fresh_in_memory_db.db_manager.sessions[in_memory_db_path]
-    column_regex = r"users\.([a-z_]+)"
+    column_regex = r'users\.([a-z_]+)'
 
     # Assert that `get_table` returns the correct Query object depending on the given Table
-    current_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(
-        session, fresh_in_memory_db.User))))
-    with patch("wazuh.rbac.orm._new_columns", new={"new_column"}):
-        updated_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session,
-                                                                                                   EnhancedUser))))
+    current_columns = set(
+        re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session, fresh_in_memory_db.User)))
+    )
+    with patch('wazuh.rbac.orm._new_columns', new={'new_column'}):
+        updated_columns = set(
+            re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session, EnhancedUser)))
+        )
 
     assert current_columns == updated_columns
 
@@ -1006,69 +994,92 @@ def test_databasemanager_rollback(fresh_in_memory_db):
 def test_databasemanager_set_database_version(fresh_in_memory_db):
     """Test `set_database_version` method for class `DatabaseManager`."""
     fresh_in_memory_db.db_manager.set_database_version(in_memory_db_path, 555)
-    assert fresh_in_memory_db.db_manager.sessions[in_memory_db_path].execute(text("pragma user_version")).first()[0] == 555
+    assert (
+        fresh_in_memory_db.db_manager.sessions[in_memory_db_path].execute(text('pragma user_version')).first()[0] == 555
+    )
 
 
-@patch("wazuh.rbac.orm.safe_move")
-@patch("wazuh.rbac.orm.os.remove")
-@patch("wazuh.rbac.orm.chown")
-@patch("wazuh.rbac.orm.os.chmod")
+@patch('wazuh.rbac.orm.safe_move')
+@patch('wazuh.rbac.orm.os.remove')
+@patch('wazuh.rbac.orm.chown')
+@patch('wazuh.rbac.orm.os.chmod')
 def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
     """Test `check_database_integrity` function briefly.
 
-    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests.
+    """
     db_mock = MagicMock()
-    with patch("wazuh.rbac.orm.db_manager", new=db_mock):
-        with patch("wazuh.rbac.orm.os.path.exists", return_value=True):
-            with patch("wazuh.rbac.orm.CURRENT_ORM_VERSION", new=99999):
+    with patch('wazuh.rbac.orm.db_manager', new=db_mock):
+        with patch('wazuh.rbac.orm.os.path.exists', return_value=True):
+            with patch('wazuh.rbac.orm.CURRENT_ORM_VERSION', new=99999):
                 # DB exists and a migration is needed
                 fresh_in_memory_db.check_database_integrity()
-                db_mock.assert_has_calls([
-                    call.connect(fresh_in_memory_db.DB_FILE_TMP),
-                    call.get_database_version(fresh_in_memory_db.DB_FILE),
-                    call.create_database(fresh_in_memory_db.DB_FILE_TMP),
-                    call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
-                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
-                                      from_id=fresh_in_memory_db.WAZUH_USER_ID,
-                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
-                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
-                                      from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
-                                      to_id=fresh_in_memory_db.MAX_ID_RESERVED),
-                    call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
-                                      from_id=fresh_in_memory_db.MAX_ID_RESERVED + 1),
-                    call.set_database_version(fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.CURRENT_ORM_VERSION),
-                    call.close_sessions()
-                ], any_order=True)
+                db_mock.assert_has_calls(
+                    [
+                        call.connect(fresh_in_memory_db.DB_FILE_TMP),
+                        call.get_database_version(fresh_in_memory_db.DB_FILE),
+                        call.create_database(fresh_in_memory_db.DB_FILE_TMP),
+                        call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
+                        call.migrate_data(
+                            source=fresh_in_memory_db.DB_FILE,
+                            target=fresh_in_memory_db.DB_FILE_TMP,
+                            from_id=fresh_in_memory_db.WAZUH_USER_ID,
+                            to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID,
+                        ),
+                        call.migrate_data(
+                            source=fresh_in_memory_db.DB_FILE,
+                            target=fresh_in_memory_db.DB_FILE_TMP,
+                            from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
+                            to_id=fresh_in_memory_db.MAX_ID_RESERVED,
+                        ),
+                        call.migrate_data(
+                            source=fresh_in_memory_db.DB_FILE,
+                            target=fresh_in_memory_db.DB_FILE_TMP,
+                            from_id=fresh_in_memory_db.MAX_ID_RESERVED + 1,
+                        ),
+                        call.set_database_version(
+                            fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.CURRENT_ORM_VERSION
+                        ),
+                        call.close_sessions(),
+                    ],
+                    any_order=True,
+                )
 
-        safe_move_mock.assert_called_once_with(fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.DB_FILE,
-                                               ownership=(fresh_in_memory_db.wazuh_uid(),
-                                                          fresh_in_memory_db.wazuh_gid()),
-                                               permissions=0o640)
+        safe_move_mock.assert_called_once_with(
+            fresh_in_memory_db.DB_FILE_TMP,
+            fresh_in_memory_db.DB_FILE,
+            ownership=(fresh_in_memory_db.wazuh_uid(), fresh_in_memory_db.wazuh_gid()),
+            permissions=0o640,
+        )
 
         # DB does not exist. A new one will be initialized
         fresh_in_memory_db.check_database_integrity()
-        db_mock.assert_has_calls([
-            call.connect(fresh_in_memory_db.DB_FILE),
-            call.create_database(fresh_in_memory_db.DB_FILE),
-            call.insert_default_resources(fresh_in_memory_db.DB_FILE),
-            call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
-            call.close_sessions()
-        ], any_order=True)
+        db_mock.assert_has_calls(
+            [
+                call.connect(fresh_in_memory_db.DB_FILE),
+                call.create_database(fresh_in_memory_db.DB_FILE),
+                call.insert_default_resources(fresh_in_memory_db.DB_FILE),
+                call.set_database_version(fresh_in_memory_db.DB_FILE, fresh_in_memory_db.CURRENT_ORM_VERSION),
+                call.close_sessions(),
+            ],
+            any_order=True,
+        )
 
 
-@pytest.mark.parametrize("exception", [ValueError, Exception])
-@patch("wazuh.rbac.orm.DatabaseManager.close_sessions")
-@patch("wazuh.rbac.orm.os.remove")
+@pytest.mark.parametrize('exception', [ValueError, Exception])
+@patch('wazuh.rbac.orm.DatabaseManager.close_sessions')
+@patch('wazuh.rbac.orm.os.remove')
 def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, exception, fresh_in_memory_db):
     """Test `check_database_integrity` function exceptions briefly.
 
-    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests.
+    """
 
     def mocked_exists(path: str):
         return path == fresh_in_memory_db.DB_FILE_TMP
 
-    with patch("wazuh.rbac.orm.os.path.exists", side_effect=mocked_exists) as mock_exists:
-        with patch("wazuh.rbac.orm.DatabaseManager.connect", side_effect=exception) as db_manager_mock:
+    with patch('wazuh.rbac.orm.os.path.exists', side_effect=mocked_exists) as mock_exists:
+        with patch('wazuh.rbac.orm.DatabaseManager.connect', side_effect=exception) as db_manager_mock:
             with pytest.raises(exception):
                 fresh_in_memory_db.check_database_integrity()
 
@@ -1077,73 +1088,93 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
             remove_mock.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
 
 
-@pytest.mark.parametrize('from_id, to_id, users', [
-    (WAZUH_USER_ID, WAZUH_WUI_USER_ID, [
-        User('wazuh', 'test', user_id=WAZUH_USER_ID),
-        User('wazuh-wui', 'test2', user_id=WAZUH_WUI_USER_ID)
-    ]),
-    (MAX_ID_RESERVED + 1, None, [
-        User('custom', 'test', user_id=110),
-        User('custom', 'test', user_id=101)
-    ])
-])
+@pytest.mark.parametrize(
+    'from_id, to_id, users',
+    [
+        (
+            WAZUH_USER_ID,
+            WAZUH_WUI_USER_ID,
+            [User('wazuh', 'test', user_id=WAZUH_USER_ID), User('wazuh-wui', 'test2', user_id=WAZUH_WUI_USER_ID)],
+        ),
+        (MAX_ID_RESERVED + 1, None, [User('custom', 'test', user_id=110), User('custom', 'test', user_id=101)]),
+    ],
+)
 def test_migrate_data(db_setup, from_id, to_id, users):
     """Test `migrate_data` function briefly.
-    
-    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests.
+    """
     # This test case updates the default user passwords and omits the rest of the migration
     if to_id == WAZUH_WUI_USER_ID:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=users):
-            with patch("wazuh.rbac.orm.AuthenticationManager.update_user") as mock_update_user:
-                db_setup.db_manager.migrate_data(source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                                 from_id=from_id, to_id=to_id)
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=users):
+            with patch('wazuh.rbac.orm.AuthenticationManager.update_user') as mock_update_user:
+                db_setup.db_manager.migrate_data(
+                    source=db_setup.DB_FILE, target=db_setup.DB_FILE, from_id=from_id, to_id=to_id
+                )
 
-                mock_update_user.assert_has_calls([
-                    call.update_user(users[0].id, users[0].password, hashed_password=True),
-                    call.update_user(users[1].id, users[1].password, hashed_password=True),
-                ])
+                mock_update_user.assert_has_calls(
+                    [
+                        call.update_user(users[0].id, users[0].password, hashed_password=True),
+                        call.update_user(users[1].id, users[1].password, hashed_password=True),
+                    ]
+                )
     else:
         # Represents empty items to skip custom rules, policies and roles migration,
         # since they do not depend on the users being migrated
         empty_list = []
         user_exists = False
-        with patch("wazuh.rbac.orm.AuthenticationManager.add_user",
-                   side_effect=[not user_exists, user_exists, not user_exists]) as mock_add_user:
-            with patch("wazuh.rbac.orm.db_manager.get_data",
-                       side_effect=[users, empty_list, empty_list, empty_list, empty_list, empty_list, empty_list]):
-                db_setup.db_manager.migrate_data(source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                                 from_id=from_id, to_id=to_id)
+        with patch(
+            'wazuh.rbac.orm.AuthenticationManager.add_user', side_effect=[not user_exists, user_exists, not user_exists]
+        ) as mock_add_user:
+            with patch(
+                'wazuh.rbac.orm.db_manager.get_data',
+                side_effect=[users, empty_list, empty_list, empty_list, empty_list, empty_list, empty_list],
+            ):
+                db_setup.db_manager.migrate_data(
+                    source=db_setup.DB_FILE, target=db_setup.DB_FILE, from_id=from_id, to_id=to_id
+                )
                 user1 = users[0]
                 user2 = users[1]
 
-                mock_add_user.assert_has_calls([
-                    call.add_user(
-                        username=user1.username, password=user1.password, created_at=user1.created_at, user_id=user1.id,
-                        hashed_password=True, check_default=False,
-                    ),
-                    call.add_user(
-                        username=user2.username, password=user2.password, created_at=user2.created_at, user_id=user2.id,
-                        hashed_password=True, check_default=False,
-                    ),
-                    call.add_user(
-                        username=f"{user2.username}_user", password=user2.password, created_at=user2.created_at,
-                        user_id=user2.id, hashed_password=True, check_default=False,
-                    ),
-                ])
+                mock_add_user.assert_has_calls(
+                    [
+                        call.add_user(
+                            username=user1.username,
+                            password=user1.password,
+                            created_at=user1.created_at,
+                            user_id=user1.id,
+                            hashed_password=True,
+                            check_default=False,
+                        ),
+                        call.add_user(
+                            username=user2.username,
+                            password=user2.password,
+                            created_at=user2.created_at,
+                            user_id=user2.id,
+                            hashed_password=True,
+                            check_default=False,
+                        ),
+                        call.add_user(
+                            username=f'{user2.username}_user',
+                            password=user2.password,
+                            created_at=user2.created_at,
+                            user_id=user2.id,
+                            hashed_password=True,
+                            check_default=False,
+                        ),
+                    ]
+                )
 
 
-@pytest.mark.parametrize('user_data',
-                         [
-                             {'user': User('wazuh', 'test', user_id=WAZUH_USER_ID), 'status': True,
-                              'expected_update': True},
-                             {'user': User('wazuh', 'test', user_id=WAZUH_WUI_USER_ID), 'status': True,
-                              'expected_update': True},
-                             {'user': User('wazuh', 'test', user_id=110), 'status': True,
-                              'expected_update': False},
-                             {'user': User('wazuh', 'test', user_id=101), 'status': False,
-                              'expected_update': False},
-                         ]
-                         )
+@pytest.mark.parametrize(
+    'user_data',
+    [
+        {'user': User('wazuh', 'test', user_id=WAZUH_USER_ID), 'status': True, 'expected_update': True},
+        {'user': User('wazuh', 'test', user_id=WAZUH_WUI_USER_ID), 'status': True, 'expected_update': True},
+        {'user': User('wazuh', 'test', user_id=110), 'status': True, 'expected_update': False},
+        {'user': User('wazuh', 'test', user_id=101), 'status': False, 'expected_update': False},
+    ],
+)
 def test_authentication_manager_migrate_data(db_setup, user_data):
     """Test migrate_data method for the AuthenticationManager class."""
     user = user_data['user']
@@ -1151,57 +1182,83 @@ def test_authentication_manager_migrate_data(db_setup, user_data):
     status = user_data['status']
 
     with db_setup.AuthenticationManager() as auth_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[user]):
-            with patch("wazuh.rbac.orm.AuthenticationManager.update_user") as mock_update_user:
-                with patch("wazuh.rbac.orm.AuthenticationManager.add_user",
-                           side_effect=[status, status]) as mock_add_user:
-                    auth_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                              from_id='someId', to_id='otherId')
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[user]):
+            with patch('wazuh.rbac.orm.AuthenticationManager.update_user') as mock_update_user:
+                with patch(
+                    'wazuh.rbac.orm.AuthenticationManager.add_user', side_effect=[status, status]
+                ) as mock_add_user:
+                    auth_manager.migrate_data(
+                        db_setup.db_manager,
+                        source=db_setup.DB_FILE,
+                        target=db_setup.DB_FILE,
+                        from_id='someId',
+                        to_id='otherId',
+                    )
 
                     if expected_update:
                         mock_update_user.assert_has_calls(
-                            [call.update_user(user.id, user.password, hashed_password=True)])
+                            [call.update_user(user.id, user.password, hashed_password=True)]
+                        )
                     else:
-                        expected_calls = [call.add_user(username=user.username, password=user.password,
-                                                        created_at=user.created_at, user_id=user.id,
-                                                        hashed_password=True, check_default=False)]
+                        expected_calls = [
+                            call.add_user(
+                                username=user.username,
+                                password=user.password,
+                                created_at=user.created_at,
+                                user_id=user.id,
+                                hashed_password=True,
+                                check_default=False,
+                            )
+                        ]
                         if status is False:
                             expected_calls = expected_calls + [
-                                call.add_user(username=f"{user.username}_user", password=user.password,
-                                              created_at=user.created_at, user_id=user.id,
-                                              hashed_password=True, check_default=False)]
+                                call.add_user(
+                                    username=f'{user.username}_user',
+                                    password=user.password,
+                                    created_at=user.created_at,
+                                    user_id=user.id,
+                                    hashed_password=True,
+                                    check_default=False,
+                                )
+                            ]
 
                         mock_add_user.assert_has_calls(expected_calls)
 
 
-@pytest.mark.parametrize('role_data',
-                         [
-                             {'user': Roles(WAZUH_USER_ID, 'wazuh'), 'status': True},
-                             {'user': Roles(WAZUH_WUI_USER_ID, 'wazuh'), 'status': True},
-                             {'user': Roles(110, 'wazuh'), 'status': True},
-                             {'user': Roles(101, 'wazuh'), 'status': SecurityError.ALREADY_EXIST},
-                         ]
-                         )
+@pytest.mark.parametrize(
+    'role_data',
+    [
+        {'user': Roles(WAZUH_USER_ID, 'wazuh'), 'status': True},
+        {'user': Roles(WAZUH_WUI_USER_ID, 'wazuh'), 'status': True},
+        {'user': Roles(110, 'wazuh'), 'status': True},
+        {'user': Roles(101, 'wazuh'), 'status': SecurityError.ALREADY_EXIST},
+    ],
+)
 def test_roles_manager_migrate_data(db_setup, role_data):
     """Test migrate_data method for the RolesManager class."""
     role = role_data['user']
     status = role_data['status']
 
     with db_setup.RolesManager() as role_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[role]):
-            with patch("wazuh.rbac.orm.RolesManager.add_role",
-                       side_effect=[status, status]) as mock_add_role:
-                role_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                          from_id='someId', to_id='otherId')
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[role]):
+            with patch('wazuh.rbac.orm.RolesManager.add_role', side_effect=[status, status]) as mock_add_role:
+                role_manager.migrate_data(
+                    db_setup.db_manager,
+                    source=db_setup.DB_FILE,
+                    target=db_setup.DB_FILE,
+                    from_id='someId',
+                    to_id='otherId',
+                )
 
-                expected_calls = [call.add_role(name=role.name,
-                                                created_at=role.created_at, role_id=role.id,
-                                                check_default=False)]
+                expected_calls = [
+                    call.add_role(name=role.name, created_at=role.created_at, role_id=role.id, check_default=False)
+                ]
                 if status == SecurityError.ALREADY_EXIST:
                     expected_calls = expected_calls + [
-                        call.add_role(name=f"{role.name}_user",
-                                      created_at=role.created_at, role_id=role.id,
-                                      check_default=False)]
+                        call.add_role(
+                            name=f'{role.name}_user', created_at=role.created_at, role_id=role.id, check_default=False
+                        )
+                    ]
 
                 mock_add_role.assert_has_calls(expected_calls)
 
@@ -1211,20 +1268,26 @@ def test_roles_manager_migrate_data_with_reserved_ids(db_setup):
     role = Roles(WAZUH_USER_ID, 'wazuh')
 
     with db_setup.RolesManager() as role_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[role]):
-            with patch("wazuh.rbac.orm.RolesManager.add_role") as mock_add_role:
-                role_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                          from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[role]):
+            with patch('wazuh.rbac.orm.RolesManager.add_role') as mock_add_role:
+                role_manager.migrate_data(
+                    db_setup.db_manager,
+                    source=db_setup.DB_FILE,
+                    target=db_setup.DB_FILE,
+                    from_id=WAZUH_USER_ID,
+                    to_id=WAZUH_WUI_USER_ID,
+                )
 
                 mock_add_role.assert_not_called()
 
 
-@pytest.mark.parametrize('rules_data',
-                         [
-                             {'rules': Rules("example_name", '{}', 1001), 'status': True},
-                             {'rules': Rules("example_name", '{}', 1001), 'status': SecurityError.ALREADY_EXIST},
-                         ]
-                         )
+@pytest.mark.parametrize(
+    'rules_data',
+    [
+        {'rules': Rules('example_name', '{}', 1001), 'status': True},
+        {'rules': Rules('example_name', '{}', 1001), 'status': SecurityError.ALREADY_EXIST},
+    ],
+)
 def test_rules_manager_migrate_data(db_setup, rules_data):
     """Test migrate_data method for the RulesManager class."""
     rule = rules_data['rules']
@@ -1237,26 +1300,38 @@ def test_rules_manager_migrate_data(db_setup, rules_data):
     mock_roles_rules.created_at = None
 
     with db_setup.RulesManager() as rule_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[rule]):
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[rule]):
             with patch('wazuh.rbac.orm.db_manager.sessions', autospec=True) as mock_sessions:
-                with patch("wazuh.rbac.orm.RulesManager.add_rule", side_effect=[status, status]) as mock_add_rule:
-                    with patch("wazuh.rbac.orm.db_manager.get_table") as mock_get_table:
-                        with patch("wazuh.rbac.orm.RolesRulesManager.add_rule_to_role") as mock_add_rule_to_role:
+                with patch('wazuh.rbac.orm.RulesManager.add_rule', side_effect=[status, status]) as mock_add_rule:
+                    with patch('wazuh.rbac.orm.db_manager.get_table') as mock_get_table:
+                        with patch('wazuh.rbac.orm.RolesRulesManager.add_rule_to_role') as mock_add_rule_to_role:
                             # Mock get_table to return a list of mocked RolesRules objects
                             mock_get_table.return_value.filter.return_value.order_by.return_value.all.return_value = [
-                                mock_roles_rules]
+                                mock_roles_rules
+                            ]
                             # Mock the manager session
                             mock_query = mock_sessions.return_value.query.return_value
                             mock_filter_by = mock_query.filter_by.return_value
                             mock_first = mock_filter_by.first.return_value
                             mock_first.id = rule.id
 
-                            rule_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                                      from_id='someId', to_id='otherId')
+                            rule_manager.migrate_data(
+                                db_setup.db_manager,
+                                source=db_setup.DB_FILE,
+                                target=db_setup.DB_FILE,
+                                from_id='someId',
+                                to_id='otherId',
+                            )
 
-                            expected_calls = [call.add_rule(name=rule.name, rule=json.loads(rule.rule),
-                                                            created_at=rule.created_at,
-                                                            rule_id=rule.id, check_default=False)]
+                            expected_calls = [
+                                call.add_rule(
+                                    name=rule.name,
+                                    rule=json.loads(rule.rule),
+                                    created_at=rule.created_at,
+                                    rule_id=rule.id,
+                                    check_default=False,
+                                )
+                            ]
 
                             if status == SecurityError.ALREADY_EXIST:
                                 mock_add_rule_to_role.assert_called()
@@ -1266,46 +1341,62 @@ def test_rules_manager_migrate_data(db_setup, rules_data):
 
 def test_rules_manager_migrate_data_with_reserved_ids(db_setup):
     """Test migrate_data method with reserved ids for the RulesManager class."""
-    rule = Rules("example_name", '{}', 1001)
+    rule = Rules('example_name', '{}', 1001)
 
     with db_setup.RulesManager() as rule_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[rule]):
-            with patch("wazuh.rbac.orm.RulesManager.add_rule") as mock_add_rule:
-                rule_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                          from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[rule]):
+            with patch('wazuh.rbac.orm.RulesManager.add_rule') as mock_add_rule:
+                rule_manager.migrate_data(
+                    db_setup.db_manager,
+                    source=db_setup.DB_FILE,
+                    target=db_setup.DB_FILE,
+                    from_id=WAZUH_USER_ID,
+                    to_id=WAZUH_WUI_USER_ID,
+                )
 
                 mock_add_rule.assert_not_called()
 
 
-@pytest.mark.parametrize('policy_data',
-                         [
-                             {'policy': Policies('wazuh', '{}', policy_id=WAZUH_USER_ID), 'status': True},
-                             {'policy': Policies('wazuh', '{}', policy_id=WAZUH_USER_ID),
-                              'status': SecurityError.ALREADY_EXIST},
-                         ]
-                         )
+@pytest.mark.parametrize(
+    'policy_data',
+    [
+        {'policy': Policies('wazuh', '{}', policy_id=WAZUH_USER_ID), 'status': True},
+        {'policy': Policies('wazuh', '{}', policy_id=WAZUH_USER_ID), 'status': SecurityError.ALREADY_EXIST},
+    ],
+)
 def test_policies_manager_migrate_data(db_setup, policy_data):
     """Test migrate_data method for the PoliciesManager class."""
     policy = policy_data['policy']
     status = policy_data['status']
 
     with db_setup.PoliciesManager() as policy_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[policy]):
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[policy]):
             with patch('wazuh.rbac.orm.db_manager.sessions', autospec=True) as mock_sessions:
-                with patch("wazuh.rbac.orm.db_manager.get_table") as mock_get_table:
+                with patch('wazuh.rbac.orm.db_manager.get_table') as mock_get_table:
                     mock_query = mock_sessions.return_value.query.return_value
                     mock_filter_by = mock_query.filter_by.return_value
                     mock_first = mock_filter_by.first.return_value
                     mock_first.id = 'id'
-                    with patch("wazuh.rbac.orm.PoliciesManager.add_policy",
-                               side_effect=[status, status]) as mock_add_policy:
-                        policy_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE,
-                                                    target=db_setup.DB_FILE,
-                                                    from_id='someId', to_id='otherId')
+                    with patch(
+                        'wazuh.rbac.orm.PoliciesManager.add_policy', side_effect=[status, status]
+                    ) as mock_add_policy:
+                        policy_manager.migrate_data(
+                            db_setup.db_manager,
+                            source=db_setup.DB_FILE,
+                            target=db_setup.DB_FILE,
+                            from_id='someId',
+                            to_id='otherId',
+                        )
 
-                        expected_calls = [call.add_role(name=policy.name, policy=json.loads(policy.policy),
-                                                        created_at=policy.created_at, policy_id=policy.id,
-                                                        check_default=False)]
+                        expected_calls = [
+                            call.add_role(
+                                name=policy.name,
+                                policy=json.loads(policy.policy),
+                                created_at=policy.created_at,
+                                policy_id=policy.id,
+                                check_default=False,
+                            )
+                        ]
                         mock_add_policy.assert_has_calls(expected_calls)
                         if status == SecurityError.ALREADY_EXIST:
                             mock_get_table.assert_called()
@@ -1316,21 +1407,28 @@ def test_policies_manager_migrate_data_with_reserved_ids(db_setup):
     policy = Policies('wazuh', 'some_policy')
 
     with db_setup.PoliciesManager() as policy_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[policy]):
-            with patch("wazuh.rbac.orm.PoliciesManager.add_policy") as mock_add_policy:
-                policy_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                            from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[policy]):
+            with patch('wazuh.rbac.orm.PoliciesManager.add_policy') as mock_add_policy:
+                policy_manager.migrate_data(
+                    db_setup.db_manager,
+                    source=db_setup.DB_FILE,
+                    target=db_setup.DB_FILE,
+                    from_id=WAZUH_USER_ID,
+                    to_id=WAZUH_WUI_USER_ID,
+                )
 
                 mock_add_policy.assert_not_called()
 
 
-@pytest.mark.parametrize('user_role_data',
-                         [
-                             MockedUserRole('2', '3', 'someDate', 1),
-                             MockedUserRole(MAX_ID_RESERVED, '3', 'someDate', 2),
-                             MockedUserRole('3', MAX_ID_RESERVED, 'someDate', 3),
-                             MockedUserRole(MAX_ID_RESERVED, MAX_ID_RESERVED, 'someDate', 4)
-                         ])
+@pytest.mark.parametrize(
+    'user_role_data',
+    [
+        MockedUserRole('2', '3', 'someDate', 1),
+        MockedUserRole(MAX_ID_RESERVED, '3', 'someDate', 2),
+        MockedUserRole('3', MAX_ID_RESERVED, 'someDate', 3),
+        MockedUserRole(MAX_ID_RESERVED, MAX_ID_RESERVED, 'someDate', 4),
+    ],
+)
 def test_user_roles_manager_migrate_data(db_setup, user_role_data):
     """Test migrate_data method for the UserRolesManager class."""
     user_role = user_role_data
@@ -1338,21 +1436,27 @@ def test_user_roles_manager_migrate_data(db_setup, user_role_data):
     user_id = user_role_data.user_id
 
     with db_setup.UserRolesManager() as user_roles_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[user_role]):
-            with patch("wazuh.rbac.orm.UserRolesManager.add_role_to_user") as mock_add_role_to_user:
-                with patch('wazuh.rbac.orm.AuthenticationManager.get_user', autospec=True,
-                           return_value={'id': None}) as mock_get_user:
-                    with patch('wazuh.rbac.orm.RolesManager.get_role', autospec=True,
-                               return_value={'id': None}) as mock_get_role:
-                        with patch("wazuh.rbac.orm.db_manager.get_table") as mock_get_table:
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[user_role]):
+            with patch('wazuh.rbac.orm.UserRolesManager.add_role_to_user') as mock_add_role_to_user:
+                with patch(
+                    'wazuh.rbac.orm.AuthenticationManager.get_user', autospec=True, return_value={'id': None}
+                ) as mock_get_user:
+                    with patch(
+                        'wazuh.rbac.orm.RolesManager.get_role', autospec=True, return_value={'id': None}
+                    ) as mock_get_role:
+                        with patch('wazuh.rbac.orm.db_manager.get_table') as mock_get_table:
                             mock_filter_by = mock_get_table.return_value.filter.return_value
                             mock_first = mock_filter_by.first.return_value
                             mock_first.username = 'username'
                             mock_first.user = 'user'
 
-                            user_roles_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE,
-                                                            target=db_setup.DB_FILE,
-                                                            from_id='1', to_id='2')
+                            user_roles_manager.migrate_data(
+                                db_setup.db_manager,
+                                source=db_setup.DB_FILE,
+                                target=db_setup.DB_FILE,
+                                from_id='1',
+                                to_id='2',
+                            )
 
                             if int(user_id) <= MAX_ID_RESERVED:
                                 mock_get_user.assert_called()
@@ -1368,22 +1472,28 @@ def test_user_roles_manager_migrate_data_with_reserved_ids(db_setup):
     user_role = UserRoles()
 
     with db_setup.UserRolesManager() as user_roles_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[user_role]):
-            with patch("wazuh.rbac.orm.UserRolesManager.add_role_to_user") as mock_add_role_to_user:
-                user_roles_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
-                                                from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[user_role]):
+            with patch('wazuh.rbac.orm.UserRolesManager.add_role_to_user') as mock_add_role_to_user:
+                user_roles_manager.migrate_data(
+                    db_setup.db_manager,
+                    source=db_setup.DB_FILE,
+                    target=db_setup.DB_FILE,
+                    from_id=WAZUH_USER_ID,
+                    to_id=WAZUH_WUI_USER_ID,
+                )
 
                 mock_add_role_to_user.assert_not_called()
 
 
-@pytest.mark.parametrize('role_policies_data',
-                         [
-                             MockRolePolicy('2', '3', 'someDate', 1),
-                             MockRolePolicy(MAX_ID_RESERVED, '3', 'someDate', 2),
-                             MockRolePolicy('3', MAX_ID_RESERVED, 'someDate', 3),
-                             MockRolePolicy(MAX_ID_RESERVED, MAX_ID_RESERVED, 'someDate', 4)
-                         ]
-                         )
+@pytest.mark.parametrize(
+    'role_policies_data',
+    [
+        MockRolePolicy('2', '3', 'someDate', 1),
+        MockRolePolicy(MAX_ID_RESERVED, '3', 'someDate', 2),
+        MockRolePolicy('3', MAX_ID_RESERVED, 'someDate', 3),
+        MockRolePolicy(MAX_ID_RESERVED, MAX_ID_RESERVED, 'someDate', 4),
+    ],
+)
 def test_roles_policies_manager_migrate_data(db_setup, role_policies_data):
     """Test migrate_data method for the RolesPoliciesManager class."""
     role_policies = role_policies_data
@@ -1391,20 +1501,26 @@ def test_roles_policies_manager_migrate_data(db_setup, role_policies_data):
     policy_id = role_policies.policy_id
 
     with db_setup.RolesPoliciesManager() as auth_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[role_policies]):
-            with patch("wazuh.rbac.orm.RolesPoliciesManager.add_policy_to_role") as mock_add_policy_to_role:
-                with patch('wazuh.rbac.orm.PoliciesManager.get_policy', autospec=True,
-                           return_value={'id': None}) as mock_get_policy:
-                    with patch('wazuh.rbac.orm.RolesManager.get_role', autospec=True,
-                               return_value={'id': None}) as mock_get_role:
-                        with patch("wazuh.rbac.orm.db_manager.get_table") as mock_get_table:
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[role_policies]):
+            with patch('wazuh.rbac.orm.RolesPoliciesManager.add_policy_to_role') as mock_add_policy_to_role:
+                with patch(
+                    'wazuh.rbac.orm.PoliciesManager.get_policy', autospec=True, return_value={'id': None}
+                ) as mock_get_policy:
+                    with patch(
+                        'wazuh.rbac.orm.RolesManager.get_role', autospec=True, return_value={'id': None}
+                    ) as mock_get_role:
+                        with patch('wazuh.rbac.orm.db_manager.get_table') as mock_get_table:
                             mock_filter_by = mock_get_table.return_value.filter.return_value
                             mock_first = mock_filter_by.first.return_value
                             mock_first.name = 'name'
 
-                            auth_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE,
-                                                      target=db_setup.DB_FILE,
-                                                      from_id='1', to_id='2')
+                            auth_manager.migrate_data(
+                                db_setup.db_manager,
+                                source=db_setup.DB_FILE,
+                                target=db_setup.DB_FILE,
+                                from_id='1',
+                                to_id='2',
+                            )
 
                             if int(policy_id) <= MAX_ID_RESERVED:
                                 mock_get_policy.assert_called()
@@ -1420,23 +1536,28 @@ def test_roles_policies_manager_migrate_data_with_reserved_ids(db_setup):
     user_role = RolesPolicies()
 
     with db_setup.RolesPoliciesManager() as role_policies_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[user_role]):
-            with patch("wazuh.rbac.orm.RolesPoliciesManager.add_policy_to_role") as mock_add_policy_to_role:
-                role_policies_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE,
-                                                   target=db_setup.DB_FILE,
-                                                   from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[user_role]):
+            with patch('wazuh.rbac.orm.RolesPoliciesManager.add_policy_to_role') as mock_add_policy_to_role:
+                role_policies_manager.migrate_data(
+                    db_setup.db_manager,
+                    source=db_setup.DB_FILE,
+                    target=db_setup.DB_FILE,
+                    from_id=WAZUH_USER_ID,
+                    to_id=WAZUH_WUI_USER_ID,
+                )
 
                 mock_add_policy_to_role.assert_not_called()
 
 
-@pytest.mark.parametrize('role_rules_data',
-                         [
-                             MockRoleRules('2', '3', 'someDate', 1),
-                             MockRoleRules(MAX_ID_RESERVED, '3', 'someDate', 2),
-                             MockRoleRules('3', MAX_ID_RESERVED, 'someDate', 3),
-                             MockRoleRules(MAX_ID_RESERVED, MAX_ID_RESERVED, 'someDate', 4)
-                         ]
-                         )
+@pytest.mark.parametrize(
+    'role_rules_data',
+    [
+        MockRoleRules('2', '3', 'someDate', 1),
+        MockRoleRules(MAX_ID_RESERVED, '3', 'someDate', 2),
+        MockRoleRules('3', MAX_ID_RESERVED, 'someDate', 3),
+        MockRoleRules(MAX_ID_RESERVED, MAX_ID_RESERVED, 'someDate', 4),
+    ],
+)
 def test_roles_rules_manager_migrate_data(db_setup, role_rules_data):
     """Test migrate_data method for the RolesRulesManager class."""
     role_rules = role_rules_data
@@ -1444,20 +1565,26 @@ def test_roles_rules_manager_migrate_data(db_setup, role_rules_data):
     rule_id = role_rules.rule_id
 
     with db_setup.RolesRulesManager() as roles_rules_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[role_rules]):
-            with patch("wazuh.rbac.orm.RolesRulesManager.add_rule_to_role") as mock_add_rule_to_role:
-                with patch('wazuh.rbac.orm.RulesManager.get_rule_by_name', autospec=True,
-                           return_value={'id': None}) as mock_get_rule_by_name:
-                    with patch('wazuh.rbac.orm.RolesManager.get_role', autospec=True,
-                               return_value={'id': None}) as mock_get_role:
-                        with patch("wazuh.rbac.orm.db_manager.get_table") as mock_get_table:
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[role_rules]):
+            with patch('wazuh.rbac.orm.RolesRulesManager.add_rule_to_role') as mock_add_rule_to_role:
+                with patch(
+                    'wazuh.rbac.orm.RulesManager.get_rule_by_name', autospec=True, return_value={'id': None}
+                ) as mock_get_rule_by_name:
+                    with patch(
+                        'wazuh.rbac.orm.RolesManager.get_role', autospec=True, return_value={'id': None}
+                    ) as mock_get_role:
+                        with patch('wazuh.rbac.orm.db_manager.get_table') as mock_get_table:
                             mock_filter_by = mock_get_table.return_value.filter.return_value
                             mock_first = mock_filter_by.first.return_value
                             mock_first.name = 'name'
 
-                            roles_rules_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE,
-                                                             target=db_setup.DB_FILE,
-                                                             from_id='1', to_id='2')
+                            roles_rules_manager.migrate_data(
+                                db_setup.db_manager,
+                                source=db_setup.DB_FILE,
+                                target=db_setup.DB_FILE,
+                                from_id='1',
+                                to_id='2',
+                            )
 
                             if int(rule_id) <= MAX_ID_RESERVED:
                                 mock_get_rule_by_name.assert_called()
@@ -1473,10 +1600,14 @@ def test_roles_rules_manager_migrate_data_with_reserved_ids(db_setup):
     user_role = RolesRules()
 
     with db_setup.RolesRulesManager() as roles_rules_manager:
-        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[user_role]):
-            with patch("wazuh.rbac.orm.RolesRulesManager.add_rule_to_role") as mock_add_rule_to_role:
-                roles_rules_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE,
-                                                 target=db_setup.DB_FILE,
-                                                 from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
+        with patch('wazuh.rbac.orm.db_manager.get_data', return_value=[user_role]):
+            with patch('wazuh.rbac.orm.RolesRulesManager.add_rule_to_role') as mock_add_rule_to_role:
+                roles_rules_manager.migrate_data(
+                    db_setup.db_manager,
+                    source=db_setup.DB_FILE,
+                    target=db_setup.DB_FILE,
+                    from_id=WAZUH_USER_ID,
+                    to_id=WAZUH_WUI_USER_ID,
+                )
 
                 mock_add_rule_to_role.assert_not_called()

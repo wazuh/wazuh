@@ -1,17 +1,18 @@
-from pydantic import PositiveInt, conint, confloat, PrivateAttr, Field
-from typing import List, Optional
 from enum import Enum
+from typing import List, Optional
 
+from pydantic import Field, PositiveInt, PrivateAttr, confloat, conint
 from wazuh.core.common import WAZUH_ETC, WAZUH_GROUPS
 from wazuh.core.config.models.base import WazuhConfigBaseModel
-from wazuh.core.config.models.ssl_config import SSLConfig
 from wazuh.core.config.models.logging import LoggingConfig, LoggingLevel
+from wazuh.core.config.models.ssl_config import SSLConfig
 
-DEFAULT_CTI_URL = "https://cti.wazuh.com"
+DEFAULT_CTI_URL = 'https://cti.wazuh.com'
 
 
 class NodeType(str, Enum):
     """Enum representing supported nodes types."""
+
     WORKER = 'worker'
     MASTER = 'master'
 
@@ -32,6 +33,7 @@ class MasterIntervalsConfig(WazuhConfigBaseModel):
     max_locked_integrity_time : PositiveInt
         The maximum time for locked integrity. Default is 1000.
     """
+
     timeout_extra_valid: PositiveInt = 40
     recalculate_integrity: PositiveInt = 8
     check_worker_last_keep_alive: PositiveInt = 60
@@ -47,6 +49,7 @@ class MasterProcesses(WazuhConfigBaseModel):
     process_pool_size : PositiveInt
         The size of the process pool. Default is 2.
     """
+
     process_pool_size: PositiveInt = 2
 
 
@@ -60,6 +63,7 @@ class MasterConfig(WazuhConfigBaseModel):
     processes : MasterProcesses
         Configuration for processes related to the master.
     """
+
     intervals: MasterIntervalsConfig = MasterIntervalsConfig()
     processes: MasterProcesses = MasterProcesses()
 
@@ -76,6 +80,7 @@ class NodeConfig(WazuhConfigBaseModel):
     ssl : SSLConfig
         SSL configuration for the node.
     """
+
     name: str = Field(min_length=1)
     type: NodeType
     ssl: SSLConfig
@@ -95,6 +100,7 @@ class ZipConfig(WazuhConfigBaseModel):
     limit_tolerance : confloat(ge=0.0, le=1.0)
         The tolerance limit for compression size. Default is 0.2.
     """
+
     max_size: PositiveInt = 1073741824
     min_size: PositiveInt = 31457280
     compress_level: conint(ge=0, le=9) = 1
@@ -113,6 +119,7 @@ class CommunicationsTimeoutConfig(WazuhConfigBaseModel):
     receiving_file : PositiveInt
         The timeout for receiving files in seconds. Default is 120.
     """
+
     cluster_request: PositiveInt = 20
     dapi_request: PositiveInt = 200
     receiving_file: PositiveInt = 120
@@ -128,6 +135,7 @@ class CommunicationsConfig(WazuhConfigBaseModel):
     timeouts : CommunicationsTimeoutConfig
         Configuration for communication timeouts.
     """
+
     zip: ZipConfig = ZipConfig()
     timeouts: CommunicationsTimeoutConfig = CommunicationsTimeoutConfig()
 
@@ -144,6 +152,7 @@ class WorkerIntervalsConfig(WazuhConfigBaseModel):
     connection_retry : PositiveInt
         The number of retries for connection attempts. Default is 10.
     """
+
     sync_integrity: PositiveInt = 9
     keep_alive: PositiveInt = 60
     connection_retry: PositiveInt = 10
@@ -157,6 +166,7 @@ class WorkerRetriesConfig(WazuhConfigBaseModel):
     max_failed_keepalive_attempts : PositiveInt
         The maximum number of failed keep-alive attempts before considering the worker dead. Default is 2.
     """
+
     max_failed_keepalive_attempts: PositiveInt = 2
 
 
@@ -170,6 +180,7 @@ class WorkerConfig(WazuhConfigBaseModel):
     retries : WorkerRetriesConfig
         Configuration for worker retries.
     """
+
     intervals: WorkerIntervalsConfig = WorkerIntervalsConfig()
     retries: WorkerRetriesConfig = WorkerRetriesConfig()
 
@@ -198,6 +209,7 @@ class SharedFiles(WazuhConfigBaseModel):
     extra_valid : bool
         Whether to perform extra validation.
     """
+
     dir: str
     description: str
     permissions: PositiveInt
@@ -221,6 +233,7 @@ class ServerSyncConfig(WazuhConfigBaseModel):
     excluded_extensions : List[str]
         List of file extensions to be excluded.
     """
+
     files: List[SharedFiles]
     excluded_files: List[str]
     excluded_extensions: List[str]
@@ -256,6 +269,7 @@ class CTIConfig(WazuhConfigBaseModel):
     url : str
         The URL for the CTI service. Default is "https://cti.wazuh.com".
     """
+
     update_check: bool = True
     url: str = DEFAULT_CTI_URL
 
@@ -286,7 +300,7 @@ DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
         ),
     ],
     excluded_files=[],
-    excluded_extensions=['~', '.tmp', '.lock', '.swp']
+    excluded_extensions=['~', '.tmp', '.lock', '.swp'],
 )
 
 
@@ -320,8 +334,9 @@ class ServerConfig(WazuhConfigBaseModel):
     _internal : ServerSyncConfig
         Internal server configurations. These settings are internal
     """
+
     port: PositiveInt = 1516
-    bind_addr: str = "localhost"
+    bind_addr: str = 'localhost'
     nodes: List[str] = Field(min_length=1)
     hidden: bool = False
     update_check: bool = False

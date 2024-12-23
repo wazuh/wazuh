@@ -12,12 +12,14 @@ from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from time import perf_counter
-from typing import Tuple, Dict, Callable
+from typing import Callable, Dict, Tuple
 from uuid import uuid4
 
-from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core import cluster as metadata
+from wazuh.core import common, exception, utils
 from wazuh.core.agent import Agent
-from wazuh.core.cluster import server, cluster, common as c_common
+from wazuh.core.cluster import cluster, server
+from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
@@ -27,8 +29,7 @@ DEFAULT_DATE: str = 'n/a'
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
-    """
-    Define the process and variables necessary to receive and process integrity information from the master.
+    """Define the process and variables necessary to receive and process integrity information from the master.
 
     This task is created by the master when the worker starts sending its integrity file metadata and it's destroyed
     by the master once the necessary files to update have been sent.
@@ -68,8 +69,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
-    """
-    Define the process and variables necessary to receive and process extra valid files from the worker.
+    """Define the process and variables necessary to receive and process extra valid files from the worker.
 
     This task is created when the worker starts sending extra valid files and its destroyed once the master has updated
     all the required information.
@@ -105,9 +105,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
 
 
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
-    """
-    Handle incoming requests and sync processes with a worker.
-    """
+    """Handle incoming requests and sync processes with a worker."""
 
     def __init__(self, **kwargs):
         """Class constructor.
@@ -117,7 +115,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         kwargs
             Arguments for the parent class constructor.
         """
-        super().__init__(**kwargs, tag="Worker")
+        super().__init__(**kwargs, tag='Worker')
         # Sync availability variables. Used to prevent sync process from overlapping.
         self.sync_integrity_free = [True, utils.get_utc_now()]
 
@@ -126,13 +124,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Sync status variables. Used in GET/cluster/healthcheck.
         self.integrity_check_status = {'date_start_master': DEFAULT_DATE, 'date_end_master': DEFAULT_DATE}
-        self.integrity_sync_status = {'date_start_master': DEFAULT_DATE, 'tmp_date_start_master': DEFAULT_DATE,
-                                      'date_end_master': DEFAULT_DATE, 'total_extra_valid': 0,
-                                      'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
+        self.integrity_sync_status = {
+            'date_start_master': DEFAULT_DATE,
+            'tmp_date_start_master': DEFAULT_DATE,
+            'date_end_master': DEFAULT_DATE,
+            'total_extra_valid': 0,
+            'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0},
+        }
 
         # Variables which will be filled when the worker sends the hello request.
-        self.version = ""
-        self.node_type = ""
+        self.version = ''
+        self.node_type = ''
 
         # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
@@ -150,14 +152,19 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         dict
             Healthcheck information for each process.
         """
-        return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
-                'status': {'sync_integrity_free': self.sync_integrity_free[0],
-                           'last_check_integrity': {key: value for key, value in self.integrity_check_status.items() if
-                                                    not key.startswith('tmp')},
-                           'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
-                                                   not key.startswith('tmp')},
-                           'last_keep_alive': self.last_keepalive}
-                }
+        return {
+            'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
+            'status': {
+                'sync_integrity_free': self.sync_integrity_free[0],
+                'last_check_integrity': {
+                    key: value for key, value in self.integrity_check_status.items() if not key.startswith('tmp')
+                },
+                'last_sync_integrity': {
+                    key: value for key, value in self.integrity_sync_status.items() if not key.startswith('tmp')
+                },
+                'last_keep_alive': self.last_keepalive,
+            },
+        }
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """Define all available commands that can be received from a worker node.
@@ -176,7 +183,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        self.logger.debug(f"Command received: {command}")
+        self.logger.debug(f'Command received: {command}')
         if command == b'syn_i_w_m_p':
             return self.get_permission(command)
         elif command == b'syn_i_w_m' or command == b'syn_e_w_m':
@@ -230,8 +237,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             client, request = data.split(b' ', 1)
             client = client.decode()
             if client in self.server.clients:
-                result = (await self.server.clients[client].send_request(b'dapi',
-                                                                         request_id.encode() + b' ' + request)).decode()
+                result = (
+                    await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)
+                ).decode()
             else:
                 raise exception.WazuhClusterError(3022, extra_message=client)
         # Add request to local API requests queue.
@@ -244,8 +252,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # If command was dapi or dapi_fwd, wait for response.
         if command == b'dapi' or command == b'dapi_fwd':
             try:
-                timeout = None if wait_for_complete \
-                    else self.server_config.communications.timeouts.dapi_request
+                timeout = None if wait_for_complete else self.server_config.communications.timeouts.dapi_request
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                 request_result = self.server.pending_api_requests[request_id]['Response']
             except asyncio.TimeoutError:
@@ -280,8 +287,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Add client to global clients dictionary.
         cmd, payload = super().hello(name)
 
-        self.task_loggers = {'Integrity check': self.setup_task_logger('Integrity check'),
-                             'Integrity sync': self.setup_task_logger('Integrity sync')}
+        self.task_loggers = {
+            'Integrity check': self.setup_task_logger('Integrity check'),
+            'Integrity sync': self.setup_task_logger('Integrity sync'),
+        }
 
         # Fill more information and check both name and version are correct.
         self.version, self.node_type = version.decode(), node_type.decode()
@@ -400,11 +409,16 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.server.integrity_already_executed.append(self.name)
 
             # Reset integrity permissions if False for more than "max_locked_integrity_time" seconds
-            if not self.sync_integrity_free[0] and (utils.get_utc_now() - self.sync_integrity_free[1]).total_seconds() > \
-                    self.server_config.master.intervals.max_locked_integrity_time:
-                self.logger.warning(f'Automatically releasing Integrity check permissions flag ({sync_type}) after '
-                                    f'being locked out for more than '
-                                    f'{self.server_config.master.intervals.max_locked_integrity_time}s.')
+            if (
+                not self.sync_integrity_free[0]
+                and (utils.get_utc_now() - self.sync_integrity_free[1]).total_seconds()
+                > self.server_config.master.intervals.max_locked_integrity_time
+            ):
+                self.logger.warning(
+                    f'Automatically releasing Integrity check permissions flag ({sync_type}) after '
+                    f'being locked out for more than '
+                    f'{self.server_config.master.intervals.max_locked_integrity_time}s.'
+                )
                 self.sync_integrity_free[0] = True
 
             permission = self.sync_integrity_free[0]
@@ -491,9 +505,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         date_end_master = utils.get_utc_now()
         tmp_date_start_master = self.integrity_sync_status['tmp_date_start_master']
 
-        logger.info("Finished in {:.3f}s.".format((date_end_master - tmp_date_start_master).total_seconds()))
-        self.integrity_sync_status['date_start_master'] = \
-            self.integrity_sync_status['tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
+        logger.info('Finished in {:.3f}s.'.format((date_end_master - tmp_date_start_master).total_seconds()))
+        self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master'].strftime(
+            DECIMALS_DATE_FORMAT
+        )
         self.integrity_sync_status['date_end_master'] = date_end_master.strftime(DECIMALS_DATE_FORMAT)
 
     async def integrity_check(self, task_id: str, received_file: asyncio.Event):
@@ -514,7 +529,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity check']
         date_start_master = utils.get_utc_now()
-        logger.info(f"Starting.")
+        logger.info('Starting.')
 
         await self.wait_for_file(file=received_file, task_id=task_id)
 
@@ -534,17 +549,24 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         total_time = (utils.get_utc_now() - date_start_master).total_seconds()
         self.extra_valid_requested = False
-        self.integrity_check_status.update({'date_start_master': date_start_master.strftime(DECIMALS_DATE_FORMAT),
-                                            'date_end_master': utils.get_utc_now().strftime(DECIMALS_DATE_FORMAT)})
+        self.integrity_check_status.update(
+            {
+                'date_start_master': date_start_master.strftime(DECIMALS_DATE_FORMAT),
+                'date_end_master': utils.get_utc_now().strftime(DECIMALS_DATE_FORMAT),
+            }
+        )
 
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, files_classif.values())):
-            logger.info(f"Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. "
-                        f"Sync not required.")
+            logger.info(
+                f'Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. '
+                f'Sync not required.'
+            )
             await self.send_request(command=b'syn_m_c_ok', data=b'')
         else:
-            logger.info(f"Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. "
-                        f"Sync required.")
+            logger.info(
+                f'Finished in {total_time:.3f}s. Received metadata of {len(files_metadata)} files. ' f'Sync required.'
+            )
             await self.integrity_sync(files_classif)
 
     async def integrity_sync(self, files_classif):
@@ -559,20 +581,27 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Paths (keys) and metadata (values) of the files classified into four groups.
         """
         logger = self.task_loggers['Integrity sync']
-        logger.info("Starting.")
+        logger.info('Starting.')
 
-        self.integrity_sync_status.update({'tmp_date_start_master': utils.get_utc_now(),
-                                           'total_files': {key: len(value) for key, value in files_classif.items()},
-                                           'total_extra_valid': 0})
-        logger.info(f"Files to create in worker: {len(files_classif['missing'])} | "
-                    f"Files to update in worker: {len(files_classif['shared'])} | "
-                    f"Files to delete in worker: {len(files_classif['extra'])}")
+        self.integrity_sync_status.update(
+            {
+                'tmp_date_start_master': utils.get_utc_now(),
+                'total_files': {key: len(value) for key, value in files_classif.items()},
+                'total_extra_valid': 0,
+            }
+        )
+        logger.info(
+            f"Files to create in worker: {len(files_classif['missing'])} | "
+            f"Files to update in worker: {len(files_classif['shared'])} | "
+            f"Files to delete in worker: {len(files_classif['extra'])}"
+        )
 
         # Send files and metadata to the worker node.
         metadata_len = functools.reduce(operator.add, map(len, files_classif.values()))
         master_files_paths = files_classif['shared'].keys() | files_classif['missing'].keys()
-        await self.integrity.sync(master_files_paths, files_classif, metadata_len, self.server.task_pool,
-                                  self.current_zip_limit)
+        await self.integrity.sync(
+            master_files_paths, files_classif, metadata_len, self.server.task_pool, self.current_zip_limit
+        )
 
         # Log 'Finished in' message only if there are no extra_valid files to sync.
         if not self.extra_valid_requested:
@@ -606,7 +635,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger : Logger object
             Logger to use (can't use self since one of the task loggers will be used).
         """
-        logger.debug("Waiting to receive zip file from worker.")
+        logger.debug('Waiting to receive zip file from worker.')
         await self.wait_for_file(file=received_file, task_id=task_id)
 
         # Full path where the zip sent by the worker is located.
@@ -621,9 +650,16 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Create a child process to run the task.
         try:
-            result = await cluster.run_in_pool(self.loop, self.server.task_pool, self.process_files_from_worker,
-                                               files_metadata, decompressed_files_path, self.server_config, self.name,
-                                               self.server_config.master.intervals.timeout_extra_valid)
+            result = await cluster.run_in_pool(
+                self.loop,
+                self.server.task_pool,
+                self.process_files_from_worker,
+                files_metadata,
+                decompressed_files_path,
+                self.server_config,
+                self.name,
+                self.server_config.master.intervals.timeout_extra_valid,
+            )
         except Exception as e:
             raise exception.WazuhClusterError(3038, extra_message=str(e))
         finally:
@@ -637,8 +673,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.error(error, exc_info=False)
 
     @staticmethod
-    def process_files_from_worker(files_metadata: Dict, decompressed_files_path: str, server_config: ServerConfig,
-                                  worker_name: str, timeout: int):
+    def process_files_from_worker(
+        files_metadata: Dict, decompressed_files_path: str, server_config: ServerConfig, worker_name: str, timeout: int
+    ):
         """Iterate over received files from worker and updates the local ones.
 
         Parameters
@@ -670,14 +707,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     # If the file is merged, create individual files from it.
                     if data['merged']:
                         for unmerged_file_path, file_data, file_time in cluster.unmerge_info(
-                                data['merge_type'], decompressed_files_path, data['merge_name']
+                            data['merge_type'], decompressed_files_path, data['merge_name']
                         ):
                             try:
                                 # Destination path.
                                 full_unmerged_name = common.WAZUH_QUEUE / unmerged_file_path
                                 # Path where to create the file before moving it to the destination path.
-                                tmp_unmerged_path = common.WAZUH_QUEUE / worker_name / os.path.basename(
-                                    unmerged_file_path
+                                tmp_unmerged_path = (
+                                    common.WAZUH_QUEUE / worker_name / os.path.basename(unmerged_file_path)
                                 )
                                 # Format the file_data specified inside the merged file.
                                 try:
@@ -688,7 +725,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                 # If the file already existed, check if it is older than the one from worker.
                                 if os.path.isfile(full_unmerged_name):
                                     local_mtime = utils.get_date_from_timestamp(
-                                        int(os.stat(full_unmerged_name).st_mtime))
+                                        int(os.stat(full_unmerged_name).st_mtime)
+                                    )
                                     if local_mtime > mtime:
                                         continue
 
@@ -703,10 +741,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                 if file_config is None:
                                     raise Exception(f'No dir in internal configuration with name {item_key}')
 
-                                utils.safe_move(tmp_unmerged_path, full_unmerged_name,
-                                                ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                                                permissions=file_config.permissions,
-                                                time=(mtime_epoch, mtime_epoch))
+                                utils.safe_move(
+                                    tmp_unmerged_path,
+                                    full_unmerged_name,
+                                    ownership=(common.wazuh_uid(), common.wazuh_gid()),
+                                    permissions=file_config.permissions,
+                                    time=(mtime_epoch, mtime_epoch),
+                                )
                                 result['total_updated'] += 1
                             except TimeoutError as e:
                                 raise e
@@ -717,14 +758,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     else:
                         try:
                             zip_path = os.path.join(decompressed_files_path, file_path)
-                            utils.safe_move(zip_path, full_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                                            permissions=file_config.permissions)
+                            utils.safe_move(
+                                zip_path,
+                                full_path,
+                                ownership=(common.wazuh_uid(), common.wazuh_gid()),
+                                permissions=file_config.permissions,
+                            )
                         except TimeoutError as e:
                             raise e
                         except Exception as e:
                             result['errors_per_folder'][item_key].append(str(e))
         except TimeoutError:
-            result['generic_errors'].append("Timeout processing extra-valid files.")
+            result['generic_errors'].append('Timeout processing extra-valid files.')
         except Exception as e:
             result['generic_errors'].append(f"Error updating worker files (extra valid): '{str(e)}'.")
 
@@ -757,7 +802,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             In case the connection was lost due to an exception, it will be available on this parameter.
         """
         super().connection_lost(exc)
-        self.logger.info("Cancelling pending tasks.")
+        self.logger.info('Cancelling pending tasks.')
 
         # Cancel all pending tasks
         for pending_task in self.sync_tasks.values():
@@ -799,32 +844,34 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
 
 class Master(server.AbstractServer):
-    """
-    Create the server. Handle multiple clients, DAPI and Send Sync requests.
-    """
+    """Create the server. Handle multiple clients, DAPI and Send Sync requests."""
 
     def __init__(self, **kwargs):
         """Class constructor.
+
         Parameters
         ----------
         kwargs
             Arguments for the parent class constructor.
         """
-        super().__init__(**kwargs, tag="Master")
+        super().__init__(**kwargs, tag='Master')
         self.integrity_control = {}
         self.handler_class = MasterHandler
         try:
-            self.task_pool = ProcessPoolExecutor(max_workers=min(os.cpu_count(),
-                                                                 self.server_config.master.processes.process_pool_size))
+            self.task_pool = ProcessPoolExecutor(
+                max_workers=min(os.cpu_count(), self.server_config.master.processes.process_pool_size)
+            )
 
         # Handle exception when the user running Wazuh cannot access /dev/shm
         except (FileNotFoundError, PermissionError):
             self.logger.warning(
                 "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
                 "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
-                "Changing the file permissions to 777 will solve this issue.")
+                'Changing the file permissions to 777 will solve this issue.'
+            )
             self.logger.warning(
-                "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
+                'The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.'
+            )
             self.task_pool = None
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
@@ -840,8 +887,14 @@ class Master(server.AbstractServer):
         dict
             Healthcheck and basic information from master node.
         """
-        return {'info': {'name': self.server_config.node.name, 'type': self.server_config.node.type,
-                         'version': metadata.__version__, 'ip': self.server_config.nodes[0]}}
+        return {
+            'info': {
+                'name': self.server_config.node.name,
+                'type': self.server_config.node.type,
+                'version': metadata.__version__,
+                'ip': self.server_config.nodes[0],
+            }
+        }
 
     async def file_status_update(self):
         """Asynchronous task that obtain files status periodically.
@@ -851,24 +904,24 @@ class Master(server.AbstractServer):
         A dictionary like {'file_path': {<BLAKE2b, merged, merged_name, etc>}, ...} is created and later
         compared with the one received from the workers to find out which files are different, missing or removed.
         """
-        file_integrity_logger = self.setup_task_logger("Local integrity")
+        file_integrity_logger = self.setup_task_logger('Local integrity')
         while True:
             before = perf_counter()
-            file_integrity_logger.info("Starting.")
+            file_integrity_logger.info('Starting.')
             try:
-                self.integrity_control, logs = await cluster.run_in_pool(self.loop,
-                                                                         self.task_pool,
-                                                                         cluster.get_files_status,
-                                                                         self.integrity_control)
+                self.integrity_control, logs = await cluster.run_in_pool(
+                    self.loop, self.task_pool, cluster.get_files_status, self.integrity_control
+                )
                 log_subprocess_execution(file_integrity_logger, logs)
             except Exception as e:
-                file_integrity_logger.error(f"Error calculating local file integrity: {e}")
+                file_integrity_logger.error(f'Error calculating local file integrity: {e}')
             finally:
                 # With this we avoid that each worker starts integrity_check more than once per local_integrity
                 self.integrity_already_executed.clear()
             after = perf_counter()
-            file_integrity_logger.info(f"Finished in {(after - before):.3f}s. Calculated "
-                                       f"metadata of {len(self.integrity_control)} files.")
+            file_integrity_logger.info(
+                f'Finished in {(after - before):.3f}s. Calculated ' f'metadata of {len(self.integrity_control)} files.'
+            )
 
             await asyncio.sleep(self.server_config.master.intervals.recalculate_integrity)
 
@@ -885,23 +938,29 @@ class Master(server.AbstractServer):
         dict
             Dict object containing nodes information.
         """
-        workers_info = {key: val.to_dict() for key, val in self.clients.items()
-                        if filter_node is None or filter_node == {} or key in filter_node}
+        workers_info = {
+            key: val.to_dict()
+            for key, val in self.clients.items()
+            if filter_node is None or filter_node == {} or key in filter_node
+        }
         n_connected_nodes = len(workers_info)
         if filter_node is None or self.server_config.node.name in filter_node:
             workers_info.update({self.server_config.node.name: self.to_dict()})
 
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
-            active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name}, limit=None,
-                                                      count=True, get_data=False).get('totalItems', 0)
-            workers_info[node_name]["info"]["n_active_agents"] = active_agents
+            active_agents = Agent.get_agents_overview(
+                filters={'status': 'active', 'node_name': node_name}, limit=None, count=True, get_data=False
+            ).get('totalItems', 0)
+            workers_info[node_name]['info']['n_active_agents'] = active_agents
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
-                    utils.get_date_from_timestamp(workers_info[node_name]['status']['last_keep_alive']
-                                                  ).strftime(DECIMALS_DATE_FORMAT))
+                    utils.get_date_from_timestamp(workers_info[node_name]['status']['last_keep_alive']).strftime(
+                        DECIMALS_DATE_FORMAT
+                    )
+                )
 
-        return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
+        return {'n_connected_nodes': n_connected_nodes, 'nodes': workers_info}
 
     def get_node(self) -> Dict:
         """Get basic information about the node.

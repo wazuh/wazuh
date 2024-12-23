@@ -3,9 +3,8 @@ from typing import Tuple
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-
 from wazuh import WazuhInternalError
-from wazuh.core.common import wazuh_uid, wazuh_gid, WAZUH_ETC
+from wazuh.core.common import WAZUH_ETC, wazuh_gid, wazuh_uid
 
 _private_key_path = WAZUH_ETC / 'private_key.pem'
 _public_key_path = WAZUH_ETC / 'public_key.pem'
@@ -54,12 +53,13 @@ def generate_keypair() -> Tuple[str, str]:
     private_key = key_obj.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
+        encryption_algorithm=serialization.NoEncryption(),
     ).decode('utf-8')
-    public_key = key_obj.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode('utf-8')
+    public_key = (
+        key_obj.public_key()
+        .public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+        .decode('utf-8')
+    )
 
     with open(_private_key_path, mode='w') as key_file:
         key_file.write(private_key)

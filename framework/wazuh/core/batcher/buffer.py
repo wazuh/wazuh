@@ -11,6 +11,7 @@ class Buffer:
     max_size : int
         Maximum size of the buffer in bytes.
     """
+
     def __init__(self, max_elements: int, max_size: int):
         self.max_elements = max_elements
         self.max_size = max_size

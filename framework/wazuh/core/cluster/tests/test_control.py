@@ -4,12 +4,12 @@
 
 import json
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
+from wazuh.core.exception import WazuhClusterError
 
 from api.models.order_model import Order
-from wazuh.core.exception import WazuhClusterError
 
 with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
@@ -19,7 +19,6 @@ with patch('wazuh.common.getgrnam'):
 
                 from wazuh.core.cluster import control
                 from wazuh.core.cluster.local_client import LocalClient
-                from wazuh import WazuhInternalError, WazuhError
 
 
 async def async_local_client(command, data):

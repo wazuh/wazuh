@@ -1,13 +1,13 @@
 from typing import Annotated
 
 from fastapi import Depends, Request, status
+from wazuh.core.exception import WazuhCommsAPIError
 
-from comms_api.authentication.authentication import decode_token, JWTBearer
+from comms_api.authentication.authentication import JWTBearer, decode_token
 from comms_api.core.commands import pull_commands
 from comms_api.models.commands import Commands
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhCommsAPIError
 
 
 @timeout(30)
@@ -32,7 +32,7 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())], request: Req
         List of commands.
     """
     try:
-        uuid = decode_token(token)["uuid"]
+        uuid = decode_token(token)['uuid']
         commands = await pull_commands(request.app.state.commands_manager, uuid)
         return Commands(commands=commands)
     except WazuhCommsAPIError as exc:

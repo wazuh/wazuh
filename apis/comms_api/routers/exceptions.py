@@ -11,21 +11,21 @@ class HTTPError(HTTPException):
         self.message = message
         self.code = code if code is not None else status_code
         self.status_code = status_code
-    
+
     def __str__(self) -> str:
-        return f"{self.code}: {self.message}"
+        return f'{self.code}: {self.message}'
 
 
 async def http_error_handler(request: Request, exc: HTTPError) -> JSONResponse:
     """API internal errors handler.
-    
+
     Parameters
     ----------
     request : Request
         Client request.
     exc : HTTPError
         Exception raised.
-    
+
     Returns
     -------
     JSONResponse
@@ -39,14 +39,14 @@ async def http_error_handler(request: Request, exc: HTTPError) -> JSONResponse:
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """API request validation errors handler.
-    
+
     Parameters
     ----------
     request : Request
         Client request.
     exc : RequestValidationError
         Validation exception raised.
-    
+
     Returns
     -------
     JSONResponse
@@ -63,14 +63,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 async def exception_handler(request: Request, exc: Exception):
     """API global errors handler.
-    
+
     Parameters
     ----------
     request : Request
         Client request.
     exc : Exception
         Base exception raised.
-    
+
     Returns
     -------
     JSONResponse
@@ -84,14 +84,14 @@ async def exception_handler(request: Request, exc: Exception):
 
 async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Starlette HTTP exception handler.
-    
+
     Parameters
     ----------
     request : Request
         Client request.
     exc : StarletteHTTPException
         Starlette exception.
-    
+
     Returns
     -------
     JSONResponse

@@ -12,17 +12,16 @@ from api.signals import (
     ONE_DAY_SLEEP,
     cancel_signal_handler,
     check_installation_uid,
+    cti_context,
     get_update_information,
     lifespan_handler,
-    cti_context
 )
+
 
 # Fixtures
 @pytest.fixture
 def installation_uid_mock():
-    with patch(
-        'api.signals.INSTALLATION_UID_PATH', os.path.join('/tmp', INSTALLATION_UID_KEY)
-    ) as path_mock:
+    with patch('api.signals.INSTALLATION_UID_PATH', os.path.join('/tmp', INSTALLATION_UID_KEY)) as path_mock:
         yield path_mock
 
         os.remove(path_mock)
@@ -78,9 +77,7 @@ async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
 
 
 @pytest.mark.asyncio
-async def test_get_update_information_injects_correct_data_into_app_context(
-    query_update_check_service_mock
-):
+async def test_get_update_information_injects_correct_data_into_app_context(query_update_check_service_mock):
     response_data = {
         'last_check_date': '2023-10-11T16:47:13.066946+00:00',
         'current_version': 'v4.8.0',
@@ -111,9 +108,7 @@ async def test_get_update_information_injects_correct_data_into_app_context(
 
     query_update_check_service_mock.return_value = response_data
     cti_context[INSTALLATION_UID_KEY] = str(uuid4())
-    task = asyncio.create_task(
-        get_update_information()
-    )
+    task = asyncio.create_task(get_update_information())
     await asyncio.sleep(1)
     task.cancel()
 
@@ -126,9 +121,7 @@ async def test_get_update_information_injects_correct_data_into_app_context(
 async def test_get_update_information_schedule(query_update_check_service_mock):
     cti_context[INSTALLATION_UID_KEY] = str(uuid4())
     with patch('api.signals.asyncio') as sleep_mock:
-        task = asyncio.create_task(
-            get_update_information()
-        )
+        task = asyncio.create_task(get_update_information())
         await asyncio.sleep(1)
         task.cancel()
 
@@ -174,7 +167,4 @@ async def test_register_background_tasks(
         with TestClient(Starlette(lifespan=lifespan_handler)):
             assert create_task_mock.create_task.call_count == registered_tasks
 
-        assert (
-            create_task_mock.create_task.return_value.cancel.call_count
-            == registered_tasks
-        )
+        assert create_task_mock.create_task.return_value.cancel.call_count == registered_tasks
