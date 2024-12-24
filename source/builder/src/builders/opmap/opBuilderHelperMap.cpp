@@ -32,7 +32,7 @@ constexpr auto TRACE_REFERENCE_NOT_FOUND = "[{}] -> Failure: Parameter '{}' refe
 constexpr auto TRACE_REFERENCE_TYPE_IS_NOT = "[{}] -> Failure: Parameter '{}' type is not ";
 
 /**
- * @brief Operators supported by the string helpers.
+ * @brief NumberOperators supported by the string helpers.
  *
  */
 enum class StringOperator
@@ -43,10 +43,10 @@ enum class StringOperator
 };
 
 /**
- * @brief Operators supported by the int helpers.
+ * @brief NumberOperators supported by the int helpers.
  *
  */
-enum class IntOperator
+enum class NumberOperator
 {
     SUM,
     SUB,
@@ -54,23 +54,23 @@ enum class IntOperator
     DIV
 };
 
-IntOperator strToOp(const std::string& op)
+NumberOperator strToOp(const std::string& op)
 {
     if ("sum" == op)
     {
-        return IntOperator::SUM;
+        return NumberOperator::SUM;
     }
     else if ("sub" == op)
     {
-        return IntOperator::SUB;
+        return NumberOperator::SUB;
     }
     else if ("mul" == op)
     {
-        return IntOperator::MUL;
+        return NumberOperator::MUL;
     }
     else if ("div" == op)
     {
-        return IntOperator::DIV;
+        return NumberOperator::DIV;
     }
     throw std::runtime_error(fmt::format("Operation '{}' not supported", op));
 }
@@ -200,7 +200,7 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
  * - `DIV`: Divide
  * @return base::Expression
  */
-MapOp opBuilderHelperIntTransformation(IntOperator op,
+MapOp opBuilderHelperIntTransformation(NumberOperator op,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -216,6 +216,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
 
     // Depending on rValue type we store the reference or the integer value, avoiding
     // iterating again through values inside lambda
+    bool isFirstOperand = true;
     for (const auto& arg : opArgs)
     {
         int64_t rValue {};
@@ -230,10 +231,13 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
 
             rValue = asValue->value().getIntAsInt64().value();
 
-            if (IntOperator::DIV == op && 0 == rValue) // Only the first value can be 0 and the result always will be 0
+            if (NumberOperator::DIV == op && !isFirstOperand
+                && 0 == rValue) // Only the first value can be 0 and the result always will be 0
             {
                 throw std::runtime_error("Division by zero is not allowed");
             }
+
+            isFirstOperand = false;
 
             getOperandFn.emplace_back([rValue](base::ConstEvent) -> int64_t { return rValue; });
         }
@@ -263,6 +267,8 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
 
                     return resolvedRValue.value();
                 });
+
+            isFirstOperand = false;
         }
     }
 
@@ -270,7 +276,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
     std::function<int64_t(int64_t l, int64_t r)> transformFunction;
     switch (op)
     {
-        case IntOperator::SUM:
+        case NumberOperator::SUM:
             transformFunction = [overflowFailureTrace](int64_t l, int64_t r)
             {
                 bool overflow = (r > 0) && (l > std::numeric_limits<int64_t>::max() - r);
@@ -284,7 +290,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
                 return l + r;
             };
             break;
-        case IntOperator::SUB:
+        case NumberOperator::SUB:
             transformFunction = [overflowFailureTrace](int64_t l, int64_t r)
             {
                 bool overflow = (r < 0) && (l > std::numeric_limits<int64_t>::max() + r);
@@ -298,7 +304,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
                 return l - r;
             };
             break;
-        case IntOperator::MUL:
+        case NumberOperator::MUL:
             transformFunction = [overflowFailureTrace](int64_t l, int64_t r)
             {
                 bool overflow = (l > 0) && (r > 0) && (l > std::numeric_limits<int64_t>::max() / r);
@@ -313,7 +319,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
                 return l * r;
             };
             break;
-        case IntOperator::DIV:
+        case NumberOperator::DIV:
             transformFunction = [name, overflowFailureTrace](int64_t l, int64_t r)
             {
                 if (0 == r)
@@ -357,6 +363,186 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
 
         json::Json result;
         result.setInt64(res);
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
+/**
+ * @brief Tranform the number in `field` path in the base::Event `e` according to the
+ * `op` definition and the `value` or the `refValue`
+ *
+ * @param definition The transformation definition. i.e :
+ * +float_calculate/[+|-|*|/]/<val1|$ref1>/<.../valN|$refN>/
+ * @param op The operator to use:
+ * - `SUM`: Sum
+ * - `SUB`: Subtract
+ * - `MUL`: Multiply
+ * - `DIV`: Divide
+ * @return base::Expression
+ */
+MapOp opBuilderHelperFloatTransformation(NumberOperator op,
+                                         const std::vector<OpArg>& opArgs,
+                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    std::vector<std::function<double(base::ConstEvent)>> getOperandFn {}; // Throws on error
+
+    // Tracing messages
+    const auto name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace2 {fmt::format(R"([{}] -> Failure: Reference not found or not a number: )", name)};
+    const std::string failureTrace3 = fmt::format(R"([{}] -> Failure: Parameter value makes division by zero: )", name);
+    const std::string overflowFailureTrace =
+        fmt::format(R"([{}] -> Failure: operation result in float Overflown)", name);
+
+    // Depending on rValue type we store the reference or the integer value, avoiding
+    // iterating again through values inside lambda
+    bool isFirstOperand = true;
+    for (const auto& arg : opArgs)
+    {
+        double rValue {};
+        if (arg->isValue())
+        {
+            const auto& asValue = std::static_pointer_cast<Value>(arg);
+            if (const auto opNum = asValue->value().getIntAsInt64(); opNum.has_value())
+            {
+                rValue = static_cast<double>(opNum.value());
+            }
+            else if (const auto opNum = asValue->value().getDouble(); opNum.has_value())
+            {
+                rValue = opNum.value();
+            }
+            else
+            {
+                throw std::runtime_error(
+                    fmt::format("Expected 'number' parameter but got type '{}'", asValue->value().typeName()));
+            }
+
+            if (NumberOperator::DIV == op && !isFirstOperand
+                && 0 == rValue) // Only the first value can be 0 and the result always will be 0
+            {
+                throw std::runtime_error("Division by zero is not allowed");
+            }
+
+            isFirstOperand = false;
+
+            getOperandFn.emplace_back([rValue](base::ConstEvent) -> double { return rValue; });
+        }
+        else
+        {
+            auto ref = std::static_pointer_cast<Reference>(arg);
+            if (buildCtx->validator().hasField(ref->dotPath()))
+            {
+                auto sType = buildCtx->validator().getType(ref->dotPath());
+                if (typeToJType(sType) != json::Json::Type::Number)
+                {
+                    throw std::runtime_error(fmt::format("Expected a number reference but got "
+                                                         "reference '{}' of type '{}'",
+                                                         ref->dotPath(),
+                                                         schemf::typeToStr(sType)));
+                }
+            }
+
+            getOperandFn.emplace_back(
+                [ref, failureTrace2](base::ConstEvent event) -> double
+                {
+                    if (const auto opNum = event->getIntAsInt64(ref->jsonPath()); opNum.has_value())
+                    {
+                        return static_cast<double>(opNum.value());
+                    }
+
+                    if (const auto opNum = event->getDouble(ref->jsonPath()); opNum.has_value())
+                    {
+                        return opNum.value();
+                    }
+
+                    throw std::runtime_error(failureTrace2 + ref->dotPath());
+                });
+
+            isFirstOperand = false;
+        }
+    }
+
+    // Depending on the operator we return the correct function
+    std::function<double(double l, double r)> transformFunction;
+    switch (op)
+    {
+        case NumberOperator::SUM:
+            transformFunction = [overflowFailureTrace](double l, double r)
+            {
+                double result = l + r;
+                if (std::isinf(result) || std::isnan(result))
+                {
+                    throw std::runtime_error(overflowFailureTrace);
+                }
+                return result;
+            };
+            break;
+        case NumberOperator::SUB:
+            transformFunction = [overflowFailureTrace](double l, double r)
+            {
+                double result = l - r;
+                if (std::isinf(result) || std::isnan(result))
+                {
+                    throw std::runtime_error(overflowFailureTrace);
+                }
+                return result;
+            };
+            break;
+        case NumberOperator::MUL:
+            transformFunction = [overflowFailureTrace](double l, double r)
+            {
+                double result = l * r;
+                if (std::isinf(result) || std::isnan(result))
+                {
+                    throw std::runtime_error(overflowFailureTrace);
+                }
+                return result;
+            };
+            break;
+        case NumberOperator::DIV:
+            transformFunction = [name, overflowFailureTrace](double l, double r)
+            {
+                if (0.0f == r)
+                {
+                    throw std::runtime_error(fmt::format(R"("{}" function: Division by zero)", name));
+                }
+                else
+                {
+                    return l / r;
+                }
+            };
+            break;
+        default: break;
+    }
+
+    if (getOperandFn.size() < 2)
+    {
+        throw std::runtime_error("Expected at least two operands");
+    }
+
+    // Function that implements the helper
+    return [=, runState = buildCtx->runState(), getOperandFn = std::move(getOperandFn)](
+               base::ConstEvent event) -> MapResult
+    {
+        double res = 0.0;
+        try
+        {
+            std::vector<double> auxVector {};
+            double leftOp = getOperandFn[0](event);
+            // Skip the first element
+            for (size_t i = 1; i < getOperandFn.size(); i++)
+            {
+                auxVector.emplace_back(getOperandFn[i](event));
+            }
+            res = std::accumulate(auxVector.begin(), auxVector.end(), leftOp, transformFunction);
+        }
+        catch (const std::runtime_error& e)
+        {
+            RETURN_FAILURE(runState, json::Json {}, e.what());
+        }
+
+        json::Json result;
+        result.setDouble(res);
         RETURN_SUCCESS(runState, result, successTrace);
     };
 }
@@ -1000,23 +1186,36 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
 }
 
 // field: +int_calculate/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
-MapOp opBuilderHelperIntCalc(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+// field: +float_calculate/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
+MapBuilder getOpBuilderHelperCalc(bool intCalc)
 {
-    // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
-    // Parameter type check
-    builder::builders::utils::assertValue(opArgs, 0);
-    if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+    return [intCalc](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
-        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
-    }
+        // Assert expected number of parameters
+        builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
+        // Parameter type check
+        builder::builders::utils::assertValue(opArgs, 0);
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
 
-    auto op = strToOp(std::static_pointer_cast<Value>(opArgs[0])->value().getString().value());
+        auto op = strToOp(std::static_pointer_cast<Value>(opArgs[0])->value().getString().value());
 
-    auto newArgs = std::vector<OpArg>(opArgs.begin() + 1, opArgs.end());
-    auto mapOp = opBuilderHelperIntTransformation(op, newArgs, buildCtx);
-    return mapOp;
+        auto newArgs = std::vector<OpArg>(opArgs.begin() + 1, opArgs.end());
+        builder::builders::MapOp mapOp;
+        if (intCalc)
+        {
+            mapOp = opBuilderHelperIntTransformation(op, newArgs, buildCtx);
+        }
+        else
+        {
+            mapOp = opBuilderHelperFloatTransformation(op, newArgs, buildCtx);
+        }
+
+        return mapOp;
+    };
 }
 
 //*************************************************

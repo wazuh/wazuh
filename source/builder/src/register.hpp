@@ -155,7 +155,11 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "to_string", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperNumberToString});
     registry->template add<builders::OpBuilderEntry>(
-        "int_calculate", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opBuilderHelperIntCalc});
+        "int_calculate",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::getOpBuilderHelperCalc(true)});
+    registry->template add<builders::OpBuilderEntry>(
+        "float_calculate",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::getOpBuilderHelperCalc(false)});
     registry->template add<builders::OpBuilderEntry>(
         "regex_extract", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperRegexExtract});
     // Map helpers: Hash functions
