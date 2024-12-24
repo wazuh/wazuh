@@ -45,10 +45,17 @@ class Validator:
         Verifies if all subsets in the parser are valid.
         """
         for subset in self.parser.get_subset():
-            if subset != "all":
-                if subset not in SUBSET_MAPPING:
-                    sys.exit(
-                        f"Helper {self.parser.get_name()}: Subset '{subset}' is not supported")
+            if not isinstance(subset, dict):
+                if subset != "all":
+                    if subset not in SUBSET_MAPPING:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: Subset '{subset}' is not supported")
+            else:
+                for array_subset in subset.values():
+                    for individual_subset in array_subset:
+                        if individual_subset not in SUBSET_MAPPING:
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: Subset '{individual_subset}' is not supported")
 
     def verify_source(self):
         """
@@ -98,19 +105,42 @@ class Validator:
         for type_, subset in zip(self.parser.get_types(), self.parser.get_subset()):
             if not isinstance(type_, list):
                 new_type_ = convert_string_to_type(type_)
-                new_subset = convert_string_to_subset(subset)
-                if new_type_ == Number:
-                    if new_subset is not int and new_subset is not float and new_subset is not Double:
-                        sys.exit(
-                            f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{subset}'")
-                if new_type_ == String:
-                    if new_subset is not Hexadecimal and new_subset is not Regex and new_subset is not Ip and new_subset is not str:
-                        sys.exit(
-                            f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{subset}'")
-                if new_type_ == bool:
-                    if len(subset) != 0:
-                        sys.exit(
-                            f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{subset}'")
+                if not isinstance(subset, dict):
+                    new_subset = convert_string_to_subset(subset)
+                    if new_type_ == Number:
+                        if new_subset is not int and new_subset is not float and new_subset is not Double:
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{subset}'")
+                    if new_type_ == String:
+                        if new_subset is not Hexadecimal and new_subset is not Regex and new_subset is not Ip and new_subset is not str:
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{subset}'")
+                    if new_type_ == bool:
+                        if len(subset) != 0:
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{subset}'")
+                else:
+                    for key, value in subset.items():
+                        if not isinstance(value, list):
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: Subset '{subset}' for key '{key}' should be a list.")
+                        if new_type_ == Number:
+                            for v in value:
+                                if convert_string_to_subset(v) not in [int, float, Double]:
+                                    sys.exit(
+                                        f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{v}' in key '{key}'")
+                        elif new_type_ == String:
+                            for v in value:
+                                if convert_string_to_subset(v) not in [Hexadecimal, Regex, Ip, str]:
+                                    sys.exit(
+                                        f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{v}' in key '{key}'")
+                        elif new_type_ == bool:
+                            if value:
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{value}' in key '{key}'")
+                        else:
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: Unsupported type '{type_}' for subset '{value}' in key '{key}'")
 
     def verify_arguments_names_in_all_places(self):
         restrictions = self.parser.get_general_restrictions()
@@ -231,26 +261,52 @@ class Validator:
         Verifies the restrictions in the parser.
         """
         for subset, restriction in zip(self.parser.get_subset(), self.parser.get_restrictions()):
-            new_subset = convert_string_to_subset(subset)
-            if restriction is not None:
-                if "allowed" not in restriction and "forbidden" not in restriction:
-                    sys.exit(
-                        f"Helper {self.parser.get_name()}: No restrictions were registered, please remove this field from the configuration")
+            if not isinstance(subset, dict):
+                new_subset = convert_string_to_subset(subset)
+                if restriction is not None:
+                    if "allowed" not in restriction and "forbidden" not in restriction:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: No restrictions were registered, please remove this field from the configuration")
 
-                if "allowed" in restriction and "forbidden" in restriction:
-                    sys.exit(
-                        f"Helper {self.parser.get_name()}: It is not possible to configure allowed and forbidden values for the same argument")
+                    if "allowed" in restriction and "forbidden" in restriction:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: It is not possible to configure allowed and forbidden values for the same argument")
 
-                if "allowed" in restriction:
-                    for allowed in restriction["allowed"]:
-                        if type(allowed) != new_subset:
-                            sys.exit(
-                                f"Helper {self.parser.get_name()}: The allowed value '{allowed}' do not have the same type as the argument")
-                elif "forbidden" in restriction:
-                    for forbidden in restriction["forbidden"]:
-                        if type(forbidden) != new_subset:
-                            sys.exit(
-                                f"Helper {self.parser.get_name()}: The forbidden value '{forbidden}' do not have the same type as the argument")
+                    if "allowed" in restriction:
+                        for allowed in restriction["allowed"]:
+                            if type(allowed) != new_subset:
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: The allowed value '{allowed}' do not have the same type as the argument")
+                    elif "forbidden" in restriction:
+                        for forbidden in restriction["forbidden"]:
+                            if type(forbidden) != new_subset:
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: The forbidden value '{forbidden}' do not have the same type as the argument")
+            else:
+                for key, value in subset.items():
+                    if not isinstance(value, list):
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: Subset '{subset}' for key '{key}' should be a list.")
+                    for v in value:
+                        if restriction is not None:
+                            if "allowed" not in restriction and "forbidden" not in restriction:
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: No restrictions were registered for key '{key}', please remove this field from the configuration")
+
+                            if "allowed" in restriction and "forbidden" in restriction:
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: It is not possible to configure allowed and forbidden values for the same argument for key '{key}'")
+
+                            if "allowed" in restriction:
+                                for allowed in restriction["allowed"]:
+                                    if not isinstance(allowed, type(convert_string_to_subset(v))):
+                                        sys.exit(
+                                            f"Helper {self.parser.get_name()}: The allowed value '{allowed}' does not match the type of the subset value '{v}' for key '{key}'")
+                            elif "forbidden" in restriction:
+                                for forbidden in restriction["forbidden"]:
+                                    if not isinstance(forbidden, type(convert_string_to_subset(v))):
+                                        sys.exit(
+                                            f"Helper {self.parser.get_name()}: The forbidden value '{forbidden}' does not match the type of the subset value '{v}' for key '{key}'")
 
     def verify_target_field(self):
         if self.parser.get_helper_type() != "map":
