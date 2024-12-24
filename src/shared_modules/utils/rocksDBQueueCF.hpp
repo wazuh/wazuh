@@ -161,30 +161,18 @@ public:
     {
         if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            // If the queue is empty, nothing to do.
-            if (it->second.size == 0)
-            {
-                return;
-            }
-
             std::string value;
             auto index = it->second.head;
 
-            while (index <= it->second.tail && !m_db->KeyMayExist(rocksdb::ReadOptions(),
-                                                                  m_db->DefaultColumnFamily(),
-                                                                  std::string(id) + "_" + std::to_string(index),
-                                                                  &value))
+            while (!m_db->KeyMayExist(rocksdb::ReadOptions(),
+                                      m_db->DefaultColumnFamily(),
+                                      std::string(id) + "_" + std::to_string(index),
+                                      &value))
             {
                 // If the key does not exist, it means that the queue is not continuous.
                 // This incremental is only for the head, because this is a part of recovery algorithm when the
                 // queue not is continuous.
                 ++index;
-            }
-
-            // If the index is greater than the last element, the queue status is invalid.
-            if (index > it->second.tail)
-            {
-                throw std::runtime_error("Failed to dequeue element, queue is empty");
             }
 
             // RocksDB dequeue element.
