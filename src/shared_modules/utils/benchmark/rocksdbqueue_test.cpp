@@ -1,7 +1,7 @@
-#include "rocksDBQueue.hpp"
 #include <benchmark/benchmark.h>
 #include <filesystem>
 #include <system_error>
+#include "rocksDBQueue.hpp"
 
 constexpr auto TEST_DB = "test.db";
 
@@ -32,12 +32,13 @@ static void popBenchmark(benchmark::State& state)
     std::filesystem::remove_all(TEST_DB, ec);
 
     RocksDBQueue<std::string> queue(TEST_DB);
+    for (int i = 0; i < 100000; i++)
+    {
+        queue.push("test");
+    }
 
     for (auto _ : state)
     {
-        state.PauseTiming();
-        queue.push("test");
-        state.ResumeTiming();
         queue.pop();
     }
 }
