@@ -17,6 +17,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <thread>
 
 namespace Utils
 {
@@ -120,14 +121,9 @@ namespace Utils
             // If the queue is not canceled, get the elements.
             if (!m_canceled)
             {
-                try
+                for (auto i = 0; i < elementsQuantity && i < m_queue.size(); ++i)
                 {
-                    m_queue.frontQueue(bulkQueue,
-                                       m_queue.size() > elementsQuantity ? elementsQuantity : m_queue.size());
-                }
-                catch (const std::exception& e)
-                {
-                    bulkQueue = {};
+                    bulkQueue.push(std::move(m_queue.at(i)));
                 }
             }
 
@@ -137,12 +133,9 @@ namespace Utils
         void popBulk(const uint64_t elementsQuantity)
         {
             std::lock_guard<std::mutex> lock {m_mutex};
-            auto counter = 0ULL;
-
-            while (counter < elementsQuantity && !m_queue.empty())
+            for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
             {
                 m_queue.pop();
-                ++counter;
             }
         }
 

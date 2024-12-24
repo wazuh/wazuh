@@ -474,29 +474,13 @@ IndexerConnector::IndexerConnector(
             {
                 auto data = dataQueue.front();
                 dataQueue.pop();
-                const auto parsedData = nlohmann::json::parse(data, nullptr, false);
-                // If the data is not a valid JSON, log a warning and continue.
-                if (parsedData.is_discarded())
-                {
-                    logWarn(IC_NAME, "Failed to parse event data: %s", data.c_str());
-                    continue;
-                }
 
-                // If the data does not contain the required fields, log a warning and continue.
-                if (!parsedData.contains("id") || !parsedData.contains("operation"))
-                {
-                    logWarn(IC_NAME, "Event fields (id or operation) is missing required fields: %s", data.c_str());
-                    continue;
-                }
-
-                // Id is the unique identifier of the element.
-                const auto& id = parsedData.at("id").get_ref<const std::string&>();
-
-                // Operation is the action to be performed on the element.
-                const auto& operation = parsedData.at("operation").get_ref<const std::string&>();
+                const auto parsedData = nlohmann::json::parse(data);
 
                 // If the element should not be indexed, only delete it from the sync database.
                 const auto noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
+                const auto& operation = parsedData.at("operation").get_ref<const std::string&>();
+                const auto& id = parsedData.at("id").get_ref<const std::string&>();
 
                 if (operation.compare("DELETED") == 0)
                 {
@@ -523,13 +507,6 @@ IndexerConnector::IndexerConnector(
                 else
                 {
                     logDebug2(IC_NAME, "Added document for insertion with id: %s.", id.c_str());
-                    // If the data does not contain the required fields, log a warning and continue.
-                    if (!parsedData.contains("data"))
-                    {
-                        logWarn(IC_NAME, "Event field (data) is missing required fields: %s", data.c_str());
-                        continue;
-                    }
-
                     const auto dataString = parsedData.at("data").dump();
                     if (!noIndex)
                     {
