@@ -161,18 +161,26 @@ public:
     {
         if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            std::string value;
+            bool dequeue = false;
             auto index = it->second.head;
 
-            while (!m_db->KeyMayExist(rocksdb::ReadOptions(),
-                                      m_db->DefaultColumnFamily(),
-                                      std::string(id) + "_" + std::to_string(index),
-                                      &value))
+            while (!dequeue)
             {
-                // If the key does not exist, it means that the queue is not continuous.
-                // This incremental is only for the head, because this is a part of recovery algorithm when the
-                // queue not is continuous.
-                ++index;
+                if (std::string value; !m_db->KeyMayExist(rocksdb::ReadOptions(),
+                                                          m_db->DefaultColumnFamily(),
+                                                          std::string(id) + "_" + std::to_string(index),
+                                                          &value))
+                {
+                    // If the key does not exist, it means that the queue is not continuous.
+                    // This incremental is only for the head, because this is a part of recovery algorithm when the
+                    // queue not is continuous.
+                    ++index;
+                }
+                else
+                {
+                    dequeue = true;
+                    break;
+                }
             }
 
             // RocksDB dequeue element.
@@ -263,9 +271,10 @@ public:
             }
 
             // If the queue have bumps between elements, get the first element in increasing order.
+            auto match = false;
             auto index = it->second.head;
 
-            while (index <= it->second.tail)
+            while (!match)
             {
                 if (const auto status = m_db->Get(rocksdb::ReadOptions(),
                                                   m_db->DefaultColumnFamily(),
@@ -273,6 +282,7 @@ public:
                                                   &value);
                     status.ok())
                 {
+                    match = true;
                     break;
                 }
                 else

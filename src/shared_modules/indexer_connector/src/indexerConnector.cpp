@@ -485,7 +485,7 @@ IndexerConnector::IndexerConnector(
                 // If the data does not contain the required fields, log a warning and continue.
                 if (!parsedData.contains("id") || !parsedData.contains("operation"))
                 {
-                    logWarn(IC_NAME, "Event required fields (id or operation) are missing: %s", data.c_str());
+                    logWarn(IC_NAME, "Event fields (id or operation) is missing required fields: %s", data.c_str());
                     continue;
                 }
 
@@ -526,7 +526,7 @@ IndexerConnector::IndexerConnector(
                     // If the data does not contain the required fields, log a warning and continue.
                     if (!parsedData.contains("data"))
                     {
-                        logWarn(IC_NAME, "Event required field (data) is missing required fields: %s", data.c_str());
+                        logWarn(IC_NAME, "Event field (data) is missing required fields: %s", data.c_str());
                         continue;
                     }
 

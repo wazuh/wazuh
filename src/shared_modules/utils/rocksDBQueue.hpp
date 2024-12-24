@@ -138,16 +138,24 @@ public:
 
     void pop()
     {
+        auto dequeue = false;
         auto index = m_first;
-        std::string value;
 
         // Find the first element in the queue from m_first (included).
-        while (!m_db->KeyMayExist(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value))
+        while (!dequeue)
         {
-            // If the key does not exist, it means that the queue is not continuous.
-            // This incremental is only for the head, because this is a part of recovery algorithm when the queue
-            // not is continuous.
-            ++index;
+            if (std::string value;
+                !m_db->KeyMayExist(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value))
+            {
+                // If the key does not exist, it means that the queue is not continuous.
+                // This incremental is only for the head, because this is a part of recovery algorithm when the queue
+                // not is continuous.
+                ++index;
+            }
+            else
+            {
+                dequeue = true;
+            }
         }
 
         // RocksDB dequeue element.
@@ -202,6 +210,8 @@ public:
             }
             else
             {
+                // If the element is not found, increment the index.
+                // This is a part of recovery algorithm when the queue not is continuous.
                 if (status != rocksdb::Status::NotFound())
                 {
                     throw std::runtime_error("Failed to get elements, error: " + std::to_string(status.code()));
@@ -221,14 +231,16 @@ public:
         }
 
         // If the queue have bumps between elements, get the first element in increasing order.
+        auto match = false;
         auto index = m_first;
 
-        while (index <= m_last)
+        while (!match)
         {
             if (const auto status =
                     m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(index), &value);
                 status.ok())
             {
+                match = true;
                 break;
             }
             else
