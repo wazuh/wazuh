@@ -86,13 +86,11 @@ test:
       operand_right: -3
     should_pass: false
     description: Mul that produces overflow. the limit for a 64-bit integer is exceeded
-  # TODO: It should not fail with a 0 in the numerator
   - arguments:
       operator: div
       operand_left: 0
       operand_right: 8
     should_pass: true
-    skipped: True
     expected: 0
     description: Any division with a numerator equal to zero results in zero as long as the denominator is different from 0.
   - arguments:

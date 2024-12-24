@@ -149,7 +149,7 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
  * @return base::Expression The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-MapOp opBuilderHelperIntCalc(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+MapBuilder opBuilderHelperCalc(bool intCalc);
 
 //*************************************************
 //*             JSON tranform                     *
