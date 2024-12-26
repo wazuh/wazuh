@@ -105,6 +105,24 @@ inline bool startsWith(std::string_view str, std::string_view prefix)
 }
 
 /**
+ * @brief Check if a string endss with a given prefix
+ *
+ * @param str String to be checked
+ * @param suffix suffix to check against
+ * @return true if the string ends with the prefix
+ * @return false otherwise
+ */
+inline bool endsWith(std::string_view str, std::string_view suffix)
+{
+    if (suffix.size() > str.size())
+    {
+        return false;
+    }
+
+    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+/**
  * @brief Unescapes a string by removing escape characters and replacing escaped characters with their original values.
  *
  * If the escapeChar is not escaped is added to the result.
