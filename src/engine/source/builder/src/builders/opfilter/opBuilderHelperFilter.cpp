@@ -1406,4 +1406,95 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
     };
 }
 
+// <field>: +end_with/$<definition_object>|$<object_reference>
+FilterOp opBuilderHelperEndsWith(const Reference& targetField,
+                                 const std::vector<OpArg>& opArgs,
+                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 1);
+
+    if (opArgs[0]->isValue())
+    {
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' value but got '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+    }
+    else
+    {
+        auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
+        const auto& validator = buildCtx->validator();
+        if (validator.hasField(ref->dotPath()))
+        {
+            if (validator.getType(ref->dotPath()) != schemf::Type::KEYWORD
+                && validator.getType(ref->dotPath()) != schemf::Type::TEXT)
+            {
+                throw std::runtime_error(fmt::format("Reference '{}' is of type '{}' but expected 'keyword' or 'text'",
+                                                     ref->dotPath(),
+                                                     schemf::typeToStr(validator.getType(ref->dotPath()))));
+            }
+        }
+    }
+
+    const auto name = buildCtx->context().opName;
+
+    // Tracing
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+
+    const std::string failureTrace1 {
+        fmt::format("[{}] -> Failure: Target field '{}' not found or is not a string", name, targetField.dotPath())};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Target field '{}' is not a string", name, targetField.dotPath())};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Reference not found or is not a string", name)};
+
+    const std::string failureTrace4 {
+        fmt::format("[{}] -> Failure: String does not end with '{}'", name, targetField.dotPath())};
+
+    // Return op
+    return [failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            failureTrace4,
+            successTrace,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
+    {
+        const auto targetString = event->getString(targetField);
+        if (!targetString.has_value())
+        {
+            RETURN_FAILURE(runState, false, failureTrace1);
+        }
+
+        if (parameter->isReference())
+        {
+            auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
+            const auto stringReference = event->getString(refPath);
+            if (!stringReference.has_value())
+            {
+                RETURN_FAILURE(runState, false, failureTrace1);
+            }
+
+            if (!base::utils::string::endsWith(targetString.value(), stringReference.value()))
+            {
+                RETURN_FAILURE(runState, false, failureTrace4);
+            }
+
+            RETURN_SUCCESS(runState, true, successTrace);
+        }
+        else
+        {
+            auto valueString = std::static_pointer_cast<Value>(parameter)->value().getString().value();
+            if (!base::utils::string::endsWith(targetString.value(), valueString))
+            {
+                RETURN_FAILURE(runState, false, failureTrace4);
+            }
+
+            RETURN_SUCCESS(runState, true, successTrace);
+        }
+    };
+}
+
 } // namespace builder::builders::opfilter

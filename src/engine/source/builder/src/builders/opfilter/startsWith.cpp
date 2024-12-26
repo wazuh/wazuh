@@ -19,6 +19,7 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
 
     const auto targetNotFound =
         fmt::format("{} -> Target field '{}' not found", buildCtx->context().opName, targetField.dotPath());
+    const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     const auto failure = fmt::format("{} -> Failure", buildCtx->context().opName);
     const auto targetNotString =
         fmt::format("{} -> Target field '{}' is not a string", buildCtx->context().opName, targetField.dotPath());
@@ -27,6 +28,7 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
             runState = buildCtx->runState(),
             targetNotFound,
             failure,
+            successTrace,
             targetNotString](base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
@@ -48,7 +50,7 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
             RETURN_FAILURE(runState, false, failure);
         }
 
-        RETURN_SUCCESS(runState, true, failure);
+        RETURN_SUCCESS(runState, true, successTrace);
     };
 }
 
