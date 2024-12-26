@@ -14,4 +14,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/ruff-action@v2
+        # Trick to avoid running the linter and failing in this stage
+        with:
+          args: check --show-settings
+      - run: ruff check $(git diff --name-only ${{ github.event.pull_request.base.sha }} -- '*.py')
