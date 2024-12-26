@@ -301,7 +301,7 @@ checks:
   # 1.1.11 Ensure separate partition exists for /var/log. (Scored)
    - id: 31017
      title: "Ensure separate partition exists for /var/log."
-     description: "The /var/log directory is used by system services to store log data ."
+     description: "The /var/log directory is used by system services to store log data."
      rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
      impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
      remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
@@ -311,8 +311,9 @@ checks:
        - cis: ["1.1.11"]
        - cis_csc_v7: ["6 6.3", "6.4"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s'
 
   # 1.1.12 Ensure separate partition exists for /var/log/audit. (Scored)
    - id: 31018
@@ -327,14 +328,15 @@ checks:
        - cis: ["1.1.12"]
        - cis_csc_v7: ["6 6.3", "6.4"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /var/log -> r:\s*/var/log/audit\s'
 
   # 1.1.13 Ensure separate partition exists for /home. (Scored)
    - id: 31019
      title: "Ensure separate partition exists for /home."
      description: "The /home directory is used to support disk storage needs of local users."
-     rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home ."
+     rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home."
      impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
      remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
      references:
@@ -344,8 +346,9 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /var/log -> r:\s*/home\s'
 
   # 1.1.14 Ensure nodev option set on /home partition. (Scored)
    - id: 31020
@@ -358,8 +361,9 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt -kn /home -> r:nodev'
 
   # 1.1.15 Ensure nodev option set on /dev/shm partition. (Scored)
    - id: 31021
@@ -372,8 +376,9 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt -kn /dev/shm -> r:nodev'
 
   # 1.1.16 Ensure nosuid option set on /dev/shm partition. (Scored)
    - id: 31022
@@ -386,8 +391,9 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /dev/shm -> r:nosuid'
 
   # 1.1.17 Ensure noexec option set on /dev/shm partition. (Scored)
    - id: 31023
@@ -397,11 +403,12 @@ checks:
      remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec /dev/shm Notes: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
      compliance:
        - cis: ["1.1.17"]
-       - cis_csc_v7: ["6 2", "2.6", "66 1.1.18", "1", "1", "6 13", "5.1", "67 1.1.19"]
+       - cis_csc_v7: ["6 2", "2.6", "66 1.1.18", "1", "6 13", "5.1", "67 1.1.19"]
        - iso_27001-2013: ["A.12.5.1", "A.12.6.2", "A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1046", "T1047", "T1051", "T1052", "T1053", "T1054", "T1055", "T1058", "T1064", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1091", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1118", "T1121", "T1127", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1164", "T1165", "T1166", "T1169", "T1170", "T1171", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1180", "T1184", "T1187", "T1190", "T1191", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1221", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1519", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:findmnt --kernel /dev/shm -> r:noexec'
 
   # 1.1.21 Ensure sticky bit is set on all world-writable directories. (Scored)
    - id: 31024
@@ -445,31 +452,8 @@ checks:
      condition:
      rules:
 
-  # 1.2.1 Ensure package manager repositories are configured. (Not Scored)
-   - id: 31027
-     title: "Ensure package manager repositories are configured."
-     description: "Systems need to have package manager repositories configured to ensure they receive the latest patches and updates."
-     rationale: "If a system's package repositories are misconfigured important patches may not be identified or a rogue repository could introduce compromised software."
-     remediation: "Configure your package manager repositories according to site policy."
-     compliance:
-       - cis: ["1.2.1"]
-       - cis_csc_v7: ["6 4.5", "3.4"]
-       - mitre_techniques: ["T1017", "T1019", "T1068", "T1072", "T1073", "T1075", "T1100", "T1103", "T1137", "T1138", "T1189", "T1190", "T1195", "T1210", "T1211", "T1212", "T1495"]
-     condition:
-     rules:
-
-  # 1.2.2 Ensure GPG keys are configured. (Not Scored)
-   - id: 31028
-     title: "Ensure GPG keys are configured."
-     description: "Most packages managers implement GPG key signing to verify package integrity during installation."
-     rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system."
-     remediation: "Update your package manager GPG keys in accordance with site policy."
-     compliance:
-       - cis: ["1.2.2"]
-       - cis_csc_v7: ["6 4.5", "3.4"]
-       - mitre_techniques: ["T1017", "T1019", "T1068", "T1072", "T1073", "T1075", "T1100", "T1103", "T1137", "T1138", "T1189", "T1190", "T1195", "T1210", "T1211", "T1212", "T1495"]
-     condition:
-     rules:
+  # 1.2.1 Ensure package manager repositories are configured. (Not Scored) - Not Implemented0
+  # 1.2.2 Ensure GPG keys are configured. (Not Scored) - Not Implemented
 
   # 1.3.1 Ensure AIDE is installed. (Scored)
    - id: 31029
@@ -483,8 +467,10 @@ checks:
        - cis: ["1.3.1"]
        - cis_csc_v7: ["6 3.5", "14.9"]
        - iso_27001-2013: ["A.12.4.3"]
-     condition:
+     condition: all
      rules:
+      - "c:dpkg-query -s aide -> r:^Status: install ok installed"
+      - "c:dpkg-query -s aide-common -> r:^Status: install ok installed"
 
   # 1.3.2 Ensure filesystem integrity is regularly checked. (Scored)
    - id: 31030
@@ -499,8 +485,12 @@ checks:
        - cis: ["1.3.2"]
        - cis_csc_v7: ["6 3.5", "14.9"]
        - iso_27001-2013: ["A.12.4.3"]
-     condition:
+     condition: all
      rules:
+      - "c:systemctl show dailyaidecheck.service -> r:^LoadState=loaded"
+      - "c:systemctl show dailyaidecheck.service -> r:^UnitFileState=static"
+      - "c:systemctl show dailyaidecheck.timer -> r:^LoadState=loaded"
+      - "c:systemctl show dailyaidecheck.timer -> r:^ActiveState=active"
 
   # 1.4.1 Ensure permissions on bootloader config are configured. (Scored)
    - id: 31031
@@ -513,8 +503,9 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat /boot/grub/grub.cfg -> r:Access: \(0400/-r--------\) && r:Uid:\s+\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s+\t*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.2 Ensure bootloader password is set. (Scored)
    - id: 31032
@@ -527,8 +518,10 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*set superusers="
+      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*\\w+"
 
   # 1.4.3 Ensure authentication required for single user mode. (Scored)
    - id: 31033
@@ -547,7 +540,7 @@ checks:
   # 1.4.4 Ensure interactive boot is not enabled. (Not Scored)
    - id: 31034
      title: "Ensure interactive boot is not enabled."
-     description: "Interactive boot allows console users to interactively select which services start on boot. Not all distributions support this capability. The PROMPT_FOR_CONFIRM option provides console users the ability to interactively boot the system and select which services to start on boot ."
+     description: "Interactive boot allows console users to interactively select which services start on boot. Not all distributions support this capability. The PROMPT_FOR_CONFIRM option provides console users the ability to interactively boot the system and select which services to start on boot."
      rationale: "Turn off the PROMPT_FOR_CONFIRM option on the console to prevent console users from potentially overriding established security settings."
      remediation: "If interactive boot is available disable it."
      compliance:
@@ -558,7 +551,7 @@ checks:
      condition:
      rules:
 
-  # 1.5 Additional Process Hardening Page 97 1.5.1 Ensure core dumps are restricted. (Scored)
+  # 1.5 Ensure core dumps are restricted. (Scored)
    - id: 31035
      title: "Additional Process Hardening Page 97 1.5.1 Ensure core dumps are restricted."
      description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
@@ -569,8 +562,12 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - "c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable = 0"
+      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
+      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
+      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
 
   # 1.5.2 Ensure XD/NX support is enabled. (Scored)
    - id: 31036
@@ -595,8 +592,11 @@ checks:
        - cis: ["1.5.3"]
        - cis_csc_v7: ["6 8.4", "8.3"]
        - mitre_techniques: ["T1003", "T1068", "T1080", "T1085", "T1101", "T1117", "T1131", "T1189", "T1190", "T1203", "T1210", "T1211", "T1212"]
-     condition:
+     condition: any
      rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'f:/etc/sysctl.conf -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'd:/etc/sysctl.d/ -> r:\.+ -> r:^\s*kernel.randomize_va_space\s*=\s*2'
 
   # 1.5.4 Ensure prelink is disabled. (Scored)
    - id: 31038
