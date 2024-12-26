@@ -13,19 +13,24 @@ To start using them, just install the tools following the steps below.
 Install ruff:
 
 ```console
-pip install ruff --break-system-packages
+pip install ruff
 ```
 
 > [!Note]
-> You can now use `ruff check` and `ruff format` commands to look for or fix issues present in the code.
+> Python version +3.11 requires specifying the flag `--break-system-packages` to install a package outside of a virtual environment.
+
+You can now use `ruff check` and `ruff format` commands to look for or fix issues present in the code.
 
 ### Pre-commit
 
 Install pre-commit:
 
 ```console
-pip install pre-commit --break-system-packages
+pip install pre-commit
 ```
+
+> [!Note]
+> Python version +3.11 requires specifying the flag `--break-system-packages` to install a package outside of a virtual environment.
 
 Install the pre-commit configuration:
 
