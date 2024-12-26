@@ -20,7 +20,7 @@ COMMAND_USER_NAME = 'Management API'
 
 
 class CommandsManager(BaseIndex):
-    """Set of methods to interact with the commands manager."""
+    """Set of methods to interact with the commands manager"""
 
     INDEX = '.commands'
     PLUGIN_URL = '/_plugins/_command_manager'
