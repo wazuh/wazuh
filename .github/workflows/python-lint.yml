@@ -14,4 +14,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
       - uses: astral-sh/ruff-action@v2
+        with:
+          args: ruff check $(git diff --name-only ${{ github.event.before }} )
