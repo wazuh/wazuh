@@ -468,10 +468,30 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
                 main_logger_mock.assert_any_call(error_message)
 
 
+                with patch('scripts.wazuh_server.master_main', side_effect=RuntimeError('TESTING')):
+                    wazuh_server.start()
+                    main_logger_mock.assert_any_call('Main loop stopped.')
+
+
+def test_stop_loop():
+    """Check and set the behavior of wazuh_server `stop_loop` function."""
+
+    loop_mock = Mock()
+    wazuh_server.stop_loop(loop_mock)
+    loop_mock.stop.assert_called_once()
+
 
 @patch('scripts.wazuh_server.shutdown_server')
+def test_sigterm_handler(shutdown_server_mock):
+    """Check and set the behavior of wazuh_server `sigterm_handler` function."""
+
+    server_pid = 1
+    wazuh_server.sigterm_handler(signal.SIGTERM, 10, server_pid)
+    shutdown_server_mock.assert_called_with(server_pid)
+
+
 @patch('scripts.wazuh_server.os.kill')
-def test_stop(os_mock, shutdown_mock):
+def test_stop(os_mock):
     """Check and set the behavior of wazuh_server stop function."""
     from wazuh.core import common
 
@@ -481,7 +501,6 @@ def test_stop(os_mock, shutdown_mock):
     with patch.object(pyDaemonModule, 'get_wazuh_server_pid', return_value=pid):
         wazuh_server.stop()
 
-    shutdown_mock.assert_called_once_with(pid)
     os_mock.assert_called_once_with(pid, signal.SIGTERM)
 
 

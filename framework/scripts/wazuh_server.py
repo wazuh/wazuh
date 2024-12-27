@@ -11,8 +11,9 @@ import os
 import signal
 import subprocess
 import sys
-from typing import List
 import time
+from functools import partial
+from typing import Any, List
 
 from wazuh.core import pyDaemonModule
 from wazuh.core.authentication import generate_keypair, keypair_exists
@@ -365,7 +366,10 @@ def start():
         os.setuid(wazuh_uid())
 
     server_pid = os.getpid()
+
     pyDaemonModule.create_pid(SERVER_DAEMON_NAME, server_pid)
+    signal.signal(signal.SIGTERM, partial(sigterm_handler, server_pid=server_pid))
+
     main_logger.info(f'Starting server (pid: {server_pid})')
 
     if server_config.node.type == NodeType.MASTER:
@@ -383,6 +387,7 @@ def start():
     try:
         loop = asyncio.new_event_loop()
         background_tasks.add(loop.create_task(get_orders(main_logger)))
+        loop.add_signal_handler(signal.SIGTERM, partial(stop_loop, loop))
         loop.run_until_complete(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
@@ -390,10 +395,38 @@ def start():
         main_logger.error("Directory '/tmp' needs read, write & execution " "permission for 'wazuh' user")
     except WazuhDaemonError as e:
         main_logger.error(e)
+    except RuntimeError:
+        main_logger.info('Main loop stopped.')
     except Exception as e:
         main_logger.error(f'Unhandled exception: {e}')
     finally:
         shutdown_server(server_pid)
+
+
+def stop_loop(loop: asyncio.BaseEventLoop):
+    """Stop the given asyncio loop.
+
+    Parameters
+    ----------
+    loop : asyncio.BaseEventLoop
+        The loop to stop.
+    """
+    loop.stop()
+
+
+def sigterm_handler(signum: int, frame: Any, server_pid: int) -> None:
+    """Handle SIGTERM signal shutting down the server.
+
+    Parameters
+    ----------
+    signum : int
+        The signal number received.
+    frame : Any
+        The current stack frame (unused).
+    server_pid : int
+        The server process ID used to terminate.
+    """
+    shutdown_server(server_pid)
 
 
 def stop():
@@ -404,7 +437,6 @@ def stop():
         main_logger.warning('Wazuh server is not running.')
         sys.exit(0)
 
-    shutdown_server(server_pid)
     os.kill(server_pid, signal.SIGTERM)
 
 
