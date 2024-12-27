@@ -775,8 +775,9 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.1.3 Ensure remote login warning banner is configured properly. (Scored)
    - id: 31049
@@ -789,8 +790,9 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
 
   # 1.7.1.4 Ensure permissions on /etc/motd are configured. (Scored)
    - id: 31050
@@ -803,8 +805,9 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.1.5 Ensure permissions on /etc/issue are configured. (Scored)
    - id: 31051
@@ -817,8 +820,9 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.1.6 Ensure permissions on /etc/issue.net are configured. (Scored)
    - id: 31052
@@ -831,8 +835,9 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.2 Ensure GDM login banner is configured. (Scored)
    - id: 31053
@@ -845,8 +850,14 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: any
      rules:
+      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]"
+      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-enable=true"
+      - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-text=\.+'
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:[org/gnome/login-screen]"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-enable=true"
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-text="
 
   # 1.8 Ensure updates, patches, and additional security software are installed. (Not Scored)
    - id: 31054
@@ -858,8 +869,9 @@ checks:
        - cis: ["1.8"]
        - cis_csc_v7: ["6 4.5", "3.4"]
        - mitre_techniques: ["T1017", "T1019", "T1068", "T1072", "T1073", "T1075", "T1100", "T1103", "T1137", "T1138", "T1189", "T1190", "T1195", "T1210", "T1211", "T1212", "T1495"]
-     condition:
+     condition: all
      rules:
+      - 'not c:sh -c "dnf check-update | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
 
   # 2.1.1 Ensure chargen services are not enabled. (Scored)
    - id: 31055
@@ -872,8 +884,9 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: none
      rules:
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^chargen'
 
   # 2.1.2 Ensure daytime services are not enabled. (Scored)
    - id: 31056
@@ -886,8 +899,9 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: none
      rules:
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^daytime'
 
   # 2.1.3 Ensure discard services are not enabled. (Scored)
    - id: 31057
@@ -900,8 +914,9 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: none
      rules:
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^discard'
 
   # 2.1.4 Ensure echo services are not enabled. (Scored)
    - id: 31058
@@ -914,8 +929,9 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: none
      rules:
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^echo'
 
   # 2.1.5 Ensure time services are not enabled. (Scored)
    - id: 31059
@@ -928,8 +944,9 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: none
      rules:
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^time'
 
   # 2.1.6 Ensure rsh server is not enabled. (Scored)
    - id: 31060
@@ -941,8 +958,10 @@ checks:
        - cis: ["2.1.6"]
        - cis_csc_v7: ["6 3.4", "9.1"]
        - iso_27001-2013: ["A.13.1.2"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q rsh-server -> r:^package rsh-server is not installed"
+      - "not c:dpkg-query -s rshd inetutils-rshd -> r:^Status: install ok installed"
 
   # 2.1.7 Ensure talk server is not enabled. (Scored)
    - id: 31061
@@ -955,8 +974,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q talk-server -> r:^package talk-server is not installed"
+      - "not c:dpkg-query -s talkd inetutils-talkd -> r:^Status: install ok installed"
 
   # 2.1.8 Ensure telnet server is not enabled. (Scored)
    - id: 31062
@@ -968,8 +989,10 @@ checks:
        - cis: ["2.1.8"]
        - cis_csc_v7: ["6 3.4", "9.1"]
        - iso_27001-2013: ["A.13.1.2"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
+      - "not c:dpkg-query -s telnetd inetutils-telnetd -> r:^Status: install ok installed"
 
   # 2.1.9 Ensure tftp server is not enabled. (Scored)
    - id: 31063
@@ -982,8 +1005,11 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q tftp-server -> r:^package tftp-server is not installed"
+      - "not c:dpkg-query -s tftpd inetutils-tftpd -> r:^Status: install ok installed"
+
 
   # 2.1.10 Ensure xinetd is not enabled. (Scored)
    - id: 31064
@@ -996,8 +1022,11 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q xinetd -> r:^package xinetd is not installed"
+      - "not c:dpkg-query -s xinetd inetutils-xinetd -> r:^Status: install ok installed"
+
 
   # 2.2.1.1 Ensure time synchronization is in use. (Not Scored)
    - id: 31065
