@@ -1038,8 +1038,10 @@ checks:
        - cis: ["2.2.1.1"]
        - cis_csc_v7: ["6 6.1", "6.1"]
        - iso_27001-2013: ["A.12.4.4"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q chrony -> r:^chrony-"
+      - "c:dpkg-query -W chrony -> r:^chrony"
 
   # 2.2.1.2 Ensure ntp is configured. (Scored)
    - id: 31066
@@ -1051,8 +1053,12 @@ checks:
        - cis: ["2.2.1.2"]
        - cis_csc_v7: ["6 6.1", "6.1"]
        - iso_27001-2013: ["A.12.4.4"]
-     condition:
+     condition: all
      rules:
+      - "f:/etc/ntp.conf"
+      - 'f:/etc/ntp.conf -> r:^\s*\t*server|^\s*\t*pool'
+      - 'f:/etc/sysconfig/ntpd -> r:^\s*\t*OPTIONS\.*-u ntp:ntp'
+      - 'f:/etc/sysconfig/ntp -> r:^\s*\t*NTPD_OPTIONS\.*-u ntp:ntp'
 
   # 2.2.1.3 Ensure chrony is configured. (Scored)
    - id: 31067
@@ -1064,8 +1070,10 @@ checks:
        - cis: ["2.2.1.3"]
        - cis_csc_v7: ["6 6.1", "6.1"]
        - iso_27001-2013: ["A.12.4.4"]
-     condition:
+     condition: all
      rules:
+      - "f:/etc/chrony.conf"
+      - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
 
   # 2.2.1.4 Ensure systemd-timesyncd is configured. (Scored)
    - id: 31068
@@ -1077,8 +1085,10 @@ checks:
        - cis: ["2.2.1.4"]
        - cis_csc_v7: ["6 6.1", "6.1"]
        - iso_27001-2013: ["A.12.4.4"]
-     condition:
+     condition: any
      rules:
+      - "f:/etc/systemd/timesyncd.conf -> r:^NTP|^FallbackNTP"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled"
 
   # 2.2.2 Ensure X Window System is not installed. (Scored)
    - id: 31069
@@ -1091,8 +1101,10 @@ checks:
        - cis_csc_v7: ["6 2", "2.6"]
        - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
        - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
-     condition:
+     condition: any
      rules:
+      - 'not c:rpm -qa -> r:^xorg-x11 -> r:\w+'
+      - 'not c:dpkg-query -l -> r:^xorg-x11|^inetutils-xorg-x11 -> r:\w+'
 
   # 2.2.3 Ensure Avahi Server is not enabled. (Scored)
    - id: 31070
@@ -1105,8 +1117,11 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:dpkg-query -s avahi-daemon -> r:package 'avahi-daemon' is not installed"
+      - "not c:systemctl show avahi-daemon.socket avahi-daemon.service -> r:^LoadState=loaded|^ActiveState=active"
+      - "c:rpm -q avahi -> r:^package avahi is not installed"
 
   # 2.2.4 Ensure CUPS is not enabled. (Scored)
    - id: 31071
@@ -1122,8 +1137,11 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q cups -> r:^package cups is not installed"
+      - "not c:systemctl is-enabled cups.service -> r:^enabled"
+
 
   # 2.2.5 Ensure DHCP Server is not enabled. (Scored)
    - id: 31072
@@ -1138,8 +1156,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q dhcp-server -> r:^package dhcp-server is not installed"
+      - "not c:systemctl is-enabled dhcpd.service -> r:^enabled"
 
   # 2.2.6 Ensure LDAP server is not enabled. (Scored)
    - id: 31073
@@ -1154,8 +1174,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q openldap-servers -> r:^package openldap-servers is not installed"
+      - "not c:systemctl is-enabled slapd.service -> r:^enabled"
 
   # 2.2.7 Ensure NFS and RPC are not enabled. (Scored)
    - id: 31074
@@ -1168,8 +1190,12 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q -> r:rpcbind package rpcbind is not installed"
+      - "c:rpm -q nfs-utils -> r:package nfs-utils is not installed"
+      - "not c:systemctl is-enabled nfs.service -> r:^enabled"
+      - "not c:systemctl is-enabled rpcbind.service -> r:^enabled"
 
   # 2.2.8 Ensure DNS Server is not enabled. (Scored)
    - id: 31075
@@ -1182,8 +1208,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q bind -> r:^package bind is not installed"
+      - "not c:systemctl is-enabled named.service -> r:^enabled"
 
   # 2.2.9 Ensure FTP Server is not enabled. (Scored)
    - id: 31076
@@ -1196,8 +1224,11 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:dpkg-query -s vsftpd -> r:package 'vsftpd' is not installed"
+      - "not c:systemctl is-enabled vsftpd.service -> r:^enabled"
+      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
 
   # 2.2.10 Ensure HTTP server is not enabled. (Scored)
    - id: 31077
@@ -1210,8 +1241,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q httpd -> r:^package httpd is not installed"
+      - "not c:systemctl is-enabled httpd.service -> r:^enabled"
 
   # 2.2.11 Ensure IMAP and POP3 server is not enabled. (Scored)
    - id: 31078
