@@ -78,6 +78,10 @@ class EXPORTED IndexerConnector final
               const SecureCommunication& secureCommunication,
               const std::shared_ptr<ServerSelector>& selector);
 
+    void sendBulkReactive(const std::vector<std::pair<std::string, bool>>& actions,
+                          const std::string& url,
+                          const SecureCommunication& secureCommunication);
+
     /**
      * @brief Get agent ids of documents from the indexer.
      * @param url Indexer URL.
