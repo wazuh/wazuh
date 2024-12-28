@@ -165,6 +165,16 @@ public:
         }
     }
 
+    uint64_t bulkSize() const
+    {
+        return m_bulkSize;
+    }
+
+    void bulkSize(const uint64_t bulkSize)
+    {
+        m_bulkSize = bulkSize;
+    }
+
 private:
     void dispatch()
     {
@@ -203,6 +213,8 @@ private:
             }
             catch (const std::exception& ex)
             {
+                // Sleep for a second to avoid busy loop
+                std::this_thread::sleep_for(std::chrono::seconds(1));
                 std::cerr << "Dispatch handler error, " << ex.what() << "\n";
             }
         }
@@ -222,7 +234,7 @@ private:
     std::atomic_bool m_running = true;
 
     const size_t m_maxQueueSize;
-    const uint64_t m_bulkSize;
+    uint64_t m_bulkSize;
 };
 
 template<typename Type, typename Functor>
