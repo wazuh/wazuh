@@ -1257,8 +1257,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "not c:systemctl is-enabled dovecot.service dovecot-imapd.socket dovecot-pop3d.socket -> r:^enabled"
+      - "c:rpm -q dovecot -> r:^package dovecot is not installed"
 
   # 2.2.12 Ensure Samba is not enabled. (Scored)
    - id: 31079
@@ -1271,8 +1273,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "not c:systemctl is-enabled smbd.service -> r:^enabled"
+      - "c:rpm -q samba -> r:^package samba is not installed"
 
   # 2.2.13 Ensure HTTP Proxy Server is not enabled. (Scored)
    - id: 31080
@@ -1285,8 +1289,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q squid -> r:^package squid is not installed"
+      - "not c:systemctl is-enabled squid.service -> r:^enabled"
 
   # 2.2.14 Ensure SNMP Server is not enabled. (Scored)
    - id: 31081
@@ -1299,8 +1305,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "not c:systemctl is-enabled snmpd.service -> r:^enabled"
+      - "c:rpm -q snmpd -> r:^package snmpd is not installed"
 
   # 2.2.15 Ensure mail transfer agent is configured for local-only mode. (Scored)
    - id: 31082
@@ -1313,8 +1321,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - 'c:ss -lntu -> r:\.*:25\.* && !r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127.0.0.\d+:|\s+[::1]:'
 
   # 2.2.16 Ensure rsync service is not enabled. (Scored)
    - id: 31083
@@ -1327,8 +1337,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:systemctl is-enabled rsyncd -> r:masked"
+      - "c:rpm -q rsync -> r:^package rsync is not installed"
 
   # 2.2.17 Ensure NIS Server is not enabled. (Scored)
    - id: 31084
@@ -1341,8 +1353,10 @@ checks:
        - cis_csc_v7: ["6 9.1", "9.2"]
        - iso_27001-2013: ["A.13.1.3"]
        - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q ypserv -> r:^package ypserv is not installed"
+      - "not c:systemctl is-enabled ypserv.service -> r:^enabled"
 
   # 2.3.1 Ensure NIS Client is not installed. (Scored)
    - id: 31085
@@ -1355,22 +1369,26 @@ checks:
        - cis_csc_v7: ["6 2", "2.6"]
        - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
        - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
+      - "not c:systemctl is-enabled ypbind.service -> r:^enabled"
 
   # 2.3.2 Ensure rsh client is not installed. (Scored)
    - id: 31086
      title: "Ensure rsh client is not installed."
      description: "The rsh package contains the client commands for the rsh services."
-     rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
+     rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin."
      remediation: "Uninstall rsh using the appropriate package manager or manual installation: yum remove rsh apt-get remove rsh zypper remove rsh."
      compliance:
        - cis: ["2.3.2"]
        - cis_csc_v7: ["6 3.4", "4.5"]
        - iso_27001-2013: ["A.9.4.3"]
        - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q rsh -> r:^package rsh is not installed"
+      - "not c:systemctl is-enabled rsh.service -> r:^enabled"
 
   # 2.3.3 Ensure talk client is not installed. (Scored)
    - id: 31087
@@ -1383,8 +1401,10 @@ checks:
        - cis_csc_v7: ["6 2", "2.6"]
        - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
        - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q talk -> r:^package talk is not installed"
+      - "not c:systemctl is-enabled talk.service -> r:^enabled"
 
   # 2.3.4 Ensure telnet client is not installed. (Scored)
    - id: 31088
@@ -1397,8 +1417,10 @@ checks:
        - cis_csc_v7: ["6 3.4", "4.5"]
        - iso_27001-2013: ["A.9.4.3"]
        - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q telnet -> r:^package telnet is not installed"
+      - "not c:systemctl is-enabled telnet.service -> r:^enabled"
 
   # 3.1.1 Ensure IP forwarding is disabled. (Scored)
    - id: 31089
@@ -1409,8 +1431,10 @@ checks:
      compliance:
        - cis: ["3.1.1"]
        - cis_csc_v7: ["6 3", "11"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
 
   # 3.1.2 Ensure packet redirect sending is disabled. (Scored)
    - id: 31090
@@ -1421,8 +1445,10 @@ checks:
      compliance:
        - cis: ["3.1.2"]
        - cis_csc_v7: ["6 3", "11"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:=\s*\t*0$'
 
   # 3.2.1 Ensure source routed packets are not accepted. (Scored)
    - id: 31091
@@ -1433,8 +1459,12 @@ checks:
      compliance:
        - cis: ["3.2.1"]
        - cis_csc_v7: ["6 3", "11"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:=\s*\t*0$'
 
   # 3.2.2 Ensure ICMP redirects are not accepted. (Scored)
    - id: 31092
@@ -1445,8 +1475,12 @@ checks:
      compliance:
        - cis: ["3.2.2"]
        - cis_csc_v7: ["6 3", "11"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:=\s*\t*0$'
 
   # 3.2.3 Ensure secure ICMP redirects are not accepted. (Scored)
    - id: 31093
@@ -1457,8 +1491,10 @@ checks:
      compliance:
        - cis: ["3.2.3"]
        - cis_csc_v7: ["6 3", "11"]
-     condition:
+     condition: all
      rules:
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*\t*0$'
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:=\s*\t*0$'
 
   # 3.2.4 Ensure suspicious packets are logged. (Scored)
    - id: 31094
