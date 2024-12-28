@@ -1852,8 +1852,9 @@ checks:
        - cis: ["4.1.1.3"]
        - cis_csc_v7: ["6 6.3", "6.4"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/audit/auditd.conf -> r:max_log_file_action\s*\t*=\s*\t*keep_logs'
 
   # 4.1.2 Ensure auditd is installed. (Scored)
    - id: 31123
@@ -1865,8 +1866,10 @@ checks:
        - cis: ["4.1.2"]
        - cis_csc_v7: ["6 6.2", "6.2"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: any
      rules:
+      - "c:dpkg -s auditd audispd-plugins -> r:Status: install ok installed"
+      - "c:rpm -q audit audit-libs -> r:^audit-"
 
   # 4.1.3 Ensure auditd service is enabled. (Scored)
    - id: 31124
@@ -1878,8 +1881,10 @@ checks:
        - cis: ["4.1.3"]
        - cis_csc_v7: ["6 6.2", "6.2"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: any
      rules:
+      - "p:auditd"
+      - "c:systemctl is-enabled auditd -> r:^enabled"
 
   # 4.1.4 Ensure auditing for processes that start prior to auditd is enabled. (Scored)
    - id: 31125
@@ -1891,22 +1896,34 @@ checks:
        - cis: ["4.1.4"]
        - cis_csc_v7: ["6 6.2", "6.2"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: any
      rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:audit=1'
+      - "f:/boot/grub2/grubenv -> r:kernelopts= && r:audit=1"
 
   # 4.1.5 Ensure events that modify date and time information are collected. (Scored)
    - id: 31126
      title: "Ensure events that modify date and time information are collected."
      description: "Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier \"time-change\"."
      rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
-     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change Notes: Reloading the auditd config to set active settings may require a system reboot."
+     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in x.rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines -a always exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time change -a always exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in x.rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines -a always exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change Notes: Reloading the auditd config to set active settings may require a system reboot."
      compliance:
        - cis: ["4.1.5"]
        - cis_csc_v7: ["6 3.6", "5.5"]
        - iso_27001-2013: ["A.12.1.2"]
        - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F a0=0x0'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-w && r:/etc/localtime && r:-p wa'
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F a0=0x0"
+      - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-w && r:/etc/localtime && r:-p wa"
 
   # 4.1.6 Ensure events that modify user/group information are collected. (Scored)
    - id: 31127
@@ -1919,8 +1936,24 @@ checks:
        - cis_csc_v7: ["6 5.4", "4.8"]
        - iso_27001-2013: ["A.12.4.3"]
        - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1047", "T1051", "T1053", "T1054", "T1055", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1088", "T1089", "T1096", "T1097", "T1098", "T1100", "T1134", "T1136", "T1145", "T1146", "T1150", "T1156", "T1157", "T1165", "T1169", "T1175", "T1184", "T1190", "T1196", "T1198", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1489", "T1492", "T1494", "T1495", "T1501", "T1504", "T1505", "T1525", "T1530"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/shadow && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/security/opasswd && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch.conf && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.conf && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.d && r:-p wa'
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/shadow && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/security/opasswd && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch.conf && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.conf && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.d && r:-p wa"
 
   # 4.1.8 Ensure events that modify the system's Mandatory Access Controls are collected. (Scored)
    - id: 31128
@@ -1933,8 +1966,16 @@ checks:
        - cis_csc_v7: ["6 3.6", "5.5"]
        - iso_27001-2013: ["A.12.1.2"]
        - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
-     condition:
+     condition: any
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor.d && r:-p wa'
+      - "c:auditctl -l -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa"
+      - "c:auditctl -l -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor.d && r:-p wa"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/selinux/ -p wa -k MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /usr/share/selinux/ -p wa -k MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
   # 4.1.9 Ensure login and logout events are collected. (Scored)
    - id: 31129
@@ -1946,21 +1987,31 @@ checks:
        - cis: ["4.1.9"]
        - cis_csc_v7: ["6 5.5", "16.10"]
        - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1110", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa'
+      - "c:auditctl -l -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa"
+      - "c:auditctl -l -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa"
 
   # 4.1.10 Ensure session initiation information is collected. (Scored)
    - id: 31130
      title: "Ensure session initiation information is collected."
-     description: "Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier \"session.\" The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier \"logins.\"."
+     description: "Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier \"session.\" The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp All audit records will be tagged with the identifier \"logins.\"."
      rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
      remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k logins -w /var/log/btmp -p wa -k logins Notes: The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp) Reloading the auditd config to set active settings may require a system reboot."
      compliance:
        - cis: ["4.1.10"]
        - cis_csc_v7: ["6 5.5", "16.10"]
        - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1110", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa'
+      - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa"
+      - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa"
+      - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa"
 
   # 4.1.11 Ensure discretionary access control permission modification events are collected. (Scored)
    - id: 31131
@@ -1973,8 +2024,20 @@ checks:
        - cis_csc_v7: ["6 3.6", "5.5"]
        - iso_27001-2013: ["A.12.1.2"]
        - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:lchown && r:fchown && r:chown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:lchown && r:fchown && r:chown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
   # 4.1.12 Ensure unsuccessful unauthorized file access attempts are collected. (Scored)
    - id: 31132
@@ -1986,22 +2049,18 @@ checks:
        - cis: ["4.1.12"]
        - cis_csc_v7: ["6 14.6", "14.9"]
        - iso_27001-2013: ["A.12.4.3"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
-  # 4.1.13 Ensure use of privileged commands is collected. (Scored)
-   - id: 31133
-     title: "Ensure use of privileged commands is collected."
-     description: "Monitor privileged programs (those that have the setuid and/or setgid bit set on execution) to determine if unprivileged users are running these commands."
-     rationale: "Execution of privileged commands by non-privileged users could be an indication of someone trying to gain unauthorized access to the system."
-     remediation: "To remediate this issue, the system administrator will have to execute a find command to locate all the privileged programs and then add an audit line for each one of them. The audit parameters associated with this are as follows: -F path=\" $1 \" - will populate each file name found through the find command and processed by awk. -F perm=x - will write an audit record if the file is executed. -F auid>=500 - will write a record if the user executing the command is not a privileged user. - F auid!= 4294967295 - will ignore Daemon events All audit records should be tagged with the identifier \"privileged\". Run the following command replacing with a list of partitions where programs can be executed from on your system: # find <partition> -xdev \\( -perm -4000 -o -perm -2000 \\) -type f | awk '{print \\ \"-a always,exit -F path=\" $1 \" -F perm=x -F auid>=500 -F auid!=4294967295 \\ -k privileged\" }' Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules And add all resulting lines to the file. Notes: Reloading the auditd config to set active settings may require a system reboot."
-     compliance:
-       - cis: ["4.1.13"]
-       - cis_csc_v7: ["6 5.1", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
+  # 4.1.13 Ensure use of privileged commands is collected. (Scored) - Not Implemented
 
   # 4.1.14 Ensure successful file system mounts are collected. (Scored)
    - id: 31134
@@ -2014,8 +2073,12 @@ checks:
        - cis_csc_v7: ["6 13", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
   # 4.1.15 Ensure file deletion events by users are collected. (Scored)
    - id: 31135
@@ -2026,8 +2089,12 @@ checks:
      compliance:
        - cis: ["4.1.15"]
        - cis_csc_v7: ["6 13", "13"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
   # 4.1.16 Ensure changes to system administration scope (sudoers) is collected. (Scored)
    - id: 31136
@@ -2040,22 +2107,14 @@ checks:
        - cis_csc_v7: ["6 5.4", "4.8"]
        - iso_27001-2013: ["A.12.4.3"]
        - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1047", "T1051", "T1053", "T1054", "T1055", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1088", "T1089", "T1096", "T1097", "T1098", "T1100", "T1134", "T1136", "T1145", "T1146", "T1150", "T1156", "T1157", "T1165", "T1169", "T1175", "T1184", "T1190", "T1196", "T1198", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1489", "T1492", "T1494", "T1495", "T1501", "T1504", "T1505", "T1525", "T1530"]
-     condition:
+     condition: all
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
 
-  # 4.1.17 Ensure system administrator actions (sudolog) are collected. (Scored)
-   - id: 31137
-     title: "Ensure system administrator actions (sudolog) are collected."
-     description: "Monitor the sudo log file. If the system has been properly configured to disable the use of the su command and force all administrators to have to log in first and then use sudo to execute privileged commands, then all administrator commands will be logged to /var/log/sudo.log . Any time a command is executed, an audit event will be triggered as the /var/log/sudo.log file will be opened for write and the executed administration command will be written to the log."
-     rationale: "Changes in /var/log/sudo.log indicate that an administrator has executed a command or the log file itself has been tampered with. Administrators will want to correlate the events written to the audit trail with the records written to /var/log/sudo.log to verify if unauthorized commands have been executed."
-     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /var/log/sudo.log -p wa -k actions Notes: The system must be configured with sudisabled (See Item 5.6 Ensure access to the su command is restricted) to force all command execution through sudo. This will not be effective on the console, as administrators can log in as root. Reloading the auditd config to set active settings may require a system reboot."
-     compliance:
-       - cis: ["4.1.17"]
-       - cis_csc_v7: ["6 5.1", "5.5"]
-       - iso_27001-2013: ["A.12.1.2"]
-       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
-     condition:
-     rules:
+  # 4.1.17 Ensure system administrator actions (sudolog) are collected. (Scored) - Not Implemented
 
   # 4.1.18 Ensure kernel module loading and unloading is collected. (Scored)
    - id: 31138
@@ -2068,20 +2127,30 @@ checks:
        - cis_csc_v7: ["6 3", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: any
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'c:auditctl -l -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
   # 4.1.19 Ensure the audit configuration is immutable. (Scored)
    - id: 31139
      title: "Ensure the audit configuration is immutable."
-     description: "Set system audit so that audit rules cannot be modified with auditctl . Setting the flag \"-e 2\" forces audit to be put in immutable mode. Audit changes can only be made on system reboot."
+     description: "Set system audit so that audit rules cannot be modified with auditctl. Setting the flag \"-e 2\" forces audit to be put in immutable mode. Audit changes can only be made on system reboot."
      rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
      remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file Notes: This setting will ensure reloading the auditd config to set active settings requires a system reboot."
      compliance:
        - cis: ["4.1.19"]
        - cis_csc_v7: ["6 3", "6"]
-     condition:
+     condition: any
      rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\s*\t*2'
+      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
 
   # 4.2.1.1 Ensure rsyslog is installed. (Scored)
    - id: 31140
@@ -2093,8 +2162,10 @@ checks:
        - cis: ["4.2.1.1"]
        - cis_csc_v7: ["6 6.2", "6.2"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: any
      rules:
+      - "c:rpm -q rsyslog -> r:^rsyslog-"
+      - "c:dpkg-query -s rsyslog -> r:^Status: install ok installed"
 
   # 4.2.1.2 Ensure rsyslog Service is enabled. (Scored)
    - id: 31141
@@ -2106,21 +2177,13 @@ checks:
        - cis: ["4.2.1.2"]
        - cis_csc_v7: ["6 6.2", "6.2"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: any
      rules:
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
+      - "c:systemctl is-active rsyslog.service -> r:^active"
+      - "c:chkconfig rsyslog -> r:^rsyslog"
 
-  # 4.2.1.3 Ensure logging is configured. (Not Scored)
-   - id: 31142
-     title: "Ensure logging is configured."
-     description: "The /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files specifies rules for logging and which files are to be used to log certain classes of messages."
-     rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
-     remediation: "Edit the following lines in the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files as appropriate for your environment: *.emerg :omusrmsg:* mail.* -/var/log/mail mail.info -/var/log/mail.info mail.warning -/var/log/mail.warn mail.err /var/log/mail.err news.crit -/var/log/news/news.crit news.err -/var/log/news/news.err news.notice -/var/log/news/news.notice *.=warning;*.=err -/var/log/warn *.crit /var/log/warn *.*;mail.none;news.none -/var/log/messages local0,local1.* -/var/log/localmessages local2,local3.* -/var/log/localmessages local4,local5.* -/var/log/localmessages local6,local7.* -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd."
-     compliance:
-       - cis: ["4.2.1.3"]
-       - cis_csc_v7: ["6 6.2", "6.2"]
-       - iso_27001-2013: ["A.12.4.1"]
-     condition:
-     rules:
+  # 4.2.1.3 Ensure logging is configured. (Not Scored) - Not Implemented
 
   # 4.2.1.4 Ensure rsyslog default file permissions configured. (Scored)
    - id: 31143
@@ -2133,8 +2196,10 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
 
   # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Scored)
    - id: 31144
@@ -2145,22 +2210,12 @@ checks:
      compliance:
        - cis: ["4.2.1.5"]
        - cis_csc_v7: ["6 6.6", "6.6"]
-     condition:
+     condition: any
      rules:
+      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^*.* action\.+target='
+      - 'f:/etc/rsyslog.conf -> r:^*.* action\.+target='
 
-  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Not Scored)
-   - id: 31145
-     title: "Ensure remote rsyslog messages are only accepted on designated log hosts."
-     description: "By default, rsyslog does not listen for log messages coming in from remote systems. The ModLoad tells rsyslog to load the imtcp.so module so it can listen over a network via TCP. The InputTCPServerRun option instructs rsyslogd to listen on the specified TCP port."
-     rationale: "The guidance in the section ensures that remote log hosts are configured to only accept rsyslog data from hosts within the specified domain and that those systems that are not designed to be log hosts do not accept any remote rsyslog messages. This provides protection from spoofed log data and ensures that system administrators are reviewing reasonably complete syslog data in a central location."
-     remediation: "For hosts that are designated as log hosts, edit the /etc/rsyslog.conf file and un- comment or add the following lines: $ModLoad imtcp $InputTCPServerRun 514 For hosts that are not designated as log hosts, edit the /etc/rsyslog.conf file and comment or remove the following lines: # $ModLoad imtcp # $InputTCPServerRun 514 Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd."
-     compliance:
-       - cis: ["4.2.1.6"]
-       - cis_csc_v7: ["6 9.1", "9.2"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-     condition:
-     rules:
+  # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Not Scored) - Not Implemented
 
   # 4.2.2.1 Ensure journald is configured to send logs to rsyslog. (Scored)
    - id: 31146
@@ -2173,8 +2228,9 @@ checks:
      compliance:
        - cis: ["4.2.2.1"]
        - cis_csc_v7: ["6 6.2", "6.5"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.2.2 Ensure journald is configured to compress large log files. (Scored)
    - id: 31147
@@ -2188,8 +2244,9 @@ checks:
        - cis: ["4.2.2.2"]
        - cis_csc_v7: ["6 6.2", "6.4"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*=\s*yes'
 
   # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk. (Scored)
    - id: 31148
@@ -2203,39 +2260,30 @@ checks:
        - cis: ["4.2.2.3"]
        - cis_csc_v7: ["6 6.2", "6.2"]
        - iso_27001-2013: ["A.12.4.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*=\s*persistent'
 
   # 4.2.3 Ensure permissions on all logfiles are configured. (Scored)
    - id: 31149
      title: "Ensure permissions on all logfiles are configured."
      description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
      rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-     remediation: "Run the following commands to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx \"{}\" + -o -type d -exec chmod g- w,o-rwx \"{}\" + Notes: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions."
+     remediation: "Run the following commands to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx \"{}\" + -o -type d -exec chmod g-w,o-rwx \"{}\" + Notes: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions."
      compliance:
        - cis: ["4.2.3"]
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
 
-  # 4.3 Ensure logrotate is configured. (Not Scored)
-   - id: 31150
-     title: "Ensure logrotate is configured."
-     description: "The system includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/logrotate.d/syslog is the configuration file used to rotate log files created by syslog or rsyslog."
-     rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-     remediation: "Edit /etc/logrotate.conf and /etc/logrotate.d/* to ensure logs are rotated according to site policy. Notes: If no maxage setting is set for logrotate a situation can occur where logrotate is interrupted and fails to delete rotated logfiles. It is recommended to set this to a value greater than the longest any log file should exist on your system to ensure that any such logfile is removed but standard rotation settings are not overridden."
-     compliance:
-       - cis: ["4.3"]
-       - cis_csc_v7: ["6 6.3", "6.4"]
-       - iso_27001-2013: ["A.12.4.1"]
-     condition:
-     rules:
+  # 4.3 Ensure logrotate is configured. (Not Scored) - Not Implemented
 
-  # 5.1 Configure cron Page 380 5.1.1 Ensure cron daemon is enabled. (Scored)
+  # 5.1 Ensure cron daemon is enabled. (Scored)
    - id: 31151
-     title: "Configure cron Page 380 5.1.1 Ensure cron daemon is enabled."
+     title: "Ensure cron daemon is enabled."
      description: "The cron daemon is used to execute batch jobs on the system."
      rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
      remediation: "Based on your system configuration, run the appropriate one of the following commands to enable cron : # chkconfig crond on # systemctl enable crond # update-rc.d crond enable Notes: Additional methods of enabling a service exist. Consult your distribution documentation for appropriate methods."
@@ -2244,8 +2292,11 @@ checks:
        - cis_csc_v7: ["6 6", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: any
      rules:
+      - "c:systemctl is-active cron.service -> r:enabled"
+      - "c:systemctl is-enabled crond.service -> r:enabled"
+      - "p:crond"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Scored)
    - id: 31152
