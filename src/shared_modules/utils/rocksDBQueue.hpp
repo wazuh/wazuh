@@ -22,10 +22,35 @@
 #include <stdexcept>
 #include <string>
 
+constexpr auto ROCKSDB_QUEUE_PADDING {20};
+
 // RocksDB integration as queue
 template<typename T, typename U = T>
 class RocksDBQueue final
 {
+private:
+    std::string paddedKey(uint64_t key) const
+    {
+        return Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
+    }
+
+    void keyNormalization(uint64_t key, std::string_view keyString, std::string_view value)
+    {
+        if (keyString.size() < ROCKSDB_QUEUE_PADDING)
+        {
+            auto stringPaddedKey = paddedKey(key);
+            if (const auto status = m_db->Put(rocksdb::WriteOptions(), stringPaddedKey, value); !status.ok())
+            {
+                throw std::runtime_error("Failed to re-insert element during key normalization: " + stringPaddedKey);
+            }
+
+            if (const auto status = m_db->Delete(rocksdb::WriteOptions(), keyString); !status.ok())
+            {
+                throw std::runtime_error("Failed to remove element during key normalization: " + stringPaddedKey);
+            }
+        }
+    }
+
 public:
     explicit RocksDBQueue(const std::string& connectorName)
     {
@@ -110,7 +135,12 @@ public:
 
         while (it->Valid())
         {
-            auto key = std::stoull(it->key().ToString());
+            auto stringKey = it->key().ToString();
+            auto value = it->value().data();
+            auto valueSize = it->value().size();
+            auto key = std::stoull(stringKey);
+            keyNormalization(key, stringKey, {value, valueSize});
+
             if (key > m_last)
             {
                 m_last = key;
@@ -129,12 +159,9 @@ public:
     void push(const T& data)
     {
         // RocksDB enqueue element.
-        if (const auto status =
-                m_db->Put(rocksdb::WriteOptions(), Utils::padString(std::to_string(m_last + 1), '0', 20), data);
-            !status.ok())
+        if (const auto status = m_db->Put(rocksdb::WriteOptions(), paddedKey(m_last + 1), data); !status.ok())
         {
-            throw std::runtime_error("Failed to enqueue element: " +
-                                     Utils::padString(std::to_string(m_last + 1), '0', 20));
+            throw std::runtime_error("Failed to enqueue element: " + paddedKey(m_last + 1));
         }
         // If enqueue is successful, increment the last element.
         ++m_last;
@@ -153,10 +180,8 @@ public:
         std::string value;
 
         // Find the first element in the queue from m_first (included).
-        while (index <= m_last && !m_db->KeyMayExist(rocksdb::ReadOptions(),
-                                                     m_db->DefaultColumnFamily(),
-                                                     Utils::padString(std::to_string(index), '0', 20),
-                                                     &value))
+        while (index <= m_last &&
+               !m_db->KeyMayExist(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(index), &value))
         {
             // If the key does not exist, it means that the queue is not continuous.
             // This incremental is only for the head, because this is a part of recovery algorithm when the queue
@@ -171,10 +196,9 @@ public:
         }
 
         // RocksDB dequeue element.
-        if (const auto status = m_db->Delete(rocksdb::WriteOptions(), Utils::padString(std::to_string(index), '0', 20));
-            !status.ok())
+        if (const auto status = m_db->Delete(rocksdb::WriteOptions(), paddedKey(index)); !status.ok())
         {
-            throw std::runtime_error("Failed to dequeue element: " + Utils::padString(std::to_string(index), '0', 20));
+            throw std::runtime_error("Failed to dequeue element: " + paddedKey(index));
         }
         else
         {
@@ -214,10 +238,8 @@ public:
         while (counter < elementsQuantity)
         {
             U value;
-            if (const auto status = m_db->Get(rocksdb::ReadOptions(),
-                                              m_db->DefaultColumnFamily(),
-                                              Utils::padString(std::to_string(index), '0', 20),
-                                              &value);
+            if (const auto status =
+                    m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(index), &value);
                 status.ok())
             {
                 queue.push(std::move(value));
@@ -248,10 +270,8 @@ public:
 
         while (index <= m_last)
         {
-            if (const auto status = m_db->Get(rocksdb::ReadOptions(),
-                                              m_db->DefaultColumnFamily(),
-                                              Utils::padString(std::to_string(index), '0', 20),
-                                              &value);
+            if (const auto status =
+                    m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(index), &value);
                 status.ok())
             {
                 break;
@@ -273,14 +293,11 @@ public:
     {
         U value;
 
-        if (const auto status = m_db->Get(rocksdb::ReadOptions(),
-                                          m_db->DefaultColumnFamily(),
-                                          Utils::padString(std::to_string(m_first + index), '0', 20),
-                                          &value);
+        if (const auto status =
+                m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(m_first + index), &value);
             !status.ok())
         {
-            throw std::runtime_error("Failed to get element at index: " +
-                                     Utils::padString(std::to_string(m_first + index), '0', 20));
+            throw std::runtime_error("Failed to get element at index: " + paddedKey(m_first + index));
         }
 
         return value;

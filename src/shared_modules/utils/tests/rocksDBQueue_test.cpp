@@ -92,6 +92,42 @@ TEST_F(RocksDBQueueTest, KeyPaddingIsCorrect)
     delete db;
 }
 
+// Test correct key padding for RocksDB with pre-existent keys not padded
+TEST_F(RocksDBQueueTest, KeyPaddingIsCorrectPreExistentKeysNotPadded)
+{
+    // Load pre-existent keys into the database
+    queue.reset();
+    rocksdb::DB* db;
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    rocksdb::Status status = rocksdb::DB::Open(options, TEST_DB, &db);
+    ASSERT_TRUE(status.ok()) << "Failed to open database: " << status.ToString();
+
+    std::string binaryValue = {'\xA1', '\x3A', '\x5F', '\x00', '\x10', '\xDA', '\x0F', '\x1A'};
+
+    db->Put(rocksdb::WriteOptions(), "1", "value1");
+    db->Put(rocksdb::WriteOptions(), "2", "value2");
+    db->Put(rocksdb::WriteOptions(), "3", binaryValue);
+    delete db;
+
+    // Retrieve the values
+    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB);
+
+    EXPECT_EQ(queue->size(), 3);
+
+    auto value = queue->front();
+    EXPECT_EQ(value, "value1");
+    queue->pop();
+
+    value = queue->front();
+    EXPECT_EQ(value, "value2");
+    queue->pop();
+
+    value = queue->front();
+    EXPECT_EQ(value, binaryValue);
+    queue->pop();
+}
+
 // Test popping an element updates the queue correctly
 TEST_F(RocksDBQueueTest, PopMethodRemovesFirstElement)
 {
