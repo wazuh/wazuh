@@ -68,9 +68,9 @@ def test_start_daemons(mock_popen, root):
 
     mock_popen.assert_has_calls([
         call([wazuh_server.ENGINE_BINARY_PATH, 'server', '-l', 'info','start']),
-        call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.MANAGEMENT_API_SCRIPT_PATH] + \
+        call([wazuh_server.MANAGEMENT_API_SCRIPT_PATH] + \
               (['-r'] if root else [])),
-        call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.COMMS_API_SCRIPT_PATH] + \
+        call([wazuh_server.COMMS_API_SCRIPT_PATH] + \
               (['-r'] if root else [])),
     ], any_order=True)
 
@@ -117,8 +117,8 @@ def test_start_daemons_ko(mock_popen):
 
     mock_popen.assert_has_calls([
         call([wazuh_server.ENGINE_BINARY_PATH, 'server', '-l', 'info', 'start']),
-        call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.MANAGEMENT_API_SCRIPT_PATH]),
-        call([wazuh_server.EMBEDDED_PYTHON_PATH, wazuh_server.COMMS_API_SCRIPT_PATH]),
+        call([wazuh_server.MANAGEMENT_API_SCRIPT_PATH]),
+        call([wazuh_server.COMMS_API_SCRIPT_PATH]),
     ], any_order=True)
 
 

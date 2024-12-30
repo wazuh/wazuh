@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/share/wazuh-server/framework/python/bin/python3
 
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -33,7 +33,6 @@ from wazuh.core.task.order import get_orders
 SERVER_DAEMON_NAME = 'wazuh-server'
 COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / 'wazuh_comms_apid.py'
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
-EMBEDDED_PYTHON_PATH = WAZUH_SHARE / 'framework' / 'python' / 'bin' / 'python3'
 ENGINE_BINARY_PATH = WAZUH_SHARE / 'bin' / 'wazuh-engine'
 ENGINE_DAEMON_NAME = 'wazuh-engined'
 MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
@@ -107,9 +106,9 @@ def start_daemons(root: bool):
 
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
-        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
+        COMMS_API_DAEMON_NAME: [COMMS_API_SCRIPT_PATH]
             + (['-r'] if root else []),
-        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
+        MANAGEMENT_API_DAEMON_NAME: [MANAGEMENT_API_SCRIPT_PATH]
             + (['-r'] if root else []),
     }
 

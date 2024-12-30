@@ -11,4 +11,4 @@ SCRIPT_NAME="$(basename ${SCRIPT_PATH_NAME})"
 
 PYTHON_SCRIPT="${WAZUH_SHARE}/apis/scripts/$(echo ${SCRIPT_NAME} | sed 's/\-/_/g').py"
 
-${WAZUH_SHARE}/${WPYTHON_BIN} ${PYTHON_SCRIPT} $@
+${PYTHON_SCRIPT} $@
