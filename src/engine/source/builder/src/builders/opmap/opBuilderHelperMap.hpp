@@ -50,6 +50,17 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Helper function to build a MapOp that converts a float or double to an integer allowing truncation or rounding
+ * during processing
+ *
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return base::Expression
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Helper function to build a MapOp that concatenates strings from OpArgs.
  *
  * This function constructs a MapOp that concatenates strings from OpArgs, either directly
