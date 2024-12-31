@@ -1,5 +1,5 @@
-name: "Legacy unit tests run for Wazuh agent"
-description: "This action runs Wazuh agent unit tests on Ubuntu Linux/Windows"
+name: "Legacy unit tests run for Wazuh"
+description: "This action runs Wazuh unit tests on Ubuntu Linux/Windows"
 inputs:
    target:
      required: true
@@ -22,7 +22,7 @@ runs:
         source .github/actions/legacy_unit_tests.sh
         format_display_test_results ${{ inputs.target }}
     - name: Format and Display Test Coverage
-      if: ${{ inputs.target == 'agent' }}
+      if: ${{ inputs.target != 'winagent' }}
       shell: bash
       run: |
         source .github/actions/legacy_unit_tests.sh
