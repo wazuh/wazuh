@@ -6676,9 +6676,9 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
+      - 'c:powershell \"(Test-Path -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\\") | Select-Object -ExpandProperty AllowCloudSearch -ErrorAction SilentlyContinue\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\\" -Name AllowCloudSearch) -eq 0\" -> r:1'
 
   # 18.10.59.3 (L1) Ensure 'Allow indexing of encrypted files' is set to 'Disabled'. (Automated)
   - id: 27331 
