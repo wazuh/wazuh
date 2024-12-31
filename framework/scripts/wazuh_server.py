@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import logging
 import os
+import psutil
 import signal
 import subprocess
 import sys
@@ -338,7 +339,7 @@ def start():
     """Start function of the wazuh-server script in charge of starting the server process."""
     try:
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
-        if server_pid:
+        if server_pid and psutil.pid_exists(server_pid):
             print(f'The server is already running on process {server_pid}')
             sys.exit(1)
     except StopIteration:
@@ -387,6 +388,7 @@ def start():
         loop = asyncio.new_event_loop()
         background_tasks.add(loop.create_task(get_orders(main_logger)))
         loop.add_signal_handler(signal.SIGTERM, partial(stop_loop, loop))
+        loop.create_task(monitor_server_daemons(loop, server_pid))
         loop.run_until_complete(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
@@ -400,6 +402,64 @@ def start():
         main_logger.error(f'Unhandled exception: {e}')
     finally:
         shutdown_server(server_pid)
+
+
+class ChildDaemonError(Exception):
+    pass
+
+
+def check_daemon(proc_list: list, proc_name: str, children_number: int):
+    """Check the daemon is in the list of children process and have the correct number of children.
+
+    Parameters
+    ----------
+    proc_list : list
+        List of children process to search within.
+    proc_name : str
+        Name of the process to check.
+    children_number : int
+        Expected number of children to check.
+
+    Raises
+    ------
+    ChildDaemonError
+        When the process does not have the correct number of children process.
+    """
+    child: psutil.Process = [i for i in proc_list if proc_name.replace('-', '_')[:-1] in i.name()][0]
+    if child.status() == psutil.STATUS_ZOMBIE:
+        main_logger.error(f"Daemon `{proc_name}` is not running, killing the whole server.")
+        clean_pid_files(proc_name)
+    if len(child.children()) != children_number:
+        raise ChildDaemonError(f'Daemon {child.name()} does not have the correct number of children process.')
+
+
+async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_pid: int):
+    """Monitor the status of the server daemons.
+
+    Parameters
+    ----------
+    loop : asyncio.BaseEventLoop
+        The loop to stop in case any of the daemons does not meet the expected status.
+    server_pid : int
+        PID of the server to get the children.
+    """
+    proc_tree = {
+        MANAGEMENT_API_DAEMON_NAME: {"children": 3},
+        COMMS_API_DAEMON_NAME: {"children": 8},
+        ENGINE_DAEMON_NAME: {"children": 1}
+    }
+
+    while True:
+        await asyncio.sleep(10)
+        server_proc = psutil.Process(server_pid)
+        child_proceses = server_proc.children()
+
+        try:
+            for key, value in proc_tree.items():
+                check_daemon(child_proceses, key, value['children'])
+        except ChildDaemonError as e:
+            main_logger.error(f'{e} Stopping the whole server.')
+            stop_loop(loop)
 
 
 def stop_loop(loop: asyncio.BaseEventLoop):

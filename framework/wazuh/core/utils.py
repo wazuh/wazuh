@@ -81,7 +81,8 @@ def clean_pid_files(daemon: str) -> None:
             try:
                 pid = int(match.group(1))
                 process = psutil.Process(pid)
-                command = process.cmdline()[-1]
+                command = process.cmdline()[-1] if process.status() != psutil.STATUS_ZOMBIE \
+                    else daemon.replace('-', '_')
 
                 if daemon.replace('-', '_') in command:
                     pgid = os.getpgid(pid)
