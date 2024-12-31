@@ -124,6 +124,7 @@ typedef struct _global_agent_t {
     uint64_t disconnect_agents_queries;
     uint64_t find_agent_queries;
     uint64_t get_agent_info_queries;
+    uint64_t get_agent_info_by_connection_status_and_node_queries;
     uint64_t get_agents_by_connection_status_queries;
     uint64_t get_all_agents_queries;
     uint64_t get_distinct_groups_queries;
@@ -146,6 +147,7 @@ typedef struct _global_agent_t {
     struct timeval disconnect_agents_time;
     struct timeval find_agent_time;
     struct timeval get_agent_info_time;
+    struct timeval get_agent_info_by_connection_status_and_node_time;
     struct timeval get_agents_by_connection_status_time;
     struct timeval get_all_agents_time;
     struct timeval get_distinct_groups_time;

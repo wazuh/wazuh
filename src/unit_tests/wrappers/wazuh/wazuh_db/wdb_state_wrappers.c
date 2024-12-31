@@ -160,7 +160,15 @@ void __wrap_w_inc_global_agent_get_agent_info() {
     function_called();
 }
 
+void __wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node() {
+    function_called();
+}
+
 void __wrap_w_inc_global_agent_get_agent_info_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
 

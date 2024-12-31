@@ -261,6 +261,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
+    WDB_STMT_GLOBAL_GET_AGENT_INFO_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
@@ -1172,6 +1173,17 @@ int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output);
  * @retval -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_agent_info(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to get all the agent information filtered by connection status and node name.
+ *
+ * @param wdb The global struct database.
+ * @param input String with 'agent_id', 'connection_status' and 'node_name'.
+ * @param output Response of the query in JSON format.
+ * @retval 0 Success: response contains the value.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_get_agent_info_by_connection_status_and_node(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to parse string with agent's labels and set them in labels table in global database.
@@ -2235,6 +2247,18 @@ wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, 
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
+
+/**
+ * @brief Function to get the information of a particular agent stored in Wazuh DB filtered by connection status and node name.
+ *
+ * @param wdb The Global struct database.
+ * @param id Agent id.
+ * @param connection_status Connection status of the agent requested.
+ * @param node_name Cluster node name.
+ * @retval JSON with agent information on success.
+ * @retval NULL on error.
+ */
+cJSON* wdb_global_get_agent_info_by_connection_status_and_node(wdb_t *wdb, int id, char* connection_status, char* node_name);
 
 /**
  * @brief Gets every agent ID.

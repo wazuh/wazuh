@@ -86,6 +86,8 @@ int __wrap_wdb_global_get_all_agents_context(wdb_t *wdb);
 
 cJSON* __wrap_wdb_global_get_agent_info(wdb_t *wdb, int id);
 
+cJSON* __wrap_wdb_global_get_agent_info_by_connection_status_and_node(__attribute__((unused)) wdb_t *wdb, int id, char* status, char* node);
+
 int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
 
 cJSON* __wrap_wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, const char* node_name, int limit, wdbc_result* status);

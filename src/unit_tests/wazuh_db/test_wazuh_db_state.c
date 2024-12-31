@@ -193,6 +193,8 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.global_breakdown.agent.find_agent_time.tv_usec = 78120;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agent_info_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agent_info_time.tv_usec = 152358;
+    wdb_state.queries_breakdown.global_breakdown.agent.get_agent_info_by_connection_status_and_node_time.tv_sec = 0;
+    wdb_state.queries_breakdown.global_breakdown.agent.get_agent_info_by_connection_status_and_node_time.tv_usec = 1000;
     wdb_state.queries_breakdown.global_breakdown.agent.get_all_agents_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.agent.get_all_agents_time.tv_usec = 25101;
     wdb_state.queries_breakdown.global_breakdown.agent.get_agents_by_connection_status_time.tv_sec = 1;
@@ -507,7 +509,7 @@ void test_wazuhdb_create_state_json(void ** state) {
     cJSON* time = cJSON_GetObjectItem(metrics, "time");
 
     assert_non_null(cJSON_GetObjectItem(time, "execution"));
-    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 26227);
+    assert_int_equal(cJSON_GetObjectItem(time, "execution")->valueint, 26228);
 
     cJSON* execution_breakdown = cJSON_GetObjectItem(time, "execution_breakdown");
 
@@ -605,7 +607,7 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(agent_sync_time, "dbsync")->valueint, 2);
 
     assert_non_null(cJSON_GetObjectItem(execution_breakdown, "global"));
-    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 7091);
+    assert_int_equal(cJSON_GetObjectItem(execution_breakdown, "global")->valueint, 7092);
 
     cJSON* global_time_breakdown = cJSON_GetObjectItem(execution_breakdown, "global_breakdown");
 
@@ -646,6 +648,8 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "find-agent")->valueint, 78);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agent-info"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agent-info")->valueint, 152);
+    assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agent-info-by-connection-status-and-node"));
+    assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agent-info-by-connection-status-and-node")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-all-agents"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "get-all-agents")->valueint, 25);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agents-by-connection-status"));

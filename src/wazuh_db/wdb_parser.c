@@ -1262,6 +1262,20 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_get_agent_info_time(diff);
             }
+        } else if (strcmp(query, "get-agent-info-by-connection-status-and-node") == 0) {
+            w_inc_global_agent_get_agent_info_by_connection_status_and_node();
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for get-agent-info-by-connection-status-and-node.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.60s'", query);
+                result = OS_INVALID;
+            } else {
+                gettimeofday(&begin, 0);
+                result = wdb_parse_global_get_agent_info_by_connection_status_and_node(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_get_agent_info_by_connection_status_and_node_time(diff);
+            }
         } else if (strcmp(query, "reset-agents-connection") == 0) {
             w_inc_global_agent_reset_agents_connection();
             if (!next) {
@@ -2144,7 +2158,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (scan_id->valueint < 0) {
             mdebug1("Malformed JSON: field 'id' cannot be negative");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            cJSON_Delete(event);            
+            cJSON_Delete(event);
             return OS_INVALID;
         }
 
@@ -6082,6 +6096,57 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
     if (agent_info = wdb_global_get_agent_info(wdb, agent_id), !agent_info) {
         mdebug1("Error getting agent information from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agent information from global.db.");
+        return OS_INVALID;
+    }
+
+    out = cJSON_PrintUnformatted(agent_info);
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+    os_free(out);
+    cJSON_Delete(agent_info);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_get_agent_info_by_connection_status_and_node(wdb_t* wdb, char* input, char* output) {
+    cJSON *agent_info = NULL;
+    char *out = NULL;
+    int agent_id = 0;
+    char *connection_status = NULL;
+    char *node_name = NULL;
+    char *next = NULL;
+    const char delim[2] = " ";
+    char *savedptr = NULL;
+
+    /* Get id*/
+    next = strtok_r(input, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'id' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'id' not found");
+        return OS_INVALID;
+    }
+    agent_id = atoi(next);
+
+    /* Get connection status */
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'connection_status' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'connection_status' not found");
+        return OS_INVALID;
+    }
+    connection_status = next;
+
+    /* Get node name */
+    next = strtok_r(NULL, delim, &savedptr);
+    if (next == NULL) {
+        mdebug1("Invalid arguments 'node_name' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'node_name' not found");
+        return OS_INVALID;
+    }
+    node_name = next;
+
+    if (agent_info = wdb_global_get_agent_info_by_connection_status_and_node(wdb, agent_id, connection_status, node_name), !agent_info) {
+        mdebug1("Error getting agent filtered information from global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error getting agent filtered information from global.db.");
         return OS_INVALID;
     }
 

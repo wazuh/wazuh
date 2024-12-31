@@ -28,6 +28,7 @@ static const char *global_db_commands[] = {
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
+    [WDB_GET_AGENT_INFO_BY_CONNECTION_STATUS_AND_NODE] = "global get-agent-info-by-connection-status-and-node %d %s %s",
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
@@ -584,6 +585,27 @@ cJSON* wdb_get_agent_info(int id, int *sock) {
 
     if (!root) {
         merror("Error querying Wazuh DB to get the agent's %d information.", id);
+        return NULL;
+    }
+
+    return root;
+}
+
+cJSON* wdb_get_agent_info_by_connection_status_and_node(int id, char* status, char* node, int *sock) {
+    cJSON *root = NULL;
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int aux_sock = -1;
+
+    sqlite3_snprintf(sizeof(wdbquery), wdbquery, global_db_commands[WDB_GET_AGENT_INFO_BY_CONNECTION_STATUS_AND_NODE], id, status, node);
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    if (!root) {
+        merror("Error querying Wazuh DB to get the agent's %d filtered information.", id);
         return NULL;
     }
 

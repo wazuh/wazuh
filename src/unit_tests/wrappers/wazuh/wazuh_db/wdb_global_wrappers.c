@@ -265,6 +265,16 @@ cJSON* __wrap_wdb_global_get_agent_info(__attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
+cJSON* __wrap_wdb_global_get_agent_info_by_connection_status_and_node(__attribute__((unused)) wdb_t *wdb,
+                                        int id,
+                                        char* status,
+                                        char* node) {
+    check_expected(id);
+    check_expected(status);
+    check_expected(node);
+    return mock_ptr_type(cJSON*);
+}
+
 int __wrap_wdb_global_reset_agents_connection(__attribute__((unused)) wdb_t *wdb, const char *sync_status) {
     check_expected(sync_status);
     return mock();

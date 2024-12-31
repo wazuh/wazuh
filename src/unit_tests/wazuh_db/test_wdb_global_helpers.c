@@ -1191,6 +1191,36 @@ void test_wdb_get_agent_info_success(void **state) {
     assert_ptr_equal(1, root);
 }
 
+/* Tests wdb_get_agent_info_by_connection_status_and_node */
+
+void test_wdb_get_agent_info_by_connection_status_and_node_error_no_json_response(void **state) {
+    cJSON *root = NULL;
+    int id = 1;
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 filtered information.");
+
+    root = wdb_get_agent_info(id, NULL);
+
+    assert_null(root);
+}
+
+void test_wdb_get_agent_info_by_connection_status_and_node_success(void **state) {
+    cJSON *root = NULL;
+    int id = 1;
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, (cJSON *)1);
+
+    root = wdb_get_agent_info(id, NULL);
+
+    assert_ptr_equal(1, root);
+}
+
 /* Tests wdb_get_agent_labels */
 
 void test_wdb_get_agent_labels_error_no_json_response(void **state) {

@@ -6094,6 +6094,154 @@ void test_wdb_global_get_agent_info_success(void **state)
     assert_ptr_equal(output, (cJSON*)1);
 }
 
+/* Tests wdb_global_get_agent_info_by_connection_status_and_node */
+
+void test_wdb_global_get_agent_info_by_connection_status_and_node_transaction_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    output = wdb_global_get_agent_info_by_connection_status_and_node(data->wdb, 1, "active", "worker1");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agent_info_by_connection_status_and_node_cache_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    output = wdb_global_get_agent_info_by_connection_status_and_node(data->wdb, 1, "active", "worker1");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agent_info_by_connection_status_and_node_bind_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    output = wdb_global_get_agent_info_by_connection_status_and_node(data->wdb, 1, "active", "worker1");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agent_info_by_connection_status_and_node_bind_fail2(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    output = wdb_global_get_agent_info_by_connection_status_and_node(data->wdb, 1, "active", "worker1");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agent_info_by_connection_status_and_node_bind_fail3(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "worker1");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_text(): ERROR MESSAGE");
+
+    output = wdb_global_get_agent_info_by_connection_status_and_node(data->wdb, 1, "active", "worker1");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agent_info_by_connection_status_and_node_exec_fail(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "worker1");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+
+    output = wdb_global_get_agent_info_by_connection_status_and_node(data->wdb, 1, "active", "worker1");
+    assert_null(output);
+}
+
+void test_wdb_global_get_agent_info_by_connection_status_and_node_success(void **state)
+{
+    cJSON *output = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "active");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "worker1");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
+
+    output = wdb_global_get_agent_info_by_connection_status_and_node(data->wdb, 1, "active", "worker1");
+    assert_ptr_equal(output, (cJSON*)1);
+}
+
 /* Tests wdb_global_get_agents_to_disconnect */
 
 void test_wdb_global_get_agents_to_disconnect_transaction_fail(void **state)
@@ -9655,6 +9803,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_success, test_setup, test_teardown),
+        /* Tests wdb_global_get_agent_info_by_connection_status_and_node */
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_by_connection_status_and_node_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_by_connection_status_and_node_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_by_connection_status_and_node_bind_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_by_connection_status_and_node_bind_fail2, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_by_connection_status_and_node_bind_fail3, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_by_connection_status_and_node_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_get_agent_info_by_connection_status_and_node_success, test_setup, test_teardown),
         /* Tests wdb_global_get_agents_to_disconnect */
         cmocka_unit_test_setup_teardown(test_wdb_global_get_agents_to_disconnect_transaction_fail,
                                         test_setup,

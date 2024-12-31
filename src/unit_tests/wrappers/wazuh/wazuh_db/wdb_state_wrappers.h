@@ -90,7 +90,11 @@ void __wrap_w_inc_global_agent_find_agent_time(__attribute__((unused))struct tim
 
 void __wrap_w_inc_global_agent_get_agent_info();
 
+void __wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node();
+
 void __wrap_w_inc_global_agent_get_agent_info_time(__attribute__((unused))struct timeval diff);
+
+void __wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node_time(__attribute__((unused))struct timeval diff);
 
 void __wrap_w_inc_global_agent_get_all_agents();
 

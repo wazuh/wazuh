@@ -4053,6 +4053,165 @@ void test_wdb_parse_global_get_agent_info_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_parse_global_get_agent_info_by_connection_status_and_node */
+
+void test_wdb_parse_global_get_agent_info_by_connection_status_and_node_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info-by-connection-status-and-node";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info-by-connection-status-and-node");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for get-agent-info-by-connection-status-and-node.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: get-agent-info-by-connection-status-and-node");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-agent-info-by-connection-status-and-node'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agent_info_by_connection_status_and_node_syntax_error2(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info-by-connection-status-and-node 1";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info-by-connection-status-and-node 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'connection_status' not found.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid arguments 'connection_status' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agent_info_by_connection_status_and_node_syntax_error3(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info-by-connection-status-and-node 1 active";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info-by-connection-status-and-node 1 active");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'node_name' not found.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid arguments 'node_name' not found");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agent_info_by_connection_status_and_node_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info-by-connection-status-and-node 1 active worker1";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info-by-connection-status-and-node 1 active worker1");
+    expect_value(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, id, 1);
+    expect_string(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, status, "active");
+    expect_string(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, node, "worker1");
+    will_return(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, NULL);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent filtered information from global.db.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error getting agent filtered information from global.db.");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_get_agent_info_by_connection_status_and_node_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global get-agent-info-by-connection-status-and-node 1 active worker1";
+    cJSON *j_object = NULL;
+
+    j_object = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_object, "name", "test_name");
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agent-info-by-connection-status-and-node 1 active worker1");
+    expect_value(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, id, 1);
+    expect_string(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, status, "active");
+    expect_string(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, node, "worker1");
+    will_return(__wrap_wdb_global_get_agent_info_by_connection_status_and_node, j_object);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_get_agent_info_by_connection_status_and_node_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_reset_agents_connection */
 
 void test_wdb_parse_reset_agents_connection_syntax_error(void **state)
@@ -5311,6 +5470,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_get_agent_info_by_connection_status_and_node */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_by_connection_status_and_node_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_by_connection_status_and_node_syntax_error2, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_by_connection_status_and_node_syntax_error3, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_by_connection_status_and_node_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agent_info_by_connection_status_and_node_success, test_setup, test_teardown),
         /* Tests wdb_parse_reset_agents_connection */
         cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_reset_agents_connection_query_error, test_setup, test_teardown),
