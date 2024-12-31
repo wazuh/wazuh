@@ -5616,7 +5616,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableExperimentalFeatures'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> EnableExperimentalFeatures -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableExperimentalFeatures -> 0'
 
   # 18.10.17.3 (L1) Ensure 'Enable App Installer Hash Override' is set to 'Disabled'. (Automated)
   - id: 27278 
