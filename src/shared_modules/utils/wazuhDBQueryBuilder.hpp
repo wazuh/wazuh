@@ -17,6 +17,7 @@
 #include <string>
 
 constexpr auto WAZUH_DB_ALLOWED_CHARS {"-_ "};
+constexpr auto WAZUH_DB_AGENT_ACTIVE_STATUS {"active"};
 
 class WazuhDBQueryBuilder final : public Utils::Builder<WazuhDBQueryBuilder>
 {
