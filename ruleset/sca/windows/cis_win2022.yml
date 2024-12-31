@@ -5322,10 +5322,9 @@ checks:
     compliance:
       - cis: ["18.10.12.1"]
     condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent -> 1'
+      - 'c:powershell \"(Test-Path -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\\") | Select-Object -ExpandProperty DisableConsumerAccountStateContent -ErrorAction SilentlyContinue\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\\" -Name DisableConsumerAccountStateContent) -eq 1\" -> r:1'
 
   # 18.10.12.2 (L2) Ensure 'Turn off cloud optimized content' is set to 'Enabled'. (Automated)
   - id: 27263 
