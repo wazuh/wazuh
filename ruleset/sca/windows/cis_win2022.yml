@@ -3920,9 +3920,9 @@ checks:
       - cis: ["18.7.7"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcTcpPort'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcTcpPort -> n:^(\d+) compare <= 65535'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcTcpPort'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcTcpPort -> 0'
 
   # 18.7.8 (L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'. (Automated)
   - id: 27193 
