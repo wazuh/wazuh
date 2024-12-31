@@ -3691,11 +3691,11 @@ checks:
       - cis: ["18.6.14.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\NETLOGON\\\") -ne $null\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\SYSVOL\\\") -ne $null\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\NETLOGON\\\") -match \\\"RequireMutualAuthentication=1\\\" -and (Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\NETLOGON\\\") -match \\\"RequireIntegrity=1\\\"\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\SYSVOL\\\") -match \\\"RequireMutualAuthentication=1\\\" -and (Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\SYSVOL\\\") -match \\\"RequireIntegrity=1\\\"\" -> r:1'
 
   # 18.6.19.2.1 (L2) Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)'). (Automated)
   - id: 27181 
