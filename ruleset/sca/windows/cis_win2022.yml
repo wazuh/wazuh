@@ -5592,7 +5592,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableAppInstaller'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds ->EnableAppInstaller -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppInstaller -> EnableAppInstaller -> 0'
 
   # 18.10.17.2 (L1) Ensure 'Enable App Installer Experimental Features' is set to 'Disabled'. (Automated)
   - id: 27277 
