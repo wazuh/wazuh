@@ -3874,9 +3874,9 @@ checks:
       - cis: ["18.7.4"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcAuthentication'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcAuthentication -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcAuthentication'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcAuthentication -> 0'
 
   # 18.7.5 (L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
   - id: 27190 
