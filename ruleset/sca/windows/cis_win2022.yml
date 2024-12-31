@@ -685,9 +685,9 @@ checks:
       - cis: ["2.3.7.4"]
     condition: all
     rules:
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext-> r:\w+'
+      - 'c:powershell \"(Test-Path -Path \\\"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\system\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\system\\\") | Select-Object -ExpandProperty legalnoticetext -ErrorAction SilentlyContinue\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\\" -Name LegalNoticeText) -ne \\\"\\\"\" -> r:1'
 
   # 2.3.7.5 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 27032 
