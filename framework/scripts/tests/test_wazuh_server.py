@@ -575,3 +575,107 @@ def test_status(capsys, daemons, expected):
 
     for e in expected:
         assert e in captured
+
+
+@patch('scripts.wazuh_server.clean_pid_files')
+def test_check_daemon(clean_pid_files_mock):
+    """Check and set the behavior of wazuh_server `check_daemon` function."""
+    proc_name = "test_daemon"
+    children_number = 3
+    proc_mock = Mock(
+        **{
+            "status.return_value": wazuh_server.psutil.STATUS_SLEEPING,
+            "name.return_value": proc_name,
+            "children.return_value": [i for i in range(children_number)]
+        }
+    )
+    proc_list = [proc_mock]
+
+    wazuh_server.check_daemon(proc_list, proc_name, children_number)
+
+    proc_mock.name.assert_called_once()
+    proc_mock.status.assert_called_once()
+    proc_mock.children.assert_called_once()
+    clean_pid_files_mock.assert_not_called()
+
+
+@patch('scripts.wazuh_server.clean_pid_files')
+def test_check_daemon_ko_process_status(clean_pid_files_mock):
+    """Validate that `check_daemon` works as expected when the process status is not the expected."""
+    proc_name = "test_daemon"
+    children_number = 3
+    proc_mock = Mock(
+        **{
+            'status.return_value': wazuh_server.psutil.STATUS_ZOMBIE,
+            'name.return_value': proc_name,
+            'children.return_value': [i for i in range(children_number)]
+        }
+    )
+    proc_list = [proc_mock]
+    wazuh_server.main_logger = Mock()
+
+    wazuh_server.check_daemon(proc_list, proc_name, children_number)
+
+    proc_mock.name.assert_called_once()
+    proc_mock.status.assert_called_once()
+    proc_mock.children.assert_not_called()
+    clean_pid_files_mock.assert_called_with(proc_name)
+    wazuh_server.main_logger.error.assert_called_with(
+        f'Daemon `{proc_name}` is not running, stopping the whole server.'
+    )
+
+
+@patch('scripts.wazuh_server.clean_pid_files')
+def test_check_daemon_ko_children_number(clean_pid_files_mock):
+    """Validate that `check_daemon` works as expected when the children number is not the expected."""
+    proc_name = "test_daemon"
+    children_number = 3
+    proc_mock = Mock(
+        **{
+            'status.return_value': wazuh_server.psutil.STATUS_SLEEPING,
+            'name.return_value': proc_name,
+            'children.return_value': [i for i in range(children_number - 1)]
+        }
+    )
+    proc_list = [proc_mock]
+
+    with pytest.raises(
+        wazuh_server.WazuhDaemonError,
+        match=f'Daemon `{proc_name}` does not have the correct number of children process.'
+    ):
+        wazuh_server.check_daemon(proc_list, proc_name, children_number)
+
+    proc_mock.name.assert_called_once()
+    proc_mock.status.assert_called_once()
+    proc_mock.children.assert_called_once()
+    clean_pid_files_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch('scripts.wazuh_server.stop_loop', side_effect=RuntimeError)
+@patch('scripts.wazuh_server.check_daemon', side_effect=(None, None, wazuh_server.WazuhDaemonError(code='Test error.')))
+@patch('scripts.wazuh_server.asyncio.sleep')
+async def test_monitor_server_daemons(
+    sleep_mock, check_daemon_mock, stop_loop_mock
+):
+    """Check and set the behavior of wazuh_server `monitor_server_daemons` function."""
+    wazuh_server.main_logger = Mock()
+    comms_api_config_mock = Mock(workers=4)
+    proc_list = ["test_proc_1", "test_proc_2", "test_proc_3"]
+    process_mock = Mock(**{"children.return_value": proc_list})
+    loop_mock = Mock()
+
+    with patch('scripts.wazuh_server.CentralizedConfig.get_comms_api_config', return_value=comms_api_config_mock):
+        with pytest.raises(RuntimeError):
+            await wazuh_server.monitor_server_daemons(loop=loop_mock, server_process=process_mock)
+
+    check_daemon_mock.assert_has_calls(
+        [
+            call(proc_list, wazuh_server.MANAGEMENT_API_DAEMON_NAME, 3),
+            call(proc_list, wazuh_server.COMMS_API_DAEMON_NAME, 8),
+            call(proc_list, wazuh_server.ENGINE_DAEMON_NAME, 0)
+        ],
+        any_order=True
+    )
+    wazuh_server.main_logger.error.assert_called_with('Test error. Stopping the whole server.')
+    stop_loop_mock.assert_called_with(loop_mock)

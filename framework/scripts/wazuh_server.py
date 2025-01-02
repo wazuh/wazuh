@@ -388,7 +388,7 @@ def start():
         loop = asyncio.new_event_loop()
         background_tasks.add(loop.create_task(get_orders(main_logger)))
         loop.add_signal_handler(signal.SIGTERM, partial(stop_loop, loop))
-        loop.create_task(monitor_server_daemons(loop, server_pid))
+        loop.create_task(monitor_server_daemons(loop, psutil.Process(server_pid)))
         loop.run_until_complete(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
@@ -405,7 +405,7 @@ def start():
 
 
 def check_daemon(proc_list: list, proc_name: str, children_number: int):
-    """Check the daemon is in the list of children process and have the correct number of children.
+    """Check the daemon is in the list of process and have the correct number of children.
 
     Parameters
     ----------
@@ -425,11 +425,12 @@ def check_daemon(proc_list: list, proc_name: str, children_number: int):
     if child.status() == psutil.STATUS_ZOMBIE:
         main_logger.error(f"Daemon `{proc_name}` is not running, stopping the whole server.")
         clean_pid_files(proc_name)
+        return
     if len(child.children()) != children_number:
         raise WazuhDaemonError(f'Daemon `{proc_name}` does not have the correct number of children process.')
 
 
-async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_pid: int):
+async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: psutil.Process):
     """Monitor the status of the server daemons.
 
     Parameters
@@ -448,8 +449,7 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_pid: int):
 
     while True:
         await asyncio.sleep(10)
-        server_proc = psutil.Process(server_pid)
-        child_proceses = server_proc.children()
+        child_proceses = server_process.children()
 
         try:
             for key, value in proc_tree.items():
