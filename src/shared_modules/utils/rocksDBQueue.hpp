@@ -38,8 +38,10 @@ public:
         rocksdb::Options options;
         options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));
         options.create_if_missing = true;
-        options.keep_log_file_num = 1;
-        options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+        options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL;
+        options.keep_log_file_num = 10;
+        options.max_log_file_size = 10 * 1024 * 1024;
+        options.recycle_log_file_num = 10;
         options.max_open_files = 64;
         options.write_buffer_manager = m_writeManager;
         options.num_levels = 4;
