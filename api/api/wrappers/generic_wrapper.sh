@@ -9,6 +9,6 @@ WAZUH_SHARE="/usr/share/wazuh-server"
 SCRIPT_PATH_NAME="$0"
 SCRIPT_NAME="$(basename ${SCRIPT_PATH_NAME})"
 
-PYTHON_SCRIPT="${WAZUH_SHARE}/api/scripts/$(echo ${SCRIPT_NAME} | sed 's/\-/_/g').py"
+PYTHON_SCRIPT="${WAZUH_SHARE}/api/scripts/${SCRIPT_NAME}.py"
 
 ${PYTHON_SCRIPT} $@

@@ -55,7 +55,7 @@ install:
 	$(INSTALL_DIR) $(ETC_INSTALLDIR)/groups
 
 	# SHARE
-	$(INSTALL_EXEC) scripts/*.py ${SHARE_INSTALLDIR}/framework/scripts
+	$(INSTALL_EXEC) scripts/wazuh_server.py ${SHARE_INSTALLDIR}/framework/scripts/wazuh-server.py
 	$(INSTALL_FILE) wazuh/*.py ${SHARE_INSTALLDIR}/framework/wazuh
 	$(INSTALL_FILE) wazuh/core/cluster/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster
 	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${SHARE_INSTALLDIR}/framework/wazuh/core/cluster/dapi
