@@ -3050,73 +3050,11 @@ checks:
       - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
       - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-  # 6.1.10 Ensure no world writable files exist. (Scored)
-   - id: 31204
-     title: "Ensure no world writable files exist."
-     description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
-     rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
-     remediation: "Removing write access for the \"other\" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file."
-     compliance:
-       - cis: ["6.1.10"]
-       - cis_csc_v7: ["6 14", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
-
-  # 6.1.11 Ensure no unowned files or directories exist. (Scored)
-   - id: 31205
-     title: "Ensure no unowned files or directories exist."
-     description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
-     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up \"owning\" these files, and thus have more access on the system than was intended."
-     remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-     compliance:
-       - cis: ["6.1.11"]
-       - cis_csc_v7: ["6 14", "13.2"]
-       - mitre_techniques: ["T1015", "T1028", "T1046", "T1051", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1200", "T1210", "T1221", "T1519"]
-     condition:
-     rules:
-
-  # 6.1.12 Ensure no ungrouped files or directories exist. (Scored)
-   - id: 31206
-     title: "Ensure no ungrouped files or directories exist."
-     description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
-     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up \"owning\" these files, and thus have more access on the system than was intended."
-     remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-     compliance:
-       - cis: ["6.1.12"]
-       - cis_csc_v7: ["6 14", "13.2"]
-       - mitre_techniques: ["T1015", "T1028", "T1046", "T1051", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1200", "T1210", "T1221", "T1519"]
-     condition:
-     rules:
-
-  # 6.1.13 Audit SUID executables. (Not Scored)
-   - id: 31207
-     title: "Audit SUID executables."
-     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
-     rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
-     remediation: "Ensure that no rogue SUID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-     compliance:
-       - cis: ["6.1.13"]
-       - cis_csc_v7: ["6 5.1", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
-
-  # 6.1.14 Audit SGID executables. (Not Scored)
-   - id: 31208
-     title: "Audit SGID executables."
-     description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-     rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
-     remediation: "Ensure that no rogue SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-     compliance:
-       - cis: ["6.1.14"]
-       - cis_csc_v7: ["6 5.1", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
+  # 6.1.10 Ensure no world writable files exist. (Scored) - Not Implemented
+  # 6.1.11 Ensure no unowned files or directories exist. (Scored) - Not Implemented
+  # 6.1.12 Ensure no ungrouped files or directories exist. (Scored) - Not Implemented
+  # 6.1.13 Audit SUID executables. (Not Scored) - Not Implemented
+  # 6.1.14 Audit SGID executables. (Not Scored) - Not Implemented
 
   # 6.2.1 Ensure password fields are not empty. (Scored)
    - id: 31209
@@ -3129,44 +3067,48 @@ checks:
        - cis_csc_v7: ["6 16", "4.4"]
        - iso_27001-2013: ["A.9.4.3"]
        - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
 
   # 6.2.2 Ensure no legacy "+" entries exist in /etc/passwd. (Scored)
    - id: 31210
-     title: "Ensure no legacy "+" entries exist in /etc/passwd."
+     title: "Ensure no legacy '+' entries exist in /etc/passwd."
      description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
      rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
      remediation: "Remove any legacy '+' entries from /etc/passwd if they exist."
      compliance:
        - cis: ["6.2.2"]
        - cis_csc_v7: ["6 16.9", "16.2"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/passwd -> r:\+'
 
   # 6.2.3 Ensure no legacy "+" entries exist in /etc/shadow. (Scored)
    - id: 31211
-     title: "Ensure no legacy "+" entries exist in /etc/shadow."
+     title: "Ensure no legacy '+' entries exist in /etc/shadow."
      description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
      rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
      remediation: "Remove any legacy '+' entries from /etc/shadow if they exist."
      compliance:
        - cis: ["6.2.3"]
        - cis_csc_v7: ["6 16.9", "16.2"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/shadow -> r:\+'
 
   # 6.2.4 Ensure no legacy "+" entries exist in /etc/group. (Scored)
    - id: 31212
-     title: "Ensure no legacy "+" entries exist in /etc/group."
+     title: "Ensure no legacy '+' entries exist in /etc/group."
      description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
      rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
      remediation: "Remove any legacy '+' entries from /etc/group if they exist."
      compliance:
        - cis: ["6.2.4"]
        - cis_csc_v7: ["6 16.9", "16.2"]
-     condition:
+     condition: none
      rules:
+      - 'f:/etc/group -> r:\+'
 
   # 6.2.5 Ensure root is the only UID 0 account. (Scored)
    - id: 31213
@@ -3179,8 +3121,9 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
 
   # 6.2.6 Ensure root PATH Integrity. (Scored)
    - id: 31214
@@ -3193,116 +3136,31 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - "f:/root/.bash_profile -> r:umask && r:0027|0077"
+      - "f:/root/.bashrc -> r:umask && r:0027|0077"
 
-  # 6.2.7 Ensure all users' home directories exist. (Scored)
-   - id: 31215
-     title: "Ensure all users' home directories exist."
-     description: "Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
-     rationale: "If the user's home directory does not exist or is unassigned, the user will be placed in \"/\" and will not be able to write any files or have local environment variables set."
-     remediation: "If any users' home directories do not exist, create them and make sure the respective user owns the directory. Users without an assigned home directory should be removed or assigned a home directory as appropriate. Notes: The audit script checks all users UID 500 and above except nfsnobody. Some distributions split at UID 1000 instead, consult your documentation and/or the UID_MIN setting in /etc/login.defs to determine which is appropriate for you. On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
-     compliance:
-       - cis: ["6.2.7"]
-       - cis_csc_v7: ["6 13", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
-
-  # 6.2.9 Ensure users own their home directories. (Scored)
-   - id: 31216
-     title: "Ensure users own their home directories."
-     description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
-     rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory."
-     remediation: "Change the ownership of any home directories that are not owned by the defined user to the correct user. Notes: On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
-     compliance:
-       - cis: ["6.2.9"]
-       - cis_csc_v7: ["6 14.4", "14.6"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-     condition:
-     rules:
-
-  # 6.2.10 Ensure users' dot files are not group or world writable. (Scored)
-   - id: 31217
-     title: "Ensure users' dot files are not group or world writable."
-     description: "While the system administrator can establish secure permissions for users' \"dot\" files, the users can easily override these."
-     rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-     remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user dot file permissions and determine the action to be taken in accordance with site policy. Notes: On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
-     compliance:
-       - cis: ["6.2.10"]
-       - cis_csc_v7: ["6 14.4", "14.6"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-     condition:
-     rules:
-
-  # 6.2.11 Ensure no users have .forward files. (Scored)
-   - id: 31218
-     title: "Ensure no users have .forward files."
-     description: "The .forward file specifies an email address to forward the user's mail to."
-     rationale: "Use of the .forward file poses a security risk in that sensitive data may be inadvertently transferred outside the organization. The .forward file also poses a risk as it can be used to execute commands that may perform unintended actions."
-     remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .forward files and determine the action to be taken in accordance with site policy. Notes: On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
-     compliance:
-       - cis: ["6.2.11"]
-       - cis_csc_v7: ["6 7", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
-
-  # 6.2.12 Ensure no users have .netrc files. (Scored)
-   - id: 31219
-     title: "Ensure no users have .netrc files."
-     description: "The .netrc file contains data for logging into a remote host for file transfers via FTP."
-     rationale: "The .netrc file presents a significant security risk since it stores passwords in unencrypted form. Even if FTP is disabled, user accounts may have brought over .netrc files from other systems which could pose a risk to those systems."
-     remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .netrc files and determine the action to be taken in accordance with site policy. Notes: On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
-     compliance:
-       - cis: ["6.2.12"]
-       - cis_csc_v7: ["6 16.14", "16.4"]
-       - iso_27001-2013: ["A.10.1.1"]
-     condition:
-     rules:
-
-  # 6.2.13 Ensure users' .netrc Files are not group or world accessible. (Scored)
-   - id: 31220
-     title: "Ensure users' .netrc Files are not group or world accessible."
-     description: "While the system administrator can establish secure permissions for users' .netrc files, the users can easily override these."
-     rationale: ".netrcfiles may contain unencrypted passwords that may be used to attack other systems."
-     remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .netrc file permissions and determine the action to be taken in accordance with site policy. Notes: While the complete removal of .netrc files is recommended if any are required on the system secure permissions must be applied. On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
-     compliance:
-       - cis: ["6.2.13"]
-       - cis_csc_v7: ["6 14.4", "14.6"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-     condition:
-     rules:
-
-  # 6.2.14 Ensure no users have .rhosts files. (Scored)
-   - id: 31221
-     title: "Ensure no users have .rhosts files."
-     description: "While no .rhosts files are shipped by default, users can easily create them."
-     rationale: "This action is only meaningful if .rhosts support is permitted in the file /etc/pam.conf . Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf , they may have been brought over from other systems and could contain information useful to an attacker for those other systems."
-     remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .rhosts files and determine the action to be taken in accordance with site policy. Notes: On some distributions the /sbin/nologin should be replaced with /usr/sbin/nologin."
-     compliance:
-       - cis: ["6.2.14"]
-       - cis_csc_v7: ["6 16.14", "16.4"]
-       - iso_27001-2013: ["A.10.1.1"]
-     condition:
-     rules:
+  # 6.2.7 Ensure all users' home directories exist. (Scored) - Not Implemented
+  # 6.2.9 Ensure users own their home directories. (Scored) - Not Implemented
+  # 6.2.10 Ensure users' dot files are not group or world writable. (Scored) - Not Implemented
+  # 6.2.11 Ensure no users have .forward files. (Scored) - Not Implemented
+  # 6.2.12 Ensure no users have .netrc files. (Scored) - Not Implemented
+  # 6.2.13 Ensure users' .netrc Files are not group or world accessible. (Scored) - Not Implemented
+  # 6.2.14 Ensure no users have .rhosts files. (Scored) - Not Implemented
 
   # 6.2.15 Ensure all groups in /etc/passwd exist in /etc/group. (Scored)
    - id: 31222
      title: "Ensure all groups in /etc/passwd exist in /etc/group."
-     description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
+     description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group."
      rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
      remediation: "Analyze the output of the Audit step above and perform the appropriate action to correct any discrepancies found."
      compliance:
        - cis: ["6.2.15"]
        - cis_csc_v7: ["6 16", "16"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\d+:$'
 
   # 6.2.16 Ensure no duplicate UIDs exist. (Scored)
    - id: 31223
