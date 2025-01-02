@@ -144,6 +144,33 @@ options:
 engine-health-test static -r ruleset_dir event_processing_validate
 ```
 
+### Non modifiables fields validate
+Validates non modifiables fields in integrations, decoders or rules If you do not specify a specific target,
+all assets will be validated. However, if you specify the target, only one is accepted
+
+```bash
+usage: engine-health-test ststic non_modifiable_fields_validate [-h] [--integration INTEGRATION] [--rule_folder RULE_FOLDER]
+                                                                  [--target TARGET] [--skip SKIP]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify integration name
+  --rule_folder RULE_FOLDER
+                        Specify the name of the rule folder to test
+
+```
+
+#### Usage
+```bash
+# To run a specific integration
+engine-health-test static -r ruleset_dir non_modifiable_fields_validate --integration windows
+# To run a specific rule folder
+engine-health-test static -r ruleset_dir non_modifiable_fields_validate --rule_folder windows
+# To run all tests in assets
+engine-health-test static -r ruleset_dir non_modifiable_fields_validate
+```
+
 ## Running Dynamic Tests
 
 These tests need the engine to communicate with the API. Therefore each dynamic test starts its instance of the engine, performs the tests and then stops the engine.
@@ -374,6 +401,7 @@ engine-health-test dynamic -e health_test/environment vvalidate_custom_field_ind
 # To skip specific tests in decoders
 engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --target decoder --skip windows,wazuh-core
 ```
+
 
 ### Run
 This tool injects events into the engine and evaluates the output events with an expected event

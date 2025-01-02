@@ -16,6 +16,7 @@ from health_test.assets_validate import run as assets_validate_run
 from health_test.decoder_mapping_validate import run as decoder_mapping_validate_run
 from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
+from health_test.validate_non_modifiables_fields import run as validate_non_modifiables_fields_run
 
 
 def parse_args() -> Namespace:
@@ -64,6 +65,16 @@ def parse_args() -> Namespace:
     event_processing_validate_parser = static_subparsers.add_parser(
         'event_processing_validate', help='Validates that each asset in the ruleset has processed at least one event')
     event_processing_validate_parser.set_defaults(func=event_processing_run)
+
+    # non modifiables fields subcommand
+    non_modifiable_fields_validate = static_subparsers.add_parser(
+        'non_modifiable_fields_validate', help=(
+            'Validates non modifiables fields in integrations, decoders or rules '
+            'If you do not specify a specific target, all assets will be validated. '
+            'However, if you specify the target, only one is accepted.'))
+    non_modifiable_fields_validate.add_argument('--integration', help='Specify integration name', required=False)
+    non_modifiable_fields_validate.add_argument('--rule_folder', help='Specify rule folder name', required=False)
+    non_modifiable_fields_validate.set_defaults(func=validate_non_modifiables_fields_run)
 
     # Dynamic subcommand group
     dynamic_parser = subparsers.add_parser(
