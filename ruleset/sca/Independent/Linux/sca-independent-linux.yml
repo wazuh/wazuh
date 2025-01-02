@@ -410,19 +410,7 @@ checks:
      rules:
       - 'c:findmnt --kernel /dev/shm -> r:noexec'
 
-  # 1.1.21 Ensure sticky bit is set on all world-writable directories. (Scored)
-   - id: 31024
-     title: "Ensure sticky bit is set on all world-writable directories."
-     description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
-     rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp) that are owned by another user."
-     remediation: "Run the following command to set the sticky bit on all world writable directories: # df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null | xargs -I '{}' chmod a+t '{}' Notes: Some distributions may not support the --local option to df."
-     compliance:
-       - cis: ["1.1.21"]
-       - cis_csc_v7: ["6 13", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
+  # 1.1.21 Ensure sticky bit is set on all world-writable directories. (Scored) - Not Implemented
 
   # 1.1.22 Disable Automounting. (Scored)
    - id: 31025
@@ -435,8 +423,10 @@ checks:
        - cis_csc_v7: ["6 8.3", "8.4"]
        - iso_27001-2013: ["A.12.2.1"]
        - mitre_techniques: ["T1027", "T1045", "T1091", "T1193", "T1194", "T1200", "T1215", "T1221"]
-     condition:
+     condition: any
      rules:
+      - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service: No such file or directory"
+      - "c:systemctl is-enabled autofs -> r:disabled"
 
   # 1.1.23 Disable USB Storage. (Scored)
    - id: 31026
@@ -449,8 +439,10 @@ checks:
        - cis_csc_v7: ["6 8.3", "8.4"]
        - iso_27001-2013: ["A.12.2.1"]
        - mitre_techniques: ["T1027", "T1045", "T1091", "T1193", "T1194", "T1200", "T1215", "T1221"]
-     condition:
+     condition: all
      rules:
+      - "c:modprobe -n -v usb-storage -> r:install /bin/false"
+      - "not c:lsmod -> r:usb-storage"
 
   # 1.2.1 Ensure package manager repositories are configured. (Not Scored) - Not Implemented0
   # 1.2.2 Ensure GPG keys are configured. (Not Scored) - Not Implemented
@@ -523,33 +515,8 @@ checks:
       - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*set superusers="
       - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*\\w+"
 
-  # 1.4.3 Ensure authentication required for single user mode. (Scored)
-   - id: 31033
-     title: "Ensure authentication required for single user mode."
-     description: "Single user mode is used for recovery when the system detects an issue during boot or by manual selection from the bootloader."
-     rationale: "Requiring authentication in single user mode prevents an unauthorized user from rebooting the system into single user to gain root privileges without credentials."
-     remediation: "Run the following command and follow the prompts to set a password for the root user: # passwd root."
-     compliance:
-       - cis: ["1.4.3"]
-       - cis_csc_v7: ["6 5.1", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
-
-  # 1.4.4 Ensure interactive boot is not enabled. (Not Scored)
-   - id: 31034
-     title: "Ensure interactive boot is not enabled."
-     description: "Interactive boot allows console users to interactively select which services start on boot. Not all distributions support this capability. The PROMPT_FOR_CONFIRM option provides console users the ability to interactively boot the system and select which services to start on boot."
-     rationale: "Turn off the PROMPT_FOR_CONFIRM option on the console to prevent console users from potentially overriding established security settings."
-     remediation: "If interactive boot is available disable it."
-     compliance:
-       - cis: ["1.4.4"]
-       - cis_csc_v7: ["6 5.1", "5.1"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
-     rules:
+  # 1.4.3 Ensure authentication required for single user mode. (Scored) - Not Implemented
+  # 1.4.4 Ensure interactive boot is not enabled. (Not Scored) - Not Implemented
 
   # 1.5 Ensure core dumps are restricted. (Scored)
    - id: 31035
@@ -579,8 +546,9 @@ checks:
        - cis: ["1.5.2"]
        - cis_csc_v7: ["6 8.4", "8.3"]
        - mitre_techniques: ["T1003", "T1068", "T1080", "T1085", "T1101", "T1117", "T1131", "T1189", "T1190", "T1203", "T1210", "T1211", "T1212"]
-     condition:
+     condition: all
      rules:
+      - "c:journalctl | grep 'protection: active' -> r:active"
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Scored)
    - id: 31037
@@ -3171,8 +3139,9 @@ checks:
      compliance:
        - cis: ["6.2.16"]
        - cis_csc_v7: ["6 16", "16"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cut -f3 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
 
   # 6.2.17 Ensure no duplicate GIDs exist. (Scored)
    - id: 31224
@@ -3183,8 +3152,9 @@ checks:
      compliance:
        - cis: ["6.2.17"]
        - cis_csc_v7: ["6 16", "16"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cut -f3 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
 
   # 6.2.18 Ensure no duplicate user names exist. (Scored)
    - id: 31225
@@ -3195,8 +3165,9 @@ checks:
      compliance:
        - cis: ["6.2.18"]
        - cis_csc_v7: ["6 16", "16"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cut -f1 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
 
   # 6.2.19 Ensure no duplicate group names exist. (Scored)
    - id: 31226
@@ -3207,8 +3178,9 @@ checks:
      compliance:
        - cis: ["6.2.19"]
        - cis_csc_v7: ["6 16", "16"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cut -f1 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
 
   # 6.2.20 Ensure shadow group is empty. (Scored)
    - id: 31227
@@ -3221,5 +3193,6 @@ checks:
        - cis_csc_v7: ["6 5.1", "5.1"]
        - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
        - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/group -> !r:^# && r:^shadow:\w*:\d+:$'
