@@ -92,7 +92,7 @@ class IntegrationConf:
         # Extract necessary values from the template data for initialization
         provider = template_data["event"]["event"]["provider"]
         module = template_data["event"]["event"]["module"]
-        date = template_data["event"]["event"]["ingested"]
+        date = template_data["event"]["event"]["created"]
 
         # Create a new instance with the extracted values
         instance = IntegrationConf(name, format.value, module, provider, date, lines)

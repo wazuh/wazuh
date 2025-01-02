@@ -14,7 +14,7 @@ from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from google.protobuf.json_format import ParseDict
-
+from health_test.utils import *
 
 class UnitOutput:
     def __init__(self, index: int, result: Union[str, dict]):
@@ -35,23 +35,27 @@ class UnitResult:
 
     def setup(self, actual: dict):
         self.diff = {}
-        if self.expected == actual:
+        filtered_expected = filter_nested(self.expected)
+        filtered_actual  = filter_nested(actual)
+
+        if filtered_expected == filtered_actual:
             self.success = True
             return
         else:
             self.success = False
 
-        for key in self.expected:
-            if key not in actual:
+        for key in filtered_expected:
+            if key not in filtered_actual:
                 self.diff[key] = {"info": "Missing key in actual result",
-                                  "expected": self.expected[key]}
-            elif self.expected[key] != actual[key]:
+                                  "expected": filtered_expected[key]}
+                return
+            elif filtered_expected[key] != filtered_actual[key]:
                 self.diff[key] = {"info": "Mismatched value",
-                                  "expected": self.expected[key], "actual": actual[key]}
-        for key in actual:
-            if key not in self.expected:
+                                  "expected": filtered_expected[key], "actual": filtered_actual[key]}
+        for key in filtered_actual:
+            if key not in filtered_expected:
                 self.diff[key] = {"info": "Extra key in actual result",
-                                  "actual": actual[key]}
+                                  "actual": filtered_actual[key]}
 
 
 class UnitOutput:

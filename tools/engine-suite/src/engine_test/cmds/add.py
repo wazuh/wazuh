@@ -49,7 +49,7 @@ def run(args):
 
         # Create integration configuration
         iconf = IntegrationConf(args['integration_name'], args['format'], args['module'],
-                                args['provider'], args['event_ingested'], args['lines'])
+                                args['provider'], args['event_created'], args['lines'])
 
         # If provider is not `file` then set the log.file.path
         if args['provider'] == "file":
@@ -82,7 +82,7 @@ def configure(subparsers):
         '-l', '--lines', help='Fixed number of lines for each event. Only for multi-line format.', dest='lines', type=check_positive)
     parser.add_argument('--log-file-path', help='Path to the log file. Only for file provider.',
                         dest='log_file_path', type=str, default="/var/log/test.log")
-    parser.add_argument('--force-event-ingested', help='Force the event.ingested date to a specific date. Format: YYYY-MM-DDTHH:MM:SSZ',
-                        dest='event_ingested', type=str, default="auto")
+    parser.add_argument('--force-event-created', help='Force the event.created date to a specific date. Format: YYYY-MM-DDTHH:MM:SSZ',
+                        dest='event_created', type=str, default="auto")
 
     parser.set_defaults(func=run, post_parse=check_args)
