@@ -5663,6 +5663,7 @@ components:
             - wazuh-analysisd
             - wazuh-remoted
             - wazuh-db
+            - wazuh-modulesd
     daemons_list_agents:
       in: query
       name: daemons_list
