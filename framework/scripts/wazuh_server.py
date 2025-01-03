@@ -26,6 +26,7 @@ from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
 from wazuh.core.cluster.unix_server.server import start_unix_server
 from wazuh.core.config.models.server import ServerConfig
+from wazuh.core.task.order import get_orders
 
 
 SERVER_DAEMON_NAME = 'wazuh-server'
@@ -377,8 +378,12 @@ def start():
     else:
         main_function = worker_main
 
+    # Create a stong reference to prevent the tasks be garbage collected.
+    background_tasks = set()
     try:
-        asyncio.run(main_function(args, server_config, main_logger))
+        loop = asyncio.new_event_loop()
+        background_tasks.add(loop.create_task(get_orders(main_logger)))
+        loop.run_until_complete(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
     except MemoryError:
