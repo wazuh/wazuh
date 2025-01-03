@@ -14,6 +14,8 @@
 
 
 size_t wmcom_dispatch(char * command, char ** output){
+    cJSON *request_json = NULL;
+    const char *json_err;
 
     if (strncmp(command, "getconfig", 9) == 0){
         /*
@@ -36,6 +38,38 @@ size_t wmcom_dispatch(char * command, char ** output){
         return wmcom_getconfig(rcv_args, output);
     } else if (strncmp(command, "query ", 6) == 0) {
         return wm_module_query(command + 6, output);
+    } else if (request_json = cJSON_ParseWithOpts(command, &json_err, 0), request_json) {
+        cJSON *command_json = NULL;
+        command_json = cJSON_GetObjectItem(request_json, "command");
+        if (!cJSON_IsString(command_json)) {
+            mdebug1("WMCOM Unrecognized json command: %s", command);
+            os_strdup("err Unrecognized json command", *output);
+            cJSON_Delete(request_json);
+            return strlen(*output);
+        } else {
+            if (strncmp(command_json->valuestring, "getstats", 8) == 0) {
+                cJSON *j_output = cJSON_CreateObject();
+                cJSON* j_data = cJSON_CreateObject();
+                for (wmodule * module = wmodules; module != NULL; module = module->next) {
+                    if (module->context->query != NULL) {
+                        char *module_stats = NULL;
+                        module->context->query(module->data, "stats", &module_stats);
+                        cJSON_AddItemToObject(j_data, module->context->name, cJSON_Parse(module_stats));
+                        os_free(module_stats);
+                    }
+                }
+                cJSON_AddItemToObject(j_output, "data", j_data);
+                *output = cJSON_PrintUnformatted(j_output);
+                cJSON_Delete(j_output);
+                cJSON_Delete(request_json);
+                return strlen(*output);
+            } else {
+                mdebug1("WMCOM Unrecognized json command: %s", command);
+                os_strdup("err Unrecognized json command", *output);
+                cJSON_Delete(request_json);
+                return strlen(*output);
+            }
+        }
     } else if (wmcom_sync(command) == 0) {
         /*
          * syscollector_hwinfo dbsync checksum_fail { ... }
