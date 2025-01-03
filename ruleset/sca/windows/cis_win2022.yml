@@ -229,10 +229,12 @@ checks:
   # 2.2.29 (L1) Ensure 'Force shutdown from a remote system' is set to 'Administrators'. (Automated) - Not Implemented
   # 2.2.30 (L1) Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
   # 2.2.31 (L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (DC only). (Automated) - Not Implemented
+  # 2.2.32 (L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' and (when the Web Server (IIS) Role with Web Services Role Service is installed) 'IIS_IUSRS' (MS only) (Automated) - Not Implemented
   # 2.2.33 (L1) Ensure 'Increase scheduling priority' is set to 'Administrators, Window Manager\Window Manager Group'. (Automated) - Not Implemented
   # 2.2.34 (L1) Ensure 'Load and unload device drivers' is set to 'Administrators'. (Automated) - Not Implemented
   # 2.2.35 (L1) Ensure 'Lock pages in memory' is set to 'No One'. (Automated) - Not Implemented
   # 2.2.36 (L2) Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only). (Automated) - Not Implemented
+  # 2.2.37 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' and (when Exchange is running in the environment) 'Exchange Servers' (DC only) (Automated) - Not Implemented
   # 2.2.38 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only). (Automated) - Not Implemented
   # 2.2.39 (L1) Ensure 'Modify an object label' is set to 'No One'. (Automated) - Not Implemented
   # 2.2.40 (L1) Ensure 'Modify firmware environment values' is set to 'Administrators'. (Automated) - Not Implemented
