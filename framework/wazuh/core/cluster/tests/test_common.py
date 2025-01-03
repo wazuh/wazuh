@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import _hashlib
-import _io
 import abc
 import asyncio
 import hashlib
@@ -16,11 +15,8 @@ from contextvars import ContextVar
 from datetime import datetime
 from unittest.mock import patch, MagicMock, mock_open, call, ANY, AsyncMock
 
-import cryptography
 import pytest
-from freezegun import freeze_time
-from httpx import AsyncClient, TimeoutException
-from uvloop import EventLoopPolicy, new_event_loop, Loop
+from uvloop import EventLoopPolicy, new_event_loop
 
 from wazuh import Wazuh
 from wazuh.core import exception
@@ -916,34 +912,6 @@ async def test_handler_wait_for_file_ko(send_request_mock):
         with patch.object(file_event, 'wait', side_effect = Exception('any')):
             await handler.wait_for_file(file_event, "task_id")
     send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
-
-
-@patch('wazuh.core.cluster.common.httpx.AsyncClient.post')
-@patch('wazuh.core.cluster.common.httpx.AsyncHTTPTransport.aclose')
-@patch('json.loads')
-async def test_handler_send_orders(json_loads_mock, close_mock, post_mock):
-    """Check if `send_orders` is called with expected parameters."""
-    handler = cluster_common.Handler(cluster_items)
-    orders = b'[{"source": "Users/Services", "user": "Management API"}]'
-    await handler.send_orders(orders)
-
-    post_mock.assert_called_once_with(
-        url='http://localhost/api/v1/commands',
-        json={'commands': []},
-        headers={'Accept': APPLICATION_JSON, 'Content-Type': APPLICATION_JSON}
-    )
-    close_mock.assert_called_once()
-    json_loads_mock.assert_called_once_with(orders)
-
-
-@patch('wazuh.core.cluster.common.httpx.AsyncClient.post', side_effect=TimeoutException(''))
-@patch('wazuh.core.cluster.common.httpx.AsyncHTTPTransport.aclose')
-@patch('json.loads')
-async def test_handler_send_orders_ko(json_loads_mock, close_mock, post_mock):
-    """Check if `send_orders` is called with expected parameters."""
-    handler = cluster_common.Handler(cluster_items)
-    with pytest.raises(exception.WazuhError, match=r'.*3050.*'):
-        await handler.send_orders(b'[{"source": "Users/Services", "user": "Management API"}]')
 
 
 # Test 'WazuhCommon' class methods

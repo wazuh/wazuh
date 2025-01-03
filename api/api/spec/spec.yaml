@@ -279,14 +279,6 @@ x-rbac-catalog:
         actions: ['security:update_config']
         resources: ['*:*:*']
         effect: "allow"
-    'order:send':
-      description: Send orders to the server
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['order:send']
-        resources: ['*:*:*']
-        effect: "allow"
 
 components:
   responses:
@@ -1615,59 +1607,6 @@ components:
           enum: [white, black]
           example: white
 
-    # Orders models
-    Order:
-      type: object
-      required:
-        - source
-        - user
-        - target
-        - action
-        - document_id
-      properties:
-        source:
-          type: string
-          description: "Order source"
-          enum:
-          - "Users/Services"
-          - "Engine"
-          - "Content manager"
-        user:
-          type: string
-        target:
-          type: object
-          required:
-            - id
-            - type
-          properties:
-            id:
-              type: string
-            type:
-              type: string
-              description: "Command target type"
-              enum:
-                - agent
-                - group
-                - server
-        action:
-          type: object
-          required:
-            - name
-            - version
-          properties:
-            name:
-              type: string
-            version:
-              type: string
-            args:
-              type: array
-              description: "Order action arguments"
-              items:
-                type: string
-        document_id:
-          type: string
-          format: alphanumeric_symbols
-
   securitySchemes:
     basicAuth:
       type: http
@@ -2638,7 +2577,7 @@ paths:
               id: 019008da-1575-7375-b54f-ef43e393517ef
               name: NewHost_2
               key: 7b8276c3bf96aff5709346d368f04fed
-              groups: 
+              groups:
                 - group1
               type: endpoint
               version: 5.0.0
@@ -5968,73 +5907,6 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /orders:
-    post:
-      tags:
-        - Orders
-      summary: "Send orders"
-      description: |-
-        Send orders to the server and distribute them to other nodes and components.
-      operationId: api.controllers.order_controller.post_orders
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/order:send'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-                type: object
-                properties:
-                  orders:
-                    description: "Order list"
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Order'
-            example:
-              orders:
-                - source: Users/Services
-                  user: Management API
-                  target:
-                    type: agent
-                    id: 0192af7d-e760-7ca5-8a2e-c9d8df3fb904
-                  action:
-                    name: set-group
-                    args: ['group1']
-                    version: v5.0.0
-                  document_id: SuyTlZIBRVsFsWNvvx6f
-      responses:
-        '200':
-          description: "Orders sent"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - l8nhoJIBerRY2Wz26Je8
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All orders were sent to the server"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

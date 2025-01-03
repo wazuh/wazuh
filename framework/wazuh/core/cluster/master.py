@@ -196,8 +196,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
             return cmd, json.dumps(res).encode()
-        elif command == b'dist_orders':
-            return self.distribute_orders(data)
         else:
             return super().process_request(command, data)
 
@@ -765,37 +763,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Clean cluster files from previous executions.
         self.name and cluster.clean_up(node_name=self.name)
-
-    def distribute_orders(self, data: bytes):
-        """Send orders to the communications API unix server and to other nodes.
-
-        Parameters
-        ----------
-        data : bytes
-            Sender node name and orders encoded to bytes.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            JSON containing local file paths and their hash.
-        """
-        # Get the name of the node that sent the orders
-        node_name, orders = data.split(b' ', 1)
-
-        # Send orders to the local Comms API unix server
-        asyncio.create_task(self.log_exceptions(self.send_orders(orders)))
-
-        # Distribute orders to other nodes except the sender
-        self.logger.info('Sending orders to the other nodes')
-        for client in self.server.clients:
-            if client == node_name.decode():
-                continue
-
-            asyncio.create_task(self.log_exceptions(self.server.clients[client].send_request(b'dist_orders', orders)))
-
-        return b'ok', b'Orders forwarded to other nodes'
 
 
 class Master(server.AbstractServer):

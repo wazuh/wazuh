@@ -8,7 +8,6 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from api.models.order_model import Order
 from wazuh.core.exception import WazuhClusterError
 
 with patch('wazuh.common.getgrnam'):
@@ -19,7 +18,6 @@ with patch('wazuh.common.getgrnam'):
 
                 from wazuh.core.cluster import control
                 from wazuh.core.cluster.local_client import LocalClient
-                from wazuh import WazuhInternalError, WazuhError
 
 
 async def async_local_client(command, data):
@@ -149,26 +147,3 @@ async def test_get_system_nodes(read_config_mock, get_cluster_items_mock):
 
         with pytest.raises(json.JSONDecodeError):
             await control.get_system_nodes()
-
-
-@patch('wazuh.core.cluster.utils.get_cluster_items')
-@patch('wazuh.core.cluster.utils.read_config')
-@pytest.mark.asyncio
-async def test_distribute_orders(read_config_mock, get_cluster_items_mock):
-    """Verify that the `distribute_orders` function works as expected."""
-    local_client = LocalClient()
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client) as execute_mock:
-        with patch('json.loads'):
-            order = Order(document_id='1', status='pending').to_dict()
-            await control.distribute_orders(lc=local_client, orders=[order])
-
-        data = b'[{"source": null, "user": null, "target": null, "action": null, "document_id": "1"}]'
-        execute_mock.assert_called_once_with(command=b'dist_orders', data=data)
-
-        with patch('json.loads', return_value=KeyError(1)):
-            with pytest.raises(KeyError):
-                await control.distribute_orders(lc=local_client, orders=[])
-
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
-        with pytest.raises(WazuhClusterError):
-            await control.distribute_orders(lc=local_client, orders=[])
