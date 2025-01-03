@@ -107,7 +107,22 @@ checks:
     rules:
       - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
 
-  # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated) - Not Implemented
+  # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated) - Not implemented
+  - id: 77065
+    title: "Ensure 'Password must meet complexity requirements' is set to 'Enabled'."
+    description: "This policy setting checks all new passwords to ensure that they meet basic requirements for strong passwords. When this policy is enabled, passwords must meet the following minimum requirements: Not contain the user's account name or parts of the user's full name that exceed two consecutive characters Be at least six characters in length Contain characters from three of the following categories: English uppercase characters (A through Z) English lowercase characters (a through z) Base 10 digits (0 through 9) Non-alphabetic characters (for example, !, $, #, %) A catch-all category of any Unicode character that does not fall under the previous four categories. This fifth category can be regionally specific. Each additional character in a password increases its complexity exponentially. For instance, a seven-character, all lower-case alphabetic password would have 26 to the power of 7 (approximately 8 x 10 to the power of 9 or 8 billion) possible combinations. At 1,000,000 attempts per second (a capability of many password-cracking utilities), it would only take 133 minutes to crack. A seven-character alphabetic password with case sensitivity has 52 to the power of 7 combinations. A seven-character case-sensitive alphanumeric password without punctuation has 62 to the power of 7 combinations. An eight-character password has 26 to the power of 8 (or 2 x 1011) possible combinations. Although this might seem to be a large number, at 1,000,000 attempts per second it would take only 59 hours to try all possible passwords. Remember, these times will significantly increase for passwords that use ALT characters and other special keyboard characters such as '!'' or '@'. Proper use of the password settings can help make it difficult to mount a brute force attack. The recommended state for this setting is: Enabled. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
+    rationale: "Passwords that contain only alphanumeric characters are extremely easy to discover with several publicly available tools."
+    impact: "If the default password complexity configuration is retained, additional help desk calls for locked-out accounts could occur because users might not be accustomed to passwords that contain non-alphabetic characters. However, all users should be able to comply with the complexity requirement with minimal difficulty. If your organization has more stringent security requirements, you can create a custom version of the Passfilt.dll file that allows the use of arbitrarily complex password strength rules. For example, a custom password filter might require the use of non-upper row characters. (Upper row characters are those that require you to hold down the SHIFT key and press any of the digits between 1 and 0.) A custom password filter might also perform a dictionary check to verify that the proposed password does not contain common dictionary words or fragments. Also, the use of ALT key character combinations can greatly enhance the complexity of a password. However, such stringent password requirements can result in unhappy users and an extremely busy help desk. Alternatively, your organization could consider a requirement for all administrator passwords to use ALT characters in the 0128 - 0159 range. (ALT characters outside of this range can represent standard alphanumeric characters that would not add additional complexity to the password.)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Password must meet complexity requirement."
+    references:
+      - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
+    compliance:
+      - cis: ["1.1.5"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\secexport.cfg; (gc $env:temp/secexport.cfg | Select-String \"PasswordComplexity\").ToString().Split(\"=\")[1].Trim()" -> r:1'
 
   # 1.1.6 (L1) Ensure 'Relax minimum password length limits' is set to 'Enabled'. (Automated)
   - id: 27004 
@@ -133,7 +148,22 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits -> 1'
 
-  # 1.1.7 (L1) Ensure 'Store passwords using reversible encryption' is set to 'Disabled'. (Automated) - Not Implemented
+  # 1.1.7 (L1) Ensure 'Store passwords using reversible encryption' is set to 'Disabled'. (Automated)
+  - id: 77000
+    title: "Ensure 'Store passwords using reversible encryption' is set to 'Disabled'"
+    description: "This policy setting determines whether the operating system stores passwords in a way that uses reversible encryption, which provides support for application protocols that require knowledge of the user's password for authentication purposes. Passwords that are stored with reversible encryption are essentially the same as plaintext versions of the passwords.The recommended state for this setting is: Disabled. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
+    rationale: "Enabling this policy setting allows the operating system to store passwords in a weaker format that is much more susceptible to compromise and weakens your system security."
+    impact: "The Minimum password length setting may be configured higher than 14 characters. If very long passwords are required, mistyped passwords could cause account lockouts and increase the volume of help desk calls. If your organization has issues with forgotten passwords due to password length requirements, consider teaching your users about passphrases, which are often easier to remember and, due to the larger number of character combinations, much harder to discover."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Store passwords using reversible encryption"
+    references:
+      - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
+    compliance:
+      - cis: ["1.1.7"]
+      - cis_csc_v8: ["3.11"]
+      - cis_csc_v7: ["16.4"]
+    condition: all
+    rules: 
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\secexport.cfg; (gc $env:temp/secexport.cfg | Select-String \"ClearTextPassword\").ToString().Split(\"=\")[1].Trim()" -> r:0'
 
   # 1.2.1 (L1) Ensure 'Account lockout duration' is set to '15 or more minute(s)'. (Automated)
   - id: 27005 
@@ -176,7 +206,22 @@ checks:
       - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
       - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 5'
 
-  # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual) - Not Implemented
+  # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'
+  - id: 77001
+    title: "Ensure 'Allow Administrator account lockout' is set to 'Enabled'"
+    description: "This policy setting determines whether the built-in Administrator account is subject to the following Account Lockout Policy settings: Account lockout duration, Account lockout threshold, and Reset account lockout counter. By default, this account is excluded from the account lockout controls and will never be locked out with repeated bad password attempts. The recommended state for this setting is: Enabled. Note: This setting applies only to OSes patched as of October 11, 2022 (see MS KB5020282)."
+    rationale: "Enabling account lockout policies for the built-in Administrator account will reduce the likelihood of a successful brute force attack."
+    impact: "The built-in Administrator account will be subject to the policies in Section 1.2 Account Lockout Policy of this benchmark."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policies\\Allow Administrator account lockout."
+    references:
+      - "https://support.microsoft.com/en-us/topic/kb5020282-account-lockout-available-for-built-in-local-administrators-bce45c4d-f28d-43ad-b6fe-70156cb2dc00"
+    compliance:
+      - cis: ["1.2.3"]
+      - cis_csc_v8: ["4.10"]
+      - cis_csc_v7: ["16.11", "16.12"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; (gc $env:temp\\secexport.cfg | Select-String \"AllowAdministratorLockout\").ToString().Split(\"=\")[1].Trim()" -> r:1'
 
   # 1.2.4 (L1) Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'. (Automated)
   - id: 27007 
@@ -198,52 +243,654 @@ checks:
     rules:
       - 'c:net.exe accounts -> n:Lockout observation window \(minutes\):\s+(\d+) compare >= 15'
 
-  # 2.2.1 (L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'. (Automated) - Not Implemented
-  # 2.2.2 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users, ENTERPRISE DOMAIN CONTROLLERS' (DC only). (Automated) - Not Implemented
-  # 2.2.3 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users' (MS only). (Automated) - Not Implemented
-  # 2.2.4 (L1) Ensure 'Act as part of the operating system' is set to 'No One'. (Automated) - Not Implemented
-  # 2.2.5 (L1) Ensure 'Add workstations to domain' is set to 'Administrators' (DC only). (Automated) - Not Implemented
-  # 2.2.6 (L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
-  # 2.2.7 (L1) Ensure 'Allow log on locally' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.8 (L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators' (DC only). (Automated) - Not Implemented
-  # 2.2.9 (L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators, Remote Desktop Users' (MS only). (Automated) - Not Implemented
-  # 2.2.10 (L1) Ensure 'Back up files and directories' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.11 (L1) Ensure 'Change the system time' is set to 'Administrators, LOCAL SERVICE'. (Automated) - Not Implemented
-  # 2.2.12 (L1) Ensure 'Change the time zone' is set to 'Administrators, LOCAL SERVICE'. (Automated) - Not Implemented
-  # 2.2.13 (L1) Ensure 'Create a pagefile' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.14 (L1) Ensure 'Create a token object' is set to 'No One'. (Automated) - Not Implemented
-  # 2.2.15 (L1) Ensure 'Create global objects' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE'. (Automated) - Not Implemented
-  # 2.2.16 (L1) Ensure 'Create permanent shared objects' is set to 'No One'. (Automated) - Not Implemented
-  # 2.2.17 (L1) Ensure 'Create symbolic links' is set to 'Administrators' (DC only). (Automated) - Not Implemented
-  # 2.2.18 (L1) Ensure 'Create symbolic links' is set to 'Administrators, NT VIRTUAL MACHINE\Virtual Machines' (MS only). (Automated) - Not Implemented
-  # 2.2.19 (L1) Ensure 'Debug programs' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.20 (L1) Ensure 'Deny access to this computer from the network' to include 'Guests' (DC only). (Automated) - Not Implemented
-  # 2.2.21 (L1) Ensure 'Deny access to this computer from the network' to include 'Guests, Local account and member of Administrators group' (MS only). (Automated) - Not Implemented
-  # 2.2.22 (L1) Ensure 'Deny log on as a batch job' to include 'Guests'. (Automated) - Not Implemented
-  # 2.2.23 (L1) Ensure 'Deny log on as a service' to include 'Guests'. (Automated) - Not Implemented
-  # 2.2.24 (L1) Ensure 'Deny log on locally' to include 'Guests'. (Automated) - Not Implemented
-  # 2.2.25 (L1) Ensure 'Deny log on through Remote Desktop Services' to include 'Guests' (DC only). (Automated) - Not Implemented
-  # 2.2.26 (L1) Ensure 'Deny log on through Remote Desktop Services' is set to 'Guests, Local account' (MS only). (Automated) - Not Implemented
-  # 2.2.27 (L1) Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only). (Automated) - Not Implemented
-  # 2.2.28 (L1) Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'No One' (MS only). (Automated) - Not Implemented
-  # 2.2.29 (L1) Ensure 'Force shutdown from a remote system' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.30 (L1) Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
-  # 2.2.31 (L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (DC only). (Automated) - Not Implemented
-  # 2.2.33 (L1) Ensure 'Increase scheduling priority' is set to 'Administrators, Window Manager\Window Manager Group'. (Automated) - Not Implemented
-  # 2.2.34 (L1) Ensure 'Load and unload device drivers' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.35 (L1) Ensure 'Lock pages in memory' is set to 'No One'. (Automated) - Not Implemented
-  # 2.2.36 (L2) Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only). (Automated) - Not Implemented
-  # 2.2.38 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only). (Automated) - Not Implemented
-  # 2.2.39 (L1) Ensure 'Modify an object label' is set to 'No One'. (Automated) - Not Implemented
-  # 2.2.40 (L1) Ensure 'Modify firmware environment values' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.41 (L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.42 (L1) Ensure 'Profile single process' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.43 (L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\WdiServiceHost'. (Automated) - Not Implemented
-  # 2.2.44 (L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
-  # 2.2.45 (L1) Ensure 'Restore files and directories' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.46 (L1) Ensure 'Shut down the system' is set to 'Administrators'. (Automated) - Not Implemented
-  # 2.2.47 (L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only). (Automated) - Not Implemented
-  # 2.2.48 (L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.1 (L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'. (Automated)
+  - id: 77003
+    title: "Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'"
+    description: "This security setting is used by Credential Manager during Backup and Restore. No accounts should have this user right, as it is only assigned to Winlogon. Users' saved credentials might be compromised if this user right is assigned to other entities. The recommended state for this setting is: No One."
+    rationale: "If an account is given this right, the user of the account may create an application that calls into Credential Manager and is returned the credentials for another user."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Access Credential Manager as a trusted caller."
+    compliance:
+      - cis: ["2.2.1"]
+      - cis_csc_v7: ["4.8"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $policy = (gc $env:temp\\secexport.cfg | Select-String \"SeTrustedCredManAccessPrivilege\"); if ($policy) {echo 1} else {echo 0}" -> r:0'
+
+  # 2.2.2 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users, ENTERPRISE DOMAIN CONTROLLERS' (DC only). (Automated)
+  - id: 77004
+    title: "Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users, ENTERPRISE DOMAIN CONTROLLERS' (DC only)"
+    description: "This policy setting allows other users on the network to connect to the computer and is required by various network protocols that include Server Message Block (SMB)-based protocols, NetBIOS, Common Internet File System (CIFS), and Component Object Model Plus (COM+). The recommended state for this setting is: Administrators, Authenticated Users, ENTERPRISE DOMAIN CONTROLLERS."
+    rationale: "Users who can connect from their computer to the network can access resources on target computers for which they have permission. For example, the 'Access this computer from the network' user right is required for users to connect to shared printers and folders. Assigning this right to overly permissive groups like 'Everyone' could lead to unauthorized access to shared resources. This is particularly risky for older operating systems with less restrictive default permissions."
+    impact: "If this right is removed from Domain Controllers, no one will be able to log on to the domain or use network resources. On Member Servers, users will be unable to connect through the network. Successful IPsec negotiation also requires this right for the initiating machine."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Access this computer from the network."
+    compliance:
+      - cis: ["2.2.2"]
+      - cis_csc_v7: ["9.2"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeNetworkLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-11\", \"*S-1-5-9\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.3 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users' (MS only). (Automated)
+  - id: 77005
+    title: "Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users' (MS only)"
+    description: "This policy setting allows other users on the network to connect to the computer and is required by various network protocols that include Server Message Block (SMB)-based protocols, NetBIOS, Common Internet File System (CIFS), and Component Object Model Plus (COM+). The recommended state for this setting is: Administrators, Authenticated Users."
+    rationale: "Users who can connect from their computer to the network can access resources on target computers for which they have permission. For example, the 'Access this computer from the network' user right is required for users to connect to shared printers and folders. Assigning this right to overly permissive groups like 'Everyone' could lead to unauthorized access to shared resources. This is particularly risky for older operating systems with less restrictive default permissions."
+    impact: "If this right is removed from Member Servers, users will not be able to connect to those servers through the network. Successful IPsec negotiation also requires this right for the initiating machine. Assigning this right to the 'Authenticated Users' group is recommended to maintain secure access."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Access this computer from the network."
+    compliance:
+      - cis: ["2.2.3"]
+      - cis_csc_v7: ["9.2"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeNetworkLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-11\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.4 (L1) Ensure 'Act as part of the operating system' is set to 'No One'. (Automated)
+  - id: 77006
+    title: "Ensure 'Act as part of the operating system' is set to 'No One'"
+    description: "This policy setting allows a process to assume the identity of any user and thus gain access to the resources that the user is authorized to access. The recommended state for this setting is: No One. Note: This user right is considered a 'sensitive privilege' for the purposes of auditing."
+    rationale: "The 'Act as part of the operating system' user right is extremely powerful. Anyone with this user right can take complete control of the computer and erase evidence of their activities."
+    impact: "There should be little or no impact because the 'Act as part of the operating system' user right is rarely needed by any accounts other than the Local System account, which implicitly has this right."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Act as part of the operating system."
+    compliance:
+      - cis: ["2.2.4"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_rights /cfg $env:temp\\secexport.cfg; $policy = (gc $env:temp\\secexport.cfg | Select-String \"SeTcbPrivilege\"); if ($policy) {echo 1} else {echo 0}" -> r:0'
+
+  # 2.2.5 (L1) Ensure 'Add workstations to domain' is set to 'Administrators' (DC only). (Automated)
+  - id: 77107
+    title: "Ensure 'Add workstations to domain' is set to 'Administrators' (DC only)"
+    description: "This policy setting specifies which users can add computer workstations to the domain. For this policy setting to take effect, it must be assigned to the user as part of the Default Domain Controller Policy for the domain."
+    rationale: "Allowing users to add workstations to the domain can introduce a moderate vulnerability, as they could create unauthorized domain computers or circumvent organizational security policies."
+    impact: "Organizations that have not allowed users to add their own computers to the domain may face no impact. Those that have will need to formalize a process for setting up and adding workstations."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Add workstations to domain"
+    compliance:
+      - cis: ["2.2.5"]
+      - cis_csc_v7: ["4.3"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeAddWorkstationsToDomain\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.6 (L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'. (Automated)
+  - id: 77007
+    title: "Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'"
+    description: "This policy setting allows a user to adjust the maximum amount of memory that is available to a process. The ability to adjust memory quotas is useful for system tuning, but it can be abused. In the wrong hands, it could be used to launch a denial of service (DoS) attack. The recommended state for this setting is: Administrators, LOCAL SERVICE, NETWORK SERVICE. Note: A Member Server that holds the Web Server (IIS) Role with Web Server Role Service will require a special exception to this recommendation, to allow IIS application pool(s) to be granted this user right. Note #2: A Member Server with Microsoft SQL Server installed will require a special exception to this recommendation for additional SQL-generated entries to be granted this user right."
+    rationale: "A user with the 'Adjust memory quotas for a process' user right can reduce the amount of memory that is available to any process, which could cause business-critical network applications to become slow or to fail. In the wrong hands, this privilege could be used to start a denial of service (DoS) attack."
+    impact: "Organizations that have not restricted users to roles with limited privileges will find it difficult to impose this countermeasure. Also, if you have installed optional components such as ASP.NET or IIS, you may need to assign the 'Adjust memory quotas for a process' user right to additional accounts that are required by those components. Otherwise, this countermeasure should have no impact on most computers. If this user right is necessary for a user account, it can be assigned to a local computer account instead of a domain account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, LOCAL SERVICE, NETWORK SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Adjust memory quotas for a process."
+    compliance:
+      - cis: ["2.2.6"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeIncreaseQuotaPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-19\", \"*S-1-5-20\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.7 (L1) Ensure 'Allow log on locally' is set to 'Administrators'. (Automated)
+  - id: 77008
+    title: "Ensure 'Allow log on locally' is set to 'Administrators'"
+    description: "This policy setting determines which users can interactively log on to computers in your environment. Logons initiated by pressing the CTRL+ALT+DEL key sequence on the client computer keyboard require this user right. Users who attempt to log on through Terminal Services, Remote Desktop Services, or IIS also require this user right. The recommended state for this setting is: Administrators. Note: This user right should generally be restricted to the Administrators group. Assign this user right to the Backup Operators group if your organization requires that they have this capability."
+    rationale: "Any account with the 'Allow log on locally' user right can log on at the console of the computer. If you do not restrict this user right to legitimate users, unauthorized users could download and run malicious software to elevate their privileges."
+    impact: "If you remove these default groups, you could limit the abilities of users who are assigned to specific administrative roles in your environment. You should confirm that delegated activities will not be adversely affected by any changes made to the 'Allow log on locally' user right."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Allow log on locally."
+    references:
+      - "https://www.cisecurity.org/"
+    compliance:
+      - cis: ["2.2.7"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeInteractiveLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.8 (L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators' (DC only). (Automated)
+  - id: 77109
+    title: "Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators' (DC only)"
+    description: "This policy setting determines which users or groups have the right to log on as a Remote Desktop Services client."
+    rationale: "Any account with the Allow log on through Remote Desktop Services user right can log on to the remote console of the computer. Unauthorized users can exploit this to run malicious software and escalate privileges."
+    impact: "Restricting this user right to Administrators and possibly the Remote Desktop Users group helps prevent unauthorized access to critical systems via Remote Desktop Services."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Allow log on through Remote Desktop Services"
+    compliance:
+      - cis: ["2.2.8"]
+      - cis_csc_v7: ["4.3"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeRemoteInteractiveLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.9 (L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators, Remote Desktop Users' (MS only). (Automated)
+  - id: 77009
+    title: "Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators, Remote Desktop Users' (MS only)"
+    description: "This policy setting determines which users or groups have the right to log on as a Remote Desktop Services client. If your organization uses Remote Assistance as part of its help desk strategy, create a group and assign it this user right through Group Policy. If the help desk in your organization does not use Remote Assistance, assign this user right only to the Administrators group or use the Restricted Groups feature to ensure that no user accounts are part of the Remote Desktop Users group. The recommended state for this setting is: Administrators, Remote Desktop Users. Note: A Member Server that holds the Remote Desktop Services Role with Remote Desktop Connection Broker Role Service will require a special exception to this recommendation to allow the Authenticated Users group to be granted this user right."
+    rationale: "Any account with the 'Allow log on through Remote Desktop Services' user right can log on to the remote console of the computer. If you do not restrict this user right to legitimate users, unauthorized users could download and run malicious software to elevate their privileges."
+    impact: "Removal of the 'Allow log on through Remote Desktop Services' user right from other groups or membership changes in these default groups could limit the abilities of users who perform specific administrative roles in your environment. You should confirm that delegated activities will not be adversely affected."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Allow log on through Remote Desktop Services."
+    compliance:
+      - cis: ["2.2.9"]
+      - cis_csc_v7: ["4.3"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeRemoteInteractiveLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-32-555\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.10 (L1) Ensure 'Back up files and directories' is set to 'Administrators'. (Automated)
+  - id: 77010
+    title: "Ensure 'Back up files and directories' is set to 'Administrators'"
+    description: "This policy setting allows users to circumvent file and directory permissions to back up the system. This user right is enabled only when an application (such as NTBACKUP) attempts to access a file or directory through the NTFS file system backup application programming interface (API). Otherwise, the assigned file and directory permissions apply. The recommended state for this setting is: Administrators. Note: This user right is considered a 'sensitive privilege' for the purposes of auditing."
+    rationale: "Users who are able to back up data from a computer could take the backup media to a non-domain computer on which they have administrative privileges and restore the data. They could take ownership of the files and view any unencrypted data that is contained within the backup set."
+    impact: "Changes in the membership of the groups that have the 'Back up files and directories' user right could limit the abilities of users who are assigned to specific administrative roles in your environment. You should confirm that authorized backup administrators are still able to perform backup operations."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Back up files and directories."
+    compliance:
+      - cis: ["2.2.10"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeBackupPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+  
+  # 2.2.11 (L1) Ensure 'Change the system time' is set to 'Administrators, LOCAL SERVICE'. (Automated)
+  - id: 77011
+    title: "Ensure 'Change the system time' is set to 'Administrators, LOCAL SERVICE'"
+    description: "This policy setting determines which users and groups can change the time and date on the internal clock of the computers in your environment. Users who are assigned this user right can affect the appearance of event logs. When a computer's time setting is changed, logged events reflect the new time, not the actual time that the events occurred. The recommended state for this setting is: Administrators, LOCAL SERVICE. Note: Discrepancies between the time on the local computer and on the Domain Controllers in your environment may cause problems for the Kerberos authentication protocol, which could make it impossible for users to log on to the domain or obtain authorization to access domain resources after they are logged on. Also, problems will occur when Group Policy is applied to client computers if the system time is not synchronized with the Domain Controllers."
+    rationale: "Users who can change the time on a computer could cause several problems, such as making event log entries inaccurate, disrupting Kerberos authentication, or impacting file timestamps. By restricting this privilege to Administrators and LOCAL SERVICE, these risks can be minimized."
+    impact: "There should be no impact, because time synchronization for most organizations should be fully automated for all computers that belong to the domain. Computers that do not belong to the domain should be configured to synchronize with an external source."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, LOCAL SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Change the system time."
+    compliance:
+      - cis: ["2.2.11"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeSystemtimePrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-19\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.12 (L1) Ensure 'Change the time zone' is set to 'Administrators, LOCAL SERVICE'. (Automated)
+  - id: 77012
+    title: "Ensure 'Change the time zone' is set to 'Administrators, LOCAL SERVICE'"
+    description: "This setting determines which users can change the time zone of the computer. This ability holds no great danger for the computer and may be useful for mobile workers. The recommended state for this setting is: Administrators, LOCAL SERVICE."
+    rationale: "Changing the time zone represents little vulnerability because the system time is not affected. This setting merely enables users to display their preferred time zone while being synchronized with Domain Controllers in different time zones."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, LOCAL SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Change the time zone."
+    references:
+      - "https://www.cisecurity.org/"
+    compliance:
+      - cis: ["2.2.12"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeTimeZonePrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-19\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.13 (L1) Ensure 'Create a pagefile' is set to 'Administrators'. (Automated)
+  - id: 77013
+    title: "Ensure 'Create a pagefile' is set to 'Administrators'"
+    description: "This policy setting allows users to change the size of the pagefile. By making the pagefile extremely large or extremely small, an attacker could easily affect the performance of a compromised computer. The recommended state for this setting is: Administrators."
+    rationale: "Users who can change the page file size could make it extremely small or move the file to a highly fragmented storage volume, which could cause reduced computer performance."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Create a pagefile."
+    compliance:
+      - cis: ["2.2.13"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeCreatePagefilePrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.14 (L1) Ensure 'Create a token object' is set to 'No One'. (Automated)
+  - id: 77014
+    title: "Ensure 'Create a token object' is set to 'No One'"
+    description: "This policy setting allows a process to create an access token, which may provide elevated rights to access sensitive data. The recommended state for this setting is: No One. Note: This user right is considered a 'sensitive privilege' for the purposes of auditing."
+    rationale: "A user account that is given this user right has complete control over the system and can lead to the system being compromised. It is highly recommended that you do not assign any user accounts this right. Users with the ability to create or modify tokens can escalate privileges or create a DoS condition."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Create a token object."
+    compliance:
+      - cis: ["2.2.14"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeCreateTokenPrivilege\"); if ($line) {echo 1} else {echo 0}" -> r:0'
+  
+  # 2.2.15 (L1) Ensure 'Create global objects' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE'. (Automated)
+  - id: 77015
+    title: "Ensure 'Create global objects' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE'"
+    description: "This policy setting determines whether users can create global objects that are available to all sessions. Users can still create objects that are specific to their own session if they do not have this user right. Users who can create global objects could affect processes that run under other users' sessions. This capability could lead to a variety of problems, such as application failure or data corruption. The recommended state for this setting is: Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE."
+    rationale: "Users who can create global objects could affect Windows services and processes that run under other user or system accounts. This capability could lead to application failure, data corruption, or elevation of privilege."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Create global objects."
+    references:
+      - "https://www.cisecurity.org/"
+    compliance:
+      - cis: ["2.2.15"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeCreateGlobalPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-19\", \"*S-1-5-20\", \"*S-1-5-6\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.16 (L1) Ensure 'Create permanent shared objects' is set to 'No One'. (Automated)
+  - id: 77016
+    title: "Ensure 'Create permanent shared objects' is set to 'No One'"
+    description: "This user right is useful to kernel-mode components that extend the object namespace. However, components that run in kernel mode have this user right inherently. Therefore, it is typically not necessary to specifically assign this user right. The recommended state for this setting is: No One."
+    rationale: "Users who have the 'Create permanent shared objects' user right could create new shared objects and expose sensitive data to the network."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Create permanent shared objects."
+    compliance:
+      - cis: ["2.2.16"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_rights /cfg $env:temp\\secexport.cfg; $policy = (gc $env:temp\\secexport.cfg | Select-String \"SeCreatePermanentPrivilege\"); if ($policy) {echo 1} else {echo 0}" -> r:0'
+
+  # 2.2.17 (L1) Ensure 'Create symbolic links' is set to 'Administrators' (DC only). (Automated)
+  - id: 771018
+    title: "Ensure 'Create symbolic links' is set to 'Administrators' (DC only)"
+    description: "This policy setting determines which users can create symbolic links. Symbolic links are pointers to other file system objects and can expose security vulnerabilities in applications not designed to use them."
+    rationale: "Users with the Create symbolic links user right could expose your system to symbolic link attacks, which can alter file permissions, corrupt data, or cause a DoS attack."
+    impact: "On most systems, this is the default configuration. However, on Windows Servers with the Hyper-V role, this user right should also be granted to the Virtual Machines group to avoid issues with creating virtual machines."
+    remediation: "To implement the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Create symbolic links"
+    compliance:
+      - cis: ["2.2.17"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeCreateSymbolicLink\"); if ($line) { $sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.18 (L1) Ensure 'Create symbolic links' is set to 'Administrators, NT VIRTUAL MACHINE\Virtual Machines' (MS only). (Automated)
+  - id: 77018
+    title: "Ensure 'Create symbolic links' is set to 'Administrators, NT VIRTUAL MACHINE\\Virtual Machines' (MS only)"
+    description: "This policy setting determines which users can create symbolic links. In Windows Vista and later, NTFS file system objects, such as files and folders, can be accessed through symbolic links, which act as pointers to other file system objects. Symbolic links can potentially expose security vulnerabilities in applications that are not designed to use them. The recommended state for this setting is: Administrators and (when the Hyper-V Role is installed) NT VIRTUAL MACHINE\\Virtual Machines."
+    rationale: "Users who have the 'Create symbolic links' user right could inadvertently or maliciously expose your system to symbolic link attacks. Symbolic link attacks can be used to change the permissions on a file, corrupt data, destroy data, or execute a Denial of Service (DoS) attack."
+    impact: "In most cases, there will be no impact because this is the default configuration. However, on Windows Servers with the Hyper-V server role installed, this user right should also be granted to the special group 'Virtual Machines'—otherwise, you will not be able to create new virtual machines."
+    remediation: "To implement the recommended configuration state, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Create symbolic links."
+    compliance:
+      - cis: ["2.2.18"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeCreateSymbolicLinkPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-83-0\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.19 (L1) Ensure 'Debug programs' is set to 'Administrators'. (Automated)
+  - id: 77019
+    title: "Ensure 'Debug programs' is set to 'Administrators'"
+    description: "This policy setting determines which user accounts will have the right to attach a debugger to any process or to the kernel, which provides complete access to sensitive and critical operating system components. Developers debugging their own applications do not need this user right; however, developers debugging new system components will require it. The recommended state for this setting is: Administrators. Note: This user right is considered a 'sensitive privilege' for the purposes of auditing."
+    rationale: "The 'Debug programs' user right can be exploited to capture sensitive computer information from system memory or to access and modify kernel or application structures. Attack tools can exploit this user right to extract hashed passwords and other private security information or to insert rootkit code. Restricting this right to administrators helps mitigate these risks."
+    impact: "If this user right is revoked, debugging programs on production computers will not be possible. This may require moving servers to a separate OU temporarily to assign this right if debugging is necessary. Additionally, service accounts for Windows Clustering require this right to avoid failure."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Debug programs."
+    compliance:
+      - cis: ["2.2.19"]
+      - cis_csc_v7: ["18.2"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDebugPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.20 (L1) Ensure 'Deny access to this computer from the network' to include 'Guests' (DC only). (Automated)
+  - id: 77121
+    title: "Ensure 'Deny access to this computer from the network' to include 'Guests' (DC only)"
+    description: "This policy setting prohibits users from connecting to a computer from across the network, potentially preventing unauthorized access to data."
+    rationale: "Users who can log on to the computer over the network can access shared resources and potentially modify sensitive data. Restricting this access enhances security."
+    impact: "Configuring the Deny access to this computer from the network user right could limit the abilities of users who perform specific administrative roles. Ensure that delegated tasks are not negatively impacted."
+    remediation: "To implement the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Deny access to this computer from the network"
+    compliance:
+      - cis: ["2.2.20"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDenyNetworkAccessRight\"); if ($line) { $sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-546\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.21 (L1) Ensure 'Deny access to this computer from the network' to include 'Guests, Local account and member of Administrators group' (MS only). (Automated)
+  - id: 77021
+    title: "Ensure 'Deny access to this computer from the network' includes 'Guests, Local account and member of Administrators group' (MS only)"
+    description: "This policy setting prohibits users from connecting to a computer from across the network, which would allow users to access and potentially modify data remotely. In high-security environments, there should be no need for remote users to access data on a computer. Instead, file sharing should be accomplished through the use of network servers. This user right supersedes the 'Access this computer from the network' user right if an account is subject to both policies. The recommended state for this setting is to include: Guests, Local account and member of Administrators group."
+    rationale: "Users who can log on to the computer over the network can enumerate lists of account names, group names, and shared resources. Restricting this right prevents unauthorized users from remotely accessing and potentially modifying data on the computer."
+    impact: "Configuring this setting for additional groups could limit the abilities of users assigned to specific administrative roles. Ensure that delegated tasks will not be adversely affected by this configuration."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Deny access to this computer from the network."
+    compliance:
+      - cis: ["2.2.21"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDenyNetworkLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $deniedSIDs = @(\"*S-1-5-32-546\", \"*S-1-5-114\"); if (@($deniedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.22 (L1) Ensure 'Deny log on as a batch job' to include 'Guests'. (Automated)
+  - id: 77022
+    title: "Ensure 'Deny log on as a batch job' includes 'Guests'"
+    description: "This policy setting determines which accounts will not be able to log on to the computer as a batch job. A batch job is not a batch (.bat) file, but rather a batch-queue facility. Accounts that use the Task Scheduler to schedule jobs need this user right. This user right supersedes the 'Log on as a batch job' user right, which could allow accounts to schedule jobs that consume excessive system resources and potentially cause a Denial of Service (DoS) condition. The recommended state for this setting is to include: Guests."
+    rationale: "Accounts that have the 'Log on as a batch job' user right could schedule jobs consuming excessive computer resources, potentially leading to a Denial of Service (DoS) condition. Restricting this right to exclude the Guests group reduces this risk."
+    impact: "If you assign the 'Deny log on as a batch job' user right to other accounts, you could inadvertently prevent users with specific administrative roles from performing necessary tasks. Ensure delegated tasks will not be adversely affected."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Guests: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Deny log on as a batch job."
+    compliance:
+      - cis: ["2.2.22"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDenyBatchLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $deniedSIDs = @(\"*S-1-5-32-546\"); if (@($deniedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.23 (L1) Ensure 'Deny log on as a service' to include 'Guests'. (Automated)
+  - id: 77023
+    title: "Ensure 'Deny log on as a service' includes 'Guests'"
+    description: "This security setting determines which service accounts are prevented from registering a process as a service. This user right supersedes the 'Log on as a service' user right if an account is subject to both policies. The recommended state for this setting is to include: Guests. Note: This security setting does not apply to the System, Local Service, or Network Service accounts."
+    rationale: "Accounts that can log on as a service could be used to configure and start unauthorized services, such as keyloggers or other malicious software. Restricting this right reduces the risk of such attacks."
+    impact: "If you assign the 'Deny log on as a service' user right to specific accounts, some services may not be able to start, potentially causing a Denial of Service (DoS) condition."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Guests: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Deny log on as a service."
+    compliance:
+      - cis: ["2.2.23"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDenyServiceLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $deniedSIDs = @(\"*S-1-5-32-546\"); if (@($deniedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.24 (L1) Ensure 'Deny log on locally' to include 'Guests'. (Automated)
+  - id: 77024
+    title: "Ensure 'Deny log on locally' includes 'Guests'"
+    description: "This security setting determines which users are prevented from logging on at the computer. This policy setting supersedes the 'Allow log on locally' policy setting if an account is subject to both policies. The recommended state for this setting is to include: Guests. Important: If you apply this security policy to the Everyone group, no one will be able to log on locally."
+    rationale: "Any account with the ability to log on locally could be used to log on at the console of the computer. Restricting this right to legitimate users reduces the risk of unauthorized users downloading and running malicious software to elevate their privileges."
+    impact: "If you assign the 'Deny log on locally' user right to additional accounts, it could limit the abilities of users assigned to specific roles in your environment. Ensure that delegated tasks are not adversely affected by this restriction."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Guests: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Deny log on locally."
+    compliance:
+      - cis: ["2.2.24"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDenyInteractiveLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $deniedSIDs = @(\"*S-1-5-32-546\"); if (@($deniedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.25 (L1) Ensure 'Deny log on through Remote Desktop Services' to include 'Guests' (DC only). (Automated)
+  - id: 77126
+    title: "Ensure 'Deny log on through Remote Desktop Services' to include 'Guests' (DC only)"
+    description: "This policy setting determines whether users can log on as Remote Desktop clients. The recommended state is to include 'Guests' to prevent unauthorized users from gaining access."
+    rationale: "Any account with the right to log on through Remote Desktop Services could be used to log on to the remote console of the computer. Limiting this access helps mitigate the risk of unauthorized access and privilege escalation."
+    impact: "If this policy is configured incorrectly, it may prevent legitimate users from using Remote Desktop Services or Remote Assistance for administration."
+    remediation: "To establish the recommended configuration via GP, set the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Deny log on through Remote Desktop Services"
+    compliance:
+      - cis: ["2.2.25"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDenyRemoteInteractiveLogon\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-546\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.26 (L1) Ensure 'Deny log on through Remote Desktop Services' is set to 'Guests, Local account' (MS only). (Automated)
+  - id: 77026
+    title: "Ensure 'Deny log on through Remote Desktop Services' is set to 'Guests, Local account' (MS only)"
+    description: "This policy setting determines whether users can log on as Remote Desktop clients. After the baseline Member Server is joined to a domain environment, there is no need to use local accounts to access the server from the network. Domain accounts can access the server for administration and end-user processing. This user right supersedes the 'Allow log on through Remote Desktop Services' user right if an account is subject to both policies. The recommended state for this setting is: Guests, Local account."
+    rationale: "Any account with the right to log on through Remote Desktop Services could be used to log on to the remote console of the computer. Restricting this right reduces the risk of unauthorized users downloading and running malicious software that elevates their privileges."
+    impact: "If you assign the 'Deny log on through Remote Desktop Services' user right to other groups, it could limit the abilities of users assigned to specific administrative roles. Ensure that delegated tasks will not be negatively impacted."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Deny log on through Remote Desktop Services."
+    compliance:
+      - cis: ["2.2.26"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeDenyRemoteInteractiveLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $deniedSIDs = @(\"*S-1-5-32-546\", \"*S-1-5-113\"); if (@($deniedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.27 (L1) Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only). (Automated)
+  - id: 77128
+    title: "Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only)"
+    description: "This policy setting allows users to change the Trusted for Delegation setting on a computer object in Active Directory. Unauthorized users exploiting this privilege could impersonate others on the network."
+    rationale: "Misuse of this user right could enable unauthorized users to impersonate other users and gain unauthorized access to network resources."
+    impact: "None - this is the default behavior. However, improper configuration could allow malicious actors to elevate their privileges."
+    remediation: "To establish the recommended configuration via GP, set the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Enable computer and user accounts to be trusted for delegation"
+    compliance:
+      - cis: ["2.2.27"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeEnableComputerAndUserAccountsForDelegation\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+  
+  # 2.2.28 (L1) Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'No One' (MS only). (Automated)
+  - id: 77028
+    title: "Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'No One' (MS only)"
+    description: "This policy setting allows users to change the Trusted for Delegation setting on a computer object in Active Directory. Abuse of this privilege could allow unauthorized users to impersonate other users on the network. The recommended state for this setting is: No One. Note: This user right is considered a 'sensitive privilege' for the purposes of auditing."
+    rationale: "Misuse of the 'Enable computer and user accounts to be trusted for delegation' user right could allow unauthorized users to impersonate other users on the network, potentially gaining unauthorized access to resources and complicating post-incident investigation."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Enable computer and user accounts to be trusted for delegation."
+    compliance:
+      - cis: ["2.2.28"]
+      - cis_csc_v7: ["4.1"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_rights /cfg $env:temp\\secexport.cfg; $policy = (gc $env:temp\\secexport.cfg | Select-String \"SeEnableDelegationPrivilege\"); if ($policy) {echo 1} else {echo 0}" -> r:0'
+
+  # 2.2.29 (L1) Ensure 'Force shutdown from a remote system' is set to 'Administrators'. (Automated)
+  - id: 77029
+    title: "Ensure 'Force shutdown from a remote system' is set to 'Administrators'"
+    description: "This policy setting allows users to shut down Windows Vista-based or newer computers from remote locations on the network. Anyone who has been assigned this user right can cause a denial of service (DoS) condition, which would make the computer unavailable to service user requests. Therefore, it is recommended that only highly trusted administrators be assigned this user right. The recommended state for this setting is: Administrators."
+    rationale: "Any user who can shut down a computer remotely could cause a Denial of Service (DoS) condition. This user right should be tightly restricted to prevent such risks."
+    impact: "If you remove the 'Force shutdown from a remote system' user right from certain groups, you could limit the abilities of users assigned to specific administrative roles. Ensure delegated tasks are not adversely affected."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Force shutdown from a remote system."
+    references:
+      - "https://www.cisecurity.org/"
+    compliance:
+      - cis: ["2.2.29"]
+      - cis_csc_v7: ["4.1"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeRemoteShutdownPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.30 (L1) Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated)
+  - id: 77030
+    title: "Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'"
+    description: "This policy setting determines which users or processes can generate audit records in the Security log. The recommended state for this setting is: LOCAL SERVICE, NETWORK SERVICE. Note: This user right is considered a 'sensitive privilege' for the purposes of auditing. Additional exceptions may be required for roles such as Web Server (IIS) or Active Directory Federation Services."
+    rationale: "An attacker could exploit this capability to generate a large number of audited events, making it harder for administrators to detect unauthorized activity. If the event log is configured to overwrite events, this could also erase evidence of malicious activity."
+    impact: "On most systems, this is the default configuration and will have no impact. Special exceptions may be needed for specific roles, such as IIS or Active Directory Federation Services."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to LOCAL SERVICE, NETWORK SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Generate security audits."
+    compliance:
+      - cis: ["2.2.30"]
+      - cis_csc_v8: ["6.8"]
+      - cis_csc_v7: ["6.2"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeAuditPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-19\", \"*S-1-5-20\"); if (@($allowedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+
+  # 2.2.31 (L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (DC only). (Automated)
+  - id: 77133
+    title: "Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (DC only)"
+    description: "This policy setting allows programs to impersonate a client after authentication, preventing unauthorized users from elevating their permissions to administrative or system levels."
+    rationale: "An attacker with this user right could impersonate clients to elevate their privileges, leading to potential security risks."
+    impact: "This setting will have no significant impact in most cases, but could affect applications such as SQL Server or Web Server (IIS) Role if specific components are installed."
+    remediation: "To implement the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Impersonate a client after authentication"
+    compliance:
+      - cis: ["2.2.31"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeImpersonateClientAfterAuthentication\"); if ($line) { $sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-19\", \"*S-1-5-20\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.32 (L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' and (when the Web Server (IIS) Role with Web Services Role Service is installed) 'IIS_IUSRS' (MS only) (Automated
+  - id: 77233
+    title: "Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' and (when the Web Server (IIS) Role with Web Services Role Service is installed) 'IIS_IUSRS' (MS only)"
+    description: "This policy setting allows programs that run on behalf of a user to impersonate that user, preventing unauthorized users from elevating their permissions to administrative or system levels. Additionally, it accounts for exceptions when the Web Server (IIS) Role with Web Services Role Service is installed."
+    rationale: "An attacker with the 'Impersonate a client after authentication' user right could create a service, trick a client into connecting to the service, and then impersonate that client to elevate their access level. Restricting this right reduces such risks."
+    impact: "In most cases, this configuration will have no impact. However, if the Web Server (IIS) Role with Web Services Role Service is installed, IIS_IUSRS must also be assigned this user right."
+    remediation: "To implement the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Impersonate a client after authentication."
+    compliance:
+      - cis: ["2.2.32"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeImpersonateClientAfterAuthentication\"); if ($line) { $sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-19\", \"*S-1-5-20\", \"*S-1-5-32-568\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.33 (L1) Ensure 'Increase scheduling priority' is set to 'Administrators, Window Manager\Window Manager Group'. (Automated)
+  - id: 77033
+    title: "Ensure 'Increase scheduling priority' is set to 'Administrators, Window Manager\\Window Manager Group'"
+    description: "This policy setting determines whether users can increase the base priority class of a process. It is not a privileged operation to increase relative priority within a priority class. This user right is not required by administrative tools supplied with the operating system but might be required by software development tools. The recommended state for this setting is: Administrators, Window Manager\\Window Manager Group."
+    rationale: "A user who is assigned this user right could increase the scheduling priority of a process to Real-Time, which would leave little processing time for all other processes and could lead to a Denial of Service (DoS) condition."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, Window Manager\\Window Manager Group: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Increase scheduling priority."
+    compliance:
+      - cis: ["2.2.33"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeIncreaseBasePriorityPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-90-0\"); if (@($allowedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.34 (L1) Ensure 'Load and unload device drivers' is set to 'Administrators'. (Automated)
+  - id: 77034
+    title: "Ensure 'Load and unload device drivers' is set to 'Administrators'"
+    description: "This policy setting allows users to dynamically load a new device driver on a system. An attacker could potentially use this capability to install malicious code that appears to be a device driver. This user right is required for users to add local printers or printer drivers. The recommended state for this setting is: Administrators."
+    rationale: "Device drivers run as highly privileged code. A user who has the 'Load and unload device drivers' user right could unintentionally install malicious code that masquerades as a device driver. Restricting this right reduces this risk."
+    impact: "If you remove the 'Load and unload device drivers' user right from groups like Print Operators, it could limit the abilities of users in specific administrative roles. Ensure that delegated tasks are not negatively affected."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Load and unload device drivers."
+    compliance:
+      - cis: ["2.2.34"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeLoadDriverPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.35 (L1) Ensure 'Lock pages in memory' is set to 'No One'. (Automated)
+  - id: 77035
+    title: "Ensure 'Lock pages in memory' is set to 'No One'"
+    description: "This policy setting allows a process to keep data in physical memory, preventing the system from paging the data to virtual memory on disk. If this user right is assigned, significant degradation of system performance can occur. The recommended state for this setting is: No One."
+    rationale: "Users with the 'Lock pages in memory' user right could assign physical memory to multiple processes, leaving little or no RAM for other processes, potentially resulting in a Denial of Service (DoS) condition."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Lock pages in memory."
+    compliance:
+      - cis: ["2.2.35"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_rights /cfg $env:temp\\secexport.cfg; $policy = (gc $env:temp\\secexport.cfg | Select-String \"SeLockMemoryPrivilege\"); if ($policy) {echo 1} else {echo 0}" -> r:0'
+
+  # 2.2.36 (L2) Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only). (Automated)
+  - id: 77138
+    title: "Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only)"
+    description: "This policy setting controls which accounts can log on using the task scheduler service. It is important to restrict this right to prevent misuse of system resources or attackers using this privilege to execute malicious code."
+    rationale: "While the 'Log on as a batch job' right presents a low-risk vulnerability, restricting this right to administrators ensures that only trusted users can schedule tasks on the domain controller."
+    impact: "If this setting is applied via domain-based Group Policies, additional rights may be needed for accounts used by ASP.NET, IIS, and other services to function correctly, such as IIS_WPG, IUSR_(ComputerName), ASPNET, and IWAM_(ComputerName)."
+    remediation: "To implement the recommended configuration via GP, configure the following UI path: Computer Configuration\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Log on as a batch job"
+    compliance:
+      - cis: ["2.2.36"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeBatchLogonRight\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.37 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' and (when Exchange is running in the environment) 'Exchange Servers' (DC only) (Automated)
+  - id: 77238
+    title: "Ensure 'Manage auditing and security log' is set to 'Administrators' and (when Exchange is running in the environment) 'Exchange Servers' (DC only)"
+    description: "This policy setting determines which users can change the auditing options for files and directories and clear the Security log. When Microsoft Exchange Server is running, the Exchange Servers group must also possess this privilege on Domain Controllers."
+    rationale: "The ability to manage the Security event log is a powerful user right and should be closely guarded. Unauthorized access to this privilege could allow attackers to erase evidence of malicious activities."
+    impact: "None - this is the default behavior."
+    remediation: "To implement the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Manage auditing and security log."
+    compliance:
+      - cis: ["2.2.37"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeSecurityPrivilege\"); if ($line) { $sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-32-453\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.38 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only). (Automated)
+  - id: 77038
+    title: "Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only)"
+    description: "This policy setting determines which users can change the auditing options for files and directories and clear the Security log. For environments running Microsoft Exchange Server, the Exchange Servers group must possess this privilege on Domain Controllers to function properly. In non-Exchange environments, this privilege should be restricted to Administrators. The recommended state for this setting is: Administrators."
+    rationale: "The ability to manage the Security event log is a powerful user right that should be closely guarded. Anyone with this user right can clear the Security log, potentially erasing critical evidence of unauthorized activity."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Manage auditing and security log."
+    references:
+      - "https://www.cisecurity.org/"
+    compliance:
+      - cis: ["2.2.38"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeSecurityPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.39 (L1) Ensure 'Modify an object label' is set to 'No One'. (Automated)
+  - id: 77039
+    title: "Ensure 'Modify an object label' is set to 'No One'"
+    description: "This privilege determines which user accounts can modify the integrity label of objects, such as files, registry keys, or processes owned by other users. Processes running under a user account can modify the label of an object owned by that user to a lower level without this privilege. The recommended state for this setting is: No One."
+    rationale: "By modifying the integrity label of an object owned by another user, a malicious user may cause them to execute code at a higher level of privilege than intended."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Modify an object label."
+    compliance:
+      - cis: ["2.2.39"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_rights /cfg $env:temp\\secexport.cfg; $policy = (gc $env:temp\\secexport.cfg | Select-String \"SeRelabelPrivilege\"); if ($policy) {echo 1} else {echo 0}" -> r:0'
+
+  # 2.2.40 (L1) Ensure 'Modify firmware environment values' is set to 'Administrators'. (Automated)
+  - id: 77040
+    title: "Ensure 'Modify firmware environment values' is set to 'Administrators'"
+    description: "This policy setting allows users to configure the system-wide environment variables that affect hardware configuration. This information is typically stored in the Last Known Good Configuration. Modification of these values could lead to hardware failure, resulting in a denial of service condition. The recommended state for this setting is: Administrators."
+    rationale: "Anyone assigned the 'Modify firmware environment values' user right could alter hardware component settings, potentially causing them to fail, which could lead to data corruption or a denial of service condition."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Modify firmware environment values."
+    references:
+      - "https://www.cisecurity.org/"
+    compliance:
+      - cis: ["2.2.40"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeSystemEnvironmentPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.41 (L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'. (Automated)
+  - id: 77041
+    title: "Ensure 'Perform volume maintenance tasks' is set to 'Administrators'"
+    description: "This policy setting allows users to manage the system's volume or disk configuration, potentially enabling actions like deleting a volume, which could lead to data loss or a denial-of-service condition. The recommended state for this setting is: Administrators."
+    rationale: "A user with the 'Perform volume maintenance tasks' user right could delete a volume, causing data loss and potentially resulting in a denial-of-service condition. Restricting this privilege mitigates such risks."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Perform volume maintenance tasks."
+    compliance:
+      - cis: ["2.2.41"]
+    condition: all
+    rules:
+     - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeManageVolumePrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.42 (L1) Ensure 'Profile single process' is set to 'Administrators'. (Automated)
+  - id: 77042
+    title: "Ensure 'Profile single process' is set to 'Administrators'"
+    description: "This policy setting determines which users can use tools to monitor the performance of non-system processes. Restricting the 'Profile single process' user right prevents intruders from gaining additional information that could be used to mount an attack on the system. The recommended state for this setting is: Administrators."
+    rationale: "The 'Profile single process' user right presents a moderate vulnerability. An attacker with this user right could monitor a computer's performance to identify critical processes for direct attack or gather details about processes, users, or countermeasures running on the system."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Profile single process."
+    compliance:
+      - cis: ["2.2.42"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeProfileSingleProcessPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.43 (L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\WdiServiceHost'. (Automated)
+  - id: 77043
+    title: "Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\\WdiServiceHost'"
+    description: "This policy setting allows users to use tools to view the performance of different system processes, which could be abused to allow attackers to determine a system's active processes and provide insight into the potential attack surface of the computer. The recommended state for this setting is: Administrators, NT SERVICE\\WdiServiceHost."
+    rationale: "The 'Profile system performance' user right poses a moderate vulnerability. Attackers with this user right could monitor a computer's performance to help identify critical processes for direct attack or determine active processes to avoid countermeasures like antivirus software or intrusion detection systems."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, NT SERVICE\\WdiServiceHost: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Profile system performance."
+    compliance:
+      - cis: ["2.2.43"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeSystemProfilePrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\", \"*S-1-5-80-3139157870-2983391045-3678747466-658725712-1809340420\"); if (@($allowedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.44 (L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated)
+  - id: 77044
+    title: "Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'"
+    description: "This policy setting allows one process or service to start another service or process with a different security access token, which could be used to modify the security access token of that sub-process and result in an escalation of privileges. The recommended state for this setting is: LOCAL SERVICE, NETWORK SERVICE."
+    rationale: "Users with the 'Replace a process level token' privilege can start processes as other users whose credentials they know, potentially hiding unauthorized actions or escalating privileges. Restricting this right mitigates the risk of abuse."
+    impact: "On most computers, this is the default configuration and there will be no negative impact. Exceptions may be needed for systems with the Web Server (IIS) Role or Microsoft SQL Server."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to LOCAL SERVICE, NETWORK SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Replace a process level token."
+    compliance:
+      - cis: ["2.2.44"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeAssignPrimaryTokenPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-19\", \"*S-1-5-20\"); if (@($allowedSIDs | Where-Object { $_ -notin $sids }).Count -eq 0) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.45 (L1) Ensure 'Restore files and directories' is set to 'Administrators'. (Automated)
+  - id: 77045
+    title: "Ensure 'Restore files and directories' is set to 'Administrators'"
+    description: "This policy setting determines which users can bypass file, directory, registry, and other persistent object permissions when restoring backed up files and directories on computers. This user right also determines which users can set valid security principals as object owners. The recommended state for this setting is: Administrators."
+    rationale: "An attacker with the 'Restore files and directories' user right could overwrite sensitive or recent data, leading to loss, corruption, or denial of service. Attackers could also replace legitimate executables with malicious software, gaining elevated privileges or backdoor access."
+    impact: "If you remove the 'Restore files and directories' user right from the Backup Operators group and other accounts, it may prevent delegated tasks from being performed. Ensure that this change does not negatively affect personnel duties."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Restore files and directories."
+    compliance:
+      - cis: ["2.2.45"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeRestorePrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.46 (L1) Ensure 'Shut down the system' is set to 'Administrators'. (Automated)
+  - id: 77046
+    title: "Ensure 'Shut down the system' is set to 'Administrators'"
+    description: "This policy setting determines which users logged on locally can shut down the operating system using the Shut Down command. Misuse of this user right can result in a denial-of-service condition. The recommended state for this setting is: Administrators."
+    rationale: "The ability to shut down Domain Controllers and Member Servers should be restricted to a limited number of trusted Administrators. Improper shutdowns, especially of Domain Controllers with FSMO roles, can disable critical domain functionality and impact availability."
+    impact: "Removing default groups from the 'Shut down the system' user right may limit the abilities of certain delegated roles. Ensure no critical activities are negatively affected by this change."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Shut down the system."
+    compliance:
+      - cis: ["2.2.46"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeShutdownPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.47 (L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only). (Automated)
+  - id: 77149
+    title: "Ensure 'Synchronize directory service data' is set to 'No One' (DC only)"
+    description: "This policy setting controls which users and groups can synchronize all directory service data, also known as Active Directory synchronization."
+    rationale: "Only Domain Controllers should have the right to synchronize directory service data. Granting this right to unauthorized users could allow attackers to view and use sensitive directory information to facilitate further attacks."
+    impact: "This is the default behavior and will have no impact as long as the synchronization is restricted to Domain Controllers."
+    remediation: "To implement the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Synchronize directory service data"
+    compliance:
+      - cis: ["2.2.47"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeSyncDirectoryData\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
+
+  # 2.2.48 (L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'. (Automated)
+  - id: 77048
+    title: "Ensure 'Take ownership of files or other objects' is set to 'Administrators'"
+    description: "This policy setting allows users to take ownership of files, folders, registry keys, processes, or threads, bypassing permissions in place to protect those objects. The recommended state for this setting is: Administrators."
+    rationale: "Users with the 'Take ownership of files or other objects' user right can take control of any object, regardless of its permissions, and make unauthorized changes. This could lead to data exposure, corruption, or denial-of-service conditions."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Take ownership of files or other objects."
+    compliance:
+      - cis: ["2.2.48"]
+      - cis_csc_v7: ["14.6"]
+    condition: all
+    rules:
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg $env:temp\\secexport.cfg; $line = (gc $env:temp\\secexport.cfg | Select-String \"SeTakeOwnershipPrivilege\"); if ($line) {$sids = $line.ToString().Split(\"=\")[1].Trim() -split \",\"; $allowedSIDs = @(\"*S-1-5-32-544\"); if (($sids | ForEach-Object { $allowedSIDs -contains $_ }) -and $sids.Count -eq ($sids | Where-Object { $allowedSIDs -contains $_ }).Count) {echo 1} else {echo 0}} else {echo 0}" -> r:1'
 
   # 2.3.1.1 (L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'. (Automated)
   - id: 27008 
@@ -936,7 +1583,7 @@ checks:
       - cis: ["2.3.10.1"]
     condition: all
     rules:
-      - 'c:powershell "$null = secedit /export /cfg $env:temp/secexport.cfg; $(gc $env:temp/secexport.cfg | Select-String \"LSAAnonymousNameLookup\").ToString().Split(\"=\")[1].Trim()" -> r:0'
+      - 'c:powershell "$null = secedit /export /areas user_right /cfg  $env:temp/secexport.cfg; $(gc $env:temp/secexport.cfg | Select-String \"LSAAnonymousNameLookup\").ToString().Split(\"=\")[1].Trim()" -> r:0'
 
   # 2.3.10.2 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only). (Automated)
   - id: 27046 
@@ -1231,7 +1878,20 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash -> 1'
 
-  # 2.3.11.6 (L1) Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'. (Manual) - Not Implemented
+  # 2.3.11.6 (L1) Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'. (Manual)
+  - id: 77047
+    title: "Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'"
+    description: "This policy setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. The recommended state for this setting is: Enabled."
+    rationale: "If this setting is disabled, users could remain connected to the computer outside of their allowed logon hours, which can pose a security risk."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Force logoff when logon hours expire."
+    compliance:
+      - cis: ["2.3.11.6"]
+      - cis_csc_v8: ["5.6"]
+      - cis_csc_v7: ["16.13"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\\\" -Name enableforcedlogoff).enableforcedlogoff -eq 1"'
 
   # 2.3.11.7 (L1) Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'. (Automated)
   - id: 27063 
@@ -7274,18 +7934,223 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays -> 0'
 
-  # 19.1.3.1 (L1) Ensure 'Enable screen saver' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.1.3.2 (L1) Ensure 'Password protect the screen saver' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.1.3.3 (L1) Ensure 'Screen saver timeout' is set to 'Enabled: 900 seconds or fewer, but not 0'. (Automated) - Not Implemented
-  # 19.5.1.1 (L1) Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.6.6.1.1 (L2) Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.7.4.1 (L1) Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'. (Automated) - Not Implemented
-  # 19.7.4.2 (L1) Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.7.7.1 (L1) Ensure 'Configure Windows spotlight on lock screen' is set to Disabled'. (Automated) - Not Implemented
-  # 19.7.7.2 (L1) Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.7.7.3 (L2) Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.7.7.4 (L2) Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.7.7.5 (L1) Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.7.25.1 (L1) Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'. (Automated) - Not Implemented
-  # 19.7.40.1 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated) - Not Implemented
-  # 19.7.42.2.1 (L2) Ensure 'Prevent Codec Download' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.1.3.1 (L1) Ensure 'Enable screen saver' is set to 'Enabled'. (Automated)
+  - id: 77049
+    title: "Ensure 'Enable screen saver' is set to 'Enabled'"
+    description: "This policy setting enables/disables the use of desktop screen savers. The recommended state for this setting is: Enabled."
+    rationale: "If a user forgets to lock their computer, a passerby could hijack it. Configuring a timed screen saver with password lock will help protect against this risk."
+    impact: "A screen saver will run when a valid screen saver is specified and the screen saver timeout is set to a nonzero value."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Control Panel\\Personalization\\Enable screen saver."
+    compliance:
+      - cis: ["19.1.3.1"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Control Panel\\Desktop\\\" -Name ScreenSaveActive)" -> r:1'
+
+  # 19.1.3.2 (L1) Ensure 'Password protect the screen saver' is set to 'Enabled'. (Automated)
+  - id: 77050
+    title: "Ensure 'Password protect the screen saver' is set to 'Enabled'"
+    description: "This setting determines whether screen savers used on the computer are password protected. The recommended state for this setting is: Enabled."
+    rationale: "If a user forgets to lock their computer, a passerby could hijack it. Configuring a timed screen saver with password lock will help protect against this risk."
+    impact: "All screen savers will be password protected, and the 'Password protected' checkbox on the Screen Saver dialog will be disabled, preventing users from changing the password protection setting."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Control Panel\\Personalization\\Password protect the screen saver."
+    compliance:
+      - cis: ["19.1.3.2"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Control Panel\\Desktop\\\" -Name ScreenSaverIsSecure)" -> r:1'
+
+  # 19.1.3.3 (L1) Ensure 'Screen saver timeout' is set to 'Enabled: 900 seconds or fewer, but not 0'. (Automated)
+  - id: 77051
+    title: "Ensure 'Screen saver timeout' is set to 'Enabled: 900 seconds or fewer, but not 0'"
+    description: "This setting specifies how much user idle time must elapse before the screen saver is launched. The recommended state for this setting is: Enabled: 900 seconds or fewer, but not 0."
+    rationale: "If a user forgets to lock their computer when they walk away, a passerby could hijack it. Configuring a timed screen saver with password lock will help protect against this risk."
+    impact: "The screen saver will automatically activate when the computer has been left unattended for the amount of time specified, and users will not be able to change the timeout value."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 900 seconds or fewer, but not 0: User Configuration\\Policies\\Administrative Templates\\Control Panel\\Personalization\\Screen saver timeout."
+    compliance:
+      - cis: ["19.1.3.3"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemProperty -Path \"HKCU:\\Control Panel\\Desktop\\\" | Select-Object -ExpandProperty ScreenSaveTimeOut) -le 900 -and (Get-ItemProperty -Path \"HKCU:\\Control Panel\\Desktop\\\" | Select-Object -ExpandProperty ScreenSaveTimeOut) -gt 0"'
+
+  # 19.5.1.1 (L1) Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'. (Automated)
+  - id: 77052
+    title: "Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'"
+    description: "This policy setting turns off toast notifications on the lock screen. The recommended state for this setting is: Enabled."
+    rationale: "While this feature can be handy for users, applications providing toast notifications might display sensitive personal or business data while the device is left unattended."
+    impact: "Applications will not be able to raise toast notifications on the lock screen."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Start Menu and Taskbar\\Notifications\\Turn off toast notifications on the lock screen."
+    compliance:
+      - cis: ["19.5.1.1"]
+      - cis_csc_v7: ["16.11"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CurrentVersion\\PushNotifications\\\" -Name NoToastApplicationNotificationOnLockScreen)" -> r:1'
+
+  # 19.6.6.1.1 (L2) Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'. (Automated)
+  - id: 77053
+    title: "Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'"
+    description: "This policy setting specifies whether users can participate in the Help Experience Improvement program. The recommended state for this setting is: Enabled."
+    rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
+    impact: "Users cannot participate in the Help Experience Improvement program."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication Settings\\Turn off Help Experience Improvement Program."
+    compliance:
+      - cis: ["19.6.6.1.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Assistance\\Client\\1.0\\\" -Name NoImprovementProgram)" -> r:1'
+
+  # 19.7.4.1 (L1) Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'. (Automated)
+  - id: 77054
+    title: "Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'"
+    description: "This policy setting manages whether Windows marks file attachments with information about their zone of origin. The recommended state for this setting is: Disabled."
+    rationale: "A file downloaded from an untrusted zone may be moved to a location that makes it appear safe and executed by an unsuspecting user."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Attachment Manager\\Do not preserve zone information in file attachments."
+    compliance:
+      - cis: ["19.7.4.1"]
+
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Attachments\\\" -Name SaveZoneInformation)" -> r:2'
+
+  # 19.7.4.2 (L1) Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'. (Automated)
+  - id: 77055
+    title: "Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'"
+    description: "This policy setting manages the behavior for notifying registered antivirus programs when a user opens an attachment. The recommended state for this setting is: Enabled."
+    rationale: "Antivirus programs that do not perform on-access checks may not be able to scan downloaded files."
+    impact: "Windows tells the registered antivirus program(s) to scan the file when a user opens a file attachment. If the antivirus program fails, the attachment is blocked from being opened."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Attachment Manager\\Notify antivirus programs when opening attachments."
+    compliance:
+      - cis: ["19.7.4.2"]
+      - cis_csc_v8: ["10.1"]
+      - cis_csc_v7: ["8.1"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Attachments\\\" -Name ScanWithAntiVirus)" -> r:3'
+
+  # 19.7.7.1 (L1) Ensure 'Configure Windows spotlight on lock screen' is set to Disabled'. (Automated)
+  - id: 77056
+    title: "Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'"
+    description: "This policy setting lets you configure Windows Spotlight on the lock screen. The recommended state for this setting is: Disabled."
+    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display suggested apps as well as images from the internet."
+    impact: "Windows Spotlight will be turned off and users will no longer be able to select it as their lock screen."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Configure Windows spotlight on lock screen."
+    compliance:
+      - cis: ["19.7.7.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["16.11"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Policies\\Microsoft\\Windows\\CloudContent\\\" -Name ConfigureWindowsSpotlight)" -> r:0'
+
+  # 19.7.7.2 (L1) Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'. (Automated)
+  - id: 77057
+    title: "Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'"
+    description: "This policy setting determines whether Windows will suggest apps and content from third-party software publishers. The recommended state for this setting is: Enabled."
+    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display suggested apps as well as images from the internet."
+    impact: "Windows Spotlight on lock screen, Windows tips, Microsoft consumer features and other related features will no longer suggest apps and content from third-party software publishers. Users may still see suggestions and tips to make them more productive with Microsoft features and apps."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Do not suggest third-party content in Windows spotlight."
+    compliance:
+      - cis: ["19.7.7.2"]
+      - cis_csc_v8: ["4.8"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Policies\\Microsoft\\Windows\\CloudContent\\\" -Name DisableThirdPartySuggestions)" -> r:1'
+
+  # 19.7.7.3 (L2) Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'. (Automated)
+  - id: 77058
+    title: "Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'"
+    description: "This setting determines if Windows can use diagnostic data to provide tailored experiences to the user. The recommended state for this setting is: Enabled."
+    rationale: "Tracking, collection and utilization of personalized data is a privacy and security issue that is of concern to many organizations."
+    impact: "Windows will not use diagnostic data from this device (this data may include browser, app and feature usage, depending on the 'Diagnostic and usage data' setting value) to customize content shown on the lock screen, Windows tips, Microsoft consumer features and other related features. If these features are enabled, users will still see recommendations, tips and offers, but they may be less personalized."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Do not use diagnostic data for tailored experiences."
+    compliance:
+      - cis: ["19.7.7.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Policies\\Microsoft\\Windows\\CloudContent\\\" -Name DisableTailoredExperiencesWithDiagnosticData)" -> r:1'
+
+  # 19.7.7.4 (L2) Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'. (Automated)
+  - id: 77059
+    title: "Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'"
+    description: "This policy setting lets you turn off all Windows Spotlight features at once. The recommended state for this setting is: Enabled."
+    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display suggested apps as well as images from the internet."
+    impact: "Windows Spotlight on lock screen, Windows tips, Microsoft consumer features and other related features will be turned off."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off all Windows spotlight features."
+    compliance:
+      - cis: ["19.7.7.4"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Policies\\Microsoft\\Windows\\CloudContent\\\" -Name DisableWindowsSpotlightFeatures)" -> r:1'
+
+  # 19.7.7.5 (L1) Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'. (Automated)
+  - id: 77060
+    title: "Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'"
+    description: "This policy setting removes the Spotlight collection setting in Personalization, rendering the user unable to select and subsequently download daily images from Microsoft to the system desktop."
+    rationale: "Enabling this setting will help ensure your data is not shared with any third party. The Windows Spotlight feature collects data and uses that data to display images from Microsoft."
+    impact: "The Spotlight collection feature will not be available as an option in Personalization settings, so users will not be able to download daily images from Microsoft."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off Spotlight collection on Desktop."
+    compliance:
+      - cis: ["19.7.7.5"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\\" -Name DisableSpotlightCollectionOnDesktop)" -> r:1'
+
+  # 19.7.25.1 (L1) Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'. (Automated)
+  - id: 77061
+    title: "Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'"
+    description: "This policy setting determines whether users can share files within their profile. By default, users are allowed to share files within their profile to other users on their network after an administrator opts in the computer."
+    rationale: "If not properly configured, a user could accidentally share sensitive data with unauthorized users. In an enterprise managed environment, the company should provide a managed location for file sharing, such as a file server or SharePoint, instead of the user sharing files directly from their own user profile."
+    impact: "Users cannot share files within their profile using the sharing wizard. The sharing wizard cannot create a share at %root%\\Users and can only be used to create SMB shares on folders."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Network Sharing\\Prevent users from sharing files within their profile."
+    compliance:
+      - cis: ["19.7.25.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\\" -Name NoInplaceSharing)" -> r:1'
+
+  # 19.7.40.1 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated)
+  - id: 77062
+    title: "Ensure 'Always install with elevated privileges' is set to 'Disabled'"
+    description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system."
+    rationale: "Users with limited privileges can exploit this feature by creating a Windows Installer installation package that grants elevated privileges and could lead to unauthorized activities."
+    impact: "If enabled, skilled users can take advantage of the permissions granted to change their privileges and gain permanent access to restricted files and folders."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Always install with elevated privileges."
+    compliance:
+      - cis: ["19.7.40.1"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["4.3"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Policies\\Microsoft\\Windows\\Installer\\\" -Name AlwaysInstallElevated)" -> r:0'
+
+  # 19.7.42.2.1 (L2) Ensure 'Prevent Codec Download' is set to 'Enabled'. (Automated)
+  - id: 77063
+    title: "Ensure 'Prevent Codec Download' is set to 'Enabled'"
+    description: "This setting controls whether Windows Media Player is allowed to download additional codecs for decoding media files it does not already understand."
+    rationale: "This has potential risk if a malicious data file is opened in Media Player that requires an additional codec to be installed. Malicious codecs can exploit this feature."
+    impact: "Windows Media Player is prevented from automatically downloading codecs, enhancing security by avoiding potential malicious codec installations."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: User Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Media Player\\Playback\\Prevent Codec Download."
+    compliance:
+      - cis: ["19.7.42.2.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["5.1"]
+    condition: all
+    rules:
+      - 'c:powershell "(Get-ItemPropertyValue -Path \"HKCU:\\Software\\Policies\\Microsoft\\WindowsMediaPlayer\\\" -Name PreventCodecDownload)" -> r:1'
+
