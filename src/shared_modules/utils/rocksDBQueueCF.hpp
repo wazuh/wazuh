@@ -93,10 +93,7 @@ public:
         rocksdb::DB* dbRawPtr;
 
         // Create directories recursively if they do not exist
-        std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
         const std::filesystem::path databasePath {path};
-
-        // Create directories recursively if they do not exist
         std::filesystem::create_directories(databasePath);
 
         if (auto status = rocksdb::DB::Open(options, path, &dbRawPtr); !status.ok())
@@ -307,13 +304,7 @@ public:
 
     void clear(std::string_view id)
     {
-        auto deleteElement = [this](const std::string& key)
-        {
-            if (!m_db->Delete(rocksdb::WriteOptions(), key).ok())
-            {
-                throw std::runtime_error("Failed to clear element, can't delete it");
-            }
-        };
+        rocksdb::WriteBatch batch;
 
         if (id.empty())
         {
@@ -322,9 +313,15 @@ public:
             {
                 for (auto i = metadata.second.head; i <= metadata.second.tail; ++i)
                 {
-                    deleteElement(std::string(metadata.first) + "_" + std::to_string(i));
+                    batch.Delete(std::string(metadata.first) + "_" + std::to_string(i));
                 }
             }
+
+            if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+            {
+                throw std::runtime_error("Error during batch delete: " + status.ToString());
+            }
+
             m_queueMetadata.clear();
         }
         else
@@ -334,10 +331,14 @@ public:
                 // Clear all elements from the queue.
                 for (auto i = it->second.head; i <= it->second.tail; ++i)
                 {
-                    deleteElement(std::string(id) + "_" + std::to_string(i));
-                    ++it->second.head;
-                    --it->second.size;
+                    batch.Delete(std::string(id) + "_" + std::to_string(i));
                 }
+
+                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+                {
+                    throw std::runtime_error("Error during batch delete: " + status.ToString());
+                }
+
                 m_queueMetadata.erase(it);
             }
         }
