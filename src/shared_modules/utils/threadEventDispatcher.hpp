@@ -135,6 +135,7 @@ public:
             static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
                           "This method is not supported for this queue type");
         }
+        return 0;
     }
 
     size_t size(std::string_view prefix) const
