@@ -11,9 +11,9 @@
 
 #ifndef THREAD_SAFE_QUEUE_H
 #define THREAD_SAFE_QUEUE_H
+
 #include <atomic>
 #include <condition_variable>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -130,7 +130,7 @@ public:
 
     void popBulk(const uint64_t elementsQuantity)
     {
-        std::lock_guard<std::mutex> lock {m_mutex};
+        std::scoped_lock lock {m_mutex};
         auto counter = 0ULL;
 
         while (counter < elementsQuantity && !m_queue.empty())
