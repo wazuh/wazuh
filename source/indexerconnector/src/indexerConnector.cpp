@@ -218,14 +218,14 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                 // If the data is not a valid JSON, log a warning and continue.
                 if (parsedData.is_discarded())
                 {
-                    LOG_WARNING("Failed to parse event data: {}", data.c_str());
+                    LOG_WARNING("Failed to parse event data: {}", data);
                     continue;
                 }
 
                 // Validate required fields.
                 if (!parsedData.contains("operation"))
                 {
-                    LOG_WARNING("Event required field (operation) is missing: {}", data.c_str());
+                    LOG_WARNING("Event required field (operation) is missing: {}", data);
                     continue;
                 }
 
@@ -240,11 +240,10 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                     // Validate required fields.
                     if (id.empty())
                     {
-                        LOG_WARNING("Event required field (id) is missing: {}", data.c_str());
+                        LOG_WARNING("Event required field (id) is missing: {}", data);
                         continue;
                     }
 
-                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
                     builderBulkDelete(bulkData, id, indexNameCurrentDate);
                 }
                 else
@@ -252,7 +251,7 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                     // Validate required fields.
                     if (!parsedData.contains("data"))
                     {
-                        LOG_WARNING("Event required field (data) is missing: {}", data.c_str());
+                        LOG_WARNING("Event required field (data) is missing: {}", data);
                         continue;
                     }
 
