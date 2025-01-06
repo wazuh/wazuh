@@ -1,9 +1,12 @@
 import os
 import logging
 import signal
+import sys
 from multiprocessing import Queue, Process, Event
 from multiprocessing.managers import DictProxy, SyncManager
 from typing import Any
+
+from wazuh.core.indexer.models.events import AgentMetadata, Header, get_module_index_name
 
 
 logger = logging.getLogger('wazuh-comms-api')
@@ -18,17 +21,135 @@ class Item:
         Unique identifier for the item.
     operation : str
         Kind of operation to perform. Can be either 'create', 'delete' or 'update'.
-    content : dict
-        Item content as a dictionary. Can be either a stateful event, a response from OpenSearch or None.
+    content : bytes
+        Item content as bytes. Can be either a stateful event, a response from OpenSearch or None.
     index_name : str
         Name of the index the item should be created in. Should be set when inserting an item to the mux_queue only.
     """
-    def __init__(self, id: int, operation: str, content: dict = None, index_name: str = None):
+    def __init__(self, id: int, operation: str, content: bytes = None, index_name: str = None):
         self.id = id
         self.content = content
         self.operation = operation
         self.index_name = index_name
 
+
+class Packet:
+    """Class for managing and processing packets containing multiple items.
+
+    Parameters
+    ----------
+    id : int, optional
+        Identifier for the packet. Defaults to None.
+    items : list[Item], optional
+        List of items included in the packet. Defaults to an empty list.
+    """
+    def __init__(self, id: int = None, items: list[Item] = None):
+        if items is None:
+            items = []
+        self.id: None | int = id
+        self.items: list[Item] = items
+
+    def add_id(self, id: int):
+        """Sets the packet's identifier.
+
+        Parameters
+        ----------
+        id : int
+            Identifier to be assigned to the packet.
+        """
+        self.id = id
+
+    def has_item(self, id: int) -> bool:
+        """Checks if the packet contains an item with the specified identifier.
+
+        Parameters
+        ----------
+        id : int
+            Identifier of the item to check.
+
+        Returns
+        -------
+        bool
+            True if the item is found, False otherwise.
+        """
+        for item in self.items:
+            if item.id == id:
+                return True
+        return False
+
+    def get_len(self) -> int:
+        """Returns the number of items in the packet.
+
+        Returns
+        -------
+        int
+            Number of items in the packet.
+        """
+        return len(self.items)
+
+    def get_size(self) -> int:
+        """Calculates the total size of all items' content in the packet.
+
+        Returns
+        -------
+        int
+            Total size of all items' content in bytes.
+        """
+        return sum(sys.getsizeof(item.content) for item in self.items)
+
+    def build_and_add_item(self, agent_metadata: AgentMetadata, header: Header, data: bytes = None):
+        """Builds an item using metadata, header, and optional data, then adds it to the packet.
+
+        Parameters
+        ----------
+        agent_metadata : AgentMetadata
+            Metadata about the agent to include in the item's content.
+        header : Header
+            Header information for the item.
+        data : bytes, optional
+            Optional additional data to include in the item's content. Defaults to None.
+        """
+        content = None
+        if data is not None:
+            content = self.build_content(agent_metadata.model_dump_json().encode(), data)
+
+        item = Item(
+            id=header.id,
+            operation=header.operation,
+            content=content,
+            index_name=get_module_index_name(header.module, header.type)
+        )
+        self.add_item(item)
+
+    def add_item(self, item: Item):
+        """Adds an item to the packet. If the packet has no identifier, sets it using the item's ID.
+
+        Parameters
+        ----------
+        item : Item
+            The item to add to the packet.
+        """
+        if len(self.items) == 0 and self.id is None:
+            self.id = item.id
+
+        self.items.append(item)
+    
+    def build_content(self, agent_metadata: bytes, data: bytes = None) -> bytes:
+        """Build event body.
+        
+        Parameters
+        ----------
+        agent_metadata : bytes
+            Agent metadata.
+        data : bytes
+            Event data.
+        
+        Returns
+        -------
+        bytes
+            Agent metadata and event joined.
+        """
+        return b'{' + agent_metadata[1:-1] + b', ' + data[1:-1] + b'}'
 
 class MuxDemuxQueue:
     """Class for managing items between mux and demux components.
@@ -47,43 +168,43 @@ class MuxDemuxQueue:
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
 
-    def send_to_mux(self, item: Item):
-        """Put a item into the mux queue with an associated unique identifier.
+    def send_to_mux(self, packet: Packet):
+        """Put a packet into the mux queue with an associated unique identifier.
 
         Parameters
         ----------
-        item : Item
-            Item to be put into the mux queue.
+        packet : Packet
+            Packet to be put into the mux queue.
         """
-        self.mux_queue.put(item)
+        self.mux_queue.put(packet)
 
-    def receive_from_mux(self, block: bool = True) -> Item:
-        """Retrieve a item from the mux queue. If the queue
+    def receive_from_mux(self, block: bool = True) -> Packet:
+        """Retrieve a packet from the mux queue. If the queue
         is empty and block is False it raises a queue.Empty error.
 
         Returns
         -------
-        Item
-            Item retrieved from the mux queue.
+        Packet
+            Packet retrieved from the mux queue.
         """
         return self.mux_queue.get(block=block)
 
-    def send_to_demux(self, item: Item):
-        """Put a item into the demux queue.
+    def send_to_demux(self, packet: Packet):
+        """Put a packet into the demux queue.
 
         Parameters
         ----------
-        item : Item
-            Item to be put into the demux queue.
+        packet : Packet
+            Packet to be put into the demux queue.
         """
-        self.demux_queue.put(item)
+        self.demux_queue.put(packet)
 
-    def is_response_pending(self, item_id: int) -> bool:
+    def is_response_pending(self, packet_id: int) -> bool:
         """Check if a response is available for a given unique identifier.
 
         Parameters
         ----------
-        item_id : int
+        packet_id : int
             Unique identifier to check.
 
         Returns
@@ -91,14 +212,14 @@ class MuxDemuxQueue:
         bool
             True if response is available, False otherwise.
         """
-        return item_id not in self.responses
+        return packet_id not in self.responses
 
-    def receive_from_demux(self, item_id: int) -> dict:
+    def receive_from_demux(self, packet_id: int) -> Packet:
         """Retrieve and remove a response from the dictionary for a given unique identifier.
 
         Parameters
         ----------
-        item_id : int
+        packet_id : int
             Unique identifier of the response.
 
         Returns
@@ -106,36 +227,36 @@ class MuxDemuxQueue:
         dict
             Indexer response.
         """
-        response = self.responses[item_id]
-        del self.responses[item_id]
+        response = self.responses[packet_id]
+        del self.responses[packet_id]
         return response
 
-    def internal_get_response_from_demux(self) -> Item:
+    def internal_get_response_from_demux(self) -> Packet:
         """Retrieve an item from the demux queue.
 
         Returns
         -------
-        Item
-            Item retrieved from the demux queue.
+        Packet
+            Packet retrieved from the demux queue.
         """
         return self.demux_queue.get()
 
-    def internal_store_response(self, item: Item):
+    def internal_store_response(self, packet: Packet):
         """Update the responses dictionary with the item content.
 
         Parameters
         ----------
-        item : Item
-            Item whose content will be added to the response dictionary.
+        packet : Packet
+            Packet whose content will be added to the response dictionary.
         """
-        if item.id not in self.responses:
-            self.responses[item.id] = [item.content]
+        if packet.id not in self.responses:
+            self.responses[packet.id] = packet
         else:
-            # Using self.responses[item.id].append() doesn't work because
+            # Using self.responses[packet.id].append() doesn't work because
             # it doesn't hold the reference of nested objects
-            responses = self.responses[item.id]
-            responses.append(item.content)
-            self.responses[item.id] = responses
+            response = self.responses[packet.id]
+            response.items.extend(packet.items)
+            self.responses[packet.id] = response
 
 
 class MuxDemuxRunner(Process):
@@ -163,7 +284,7 @@ class MuxDemuxRunner(Process):
             Current stack frame (unused).
         """
         signal_name = signal.Signals(signum).name
-        logger.info(f'MuxDemuxQueue (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
+        logger.info(f'MuxDemuxRunner (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
         self._shutdown_event.set()
 
     def run(self) -> None:
@@ -180,9 +301,12 @@ class MuxDemuxRunner(Process):
 
         while not self._shutdown_event.is_set():
             try:
-                item = self.queue.internal_get_response_from_demux()
-                if isinstance(item, Item):
-                    self.queue.internal_store_response(item)
+                packet = self.queue.internal_get_response_from_demux()
+                self.queue.internal_store_response(packet)
+            except EOFError:
+                # Mux demux manager queue closed, exit
+                logger.info('Shutting down MuxDemuxRunner')
+                return
             except Exception as e:
                 if self._shutdown_event.is_set():
                     return

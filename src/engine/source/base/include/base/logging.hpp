@@ -209,8 +209,10 @@ void stop();
 
 /**
  * @brief Initializes the logger for testing purposes.
+ *
+ * @param lvl Log level to set.
  */
-void testInit();
+void testInit(Level lvl = Level::Warn);
 
 inline std::string getLambdaName(const char* parentScope, const std::string& lambdaName)
 {

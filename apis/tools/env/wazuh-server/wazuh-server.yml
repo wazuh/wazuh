@@ -1,0 +1,32 @@
+server:
+  bind_addr: '0.0.0.0'
+  nodes:
+    - wazuh-manager
+  node:
+    name: server_01
+    type: master
+    ssl:
+      key: /etc/wazuh-server/certs/server.key
+      cert: /etc/wazuh-server/certs/server.pem
+      ca: /etc/wazuh-server/certs/root-ca.pem
+  logging:
+    level: debug2
+indexer:
+  hosts: 
+    - host: wazuh-indexer
+      port: 9200
+  username: admin
+  password: admin
+  ssl:
+    use_ssl: true
+    key: /etc/wazuh-server/certs/indexer-key.pem
+    certificate: /etc/wazuh-server/certs/indexer.pem
+    certificate_authorities:
+      - /etc/wazuh-server/certs/root-ca.pem
+    verify_certificates: true
+communications_api:
+  host: '0.0.0.0'
+management_api:
+  host: 
+    - '0.0.0.0'
+    - '::'

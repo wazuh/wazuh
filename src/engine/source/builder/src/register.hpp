@@ -182,6 +182,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "date_from_epoch",
         {schemf::STypeToken::create(schemf::Type::DATE), builders::opBuilderHelperDateFromEpochTime});
+    registry->template add<builders::OpBuilderEntry>(
+        "get_date", {schemf::STypeToken::create(schemf::Type::DATE), builders::opBuilderHelperGetDate});
 
     // Transform builders
     registry->template add<builders::OpBuilderEntry>(

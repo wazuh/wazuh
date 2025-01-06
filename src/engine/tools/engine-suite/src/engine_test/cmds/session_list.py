@@ -1,7 +1,7 @@
 import sys
 import argparse
 from google.protobuf.json_format import ParseDict
-from shared.dumpers import dict_to_str_json
+from shared.dumpers import dict_to_str_json, dict_to_str_yml
 
 from api_communication.client import APIClient
 import api_communication.proto.tester_pb2 as etester
@@ -30,13 +30,15 @@ def run(args):
         sys.exit(f'Error getting session list: {parsed_response.error}')
 
     # Print the response
-    data: str = dict_to_str_json(response['sessions'])
-
-    print(data)
-
+    if args['json']:
+        print(dict_to_str_json(response['sessions']))
+    else:
+        print(dict_to_str_yml(response['sessions']))
     return 0
 
 
 def configure(subparsers):
     parser = subparsers.add_parser('list', help='List all sessions')
+    parser.add_argument('-j', '--json', action='store_true',
+                    help=f'Output in JSON format (default is YAML)', default=False)
     parser.set_defaults(func=run)

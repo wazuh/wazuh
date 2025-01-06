@@ -13,14 +13,14 @@
 #include <api/geo/handlers.hpp>
 #include <api/graph/handlers.hpp>
 #include <api/kvdb/handlers.hpp>
-#include <api/metrics/handlers.hpp>
 #include <api/policy/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
 #include <apiserver/apiServer.hpp>
 #include <base/logging.hpp>
-#include <base/parseEvent.hpp>
+#include <base/utils/singletonLocator.hpp>
+#include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
 #include <conf/conf.hpp>
@@ -33,7 +33,7 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
-#include <metrics/metricsManager.hpp>
+#include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
@@ -134,7 +134,6 @@ int main(int argc, char* argv[])
     std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    std::shared_ptr<metricsManager::MetricsManager> metrics;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
@@ -146,8 +145,6 @@ int main(int argc, char* argv[])
 
     try
     {
-        metrics = std::make_shared<metricsManager::MetricsManager>();
-
         // Set new log level if it is different from the default
         {
             const auto level = logging::strToLevel(confManager.get<std::string>(conf::key::LOGGING_LEVEL));
@@ -157,6 +154,64 @@ int main(int argc, char* argv[])
                 logging::setLevel(level);
                 LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(level));
             }
+        }
+
+        // Metrics
+        {
+            SingletonLocator::registerManager<metrics::IManager,
+                                              base::PtrSingleton<metrics::IManager, metrics::Manager>>();
+            auto config = std::make_shared<metrics::Manager::ImplConfig>();
+            config->logLevel = logging::Level::Err;
+            config->exportInterval =
+                std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_INTERVAL));
+            config->exportTimeout =
+                std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
+
+            // TODO Update index configuration when it is defined
+            IndexerConnectorOptions icConfig {};
+            icConfig.name = "metrics-index";
+            icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
+            icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
+            icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
+            if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
+            {
+                icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
+                icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
+                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+            }
+
+            icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
+            const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);
+            if (to < 0)
+            {
+                throw std::runtime_error("Invalid indexer timeout value.");
+            }
+            icConfig.timeout = to;
+            const auto wt = confManager.get<int>(conf::key::INDEXER_THREADS);
+            if (wt < 0)
+            {
+                throw std::runtime_error("Invalid indexer threads value.");
+            }
+            icConfig.workingThreads = wt;
+
+            config->indexerConnectorFactory = [icConfig]() -> std::shared_ptr<IIndexerConnector>
+            {
+                return std::make_shared<IndexerConnector>(icConfig);
+            };
+
+            SingletonLocator::instance<metrics::IManager>().configure(config);
+
+            // TODO add enabled flag to the configuration when config refactor is done
+            SingletonLocator::instance<metrics::IManager>().enable();
+
+            exitHandler.add(
+                []()
+                {
+                    SingletonLocator::instance<metrics::IManager>().disable();
+                    SingletonLocator::clear();
+                });
+
+            LOG_INFO("Metrics initialized.");
         }
 
         // Store
@@ -176,7 +231,7 @@ int main(int argc, char* argv[])
         // KVDB
         {
             kvdbManager::KVDBManagerOptions kvdbOptions {confManager.get<std::string>(conf::key::KVDB_PATH), "kvdb"};
-            kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
+            kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
             exitHandler.add(
@@ -243,6 +298,21 @@ int main(int argc, char* argv[])
                 icConfig.sslOptions.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_LIST);
                 icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                 icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+                icConfig.sslOptions.skipVerifyPeer = !confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTS);
+            }
+            else
+            {
+                // If not use SSL, check if url start with https
+                for (const auto& host : icConfig.hosts)
+                {
+                    if (base::utils::string::startsWith(host, "https://"))
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "The host '{}' for indexer connector is using HTTPS but the SSL options are not "
+                            "enabled.",
+                            host));
+                    }
+                }
             }
 
             icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
@@ -303,12 +373,9 @@ int main(int argc, char* argv[])
             std::shared_ptr<QEventType> eventQueue {};
             std::shared_ptr<QTestType> testQueue {};
             {
-                auto scope = metrics->getMetricsScope("EventQueue");
-                auto scopeDelta = metrics->getMetricsScope("EventQueueDelta");
                 // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
                 eventQueue = std::make_shared<QEventType>(confManager.get<int>(conf::key::QUEUE_SIZE),
-                                                          scope,
-                                                          scopeDelta,
+                                                          "routerEventQueue",
                                                           confManager.get<std::string>(conf::key::QUEUE_FLOOD_FILE),
                                                           confManager.get<int>(conf::key::QUEUE_FLOOD_ATTEMPS),
                                                           confManager.get<int>(conf::key::QUEUE_FLOOD_SLEEP),
@@ -317,9 +384,7 @@ int main(int argc, char* argv[])
             }
 
             {
-                auto scope = metrics->getMetricsScope("TestQueue");
-                auto scopeDelta = metrics->getMetricsScope("TestQueueDelta");
-                testQueue = std::make_shared<QTestType>(confManager.get<int>(conf::key::QUEUE_SIZE), scope, scopeDelta);
+                testQueue = std::make_shared<QTestType>(confManager.get<int>(conf::key::QUEUE_SIZE), "routerTestQueue");
                 LOG_DEBUG("Test queue created.");
             }
 
@@ -350,9 +415,8 @@ int main(int argc, char* argv[])
                     LOG_INFO_L(functionName.c_str(), "API terminated.");
                 });
 
-            // Register Metrics
-            api::metrics::handlers::registerHandlers(metrics, api);
-            LOG_DEBUG("Metrics API registered.");
+            // TODO Register Metrics
+            // LOG_DEBUG("Metrics API registered.");
 
             // KVDB
             api::kvdb::handlers::registerHandlers(kvdbManager, "api", api);
@@ -571,6 +635,23 @@ int main(int argc, char* argv[])
              *
              * @apiDescription This endpoint receives events to be processed by the Wazuh-Engine security policy. It
              * accepts a NDJSON payload where each line represents an object.
+             *
+             * **Example NDJSON Payload:**
+             * ```
+             * {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}}
+             * {"module": "logcollector", "type": "file"}
+             * {"log": {"file": {"path": "/var/log/apache2/access.log"}}, "tags": ["production-server"], "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z", "module": "apache-access", "provider": "file"}}
+             * {"log":{"file":{"path":"/var/log/apache2/error.log"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","ingested":"2023-12-26T09:22:14.000Z","module":"apache-error","provider":"file"}}
+             * {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","ingested":"2023-12-26T09:22:14.000Z","module":"syslog","provider":"file"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"$CHANEL_NAME","provider":"windows-evenchannel"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"Microsoft-Windows-Security-Auditing","provider":"windows-evenchannel"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"Windows PowerShell","provider":"windows-evenchannel"}}
+             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"$UNIT_NAME","provider":"journald"}}
+             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","ingested":"2023-12-26T09:22:14.000Z","module":"ssh.service","provider":"journald"}}
+             * {"module": "inventory", "type": "package"}
+             * {"tags": ["string"], "event": {"original": "string", "ingested": "string", "module": "string", "provider": "string"}}
+             * ```
+             *
              * @apiHeader {String} Content-Type=application/x-ndjson The content type of the request.
              *
              * @apiBody (Agent Information) {Object} agent Agent information.
@@ -594,21 +675,13 @@ int main(int argc, char* argv[])
              * @apiBody (Log Information) {Object} log Log information.
              * @apiBody (Log Information) {Object} log.file File information.
              * @apiBody (Log Information) {String} log.file.path Path to the file, "/path/to/source". Exist only if is recolected from a file.
-             * @apiBody (Log Information) {Object} base The base field set contains all fields which are at the root of the events.
-             * @apiBody (Log Information) {String} base.tags List of keywords used to tag each event. (e.g ["production", "env2"])
+             * @apiBody (Log Information) {String} tags List of keywords used to tag each event. (e.g ["production", "env2"])
              * @apiBody (Log Information) {Object} event Details of the event itself.
              * @apiBody (Log Information) {String} event.original The original message collected from the agent.
              * @apiBody (Log Information) {String} event.created Timestamp when an event is recollected in '%Y-%m-%dT%H:%M:%SZ' format.
-             * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g. apache, eventchannel,
+             * @apiBody (Log Information) {String} event.module Name of the module this data is coming from. (e.g. apache, windows-eventchannel,
              * journald, etc)
              * @apiBody (Log Information) {String} event.provider Source of the event. (e.g channel, file, journald unit, etc)
-             *
-             * @apiExample {ndjson} Request-Example:
-             *     {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}}
-             *     {"module": "logcollector", "type": "file"}
-             *     {"log": {"file": {"path": "/var/log/apache2/access.log"}}, "base": {"tags": ["production-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z", "module": "apache-access", "provider": "file"}}
-             *     {"module": "inventory", "type": "package"}
-             *     {"base": {"tags": ["string"]}, "event": {"original": "string", "ingested": "string", "module": "string", "provider": "string"}}
              *
              * @apiSuccessExample Success-Response:
              *     HTTP/1.1 204 No Content
@@ -647,8 +720,6 @@ int main(int argc, char* argv[])
             g_engineServer = server;
 
             // API Endpoint
-            auto apiMetricScope = metrics->getMetricsScope("endpointAPI");
-            auto apiMetricScopeDelta = metrics->getMetricsScope("endpointAPIRate", true);
             auto apiHandler = std::bind(&api::Api::processRequest, api, std::placeholders::_1, std::placeholders::_2);
             auto apiClientFactory = std::make_shared<ph::WStreamFactory>(apiHandler); // API endpoint
             apiClientFactory->setErrorResponse(base::utils::wazuhProtocol::WazuhResponse::unknownError().toString());
@@ -657,24 +728,9 @@ int main(int argc, char* argv[])
             auto apiEndpointCfg =
                 std::make_shared<endpoint::UnixStream>(confManager.get<std::string>(conf::key::SERVER_API_SOCKET),
                                                        apiClientFactory,
-                                                       apiMetricScope,
-                                                       apiMetricScopeDelta,
                                                        confManager.get<int>(conf::key::SERVER_API_QUEUE_SIZE),
                                                        confManager.get<int>(conf::key::SERVER_API_TIMEOUT));
             server->addEndpoint("API", apiEndpointCfg);
-
-            // Event Endpoint
-            auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
-            auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
-            auto eventHandler = std::bind(&router::Orchestrator::pushEvent, orchestrator, std::placeholders::_1);
-            auto eventEndpointCfg =
-                std::make_shared<endpoint::UnixDatagram>(confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET),
-                                                         eventHandler,
-                                                         eventMetricScope,
-                                                         eventMetricScopeDelta,
-                                                         confManager.get<int>(conf::key::SERVER_EVENT_QUEUE_SIZE));
-            server->addEndpoint("EVENT", eventEndpointCfg);
-            LOG_DEBUG("Server configured.");
         }
     }
     catch (const std::exception& e)

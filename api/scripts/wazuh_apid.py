@@ -128,7 +128,7 @@ def configure_ssl(params: dict, config: APISSLConfig):
             if ssl_protocol in (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1_1):
                 logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
 
-        # Check and assign ownership to wazuh user for server.key and server.crt files
+        # Check and assign ownership to wazuh user for the api.key and api.crt files
         utils.assign_wazuh_ownership(config.key)
         utils.assign_wazuh_ownership(config.cert)
 
@@ -289,7 +289,6 @@ def get_script_arguments() -> Namespace:
         Arguments passed to the script.
     """
     parser = ArgumentParser()
-    parser.add_argument('-d', '--daemon', action='store_true', dest='daemon', help='Run as a daemon')
     parser.add_argument('-r', '--root', action='store_true', dest='root', help='Run as root')
     parser.add_argument('-v', '--version', action='store_true', dest='version', help='Print version')
     return parser.parse_args()
@@ -334,14 +333,9 @@ if __name__ == '__main__':
     # Check for unused PID files
     utils.clean_pid_files(API_MAIN_PROCESS)
 
-    # Foreground/Daemon
-    if args.daemon:
-        pyDaemonModule.pyDaemon()
-    else:
-        logger.info('Starting API in foreground')
-
     # Drop privileges to wazuh
     if not args.root:
+        logger.info('Starting API')
         if management_config.drop_privileges:
             os.setgid(common.wazuh_gid())
             os.setuid(common.wazuh_uid())

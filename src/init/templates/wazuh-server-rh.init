@@ -20,8 +20,7 @@ WAZUH_SERVER="${WAZUH_HOME}/usr/share/wazuh-server/bin/wazuh-server"
 
 start() {
     echo -n "Starting Wazuh: "
-    # TODO: Remove root flag
-    ${WAZUH_SERVER} start -r > /dev/null
+    ${WAZUH_SERVER} start > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success

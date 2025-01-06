@@ -1,4 +1,3 @@
-import asyncio
 import json
 from typing import List
 
@@ -10,7 +9,7 @@ from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.batcher.client import BatcherClient
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Packet
 from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, TaskResult
 
 HTTP_STATUS_OK = 200
@@ -97,7 +96,7 @@ async def parse_stateful_events(request: Request) -> StatefulEvents:
                 if i == 0:
                     agent_metadata = AgentMetadata.model_validate_json(part)
                 elif i % 2 == 0:
-                    data.append(json.loads(part))
+                    data.append(part)
                 else:
                     header = Header.model_validate_json(part)
                     headers.append(header)
@@ -129,8 +128,7 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
     List[TaskResult]
         Indexer response for each one of the bulk tasks.
     """
-    tasks: List[asyncio.Task] = []
-    item_ids: List[str] = []
+    packet = Packet()
     i: int = 0
 
     # Sends the events to the batcher
@@ -140,20 +138,12 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
             data = events.data[i]
             i += 1
 
-        batcher_client.send_event(agent_metadata=events.agent_metadata, header=header, data=data)
+        packet.build_and_add_item(agent_metadata=events.agent_metadata, header=header, data=data)
 
-        if header.id not in item_ids:
-            item_ids.append(header.id)
-            
-    for id in item_ids:
-        task = asyncio.create_task(
-            (lambda u: batcher_client.get_response(u))(id)
-        )
-        tasks.append(task)
+    batcher_client.send_event(packet)
+    response = await batcher_client.get_response(packet.id)
 
-    # Wait for all of them and create response
-    tasks_results = await asyncio.gather(*tasks)
-    return parse_tasks_results(tasks_results)
+    return parse_tasks_results([item.content for item in response.items])
 
 
 def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
@@ -171,29 +161,28 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
     """
     results: List[TaskResult] = []
 
-    for result in tasks_results:
-        for r in result:
-            status = r[IndexerKey.STATUS]
-            if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
-                task_result = TaskResult(
-                    index=r[IndexerKey._INDEX],
-                    id=r[IndexerKey._ID],
-                    result=r[IndexerKey.RESULT],
-                    status=status
-                )
+    for r in tasks_results:
+        status = r[IndexerKey.STATUS]
+        if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
+            task_result = TaskResult(
+                index=r[IndexerKey._INDEX],
+                id=r[IndexerKey._ID],
+                result=r[IndexerKey.RESULT],
+                status=status
+            )
+        else:
+            if IndexerKey.ERROR not in r:
+                error_reason = r[IndexerKey.RESULT]
             else:
-                if IndexerKey.ERROR not in r:
-                    error_reason = r[IndexerKey.RESULT]
-                else:
-                    error_reason = r[IndexerKey.ERROR][IndexerKey.REASON]
+                error_reason = r[IndexerKey.ERROR][IndexerKey.REASON]
                     
-                task_result = TaskResult(
-                    index=r[IndexerKey._INDEX],
-                    id=r[IndexerKey._ID],
-                    result=error_reason,
-                    status=status,
-                )
+            task_result = TaskResult(
+                index=r[IndexerKey._INDEX],
+                id=r[IndexerKey._ID],
+                result=error_reason,
+                status=status,
+            )
 
-            results.append(task_result)
+        results.append(task_result)
 
     return results

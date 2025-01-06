@@ -146,17 +146,18 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
                 result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
                 agent_list.remove(not_found_id)
 
-        commands = []
-        for agent_id in agent_list:
-            command = create_restart_command(agent_id=agent_id)
-            commands.append(command)
-
-        response = await indexer_client.commands_manager.create(commands)
-        if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
-            result.affected_items.extend(agent_list)
-        else:
+        if len(agent_list) > 0:
+            commands = []
             for agent_id in agent_list:
-                result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
+                command = create_restart_command(agent_id=agent_id)
+                commands.append(command)
+
+            response = await indexer_client.commands_manager.create(commands)
+            if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
+                result.affected_items.extend(agent_list)
+            else:
+                for agent_id in agent_list:
+                    result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
 
     result.total_affected_items = len(agent_list)
 
@@ -502,7 +503,7 @@ async def create_group(group_id: str) -> WazuhResult:
     if group_id.lower() == "default" or path.exists(group_path):
         raise WazuhError(1711, extra_message=group_id)
 
-    # Create group in /etc/shared
+    # Create group in /etc/wazuh-server/groups
     try:
         with open(group_path, 'w') as f:
             # TODO(#25121): Write group configuration template
@@ -547,16 +548,17 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
 
             async with get_indexer_client() as indexer_client:
                 # Get the list of agents belonging to the group to send them the update-group command
-                agent_list = await indexer_client.agents.get_group_agents(group_name=group_id)
+                agents = await indexer_client.agents.get_group_agents(group_name=group_id)
 
-                commands = []
-                for agent_id in agent_list:
-                    command = create_update_group_command(agent_id=agent_id)
-                    commands.append(command)
+                if len(agents) > 0:
+                    commands = []
+                    for agent in agents:
+                        command = create_update_group_command(agent_id=agent.id)
+                        commands.append(command)
 
-                response = await indexer_client.commands_manager.create(commands)
-                if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
-                    raise WazuhError(1762, extra_message=response.result.value)
+                    response = await indexer_client.commands_manager.create(commands)
+                    if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
+                        raise WazuhError(1762, extra_message=response.result.value)
 
                 await indexer_client.agents.delete_group(group_name=group_id)
 
@@ -636,19 +638,20 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
 
-        await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list, override=replace)
+        if len(agent_list) > 0:
+            await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list, override=replace)
 
-        commands = []
-        for agent_id in agent_list:
-            command = create_set_group_command(agent_id=agent_id, groups=[group_id])
-            commands.append(command)
-
-        response = await indexer_client.commands_manager.create(commands)
-        if response.result in (ResponseResult.OK, ResponseResult.CREATED):
-            result.affected_items.extend(agent_list)
-        else:
+            commands = []
             for agent_id in agent_list:
-                result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
+                command = create_set_group_command(agent_id=agent_id, groups=[group_id])
+                commands.append(command)
+
+            response = await indexer_client.commands_manager.create(commands)
+            if response.result in (ResponseResult.OK, ResponseResult.CREATED):
+                result.affected_items.extend(agent_list)
+            else:
+                for agent_id in agent_list:
+                    result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
 
     result.total_affected_items = len(result.affected_items)
 
@@ -702,19 +705,20 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
 
-        await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=agent_list)
+        if len(agent_list) > 0:
+            await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=agent_list)
 
-        commands = []
-        for agent_id in agent_list:
-            command = create_update_group_command(agent_id=agent_id)
-            commands.append(command)
-
-        response = await indexer_client.commands_manager.create(commands)
-        if response.result in (ResponseResult.OK, ResponseResult.CREATED):
-            result.affected_items.extend(agent_list)
-        else:
+            commands = []
             for agent_id in agent_list:
-                result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
+                command = create_update_group_command(agent_id=agent_id)
+                commands.append(command)
+
+            response = await indexer_client.commands_manager.create(commands)
+            if response.result in (ResponseResult.OK, ResponseResult.CREATED):
+                result.affected_items.extend(agent_list)
+            else:
+                for agent_id in agent_list:
+                    result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
 
     result.total_affected_items = len(result.affected_items)
 

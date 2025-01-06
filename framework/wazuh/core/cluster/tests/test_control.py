@@ -162,8 +162,7 @@ async def test_distribute_orders(read_config_mock, get_cluster_items_mock):
             order = Order(document_id='1', status='pending').to_dict()
             await control.distribute_orders(lc=local_client, orders=[order])
 
-        data = b'[{"source": null, "user": null, "target": null, "action": null, "timeout": null, ' \
-            b'"status": "pending", "order_id": null, "request_id": null, "document_id": "1"}]'
+        data = b'[{"source": null, "user": null, "target": null, "action": null, "document_id": "1"}]'
         execute_mock.assert_called_once_with(command=b'dist_orders', data=data)
 
         with patch('json.loads', return_value=KeyError(1)):

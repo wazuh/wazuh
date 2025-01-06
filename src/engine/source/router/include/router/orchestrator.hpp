@@ -5,7 +5,6 @@
 #include <memory>
 #include <shared_mutex>
 
-#include <base/parseEvent.hpp>
 #include <bk/icontroller.hpp>
 #include <builder/ibuilder.hpp>
 #include <queue/iqueue.hpp>
@@ -115,25 +114,6 @@ public:
      */
     void stop();
 
-    /**
-     * @brief Push an event to the event queue
-     *
-     * @param eventStr The event to push
-     */
-    void pushEvent(const std::string& eventStr)
-    {
-        base::Event event;
-        try
-        {
-            event = base::parseEvent::parseWazuhEvent(eventStr);
-            m_eventQueue->push(std::move(event));
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("Error parsing event: '{}' (discarding...)", e.what());
-        }
-    }
-
     /**************************************************************************
      * IRouterAPI
      *************************************************************************/
@@ -172,11 +152,6 @@ public:
      * @copydoc router::IRouterAPI::postEvent
      */
     void postEvent(base::Event&& event) override { m_eventQueue->push(std::move(event)); }
-
-    /**
-     * @copydoc router::IRouterAPI::postStrEvent
-     */
-    base::OptError postStrEvent(std::string_view event) override;
 
     /**
      * @copydoc router::IRouterAPI::postRawNdjson
@@ -233,21 +208,9 @@ public:
     std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) override;
 
     /**
-     * @copydoc router::ITesterAPI::ingestTest ASynchronous
-     */
-    std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Options& opt) override;
-
-    /**
      * @copydoc router::ITesterAPI::ingestTest Synchronous
      */
     base::OptError ingestTest(base::Event&& event,
-                              const test::Options& opt,
-                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
-
-    /**
-     * @copydoc router::ITesterAPI::ingestTest Synchronous
-     */
-    base::OptError ingestTest(std::string_view event,
                               const test::Options& opt,
                               std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
 

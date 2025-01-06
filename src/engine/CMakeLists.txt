@@ -171,7 +171,6 @@ find_and_create_imported_target("fmt" "fmt::fmt-header-only")
 find_and_create_imported_target("RocksDB" "RocksDB::rocksdb")
 find_and_create_imported_target("Taskflow" "Taskflow::Taskflow")
 find_and_create_imported_target("unofficial-concurrentqueue" "unofficial-concurrentqueue::concurrentqueue")
-find_and_create_imported_target("CLI11" "CLI11::CLI11")
 find_and_create_imported_target("re2" "re2::re2")
 find_and_create_imported_target("CURL" "CURL::libcurl")
 find_and_create_imported_target("maxminddb" "maxminddb::maxminddb")
@@ -185,6 +184,7 @@ find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::api")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::sdk")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::logs")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics")
+find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::resources")
 
 find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
 find_and_create_imported_target("flatbuffers" "flatbuffers::flatbuffers")
@@ -195,6 +195,9 @@ find_and_create_imported_target("date" "date::date-tz")
 
 find_and_create_imported_target("liblzma" "liblzma::liblzma")
 find_and_create_imported_target_ex("LibArchive" "LibArchive::LibArchive")
+
+find_and_create_imported_target_ex("OpenSSL" "OpenSSL::SSL")
+find_and_create_imported_target_ex("OpenSSL" "OpenSSL::Crypto")
 
 ####################################################################################################
 # Targets
@@ -231,6 +234,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/apiserver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fs)
+add_subdirectory(${ENGINE_SOURCE_DIR}/keystore)
 
 target_link_libraries(main
     base

@@ -189,8 +189,8 @@ _context_cache = dict()
 cache_event = Event()
 _WAZUH_UID = None
 _WAZUH_GID = None
-GROUP_NAME = 'wazuh'
-USER_NAME = 'wazuh'
+GROUP_NAME = 'wazuh-server'
+USER_NAME = 'wazuh-server'
 
 # TODO: Keep until we remove the different deprecated functionalities that are importing it.
 WAZUH_PATH = ''
@@ -214,7 +214,7 @@ WAZUH_LIB = VAR_LIB / WAZUH_SERVER
 
 WAZUH_QUEUE = WAZUH_RUN / 'cluster'
 
-WAZUH_SHARED = WAZUH_ETC / 'shared'
+WAZUH_GROUPS = WAZUH_ETC / 'groups'
 
 LOCAL_SERVER_SOCKET = 'local-server.sock'
 LOCAL_SERVER_SOCKET_PATH = WAZUH_RUN / LOCAL_SERVER_SOCKET

@@ -1,7 +1,6 @@
 {
   "dependencies": [
     "benchmark",
-    "cli11",
     "concurrentqueue",
     "curl",
     "date",
@@ -24,16 +23,13 @@
     "yaml-cpp",
     "cpp-httplib",
     "liblzma",
-    "libarchive"
+    "libarchive",
+    "openssl"
   ],
   "overrides": [
     {
       "name": "benchmark",
       "version": "1.8.5#0"
-    },
-    {
-      "name": "cli11",
-      "version": "2.2.0#0"
     },
     {
       "name": "concurrentqueue",
@@ -126,6 +122,10 @@
     {
       "name": "libarchive",
       "version": "3.7.7#0"
+    },
+    {
+      "name": "openssl",
+      "version": "3.4.0#0"
     }
   ]
 }

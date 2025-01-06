@@ -36,7 +36,6 @@ from comms_api.routers.exceptions import HTTPError, http_error_handler, validati
 from comms_api.routers.router import router
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
-from wazuh.core.batcher.config import BatcherConfig
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
 from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.client import CentralizedConfig
@@ -144,15 +143,13 @@ def post_worker_init(worker):
     atexit.unregister(_exit_function)
 
 
-def get_gunicorn_options(pid: int, daemon: bool, log_config_dict: dict, config: CommsAPIConfig) -> dict:
+def get_gunicorn_options(pid: int, log_config_dict: dict, config: CommsAPIConfig) -> dict:
     """Get the gunicorn app configuration options.
 
     Parameters
     ----------
     pid : int
         Main process ID.
-    daemon : bool
-        Whether to execute the script as a daemon or in foreground.
     log_config_dict : dict
         Logging configuration dictionary.
     config : CommsAPIConfig
@@ -170,7 +167,7 @@ def get_gunicorn_options(pid: int, daemon: bool, log_config_dict: dict, config: 
     return {
         'proc_name': MAIN_PROCESS,
         'pidfile': str(pidfile),
-        'daemon': daemon,
+        'daemon': False,
         'bind': f'{config.host}:{config.port}',
         'workers': config.workers,
         'worker_class': 'uvicorn.workers.UvicornWorker',
@@ -196,7 +193,6 @@ def get_script_arguments() -> Namespace:
         Arguments passed to the script.
     """
     parser = ArgumentParser()
-    parser.add_argument('-d', '--daemon', action='store_true', dest='daemon', help='Run as a daemon')
     parser.add_argument('-r', '--root', action='store_true', dest='root', help='Run as root')
     parser.add_argument('-v', '--version', action='store_true', dest='version', help='Print version')
     return parser.parse_args()
@@ -269,8 +265,8 @@ def terminate_processes(
     """
     if parent_pid == os.getpid():
         logger.info('Shutting down')
-        batcher_process.terminate()
         mux_demux_manager.shutdown()
+        batcher_process.terminate()
         commands_manager.shutdown()
         pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
         pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
@@ -296,24 +292,15 @@ if __name__ == '__main__':
     log_config_dict = setup_logging(logging_config=comms_api_config.logging)
     logger = logging.getLogger('wazuh-comms-api')
 
-    if args.daemon:
-        pyDaemonModule.pyDaemon()
-    else:
-        logger.info('Starting API in foreground')
-
     if not args.root:
+        logger.info('Starting API')
         # Drop privileges to wazuh
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
     else:
         logger.info('Starting API as root')
 
-    batcher_config = BatcherConfig(
-        max_elements=comms_api_config.batcher.max_elements,
-        max_size=comms_api_config.batcher.max_size,
-        max_time_seconds=comms_api_config.batcher.wait_time
-    )
-    mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
+    mux_demux_manager, batcher_process = create_batcher_process(config=comms_api_config.batcher)
 
     # Start HTTP over unix socket server
     commands_manager = CommandsManager()
@@ -333,7 +320,7 @@ if __name__ == '__main__':
 
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
-        options = get_gunicorn_options(pid, args.daemon, log_config_dict, comms_api_config)
+        options = get_gunicorn_options(pid, log_config_dict, comms_api_config)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
         logger.error(f'Error when trying to start the Wazuh Communications API. {e}')
@@ -341,5 +328,3 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
-    finally:
-        terminate_processes(pid, mux_demux_manager, batcher_process, commands_manager)

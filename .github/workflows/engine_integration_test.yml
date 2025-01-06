@@ -31,6 +31,7 @@ env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
 
 
+
 jobs:
   build:
     name: Engine Integration Test
@@ -43,7 +44,7 @@ jobs:
     steps:
 
     - name: Install dependencies lzip
-      run: sudo apt-get install lzip  
+      run: sudo apt-get install lzip
 
     - name: Check out repository
       uses: actions/checkout@v4
@@ -83,6 +84,7 @@ jobs:
         export WHOAMI=$(whoami)
         sudo install -d -m 0750 -o ${WHOAMI} /var/lib/wazuh-server/
         sudo install -d -m 0750 -o ${WHOAMI} /run/wazuh-server/
+        sudo install -d -m 0750 -o ${WHOAMI} /etc/wazuh-server
         curl -LO http://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.10.0.tar.xz
         tar -xvf vd_1.0.0_vd_4.10.0.tar.xz
         mv queue/vd /var/lib/wazuh-server/

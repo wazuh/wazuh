@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from connexion.exceptions import ProblemException
-from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core.exception import WazuhTooManyRequests
 
 
@@ -27,9 +26,6 @@ class APIException(Exception):
         # show relative paths in exceptions
         self.exceptions = {
             2000: 'Some parameters are not expected in the configuration',
-            2001: 'Error creating or reading secrets file. Please, ensure '
-                  'there is enough disk space and permission to write in '
-                  f'{SECURITY_CONFIG_PATH}',
             2002: 'Error migrating configuration from old API version. '
                   'Default configuration will be applied',
             2003: 'Error loading SSL/TLS certificates',

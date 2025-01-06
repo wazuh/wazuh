@@ -35,7 +35,6 @@ constexpr std::string_view QUEUE_DROP_ON_FLOOD = "/engine/queue/drop_on_flood";
 constexpr std::string_view ORCHESTRATOR_THREADS = "/engine/orchestrator/threads";
 
 constexpr std::string_view SERVER_THREAD_POOL_SIZE = "/engine/server/thread_pool_size";
-constexpr std::string_view SERVER_EVENT_SOCKET = "/engine/server/event_socket";
 constexpr std::string_view SERVER_EVENT_QUEUE_SIZE = "/engine/server/event_queue_size";
 constexpr std::string_view SERVER_API_SOCKET = "/engine/server/api_socket";
 constexpr std::string_view SERVER_API_QUEUE_SIZE = "/engine/server/api_queue_size";
@@ -45,6 +44,9 @@ constexpr std::string_view API_SERVER_SOCKET = "/engine/api_server/socket";
 
 constexpr std::string_view TZDB_PATH = "/engine/tzdb/path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "/engine/tzdb/auto_update";
+
+constexpr std::string_view METRICS_EXPORT_INTERVAL = "/engine/metrics/export_interval";
+constexpr std::string_view METRICS_EXPORT_TIMEOUT = "/engine/metrics/export_timeout";
 
 }; // namespace conf::key
 

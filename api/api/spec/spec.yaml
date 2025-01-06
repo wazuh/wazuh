@@ -1623,10 +1623,6 @@ components:
         - user
         - target
         - action
-        - timeout
-        - status
-        - order_id
-        - request_id
         - document_id
       properties:
         source:
@@ -1668,23 +1664,6 @@ components:
               description: "Order action arguments"
               items:
                 type: string
-        timeout:
-          type: integer
-          format: int32
-        status:
-          type: string
-          description: "Order status"
-          enum:
-            - pending
-            - sent
-            - success
-            - failure
-        order_id:
-          type: string
-          format: alphanumeric_symbols
-        request_id:
-          type: string
-          format: alphanumeric_symbols
         document_id:
           type: string
           format: alphanumeric_symbols
@@ -6027,10 +6006,6 @@ paths:
                     name: set-group
                     args: ['group1']
                     version: v5.0.0
-                  timeout: 60
-                  status: PENDING
-                  order_id: l8nhoJIBerRY2Wz26Je8
-                  request_id: lsnhoJIBerRY2Wz26Je7
                   document_id: SuyTlZIBRVsFsWNvvx6f
       responses:
         '200':

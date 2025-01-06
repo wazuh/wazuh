@@ -7,26 +7,23 @@ import hashlib
 import json
 import operator
 import os
+import psutil
 import re
 import stat
 import sys
-import tempfile
 import typing
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
-from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
-import psutil
-from requests import get, exceptions
-from shutil import Error, move, copy2
+from os import chmod, chown, listdir, mkdir, curdir, rename, utime, path
+from pathlib import Path
+from shutil import move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 
 import yaml
 from cachetools import cached, TTLCache
 
-import wazuh.core.results as results
-import api.configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -38,7 +35,20 @@ if sys.version_info[0] == 3:
 # Temporary cache
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
-GROUP_FILE_EXT = '.conf'
+GROUP_FILE_EXT = '.yml'
+
+
+def create_wazuh_dir(dirpath: Path):
+    """Create a directory if it doesn't exist and assign ownership.
+
+    Parameters
+    ----------
+    dirpath : Path
+        Directory to create.
+    """
+    if not dirpath.exists():
+        dirpath.mkdir()
+        chown(dirpath, common.wazuh_uid(), common.wazuh_gid())
 
 
 def assign_wazuh_ownership(filepath: str):
@@ -908,7 +918,7 @@ def get_group_file_path(group_id: str) -> str:
     str
         Group configuration file path.
     """
-    return path.join(common.WAZUH_SHARED, group_id+GROUP_FILE_EXT)
+    return path.join(common.WAZUH_GROUPS, group_id+GROUP_FILE_EXT)
 
 
 class WazuhVersion:

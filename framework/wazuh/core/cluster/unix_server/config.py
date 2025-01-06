@@ -1,4 +1,4 @@
-from fastapi import Response, status, HTTPException
+from fastapi import Response, status
 from starlette.responses import JSONResponse
 from typing import Optional
 
@@ -24,9 +24,12 @@ async def get_config(sections: Optional[str] = None) -> Response:
         try:
             validated_sections = [ConfigSections(section) for section in section_list]
         except ValueError as e:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={'code': status.HTTP_400_BAD_REQUEST, 'message': f"Invalid section(s): {str(e)}"},
+                content={
+                    'message': f"Invalid configuration section: '{e.args[0]}'",
+                    'code': status.HTTP_400_BAD_REQUEST,
+                },
             )
     else:
         validated_sections = None

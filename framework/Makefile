@@ -4,14 +4,14 @@
 #
 # Syntax: make [ all | build | install | examples | clean ]
 
-WAZUH_GROUP       = wazuh
+WAZUH_USER        = wazuh-server
+WAZUH_GROUP       = wazuh-server
 WAZUH_SERVER	  = wazuh-server
 
 SHARE_INSTALLDIR       ?= /usr/share/${WAZUH_SERVER}
 LOG_INSTALLDIR         ?= /var/log/${WAZUH_SERVER}
 LIB_INSTALLDIR         ?= /var/lib/${WAZUH_SERVER}
 ETC_INSTALLDIR         ?= /etc/${WAZUH_SERVER}
-RUN_INSTALLDIR         ?= /run/${WAZUH_SERVER}
 BIN_INSTALLDIR         ?= ${SHARE_INSTALLDIR}/bin
 
 CC           = gcc
@@ -19,9 +19,9 @@ CFLAGS       = -pipe -Wall -Wextra
 THREAD_FLAGS = -pthread
 MV_FILE      = mv -f
 RM_FILE      = rm -f
-INSTALL_DIR  = install -o root -g ${WAZUH_GROUP} -m 0750  -d
-INSTALL_EXEC = install -o root -g ${WAZUH_GROUP} -m 0750
-INSTALL_FILE = install -o root -g ${WAZUH_GROUP} -m 0640
+INSTALL_DIR  = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750  -d
+INSTALL_EXEC = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0750
+INSTALL_FILE = install -o ${WAZUH_USER} -g ${WAZUH_GROUP} -m 0640
 
 ifdef DEBUG
 	CFLAGS+=-g -I ../src
@@ -51,12 +51,8 @@ install:
 	# ETC
 	$(INSTALL_DIR) $(ETC_INSTALLDIR)
 	$(INSTALL_DIR) $(ETC_INSTALLDIR)/cluster
-	$(INSTALL_DIR) $(ETC_INSTALLDIR)/shared
-
-	# RUN
-	$(INSTALL_DIR) $(RUN_INSTALLDIR)
-	$(INSTALL_DIR) $(RUN_INSTALLDIR)/cluster
-	$(INSTALL_DIR) $(RUN_INSTALLDIR)/socket
+	$(INSTALL_DIR) $(ETC_INSTALLDIR)/certs
+	$(INSTALL_DIR) $(ETC_INSTALLDIR)/groups
 
 	# SHARE
 	$(INSTALL_FILE) scripts/*.py ${SHARE_INSTALLDIR}/framework/scripts

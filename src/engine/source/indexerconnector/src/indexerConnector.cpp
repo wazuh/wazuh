@@ -136,7 +136,8 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
     secureCommunication.basicAuth(username + ":" + password)
         .sslCertificate(sslCertificate)
         .sslKey(sslKey)
-        .caRootCertificate(caRootCertificate);
+        .caRootCertificate(caRootCertificate)
+        .skipPeerVerification(config.sslOptions.skipVerifyPeer);
 }
 
 static void builderBulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
