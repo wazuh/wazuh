@@ -34,12 +34,14 @@ private:
         return Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
     }
 
-    void keyNormalization(uint64_t key, std::string_view keyString, std::string_view value)
+    void keyNormalization(uint64_t key, std::string_view keyString, const std::unique_ptr<rocksdb::Iterator>& it)
     {
         if (keyString.size() < ROCKSDB_QUEUE_PADDING)
         {
             auto stringPaddedKey = paddedKey(key);
-            if (const auto status = m_db->Put(rocksdb::WriteOptions(), stringPaddedKey, value); !status.ok())
+            if (const auto status =
+                    m_db->Put(rocksdb::WriteOptions(), stringPaddedKey, {it->value().data(), it->value().size()});
+                !status.ok())
             {
                 throw std::runtime_error("Failed to re-insert element during key normalization: " + stringPaddedKey);
             }
@@ -135,11 +137,9 @@ public:
 
         while (it->Valid())
         {
-            auto stringKey = it->key().ToString();
-            auto value = it->value().data();
-            auto valueSize = it->value().size();
-            auto key = std::stoull(stringKey);
-            keyNormalization(key, stringKey, {value, valueSize});
+            auto keyString = it->key().ToString();
+            auto key = std::stoull(keyString);
+            keyNormalization(key, keyString, it);
 
             if (key > m_last)
             {
