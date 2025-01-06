@@ -29,32 +29,17 @@ template<typename T, typename U = T>
 class RocksDBQueue final
 {
 private:
+    bool m_legacyKeyMode;
+
     std::string paddedKey(uint64_t key) const
     {
-        return Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
-    }
-
-    void keyNormalization(uint64_t key, std::string_view keyString, const std::unique_ptr<rocksdb::Iterator>& it)
-    {
-        if (keyString.size() < ROCKSDB_QUEUE_PADDING)
-        {
-            auto stringPaddedKey = paddedKey(key);
-            if (const auto status =
-                    m_db->Put(rocksdb::WriteOptions(), stringPaddedKey, {it->value().data(), it->value().size()});
-                !status.ok())
-            {
-                throw std::runtime_error("Failed to re-insert element during key normalization: " + stringPaddedKey);
-            }
-
-            if (const auto status = m_db->Delete(rocksdb::WriteOptions(), keyString); !status.ok())
-            {
-                throw std::runtime_error("Failed to remove element during key normalization: " + stringPaddedKey);
-            }
-        }
+        return m_legacyKeyMode ? std::to_string(key)
+                               : Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
     }
 
 public:
     explicit RocksDBQueue(const std::string& connectorName)
+        : m_legacyKeyMode {false}
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.
@@ -139,7 +124,11 @@ public:
         {
             auto keyString = it->key().ToString();
             auto key = std::stoull(keyString);
-            keyNormalization(key, keyString, it);
+
+            if (keyString.size() < ROCKSDB_QUEUE_PADDING)
+            {
+                m_legacyKeyMode = true;
+            }
 
             if (key > m_last)
             {
