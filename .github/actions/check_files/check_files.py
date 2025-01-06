@@ -434,8 +434,6 @@ if __name__ == "__main__":
 
         print("Scanning started...")
 
-        failed = False
-
         # Separate expected items into exact matches and patterns
         exact_matches = {}
         glob_patterns = {}
@@ -462,7 +460,6 @@ if __name__ == "__main__":
                 difference_dict = file_diff(
                     expected_item_fields, file_object, size_check)
                 if len(difference_dict) != 0:
-                    failed = True
                     # Track differences using the current file name as a key
                     not_fully_match[current_file_name] = difference_dict
 
@@ -479,17 +476,16 @@ if __name__ == "__main__":
                         difference_dict = file_diff(
                             expected_item_fields, file_object, size_check)
                         if len(difference_dict) != 0:
-                            failed = True
                             # Use (pattern, current_file_name) as a key to track differences
                             not_fully_match[current_file_name] = difference_dict
+
             # 3. If no patterns matched, consider it a "not found" case
             if not matched:
-                failed = True
                 not_listed[current_file_name] = file_object
 
         print("Scanning finished")
         printReport(expected_items, not_listed,
                     not_fully_match, current_items, matches, report_path)
 
-        if failed:
+        if len(current_items) < len(expected_items) or len(not_listed) != 0 or len(not_fully_match) != 0:
             sys.exit("Failed: Results didn't match the expected output")
