@@ -1,15 +1,54 @@
 from dataclasses import asdict
-from typing import List
+from typing import List, Optional
 
 from opensearchpy import exceptions
+from opensearchpy._async.helpers.search import AsyncSearch
 
 from .base import BaseIndex, IndexerKey, POST_METHOD
-from .utils import convert_enums
+from .utils import convert_enums, get_source_items
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
-    ResponseResult
- 
+from wazuh.core.indexer.models.commands import (
+    Action, Command, Source, Target, TargetType, CreateCommandResponse, ResponseResult
+)
+
 COMMAND_USER_NAME = 'Management API'
+COMMAND_KEY = 'command'
+
+
+class CommandsIndex(BaseIndex):
+    INDEX = '.commands'
+
+    async def search(
+        self,
+        query: dict,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> List[Command]:
+        """Perform a search operation with the given query.
+
+        Parameters
+        ----------
+        query : dict
+            DSL query.
+        select : Optional[str], optional
+            A comma-separated list of fields to include in the response, by default None.
+        exclude : Optional[str], optional
+            A comma-separated list of fields to exclude from the response, by default None.
+        offset : Optional[int], optional
+            The starting index to search from, by default None.
+        limit : Optional[int], optional
+            How many results to include in the response, by default None.
+        sort : Optional[str], optional
+            A comma-separated list of fields to sort by, by default None.
+
+        Returns
+        -------
+        dict
+            The search result.
+        """
+        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: query}
+        results = await self._client.search(**parameters, size=limit, from_=offset)
+        return [Command(**item['command']) for item in get_source_items(results)]
 
 
 class CommandsManager(BaseIndex):
@@ -20,12 +59,12 @@ class CommandsManager(BaseIndex):
 
     async def create(self, commands: List[Command]) -> CreateCommandResponse:
         """Create a new command.
-        
+
         Parameters
         ----------
         commands : List[Command]
             New commands list.
-        
+
         Returns
         -------
         CreateCommandResponse
@@ -55,15 +94,41 @@ class CommandsManager(BaseIndex):
             result=ResponseResult(response.get(IndexerKey.RESULT)),
         )
 
+    async def get_commands(self, status: str) -> List[Command]:
+        """Get commands that match with the given parameters.
+
+        Parameters
+        ----------
+        status : str
+            Status name.
+
+        Returns
+        -------
+        commands : List[Command]
+            Command list.
+        """
+        query = AsyncSearch(using=self._client, index=self.INDEX).filter({
+            IndexerKey.TERM: {
+                f'{COMMAND_KEY}.{IndexerKey.STATUS}': status
+            }
+        })
+        response = await query.execute()
+
+        commands = []
+        for hit in response:
+            commands.append(Command(**hit.to_dict()[COMMAND_KEY]))
+
+        return commands
+
 
 def create_restart_command(agent_id: str) -> Command:
     """Create a restart command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
-    
+
     Returns
     -------
     Command
@@ -88,14 +153,14 @@ def create_restart_command(agent_id: str) -> Command:
 
 def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
     """Create a set group command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
     groups : List[str]
         Group names list.
-    
+
     Returns
     -------
     Command
@@ -119,12 +184,12 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
 
 def create_update_group_command(agent_id: str) -> Command:
     """Create a update group command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
-    
+
     Returns
     -------
     Command

@@ -10,7 +10,7 @@ from opensearchpy.exceptions import TransportError, ImproperlyConfigured
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.bulk import MixinBulk
-from wazuh.core.indexer.commands import CommandsManager
+from wazuh.core.indexer.commands import CommandsIndex, CommandsManager
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
@@ -50,6 +50,7 @@ class Indexer(MixinBulk):
         # Register indices and plugins clients here
         self.agents = AgentsIndex(client=self._client)
         self.commands_manager = CommandsManager(client=self._client)
+        self.commands = CommandsIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """Get a new OpenSearch client instance.
@@ -58,7 +59,7 @@ class Indexer(MixinBulk):
         ------
         WazuhIndexerError
             In case authentication is not provided.
-        
+
         Raises
         ------
         WazuhIndexerError(2201)
