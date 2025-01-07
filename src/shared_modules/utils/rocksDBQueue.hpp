@@ -13,6 +13,7 @@
 #define _ROCKSDB_QUEUE_HPP
 
 #include "loggerHelper.h"
+#include "rocksDBOptions.hpp"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
@@ -23,6 +24,9 @@
 #include <string>
 
 constexpr auto ROCKSDB_QUEUE_PADDING {20};
+constexpr auto CUSTOM_QUEUE_ROCKSDB_WRITE_BUFFER_MANAGER_SIZE = 128 * 1024 * 1024;
+constexpr auto CUSTOM_ROCKSDB_MAX_OPEN_FILES = 64;
+constexpr auto CUSTOM_ROCKSDB_MAX_WRITE_BUFFER_NUMBER = 4;
 
 // RocksDB integration as queue
 template<typename T, typename U = T>
@@ -30,32 +34,18 @@ class RocksDBQueue final
 {
 public:
     explicit RocksDBQueue(const std::string& connectorName)
-        : m_legacyKeyMode {false}
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.
-        m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
-        rocksdb::BlockBasedTableOptions tableOptions;
-        tableOptions.block_cache = m_readCache;
+        m_readCache = rocksdb::NewLRUCache(Utils::ROCKSDB_BLOCK_CACHE_SIZE);
+        // Write buffer manager is used to manage the memory used for writing data to the disk.
+        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(CUSTOM_QUEUE_ROCKSDB_WRITE_BUFFER_MANAGER_SIZE);
+
+        rocksdb::Options options = Utils::RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
 
         // Write buffer manager is used to manage the memory used for writing data to the disk.
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
-
-        rocksdb::Options options;
-        options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));
-        options.create_if_missing = true;
-        // Setting INFO level for the info log. We'll have up to 10 files of 10MB each.
-        options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL;
-        options.keep_log_file_num = 10;
-        options.max_log_file_size = 10 * 1024 * 1024;
-        options.recycle_log_file_num = 10;
-        options.max_open_files = 64;
-        options.write_buffer_manager = m_writeManager;
-        options.num_levels = 4;
-
-        options.write_buffer_size = 32 * 1024 * 1024;
-        options.max_write_buffer_number = 4;
-        options.max_background_jobs = 4;
+        options.max_open_files = CUSTOM_ROCKSDB_MAX_OPEN_FILES;
+        options.max_write_buffer_number = CUSTOM_ROCKSDB_MAX_WRITE_BUFFER_NUMBER;
 
         rocksdb::DB* db;
 

@@ -15,6 +15,7 @@
 #include <memory>
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
+#include <thread>
 
 namespace Utils
 {
@@ -24,6 +25,7 @@ namespace Utils
     constexpr auto ROCKSDB_MAX_OPEN_FILES = 256;
     constexpr auto ROCKSDB_NUM_LEVELS = 4;
     constexpr auto ROCKSDB_BLOCK_CACHE_SIZE = 16 * 1024 * 1024;
+    constexpr auto ROCKSDB_BACKGROUND_JOBS_PER_INSTANCE = 2;
 
     class RocksDBOptions final
     {
@@ -77,6 +79,9 @@ namespace Utils
                 throw std::runtime_error("Write buffer manager is not initialized");
             }
 
+            static auto instances = 0;
+            ++instances;
+
             rocksdb::Options options;
             // If the total size of all live memtables of all the DBs exceeds
             // a limit, a flush will be triggered in the next DB to which the next write
@@ -104,6 +109,11 @@ namespace Utils
 
             // The size of the LRU cache used to prevent cold reads.
             options.table_factory.reset(NewBlockBasedTableFactory(buildTableOptions(readCache)));
+
+            if (std::thread::hardware_concurrency() < ROCKSDB_BACKGROUND_JOBS_PER_INSTANCE * instances)
+            {
+                options.max_background_jobs = ROCKSDB_BACKGROUND_JOBS_PER_INSTANCE * instances;
+            }
             return options;
         }
     };
