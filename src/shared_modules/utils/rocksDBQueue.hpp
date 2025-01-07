@@ -28,15 +28,6 @@ constexpr auto ROCKSDB_QUEUE_PADDING {20};
 template<typename T, typename U = T>
 class RocksDBQueue final
 {
-private:
-    bool m_legacyKeyMode;
-
-    std::string paddedKey(uint64_t key) const
-    {
-        return m_legacyKeyMode ? std::to_string(key)
-                               : Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
-    }
-
 public:
     explicit RocksDBQueue(const std::string& connectorName)
         : m_legacyKeyMode {false}
@@ -122,8 +113,8 @@ public:
 
         while (it->Valid())
         {
-            auto keyString = it->key().ToString();
-            auto key = std::stoull(keyString);
+            const auto keyString = it->key().ToString();
+            const auto key = std::stoull(keyString);
 
             if (keyString.size() < ROCKSDB_QUEUE_PADDING)
             {
@@ -299,6 +290,13 @@ private:
     uint64_t m_size = 0;
     uint64_t m_first = 1;
     uint64_t m_last = 0;
+    bool m_legacyKeyMode = false;
+
+    std::string paddedKey(const uint64_t key) const
+    {
+        return m_legacyKeyMode ? std::to_string(key)
+                               : Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
+    }
 };
 
 #endif // _ROCKSDB_QUEUE_HPP
