@@ -56,8 +56,8 @@ FROM ubuntu:24.04 AS server
 ENV USER=wazuh-server
 ENV GROUP=wazuh-server
 
-# Add group and user
-RUN groupadd -f "$GROUP" && useradd "$USER" -d "/" -s "/sbin/nologin" -g "$GROUP"
+# Rename ubuntu group and user
+RUN groupmod -n "$GROUP" ubuntu && usermod -l "$USER" ubuntu
 
 # Copy directories from builder
 COPY --from=builder --chown=${USER}:${GROUP} /etc/wazuh-server /etc/wazuh-server
