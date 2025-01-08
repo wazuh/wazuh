@@ -151,6 +151,7 @@ class Packet:
         """
         return b'{' + agent_metadata[1:-1] + b', ' + data[1:-1] + b'}'
 
+
 class MuxDemuxQueue:
     """Class for managing items between mux and demux components.
 
@@ -167,6 +168,7 @@ class MuxDemuxQueue:
         self.responses = proxy_dict
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
+        self._subscriptions = {}
 
     def send_to_mux(self, packet: Packet):
         """Put a packet into the mux queue with an associated unique identifier.
@@ -227,6 +229,13 @@ class MuxDemuxQueue:
         dict
             Indexer response.
         """
+        if self.is_response_pending(packet_id):
+            event = Event()
+            self._subscriptions.update({packet_id: event})
+
+            event.wait(10)
+            self._subscriptions.pop(packet_id, None)
+
         response = self.responses[packet_id]
         del self.responses[packet_id]
         return response
@@ -257,6 +266,9 @@ class MuxDemuxQueue:
             response = self.responses[packet.id]
             response.items.extend(packet.items)
             self.responses[packet.id] = response
+
+        if packet.id in self._subscriptions:
+            self._subscriptions[packet.id].set()
 
 
 class MuxDemuxRunner(Process):
