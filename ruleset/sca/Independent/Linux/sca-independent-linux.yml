@@ -436,7 +436,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1046", "T1047", "T1051", "T1052", "T1053", "T1054", "T1055", "T1058", "T1064", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1091", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1118", "T1121", "T1127", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1164", "T1165", "T1166", "T1169", "T1170", "T1171", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1180", "T1184", "T1187", "T1190", "T1191", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1221", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1519", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "c:findmnt --kernel /dev/shm -> r:noexec"
+      - "not c:findmnt --kernel /dev/shm -> !r:noexec"
 
   # 1.1.18 Ensure nodev option set on removable media partitions (Not Scored) - Not Implemented
   # 1.1.19 Ensure nosuid option set on removable media partitions (Not Scored)
@@ -548,24 +548,7 @@ checks:
 
   # 1.4.3 Ensure authentication required for single user mode. (Scored) - Not Implemented
   # 1.4.4 Ensure interactive boot is not enabled. (Not Scored) - Not Implemented
-
-  # 1.5 Ensure core dumps are restricted. (Scored)
-  - id: 31035
-    title: "Additional Process Hardening Page 97 1.5.1 Ensure core dumps are restricted."
-    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
-    rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5)). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 If systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
-    compliance:
-      - cis: ["1.5"]
-      - cis_csc_v7: ["6 13", "5.1"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-    condition: all
-    rules:
-      - "c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable = 0"
-      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
-      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
-      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
+  # 1.5.1 Ensure core dumps are restricted. (Scored) - Not Implemented
 
   # 1.5.2 Ensure XD/NX support is enabled. (Scored)
   - id: 31036
@@ -579,7 +562,7 @@ checks:
       - mitre_techniques: ["T1003", "T1068", "T1080", "T1085", "T1101", "T1117", "T1131", "T1189", "T1190", "T1203", "T1210", "T1211", "T1212"]
     condition: all
     rules:
-      - "c:journalctl | grep 'protection: active' -> r:active"
+      - "c:journalctl -> r:protection: active && r:kernel: NX"
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Scored)
   - id: 31037
@@ -609,8 +592,8 @@ checks:
       - iso_27001-2013: ["A.12.4.3"]
     condition: any
     rules:
-      - c:dpkg-query -s prelink -> r:package 'prelink' is not installed
-      - c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' prelink -> r:prelink\\s*\\t*unknown\\s*\\t*ok\\s*\\t*not-installed\\s*\\t*not-installed|no packages found matching prelink
+      - "c:dpkg -s prelink -> r:package prelink is not installed"
+      - "c:rpm -q prelink -> r:package prelink is not installed"
 
   # 1.6.1.1 Ensure SELinux or AppArmor are installed. (Scored)
   - id: 31039
@@ -625,8 +608,9 @@ checks:
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
     condition: any
     rules:
-      - "c:dpkg-query -s apparmor -> r:^Status: install ok installed"
-      - "c:dpkg-query -s apparmor-utils -> r:^Status: install ok installed"
+      - "c:dpkg -s apparmor -> r:install ok installed"
+      - "c:dpkg -s libselinux -> r:install ok installed"
+      - "c:rpm -q apparmor -> r:apparmor-"
       - "c:rpm -q libselinux -> r:libselinux-"
 
   # 1.6.2.1 Ensure SELinux is not disabled in bootloader configuration. (Scored)
@@ -640,9 +624,10 @@ checks:
       - cis_csc_v7: ["6 14.4", "14.6"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
+      - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:selinux=0|enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*linux && !r:selinux=0|enforcing=0'
 
   # 1.6.2.2 Ensure the SELinux state is enforcing. (Scored)
   - id: 31041
@@ -657,9 +642,9 @@ checks:
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
     condition: all
     rules:
-      - 'c:sestatus -> r:^SELinux status:\s+enabled$'
-      - 'c:sestatus -> r:^Current mode:\s+enforcing$'
-      - 'c:sestatus -> r:^Mode from config file:\s+enforcing$'
+      - 'c:sestatus -> r:^SELinux\s*status:\s*\t*enabled$'
+      - 'c:sestatus -> r:^Current\s*mode:\s*\t*enforcing$'
+      - 'c:sestatus -> r:^Mode from config file:\s*\t*enforcing$'
       - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
 
   # 1.6.2.3 Ensure SELinux policy is configured. (Scored)
@@ -675,7 +660,7 @@ checks:
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
     condition: all
     rules:
-      - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
+      - 'c:sestatus -> r:^Policy from config file:\s*\t*targeted$|^Policy from config file:\s+mls$|^Loaded policy name:\s*\t*targeted$|Loaded policy name:\s+mls$|'
       - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
 
   # 1.6.2.4 Ensure SETroubleshoot is not installed. (Scored)
@@ -691,26 +676,26 @@ checks:
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
     condition: none
     rules:
-      - "c:rpm -q setroubleshoot -> r:setroubleshoot"
+      - "c:rpm -q setroubleshoot -> r:setroubleshoot-"
       - "c:dpkg-query -s setroubleshoot -> r:^Status: install ok installed"
 
-  # 1.6.2.4 Ensure the MCS Translation Service (mcstrans) is not installed (Scored)
-
-  # 1.6.2.6 Ensure no unconfined daemons exist. (Scored)
-  - id: 31044
-    title: "Ensure no unconfined daemons exist."
-    description: "Daemons that are not defined in SELinux policy will inherit the security context of their parent process."
-    rationale: "Since daemons are launched and descend from the init process, they will inherit the security context label initrc_t . This could cause the unintended consequence of giving the process more permission than it requires."
-    remediation: "Investigate any unconfined daemons found during the audit action. They may need to have an existing security context assigned to them or a policy built for them. Notes: Occasionally certain daemons such as backup or centralized management software may require running unconfined. Any such software should be carefully analyzed and documented before such an exception is made."
+  # 1.6.2.5 Ensure the MCS Translation Service (mcstrans) is not installed (Scored)
+  - id: 31043
+    title: "Ensure the MCS Translation Service (mcstrans) is not installed."
+    description: "The mcstransd daemon provides category label information to client processes requesting information. The label translations are defined in /etc/selinux/targeted/setrans.conf."
+    rationale: "Since this service is not used very often, remove it to reduce the amount of potentially vulnerable code running on the system."
+    remediation: "Uninstall mcstrans using the appropriate package manager or manual installation: yum remove mcstrans apt-get remove mcstrans zypper remove mcstrans."
     compliance:
-      - cis: ["1.6.2.6"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - cis: ["1.6.2.5"]
+      - cis_csc_v7: ["6 14.4", "14.6"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
     condition: none
     rules:
-      - "c:ps -eZ -> r:unconfined_service_t"
+      - "c:rpm -q mcstrans -> r:mcstrans-"
+      - "c:dpkg-query -s mcstrans -> r:^Status: install ok installed"
 
+  # 1.6.2.6 Ensure no unconfined daemons exist. (Scored) - Not Implemented
   # 1.6.3.1 Ensure AppArmor is not disabled in bootloader configuration. (Scored)
   - id: 31045
     title: "Ensure AppArmor is not disabled in bootloader configuration."
@@ -724,28 +709,10 @@ checks:
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
     condition: all
     rules:
-      - "f:/etc/default/grub -> r:security=apparmor"
-      - "f:/etc/default/grub -> r:apparmor=1"
+      - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:apparmor=0'
+      - 'f:/boot/grub/menu.lst -> r:^\s*linux && !r:apparmor=0'
 
-  # 1.6.3.2 Ensure all AppArmor Profiles are enforcing. (Scored)
-  - id: 31046
-    title: "Ensure all AppArmor Profiles are enforcing."
-    description: "AppArmor profiles define what resources applications are able to access."
-    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
-    remediation: "Run the following command to set all profiles to enforce mode: # enforce /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
-    compliance:
-      - cis: ["1.6.3.2"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-    condition: all
-    rules:
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+loaded compare > 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+kill\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+unconfined\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s*profiles\s+are\s+in\s+complain\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s*processes\s+are\s+unconfined compare == 0
+    # 1.6.3.2 Ensure all AppArmor Profiles are enforcing. (Scored)- Not Implemented
 
   # 1.7.1.1 Ensure message of the day is configured properly. (Scored)
   - id: 31047
@@ -806,7 +773,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/motd ->  r:644 && r:0 root 0 root'
 
   # 1.7.1.5 Ensure permissions on /etc/issue are configured. (Scored)
   - id: 31051
@@ -821,7 +788,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue ->  r:644 && r:0 root 0 root'
 
   # 1.7.1.6 Ensure permissions on /etc/issue.net are configured. (Scored)
   - id: 31052
@@ -836,7 +803,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue.net ->  r:644 && r:0 root 0 root'
 
   # 1.7.2 Ensure GDM login banner is configured. (Scored)
   - id: 31053
@@ -858,19 +825,7 @@ checks:
       - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-enable=true"
       - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-text="
 
-  # 1.8 Ensure updates, patches, and additional security software are installed. (Not Scored)
-  - id: 31054
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. Notes: Site policy may mandate a testing period before install onto production systems for available updates."
-    compliance:
-      - cis: ["1.8"]
-      - cis_csc_v7: ["6 4.5", "3.4"]
-      - mitre_techniques: ["T1017", "T1019", "T1068", "T1072", "T1073", "T1075", "T1100", "T1103", "T1137", "T1138", "T1189", "T1190", "T1195", "T1210", "T1211", "T1212", "T1495"]
-    condition: all
-    rules:
-      - 'not c:sh -c "dnf check-update | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
+    # 1.8 Ensure updates, patches, and additional security software are installed. (Not Scored) - Not Implemented
 
   # 2.1.1 Ensure chargen services are not enabled. (Scored)
   - id: 31055
@@ -957,10 +912,11 @@ checks:
       - cis: ["2.1.6"]
       - cis_csc_v7: ["6 3.4", "9.1"]
       - iso_27001-2013: ["A.13.1.2"]
-    condition: any
+    condition: none
     rules:
-      - "c:rpm -q rsh-server -> r:^package rsh-server is not installed"
-      - "not c:dpkg-query -s rshd inetutils-rshd -> r:^Status: install ok installed"
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^shell'
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^login'
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^exec'
 
   # 2.1.7 Ensure talk server is not enabled. (Scored)
   - id: 31061
