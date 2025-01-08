@@ -2,15 +2,23 @@ from dataclasses import asdict
 from unittest import mock
 
 from opensearchpy import exceptions
+from opensearchpy.helpers.response import Hit
 import pytest
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.commands import CommandsManager, create_restart_command, \
-    COMMAND_USER_NAME, create_set_group_command, create_update_group_command
+from wazuh.core.indexer.commands import (
+    CommandsManager,
+    create_restart_command,
+    COMMAND_KEY,
+    COMMAND_USER_NAME,
+    create_set_group_command,
+    create_update_group_command
+)
 from wazuh.core.indexer.base import POST_METHOD, IndexerKey
 from wazuh.core.indexer.utils import convert_enums
-from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
-    ResponseResult
+from wazuh.core.indexer.models.commands import (
+    Action, Command, Source, Status, Target, TargetType, CreateCommandResponse, ResponseResult
+)
 
 
 class TestCommandsManager:
@@ -56,7 +64,7 @@ class TestCommandsManager:
         assert response.index == return_value.get(IndexerKey._INDEX)
         assert response.document_ids == document_ids
         assert response.result == return_value.get(IndexerKey.RESULT)
-    
+
     @pytest.mark.parametrize("exc", [
         exceptions.RequestError,
         exceptions.TransportError
@@ -66,6 +74,30 @@ class TestCommandsManager:
         client_mock.transport.perform_request.side_effect = exc(400, 'error')
         with pytest.raises(WazuhError, match='.*1761.*'):
             await index_instance.create([self.create_command])
+
+    async def test_get_commands(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
+        """Check the correct functionality of the `get_commands` method."""
+        document_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
+        search_result = {'_hits': [Hit({IndexerKey._SOURCE: {COMMAND_KEY: {'document_id': document_id}}})]}
+        client_mock.search.return_value = search_result
+        expected_result = [Command(document_id=document_id)]
+
+        result = await index_instance.get_commands(Status.PENDING.value)
+
+        query = {
+            IndexerKey.QUERY: {
+                IndexerKey.BOOL: {
+                    IndexerKey.FILTER: [
+                        {
+                            IndexerKey.TERM: {'command.status': Status.PENDING.value}
+                        }
+                    ]
+                }
+            }
+        }
+        client_mock.search.assert_called_once_with(index=[index_instance.INDEX], body=query)
+
+        assert result == expected_result
 
 
 def test_create_restart_command():
