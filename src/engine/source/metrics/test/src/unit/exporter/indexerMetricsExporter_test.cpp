@@ -60,6 +60,27 @@ TEST(IndexerMetricsExporter, Shutdown)
 
 namespace exporttest
 {
+
+// Avoid string comparison issues with json, and discart the timestamp comparison
+MATCHER_P(isEqualMetric, expectedMetric, "is not equal to expected JSON")
+{
+    const json::Json expected = expectedMetric;
+    auto recvIConnectorMetric = json::Json(arg.c_str());
+    const auto timestampPath {"/data/timestamp"};
+
+    // Check if the received metric has the timestamp field
+    if (!recvIConnectorMetric.getString(timestampPath).has_value())
+    {
+        return false;
+    }
+
+    // Remove the timestamp field from the recvIConnectorMetric
+    recvIConnectorMetric.erase(timestampPath);
+
+    // Check if the expected metric has the same fields as the received metric
+    return recvIConnectorMetric == expectedMetric;
+}
+
 using SuccessExpected = InnerExpected<None, std::shared_ptr<indexerconnector::mocks::MockIConnector>, json::Json>;
 using FailureExpected = InnerExpected<None, std::shared_ptr<indexerconnector::mocks::MockIConnector>, json::Json>;
 using Expc = Expected<SuccessExpected, FailureExpected>;
@@ -232,8 +253,7 @@ INSTANTIATE_TEST_SUITE_P(
                     expectedCounter.appendJson(expectedPoints, "/points");
                     expectedJson.appendJson(expectedCounter, "/data/metrics");
 
-                    auto expectedString = expectedJson.str();
-                    EXPECT_CALL(*connectorMock, publish(expectedString)).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*connectorMock, publish(isEqualMetric(expectedJson))).Times(testing::AtLeast(1));
 
                     return None {};
                 })),
@@ -261,8 +281,7 @@ INSTANTIATE_TEST_SUITE_P(
                     expectedCounter.appendJson(expectedPoints, "/points");
                     expectedJson.appendJson(expectedCounter, "/data/metrics");
 
-                    auto expectedString = expectedJson.str();
-                    EXPECT_CALL(*connectorMock, publish(expectedString)).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*connectorMock, publish(isEqualMetric(expectedJson))).Times(testing::AtLeast(1));
 
                     return None {};
                 })),
@@ -301,8 +320,7 @@ INSTANTIATE_TEST_SUITE_P(
                     expectedHistogram.appendJson(expectedPoints, "/points");
                     expectedJson.appendJson(expectedHistogram, "/data/metrics");
 
-                    auto expectedString = expectedJson.str();
-                    EXPECT_CALL(*connectorMock, publish(expectedString)).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*connectorMock, publish(isEqualMetric(expectedJson))).Times(testing::AtLeast(1));
 
                     return None {};
                 })),
@@ -340,8 +358,7 @@ INSTANTIATE_TEST_SUITE_P(
                     expectedHistogram.appendJson(expectedPoints, "/points");
                     expectedJson.appendJson(expectedHistogram, "/data/metrics");
 
-                    auto expectedString = expectedJson.str();
-                    EXPECT_CALL(*connectorMock, publish(expectedString)).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*connectorMock, publish(isEqualMetric(expectedJson))).Times(testing::AtLeast(1));
 
                     return None {};
                 })),
@@ -369,8 +386,7 @@ INSTANTIATE_TEST_SUITE_P(
                     expectedUpDownCounter.appendJson(expectedPoints, "/points");
                     expectedJson.appendJson(expectedUpDownCounter, "/data/metrics");
 
-                    auto expectedString = expectedJson.str();
-                    EXPECT_CALL(*connectorMock, publish(expectedString)).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*connectorMock, publish(isEqualMetric(expectedJson))).Times(testing::AtLeast(1));
 
                     return None {};
                 })),
@@ -397,8 +413,7 @@ INSTANTIATE_TEST_SUITE_P(
                     expectedUpDownCounter.appendJson(expectedPoints, "/points");
                     expectedJson.appendJson(expectedUpDownCounter, "/data/metrics");
 
-                    auto expectedString = expectedJson.str();
-                    EXPECT_CALL(*connectorMock, publish(expectedString)).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*connectorMock, publish(isEqualMetric(expectedJson))).Times(testing::AtLeast(1));
 
                     return None {};
                 }))));
