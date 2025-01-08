@@ -30,8 +30,7 @@ with open(common_file, 'r') as stream:
     common = yaml.safe_load(stream)['variables']
 login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['login_endpoint']}"
 basic_auth = f"{common['user']}:{common['pass']}".encode()
-login_headers = {'Content-Type': 'application/json',
-                 'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+login_headers = {'Content-Type': 'application/json', 'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
 agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
@@ -53,14 +52,14 @@ def get_token_login_api():
     if response.status_code == 200:
         return json.loads(response.content.decode())['data']['token']
     else:
-        raise Exception(f"Error obtaining login token: {response.json()}")
+        raise Exception(f'Error obtaining login token: {response.json()}')
 
 
 @pytest.hookimpl(optionalhook=True)
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     """Disable HTTPS verification warnings."""
     urllib3.disable_warnings()
-    variables["test_login_token"] = get_token_login_api()
+    variables['test_login_token'] = get_token_login_api()
 
 
 def build_and_up(interval: int = 10, build: bool = True):
@@ -77,14 +76,14 @@ def build_and_up(interval: int = 10, build: bool = True):
     with open('../../../.git/HEAD', 'r') as f:
         ref = f.readline().strip()
 
-    if ref.startswith("ref:"):
-        current_branch = ref.split("refs/heads/")[1]
+    if ref.startswith('ref:'):
+        current_branch = ref.split('refs/heads/')[1]
     else:
-        current_branch = ref.split("/")[-1]
+        current_branch = ref.split('/')[-1]
 
     if build:
         # Ping the current branch tarball used to build the manager image.
-        response = requests.get(f"https://github.com/wazuh/wazuh/tarball/{current_branch}")
+        response = requests.get(f'https://github.com/wazuh/wazuh/tarball/{current_branch}')
         if response.status_code == 404:
             pytest.fail("Current branch tarball doesn't exist")
         elif not response.ok:
@@ -97,15 +96,28 @@ def build_and_up(interval: int = 10, build: bool = True):
     with open(docker_log_path, mode='w') as f_docker:
         while retries < max_retries:
             if build:
-                build_process = subprocess.Popen(["docker", "compose",
-                    "build", "--build-arg", f"WAZUH_BRANCH={current_branch}",
-                    "--build-arg", "--no-cache"],
-                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+                build_process = subprocess.Popen(
+                    [
+                        'docker',
+                        'compose',
+                        'build',
+                        '--build-arg',
+                        f'WAZUH_BRANCH={current_branch}',
+                        '--build-arg',
+                        '--no-cache',
+                    ],
+                    stdout=f_docker,
+                    stderr=subprocess.STDOUT,
+                    universal_newlines=True,
+                )
                 build_process.wait()
             up_process = subprocess.Popen(
-                ["docker", "compose", "up", "-d"],
+                ['docker', 'compose', 'up', '-d'],
                 env=dict(os.environ),
-                stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+                stdout=f_docker,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+            )
             up_process.wait()
 
             if up_process.returncode == 0:
@@ -121,8 +133,9 @@ def down_env():
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "down"],
-                                           stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process = subprocess.Popen(
+            ['docker', 'compose', 'down'], stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True
+        )
         current_process.wait()
     os.chdir(current_path)
 
@@ -146,20 +159,21 @@ def check_health(node_type: str = 'manager', agents: list = None):
     if node_type == 'manager':
         for node in env_cluster_nodes:
             health = subprocess.check_output(
-                f"docker inspect env-wazuh-{node}-1 -f '{{{{json .State.Health.Status}}}}'",
-                shell=True)
+                f"docker inspect env-wazuh-{node}-1 -f '{{{{json .State.Health.Status}}}}'", shell=True
+            )
             if not health.startswith(b'"healthy"'):
                 return False
     elif node_type == 'agent':
         for agent in agents:
             health = subprocess.check_output(
-                f"docker inspect env-wazuh-agent{agent}-1 -f '{{{{json .State.Health.Status}}}}'",
-                shell=True)
+                f"docker inspect env-wazuh-agent{agent}-1 -f '{{{{json .State.Health.Status}}}}'", shell=True
+            )
             if not health.startswith(b'"healthy"'):
                 return False
     elif node_type == 'haproxy-lb':
         health = subprocess.check_output(
-            "docker inspect env-haproxy-lb-1 -f '{{json .State.Health.Status}}'", shell=True)
+            "docker inspect env-haproxy-lb-1 -f '{{json .State.Health.Status}}'", shell=True
+        )
         if not health.startswith(b'"healthy"'):
             return False
     else:
@@ -194,26 +208,32 @@ def change_rbac_mode(rbac_mode: str = 'white'):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    with open(os.path.join(env_path, 'configurations', 'base', 'manager', 'config', 'api', 'configuration', 'security',
-                           'security.yaml'), 'r+') as rbac_conf:
+    with open(
+        os.path.join(
+            env_path, 'configurations', 'base', 'manager', 'config', 'api', 'configuration', 'security', 'security.yaml'
+        ),
+        'r+',
+    ) as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
         rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: {rbac_mode}', content))
 
 
 def enable_white_mode():
-    """Set white mode for non-rbac integration tests
-    """
-    with open(os.path.join(env_path, 'configurations', 'base', 'manager', 'config', 'api', 'configuration', 'security',
-                           'security.yaml'), '+r') as rbac_conf:
+    """Set white mode for non-rbac integration tests"""
+    with open(
+        os.path.join(
+            env_path, 'configurations', 'base', 'manager', 'config', 'api', 'configuration', 'security', 'security.yaml'
+        ),
+        '+r',
+    ) as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
         rbac_conf.write(re.sub(r'rbac_mode: (white|black)', 'rbac_mode: white', content))
 
 
 def clean_tmp_folder():
-    """Remove temporal folder used te configure the environment and set RBAC mode to Black.
-    """
+    """Remove temporal folder used te configure the environment and set RBAC mode to Black."""
     shutil.rmtree(os.path.join(env_path, 'configurations', 'tmp', 'manager'), ignore_errors=True)
     shutil.rmtree(os.path.join(env_path, 'configurations', 'tmp', 'agent'), ignore_errors=True)
 
@@ -234,9 +254,9 @@ def generate_rbac_pair(index: int, permission: dict):
         List with two SQL sentences, the first creates the policy and the second links it with the testing role
     """
     role_policy_pair = [
-        f'INSERT INTO policies VALUES({1000 + index},\'testing{index}\',\'{json.dumps(permission)}\','
-        f'\'1970-01-01 00:00:00\');\n',
-        f'INSERT INTO roles_policies VALUES({1000 + index},99,{1000 + index},{index},\'1970-01-01 00:00:00\');\n'
+        f"INSERT INTO policies VALUES({1000 + index},'testing{index}','{json.dumps(permission)}',"
+        f"'1970-01-01 00:00:00');\n",
+        f"INSERT INTO roles_policies VALUES({1000 + index},99,{1000 + index},{index},'1970-01-01 00:00:00');\n",
     ]
 
     return role_policy_pair
@@ -253,12 +273,14 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    custom_rbac_path = os.path.join(env_path, 'configurations', 'tmp', 'manager', 'configuration_files',
-                                    'custom_rbac_schema.sql')
+    custom_rbac_path = os.path.join(
+        env_path, 'configurations', 'tmp', 'manager', 'configuration_files', 'custom_rbac_schema.sql'
+    )
 
     try:
-        with open(os.path.join(env_path, 'configurations', 'rbac', module,
-                               f'{rbac_mode}_config.yaml')) as configuration_sentences:
+        with open(
+            os.path.join(env_path, 'configurations', 'rbac', module, f'{rbac_mode}_config.yaml')
+        ) as configuration_sentences:
             list_custom_policy = yaml.safe_load(configuration_sentences.read())
     except FileNotFoundError:
         return
@@ -269,7 +291,7 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     sql_sentences.append('DELETE FROM user_roles WHERE user_id=99;\n')  # Current DB status: User 99 - Role 1 (Base)
     for index, permission in enumerate(list_custom_policy):
         sql_sentences.extend(generate_rbac_pair(index, permission))
-    sql_sentences.append('INSERT INTO user_roles VALUES(99,99,99,0,\'1970-01-01 00:00:00\');')
+    sql_sentences.append("INSERT INTO user_roles VALUES(99,99,99,0,'1970-01-01 00:00:00');")
     sql_sentences.append('COMMIT')
 
     os.makedirs(os.path.dirname(custom_rbac_path), exist_ok=True)
@@ -281,7 +303,8 @@ def save_logs(test_name: str):
     """Save API, cluster and Wazuh logs from every cluster node and Wazuh logs from every agent if tests fail.
     Save haproxy-lb log.
 
-    Examples:
+    Examples
+    --------
     "test_{test_name}-{node/agent}-{log}" -> "test_agents-worker1-api.log"
     "test_{test_name}-{node/agent}-{log}" -> "test_agents-agent4-ossec.log"
 
@@ -300,7 +323,8 @@ def save_logs(test_name: str):
                 subprocess.check_output(
                     f"docker cp env-wazuh-{node}-1:{os.path.join(logs_path, log)} "
                     f"{os.path.join(test_logs_path, f'test_{test_name}-{node}-{log}')}",
-                    shell=True)
+                    shell=True,
+                )
             except subprocess.CalledProcessError:
                 continue
 
@@ -310,15 +334,16 @@ def save_logs(test_name: str):
             subprocess.check_output(
                 f"docker cp env-wazuh-{agent}-1:{os.path.join(logs_path, 'ossec.log')} "
                 f"{os.path.join(test_logs_path, f'test_{test_name}-{agent}-ossec.log')}",
-                shell=True)
+                shell=True,
+            )
         except subprocess.CalledProcessError:
             continue
 
     # Save haproxy-lb log
     with open(os.path.join(test_logs_path, f'test_{test_name}-haproxy-lb.log'), mode='w') as f_log:
         current_process = subprocess.Popen(
-                ["docker", "logs", "env-haproxy-lb-1"],
-                stdout=f_log, stderr=subprocess.STDOUT, universal_newlines=True)
+            ['docker', 'logs', 'env-haproxy-lb-1'], stdout=f_log, stderr=subprocess.STDOUT, universal_newlines=True
+        )
         current_process.wait()
 
 
@@ -378,8 +403,13 @@ def api_test(request: _pytest.fixtures.SubRequest):
 
         # Check if entrypoint was successful
         try:
-            error_message = subprocess.check_output(["docker", "exec", "-t", "env-wazuh-master-1", "sh", "-c",
-                                                     "cat /entrypoint_error"]).decode().strip()
+            error_message = (
+                subprocess.check_output(
+                    ['docker', 'exec', '-t', 'env-wazuh-master-1', 'sh', '-c', 'cat /entrypoint_error']
+                )
+                .decode()
+                .strip()
+            )
             pytest.fail(error_message)
         except subprocess.CalledProcessError:
             pass
@@ -399,11 +429,10 @@ def get_health():
     str
         Current status
     """
-    health = "\nEnvironment final status\n"
+    health = '\nEnvironment final status\n'
     health += subprocess.check_output(
-        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}'"
-        " --filter name=^env-wazuh",
-        shell=True).decode()
+        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}'" ' --filter name=^env-wazuh', shell=True
+    ).decode()
     health += '\n'
 
     return health
@@ -415,20 +444,32 @@ class HTMLStyle(html):
         style = html.Style(background_color='#F0F0EE')
 
     class table(html.table):
-        style = html.Style(border='2px solid #005E8C', margin='16px 0px', color='#005E8C',
-                           font_size='15px')
+        style = html.Style(border='2px solid #005E8C', margin='16px 0px', color='#005E8C', font_size='15px')
 
     class colored_td(html.td):
-        style = html.Style(color='#005E8C', padding='5px', border='2px solid #005E8C', text_align='left',
-                           white_space='pre-wrap', font_size='14px')
+        style = html.Style(
+            color='#005E8C',
+            padding='5px',
+            border='2px solid #005E8C',
+            text_align='left',
+            white_space='pre-wrap',
+            font_size='14px',
+        )
 
     class td(html.td):
-        style = html.Style(padding='5px', border='2px solid #005E8C', text_align='left',
-                           white_space='pre-wrap', font_size='14px')
+        style = html.Style(
+            padding='5px', border='2px solid #005E8C', text_align='left', white_space='pre-wrap', font_size='14px'
+        )
 
     class th(html.th):
-        style = html.Style(color='#0094ce', padding='5px', border='2px solid #005E8C', text_align='left',
-                           font_weight='bold', font_size='15px')
+        style = html.Style(
+            color='#0094ce',
+            padding='5px',
+            border='2px solid #005E8C',
+            text_align='left',
+            font_weight='bold',
+            font_size='15px',
+        )
 
     class h1(html.h1):
         style = html.Style(color='#0094ce')
@@ -497,33 +538,50 @@ def pytest_runtest_makereport(item, call):
     elif report.outcome == 'failed':
         results[report.location[0]]['error'] += 1
 
-    if report.when == 'setup' and \
-            report.longrepr and ('api_test did not yield a value' in report.longrepr.reprcrash.message or
-                                 'StopIteration' in report.longrepr.reprcrash.message):
+    if (
+        report.when == 'setup'
+        and report.longrepr
+        and (
+            'api_test did not yield a value' in report.longrepr.reprcrash.message
+            or 'StopIteration' in report.longrepr.reprcrash.message
+        )
+    ):
         report.sections.append(('Environment section', environment_status))
 
 
 @pytest.hookimpl(optionalhook=True)
 def pytest_html_results_summary(prefix, summary, postfix):
-    postfix.extend([HTMLStyle.table(
-        html.thead(
-            html.tr([
-                HTMLStyle.th("Tests"),
-                HTMLStyle.th("Success"),
-                HTMLStyle.th("Failed"),
-                HTMLStyle.th("XFail"),
-                HTMLStyle.th("Error")]
-            ),
-        ),
-        [html.tbody(
-            html.tr([
-                HTMLStyle.td(k),
-                HTMLStyle.td(v['passed']),
-                HTMLStyle.td(v['failed']),
-                HTMLStyle.td(v['xfailed']),
-                HTMLStyle.td(v['error']),
-            ])
-        ) for k, v in results.items()])])
+    postfix.extend(
+        [
+            HTMLStyle.table(
+                html.thead(
+                    html.tr(
+                        [
+                            HTMLStyle.th('Tests'),
+                            HTMLStyle.th('Success'),
+                            HTMLStyle.th('Failed'),
+                            HTMLStyle.th('XFail'),
+                            HTMLStyle.th('Error'),
+                        ]
+                    ),
+                ),
+                [
+                    html.tbody(
+                        html.tr(
+                            [
+                                HTMLStyle.td(k),
+                                HTMLStyle.td(v['passed']),
+                                HTMLStyle.td(v['failed']),
+                                HTMLStyle.td(v['xfailed']),
+                                HTMLStyle.td(v['error']),
+                            ]
+                        )
+                    )
+                    for k, v in results.items()
+                ],
+            )
+        ]
+    )
 
 
 @pytest.fixture(scope='function', autouse=True)
@@ -535,7 +593,7 @@ def big_events_payload() -> list:
     list
         Events payload.
     """
-    return [f"Event {i}" for i in range(101)]
+    return [f'Event {i}' for i in range(101)]
 
 
 @pytest.fixture(scope='function', autouse=True)
@@ -547,7 +605,7 @@ def max_size_event() -> str:
     str
         The max size event.
     """
-    return " ".join(str(i) for i in range(12772))
+    return ' '.join(str(i) for i in range(12772))
 
 
 @pytest.fixture(scope='function', autouse=True)
@@ -559,4 +617,4 @@ def large_event() -> str:
     str
         The larger event.
     """
-    return " ".join(str(i) for i in range(12773))
+    return ' '.join(str(i) for i in range(12773))

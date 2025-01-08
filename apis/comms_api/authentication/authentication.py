@@ -2,14 +2,14 @@ from typing import Optional
 
 from fastapi import Request, status
 from fastapi.exceptions import HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import decode, encode
 from jwt.exceptions import PyJWTError
-
-from comms_api.routers.exceptions import HTTPError
-from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
+from wazuh.core.authentication import JWT_ALGORITHM, JWT_ISSUER, get_keypair
 from wazuh.core.exception import WazuhCommsAPIError
 from wazuh.core.utils import get_utc_now
+
+from comms_api.routers.exceptions import HTTPError
 
 JWT_AUDIENCE = 'Wazuh Communications API'
 JWT_EXPIRATION = 900
@@ -26,7 +26,7 @@ class JWTBearer(HTTPBearer):
         ----------
         request : Request
             HTTP request.
-        
+
         Raises
         ------
         HTTPError
@@ -35,7 +35,7 @@ class JWTBearer(HTTPBearer):
         Returns
         -------
         str
-            HTTP Authorization header credentials.        
+            HTTP Authorization header credentials.
         """
         try:
             credentials: Optional[HTTPAuthorizationCredentials] = await super(JWTBearer, self).__call__(request)

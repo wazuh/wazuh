@@ -1,16 +1,27 @@
 from dataclasses import asdict
 from unittest import mock
 
-from opensearchpy import exceptions
 import pytest
-
+from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.commands import CommandsManager, create_restart_command, \
-    COMMAND_USER_NAME, create_set_group_command, create_update_group_command
 from wazuh.core.indexer.base import POST_METHOD, IndexerKey
+from wazuh.core.indexer.commands import (
+    COMMAND_USER_NAME,
+    CommandsManager,
+    create_restart_command,
+    create_set_group_command,
+    create_update_group_command,
+)
+from wazuh.core.indexer.models.commands import (
+    Action,
+    Command,
+    CreateCommandResponse,
+    ResponseResult,
+    Source,
+    Target,
+    TargetType,
+)
 from wazuh.core.indexer.utils import convert_enums
-from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
-    ResponseResult
 
 
 class TestCommandsManager:
@@ -33,9 +44,9 @@ class TestCommandsManager:
                 {IndexerKey._ID: 'pBjePGfvgm'},
                 {IndexerKey._ID: 'mp2Xymz6F3'},
                 {IndexerKey._ID: 'aYsJYUEmVk'},
-                {IndexerKey._ID: 'QTjrFfpoIS'}
+                {IndexerKey._ID: 'QTjrFfpoIS'},
             ],
-            IndexerKey.RESULT: ResponseResult.CREATED
+            IndexerKey.RESULT: ResponseResult.CREATED,
         }
         client_mock.transport.perform_request.return_value = return_value
 
@@ -56,11 +67,8 @@ class TestCommandsManager:
         assert response.index == return_value.get(IndexerKey._INDEX)
         assert response.document_ids == document_ids
         assert response.result == return_value.get(IndexerKey.RESULT)
-    
-    @pytest.mark.parametrize("exc", [
-        exceptions.RequestError,
-        exceptions.TransportError
-    ])
+
+    @pytest.mark.parametrize('exc', [exceptions.RequestError, exceptions.TransportError])
     async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock, exc):
         """Check the error handling of the `create` method."""
         client_mock.transport.perform_request.side_effect = exc(400, 'error')
@@ -77,12 +85,9 @@ def test_create_restart_command():
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='restart',
-            version='5.0.0'
-        ),
+        action=Action(name='restart', version='5.0.0'),
         user=COMMAND_USER_NAME,
-        timeout=100
+        timeout=100,
     )
 
     command = create_restart_command(agent_id=agent_id)
@@ -101,13 +106,9 @@ def test_create_set_group_command():
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='set-group',
-            args=groups,
-            version='5.0.0'
-        ),
+        action=Action(name='set-group', args=groups, version='5.0.0'),
         user=COMMAND_USER_NAME,
-        timeout=100
+        timeout=100,
     )
 
     command = create_set_group_command(agent_id=agent_id, groups=groups)
@@ -125,12 +126,9 @@ def test_create_update_group_command():
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='update-group',
-            version='5.0.0'
-        ),
+        action=Action(name='update-group', version='5.0.0'),
         user=COMMAND_USER_NAME,
-        timeout=100
+        timeout=100,
     )
 
     command = create_update_group_command(agent_id=agent_id)

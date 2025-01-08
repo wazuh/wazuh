@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from framework.wazuh.core.batcher.timer import TimerManager
 
 

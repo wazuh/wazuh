@@ -100,13 +100,12 @@ sys_args_template = [
 
 vt_response_data = {
     'attributes': {
-        'last_analysis_stats': {
-            'malicious': 2
-        },
+        'last_analysis_stats': {'malicious': 2},
         'sha1': 'valid_sha1_value',
-        'last_analysis_date': 'valid_date_value'
+        'last_analysis_date': 'valid_date_value',
     }
 }
+
 
 def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
@@ -124,9 +123,12 @@ def test_main_exception():
 
 def test_main():
     """Test the correct execution of the main function."""
-    with patch('virustotal.open', mock_open()), patch('json.load', return_value=alert_template), patch(
-        'requests.post', return_value=requests.Response
-    ), patch('virustotal.process_args') as process:
+    with (
+        patch('virustotal.open', mock_open()),
+        patch('json.load', return_value=alert_template),
+        patch('requests.post', return_value=requests.Response),
+        patch('virustotal.process_args') as process,
+    ):
         virustotal.main(sys_args_template)
         process.assert_called_once_with(sys_args_template)
 
@@ -148,9 +150,11 @@ def test_process_args_exit(side_effect, return_value):
     return_value : int
         Value to be returned when sys.exit() is invoked.
     """
-    with patch('virustotal.open', mock_open()), patch('json.load') as json_load, pytest.raises(
-        SystemExit
-    ) as pytest_wrapped_e:
+    with (
+        patch('virustotal.open', mock_open()),
+        patch('json.load') as json_load,
+        pytest.raises(SystemExit) as pytest_wrapped_e,
+    ):
         json_load.side_effect = side_effect
         virustotal.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == return_value
@@ -158,11 +162,13 @@ def test_process_args_exit(side_effect, return_value):
 
 def test_process_args():
     """Test the correct execution of the process_args function."""
-    with patch('virustotal.open', mock_open()), patch('virustotal.get_json_alert') as alert_load, patch(
-        'virustotal.send_msg'
-    ) as send_msg, patch(
-        'virustotal.request_virustotal_info', return_value=msg_template
-    ) as request_virustotal_info, patch('requests.post', return_value=requests.Response):
+    with (
+        patch('virustotal.open', mock_open()),
+        patch('virustotal.get_json_alert') as alert_load,
+        patch('virustotal.send_msg') as send_msg,
+        patch('virustotal.request_virustotal_info', return_value=msg_template) as request_virustotal_info,
+        patch('requests.post', return_value=requests.Response),
+    ):
         alert_load.return_value = alert_template
         virustotal.process_args(sys_args_template)
         request_virustotal_info.assert_called_once_with(alert_template, sys_args_template[2])
@@ -173,9 +179,13 @@ def test_process_args():
 
 def test_process_args_not_sending_message():
     """Test that the send_msg function is not executed due to empty message after request_virustotal_info."""
-    with patch('virustotal.open', mock_open()), patch('virustotal.get_json_alert') as alert_load, patch(
-        'virustotal.send_msg'
-    ) as send_msg, patch('virustotal.request_virustotal_info', return_value=''), pytest.raises(Exception):
+    with (
+        patch('virustotal.open', mock_open()),
+        patch('virustotal.get_json_alert') as alert_load,
+        patch('virustotal.send_msg') as send_msg,
+        patch('virustotal.request_virustotal_info', return_value=''),
+        pytest.raises(Exception),
+    ):
         alert_load.return_value = alert_template
         virustotal.process_args(sys_args_template)
         send_msg.assert_not_called()
@@ -183,9 +193,11 @@ def test_process_args_not_sending_message():
 
 def test_debug():
     """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
-    with patch('virustotal.debug_enabled', return_value=True), patch(
-        'virustotal.open', mock_open()
-    ) as open_mock, patch('virustotal.LOG_FILE', return_value='integrations.log') as log_file:
+    with (
+        patch('virustotal.debug_enabled', return_value=True),
+        patch('virustotal.open', mock_open()) as open_mock,
+        patch('virustotal.LOG_FILE', return_value='integrations.log') as log_file,
+    ):
         virustotal.debug(str(msg_template))
         open_mock.assert_called_with(log_file, 'a')
         open_mock().write.assert_called_with(str(msg_template) + '\n')
@@ -275,22 +287,25 @@ def test_request_virustotal_info_md5_after_check_fail_8():
 
 def test_request_virustotal_info_md5_after_check_ok():
     """Test that the md5_after field from alerts are valid md5 hash."""
-    with patch('virustotal.query_api', return_value=vt_response_data), \
-         patch('virustotal.debug'):
-
+    with patch('virustotal.query_api', return_value=vt_response_data), patch('virustotal.debug'):
         response = virustotal.request_virustotal_info(alert_template_md5[8], apikey_virustotal)
 
         assert response['virustotal']['found'] == 1
         assert response['virustotal']['malicious'] == 1
-        assert response['virustotal']['permalink'] == 'https://www.virustotal.com/gui/file/5d41402abc4b2a76b9719d911017c592/detection'
+        assert (
+            response['virustotal']['permalink']
+            == 'https://www.virustotal.com/gui/file/5d41402abc4b2a76b9719d911017c592/detection'
+        )
         assert response['virustotal']['positives'] == 2
 
 
 def test_request_info_from_api_exception():
     """Test that the query_api function fails with no retries when an Exception happens."""
-    with patch('virustotal.query_api', side_effect=[Exception(), None]), patch('virustotal.debug'), pytest.raises(
-        SystemExit
-    ) as pytest_wrapped_e:
+    with (
+        patch('virustotal.query_api', side_effect=[Exception(), None]),
+        patch('virustotal.debug'),
+        pytest.raises(SystemExit) as pytest_wrapped_e,
+    ):
         virustotal.request_info_from_api(alert_template_md5[8], {'virustotal': {}}, apikey_virustotal)
     assert pytest_wrapped_e.value.code == ERR_NO_RESPONSE_VT
 
@@ -298,9 +313,12 @@ def test_request_info_from_api_exception():
 def test_request_info_from_api_timeout_and_retries_expired():
     """Test that the query_api function fails with retries when an Timeout exception happens (retries expired)."""
     virustotal.retries = 2
-    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), Timeout(), None]), patch(
-        'virustotal.send_msg'
-    ), patch('virustotal.debug'), pytest.raises(SystemExit) as pytest_wrapped_e:
+    with (
+        patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), Timeout(), None]),
+        patch('virustotal.send_msg'),
+        patch('virustotal.debug'),
+        pytest.raises(SystemExit) as pytest_wrapped_e,
+    ):
         virustotal.request_info_from_api(alert_template_md5[8], {'virustotal': {}}, apikey_virustotal)
     assert pytest_wrapped_e.value.code == ERR_NO_RESPONSE_VT
 
@@ -308,7 +326,10 @@ def test_request_info_from_api_timeout_and_retries_expired():
 def test_request_info_from_api_timeout_and_retries_not_expired():
     """Test that the query_api function fails with retries when an Timeout exception happens (retries not expired)."""
     virustotal.retries = 2
-    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), alert_output]), patch('virustotal.debug') as debug:
+    with (
+        patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), alert_output]),
+        patch('virustotal.debug') as debug,
+    ):
         response = virustotal.request_info_from_api(alert_template_md5[8], {'virustotal': {}}, apikey_virustotal)
         debug.assert_has_calls(
             [

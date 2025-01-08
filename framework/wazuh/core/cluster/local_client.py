@@ -4,21 +4,17 @@
 
 import asyncio
 import logging
-import os
 import time
 from typing import Tuple
 
 import uvloop
-
 from wazuh.core import common, exception
 from wazuh.core.cluster import client
 from wazuh.core.config.client import CentralizedConfig
 
 
 class LocalClientHandler(client.AbstractClient):
-    """
-    Handle connection with the cluster's local server.
-    """
+    """Handle connection with the cluster's local server."""
 
     def __init__(self, **kwargs):
         """Class constructor.
@@ -65,7 +61,7 @@ class LocalClientHandler(client.AbstractClient):
         bytes
             Response message.
         """
-        self.logger.debug(f"Command received: {command}")
+        self.logger.debug(f'Command received: {command}')
         if command == b'dapi_res' or command == b'send_f_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
@@ -118,16 +114,21 @@ class LocalClientHandler(client.AbstractClient):
 
 
 class LocalClient(client.AbstractClientManager):
-    """
-    Initialize variables, connect to the server, send a request, wait for a response and disconnect.
-    """
+    """Initialize variables, connect to the server, send a request, wait for a response and disconnect."""
+
     ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file']
 
     def __init__(self):
         """Class constructor"""
-        super().__init__(performance_test=0, concurrency_test=0,
-                         file='', string=0, logger=logging.getLogger(), tag="Local Client",
-                         server_config=CentralizedConfig.get_server_config())
+        super().__init__(
+            performance_test=0,
+            concurrency_test=0,
+            file='',
+            string=0,
+            logger=logging.getLogger(),
+            tag='Local Client',
+            server_config=CentralizedConfig.get_server_config(),
+        )
         self.request_result = None
         self.protocol = None
         self.transport = None
@@ -140,12 +141,16 @@ class LocalClient(client.AbstractClientManager):
         on_con_lost = loop.create_future()
         try:
             self.transport, self.protocol = await loop.create_unix_connection(
-                                                protocol_factory=lambda: LocalClientHandler(
-                                                    loop=loop, on_con_lost=on_con_lost, name=self.name, 
-                                                    logger=self.logger, manager=self, server_config=self.server_config
-                                                    ),
-                                                path=common.LOCAL_SERVER_SOCKET_PATH
-                                            )
+                protocol_factory=lambda: LocalClientHandler(
+                    loop=loop,
+                    on_con_lost=on_con_lost,
+                    name=self.name,
+                    logger=self.logger,
+                    manager=self,
+                    server_config=self.server_config,
+                ),
+                path=common.LOCAL_SERVER_SOCKET_PATH,
+            )
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)
         except MemoryError:
@@ -217,9 +222,7 @@ class LocalClient(client.AbstractClientManager):
         if result == 'There are no connected worker nodes':
             request_result = {}
         elif command in self.ASYNC_COMMANDS or result == 'Sent request to master node':
-            request_result = await self.wait_for_response(
-                self.server_config.communications.timeouts.dapi_request
-            )
+            request_result = await self.wait_for_response(self.server_config.communications.timeouts.dapi_request)
         # If no more data is expected, immediately return send_request's output.
         else:
             request_result = result
@@ -270,4 +273,4 @@ class LocalClient(client.AbstractClientManager):
             Request response.
         """
         await self.start()
-        return await self.send_api_request(b'send_file', f"{path} {node_name}".encode())
+        return await self.send_api_request(b'send_file', f'{path} {node_name}'.encode())

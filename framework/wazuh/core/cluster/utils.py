@@ -6,7 +6,6 @@ import fcntl
 import json
 import logging
 import os
-from pathlib import Path
 import re
 import signal
 import socket
@@ -14,14 +13,15 @@ import time
 import typing
 from contextvars import ContextVar
 from glob import glob
+from pathlib import Path
 
 from wazuh.core import common, pyDaemonModule
-from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhHAPHelperError
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.exception import WazuhError, WazuhHAPHelperError, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
-from wazuh.core.config.client import CentralizedConfig
 
 NO = 'no'
 YES = 'yes'
@@ -47,9 +47,9 @@ IMBALANCE_TOLERANCE = 'imbalance_tolerance'
 REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 
 logger = logging.getLogger('wazuh')
-execq_lockfile = common.WAZUH_RUN / ".api_execq_lock"
+execq_lockfile = common.WAZUH_RUN / '.api_execq_lock'
 
-#TODO(25554) - Delete HAPROXY Config
+# TODO(25554) - Delete HAPROXY Config
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
     HAPROXY_PROTOCOL: 'http',
@@ -122,13 +122,13 @@ def _parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
         AGENT_RECONNECTION_STABILITY_TIME,
         AGENT_RECONNECTION_TIME,
         AGENT_CHUNK_SIZE,
-        REMOVE_DISCONNECTED_NODE_AFTER
+        REMOVE_DISCONNECTED_NODE_AFTER,
     ]:
         if helper_config.get(field):
             try:
                 helper_config[field] = int(helper_config[field])
             except ValueError:
-                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be an integer.")
+                raise WazuhError(3004, extra_message=f'HAProxy Helper {field} must be an integer.')
     return helper_config
 
 
@@ -155,7 +155,7 @@ def _parse_haproxy_helper_float_values(helper_config: dict) -> dict:
             try:
                 helper_config[field] = float(helper_config[field])
             except ValueError:
-                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be a float.")
+                raise WazuhError(3004, extra_message=f'HAProxy Helper {field} must be a float.')
     return helper_config
 
 
@@ -194,11 +194,10 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
     # When the used protocol is HTTPS and the HAProxy certificate is not defined, an error is raised.
     # If the client certificate info is not declared and the tls_ca parameter in the Dataplane API configuration is set,
     # the communication fails
-    if helper_config[HAPROXY_PROTOCOL].lower() == 'https' and type(helper_config[HAPROXY_CERT]) == bool:
+    if helper_config[HAPROXY_PROTOCOL].lower() == 'https' and type(helper_config[HAPROXY_CERT]) is bool:
         raise WazuhHAPHelperError(3042, extra_message='HAProxy certificate file required in the haproxy_cert parameter')
 
     return helper_config
-
 
 
 @temporary_cache()
@@ -216,7 +215,7 @@ def get_manager_status(cache=False) -> typing.Dict:
         Dict whose keys are daemons and the values are the status.
     """
     # Check /proc directory availability
-    proc_path = "/proc"
+    proc_path = '/proc'
     try:
         os.stat(proc_path)
     except (PermissionError, FileNotFoundError) as e:
@@ -226,12 +225,12 @@ def get_manager_status(cache=False) -> typing.Dict:
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), common.WAZUH_RUN
     for process in processes:
-        pidfile = glob(os.path.join(run_dir, f"{process}-*.pid"))
-        if os.path.exists(os.path.join(run_dir, f"{process}.failed")):
+        pidfile = glob(os.path.join(run_dir, f'{process}-*.pid'))
+        if os.path.exists(os.path.join(run_dir, f'{process}.failed')):
             data[process] = 'failed'
-        elif os.path.exists(os.path.join(run_dir, ".restart")):
+        elif os.path.exists(os.path.join(run_dir, '.restart')):
             data[process] = 'restarting'
-        elif os.path.exists(os.path.join(run_dir, f"{process}.start")):
+        elif os.path.exists(os.path.join(run_dir, f'{process}.start')):
             data[process] = 'starting'
         elif pidfile:
             # Iterate on pidfiles looking for the pidfile which has his pid in /proc,
@@ -258,9 +257,9 @@ def get_cluster_status() -> typing.Dict:
         Cluster status.
     """
     try:
-        cluster_status = {"running": "yes" if get_manager_status()['wazuh-server'] == 'running' else "no"}
+        cluster_status = {'running': 'yes' if get_manager_status()['wazuh-server'] == 'running' else 'no'}
     except WazuhInternalError:
-        cluster_status = {"running": "no"}
+        cluster_status = {'running': 'no'}
 
     return cluster_status
 
@@ -290,9 +289,13 @@ def manager_restart() -> WazuhResult:
         # execq socket path
         socket_path = common.EXECQ_SOCKET
         # json msg for restarting Wazuh manager
-        msg = json.dumps(create_wazuh_socket_message(origin={'module': common.origin_module.get()},
-                                                     command=common.RESTART_WAZUH_COMMAND,
-                                                     parameters={'extra_args': [], 'alert': {}}))
+        msg = json.dumps(
+            create_wazuh_socket_message(
+                origin={'module': common.origin_module.get()},
+                command=common.RESTART_WAZUH_COMMAND,
+                parameters={'extra_args': [], 'alert': {}},
+            )
+        )
         # initialize socket
         if os.path.exists(socket_path):
             try:
@@ -320,9 +323,7 @@ context_tag: ContextVar[str] = ContextVar('tag', default='')
 
 
 class ClusterFilter(logging.Filter):
-    """
-    Add cluster related information into cluster logs.
-    """
+    """Add cluster related information into cluster logs."""
 
     def __init__(self, tag: str, subtag: str, name: str = ''):
         """Class constructor.
@@ -354,20 +355,18 @@ class ClusterFilter(logging.Filter):
 
 
 class ClusterLogger(WazuhLogger):
-    """
-    Define the logger used by wazuh-clusterd.
-    """
+    """Define the logger used by wazuh-clusterd."""
 
     def setup_logger(self):
-        """
-        Set ups cluster logger. In addition to super().setup_logger() this method adds:
-            * A filter to add tag and subtags to cluster logs
-            * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
+        """Set ups cluster logger. In addition to super().setup_logger() this method adds:
+        * A filter to add tag and subtags to cluster logs
+        * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
         """
         super().setup_logger()
         self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
-        debug_level = logging.DEBUG2 if self.debug_level == 2 else \
-            logging.DEBUG if self.debug_level == 1 else logging.INFO
+        debug_level = (
+            logging.DEBUG2 if self.debug_level == 2 else logging.DEBUG if self.debug_level == 1 else logging.INFO
+        )
 
         self.logger.setLevel(debug_level)
 
@@ -414,8 +413,13 @@ def process_spawn_sleep(child):
     time.sleep(0.1)
 
 
-async def forward_function(func: callable, f_kwargs: dict = None, request_type: str = 'local_master',
-                           nodes: list = None, broadcasting: bool = False):
+async def forward_function(
+    func: callable,
+    f_kwargs: dict = None,
+    request_type: str = 'local_master',
+    nodes: list = None,
+    broadcasting: bool = False,
+):
     """Distribute function to master node.
 
     Parameters
@@ -430,18 +434,26 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
         System cluster nodes.
     broadcasting : bool
         Whether the function will be broadcasted or not.
+
     Returns
     -------
     Return either a dict or `WazuhResult` instance in case the execution did not fail. Return an exception otherwise.
     """
-
     import concurrent
     from asyncio import run
 
     from wazuh.core.cluster.dapi.dapi import DistributedAPI
-    dapi = DistributedAPI(f=func, f_kwargs=f_kwargs, request_type=request_type,
-                          is_async=False, wait_for_complete=True, logger=logger, nodes=nodes,
-                          broadcasting=broadcasting)
+
+    dapi = DistributedAPI(
+        f=func,
+        f_kwargs=f_kwargs,
+        request_type=request_type,
+        is_async=False,
+        wait_for_complete=True,
+        logger=logger,
+        nodes=nodes,
+        broadcasting=broadcasting,
+    )
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()
 
@@ -476,4 +488,5 @@ def raise_if_exc(result: object) -> None:
 
 def print_version():
     from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
+
     print('\n{} {} - {}\n\n{}'.format(__wazuh_name__, __version__, __author__, __licence__))

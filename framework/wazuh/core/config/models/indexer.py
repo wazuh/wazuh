@@ -1,6 +1,6 @@
-from pydantic import PositiveInt, Field, field_serializer
 from typing import List
 
+from pydantic import Field, PositiveInt, field_serializer
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
@@ -15,6 +15,7 @@ class IndexerNode(WazuhConfigBaseModel):
     port : PositiveInt
         The port number for the indexer.
     """
+
     host: str
     port: PositiveInt
 
@@ -33,6 +34,7 @@ class IndexerConfig(WazuhConfigBaseModel):
     ssl : IndexerSSLConfig, optional
         SSL configuration for the indexer. Default is None.
     """
+
     hosts: List[IndexerNode] = Field(min_length=1)
     username: str
     password: str

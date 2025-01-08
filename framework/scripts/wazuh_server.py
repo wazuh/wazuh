@@ -11,22 +11,20 @@ import os
 import signal
 import subprocess
 import sys
-from typing import List
 import time
+from typing import List
 
 from wazuh.core import pyDaemonModule
 from wazuh.core.authentication import generate_keypair, keypair_exists
-from wazuh.core.common import WAZUH_SHARE, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN
-from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import NodeType
 from wazuh.core.cluster.cluster import clean_up
-from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version, ping_unix_socket
+from wazuh.core.cluster.unix_server.server import start_unix_server
+from wazuh.core.cluster.utils import ClusterLogger, context_tag, ping_unix_socket, print_version, process_spawn_sleep
+from wazuh.core.common import CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN, WAZUH_SHARE, wazuh_gid, wazuh_uid
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import NodeType, ServerConfig
 from wazuh.core.exception import WazuhDaemonError
 from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
-from wazuh.core.cluster.unix_server.server import start_unix_server
-from wazuh.core.config.models.server import ServerConfig
-
 
 SERVER_DAEMON_NAME = 'wazuh-server'
 COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / 'wazuh_comms_apid.py'
@@ -105,10 +103,8 @@ def start_daemons(root: bool):
 
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
-        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
-            + (['-r'] if root else []),
-        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
-            + (['-r'] if root else []),
+        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH] + (['-r'] if root else []),
+        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH] + (['-r'] if root else []),
     }
 
     for name, args in daemons.items():
@@ -175,7 +171,7 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info(f"Configuration server is not available, retrying...")
+        main_logger.info('Configuration server is not available, retrying...')
         time.sleep(1)
 
     my_server = master.Master(
@@ -232,7 +228,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info(f"Configuration server is not available, retrying...")
+        main_logger.info('Configuration server is not available, retrying...')
         time.sleep(1)
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
@@ -286,7 +282,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
 
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
-            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
+            logging.info('Connection with server has been lost. Reconnecting in 10 seconds.')
             await asyncio.sleep(server_config.worker.intervals.connection_retry)
 
 

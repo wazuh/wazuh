@@ -3,9 +3,9 @@ import json
 import logging
 import time
 
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 logger = logging.getLogger('wazuh-comms-api')
 
@@ -45,7 +45,7 @@ async def log_request(request: Request, response: Response, start_time: time) ->
         'parameters': query,
         'body': body,
         'time': f'{elapsed_time:.3f}s',
-        'status_code': status_code
+        'status_code': status_code,
     }
     if agent_uuid is not None:
         json_info['agent_uuid'] = agent_uuid
@@ -70,8 +70,8 @@ async def log_request_debug(request: Request, path: str) -> None:
         body = b''
         async for chunk in request.stream():
             body += chunk
-        
-        logger.debug(f'Request body stream: {body.decode()}',  extra={'log_type': 'log'})
+
+        logger.debug(f'Request body stream: {body.decode()}', extra={'log_type': 'log'})
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -97,7 +97,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         body = await request.body()
         if body:
             with contextlib.suppress(json.decoder.JSONDecodeError):
-                # Load the request body to the _json field before calling the controller so it's cached before the 
+                # Load the request body to the _json field before calling the controller so it's cached before the
                 # stream is consumed. If there's a json error we skip it so it's handled later.
                 # Related to https://github.com/wazuh/wazuh/issues/24060.
                 _ = await request.json()

@@ -14,6 +14,7 @@ class BatcherClient:
         The frequency, in seconds, at which the client checks for responses in the queue.
         Defaults to 0.1 seconds.
     """
+
     def __init__(self, queue: MuxDemuxQueue, wait_frequency: float = 0.05):
         self.queue = queue
         self.wait_frequency = wait_frequency
@@ -44,5 +45,5 @@ class BatcherClient:
         while True:
             if not self.queue.is_response_pending(packet_id):
                 return self.queue.receive_from_demux(packet_id)
-            
+
             await asyncio.sleep(self.wait_frequency)

@@ -8,7 +8,6 @@ import socket
 from json import dumps, loads
 from struct import pack, unpack
 
-from wazuh import common
 from wazuh.core.exception import WazuhException, WazuhInternalError
 
 SOCKET_COMMUNICATION_PROTOCOL_VERSION = 1
@@ -34,28 +33,28 @@ class WazuhSocket:
         except FileNotFoundError:
             raise WazuhInternalError(1013, extra_message=os.path.basename(self.path))
         except ConnectionRefusedError:
-            raise WazuhInternalError(1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive "
-                                                         "connections")
+            raise WazuhInternalError(
+                1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive " 'connections'
+            )
         except Exception as e:
             raise WazuhException(1013, str(e))
 
     def close(self):
         self.s.close()
 
-    def send(self, msg_bytes, header_format="<I"):
+    def send(self, msg_bytes, header_format='<I'):
         if not isinstance(msg_bytes, bytes):
-            raise WazuhException(1105, "Type must be bytes")
+            raise WazuhException(1105, 'Type must be bytes')
 
         try:
             sent = self.s.send(pack(header_format, len(msg_bytes)) + msg_bytes)
             if sent == 0:
-                raise WazuhException(1014, "Number of sent bytes is 0")
+                raise WazuhException(1014, 'Number of sent bytes is 0')
             return sent
         except Exception as e:
             raise WazuhException(1014, str(e))
 
-    def receive(self, header_format="<I", header_size=4):
-
+    def receive(self, header_format='<I', header_size=4):
         try:
             size = unpack(header_format, self.s.recv(header_size, socket.MSG_WAITALL))[0]
             return self.s.recv(size, socket.MSG_WAITALL)
@@ -69,10 +68,10 @@ class WazuhSocketJSON(WazuhSocket):
     def __init__(self, path):
         WazuhSocket.__init__(self, path)
 
-    def send(self, msg, header_format="<I"):
+    def send(self, msg, header_format='<I'):
         return WazuhSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
 
-    def receive(self, header_format="<I", header_size=4, raw=False):
+    def receive(self, header_format='<I', header_size=4, raw=False):
         response = loads(WazuhSocket.receive(self, header_format=header_format, header_size=header_size).decode())
         if not raw:
             if 'error' in response.keys():
@@ -138,7 +137,7 @@ class WazuhAsyncSocket:
         """Close connection with the socket and the Transport objects."""
         self.writer.close()
 
-    async def send(self, msg_bytes: bytes, header_format: str = "<I"):
+    async def send(self, msg_bytes: bytes, header_format: str = '<I'):
         """Add a header to the message and sends it to the socket. Returns that message.
 
         Parameters
@@ -154,17 +153,17 @@ class WazuhAsyncSocket:
 
         """
         if not isinstance(msg_bytes, bytes):
-            raise WazuhException(1014, "Type must be bytes")
+            raise WazuhException(1014, 'Type must be bytes')
         elif len(msg_bytes) == 0:
-            raise WazuhException(1014, "Number of sent bytes is 0")
+            raise WazuhException(1014, 'Number of sent bytes is 0')
 
         try:
             self.writer.write(pack(header_format, len(msg_bytes)) + msg_bytes)
             await self.writer.drain()
         except (ConnectionResetError, OSError) as exc:
-            raise WazuhException(1014, "Socket connection was closed") from exc
+            raise WazuhException(1014, 'Socket connection was closed') from exc
 
-    async def receive(self, header_format: str ="<I", header_size: int = 4) -> bytes:
+    async def receive(self, header_format: str = '<I', header_size: int = 4) -> bytes:
         """Return the content of the socket.
 
         Parameters
@@ -195,9 +194,10 @@ class WazuhAsyncSocket:
 
 class WazuhAsyncSocketJSON(WazuhAsyncSocket):
     """Handler class to connect and operate asynchronously with a socket using
-    messages in JSON format."""
+    messages in JSON format.
+    """
 
-    async def send(self, msg_bytes: str, header_format: str = "<I") -> bytes:
+    async def send(self, msg_bytes: str, header_format: str = '<I') -> bytes:
         """Convert the message from JSON format to bytes and send it to the socket.
         Returns that message.
 
@@ -215,7 +215,7 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
         """
         return await super().send(msg_bytes=dumps(msg_bytes).encode(), header_format=header_format)
 
-    async def receive_json(self, header_format: str ="<I", header_size: int = 4) -> dict:
+    async def receive_json(self, header_format: str = '<I', header_size: int = 4) -> dict:
         """Get the data from the socket and convert it to JSON.
 
         Parameters

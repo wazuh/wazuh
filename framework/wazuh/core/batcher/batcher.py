@@ -1,24 +1,20 @@
 import asyncio
+import logging
 import os
-import uuid
 import queue
 import signal
 import traceback
-import logging
-from typing import List, Optional
+import uuid
 from multiprocessing import Process
+from typing import List, Optional
 
 from opensearchpy.exceptions import RequestError
-
+from wazuh.core.batcher.buffer import Buffer
+from wazuh.core.batcher.config import BatcherConfig
+from wazuh.core.batcher.mux_demux import Item, MuxDemuxQueue, Packet
+from wazuh.core.batcher.timer import TimerManager
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.bulk import BulkDoc, Operation
-from wazuh.core.indexer.models.events import Operation
-
-from wazuh.core.batcher.buffer import Buffer
-from wazuh.core.batcher.timer import TimerManager
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, Packet
-
-from wazuh.core.config.models.comms_api import BatcherConfig
 
 logger = logging.getLogger('wazuh-comms-api')
 
@@ -35,6 +31,7 @@ class Batcher:
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
+
     def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
         self.queue: MuxDemuxQueue = mux_demux_queue
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
@@ -106,7 +103,7 @@ class Batcher:
                                         output_packet.add_item(item)
 
                     if not action_found:
-                        logger.error(f"Error processing batcher response, no known action in: {response_item}")
+                        logger.error(f'Error processing batcher response, no known action in: {response_item}')
 
             for packet in output_packets:
                 self.queue.send_to_demux(packet)
@@ -145,8 +142,7 @@ class Batcher:
         try:
             while not self._shutdown_event.is_set():
                 done, pending = await asyncio.wait(
-                    [self._get_from_queue(), self._timer.wait_timeout_event()],
-                    return_when=asyncio.FIRST_COMPLETED
+                    [self._get_from_queue(), self._timer.wait_timeout_event()], return_when=asyncio.FIRST_COMPLETED
                 )
 
                 # Process completed tasks
@@ -201,15 +197,14 @@ class BatcherProcess(Process):
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
+
     def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
         super().__init__()
         self.queue = mux_demux_queue
         self.config = config
 
     def run(self):
-        """
-        Initialize and run a Batcher instance in the process. This method is called when the process is started.
-        """
+        """Initialize and run a Batcher instance in the process. This method is called when the process is started."""
         batcher = Batcher(mux_demux_queue=self.queue, config=self.config)
         asyncio.run(batcher.run())
 
@@ -219,7 +214,7 @@ def create_bulk_list(items: List[Item]) -> List[BulkDoc]:
     docs: List[BulkDoc] = []
     for item in items:
         if item.operation == Operation.CREATE.value:
-            docs.append(BulkDoc.create(index=item.index_name, doc_id=item.id, doc=item.content))    
+            docs.append(BulkDoc.create(index=item.index_name, doc_id=item.id, doc=item.content))
         elif item.operation == Operation.DELETE.value:
             docs.append(BulkDoc.delete(index=item.index_name, doc_id=item.id))
         elif item.operation == Operation.UPDATE.value:

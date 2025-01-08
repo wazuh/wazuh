@@ -6,16 +6,24 @@ from fastapi import status
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler, \
-    exception_handler, starlette_http_exception_handler
+from comms_api.routers.exceptions import (
+    HTTPError,
+    exception_handler,
+    http_error_handler,
+    starlette_http_exception_handler,
+    validation_exception_handler,
+)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('message,code,status_code', [
-    ('value', 1001, status.HTTP_400_BAD_REQUEST),
-    ('value1', status.HTTP_408_REQUEST_TIMEOUT, status.HTTP_408_REQUEST_TIMEOUT),
-    ('test', None, status.HTTP_500_INTERNAL_SERVER_ERROR)
-])
+@pytest.mark.parametrize(
+    'message,code,status_code',
+    [
+        ('value', 1001, status.HTTP_400_BAD_REQUEST),
+        ('value1', status.HTTP_408_REQUEST_TIMEOUT, status.HTTP_408_REQUEST_TIMEOUT),
+        ('test', None, status.HTTP_500_INTERNAL_SERVER_ERROR),
+    ],
+)
 async def test_http_error_handler(message, code, status_code):
     """Verify that the HTTP error handler works as expected."""
     mock_req = MagicMock()
@@ -30,10 +38,13 @@ async def test_http_error_handler(message, code, status_code):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('loc,msg,expected_msg', [
-    (['agent', 'uuid'], 'value is not a valid string', 'agent.uuid value is not a valid string'),
-    (['event', 'id'], 'value is not a valid integer', 'event.id value is not a valid integer')
-])
+@pytest.mark.parametrize(
+    'loc,msg,expected_msg',
+    [
+        (['agent', 'uuid'], 'value is not a valid string', 'agent.uuid value is not a valid string'),
+        (['event', 'id'], 'value is not a valid integer', 'event.id value is not a valid integer'),
+    ],
+)
 async def test_validation_exception_handler(loc, msg, expected_msg):
     """Verify that the request validation exception handler works as expected."""
     status_code = status.HTTP_400_BAD_REQUEST
