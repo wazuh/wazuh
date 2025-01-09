@@ -2715,6 +2715,26 @@ char ** wreaddir(const char * name) {
     return files;
 }
 
+// Check if a path is remote
+
+bool is_remote_path(const char *path) {
+    const char *remote_prefixes[] = {
+        "\\\\",
+        "http://",
+        "https://",
+        "ftp://",
+        "smb://"
+    };
+
+    size_t num_prefixes = sizeof(remote_prefixes) / sizeof(remote_prefixes[0]);
+
+    for (size_t i = 0; i < num_prefixes; ++i) {
+        if (strncmp(path, remote_prefixes[i], strlen(remote_prefixes[i])) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
 FILE * wfopen(const char * pathname, const char * mode) {
 #ifdef WIN32

@@ -384,6 +384,15 @@ int w_ref_parent_folder(const char * path);
  */
 char ** wreaddir(const char * name);
 
+/**
+ * @brief Check if a given path is a remote path.
+ *
+ * This function checks if the provided path string corresponds to a remote path.
+ *
+ * @param path The path string to check.
+ * @return true if the path is remote, false otherwise.
+ */
+bool is_remote_path(const char *path);
 
 /**
  * @brief Open file normally in Linux, allow read/write/delete in Windows.
