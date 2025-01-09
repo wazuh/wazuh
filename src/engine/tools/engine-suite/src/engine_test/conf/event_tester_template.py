@@ -18,27 +18,27 @@ class TesterMessageTemplate:
     '''
     TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ" # 2023-12-26T09:22:14.000Z
 
-    def __init__(self, provider: str, module: str, ingested: str = "auto"):
+    def __init__(self, provider: str, module: str, created: str = "auto"):
         '''
-        Initializes the template with the given provider, module and ingested time.
+        Initializes the template with the given provider, module and created time.
 
         Args:
             provider (str): The provider of the event.
             module (str): The module of the event.
-            ingested (str): The ingested time of the event. If "auto", the current time will be used.
+            created (str): The created time of the event. If "auto", the current time will be used.
 
         Raises:
-            ValueError: If the ingested time is not in the correct format.
+            ValueError: If the created time is not in the correct format.
         '''
 
-        # Check if the ingested time is auto
-        if ingested.lower() != "auto":
+        # Check if the created time is auto
+        if created.lower() != "auto":
             # If not, convert it to the time format
             try:
-                datetime.datetime.strptime(ingested, self.TIME_FORMAT)
+                datetime.datetime.strptime(created, self.TIME_FORMAT)
             except ValueError:
                 raise ValueError(
-                    f"Invalid ingested time format. Expected format: {self.TIME_FORMAT}")
+                    f"Invalid created time format. Expected format: {self.TIME_FORMAT}")
 
         self._header_template = {
             "agent": {
@@ -59,7 +59,7 @@ class TesterMessageTemplate:
         self._event_template = {
             "tags": ["production-server"],
             "event": {
-                "ingested": ingested,
+                "created": created,
                 "module": module,
                 "original": "$EVENT_AS_STRING",
                 "provider": provider
@@ -100,8 +100,8 @@ class TesterMessageTemplate:
         '''
         _event_template = copy.deepcopy(self._event_template)
         _event_template['event']['original'] = event
-        if _event_template['event']['ingested'].lower() == "auto":
-            _event_template['event']['ingested'] = datetime.datetime.now(datetime.timezone.utc).strftime(self.TIME_FORMAT)
+        if _event_template['event']['created'].lower() == "auto":
+            _event_template['event']['created'] = datetime.datetime.now(datetime.timezone.utc).strftime(self.TIME_FORMAT)
         return json.dumps(_event_template, separators=(',', ':'))
 
     def _update_field(self, sub_template: SubTempleType, field_path, value):
