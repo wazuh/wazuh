@@ -5,6 +5,8 @@ from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.logging import EngineLoggingConfig
 
+ENGINE_DEFAULT_RETRIES = 3
+ENGINE_DEFAULT_TIMEOUT = 10
 
 class EngineClientConfig(WazuhConfigBaseModel):
     """Configuration for the Engine client.
@@ -19,8 +21,8 @@ class EngineClientConfig(WazuhConfigBaseModel):
         The timeout duration in seconds. Default: 10.0.
     """
     api_socket_path: FilePath = FilePath(ENGINE_SOCKET)
-    retries: PositiveInt = 3
-    timeout: PositiveFloat = 10
+    retries: PositiveInt = ENGINE_DEFAULT_RETRIES
+    timeout: PositiveFloat = ENGINE_DEFAULT_TIMEOUT
 
 
 class EngineConfig(WazuhConfigBaseModel):

@@ -16,41 +16,39 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
-            import wazuh.rbac.decorators
-            from wazuh.tests.util import RBAC_bypasser
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
+        from wazuh.tests.util import RBAC_bypasser
 
-            del sys.modules['wazuh.rbac.orm']
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh import WazuhError, WazuhException, WazuhInternalError
-        from wazuh.agent import (
-            add_agent,
-            build_agents_query,
-            create_group,
-            delete_agents,
-            delete_groups,
-            get_group_conf,
-            get_agent_groups,
-            get_agents,
-            get_agents_in_group,
-            reconnect_agents,
-            remove_agents_from_group,
-            restart_agents,
-            update_group_file,
-        )
-        from wazuh.core.agent import Agent
-        from wazuh.core.exception import WazuhResourceNotFound
-        from wazuh.core.indexer.base import IndexerKey
-        from wazuh.core.indexer.models.agent import Agent as IndexerAgent
-        from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
-        from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-        from wazuh.core.tests.test_agent import InitAgent
-        from wazuh.core.utils import GROUP_FILE_EXT
+    from wazuh import WazuhError, WazuhException, WazuhInternalError
+    from wazuh.agent import (
+        add_agent,
+        build_agents_query,
+        create_group,
+        delete_agents,
+        delete_groups,
+        get_group_conf,
+        get_agent_groups,
+        get_agents,
+        get_agents_in_group,
+        reconnect_agents,
+        remove_agents_from_group,
+        restart_agents,
+        update_group_file,
+    )
+    from wazuh.core.agent import Agent
+    from wazuh.core.exception import WazuhResourceNotFound
+    from wazuh.core.indexer.base import IndexerKey
+    from wazuh.core.indexer.models.agent import Agent as IndexerAgent
+    from wazuh.core.indexer.models.commands import CreateCommandResponse, ResponseResult
+    from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+    from wazuh.core.tests.test_agent import InitAgent
+    from wazuh.core.utils import GROUP_FILE_EXT
 
-        from api.util import remove_nones_to_dict
+    from api.util import remove_nones_to_dict
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')

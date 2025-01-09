@@ -25,8 +25,22 @@ with patch('wazuh.common.wazuh_uid'):
 
 from wazuh.core.exception import WazuhClusterError
 
-cluster_items = {'intervals': {'worker': {'keep_alive': 1, 'max_failed_keepalive_attempts': 0, "connection_retry": 2}}}
-configuration = {"node_name": "manager", "nodes": [0], "port": 1515}
+with patch('wazuh.core.config.models.ssl_config.ValidateFilePathMixin._validate_file_path'):
+    from wazuh.core.config.models.server import ServerConfig, NodeConfig, NodeType, SSLConfig
+
+    server_config = ServerConfig(
+        nodes=['example'],
+        node=NodeConfig(
+            name="manager",
+            type=NodeType.MASTER,
+            ssl=SSLConfig(
+                key='a',
+                cert='a',
+                ca='a',
+            )
+        ),
+    )
+
 
 
 class FutureMock:
@@ -58,9 +72,9 @@ class LoopMock:
 
 future_mock = FutureMock()
 abstract_client = client.AbstractClient(loop=None, on_con_lost=future_mock, name="name",
-                                        logger=None, manager=None, cluster_items=cluster_items)
+                                        logger=None, manager=None, server_config=server_config)
 with patch("asyncio.get_running_loop"):
-    abstract_client_manager = client.AbstractClientManager(configuration=configuration, cluster_items=cluster_items,
+    abstract_client_manager = client.AbstractClientManager(server_config=server_config,
                                                            performance_test=10, concurrency_test=10, file="/file/path",
                                                            string=1000)
 
@@ -71,8 +85,7 @@ def test_acm_init():
     """Check the correct initialization of the AbstractClientManager object."""
 
     assert abstract_client_manager.name == "manager"
-    assert abstract_client_manager.configuration == configuration
-    assert abstract_client_manager.cluster_items == cluster_items
+    assert abstract_client_manager.server_config == server_config
     assert abstract_client_manager.performance_test == 10
     assert abstract_client_manager.concurrency_test == 10
     assert abstract_client_manager.file == "/file/path"
@@ -144,12 +157,6 @@ async def test_acm_start(add_tasks_mock, starmap_mock, asyncio_sleep_mock):
                       return_value=(TransportMock(), ClientMock())) as create_connection_mock:
         abstract_client_manager.loop = LoopMock()
         abstract_client_manager.tasks = [(0, 0), (1, 1)]
-        abstract_client_manager.configuration |= {
-            'cafile': '/test/sslmanager.ca',
-            'certfile': '/test/sslmanager.cert',
-            'keyfile': '/test/sslmanager.key',
-            'keyfile_password': '',
-        }
 
         with patch.object(logging.getLogger("wazuh"), "info") as logger_info_mock, \
             patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock, \

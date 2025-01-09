@@ -9,21 +9,19 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
-            import wazuh.rbac.decorators
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
 
-            del sys.modules['wazuh.rbac.orm']
+        del sys.modules['wazuh.rbac.orm']
 
-            from wazuh.tests.util import RBAC_bypasser
+        from wazuh.tests.util import RBAC_bypasser
 
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            from wazuh import cluster
-            from wazuh.core import common
-            from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-            from wazuh.core.cluster.local_client import LocalClient
-            from wazuh.core.results import WazuhResult
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh import cluster
+        from wazuh.core import common
+        from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+        from wazuh.core.cluster.local_client import LocalClient
+        from wazuh.core.results import WazuhResult
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                   'key': '', 'port': 1516, 'bind_addr': 'localhost', 'nodes': ['127.0.0.1'], 'hidden': 'no'}

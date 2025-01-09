@@ -20,22 +20,21 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        with patch('wazuh.core.utils.load_wazuh_xml'):
+        with patch('wazuh.core.config.client.CentralizedConfig.get_server_config'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
 
             del sys.modules['wazuh.rbac.orm']
 
             from wazuh.tests.util import RBAC_bypasser
-
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
-        from wazuh.core.manager import get_manager_status
-        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
-        from wazuh.core.exception import WazuhClusterError
-        from api.util import raise_if_exc
-        from wazuh.core.cluster import local_client
+            from wazuh.core.manager import get_manager_status
+            from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+            from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
+            from wazuh.core.exception import WazuhClusterError
+            from api.util import raise_if_exc
+            from wazuh.core.cluster import local_client
 
 logger = logging.getLogger('wazuh')
 

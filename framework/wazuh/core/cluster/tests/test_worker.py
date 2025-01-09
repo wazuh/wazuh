@@ -19,18 +19,16 @@ import wazuh.core.exception as exception
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        # TODO: Fix in #26725
-        with patch('wazuh.core.utils.load_wazuh_xml'):
-            sys.modules['wazuh.rbac.orm'] = MagicMock()
-            import wazuh.rbac.decorators
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
 
-            del sys.modules['wazuh.rbac.orm']
-            from wazuh.tests.util import RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
+        from wazuh.tests.util import RBAC_bypasser
 
-            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from wazuh.core.cluster import client, worker, common as cluster_common
-            from wazuh.core import common as core_common
+        from wazuh.core.cluster import client, worker, common as cluster_common
+        from wazuh.core import common as core_common
 
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',

@@ -2,7 +2,8 @@ from unittest import mock
 
 import pytest
 from httpx import AsyncClient, Timeout, TimeoutException
-from wazuh.core.engine import DEFAULT_RETRIES, DEFAULT_TIMEOUT, Engine, get_engine_client
+from wazuh.core.engine import Engine, get_engine_client
+from wazuh.core.config.models.engine import ENGINE_DEFAULT_RETRIES, ENGINE_DEFAULT_TIMEOUT
 from wazuh.core.exception import WazuhEngineError
 
 
@@ -25,12 +26,12 @@ def test_engine_init(params: dict):
     if 'retries' in params:
         assert engine._client._transport._pool._retries == params['retries']
     else:
-        assert engine._client._transport._pool._retries == DEFAULT_RETRIES
+        assert engine._client._transport._pool._retries == ENGINE_DEFAULT_RETRIES
 
     if 'timeout' in params:
         assert engine._client.timeout == Timeout(params['timeout'])
     else:
-        assert engine._client.timeout == Timeout(DEFAULT_TIMEOUT)
+        assert engine._client.timeout == Timeout(ENGINE_DEFAULT_TIMEOUT)
 
 
 @pytest.mark.asyncio
