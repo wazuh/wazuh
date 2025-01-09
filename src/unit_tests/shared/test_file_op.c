@@ -893,7 +893,7 @@ void test_get_file_content(void **state)
 void test_get_file_pointer_NULL(void **state)
 {
     const char * path = NULL;
-    
+
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot open NULL path");
 
     FILE * fp = w_get_file_pointer(path);
@@ -924,6 +924,22 @@ void test_get_file_pointer_success(void **state)
     FILE * fp = w_get_file_pointer(file_name);
 
     assert_int_equal(fp, fp);
+}
+
+// Test if a path is recognized as remote
+static void test_is_remote_path(void **state) {
+    (void) state; // unused
+
+    assert_true(is_remote_path("\\\\host\\folder"));
+    assert_true(is_remote_path("http://example.com"));
+    assert_true(is_remote_path("https://example.com"));
+    assert_true(is_remote_path("ftp://example.com"));
+    assert_true(is_remote_path("smb://example.com"));
+
+    assert_false(is_remote_path("C:\\local\\folder"));
+    assert_false(is_remote_path("/usr/local/bin"));
+    assert_false(is_remote_path("file:///home/user/file.txt"));
+    assert_false(is_remote_path("relative/path/to/file"));
 }
 
 #ifdef TEST_WINAGENT
@@ -1152,6 +1168,7 @@ int main(void) {
         cmocka_unit_test(test_get_file_pointer_NULL),
         cmocka_unit_test(test_get_file_pointer_invalid),
         cmocka_unit_test(test_get_file_pointer_success),
+        cmocka_unit_test(test_is_remote_path),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
