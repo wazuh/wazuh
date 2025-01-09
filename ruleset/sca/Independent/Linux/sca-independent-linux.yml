@@ -195,9 +195,9 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
       - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
       - pci_dss_v3.2.1: ["2.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:findmnt --kernel /tmp -> r:\s*/tmp\s'
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s'
       - "c:systemctl is-enabled tmp.mount -> r:generated|enabled"
 
   # 1.1.3 Ensure nodev option set on /tmp partition. (Scored)
@@ -216,7 +216,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "not c:findmnt -kn /tmp -> !r:nodev"
+      - "c:findmnt -kn /tmp -> r:nodev"
 
   # 1.1.4 Ensure nosuid option set on /tmp partition. (Scored)
   - id: 31010
@@ -231,7 +231,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "not c:findmnt -kn /tmp -> !r:nosuid"
+      - "c:findmnt -kn /tmp -> r:nosuid"
 
   # 1.1.5 Ensure noexec option set on /tmp partition. (Scored)
   - id: 31011
@@ -246,7 +246,7 @@ checks:
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
     condition: all
     rules:
-      - "not c:findmnt -kn /tmp -> !r:noexec"
+      - "c:findmnt -kn /tmp -> r:noexec"
 
   # 1.1.6 Ensure separate partition exists for /var. (Scored)
   - id: 31012
@@ -264,7 +264,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:findmnt -kn /home -> r:\s*/var\s'
+      - 'c:findmnt -kn /var -> r:\s*/var\s'
 
   # 1.1.7 Ensure separate partition exists for /var/tmp. (Scored)
   - id: 31013
@@ -279,7 +279,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/tmp -> r:\s*/var/tmp\s'
+      - 'c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s'
 
   # 1.1.8 Ensure nodev option set on /var/tmp partition. (Scored)
   - id: 31014
@@ -294,7 +294,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "not c:findmnt --kernel /var/tmp -> !r:nodev"
+      - "c:findmnt -kn /var/tmp -> r:nodev"
 
   # 1.1.9 Ensure nosuid option set on /var/tmp partition. (Scored)
   - id: 31015
@@ -309,7 +309,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "not c:findmnt --kernel /var/tmp -> !r:nosuid"
+      - "c:findmnt -kn /var/tmp -> r:nosuid"
 
   # 1.1.10 Ensure noexec option set on /var/tmp partition. (Scored)
   - id: 31016
@@ -324,7 +324,7 @@ checks:
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
     condition: all
     rules:
-      - "not c:findmnt --kernel /var/tmp -> !r:noexec"
+      - "c:findmnt -kn /var/tmp -> r:noexec"
 
   # 1.1.11 Ensure separate partition exists for /var/log. (Scored)
   - id: 31017
@@ -341,7 +341,7 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/log -> r:\s*/var/log\s'
+      - 'c:findmnt -kn /var/log -> r:\s*/var/log\s'
 
   # 1.1.12 Ensure separate partition exists for /var/log/audit. (Scored)
   - id: 31018
@@ -358,7 +358,7 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/log -> r:\s*/var/log/audit\s'
+      - 'c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s'
 
   # 1.1.13 Ensure separate partition exists for /home. (Scored)
   - id: 31019
@@ -376,7 +376,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/log -> r:\s*/home\s'
+      - 'c:findmnt -kn /home -> r:\s*/home\s'
 
   # 1.1.14 Ensure nodev option set on /home partition. (Scored)
   - id: 31020
@@ -391,7 +391,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "not c:findmnt -kn /home -> !r:nodev"
+      - "c:findmnt -kn /home -> r:nodev"
 
   # 1.1.15 Ensure nodev option set on /dev/shm partition. (Scored)
   - id: 31021
@@ -406,7 +406,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "not c:findmnt -kn /dev/shm -> !r:nodev"
+      - "c:findmnt -kn /dev/shm -> r:nodev"
 
   # 1.1.16 Ensure nosuid option set on /dev/shm partition. (Scored)
   - id: 31022
@@ -421,7 +421,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "not c:findmnt --kernel /dev/shm -> !r:nosuid"
+      - "c:findmnt -kn /dev/shm -> r:nosuid"
 
   # 1.1.17 Ensure noexec option set on /dev/shm partition. (Scored)
   - id: 31023
@@ -436,7 +436,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1046", "T1047", "T1051", "T1052", "T1053", "T1054", "T1055", "T1058", "T1064", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1091", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1118", "T1121", "T1127", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1164", "T1165", "T1166", "T1169", "T1170", "T1171", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1180", "T1184", "T1187", "T1190", "T1191", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1221", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1519", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - "not c:findmnt --kernel /dev/shm -> !r:noexec"
+      - "c:findmnt -kn /dev/shm -> r:noexec"
 
   # 1.1.18 Ensure nodev option set on removable media partitions (Not Scored) - Not Implemented
   # 1.1.19 Ensure nosuid option set on removable media partitions (Not Scored)
@@ -912,11 +912,10 @@ checks:
       - cis: ["2.1.6"]
       - cis_csc_v7: ["6 3.4", "9.1"]
       - iso_27001-2013: ["A.13.1.2"]
-    condition: none
+    condition: any
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^shell'
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^login'
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^exec'
+      - "c:rpm -q rsh-server -> r:^package rsh-server is not installed"
+      - "not c:dpkg-query -s rshd inetutils-rshd -> r:^Status: install ok installed"
 
   # 2.1.7 Ensure talk server is not enabled. (Scored)
   - id: 31061
@@ -994,7 +993,9 @@ checks:
     condition: any
     rules:
       - "c:rpm -q chrony -> r:^chrony-"
-      - "c:dpkg-query -W chrony -> r:^chrony"
+      - "c:rpm -q ntp -> r:^ntp-"
+      - "c:dpkg -s chrony -> r:^Status: install ok installed"
+      - "c:dpkg -s ntp -> r:^Status: install ok installed"
 
   # 2.2.1.2 Ensure ntp is configured. (Scored)
   - id: 31066
@@ -1010,8 +1011,8 @@ checks:
     rules:
       - "f:/etc/ntp.conf"
       - 'f:/etc/ntp.conf -> r:^\s*\t*server|^\s*\t*pool'
-      - 'f:/etc/sysconfig/ntpd -> r:^\s*\t*OPTIONS\.*-u ntp:ntp'
-      - 'f:/etc/sysconfig/ntp -> r:^\s*\t*NTPD_OPTIONS\.*-u ntp:ntp'
+      - "f:/etc/ntp.conf -> r:restrict -(d+) && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
+      - "f:/etc/ntp.conf -> r:restrict -6 && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
 
   # 2.2.1.3 Ensure chrony is configured. (Scored)
   - id: 31067
@@ -1142,10 +1143,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q -> r:rpcbind package rpcbind is not installed"
-      - "c:rpm -q nfs-utils -> r:package nfs-utils is not installed"
       - "not c:systemctl is-enabled nfs.service -> r:^enabled"
       - "not c:systemctl is-enabled rpcbind.service -> r:^enabled"
 
@@ -1291,7 +1290,7 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: any
     rules:
-      - "c:systemctl is-enabled rsyncd -> r:masked"
+      - "c:not systemctl is-enabled rsyncd -> r:^enabled"
       - "c:rpm -q rsync -> r:^package rsync is not installed"
 
   # 2.2.17 Ensure NIS Server is not enabled. (Scored)
@@ -1324,7 +1323,7 @@ checks:
     condition: any
     rules:
       - "c:rpm -q ypbind -> r:^package ypbind is not installed"
-      - "not c:systemctl is-enabled ypbind.service -> r:^enabled"
+      - "not c:dpkg -s ypbind -> r:^Status: install ok installed"
 
   # 2.3.2 Ensure rsh client is not installed. (Scored)
   - id: 31086
@@ -1340,7 +1339,7 @@ checks:
     condition: any
     rules:
       - "c:rpm -q rsh -> r:^package rsh is not installed"
-      - "not c:systemctl is-enabled rsh.service -> r:^enabled"
+      - "not c:dpkg -s rsh -> r:^Status: install ok installed"
 
   # 2.3.3 Ensure talk client is not installed. (Scored)
   - id: 31087
@@ -1356,7 +1355,7 @@ checks:
     condition: any
     rules:
       - "c:rpm -q talk -> r:^package talk is not installed"
-      - "not c:systemctl is-enabled talk.service -> r:^enabled"
+      - "not c:dpkg -s talk -> r:^Status: install ok installed"
 
   # 2.3.4 Ensure telnet client is not installed. (Scored)
   - id: 31088
@@ -1372,7 +1371,24 @@ checks:
     condition: any
     rules:
       - "c:rpm -q telnet -> r:^package telnet is not installed"
-      - "not c:systemctl is-enabled telnet.service -> r:^enabled"
+      - "not c:dpkg -s telnet -> r:^Status: install ok installed"
+
+  # 2.3.5 Ensure LDAP client is not installed (Scored)
+  - id: 31088
+    title: "Ensure LDAP client is not installed."
+    description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
+    rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
+    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment. Notes: The openldap-clients package can go by other names on some distributions. openldap2-client, and ldap-utils are known alternative package names."
+    remediation: "Uninstall openldap-clients using the appropriate package manager or manual installation: # yum remove openldap-clients # apt-get remove openldap-clients # zypper remove openldap-clients."
+    compliance:
+      - cis: ["2.3.5"]
+      - cis_csc_v7: ["6 3.4", "4.5"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
+    condition: any
+    rules:
+      - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
+      - "not c:dpkg -s openldap-clients -> r:^Status: install ok installed"
 
   # 3.1.1 Ensure IP forwarding is disabled. (Scored)
   - id: 31089
@@ -1530,20 +1546,20 @@ checks:
       - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
       - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:=\s*\t*0$'
 
-  # 3.3 Ensure TCP Wrappers is installed. (Not Scored)
+  # 3.3.1 Ensure TCP Wrappers is installed. (Not Scored)
   - id: 31100
-    title: "TCP Wrappers Page 249 3.3.1 Ensure TCP Wrappers is installed."
+    title: "Ensure TCP Wrappers is installed."
     description: "Many Linux distributions provide value-added firewall solutions which provide easy, advanced management of network traffic into and out of the local system. When these solutions are available and appropriate for an environment they should be used. In cases where a value-added firewall is not provided by a distribution, TCP Wrappers provides a simple access list and standardized logging method for services capable of supporting it. Services that are called from inetd and xinetd support the use of TCP wrappers. Any service that can support TCP wrappers will have the libwrap.so library attached to it."
     rationale: "TCP Wrappers provide a good simple access list mechanism to services that may not have that support built in. It is recommended that all services that can support TCP Wrappers, use it."
     remediation: "Run the following command to install TCP Wrappers: # yum install tcp_wrappers # apt-get install tcpd # zypper install tcpd."
     compliance:
-      - cis: ["3.3"]
+      - cis: ["3.3.1"]
       - cis_csc_v7: ["6 9.2", "9.4"]
       - iso_27001-2013: ["A.13.1.1"]
     condition: any
     rules:
       - "c:rpm -q tcp_wrappers -> r:^package tcp_wrappers is not installed"
-      - "not c:systemctl is-enabled tcpd.service -> r:^enabled"
+      - "not c:dpkg -s -> r:^Status: install ok installed"
 
   # 3.3.2 Ensure /etc/hosts.allow is configured. (Not Scored) - Not Implemented
 
@@ -1574,7 +1590,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -L /etc/hosts.allow -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.allow ->  r:644 && r:0 root 0 root'
 
   # 3.3.5 Ensure permissions on /etc/hosts.deny are configured. (Scored)
   - id: 31104
@@ -1589,7 +1605,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -L /etc/hosts.deny -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.deny ->  r:644 && r:0 root 0 root'
 
   # 3.4.1 Ensure DCCP is disabled. (Scored)
   - id: 31105
@@ -1604,7 +1620,8 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: all
     rules:
-      - c:modprobe -n -v dccp -> r:^install /bin/true
+      - "c:modprobe -n -v dccp -> r:install /bin/false|install /bin/true"
+      - "not c:lsmod -> r:dccp"
 
   # 3.4.2 Ensure SCTP is disabled. (Scored)
   - id: 31106
@@ -1619,7 +1636,8 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: all
     rules:
-      - c:modprobe -n -v sctp -> r:^install /bin/true
+      - "c:modprobe -n -v sctp -> r:install /bin/false|install /bin/true"
+      - "not c:lsmod -> r:sctp"
 
   # 3.4.3 Ensure RDS is disabled. (Scored)
   - id: 31107
@@ -1634,7 +1652,8 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: all
     rules:
-      - c:modprobe -n -v rds -> r:^install /bin/true
+      - "c:modprobe -n -v rds -> r:install /bin/false|install /bin/true"
+      - "not c:lsmod -> r:rds"
 
   # 3.4.4 Ensure TIPC is disabled. (Scored)
   - id: 31108
@@ -1649,7 +1668,8 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: all
     rules:
-      - c:modprobe -n -v tipc -> r:^install /bin/true
+      - "c:modprobe -n -v tipc -> r:install /bin/false|install /bin/true"
+      - "not c:lsmod -> r:tipc"
 
   # 3.5.1.1 Ensure IPv6 default deny firewall policy. (Scored)
   - id: 31109
@@ -1751,19 +1771,7 @@ checks:
       - "c:nmcli radio wifi -> r:^disabled"
       - "c:nmcli radio wwan -> r:^disabled"
 
-  # 3.7 Disable IPv6. (Not Scored)
-  - id: 31119
-    title: "Disable IPv6."
-    description: "Although IPv6 has many advantages over IPv4, not all organizations have IPv6 or dual stack configurations implemented."
-    rationale: "If IPv6 or dual stack is not to be used, it is recommended that IPv6 be disabled to reduce the attack surface of the system."
-    remediation: 'Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Depending or your distribution, run the appropriate following command to update the grub2 configuration: # grub2-mkconfig -o /boot/grub2/grub.cfg or # update-grub.'
-    compliance:
-      - cis: ["3.7"]
-      - cis_csc_v7: ["6 3", "9.1"]
-      - iso_27001-2013: ["A.13.1.2"]
-    condition: all
-    rules:
-      - 'f:/boot/grub2/grubenv -> r:^\s*kernelopts=\.+ipv6.disable=1'
+    # 3.7 Disable IPv6. (Not Scored)- Not Implemented
 
   # 4.1.1.1 Ensure audit log storage size is configured. (Scored)
   - id: 31120
