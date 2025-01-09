@@ -99,6 +99,32 @@ class TestCommandsManager:
 
         assert result == expected_result
 
+    async def test_update_commands_status(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
+        """Check the correct function of `update_commands_status` method."""
+        order_ids = ['123', '456']
+        status = 'foo'
+        await index_instance.update_commands_status(order_ids=order_ids, status=status)
+
+        query = {
+            IndexerKey.QUERY: {
+                IndexerKey.BOOL: {
+                    IndexerKey.FILTER: [{
+                        IndexerKey.TERMS: {
+                            'command.order_id': order_ids
+                        }
+                    }]
+                }
+            },
+            'script': {
+                'source': CommandsManager.UPDATE_STATUS_SCRIPT,
+                'lang': 'painless',
+                'params': {
+                    'status': status
+                }
+            }
+        }
+        client_mock.update_by_query.assert_called_once_with(index=[index_instance.INDEX], body=query)
+
 
 def test_create_restart_command():
     """Check the correct functionality of the `create_restart_command` function."""

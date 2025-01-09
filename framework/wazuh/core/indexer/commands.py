@@ -1,11 +1,13 @@
 from dataclasses import asdict
-from typing import List, Optional
+from typing import List
 
 from opensearchpy import exceptions
 from opensearchpy._async.helpers.search import AsyncSearch
+from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
+
 
 from .base import BaseIndex, IndexerKey, POST_METHOD
-from .utils import convert_enums, get_source_items
+from .utils import convert_enums
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.models.commands import (
     Action, Command, Source, Target, TargetType, CreateCommandResponse, ResponseResult
@@ -15,47 +17,13 @@ COMMAND_USER_NAME = 'Management API'
 COMMAND_KEY = 'command'
 
 
-class CommandsIndex(BaseIndex):
-    INDEX = '.commands'
-
-    async def search(
-        self,
-        query: dict,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> List[Command]:
-        """Perform a search operation with the given query.
-
-        Parameters
-        ----------
-        query : dict
-            DSL query.
-        select : Optional[str], optional
-            A comma-separated list of fields to include in the response, by default None.
-        exclude : Optional[str], optional
-            A comma-separated list of fields to exclude from the response, by default None.
-        offset : Optional[int], optional
-            The starting index to search from, by default None.
-        limit : Optional[int], optional
-            How many results to include in the response, by default None.
-        sort : Optional[str], optional
-            A comma-separated list of fields to sort by, by default None.
-
-        Returns
-        -------
-        dict
-            The search result.
-        """
-        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: query}
-        results = await self._client.search(**parameters, size=limit, from_=offset)
-        return [Command(**item['command']) for item in get_source_items(results)]
-
-
 class CommandsManager(BaseIndex):
     """Set of methods to interact with the commands manager."""
 
     INDEX = '.commands'
     PLUGIN_URL = '/_plugins/_command_manager'
+
+    UPDATE_STATUS_SCRIPT = 'ctx._source.command.status = new String[] {params.status};'
 
     async def create(self, commands: List[Command]) -> CreateCommandResponse:
         """Create a new command.
@@ -119,6 +87,24 @@ class CommandsManager(BaseIndex):
             commands.append(Command(**hit.to_dict()[COMMAND_KEY]))
 
         return commands
+
+    async def update_commands_status(self, order_ids: List[str], status: str):
+        """Update the status for a list of order id's
+
+        Args:
+            order_ids (List[str]): List of order id's to update.
+            status (str): New status to set.
+        """
+        query = AsyncUpdateByQuery(using=self._client, index=self.INDEX).filter(
+            {
+                IndexerKey.TERMS: {'command.order_id': order_ids}
+            }
+        ).script(
+            source=self.UPDATE_STATUS_SCRIPT,
+            lang=IndexerKey.PAINLESS,
+            params={'status': status}
+        )
+        _ = await query.execute()
 
 
 def create_restart_command(agent_id: str) -> Command:

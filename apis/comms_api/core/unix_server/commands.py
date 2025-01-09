@@ -1,22 +1,22 @@
-from fastapi import Request, Response
+from fastapi import Request
 
 from comms_api.models.commands import Commands
 
 
-async def post_commands(request: Request, commands: Commands) -> Response:
+async def post_commands(request: Request, commands: Commands) -> Commands:
     """Post commands to the Communications API.
-    
+
     Parameters
     ----------
     request : Request
         Incoming HTTP request.
     commands : Commands
         Commands list.
-    
+
     Returns
     -------
-    Response
-        HTTP OK empty response.
+    Commans
+        Processed commands.
     """
-    request.app.state.commands_manager.add_commands(commands.commands)
-    return Response()
+    processed_commands = request.app.state.commands_manager.add_commands(commands.commands)
+    return Commands(commands=processed_commands)

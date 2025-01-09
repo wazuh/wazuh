@@ -10,6 +10,8 @@ from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.commands import Status
 from wazuh.core.indexer.utils import convert_enums
 
+COMMANDS_KEY = 'commands'
+
 
 async def get_orders(logger: WazuhLogger):
     """Get orders from the indexer and send to the Communications API unix socket HTTP server."""
@@ -25,23 +27,39 @@ async def get_orders(logger: WazuhLogger):
             pending_commands = await indexer_client.commands_manager.get_commands(Status.PENDING.value)
             logger.debug(f'Commands index response: {pending_commands}')
             pending_commands = {
-                "commands": [asdict(command, dict_factory=convert_enums) for command in pending_commands]
+                COMMANDS_KEY: [asdict(command, dict_factory=convert_enums) for command in pending_commands]
             }
 
-        try:
-            response = await client.post(
-                url='http://localhost/api/v1/commands',
-                json=pending_commands,
-                headers={
-                    'Accept': APPLICATION_JSON,
-                    'Content-Type': APPLICATION_JSON,
-                }
-            )
+            if not pending_commands[COMMANDS_KEY]:
+                continue
 
-            logger.debug(f'Post orders response: {response}')
+            try:
+                response = await client.post(
+                    url='http://localhost/api/v1/commands',
+                    json=pending_commands,
+                    headers={
+                        'Accept': APPLICATION_JSON,
+                        'Content-Type': APPLICATION_JSON,
+                    }
+                )
 
-            if response.status_code != 200:
-                logger.error(f'Post orders failed: {response.status_code} - {response.json()}')
+                logger.debug(f'Post orders response: {response.status_code} - {response.json()}')
 
-        except (httpx.ConnectError, httpx.TimeoutException) as e:
-            logger.error(f'An error occurs sending the orders to the Communications API :', str(e))
+                if response.status_code != 200:
+                    logger.error(f'Post orders failed: {response.status_code} - {response.json()}')
+                    continue
+
+                processed_commands = response.json()[COMMANDS_KEY]
+
+                if processed_commands:
+                    processed_commands_ids = [item['order_id'] for item in processed_commands]
+                    logger.info(f'Updating processed commands: {processed_commands_ids}')
+
+                    await indexer_client.commands_manager.update_commands_status(
+                        order_ids=processed_commands_ids,
+                        status=Status.SENT.value
+                    )
+
+
+            except (httpx.ConnectError, httpx.TimeoutException) as e:
+                logger.error(f'An error occurs sending the orders to the Communications API :', str(e))
