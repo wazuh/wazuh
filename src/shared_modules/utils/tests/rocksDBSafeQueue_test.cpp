@@ -209,7 +209,7 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndEmpty)
     queue = nullptr;
     {
         auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
-        db->delete_(std::to_string(1));
+        db->delete_(Utils::padString(std::to_string(1), '0', 20));
     }
 
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
@@ -243,7 +243,7 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElements)
     queue = nullptr;
     {
         auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
-        db->delete_(std::to_string(3));
+        db->delete_(Utils::padString(std::to_string(3), '0', 20));
     }
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
         RocksDBQueue<std::string>("test.db"));
@@ -298,7 +298,7 @@ TEST_F(RocksDBSafeQueueTest, PopWithDeletedIndex)
     queue = nullptr;
     {
         auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
-        db->delete_(std::to_string(3));
+        db->delete_(Utils::padString(std::to_string(3), '0', 20));
     }
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
         RocksDBQueue<std::string>("test.db"));
@@ -363,7 +363,7 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElementsEmpty)
         // Delete elements from 2 to 9
         for (int i = ELEMENTS_TO_DELETE_FROM; i < ELEMENTS_TO_DELETE_TO; i++)
         {
-            db->delete_(std::to_string(i));
+            db->delete_(Utils::padString(std::to_string(i), '0', 20));
         }
     }
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
