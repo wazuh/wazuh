@@ -52,6 +52,8 @@ class EXPORTED IndexerConnector final
     std::mutex m_syncMutex;
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
     std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
+    uint32_t m_successCount {0};
+    bool m_error413FirstTime {false};
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
