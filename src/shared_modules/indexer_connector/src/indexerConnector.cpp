@@ -575,27 +575,28 @@ IndexerConnector::IndexerConnector(
             {
                 const auto bulkSize = this->m_dispatcher->bulkSize();
                 constexpr auto SUCCESS_COUNT_TO_INCREASE_BULK_SIZE {5};
-                static uint32_t successCount {0};
-                static bool errorFirstTime {false};
 
                 const auto onSuccess = [this, bulkSize](const std::string& response)
                 {
                     logDebug2(IC_NAME, "Response: %s", response.c_str());
 
-                    if (successCount < SUCCESS_COUNT_TO_INCREASE_BULK_SIZE)
+                    // If the request was successful and the current bulk size is less than ELEMENTS_PER_BULK, increase
+                    // the bulk size if the success count is SUCCESS_COUNT_TO_INCREASE_BULK_SIZE
+
+                    if (m_successCount < SUCCESS_COUNT_TO_INCREASE_BULK_SIZE)
                     {
-                        successCount++;
+                        m_successCount++;
                     }
 
-                    errorFirstTime = false;
+                    m_error413FirstTime = false;
 
                     if (bulkSize < ELEMENTS_PER_BULK)
                     {
-                        if (successCount < SUCCESS_COUNT_TO_INCREASE_BULK_SIZE)
+                        if (m_successCount < SUCCESS_COUNT_TO_INCREASE_BULK_SIZE)
                         {
                             logDebug2(IC_NAME,
                                       "Waiting for %d successful requests to increase the bulk size.",
-                                      SUCCESS_COUNT_TO_INCREASE_BULK_SIZE - successCount);
+                                      SUCCESS_COUNT_TO_INCREASE_BULK_SIZE - m_successCount);
                             return;
                         }
 
@@ -617,15 +618,15 @@ IndexerConnector::IndexerConnector(
                 {
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
-                        successCount = 0;
+                        m_successCount = 0;
                         if (bulkSize / 2 < MINIMAL_ELEMENTS_PER_BULK)
                         {
                             // If the bulk size is too small, log an error and throw an exception.
                             // This error will be fixed by the user by increasing the http.max_content_length value in
                             // the wazuh-indexer settings.
-                            if (errorFirstTime == false)
+                            if (m_error413FirstTime == false)
                             {
-                                errorFirstTime = true;
+                                m_error413FirstTime = true;
                                 logError(
                                     IC_NAME,
                                     "Elements to process is too small, review the http.max_content_length value in "
