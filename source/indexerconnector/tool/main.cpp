@@ -123,12 +123,12 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
 
         if (config.at("ssl").contains("merged_ca_path"))
         {
-            indexerConnectorOptions.sslOptions.merged_ca_path =
+            indexerConnectorOptions.sslOptions.mergedCAPath =
                 config.at("ssl").at("merged_ca_path").get_ref<const std::string&>();
         }
         else
         {
-            indexerConnectorOptions.sslOptions.merged_ca_path = MERGED_CA_DEFAULT_PATH;
+            indexerConnectorOptions.sslOptions.mergedCAPath = MERGED_CA_DEFAULT_PATH;
         }
     }
 

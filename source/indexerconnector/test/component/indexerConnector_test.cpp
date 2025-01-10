@@ -284,7 +284,7 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
                                            .sslOptions = {.cacert = {certFileOne, certFileTwo},
                                                           .cert = "/etc/filebeat/certs/filebeat.pem",
                                                           .key = "/etc/filebeat/certs/filebeat-key.pem",
-                                                          .merged_ca_path = MERGED_CA_PATH},
+                                                          .mergedCAPath = MERGED_CA_PATH},
                                            .timeout = INDEXER_TIMEOUT};
 
     // Attempt to create the connector and expect no exceptions for valid certificates

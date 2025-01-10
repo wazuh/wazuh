@@ -94,7 +94,7 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, c
 
 static void initConfiguration(SecureCommunication& secureCommunication, const IndexerConnectorOptions& config)
 {
-    std::string caRootCertificate = config.sslOptions.merged_ca_path;
+    std::string caRootCertificate = config.sslOptions.mergedCAPath;
     std::string sslCertificate;
     std::string sslKey;
     std::string username;
