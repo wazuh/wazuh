@@ -2,6 +2,24 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(utils_unit_test)
 
+link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/rocksdb/build/)
+link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/external/lzma/build/)
+link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
+
+include_directories(${SRC_FOLDER}/shared_modules/common)
+include_directories(${SRC_FOLDER}/shared_modules/utils)
+include_directories(${SRC_FOLDER}/external/cJSON)
+include_directories(${SRC_FOLDER}/external/nlohmann)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
+include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
+include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
+include_directories(${SRC_FOLDER}/external/openssl/include)
+include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
+include_directories(${SRC_FOLDER}/external/zlib/contrib/)
+include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+
 file(GLOB UTIL_CXX_UNITTEST_WINDOWS_SRC
     "windowsHelper_test.cpp"
     "registryHelper_test.cpp"

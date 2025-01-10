@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.12.4)
 
+project(utils)
+
+enable_testing()
+
 if(UNIT_TEST)
     add_subdirectory(tests)
 
@@ -8,6 +12,8 @@ if(UNIT_TEST)
     endif()
 endif()
 
-if (${TARGET} STREQUAL "server")
-    add_subdirectory(flatbuffers)
+if (NOT ${TARGET} STREQUAL "")
+  if (${TARGET} STREQUAL "server")
+      add_subdirectory(flatbuffers)
+  endif()
 endif()
