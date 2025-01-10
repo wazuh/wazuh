@@ -11,16 +11,17 @@ from wazuh.core.indexer.models.commands import Status
 from wazuh.core.indexer.utils import convert_enums
 
 COMMANDS_KEY = 'commands'
+WAIT_UNTIL_NEXT_PULL = 10
 
 
 async def get_orders(logger: WazuhLogger):
-    """Get orders from the indexer and send to the Communications API unix socket HTTP server."""
+    """Get orders from the indexer and send them to the Communications API unix socket HTTP server."""
 
     transport = httpx.AsyncHTTPTransport(uds=common.COMMS_API_SOCKET_PATH)
     client = httpx.AsyncClient(transport=transport, timeout=httpx.Timeout(10))
 
     while True:
-        await asyncio.sleep(10)
+        await asyncio.sleep(WAIT_UNTIL_NEXT_PULL)
         logger.info('Getting orders from indexer')
 
         async with get_indexer_client() as indexer_client:

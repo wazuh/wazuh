@@ -378,7 +378,7 @@ def start():
     else:
         main_function = worker_main
 
-    # Create a stong reference to prevent the tasks be garbage collected.
+    # Create a strong reference to prevent the tasks from being garbage collected.
     background_tasks = set()
     try:
         loop = asyncio.new_event_loop()

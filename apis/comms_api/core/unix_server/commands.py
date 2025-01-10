@@ -15,7 +15,7 @@ async def post_commands(request: Request, commands: Commands) -> Commands:
 
     Returns
     -------
-    Commans
+    Commands
         Processed commands.
     """
     processed_commands = request.app.state.commands_manager.add_commands(commands.commands)
