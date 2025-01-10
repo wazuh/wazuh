@@ -28,10 +28,10 @@ class Source(str, Enum):
 
 class Status(str, Enum):
     """Command status enum."""
-    PENDING = 'pending'
-    SENT = 'sent'
-    SUCCESS = 'success'
-    FAILED = 'failed'
+    PENDING = 'PENDING'
+    SENT = 'SENT'
+    SUCCESS = 'SUCCESS'
+    FAILED = 'FAILED'
 
 
 class TargetType(str, Enum):

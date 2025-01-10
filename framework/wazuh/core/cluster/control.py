@@ -5,7 +5,6 @@
 from typing import List
 import json
 
-from api.models.order_model import Order
 from wazuh import WazuhInternalError
 from wazuh.core import common
 from wazuh.core.agent import Agent
@@ -183,28 +182,3 @@ async def get_system_nodes():
         return [node['name'] for node in result['items']]
     except WazuhInternalError as e:
         raise e
-
-
-async def distribute_orders(lc: local_client.LocalClient, orders: List[Order]) -> None:
-    """Send the `dist_orders` command to the local server.
-
-    Parameters
-    ----------
-    lc : LocalClient
-        LocalClient instance.
-    orders : List[Order]
-        Orders list.
-    
-    Raises
-    ------
-    Exception
-        Local server request exception.
-    """
-    response = await lc.execute(command=b'dist_orders', data=json.dumps(orders).encode())
-    # Successful response is a string message
-    if isinstance(response, str):
-        return
-
-    result = json.loads(response, object_hook=as_wazuh_object)
-    if isinstance(result, Exception):
-        raise result

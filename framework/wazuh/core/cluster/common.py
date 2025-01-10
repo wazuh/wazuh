@@ -20,14 +20,12 @@ from importlib import import_module
 from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
 from pathlib import Path
 
-import httpx
 from uuid import uuid4
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core.cluster import cluster, utils as cluster_utils
-from wazuh.core.engine.base import APPLICATION_JSON
 from wazuh.core.config.models.server import ServerConfig
 
 
@@ -953,58 +951,6 @@ class Handler(asyncio.Protocol):
             return await f
         except Exception as e:
             self.logger.error(str(e))
-
-    async def send_orders(self, orders: bytes) -> tuple:
-        """Send orders to the Communications API unix socket HTTP server.
-
-        Parameters
-        ----------
-        orders : bytes
-            Encoded orders.
-
-        Raises
-        ------
-        WazuhError(3050)
-            Connection or timeout error.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
-        self.logger.info('Sending orders to the Communications API')
-
-        transport = httpx.AsyncHTTPTransport(uds=common.COMMS_API_SOCKET_PATH)
-        client = httpx.AsyncClient(transport=transport, timeout=httpx.Timeout(10))
-
-        orders_list = json.loads(orders)
-        # Get orders targeted to agents only
-        orders_list = [order for order in orders_list if order['target']['type'] == 'agent']
-        commands = {'commands': orders_list}
-
-        try:
-            response = await client.post(
-                url='http://localhost/api/v1/commands',
-                json=commands,
-                headers={
-                    'Accept': APPLICATION_JSON,
-                    'Content-Type': APPLICATION_JSON,
-                }
-            )
-
-            self.logger.debug(f'Orders send response: {response}')
-        except (httpx.ConnectError, httpx.TimeoutException) as e:
-            raise exception.WazuhError(3050, extra_message=str(e))
-
-        await client.aclose()
-
-        if response.status_code != 200:
-            self.logger.error(f'Orders request failed: {response.status_code} - {response.json()}')
-            return b'err', response.text.encode()
-
-        return b'ok', b'Orders sent to the Communications API unix server'
 
 
 class WazuhCommon:

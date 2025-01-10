@@ -359,18 +359,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /security/config
           - DELETE /security/config
-      order:send:
-        description: "Send orders to the server"
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - order:send
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - POST /orders
 
 get_rbac_resources:
   - params:

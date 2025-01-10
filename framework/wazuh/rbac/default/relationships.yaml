@@ -21,7 +21,6 @@ relationships:
         - agents_commands
         - security_all
         - cluster_all
-        - orders_send
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin

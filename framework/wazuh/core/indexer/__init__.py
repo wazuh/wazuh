@@ -58,7 +58,7 @@ class Indexer(MixinBulk):
         ------
         WazuhIndexerError
             In case authentication is not provided.
-        
+
         Raises
         ------
         WazuhIndexerError(2201)

@@ -142,9 +142,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'dapi':
             self.server.dapi.add_request(b'master*' + data)
             return b'ok', b'Added request to API requests queue'
-        elif command == b'dist_orders':
-            asyncio.create_task(self.log_exceptions(self.send_orders(data)))
-            return b'ok', b'Orders sent to the Communications API unix server'
         else:
             return super().process_request(command, data)
 
