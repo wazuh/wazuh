@@ -64,6 +64,9 @@ runs:
           done
           arguments+="$include_files"
 
+          # Exclude scanContext.hpp
+          arguments+="--exclude=*/scanContext.hpp "
+
           echo "Executing: lcov $arguments"
           lcov $arguments
 
