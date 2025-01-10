@@ -9,7 +9,55 @@
  * Foundation.
  */
 
-#include "rocksDBWrapper_test.hpp"
+#include <filesystem>
+#include <memory>
+
+#include <gtest/gtest.h>
+
+#include <base/utils/rocksDBWrapper.hpp>
+
+namespace
+{
+const auto OUTPUT_FOLDER {std::filesystem::temp_directory_path() / "RocksDBWrapperTest"};
+}
+
+/**
+ * @brief Tests the RocksDBWrapper class
+ *
+ */
+class RocksDBWrapperTest : public ::testing::Test
+{
+protected:
+    RocksDBWrapperTest() = default;
+    ~RocksDBWrapperTest() override = default;
+
+    /**
+     * @brief RocksDBWrapper object
+     *
+     */
+    std::unique_ptr<utils::rocksdb::RocksDBWrapper> db_wrapper;
+
+    const std::filesystem::path m_databaseFolder {OUTPUT_FOLDER / "test_db"}; ///< Database folder.
+
+    /**
+     * @brief Initial conditions for tests
+     *
+     */
+    // cppcheck-suppress unusedFunction
+    void SetUp() override { db_wrapper = std::make_unique<utils::rocksdb::RocksDBWrapper>(m_databaseFolder); }
+
+    /**
+     * @brief Tear down routine for tests
+     *
+     */
+    // cppcheck-suppress unusedFunction
+    void TearDown() override
+    {
+        db_wrapper->deleteAll();
+        db_wrapper.reset();
+        std::filesystem::remove_all(OUTPUT_FOLDER);
+    }
+};
 
 /**
  * @brief Tests the put function
@@ -112,7 +160,7 @@ TEST_F(RocksDBWrapperTest, TestGetEmptyKey)
  */
 TEST_F(RocksDBWrapperTest, TestGetEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    utils::rocksdb::RocksDBWrapper new_db_wrapper("new_test.db");
     std::string value {};
     EXPECT_FALSE(new_db_wrapper.get("key1", value));
 }
@@ -149,7 +197,7 @@ TEST_F(RocksDBWrapperTest, TestDeleteEmptyKey)
  */
 TEST_F(RocksDBWrapperTest, TestDeleteEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    utils::rocksdb::RocksDBWrapper new_db_wrapper("new_test.db");
     EXPECT_NO_THROW(new_db_wrapper.delete_("key1"));
 }
 
@@ -171,7 +219,7 @@ TEST_F(RocksDBWrapperTest, TestGetLastKeyValue)
  */
 TEST_F(RocksDBWrapperTest, TestGetLastKeyValueEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    utils::rocksdb::RocksDBWrapper new_db_wrapper("new_test.db");
     EXPECT_THROW(new_db_wrapper.getLastKeyValue(), std::runtime_error);
 }
 
@@ -207,7 +255,7 @@ TEST_F(RocksDBWrapperTest, TestDeleteAllColumnFamily)
  */
 TEST_F(RocksDBWrapperTest, TestDeleteAllEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    utils::rocksdb::RocksDBWrapper new_db_wrapper("new_test.db");
     EXPECT_NO_THROW(db_wrapper->deleteAll());
 }
 
@@ -342,7 +390,7 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
 TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 {
     const auto databaseFolder {OUTPUT_FOLDER / "folder1" / "folder2" / "test_db"};
-    EXPECT_NO_THROW(std::make_unique<Utils::RocksDBWrapper>(databaseFolder));
+    EXPECT_NO_THROW(std::make_unique<utils::rocksdb::RocksDBWrapper>(databaseFolder));
 }
 
 /**
@@ -400,7 +448,7 @@ TEST_F(RocksDBWrapperTest, ColumnsSetup)
 
     // Reset wrapper. This will call the destructor and then the constructor again.
     db_wrapper.reset();
-    ASSERT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder); });
+    ASSERT_NO_THROW({ db_wrapper = std::make_unique<utils::rocksdb::RocksDBWrapper>(m_databaseFolder); });
 
     EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_A));
     EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_B));

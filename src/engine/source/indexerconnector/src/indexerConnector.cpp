@@ -215,19 +215,46 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data, nullptr, false);
 
+                // If the data is not a valid JSON, log a warning and continue.
                 if (parsedData.is_discarded())
                 {
+                    LOG_WARNING("Failed to parse event data: {}", data);
                     continue;
                 }
 
-                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+                // Validate required fields.
+                if (!parsedData.contains("operation"))
                 {
-                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
+                    LOG_WARNING("Event required field (operation) is missing: {}", data);
+                    continue;
+                }
+
+                // Operation is the action to be performed on the element.
+                const auto& operation = parsedData.at("operation").get_ref<const std::string&>();
+
+                // Id is the unique identifier of the element.
+                const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
+
+                if (operation.compare("DELETED") == 0)
+                {
+                    // Validate required fields.
+                    if (id.empty())
+                    {
+                        LOG_WARNING("Event required field (id) is missing: {}", data);
+                        continue;
+                    }
+
                     builderBulkDelete(bulkData, id, indexNameCurrentDate);
                 }
                 else
                 {
-                    const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
+                    // Validate required fields.
+                    if (!parsedData.contains("data"))
+                    {
+                        LOG_WARNING("Event required field (data) is missing: {}", data);
+                        continue;
+                    }
+
                     const auto dataString = parsedData.at("data").dump();
                     builderBulkIndex(bulkData, id, indexNameCurrentDate, dataString);
                 }
