@@ -404,13 +404,13 @@ def start():
         shutdown_server(server_pid)
 
 
-def check_daemon(proc_list: list, proc_name: str, children_number: int):
-    """Check the daemon is in the list of process and have the correct number of children.
+def check_daemon(processes: list, proc_name: str, children_number: int):
+    """Check if the daemon is in the list of processes and has the correct number of children.
 
     Parameters
     ----------
-    proc_list : list
-        List of children process to search within.
+    processes : list
+        List of processes to search within.
     proc_name : str
         Name of the process to check.
     children_number : int
@@ -421,7 +421,7 @@ def check_daemon(proc_list: list, proc_name: str, children_number: int):
     WazuhDaemonError
         When the process does not have the correct number of children process.
     """
-    child: psutil.Process = [i for i in proc_list if proc_name[:-1] in i.name()][0]
+    child: psutil.Process = [i for i in processes if proc_name[:-1] in i.name()][0]
     if child.status() == psutil.STATUS_ZOMBIE:
         main_logger.error(f"Daemon `{proc_name}` is not running, stopping the whole server.")
         clean_pid_files(proc_name)
@@ -437,23 +437,23 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
     ----------
     loop : asyncio.BaseEventLoop
         The loop to stop in case any of the daemons does not meet the expected status.
-    server_pid : int
-        PID of the server to get the children.
+    server_process : int
+        Server process to get the children from.
     """
     comms_api_config = CentralizedConfig.get_comms_api_config()
-    proc_tree = {
-        MANAGEMENT_API_DAEMON_NAME: {"children": 3},
-        COMMS_API_DAEMON_NAME: {"children": comms_api_config.workers + 4},
-        ENGINE_DAEMON_NAME: {"children": 0}
+    process_children = {
+        MANAGEMENT_API_DAEMON_NAME: 3,
+        COMMS_API_DAEMON_NAME:  comms_api_config.workers + 4,
+        ENGINE_DAEMON_NAME:  0
     }
 
     while True:
         await asyncio.sleep(10)
-        child_proceses = server_process.children()
+        child_processes = server_process.children()
 
         try:
-            for key, value in proc_tree.items():
-                check_daemon(child_proceses, key, value['children'])
+            for proc_name, children in process_children.items():
+                check_daemon(child_processes, proc_name, children)
         except WazuhDaemonError as error:
             main_logger.error(f'{error.code} Stopping the whole server.')
             stop_loop(loop)

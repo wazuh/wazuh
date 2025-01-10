@@ -589,9 +589,9 @@ def test_check_daemon(clean_pid_files_mock):
             "children.return_value": [i for i in range(children_number)]
         }
     )
-    proc_list = [proc_mock]
+    processes = [proc_mock]
 
-    wazuh_server.check_daemon(proc_list, proc_name, children_number)
+    wazuh_server.check_daemon(processes, proc_name, children_number)
 
     proc_mock.name.assert_called_once()
     proc_mock.status.assert_called_once()
@@ -611,10 +611,10 @@ def test_check_daemon_ko_process_status(clean_pid_files_mock):
             'children.return_value': [i for i in range(children_number)]
         }
     )
-    proc_list = [proc_mock]
+    processes = [proc_mock]
     wazuh_server.main_logger = Mock()
 
-    wazuh_server.check_daemon(proc_list, proc_name, children_number)
+    wazuh_server.check_daemon(processes, proc_name, children_number)
 
     proc_mock.name.assert_called_once()
     proc_mock.status.assert_called_once()
