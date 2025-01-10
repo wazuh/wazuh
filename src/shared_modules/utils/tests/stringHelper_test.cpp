@@ -611,3 +611,32 @@ TEST_F(StringUtilsTest, haveUpperCaseCharacters)
     EXPECT_FALSE(Utils::haveUpperCaseCharacters("test"));
     EXPECT_FALSE(Utils::haveUpperCaseCharacters(""));
 }
+
+TEST_F(StringUtilsTest, splitToNumbers)
+{
+    auto ret = Utils::splitToNumbers("1.2.3.4.5.6.7.8.9.0", '.');
+    EXPECT_EQ(ret.size(), 10);
+    EXPECT_EQ(ret[0], 1);
+    EXPECT_EQ(ret[1], 2);
+    EXPECT_EQ(ret[2], 3);
+    EXPECT_EQ(ret[3], 4);
+    EXPECT_EQ(ret[4], 5);
+    EXPECT_EQ(ret[5], 6);
+    EXPECT_EQ(ret[6], 7);
+    EXPECT_EQ(ret[7], 8);
+    EXPECT_EQ(ret[8], 9);
+    EXPECT_EQ(ret[9], 0);
+
+    ret = Utils::splitToNumbers("1", '.');
+    EXPECT_EQ(ret.size(), 1);
+    EXPECT_EQ(ret[0], 1);
+
+    EXPECT_ANY_THROW({ ret = Utils::splitToNumbers("aaaa", '.'); });
+
+    ret = Utils::splitToNumbers("", '.');
+    EXPECT_EQ(ret.size(), 0);
+
+    EXPECT_ANY_THROW({ ret = Utils::splitToNumbers("a.a.a", '.'); });
+
+    EXPECT_ANY_THROW({ ret = Utils::splitToNumbers("1.1.1", ' '); });
+}

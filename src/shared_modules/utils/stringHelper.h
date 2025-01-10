@@ -470,6 +470,52 @@ namespace Utils
         out += str;
         return out;
     }
+    /**
+     * @brief Split a string into a vector of numbers.
+     *
+     * @param str Original string.
+     * @param delimiter Delimiter character.
+     * @return std::vector<uint32_t> Vector of numbers.
+     */
+    static std::vector<uint32_t> splitToNumbers(const std::string& str, const char delimiter)
+    {
+        std::vector<uint32_t> tokens;
+        tokens.reserve(10);
+
+        auto start = str.begin();
+        auto end = str.begin();
+
+        while ((end = std::find(start, str.end(), delimiter)) != str.end())
+        {
+            uint32_t num = 0;
+            for (auto it = start; it != end; ++it)
+            {
+                if (*it < '0' || *it > '9')
+                {
+                    throw std::runtime_error("Invalid number.");
+                }
+                num = num * 10 + (*it - '0');
+            }
+            tokens.push_back(num);
+            start = end + 1;
+        }
+
+        if (start != str.end())
+        {
+            uint32_t num = 0;
+            for (auto it = start; it != str.end(); ++it)
+            {
+                if (*it < '0' || *it > '9')
+                {
+                    throw std::runtime_error("Invalid number.");
+                }
+                num = num * 10 + (*it - '0');
+            }
+            tokens.push_back(num);
+        }
+
+        return tokens;
+    }
 
 } // namespace Utils
 
