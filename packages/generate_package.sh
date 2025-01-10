@@ -131,6 +131,14 @@ main() {
         "-h"|"--help")
             help 0
             ;;
+        "-t"|"--target")
+            if [ -n "$2" ]; then
+                TARGET="$2"
+                shift 2
+            else
+                help 1
+            fi
+            ;;
         "-a"|"--architecture")
             if [ -n "$2" ]; then
                 ARCHITECTURE="$2"
