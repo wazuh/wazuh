@@ -11,10 +11,10 @@
 
 #ifndef PIPELINE_PATTERN_H
 #define PIPELINE_PATTERN_H
+#include "threadDispatcher.h"
+#include <functional>
 #include <memory>
 #include <vector>
-#include <functional>
-#include "threadDispatcher.h"
 
 namespace Utils
 {
@@ -46,34 +46,36 @@ namespace Utils
     template<typename T, typename Reader>
     class IPipelineWriter
     {
-        protected:
-            /**
-             * @brief Sends a message to all the chained readers in the pipeline.
-             *
-             * @param data Message data to be sent to readers.
-             */
-            void send(const T& data)
+    protected:
+        /**
+         * @brief Sends a message to all the chained readers in the pipeline.
+         *
+         * @param data Message data to be sent to readers.
+         */
+        void send(const T& data)
+        {
+            for (const auto& reader : m_readers)
             {
-                for (const auto& reader : m_readers)
-                {
-                    reader->receive(data);
-                }
+                reader->receive(data);
             }
-        public:
-            // LCOV_EXCL_START
-            virtual ~IPipelineWriter() = default;
-            // LCOV_EXCL_STOP
-            /**
-             * @brief Adds a reader to the chain.
-             *
-             * @param reader shared_ptr to the reader to be added.
-             */
-            void addReader(std::shared_ptr<Reader>& reader)
-            {
-                m_readers.push_back(reader);
-            }
-        private:
-            std::vector<std::shared_ptr<Reader>> m_readers;
+        }
+
+    public:
+        // LCOV_EXCL_START
+        virtual ~IPipelineWriter() = default;
+        // LCOV_EXCL_STOP
+        /**
+         * @brief Adds a reader to the chain.
+         *
+         * @param reader shared_ptr to the reader to be added.
+         */
+        void addReader(std::shared_ptr<Reader>& reader)
+        {
+            m_readers.push_back(reader);
+        }
+
+    private:
+        std::vector<std::shared_ptr<Reader>> m_readers;
     };
 
     /**
@@ -93,6 +95,6 @@ namespace Utils
             writer->addReader(reader);
         }
     }
-}//namespace Utils
+} // namespace Utils
 
-#endif //PIPELINE_PATTERN_H
+#endif // PIPELINE_PATTERN_H

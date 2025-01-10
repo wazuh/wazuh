@@ -11,18 +11,17 @@
 
 #ifndef PIPELINE_NODE_TESTS_H
 #define PIPELINE_NODE_TESTS_H
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 class PipelineNodesTest : public ::testing::Test
 {
-    protected:
+protected:
+    PipelineNodesTest() = default;
+    virtual ~PipelineNodesTest() = default;
 
-        PipelineNodesTest() = default;
-        virtual ~PipelineNodesTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
-#endif //PIPELINE_NODE_TESTS_H
+#endif // PIPELINE_NODE_TESTS_H

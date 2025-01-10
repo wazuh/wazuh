@@ -11,17 +11,16 @@
 
 #ifndef MSG_DISPATCHER_TESTS_H
 #define MSG_DISPATCHER_TESTS_H
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 class MsgDispatcherTest : public ::testing::Test
 {
-    protected:
+protected:
+    MsgDispatcherTest() = default;
+    virtual ~MsgDispatcherTest() = default;
 
-        MsgDispatcherTest() = default;
-        virtual ~MsgDispatcherTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
-#endif //MSG_DISPATCHER_TESTS_H
+#endif // MSG_DISPATCHER_TESTS_H

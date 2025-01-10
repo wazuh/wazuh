@@ -21,28 +21,27 @@
  */
 class FileIO
 {
-    public:
-        static void readLineByLine(
-            const std::filesystem::path& filePath,
-            const std::function<bool(const std::string&)>& callback)
+public:
+    static void readLineByLine(const std::filesystem::path& filePath,
+                               const std::function<bool(const std::string&)>& callback)
+    {
+        std::ifstream file(filePath);
+
+        if (!file.is_open())
         {
-            std::ifstream file(filePath);
+            throw std::runtime_error("Could not open file");
+        }
 
-            if (!file.is_open())
+        std::string line;
+
+        while (std::getline(file, line))
+        {
+            if (!callback(line))
             {
-                throw std::runtime_error("Could not open file");
-            }
-
-            std::string line;
-
-            while (std::getline(file, line))
-            {
-                if (!callback(line))
-                {
-                    break;
-                }
+                break;
             }
         }
+    }
 };
 
-#endif  // _FILEIO_HPP
+#endif // _FILEIO_HPP

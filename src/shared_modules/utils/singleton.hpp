@@ -15,17 +15,18 @@
 template<typename T>
 class Singleton
 {
-    public:
-        static T& instance()
-        {
-            static T s_instance;
-            return s_instance;
-        }
-    protected:
-        Singleton() = default;
-        virtual ~Singleton() = default;
-        Singleton(const Singleton&) = delete;
-        Singleton& operator=(const Singleton&) = delete;
+public:
+    static T& instance()
+    {
+        static T s_instance;
+        return s_instance;
+    }
+
+protected:
+    Singleton() = default;
+    virtual ~Singleton() = default;
+    Singleton(const Singleton&) = delete;
+    Singleton& operator=(const Singleton&) = delete;
 };
 
 #endif // _SINGLETON_HPP

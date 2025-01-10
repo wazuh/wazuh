@@ -11,17 +11,16 @@
 
 #ifndef THREAD_DISPATCHER_TESTS_H
 #define THREAD_DISPATCHER_TESTS_H
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 class ThreadDispatcherTest : public ::testing::Test
 {
-    protected:
+protected:
+    ThreadDispatcherTest() = default;
+    virtual ~ThreadDispatcherTest() = default;
 
-        ThreadDispatcherTest() = default;
-        virtual ~ThreadDispatcherTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
-#endif //THREAD_DISPATCHER_TESTS_H
+#endif // THREAD_DISPATCHER_TESTS_H

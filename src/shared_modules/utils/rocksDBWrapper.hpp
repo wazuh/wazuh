@@ -63,7 +63,7 @@ namespace Utils
     {
 
     private:
-            /**
+        /**
          * @brief Auxiliary function to delete all key-value pairs from the database.
          * @param columnHandle Column handle to delete from.
          */

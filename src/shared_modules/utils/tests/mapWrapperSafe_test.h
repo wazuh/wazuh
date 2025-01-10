@@ -11,17 +11,16 @@
 
 #ifndef MAP_WRAPPER_SAFE_TESTS_H
 #define MAP_WRAPPER_SAFE_TESTS_H
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 class MapWrapperSafeTest : public ::testing::Test
 {
-    protected:
+protected:
+    MapWrapperSafeTest() = default;
+    virtual ~MapWrapperSafeTest() = default;
 
-        MapWrapperSafeTest() = default;
-        virtual ~MapWrapperSafeTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
-#endif //MAP_WRAPPER_SAFE_TESTS_H
+#endif // MAP_WRAPPER_SAFE_TESTS_H

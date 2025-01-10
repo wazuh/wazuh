@@ -267,8 +267,7 @@ TEST_F(RSAHelperTest, rsaEncryptRSACertSucces)
     EXPECT_CALL(rsaHelper, EVP_PKEY_free((EVP_PKEY*)3)).WillOnce(Return());
     EXPECT_CALL(rsaHelper, X509_free((X509*)2)).WillOnce(Return());
     EXPECT_CALL(rsaHelper, RSA_size((rsa_st*)4)).WillOnce(Return(strlen(KEY)));
-    EXPECT_CALL(rsaHelper, RSA_public_encrypt(strlen(KEY), _, _, (rsa_st*)4, RSA_PKCS1_PADDING))
-        .WillOnce(Return(0));
+    EXPECT_CALL(rsaHelper, RSA_public_encrypt(strlen(KEY), _, _, (rsa_st*)4, RSA_PKCS1_PADDING)).WillOnce(Return(0));
     EXPECT_CALL(rsaHelper, RSA_free((rsa_st*)4)).WillOnce(Return());
 
     std::string output;
@@ -283,8 +282,7 @@ TEST_F(RSAHelperTest, rsaDecryptDecryptionFailed)
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
     EXPECT_CALL(rsaHelper, PEM_read_RSAPrivateKey((FILE*)1, NULL, NULL, NULL)).WillOnce(Return((RSA*)2));
     EXPECT_CALL(rsaHelper, RSA_size((RSA*)2)).WillOnce(Return(strlen(KEY)));
-    EXPECT_CALL(rsaHelper, RSA_private_decrypt(strlen(KEY), _, _, (RSA*)2, RSA_PKCS1_PADDING))
-        .WillOnce(Return(-1));
+    EXPECT_CALL(rsaHelper, RSA_private_decrypt(strlen(KEY), _, _, (RSA*)2, RSA_PKCS1_PADDING)).WillOnce(Return(-1));
     EXPECT_CALL(rsaHelper, ERR_get_error()).WillOnce(Return(1));
     EXPECT_CALL(rsaHelper, ERR_reason_error_string((unsigned long)1)).WillOnce(Return("Reported internal error"));
     EXPECT_CALL(rsaHelper, RSA_free((RSA*)2)).WillOnce(Return());

@@ -11,18 +11,17 @@
 
 #ifndef FILESYSTEM_HELPER_TESTS_H
 #define FILESYSTEM_HELPER_TESTS_H
-#include "gtest/gtest.h"
 #include "filesystemHelper.h"
+#include "gtest/gtest.h"
 #include <thread>
 
 class FilesystemUtilsTest : public ::testing::Test
 {
-    protected:
+protected:
+    FilesystemUtilsTest() = default;
+    virtual ~FilesystemUtilsTest() = default;
 
-        FilesystemUtilsTest() = default;
-        virtual ~FilesystemUtilsTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
-#endif //FILESYSTEM_HELPER_TESTS_H
+#endif // FILESYSTEM_HELPER_TESTS_H
