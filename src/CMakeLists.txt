@@ -4,6 +4,14 @@ project(Wazuh)
 
 enable_testing()
 
+if(NOT CMAKE_BUILD_TYPE)
+  if(CMAKE_SYMBOLS_IN_RELEASE MATCHES "ON")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+  else()
+    set(CMAKE_BUILD_TYPE Release)
+  endif()
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

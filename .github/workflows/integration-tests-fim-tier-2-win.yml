@@ -11,7 +11,7 @@ on:
 jobs:
   # Build the winagent on linux.
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       # Install wingw required to build the winagent.
