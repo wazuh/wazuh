@@ -60,11 +60,13 @@ class EXPORTED IndexerConnector final
      * @brief Intialize method used to load template data and initialize the index.
      *
      * @param templateData Template data.
+     * @param updaetMappingsData Create mappings data.
      * @param indexName Index name.
      * @param selector Server selector.
      * @param secureCommunication Secure communication.
      */
     void initialize(const nlohmann::json& templateData,
+                    const nlohmann::json& updaetMappingsData,
                     const std::shared_ptr<ServerSelector>& selector,
                     const SecureCommunication& secureCommunication);
 
@@ -116,11 +118,13 @@ public:
      *
      * @param config Indexer configuration, including database_path and servers.
      * @param templatePath Path to the template file.
+     * @param updateMappingsPath Path to the update mappings query.
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      */
     explicit IndexerConnector(const nlohmann::json& config,
                               const std::string& templatePath,
+                              const std::string& updateMappingsPath,
                               const std::function<void(const int,
                                                        const std::string&,
                                                        const std::string&,
