@@ -60,13 +60,13 @@ class EXPORTED IndexerConnector final
      * @brief Intialize method used to load template data and initialize the index.
      *
      * @param templateData Template data.
-     * @param updaetMappingsData Create mappings data.
+     * @param updateMappingsData Create mappings data.
      * @param indexName Index name.
      * @param selector Server selector.
      * @param secureCommunication Secure communication.
      */
     void initialize(const nlohmann::json& templateData,
-                    const nlohmann::json& updaetMappingsData,
+                    const nlohmann::json& updateMappingsData,
                     const std::shared_ptr<ServerSelector>& selector,
                     const SecureCommunication& secureCommunication);
 

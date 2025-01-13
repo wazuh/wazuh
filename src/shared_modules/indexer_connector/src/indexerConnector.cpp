@@ -504,7 +504,7 @@ IndexerConnector::IndexerConnector(
         std::ifstream updateMappingsFile(updateMappingsPath);
         if (!updateMappingsFile.is_open())
         {
-            throw std::runtime_error("Could not open add mappings file: " + updateMappingsPath);
+            throw std::runtime_error("Could not open the update mappings file: " + updateMappingsPath);
         }
         updateMappingsData = nlohmann::json::parse(updateMappingsFile);
     }
