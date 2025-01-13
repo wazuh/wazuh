@@ -263,17 +263,6 @@ class CTIConfig(WazuhConfigBaseModel):
 DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
     files=[
         SharedFiles(
-            dir=WAZUH_ETC.as_posix(),
-            description='JWT signing key pair',
-            permissions=416,
-            source='master',
-            names=['private_key.pem', 'public_key.pem'],
-            recursive=False,
-            restart=False,
-            remove_subdirs_if_empty=False,
-            extra_valid=False,
-        ),
-        SharedFiles(
             dir=WAZUH_GROUPS.as_posix(),
             description='group files',
             permissions=432,
