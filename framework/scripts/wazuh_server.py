@@ -386,9 +386,9 @@ def start():
     background_tasks = set()
     try:
         loop = asyncio.new_event_loop()
-        background_tasks.add(loop.create_task(get_orders(main_logger)))
         loop.add_signal_handler(signal.SIGTERM, partial(stop_loop, loop))
-        loop.create_task(monitor_server_daemons(loop, psutil.Process(server_pid)))
+        background_tasks.add(loop.create_task(get_orders(main_logger)))
+        background_tasks.add(loop.create_task(monitor_server_daemons(loop, psutil.Process(server_pid))))
         loop.run_until_complete(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
