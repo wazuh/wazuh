@@ -234,7 +234,7 @@ private:
     std::atomic_bool m_running = true;
 
     const size_t m_maxQueueSize;
-    uint64_t m_bulkSize;
+    std::atomic<uint64_t> m_bulkSize;
 };
 
 template<typename Type, typename Functor>

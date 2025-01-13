@@ -103,10 +103,12 @@ class EXPORTED IndexerConnector final
      * @param actions Actions to be sent.
      * @param url Indexer URL.
      * @param secureCommunication Secure communication.
+     * @param depth Depth for recursive calls.
      */
     void sendBulkReactive(const std::vector<std::pair<std::string, bool>>& actions,
                           const std::string& url,
-                          const SecureCommunication& secureCommunication);
+                          const SecureCommunication& secureCommunication,
+                          int depth = 1);
 
 public:
     /**

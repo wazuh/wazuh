@@ -33,6 +33,8 @@ constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 constexpr auto HTTP_BAD_REQUEST {400};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 
+constexpr auto RECURSIVE_MAX_DEPTH {20};
+
 namespace Log
 {
     std::function<void(
@@ -279,8 +281,14 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
 
 void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string, bool>>& actions,
                                         const std::string& url,
-                                        const SecureCommunication& secureCommunication)
+                                        const SecureCommunication& secureCommunication,
+                                        const int depth)
 {
+    if (depth > RECURSIVE_MAX_DEPTH)
+    {
+        throw std::runtime_error("Error 413 recursion limit reached, cannot split further.");
+    }
+
     std::string bulkData;
     // Iterate over the actions vector and build the bulk data.
     // If the element is marked as deleted, the element will be deleted from the indexer.
@@ -310,11 +318,11 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
         };
 
         const auto onError =
-            [this, &actions, &url, &secureCommunication](const std::string& error, const long statusCode)
+            [this, &actions, &url, &secureCommunication, depth](const std::string& error, const long statusCode)
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
-                logWarn(IC_NAME, "Request too large, splitting the bulk data.");
+                logWarn(IC_NAME, "The request is too large. Splitting the bulk data.");
                 if (actions.size() == 1)
                 {
                     logError(IC_NAME, "One document is too large, cannot split further.");
@@ -325,8 +333,8 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
                 std::vector<std::pair<std::string, bool>> left(actions.begin(), mid);
                 std::vector<std::pair<std::string, bool>> right(mid, actions.end());
 
-                sendBulkReactive(left, url, secureCommunication);
-                sendBulkReactive(right, url, secureCommunication);
+                sendBulkReactive(left, url, secureCommunication, depth + 1);
+                sendBulkReactive(right, url, secureCommunication, depth + 1);
             }
             else
             {
@@ -627,15 +635,16 @@ IndexerConnector::IndexerConnector(
                             if (m_error413FirstTime == false)
                             {
                                 m_error413FirstTime = true;
-                                logError(
-                                    IC_NAME,
-                                    "Elements to process is too small, review the http.max_content_length value in "
-                                    "the wazuh-indexer settings, data size: %llu.",
-                                    data.size());
+                                logError(IC_NAME,
+                                         "The amount of elements to process is too small, review the "
+                                         "'http.max_content_length' value in "
+                                         "the wazuh-indexer settings. Current data size: %llu.",
+                                         data.size());
                             }
 
-                            throw std::runtime_error("Elements to process is too small, review the "
-                                                     "http.max_content_length value in the wazuh-indexer settings.");
+                            throw std::runtime_error("The amount of elements to process is too small, review the "
+                                                     "'http.max_content_length' value in "
+                                                     "the wazuh-indexer settings.");
                         }
                         else
                         {
