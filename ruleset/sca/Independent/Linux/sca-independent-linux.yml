@@ -490,10 +490,9 @@ checks:
       - cis: ["1.3.1"]
       - cis_csc_v7: ["6 3.5", "14.9"]
       - iso_27001-2013: ["A.12.4.3"]
-    condition: any
+    condition: all
     rules:
-      - "c:dpkg -s aide -> r:install ok installed"
-      - "c:rpm -q aide -> r:aide-"
+      - "c:which aide -> r:/aide"
 
   # 1.3.2 Ensure filesystem integrity is regularly checked. (Scored)
   - id: 31030
@@ -608,10 +607,8 @@ checks:
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
     condition: any
     rules:
-      - "c:dpkg -s apparmor -> r:install ok installed"
-      - "c:dpkg -s libselinux -> r:install ok installed"
-      - "c:rpm -q apparmor -> r:apparmor-"
-      - "c:rpm -q libselinux -> r:libselinux-"
+      - "c:which setenforce -> r:/setenforce"
+      - "c:which getenforce -> r:/getenforce"
 
   # 1.6.2.1 Ensure SELinux is not disabled in bootloader configuration. (Scored)
   - id: 31040
@@ -674,10 +671,9 @@ checks:
       - cis_csc_v7: ["6 14.4", "14.6"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q setroubleshoot -> r:setroubleshoot-"
-      - "c:dpkg-query -s setroubleshoot -> r:^Status: install ok installed"
+      - "not c:which sealert -> r:/sealert"
 
   # 1.6.2.5 Ensure the MCS Translation Service (mcstrans) is not installed (Scored)
   - id: 31043
@@ -690,10 +686,9 @@ checks:
       - cis_csc_v7: ["6 14.4", "14.6"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-    condition: none
+    condition: all
     rules:
-      - "c:rpm -q mcstrans -> r:mcstrans-"
-      - "c:dpkg-query -s mcstrans -> r:^Status: install ok installed"
+      - "not c:which mcstransd -> r:/mcstransd"
 
   # 1.6.2.6 Ensure no unconfined daemons exist. (Scored) - Not Implemented
   # 1.6.3.1 Ensure AppArmor is not disabled in bootloader configuration. (Scored)
@@ -912,10 +907,11 @@ checks:
       - cis: ["2.1.6"]
       - cis_csc_v7: ["6 3.4", "9.1"]
       - iso_27001-2013: ["A.13.1.2"]
-    condition: any
+    condition: none
     rules:
-      - "c:rpm -q rsh-server -> r:^package rsh-server is not installed"
-      - "not c:dpkg-query -s rshd inetutils-rshd -> r:^Status: install ok installed"
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^shell'
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^login'
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^exec'
 
   # 2.1.7 Ensure talk server is not enabled. (Scored)
   - id: 31061
@@ -928,10 +924,10 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: none
     rules:
-      - "c:rpm -q talk-server -> r:^package talk-server is not installed"
-      - "not c:dpkg-query -s talkd inetutils-talkd -> r:^Status: install ok installed"
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^talk'
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^ntalk'
 
   # 2.1.8 Ensure telnet server is not enabled. (Scored)
   - id: 31062
@@ -943,10 +939,9 @@ checks:
       - cis: ["2.1.8"]
       - cis_csc_v7: ["6 3.4", "9.1"]
       - iso_27001-2013: ["A.13.1.2"]
-    condition: any
+    condition: none
     rules:
-      - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
-      - "not c:dpkg-query -s telnetd inetutils-telnetd -> r:^Status: install ok installed"
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^telnet'
 
   # 2.1.9 Ensure tftp server is not enabled. (Scored)
   - id: 31063
@@ -959,10 +954,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: none
     rules:
-      - "c:rpm -q tftp-server -> r:^package tftp-server is not installed"
-      - "not c:dpkg-query -s tftpd inetutils-tftpd -> r:^Status: install ok installed"
+      - 'd:/etc -> r:\.^inetd.*$ -> r:^tftp'
 
   # 2.1.10 Ensure xinetd is not enabled. (Scored)
   - id: 31064
@@ -975,10 +969,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: none
     rules:
-      - "c:rpm -q xinetd -> r:^package xinetd is not installed"
-      - "not c:dpkg-query -s xinetd inetutils-xinetd -> r:^Status: install ok installed"
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled"
 
   # 2.2.1.1 Ensure time synchronization is in use. (Not Scored)
   - id: 31065
@@ -992,10 +985,8 @@ checks:
       - iso_27001-2013: ["A.12.4.4"]
     condition: any
     rules:
-      - "c:rpm -q chrony -> r:^chrony-"
-      - "c:rpm -q ntp -> r:^ntp-"
-      - "c:dpkg -s chrony -> r:^Status: install ok installed"
-      - "c:dpkg -s ntp -> r:^Status: install ok installed"
+      - "c:which chronyd -> r:/chronyd"
+      - "c:which ntpd -> r:/ntpd"
 
   # 2.2.1.2 Ensure ntp is configured. (Scored)
   - id: 31066
@@ -1055,10 +1046,9 @@ checks:
       - cis_csc_v7: ["6 2", "2.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
-    condition: any
+    condition: all
     rules:
-      - 'not c:rpm -qa -> r:^xorg-x11 -> r:\w+'
-      - 'not c:dpkg-query -l -> r:^xorg-x11|^inetutils-xorg-x11 -> r:\w+'
+      - "not c:which Xorg -> r:/Xorg"
 
   # 2.2.3 Ensure Avahi Server is not enabled. (Scored)
   - id: 31070
@@ -1071,11 +1061,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:dpkg-query -s avahi-daemon -> r:package 'avahi-daemon' is not installed"
       - "not c:systemctl show avahi-daemon.socket avahi-daemon.service -> r:^LoadState=loaded|^ActiveState=active"
-      - "c:rpm -q avahi -> r:^package avahi is not installed"
 
   # 2.2.4 Ensure CUPS is not enabled. (Scored)
   - id: 31071
@@ -1091,9 +1079,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q cups -> r:^package cups is not installed"
       - "not c:systemctl is-enabled cups.service -> r:^enabled"
 
   # 2.2.5 Ensure DHCP Server is not enabled. (Scored)
@@ -1109,9 +1096,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q dhcp-server -> r:^package dhcp-server is not installed"
       - "not c:systemctl is-enabled dhcpd.service -> r:^enabled"
 
   # 2.2.6 Ensure LDAP server is not enabled. (Scored)
@@ -1127,9 +1113,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q openldap-servers -> r:^package openldap-servers is not installed"
       - "not c:systemctl is-enabled slapd.service -> r:^enabled"
 
   # 2.2.7 Ensure NFS and RPC are not enabled. (Scored)
@@ -1159,9 +1144,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q bind -> r:^package bind is not installed"
       - "not c:systemctl is-enabled named.service -> r:^enabled"
 
   # 2.2.9 Ensure FTP Server is not enabled. (Scored)
@@ -1175,11 +1159,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:dpkg-query -s vsftpd -> r:package 'vsftpd' is not installed"
       - "not c:systemctl is-enabled vsftpd.service -> r:^enabled"
-      - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
 
   # 2.2.10 Ensure HTTP server is not enabled. (Scored)
   - id: 31077
@@ -1192,9 +1174,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q httpd -> r:^package httpd is not installed"
       - "not c:systemctl is-enabled httpd.service -> r:^enabled"
 
   # 2.2.11 Ensure IMAP and POP3 server is not enabled. (Scored)
@@ -1208,10 +1189,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
       - "not c:systemctl is-enabled dovecot.service dovecot-imapd.socket dovecot-pop3d.socket -> r:^enabled"
-      - "c:rpm -q dovecot -> r:^package dovecot is not installed"
 
   # 2.2.12 Ensure Samba is not enabled. (Scored)
   - id: 31079
@@ -1224,10 +1204,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
       - "not c:systemctl is-enabled smbd.service -> r:^enabled"
-      - "c:rpm -q samba -> r:^package samba is not installed"
 
   # 2.2.13 Ensure HTTP Proxy Server is not enabled. (Scored)
   - id: 31080
@@ -1240,9 +1219,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q squid -> r:^package squid is not installed"
       - "not c:systemctl is-enabled squid.service -> r:^enabled"
 
   # 2.2.14 Ensure SNMP Server is not enabled. (Scored)
@@ -1256,10 +1234,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
       - "not c:systemctl is-enabled snmpd.service -> r:^enabled"
-      - "c:rpm -q snmpd -> r:^package snmpd is not installed"
 
   # 2.2.15 Ensure mail transfer agent is configured for local-only mode. (Scored)
   - id: 31082
@@ -1288,10 +1265,9 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
       - "c:not systemctl is-enabled rsyncd -> r:^enabled"
-      - "c:rpm -q rsync -> r:^package rsync is not installed"
 
   # 2.2.17 Ensure NIS Server is not enabled. (Scored)
   - id: 31084
@@ -1304,9 +1280,8 @@ checks:
       - cis_csc_v7: ["6 9.1", "9.2"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q ypserv -> r:^package ypserv is not installed"
       - "not c:systemctl is-enabled ypserv.service -> r:^enabled"
 
   # 2.3.1 Ensure NIS Client is not installed. (Scored)
@@ -1320,10 +1295,9 @@ checks:
       - cis_csc_v7: ["6 2", "2.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q ypbind -> r:^package ypbind is not installed"
-      - "not c:dpkg -s ypbind -> r:^Status: install ok installed"
+      - "not c:which ypbind -> r:/ypbind"
 
   # 2.3.2 Ensure rsh client is not installed. (Scored)
   - id: 31086
@@ -1336,10 +1310,9 @@ checks:
       - cis_csc_v7: ["6 3.4", "4.5"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q rsh -> r:^package rsh is not installed"
-      - "not c:dpkg -s rsh -> r:^Status: install ok installed"
+      - "not c:which rsh -> r:/rsh"
 
   # 2.3.3 Ensure talk client is not installed. (Scored)
   - id: 31087
@@ -1352,10 +1325,9 @@ checks:
       - cis_csc_v7: ["6 2", "2.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q talk -> r:^package talk is not installed"
-      - "not c:dpkg -s talk -> r:^Status: install ok installed"
+      - "not c:which talk -> r:/talk"
 
   # 2.3.4 Ensure telnet client is not installed. (Scored)
   - id: 31088
@@ -1368,10 +1340,9 @@ checks:
       - cis_csc_v7: ["6 3.4", "4.5"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q telnet -> r:^package telnet is not installed"
-      - "not c:dpkg -s telnet -> r:^Status: install ok installed"
+      - "not c:which telnet -> r:/telnet"
 
   # 2.3.5 Ensure LDAP client is not installed (Scored)
   - id: 31088
@@ -1385,10 +1356,9 @@ checks:
       - cis_csc_v7: ["6 3.4", "4.5"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
-      - "not c:dpkg -s openldap-clients -> r:^Status: install ok installed"
+      - "not c:which ldapsearch -> r:/ldapsearch"
 
   # 3.1.1 Ensure IP forwarding is disabled. (Scored)
   - id: 31089
