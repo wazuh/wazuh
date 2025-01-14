@@ -126,6 +126,7 @@ int main(const int argc, const char* argv[])
         IndexerConnector indexerConnector(
             configuration,
             cmdArgParser.getTemplateFilePath(),
+            cmdArgParser.getUpdateMappingsFilePath(),
             [&logFile](const int logLevel,
                        const std::string& tag,
                        const std::string& file,

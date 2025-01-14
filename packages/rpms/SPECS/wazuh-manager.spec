@@ -734,6 +734,7 @@ rm -fr %{buildroot}
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(440, root, wazuh) %{_localstatedir}/templates
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts

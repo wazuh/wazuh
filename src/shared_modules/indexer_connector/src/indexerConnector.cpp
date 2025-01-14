@@ -406,6 +406,7 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
 }
 
 void IndexerConnector::initialize(const nlohmann::json& templateData,
+                                  const nlohmann::json& updateMappingsData,
                                   const std::shared_ptr<ServerSelector>& selector,
                                   const SecureCommunication& secureCommunication)
 {
@@ -445,6 +446,17 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {});
 
+    // Create new mappings after update.
+    if (!updateMappingsData.empty())
+    {
+        HTTPRequest::instance().put(
+            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
+                               .data = updateMappingsData,
+                               .secureCommunication = secureCommunication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
+    }
+
     m_initialized = true;
     logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
 }
@@ -452,6 +464,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::string& templatePath,
+    const std::string& updateMappingsPath,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
@@ -482,6 +495,19 @@ IndexerConnector::IndexerConnector(
         throw std::runtime_error("Could not open template file: " + templatePath);
     }
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
+
+    // Read add mappings file.
+    nlohmann::json updateMappingsData = nlohmann::json::object();
+    if (!updateMappingsPath.empty())
+    {
+
+        std::ifstream updateMappingsFile(updateMappingsPath);
+        if (!updateMappingsFile.is_open())
+        {
+            throw std::runtime_error("Could not open the update mappings file: " + updateMappingsPath);
+        }
+        updateMappingsData = nlohmann::json::parse(updateMappingsFile);
+    }
 
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
@@ -709,7 +735,7 @@ IndexerConnector::IndexerConnector(
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
-        [this, templateData, selector, secureCommunication]()
+        [this, templateData, updateMappingsData, selector, secureCommunication]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock lock(m_mutex);
@@ -724,7 +750,7 @@ IndexerConnector::IndexerConnector(
                         sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
                     }
 
-                    initialize(templateData, selector, secureCommunication);
+                    initialize(templateData, updateMappingsData, selector, secureCommunication);
                 }
                 catch (const std::exception& e)
                 {
