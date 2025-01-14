@@ -2,14 +2,17 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(utils_benchmark_test)
 
-link_directories(${SRC_FOLDER}/external/benchmark/build/src)
-link_directories(${SRC_FOLDER}/external/rocksdb/build/)
-
 include_directories(${SRC_FOLDER}/external/benchmark/include)
-include_directories(${SRC_FOLDER}/shared_modules/common)
-include_directories(${SRC_FOLDER}/shared_modules/utils)
-include_directories(${SRC_FOLDER}/external/cJSON)
-include_directories(${SRC_FOLDER}/external/rocksdb/include)
+link_directories(${SRC_FOLDER}/external/benchmark/build/src)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    link_directories(${SRC_FOLDER}/external/rocksdb/build/)
+
+    include_directories(${SRC_FOLDER}/shared_modules/common)
+    include_directories(${SRC_FOLDER}/shared_modules/utils)
+    include_directories(${SRC_FOLDER}/external/cJSON)
+    include_directories(${SRC_FOLDER}/external/rocksdb/include)
+endif()
 
 file(GLOB UTIL_CXX_BENCHMARKTEST_SRC
     "*_test.cpp"
