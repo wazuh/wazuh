@@ -18,13 +18,13 @@ void CmdUtilsTest::TearDown() {};
 #ifdef WIN32
 TEST_F(CmdUtilsTest, CmdVersion)
 {
-    const auto result {Utils::exec("ver")};
+    const auto result{Utils::exec("ver")};
     EXPECT_FALSE(result.empty());
 }
 #else
 TEST_F(CmdUtilsTest, CmdUname)
 {
-    const auto result {Utils::exec("uname")};
+    const auto result{Utils::exec("uname")};
     EXPECT_FALSE(result.empty());
 }
 #endif

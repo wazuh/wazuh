@@ -12,13 +12,13 @@
 #ifndef _HASH_HELPER_H
 #define _HASH_HELPER_H
 
-#include "openssl/evp.h"
-#include <array>
-#include <fstream>
 #include <memory>
-#include <stdexcept>
-#include <string>
 #include <vector>
+#include <stdexcept>
+#include "openssl/evp.h"
+#include <fstream>
+#include <array>
+#include <string>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -32,82 +32,103 @@ namespace Utils
     };
     class HashData final
     {
-    public:
-        HashData(const HashType hashType = HashType::Sha1)
-            : m_spCtx {createContext()}
-        {
-            initializeContext(hashType, m_spCtx);
-        }
-        // LCOV_EXCL_START
-        ~HashData() = default;
-        // LCOV_EXCL_STOP
-        void update(const void* data, const size_t size)
-        {
-            const auto ret {EVP_DigestUpdate(m_spCtx.get(), data, size)};
-
+        public:
+            HashData(const HashType hashType = HashType::Sha1)
+                : m_spCtx{createContext()}
+            {
+                initializeContext(hashType, m_spCtx);
+            }
             // LCOV_EXCL_START
-            if (!ret)
-            {
-                throw std::runtime_error {"Error getting digest final."};
-            }
-
+            ~HashData() = default;
             // LCOV_EXCL_STOP
-        }
-        std::vector<unsigned char> hash()
-        {
-            unsigned char digest[EVP_MAX_MD_SIZE] {0};
-            unsigned int digestSize {0};
-            const auto ret {EVP_DigestFinal_ex(m_spCtx.get(), digest, &digestSize)};
-
-            // LCOV_EXCL_START
-            if (!ret)
+            void update(const void* data, const size_t size)
             {
-                throw std::runtime_error {"Error getting digest final."};
+                const auto ret
+                {
+                    EVP_DigestUpdate(m_spCtx.get(), data, size)
+                };
+
+                // LCOV_EXCL_START
+                if (!ret)
+                {
+                    throw std::runtime_error
+                    {
+                        "Error getting digest final."
+                    };
+                }
+
+                // LCOV_EXCL_STOP
             }
-
-            // LCOV_EXCL_STOP
-            return {digest, digest + digestSize};
-        }
-
-    private:
-        struct EvpContextDeleter final
-        {
-            void operator()(EVP_MD_CTX* ctx)
+            std::vector<unsigned char> hash()
             {
-                EVP_MD_CTX_destroy(ctx);
+                unsigned char digest[EVP_MAX_MD_SIZE] {0};
+                unsigned int digestSize{0};
+                const auto ret
+                {
+                    EVP_DigestFinal_ex(m_spCtx.get(), digest, &digestSize)
+                };
+
+                // LCOV_EXCL_START
+                if (!ret)
+                {
+                    throw std::runtime_error
+                    {
+                        "Error getting digest final."
+                    };
+                }
+
+                // LCOV_EXCL_STOP
+                return {digest, digest + digestSize};
             }
-        };
-
-        static EVP_MD_CTX* createContext()
-        {
-            auto ctx {EVP_MD_CTX_create()};
-
-            // LCOV_EXCL_START
-            if (!ctx)
+        private:
+            struct EvpContextDeleter final
             {
-                throw std::runtime_error {"Error creating EVP_MD_CTX."};
-            }
+                void operator()(EVP_MD_CTX* ctx)
+                {
+                    EVP_MD_CTX_destroy(ctx);
+                }
+            };
 
-            // LCOV_EXCL_STOP
-            return ctx;
-        }
-        static void initializeContext(const HashType hashType, std::unique_ptr<EVP_MD_CTX, EvpContextDeleter>& spCtx)
-        {
-            auto ret {0};
-
-            switch (hashType)
+            static EVP_MD_CTX* createContext()
             {
-                case HashType::Sha1: ret = EVP_DigestInit(spCtx.get(), EVP_sha1()); break;
+                auto ctx{ EVP_MD_CTX_create() };
 
-                case HashType::Sha256: ret = EVP_DigestInit(spCtx.get(), EVP_sha256()); break;
+                // LCOV_EXCL_START
+                if (!ctx)
+                {
+                    throw std::runtime_error
+                    {
+                        "Error creating EVP_MD_CTX."
+                    };
+                }
+
+                // LCOV_EXCL_STOP
+                return ctx;
             }
-
-            if (!ret)
+            static void initializeContext(const HashType hashType, std::unique_ptr<EVP_MD_CTX, EvpContextDeleter>& spCtx)
             {
-                throw std::runtime_error {"Error initializing EVP_MD_CTX."};
+                auto ret{0};
+
+                switch (hashType)
+                {
+                    case HashType::Sha1:
+                        ret = EVP_DigestInit(spCtx.get(), EVP_sha1());
+                        break;
+
+                    case HashType::Sha256:
+                        ret = EVP_DigestInit(spCtx.get(), EVP_sha256());
+                        break;
+                }
+
+                if (!ret)
+                {
+                    throw std::runtime_error
+                    {
+                        "Error initializing EVP_MD_CTX."
+                    };
+                }
             }
-        }
-        std::unique_ptr<EVP_MD_CTX, EvpContextDeleter> m_spCtx;
+            std::unique_ptr<EVP_MD_CTX, EvpContextDeleter> m_spCtx;
     };
 
     /**

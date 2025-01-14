@@ -15,11 +15,12 @@
 
 class ByteArrayHelperTest : public ::testing::Test
 {
-protected:
-    ByteArrayHelperTest() = default;
-    virtual ~ByteArrayHelperTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        ByteArrayHelperTest() = default;
+        virtual ~ByteArrayHelperTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
-#endif // BYTE_ARRAY_TESTS_H
+#endif //BYTE_ARRAY_TESTS_H

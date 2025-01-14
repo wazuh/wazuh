@@ -28,3 +28,4 @@ TEST_F(EVPHelperTest, ValidEncryptionAndDecryption)
     EXPECT_NO_THROW(EVPHelper().decryptAES256(encryptedData, decryptedData));
     ASSERT_EQ(decryptedData, inputData);
 }
+

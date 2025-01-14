@@ -15,11 +15,12 @@
 
 class LinuxInfoHelperTest : public ::testing::Test
 {
-protected:
-    LinuxInfoHelperTest() = default;
-    virtual ~LinuxInfoHelperTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        LinuxInfoHelperTest() = default;
+        virtual ~LinuxInfoHelperTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif // LINUXINFO_HELPER_TESTS_H

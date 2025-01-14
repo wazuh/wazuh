@@ -12,14 +12,14 @@
 #define _MOCKJSONIO_HPP
 
 #include "json.hpp"
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <filesystem>
+#include "gmock/gmock.h"
 
 class MockJsonIO
 {
-public:
-    MOCK_METHOD(nlohmann::json, readJson, (const std::filesystem::path&), ());
+    public:
+        MOCK_METHOD(nlohmann::json, readJson, (const std::filesystem::path&), ());
 };
 
 #endif // _MOCKJSONIO_HPP

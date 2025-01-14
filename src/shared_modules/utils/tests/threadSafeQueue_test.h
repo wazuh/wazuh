@@ -15,11 +15,12 @@
 
 class ThreadSafeQueueTest : public ::testing::Test
 {
-protected:
-    ThreadSafeQueueTest() = default;
-    virtual ~ThreadSafeQueueTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        ThreadSafeQueueTest() = default;
+        virtual ~ThreadSafeQueueTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
-#endif // THREAD_SAFE_QUEUE_TESTS_H
+#endif //THREAD_SAFE_QUEUE_TESTS_H

@@ -12,10 +12,10 @@
 #include "xzHelper_test.hpp"
 #include "hashHelper.h"
 #include "xzHelper.hpp"
-#include <array>
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <array>
 
 /**
  * @brief Helper function to calculate the hash of a file
@@ -69,7 +69,7 @@ TEST_F(XzHelperTest, NonExistingInputFile)
 {
     const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-NonExistingInputFile.json"};
     const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-NonExistingInputFile.json.xz"};
-
+    
     EXPECT_THROW(Utils::XzHelper(INPUT_PATH / "nofile.json", COMPRESSED_OUTPUT_FILE).compress(), std::runtime_error);
     EXPECT_THROW(Utils::XzHelper(INPUT_PATH / "nofile.json.xz", DECOMPRESSED_OUTPUT_FILE).decompress(),
                  std::runtime_error);

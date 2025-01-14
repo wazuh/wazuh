@@ -15,11 +15,12 @@
 
 class GlobHelperTest : public ::testing::Test
 {
-protected:
-    GlobHelperTest() = default;
-    virtual ~GlobHelperTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        GlobHelperTest() = default;
+        virtual ~GlobHelperTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif // _GLOB_HELPER_TEST_H

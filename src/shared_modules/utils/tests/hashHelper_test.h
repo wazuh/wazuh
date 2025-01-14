@@ -11,16 +11,17 @@
 
 #ifndef HASH_HELPER_TESTS_H
 #define HASH_HELPER_TESTS_H
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 class HashHelperTest : public ::testing::Test
 {
-protected:
-    HashHelperTest() = default;
-    virtual ~HashHelperTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        HashHelperTest() = default;
+        virtual ~HashHelperTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
-#endif // HASH_HELPER_TESTS_H
+#endif //HASH_HELPER_TESTS_H

@@ -15,11 +15,12 @@
 
 class CacheLRUTest : public ::testing::Test
 {
-protected:
-    CacheLRUTest() = default;
-    virtual ~CacheLRUTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        CacheLRUTest() = default;
+        virtual ~CacheLRUTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
-#endif // CACHE_LRU_TESTS_H
+#endif //CACHE_LRU_TESTS_H

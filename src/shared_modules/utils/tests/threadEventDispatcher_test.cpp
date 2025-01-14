@@ -144,3 +144,4 @@ TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
     promise.get_future().wait_for(std::chrono::seconds(10));
     EXPECT_EQ(MESSAGES_TO_SEND, counter);
 }
+

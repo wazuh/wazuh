@@ -11,17 +11,18 @@
 
 #ifndef ENCODING_WINDOWS_HELPER_TEST_H
 #define ENCODING_WINDOWS_HELPER_TEST_H
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 class EncodingWindowsHelperTest : public ::testing::Test
 {
-protected:
-    EncodingWindowsHelperTest() = default;
-    virtual ~EncodingWindowsHelperTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        EncodingWindowsHelperTest() = default;
+        virtual ~EncodingWindowsHelperTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
 
-#endif // ENCODING_WINDOWS_HELPER_TEST_H
+#endif //ENCODING_WINDOWS_HELPER_TEST_H

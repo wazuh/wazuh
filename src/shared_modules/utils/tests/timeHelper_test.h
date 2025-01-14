@@ -16,12 +16,13 @@
 
 class TimeUtilsTest : public ::testing::Test
 {
-protected:
-    TimeUtilsTest() = default;
-    virtual ~TimeUtilsTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        TimeUtilsTest() = default;
+        virtual ~TimeUtilsTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif // TIME_HELPER_TESTS_H

@@ -15,11 +15,12 @@
 
 class StringUtilsTest : public ::testing::Test
 {
-protected:
-    StringUtilsTest() = default;
-    virtual ~StringUtilsTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        StringUtilsTest() = default;
+        virtual ~StringUtilsTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
-#endif // STRING_HELPER_TESTS_H
+#endif //STRING_HELPER_TESTS_H

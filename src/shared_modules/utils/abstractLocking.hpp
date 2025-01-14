@@ -22,49 +22,47 @@ namespace Utils
 {
     class ILocking
     {
-    public:
-        virtual ~ILocking() = default;
-        virtual void lock() = 0;
-        virtual void unlock() = 0;
+        public:
+            virtual ~ILocking() = default;
+            virtual void lock() = 0;
+            virtual void unlock() = 0;
     };
 
     class SharedLocking final : public ILocking
     {
-        std::shared_lock<std::shared_timed_mutex> m_lock;
+            std::shared_lock<std::shared_timed_mutex> m_lock;
+        public:
+            explicit SharedLocking(std::shared_timed_mutex& mutex)
+                : m_lock(std::shared_lock<std::shared_timed_mutex>(mutex)) {};
 
-    public:
-        explicit SharedLocking(std::shared_timed_mutex& mutex)
-            : m_lock(std::shared_lock<std::shared_timed_mutex>(mutex)) {};
-
-        virtual ~SharedLocking() = default;
-        virtual void lock() override
-        {
-            m_lock.lock();
-        }
-        virtual void unlock() override
-        {
-            m_lock.unlock();
-        }
+            virtual ~SharedLocking() = default;
+            virtual void lock() override
+            {
+                m_lock.lock();
+            }
+            virtual void unlock() override
+            {
+                m_lock.unlock();
+            }
     };
 
     class ExclusiveLocking final : public ILocking
     {
-        std::unique_lock<std::shared_timed_mutex> m_lock;
+            std::unique_lock<std::shared_timed_mutex> m_lock;
+        public:
+            explicit ExclusiveLocking(std::shared_timed_mutex& mutex)
+                : m_lock(std::unique_lock<std::shared_timed_mutex>(mutex)) {};
 
-    public:
-        explicit ExclusiveLocking(std::shared_timed_mutex& mutex)
-            : m_lock(std::unique_lock<std::shared_timed_mutex>(mutex)) {};
-
-        virtual ~ExclusiveLocking() = default;
-        virtual void lock() override
-        {
-            m_lock.lock();
-        }
-        virtual void unlock() override
-        {
-            m_lock.unlock();
-        }
+            virtual ~ExclusiveLocking() = default;
+            virtual void lock() override
+            {
+                m_lock.lock();
+            }
+            virtual void unlock() override
+            {
+                m_lock.unlock();
+            }
     };
-}; // namespace Utils
+};
 
 #endif /* _ABSTRACT_LOCKING_HPP */

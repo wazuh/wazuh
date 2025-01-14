@@ -49,7 +49,7 @@ TEST_F(FilesystemUtilsTest, FilesystemEnumerateDir)
 
 TEST_F(FilesystemUtilsTest, getFileContent)
 {
-    const auto& inputFile {"/etc/services"};
+    const auto& inputFile{"/etc/services"};
     const auto content {Utils::getFileContent(inputFile)};
     EXPECT_FALSE(content.empty());
 }
@@ -59,5 +59,6 @@ TEST_F(FilesystemUtilsTest, getFileBinaryContent)
     const auto binContent {Utils::getBinaryContent("/usr/bin/gcc")};
     EXPECT_FALSE(binContent.empty());
 }
+
 
 #endif

@@ -12,7 +12,7 @@
 #ifndef _DEFER_H_
 #define _DEFER_H_
 
-#define DEFER(...)        auto CONCAT(__defer_auto_defer__, __COUNTER__) = deferFunc(__VA_ARGS__)
+#define DEFER(...) auto CONCAT(__defer_auto_defer__, __COUNTER__) = deferFunc(__VA_ARGS__)
 #define DEFER_STATIC(...) static auto CONCAT(__defer_auto_defer__, __COUNTER__) = deferFunc(__VA_ARGS__)
 
 #define CONCAT(x, y)      CONCAT_IMPL(x, y)
@@ -31,26 +31,26 @@
 template<typename F>
 class Defer final
 {
-public:
-    /**
-     * @brief Constructor that stores a function object
-     * @param f The function object to be stored
-     */
-    explicit Defer(F f)
-        : m_f(f)
-    {
-    }
+    public:
+        /**
+         * @brief Constructor that stores a function object
+         * @param f The function object to be stored
+         */
+        explicit Defer(F f)
+            : m_f(f)
+        {
+        }
 
-    /**
-     * @brief Destructor that calls the stored function object
-     */
-    ~Defer()
-    {
-        m_f();
-    }
+        /**
+         * @brief Destructor that calls the stored function object
+         */
+        ~Defer()
+        {
+            m_f();
+        }
 
-private:
-    F m_f; ///< The stored function object
+    private:
+        F m_f; ///< The stored function object
 };
 
 /**

@@ -9,10 +9,11 @@
  * Foundation.
  */
 
+#include <thread>
+#include <chrono>
 #include "mapWrapperSafe_test.h"
 #include "mapWrapperSafe.h"
-#include <chrono>
-#include <thread>
+
 
 void MapWrapperSafeTest::SetUp() {};
 
@@ -32,3 +33,4 @@ TEST_F(MapWrapperSafeTest, eraseTest)
     EXPECT_NO_THROW(mapSafe.erase(1));
     EXPECT_EQ(0, mapSafe[1]);
 }
+

@@ -15,11 +15,12 @@
 
 class CmdUtilsTest : public ::testing::Test
 {
-protected:
-    CmdUtilsTest() = default;
-    virtual ~CmdUtilsTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        CmdUtilsTest() = default;
+        virtual ~CmdUtilsTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
-#endif // CMD_HELPER_TESTS_H
+#endif //CMD_HELPER_TESTS_H

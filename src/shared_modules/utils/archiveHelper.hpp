@@ -65,8 +65,7 @@ namespace Utils
 
                 if (retVal != ARCHIVE_OK)
                 {
-                    const std::string errMsg =
-                        archive_error_string(archiveRead) ? archive_error_string(archiveRead) : "Unknown error";
+                    const std::string errMsg = archive_error_string(archiveRead) ? archive_error_string(archiveRead) : "Unknown error";
                     throw std::runtime_error("Error reading file during data copy. Error: " + errMsg);
                 }
 
@@ -114,8 +113,7 @@ namespace Utils
 
             if (retVal != ARCHIVE_OK)
             {
-                const std::string errMsg =
-                    archive_error_string(archiveRead.get()) ? archive_error_string(archiveRead.get()) : "Unknown error";
+                const std::string errMsg = archive_error_string(archiveRead.get()) ? archive_error_string(archiveRead.get()) : "Unknown error";
                 throw std::runtime_error("Error opening file during decompression. Error: " + errMsg);
             }
 
@@ -129,9 +127,7 @@ namespace Utils
 
                 if (retVal != ARCHIVE_OK)
                 {
-                    const std::string errMsg = archive_error_string(archiveRead.get())
-                                                   ? archive_error_string(archiveRead.get())
-                                                   : "Unknown error";
+                    const std::string errMsg = archive_error_string(archiveRead.get()) ? archive_error_string(archiveRead.get()) : "Unknown error";
                     throw std::runtime_error("Error reading next header during decompression. Error: " + errMsg);
                 }
 

@@ -13,10 +13,10 @@
 #define LINUXINFO_HELPER_H
 
 #include "filesystemHelper.h"
+#include <vector>
 #include <cstdint>
 #include <string>
 #include <unistd.h>
-#include <vector>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -37,15 +37,14 @@ namespace Utils
             if (0UL == btime)
             {
                 const std::string key {"btime "};
-                const auto file {Utils::getFileContent("/proc/stat")};
+                const auto file { Utils::getFileContent("/proc/stat") };
 
                 btime = std::stoull(file.substr(file.find(key) + key.length()));
             }
         }
         // LCOV_EXCL_START
         catch (...)
-        {
-        }
+        {}
 
         // LCOV_EXCL_STOP
 
@@ -59,7 +58,7 @@ namespace Utils
      */
     static uint64_t getClockTick(void)
     {
-        static uint64_t tick {static_cast<uint64_t>(sysconf(_SC_CLK_TCK))};
+        static uint64_t tick { static_cast<uint64_t>(sysconf(_SC_CLK_TCK)) };
 
         return tick;
     }
@@ -74,6 +73,6 @@ namespace Utils
     {
         return (startTime / getClockTick()) + getBootTime();
     }
-} // namespace Utils
+}
 
 #endif // LINUXINFO_HELPER_H

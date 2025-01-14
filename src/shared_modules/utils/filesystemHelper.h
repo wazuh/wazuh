@@ -12,19 +12,19 @@
 #ifndef _FILESYSTEM_HELPER_H
 #define _FILESYSTEM_HELPER_H
 
-#include "stringHelper.h"
-#include <algorithm>
-#include <array>
-#include <cstdio>
-#include <dirent.h>
-#include <fstream>
+#include <string>
 #include <iostream>
+#include <fstream>
+#include <cstdio>
 #include <memory>
 #include <sstream>
-#include <string>
-#include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <vector>
+#include <dirent.h>
+#include <algorithm>
+#include <array>
+#include "stringHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -33,24 +33,18 @@ namespace Utils
 {
     static bool existsDir(const std::string& path)
     {
-        struct stat info
-        {
-        };
+        struct stat info {};
         return !stat(path.c_str(), &info) && (info.st_mode & S_IFDIR);
     }
     static bool existsRegular(const std::string& path)
     {
-        struct stat info
-        {
-        };
+        struct stat info {};
         return !stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
     }
 #ifndef WIN32
     static bool existsSocket(const std::string& path)
     {
-        struct stat info
-        {
-        };
+        struct stat info {};
         return !stat(path.c_str(), &info) && ((info.st_mode & S_IFMT) == S_IFSOCK);
     }
 #endif
@@ -65,11 +59,11 @@ namespace Utils
     static std::vector<std::string> enumerateDir(const std::string& path)
     {
         std::vector<std::string> ret;
-        std::unique_ptr<DIR, DirSmartDeleter> spDir {opendir(path.c_str())};
+        std::unique_ptr<DIR, DirSmartDeleter> spDir{opendir(path.c_str())};
 
         if (spDir)
         {
-            auto entry {readdir(spDir.get())};
+            auto entry{readdir(spDir.get())};
 
             while (entry)
             {
@@ -84,7 +78,7 @@ namespace Utils
     static std::string getFileContent(const std::string& filePath)
     {
         std::stringstream content;
-        std::ifstream file {filePath, std::ios_base::in};
+        std::ifstream file { filePath, std::ios_base::in };
 
         if (file.is_open())
         {
@@ -96,14 +90,14 @@ namespace Utils
 
     static std::vector<char> getBinaryContent(const std::string& filePath)
     {
-        auto size {0};
+        auto size { 0 };
         std::unique_ptr<char[]> spBuffer;
-        std::ifstream file {filePath, std::ios_base::binary};
+        std::ifstream file { filePath, std::ios_base::binary };
 
         if (file.is_open())
         {
             // Get pointer to associated buffer object
-            auto buffer {file.rdbuf()};
+            auto buffer { file.rdbuf() };
 
             if (nullptr != buffer)
             {
@@ -119,7 +113,7 @@ namespace Utils
 
         return std::vector<char> {spBuffer.get(), spBuffer.get() + size};
     }
-} // namespace Utils
+}
 
 #pragma GCC diagnostic pop
 

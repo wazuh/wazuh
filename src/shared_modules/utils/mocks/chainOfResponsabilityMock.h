@@ -31,20 +31,14 @@ public:
      *
      * @note This method is intended for testing purposes and does not perform any real action.
      */
-    MOCK_METHOD(std::shared_ptr<MockAbstractHandler<T>>,
-                setNext,
-                (const std::shared_ptr<MockAbstractHandler<T>> requestNext),
-                ());
+    MOCK_METHOD(std::shared_ptr<MockAbstractHandler<T>>, setNext, (const std::shared_ptr<MockAbstractHandler<T>> requestNext), ());
 
     /**
      * @brief Mock method for setNext.
      *
      * @note This method is intended for testing purposes and does not perform any real action.
      */
-    MOCK_METHOD(std::shared_ptr<MockAbstractHandler<T>>,
-                setLast,
-                (const std::shared_ptr<MockAbstractHandler<T>> requestLast),
-                ());
+    MOCK_METHOD(std::shared_ptr<MockAbstractHandler<T>>, setLast, (const std::shared_ptr<MockAbstractHandler<T>> requestLast), ());
 
     /**
      * @brief Mock method for handleRequest.

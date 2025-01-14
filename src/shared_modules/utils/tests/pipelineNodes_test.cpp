@@ -18,23 +18,22 @@ void PipelineNodesTest::TearDown() {};
 
 class FunctorWrapper
 {
-public:
-    FunctorWrapper() = default;
-    ~FunctorWrapper() = default;
-    MOCK_METHOD(void, Operator, (const int), ());
-    void operator()(const int value)
-    {
-        Operator(value);
-    }
-    void receive(const int& value)
-    {
-        Operator(value);
-    }
+    public:
+        FunctorWrapper() = default;
+        ~FunctorWrapper() = default;
+        MOCK_METHOD(void, Operator, (const int), ());
+        void operator()(const int value)
+        {
+            Operator(value);
+        }
+        void receive(const int& value)
+        {
+            Operator(value);
+        }
 };
 
 template<typename R, typename RW>
-static void
-ReadWriteNodeBehaviour(FunctorWrapper& functor, std::shared_ptr<R>& spReadNode, std::shared_ptr<RW>& spReadWriteNode);
+static void ReadWriteNodeBehaviour(FunctorWrapper& functor, std::shared_ptr<R>& spReadNode, std::shared_ptr<RW>& spReadWriteNode);
 
 template<typename T>
 static void ReadNodeBehaviour(FunctorWrapper& functor, T& rNode);
@@ -48,7 +47,7 @@ using ReadWriteNodeAsync = Utils::ReadWriteNode<std::string, int, ReadIntNodeAsy
 TEST_F(PipelineNodesTest, ReadNodeAsync)
 {
     FunctorWrapper functor;
-    ReadIntNodeAsync rNode {std::ref(functor)};
+    ReadIntNodeAsync rNode{ std::ref(functor) };
 
     ReadNodeBehaviour(functor, rNode);
 }
@@ -56,8 +55,8 @@ TEST_F(PipelineNodesTest, ReadNodeAsync)
 TEST_F(PipelineNodesTest, ReadNodeAsyncMultiThread)
 {
     FunctorWrapper functor;
-    const unsigned int s_numberOfThreads {2};
-    ReadIntNodeAsync rNode {std::ref(functor), s_numberOfThreads};
+    const unsigned int s_numberOfThreads{ 2 };
+    ReadIntNodeAsync rNode{ std::ref(functor), s_numberOfThreads };
 
     ReadNodeBehaviour(functor, rNode);
 
@@ -67,7 +66,7 @@ TEST_F(PipelineNodesTest, ReadNodeAsyncMultiThread)
 TEST_F(PipelineNodesTest, ReadNodeSync)
 {
     FunctorWrapper functor;
-    ReadIntNodeSync rNode {std::ref(functor)};
+    ReadIntNodeSync rNode{ std::ref(functor) };
 
     ReadNodeBehaviour(functor, rNode);
 }
@@ -75,8 +74,8 @@ TEST_F(PipelineNodesTest, ReadNodeSync)
 TEST_F(PipelineNodesTest, ReadNodeSyncMultiThread)
 {
     FunctorWrapper functor;
-    const unsigned int s_numberOfThreads {2};
-    ReadIntNodeSync rNode {std::ref(functor), s_numberOfThreads};
+    const unsigned int s_numberOfThreads{ 2 };
+    ReadIntNodeSync rNode{ std::ref(functor), s_numberOfThreads };
 
     ReadNodeBehaviour(functor, rNode);
 
@@ -86,9 +85,17 @@ TEST_F(PipelineNodesTest, ReadNodeSyncMultiThread)
 TEST_F(PipelineNodesTest, ReadWriteNodeAsync)
 {
     FunctorWrapper functor;
-    auto spReadNode {std::make_shared<ReadIntNodeAsync>(std::ref(functor))};
-    auto spReadWriteNode {
-        std::make_shared<ReadWriteNodeAsync>([](const std::string& value) { return std::stoi(value); })};
+    auto spReadNode
+    {
+        std::make_shared<ReadIntNodeAsync>(std::ref(functor))
+    };
+    auto spReadWriteNode
+    {
+        std::make_shared<ReadWriteNodeAsync>([](const std::string & value)
+        {
+            return std::stoi(value);
+        })
+    };
 
     ReadWriteNodeBehaviour(functor, spReadNode, spReadWriteNode);
 }
@@ -96,9 +103,17 @@ TEST_F(PipelineNodesTest, ReadWriteNodeAsync)
 TEST_F(PipelineNodesTest, ReadWriteNodeSync)
 {
     FunctorWrapper functor;
-    auto spReadNode {std::make_shared<ReadIntNodeSync>(std::ref(functor))};
-    auto spReadWriteNode {
-        std::make_shared<ReadWriteNodeSync>([](const std::string& value) { return std::stoi(value); })};
+    auto spReadNode
+    {
+        std::make_shared<ReadIntNodeSync>(std::ref(functor))
+    };
+    auto spReadWriteNode
+    {
+        std::make_shared<ReadWriteNodeSync>([](const std::string & value)
+        {
+            return std::stoi(value);
+        })
+    };
 
     ReadWriteNodeBehaviour(functor, spReadNode, spReadWriteNode);
 }
@@ -112,7 +127,10 @@ TEST_F(PipelineNodesTest, ConnectInvalidPtrs1)
 
 TEST_F(PipelineNodesTest, ConnectInvalidPtrs2)
 {
-    const auto spReadNode {std::make_shared<Utils::ReadNode<int>>([](const int&) {})};
+    const auto spReadNode
+    {
+        std::make_shared<Utils::ReadNode<int>>([](const int&) {})
+    };
     std::shared_ptr<Utils::ReadWriteNode<int, int, Utils::ReadNode<int>>> spReadWriteNode;
     EXPECT_NO_THROW(Utils::connect(spReadWriteNode, spReadNode));
 }
@@ -120,8 +138,13 @@ TEST_F(PipelineNodesTest, ConnectInvalidPtrs2)
 TEST_F(PipelineNodesTest, ConnectInvalidPtrs3)
 {
     std::shared_ptr<Utils::ReadNode<int>> spReadNode;
-    const auto spReadWriteNode {
-        std::make_shared<Utils::ReadWriteNode<int, int, Utils::ReadNode<int>>>([](const int&) { return 0; })};
+    const auto spReadWriteNode
+    {
+        std::make_shared<Utils::ReadWriteNode<int, int, Utils::ReadNode<int>>>([](const int&)
+        {
+            return 0;
+        })
+    };
     EXPECT_NO_THROW(Utils::connect(spReadWriteNode, spReadNode));
 }
 
@@ -144,8 +167,7 @@ static void ReadNodeBehaviour(FunctorWrapper& functor, T& rNode)
 }
 
 template<typename R, typename RW>
-static void
-ReadWriteNodeBehaviour(FunctorWrapper& functor, std::shared_ptr<R>& spReadNode, std::shared_ptr<RW>& spReadWriteNode)
+static void ReadWriteNodeBehaviour(FunctorWrapper& functor, std::shared_ptr<R>& spReadNode, std::shared_ptr<RW>& spReadWriteNode)
 {
     Utils::connect(spReadWriteNode, spReadNode);
 

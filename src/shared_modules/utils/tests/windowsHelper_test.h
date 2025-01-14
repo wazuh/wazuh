@@ -11,17 +11,18 @@
 
 #ifndef WINDOWS_HELPER_TEST_H
 #define WINDOWS_HELPER_TEST_H
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 class WindowsHelperTest : public ::testing::Test
 {
-protected:
-    WindowsHelperTest() = default;
-    virtual ~WindowsHelperTest() = default;
+    protected:
 
-    void SetUp() override;
-    void TearDown() override;
+        WindowsHelperTest() = default;
+        virtual ~WindowsHelperTest() = default;
+
+        void SetUp() override;
+        void TearDown() override;
 };
 
-#endif // WINDOWS_HELPER_TEST_H
+#endif //WINDOWS_HELPER_TEST_H
