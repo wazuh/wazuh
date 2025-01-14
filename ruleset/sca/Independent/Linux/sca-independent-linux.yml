@@ -1769,8 +1769,9 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:disk_full_action\s*\t*= && r:halt|single'
-      - 'f:/etc/audit/auditd.conf -> r:disk_error_action\s*\t*= && r:syslog|single|halt'
+      - 'f:/etc/audit/auditd.conf -> r:space_left_action\s*\t*=\s*\t*email'
+      - 'f:/etc/audit/auditd.conf -> r:action_mail_acct\s*\t*=\s*\t*root'
+      - 'f:/etc/audit/auditd.conf -> r:admin_space_left_action\s*\t*=\s*\t*halt'
 
   # 4.1.1.3 Ensure audit logs are not automatically deleted. (Scored)
   - id: 31122
@@ -1796,10 +1797,9 @@ checks:
       - cis: ["4.1.2"]
       - cis_csc_v7: ["6 6.2", "6.2"]
       - iso_27001-2013: ["A.12.4.1"]
-    condition: any
+    condition: all
     rules:
-      - "c:dpkg -s auditd audispd-plugins -> r:Status: install ok installed"
-      - "c:rpm -q audit audit-libs -> r:^audit-"
+      - "c:which auditd -> r:/auditd"
 
   # 4.1.3 Ensure auditd service is enabled. (Scored)
   - id: 31124
@@ -1828,8 +1828,9 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: any
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:audit=1'
-      - "f:/boot/grub2/grubenv -> r:kernelopts= && r:audit=1"
+      - 'not f:/boot/grub/grub.cfg -> !r:^\s*\t*linux && r:audit=1'
+      - 'not f:/boot/grub2/grub.cfg -> !r:^\s*\t*linux && r:audit=1'
+      - 'not f:/boot/grub/menu.lst -> !r:^\s*\t*kernel && r:audit=1'
 
   # 4.1.5 Ensure events that modify date and time information are collected. (Scored)
   - id: 31126
@@ -1896,7 +1897,7 @@ checks:
       - cis_csc_v7: ["6 3.6", "5.5"]
       - iso_27001-2013: ["A.12.1.2"]
       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
-    condition: any
+    condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor.d && r:-p wa'
@@ -2057,16 +2058,17 @@ checks:
       - cis_csc_v7: ["6 3", "5.1"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-    condition: any
+    condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'c:auditctl -l -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'c:auditctl -l -> r:-k kernel_modules|-F key=kernel_modules && r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules"
+      - "c:auditctl -l -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules"
 
   # 4.1.19 Ensure the audit configuration is immutable. (Scored)
   - id: 31139
@@ -2092,10 +2094,9 @@ checks:
       - cis: ["4.2.1.1"]
       - cis_csc_v7: ["6 6.2", "6.2"]
       - iso_27001-2013: ["A.12.4.1"]
-    condition: any
+    condition: all
     rules:
-      - "c:rpm -q rsyslog -> r:^rsyslog-"
-      - "c:dpkg-query -s rsyslog -> r:^Status: install ok installed"
+      - "c:which rsyslogd -> r:/rsyslogd"
 
   # 4.2.1.2 Ensure rsyslog Service is enabled. (Scored)
   - id: 31141
@@ -2111,7 +2112,7 @@ checks:
     rules:
       - "c:systemctl is-enabled rsyslog -> r:^enabled"
       - "c:systemctl is-active rsyslog.service -> r:^active"
-      - "c:chkconfig rsyslog -> r:^rsyslog"
+      - "c:chkconfig rsyslog -> r:^rsyslog && r:2:on && r:3:on && r:4:on && r:5:on"
 
   # 4.2.1.3 Ensure logging is configured. (Not Scored) - Not Implemented
 
@@ -2131,20 +2132,7 @@ checks:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
 
-  # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Scored)
-  - id: 31144
-    title: "Ensure rsyslog is configured to send logs to a remote log host."
-    description: "The rsyslog utility supports the ability to send logs it gathers to a remote log host running syslogd(8) or to receive messages from remote hosts, reducing administrative overhead."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). *.* @@loghost.example.com Run the following command to reload the rsyslogd configuration: # pkill -HUP rsyslogd."
-    compliance:
-      - cis: ["4.2.1.5"]
-      - cis_csc_v7: ["6 6.6", "6.6"]
-    condition: any
-    rules:
-      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^*.* action\.+target='
-      - 'f:/etc/rsyslog.conf -> r:^*.* action\.+target='
-
+  # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Scored) - Not Implemented
   # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Not Scored) - Not Implemented
 
   # 4.2.2.1 Ensure journald is configured to send logs to rsyslog. (Scored)
@@ -2154,7 +2142,7 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.1"]
       - cis_csc_v7: ["6 6.2", "6.5"]
@@ -2169,7 +2157,7 @@ checks:
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.2"]
       - cis_csc_v7: ["6 6.2", "6.4"]
@@ -2185,7 +2173,7 @@ checks:
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent."
     references:
-      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsyste"
+      - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.3"]
       - cis_csc_v7: ["6 6.2", "6.2"]
@@ -2194,21 +2182,7 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*=\s*persistent'
 
-  # 4.2.3 Ensure permissions on all logfiles are configured. (Scored)
-  - id: 31149
-    title: "Ensure permissions on all logfiles are configured."
-    description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-    remediation: 'Run the following commands to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g-w,o-rwx "{}" + Notes: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions.'
-    compliance:
-      - cis: ["4.2.3"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-    condition: all
-    rules:
-      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
-
+  # 4.2.3 Ensure permissions on all logfiles are configured. (Scored) - Not Implemented
   # 4.3 Ensure logrotate is configured. (Not Scored) - Not Implemented
 
   # 5.1 Ensure cron daemon is enabled. (Scored)
@@ -2224,7 +2198,6 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: any
     rules:
-      - "c:systemctl is-active cron.service -> r:enabled"
       - "c:systemctl is-enabled crond.service -> r:enabled"
       - "p:crond"
 
@@ -2241,7 +2214,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:Access:\s*\t*\(0\d00/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/crontab ->  r:600 && r:0 root 0 root'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Scored)
   - id: 31153
@@ -2256,7 +2229,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:Access:\s*\t*\(0\d00/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.hourly ->  r:700 && r:0 root 0 root'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Scored)
   - id: 31154
@@ -2271,7 +2244,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily/ -> r:Access:\s*\t*\(0\d00/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.daily ->  r:700 && r:0 root 0 root'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Scored)
   - id: 31155
@@ -2286,7 +2259,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly/ -> r:Access:\s*\t*\(0\d00/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.weekly ->  r:700 && r:0 root 0 root'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Scored)
   - id: 31156
