@@ -21,9 +21,10 @@ policy:
 requirements:
   title: "Check that the Windows platform is Windows Server 2022"
   description: "Requirements for running the CIS benchmark under Windows Server 2022"
-  condition: all
+  condition: any
   rules:
     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2022'
+    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2025'
 
 checks:
   # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)' (Automated)
