@@ -2274,7 +2274,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:Access:\s*\t*\(0\d00/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.monthly ->  r:700 && r:0 root 0 root'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Scored)
   - id: 31157
@@ -2289,7 +2289,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d/ -> r:Access:\s*\t*\(0\d00/drwx------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.d ->  r:700 && r:0 root 0 root'
 
   # 5.1.8 Ensure at/cron is restricted to authorized users. (Scored)
   - id: 31158
@@ -2304,8 +2304,8 @@ checks:
     rules:
       - "c:stat -L /etc/cron.deny -> r:No such file or directory$"
       - "c:stat -L /etc/at.deny -> r:No such file or directory$"
-      - 'c:stat /etc/cron.allow -> r:Access:\s*\t*\(0\d\d0/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/at.allow -> r:Access:\s*\t*\(0\d\d0/-rw-r-----\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.allow ->  r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/at.allow ->  r:600 && r:0 root 0 root'
 
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Scored)
   - id: 31159
@@ -2320,7 +2320,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:Access:\s*\t*\(0\d00/-rw-------\)\s*\t*Uid:\s*\t*\(\s*\t*0/\s*root\)\s*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/sshd_config ->  r:600 && r:0 root 0 root'
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured. (Scored)
   - id: 31160
@@ -2335,9 +2335,9 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key ->  r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key ->  r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ed25519_key ->  r:600 && r:0 root 0 root'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured. (Scored)
   - id: 31161
@@ -2352,9 +2352,8 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key.pub ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key. ->  r:644 && r:0 root 0 root'
 
   # 5.2.4 Ensure SSH Protocol is set to 2. (Scored) - Not Implemented
 
@@ -2372,8 +2371,7 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*loglevel\s+INFO'
-      - "f:/etc/ssh/sshd_config -> r:loglevel"
+      - 'c:sshd -T -> r:^\s*LogLevel\s+VERBOSE|^\s*loglevel\s+INFO'
 
   # 5.2.6 Ensure SSH X11 forwarding is disabled. (Scored)
   - id: 31164
@@ -2388,8 +2386,7 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*\t*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*x11forwarding\s+yes'
+      - 'c:sshd -T -> r:^\s*x11Forwarding\s*\t*no'
 
   # 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less. (Scored)
   - id: 31165
@@ -2401,9 +2398,9 @@ checks:
       - cis: ["5.2.7"]
       - cis_csc_v7: ["6 16", "16.13"]
       - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1134", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538"]
-    condition: all
+    condition: any
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'c:sshd -T -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
       - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.2.8 Ensure SSH IgnoreRhosts is enabled. (Scored)
@@ -2419,8 +2416,7 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:ignorerhosts\s*\t*yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no'
+      - 'c:sshd -T -> !r:^# && r:ignorerhosts\s*\t*yes'
 
   # 5.2.9 Ensure SSH HostbasedAuthentication is disabled. (Scored)
   - id: 31167
@@ -2434,8 +2430,7 @@ checks:
       - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:HostbasedAuthentication\s*\t*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sHostbasedAuthentication\s+yes'
+      - 'c:sshd -T -> !r:^# && r:HostbasedAuthentication\s*\t*no'
 
   # 5.2.10 Ensure SSH root login is disabled. (Scored)
   - id: 31168
@@ -2450,8 +2445,7 @@ checks:
       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:PermitRootLogin\s*\t*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitRootLogin\s+yes'
+      - 'c:sshd -T -> !r:^# && r:PermitRootLogin\s*\t*no'
 
   # 5.2.11 Ensure SSH PermitEmptyPasswords is disabled. (Scored)
   - id: 31169
@@ -2465,8 +2459,20 @@ checks:
       - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sPermitEmptyPasswords\s+yes'
+      - 'c:sshd -T -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
+  # 5.2.12 Ensure SSH PermitUserEnvironment is disabled (Scored). (Scored)
+  - id: 31169
+    title: "Ensure SSH PermitUserEnvironment is disabled."
+    description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
+    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
+    compliance:
+      - cis: ["5.2.11"]
+      - cis_csc_v7: ["6 16", "16.3"]
+      - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
+    condition: all
+    rules:
+      - 'c:sshd -T -> !r:^# && r:PermitUserEnvironment\s*\t*no'
 
   # 5.2.13 Ensure only strong Ciphers are used. (Scored)
   - id: 31170
@@ -2486,9 +2492,9 @@ checks:
       - cis_csc_v7: ["6 3.4", "14.4"]
       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
-    condition: all
+    condition: none
     rules:
-      - "c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
+      - "c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
 
   # 5.2.14 Ensure only strong MAC algorithms are used. (Scored)
   - id: 31171
@@ -2503,9 +2509,9 @@ checks:
       - cis_csc_v7: ["6 3.4", "14.4"]
       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
-    condition: all
+    condition: none
     rules:
-      - "c:sshd -T -> r:^macs && r:hmac-sha2-256-etm@openssh.com|hmac-sha2-512|hmac-sha2-256|hmac-sha2-512-etm@openssh.com"
+      - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used. (Scored)
   - id: 31172
@@ -2518,9 +2524,9 @@ checks:
       - cis_csc_v7: ["6 3.4", "14.4"]
       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
-    condition: all
+    condition: none
     rules:
-      - "c:sshd -T -> r:^KexAlgorithms && r:curve25519-sha256|diffie-hellman-group14-sha256|diffie-hellman-group16-sha512|diffie-hellman-group18-sha512|ecdh-sha2-nistp521|ecdh-sha2-nistp384|ecdh-sha2-nistp256|diffie-hellman-group-exchange-sha256"
+      - "c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.2.16 Ensure SSH Idle Timeout Interval is configured. (Scored)
   - id: 31173
@@ -2535,8 +2541,8 @@ checks:
       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1110", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0 && n:^\s*ClientAliveInterval\s*\t*(\d+) compare <= 900'
-      - 'c:sshd -T -C user=root -> n:^\s*ClientAliveCountMax\s*\t*(\d+) compare == 0'
+      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare != 0'
+      - 'c:sshd -T -> n:ClientAliveCountMax\s*\t*(\d+) compare <= 3'
 
   # 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less. (Scored)
   - id: 31174
@@ -2551,8 +2557,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:LoginGraceTime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
 
   # 5.2.18 Ensure SSH access is limited. (Scored)
   - id: 31175
@@ -2583,7 +2588,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -> r:^\s*Banner\s*\t*/etc/issue.net'
 
   # 5.2.20 Ensure SSH PAM is enabled. (Scored)
   - id: 31177
@@ -2598,8 +2603,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\sUsePAM\s+no'
+      - 'c:sshd -T -> r:^\s*usepam\s+yes'
 
   # 5.2.21 Ensure SSH AllowTcpForwarding is disabled. (Scored)
   - id: 31178
@@ -2617,8 +2621,7 @@ checks:
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
+      - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
 
   # 5.2.22 Ensure SSH MaxStartups is configured. (Scored)
   - id: 31179
@@ -2633,12 +2636,9 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
-      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
-      - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'c:sshd -T -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.2.23 Ensure SSH MaxSessions is set to 4 or less. (Scored)
   - id: 31180
@@ -2653,8 +2653,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 4'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare > 4'
+      - 'c:sshd -T -> n:^\s*MaxSessions\s+(\d+) compare <= 4'
 
   # 5.3.1 Ensure password creation requirements are configured. (Scored)
   - id: 31181
@@ -2667,11 +2666,13 @@ checks:
       - cis_csc_v7: ["6.5.7", "14", "16.12", "14.0"]
       - iso_27001-2013: ["A.12.4.1"]
       - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
-    condition: all
+    condition: any
     rules:
-      - "f:/etc/pam.d/password-auth -> r:pam_pwquality.so && r:try_first_pass"
-      - "f:/etc/pam.d/system-auth -> r:pam_pwquality.so && r:try_first_pass"
-      - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
+      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/pam.d/system-auth -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
+
+  # 5.3.2 Ensure lockout for failed password attempts is configured (Not Scored)
 
   # 5.3.3 Ensure password reuse is limited. (Not Scored)
   - id: 31182
@@ -2682,10 +2683,12 @@ checks:
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v7: ["6 16", "16"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
 
   # 5.3.4 Ensure password hashing algorithm is SHA-512. (Not Scored)
   - id: 31183
@@ -2697,10 +2700,11 @@ checks:
       - cis: ["5.3.4"]
       - cis_csc_v7: ["6 16.14", "16.4"]
       - iso_27001-2013: ["A.10.1.1"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/pam.d/password-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so && r:sha512'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_unix\.so && r:sha512'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix\.so && r:sha512'
+      - 'f:/etc/pam.d/common-password -> r:^\s*password && r:pam_unix\.so && r:sha512'
 
   # 5.4.1.1 Ensure password expiration is 365 days or less. (Scored)
   - id: 31184
@@ -2780,44 +2784,8 @@ checks:
     rules:
       - 'f:/etc/passwd -> r:^root:\w:\w:0'
 
-  # 5.4.4 Ensure default user umask is 027 or more restrictive. (Scored)
-  - id: 31191
-    title: "Ensure default user umask is 027 or more restrictive."
-    description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile , .bashrc , etc.) in their home directories."
-    rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
-    remediation: "Edit the /etc/bashrc, /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: umask 027 Notes: The audit and remediation in this recommendation apply to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. Other methods of setting a default user umask exist however the shell configuration files are the last run and will override other settings if they exist therefor our recommendation is to configure in the shell configuration files. If other methods are in use in your environment they should be audited and the shell configs should be verified to not override."
-    compliance:
-      - cis: ["5.4.4"]
-      - cis_csc_v7: ["6 13", "5.1"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-    condition: none
-    rules:
-      - 'f:/etc/bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'f:/etc/bashrc -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
-      - 'f:/etc/profile -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'f:/etc/profile -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
-      - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask \d\d(\d) compare != 7'
-
-  # 5.4.5 Ensure default user shell timeout is 900 seconds or less. (Scored)
-  - id: 31192
-    title: "Ensure default user shell timeout is 900 seconds or less."
-    description: "The default TMOUT determines the shell timeout for users. The TMOUT value is measured in seconds."
-    rationale: "Having no timeout value associated with a shell could allow an unauthorized user access to another user's shell session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening."
-    remediation: "Edit the /etc/bashrc and /etc/profile files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: TMOUT=900 Notes: The audit and remediation in this recommendation apply to bash and shell. If other shells are supported on the system, it is recommended that their configuration files also are checked. Other methods of setting a timeout exist for other shells not covered here. Ensure that the timeout conforms to your local policy."
-    compliance:
-      - cis: ["5.4.5"]
-      - cis_csc_v7: ["6 16.4", "16.11"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1110", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
-    condition: all
-    rules:
-      - 'not f:/etc/bashrc -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'not c:grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh -> !r:^# && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 900'
-      - 'f:/etc/bashrc -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
-      - 'c:grep -Rh TMOUT /etc/profile /etc/profile.d/*.sh -> !r:^# && n:readonly TMOUT\s*=\s*(\d+)\s*; compare <= 900 && r:export TMOUT\s*$'
-
+  # 5.4.4 Ensure default user umask is 027 or more restrictive. (Scored) - Not Implemented
+  # 5.4.5 Ensure default user shell timeout is 900 seconds or less. (Scored) - Not Implemented
   # 5.5 Ensure root login is restricted to system console. (Not Scored) - Not Implemented
 
   # 5.6 Ensure access to the su command is restricted. (Scored)
@@ -2833,7 +2801,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> !r:# && r:auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
+      - 'f:/etc/pam.d/su -> !r:# && r:auth && r:required && r:pam_wheel.so\s*\t*use_uid'
 
   # 6.1.1 Audit system file permissions. (Not Scored) - Not Implemented
 
@@ -2849,7 +2817,7 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/passwd ->  r:644 && r:0 root 0 root'
 
   # 6.1.3 Ensure permissions on /etc/shadow are configured. (Scored)
   - id: 31197
