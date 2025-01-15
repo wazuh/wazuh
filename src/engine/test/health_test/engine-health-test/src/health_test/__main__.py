@@ -17,6 +17,7 @@ from health_test.decoder_mapping_validate import run as decoder_mapping_validate
 from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
 from health_test.validate_non_modifiables_fields import run as validate_non_modifiables_fields_run
+from health_test.validate_custom_field_documentation import run as validate_custom_field_documentation_run
 
 
 def parse_args() -> Namespace:
@@ -75,6 +76,13 @@ def parse_args() -> Namespace:
     non_modifiable_fields_validate.add_argument('--integration', help='Specify integration name', required=False)
     non_modifiable_fields_validate.add_argument('--rule_folder', help='Specify rule folder name', required=False)
     non_modifiable_fields_validate.set_defaults(func=validate_non_modifiables_fields_run)
+
+    # custom field documentation subcommand
+    custom_field_documentation_validate_parser = static_subparsers.add_parser(
+        'custom_field_documentation_validate', help='Validates that each field defined as custom has been properly documented')
+    custom_field_documentation_validate_parser.add_argument('--integration', help='Specify integration name', required=False)
+    custom_field_documentation_validate_parser.add_argument('--rule_folder', help='Specify rule folder name', required=False)
+    custom_field_documentation_validate_parser.set_defaults(func=validate_custom_field_documentation_run)
 
     # Dynamic subcommand group
     dynamic_parser = subparsers.add_parser(
