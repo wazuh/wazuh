@@ -23,14 +23,18 @@ class UnitResult(UnitResultInterface):
 
     def setup(self, actual_output: dict):
         traces = actual_output.get('traces', [])
-        any = False
+        any_asset = False
         for trace in traces:
             if self.is_decoder_asset(trace.get('asset')) and trace.get('success'):
-                any = True
+                any_asset = True
                 self.check_trace(trace)
 
-        if not any:
-            sys.exit("The decoders were not added to the policy. You must run the decoders load")
+        if not any_asset:
+            self.diff.setdefault(self.index, {}).setdefault("events_not_consumed", {}).update({
+                "status": "events not consumed by any decoder",
+                "event": actual_output['output']['event']['original']
+            })
+            self.success = False
 
     def is_decoder_asset(self, asset: str) -> bool:
         parts = asset.split('/')
