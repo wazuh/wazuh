@@ -78,12 +78,20 @@ private:
      *
      */
     // void processEvent(ScanOrchestrator& scanOrchestrator, const MessageBuffer* message) const;
-    std::unique_ptr<RouterSubscriber> m_syscollectorDeltasSubscription;
-    std::unique_ptr<RouterSubscriber> m_syscollectorRsyncSubscription;
+    std::unique_ptr<RouterSubscriber> m_inventoryDeltasSubscription;
+    std::unique_ptr<RouterSubscriber> m_inventoryRsyncSubscription;
+    std::unique_ptr<RouterSubscriber> m_fimDeltasSubscription;
+    std::unique_ptr<RouterSubscriber> m_fimRsyncSubscription;
     std::unique_ptr<RouterSubscriber> m_wdbAgentEventsSubscription;
     std::shared_ptr<IndexerConnector> m_indexerConnector;
     bool m_noWaitToStop {true};
     std::shared_ptr<EventDispatcher> m_eventDispatcher;
+
+    void initInventoryDeltasSubscription();
+    void initInventoryRsyncSubscription();
+    void initFimDeltasSubscription();
+    void initFimRsyncSubscription();
+    void initWazuhDBEventSubscription();
 };
 
 #endif // _VULNERABILITY_SCANNER_FACADE_HPP
