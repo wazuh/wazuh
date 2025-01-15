@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.1]
 
+### Manager
+
+#### Fixed
+
+- Handled HTTP 413 response code in the Indexer connector. ([#27502](https://github.com/wazuh/wazuh/pull/27502))
+
 
 ## [v4.10.0]
 
