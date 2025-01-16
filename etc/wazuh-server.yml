@@ -8,6 +8,9 @@ server:
       key: /etc/wazuh-server/certs/server.key
       cert: /etc/wazuh-server/certs/server.crt
       ca: /etc/wazuh-server/certs/server.ca
+  jwt:
+      private_key: /etc/wazuh-server/certs/private-key.pem
+      public_key: /etc/wazuh-server/certs/public-key.pem
 indexer:
   hosts:
     - host: localhost
@@ -29,7 +32,7 @@ communications_api:
     use_ca: false
     ca: <CA_FILE_PATH>
 management_api:
-  host: 
+  host:
     - localhost
     - ::1
   port: 55000
