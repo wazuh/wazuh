@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(include)
 include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/external/flatbuffers/include)
+include_directories(${SRC_FOLDER}/external/nlohmann)
 
 # Link directories
 link_directories(${SRC_FOLDER}/external/flatbuffers/build)
@@ -22,4 +23,3 @@ file(GLOB FLATBUFFERS_TOOL_SRC
 add_executable(flatbuffer_tool ${FLATBUFFERS_TOOL_SRC})
 
 target_link_libraries(flatbuffer_tool flatbuffers)
-

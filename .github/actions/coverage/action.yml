@@ -48,6 +48,10 @@ runs:
             arguments+="--directory build/tests/component "
           fi
 
+          if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
+            arguments+="--directory build/tests "
+          fi
+
           # Set output file
           arguments+="--output-file build/coverage.info "
 
@@ -56,8 +60,15 @@ runs:
 
           # Include test files
           include_files=""
-          for file in $(find src/ include/ -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
+          if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
+            paths="."
+          else
+            paths="src/ include/"
+          fi
+
+          for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
           do
+            file=$(echo $file | sed 's/\.\///g')
             if [[ ! "$file" =~ "_generated.h" ]]; then
               include_files+="--include=$(pwd)$dir/$file "
             fi
