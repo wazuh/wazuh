@@ -26,7 +26,7 @@ jobs:
       - name: Compress folder
         run: 7z a win-agent-base.zip ./*
       - name: Upload base branch folder
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: win-agent-base.zip
           path: win-agent-base.zip
@@ -74,13 +74,13 @@ jobs:
           python -m pytest -vv ./test_win_upgrade.py
       - name: Upload release installation log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: release_log
           path: C:\win-agent-released\win-agent-released.log
       - name: Upload base installation log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: base_log
           path: C:\win-agent-base\win-agent-base.log

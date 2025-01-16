@@ -31,7 +31,7 @@ jobs:
           rm -f src/win32/libstdc++-6.dll
           find src/ -name "*.dll" -not -path "src/external/*" -not -path "src/win32/SimpleSC/*" -not -path "src/win32/nsProcess/*" -exec cp {} src/bin_files/ \;
       - name: Upload Artifact binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: binaries
           path: src/bin_files

@@ -39,7 +39,7 @@ jobs:
           python build.py --target ${{ matrix.target }} --readytoreview ${{ matrix.module }}
       - name: Uploading coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage_report ${{ matrix.target }}
           path: ./**/coverage_report/**
