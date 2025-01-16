@@ -14,7 +14,7 @@ policy:
   id: "cis_centos8_linux"
   file: "cis_centos8_linux.yml"
   name: "CIS CentOS Linux 8 Benchmark v2.0.0"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for CentOS Linux 8 systems running on x86 and x64 platforms. This document was tested against CentOS Linux 8."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for CentOS Linux 8 systems running on x86 and x64 platforms. This document was tested against CentOS Linux 8. This document has been modified to as well support CentOS stream 10."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
