@@ -11,8 +11,11 @@ server:
       ca: /etc/wazuh-server/certs/root-ca.pem
   logging:
     level: debug2
+  jwt:
+    private_key: /etc/wazuh-server/certs/private-key.pem
+    public_key: /etc/wazuh-server/certs/public-key.pem
 indexer:
-  hosts: 
+  hosts:
     - host: wazuh-indexer
       port: 9200
   username: admin
@@ -27,6 +30,6 @@ indexer:
 communications_api:
   host: '0.0.0.0'
 management_api:
-  host: 
+  host:
     - '0.0.0.0'
     - '::'
