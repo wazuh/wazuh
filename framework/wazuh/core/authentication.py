@@ -4,11 +4,8 @@ from typing import Tuple
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
-from wazuh import WazuhInternalError
-from wazuh.core.common import wazuh_uid, wazuh_gid, WAZUH_ETC
-
-_private_key_path = WAZUH_ETC / 'private_key.pem'
-_public_key_path = WAZUH_ETC / 'public_key.pem'
+from wazuh.core.common import wazuh_uid, wazuh_gid
+from wazuh.core.config.client import CentralizedConfig
 
 JWT_ALGORITHM = 'ES256'
 JWT_ISSUER = 'wazuh'
@@ -23,18 +20,12 @@ def get_keypair() -> Tuple[str, str]:
         Private key.
     public_key : str
         Public key.
-
-    Raises
-    ------
-    WazuhInternalError(6003)
-        If there was an error trying to load the JWT secret.
     """
-    if not keypair_exists():
-        raise WazuhInternalError(6003, extra_message='key pair files not found')
+    config = CentralizedConfig.get_server_config()
 
-    with open(_private_key_path, mode='r') as key_file:
+    with open(config.jwt.private_key, mode='r') as key_file:
         private_key = key_file.read()
-    with open(_public_key_path, mode='r') as key_file:
+    with open(config.jwt.public_key, mode='r') as key_file:
         public_key = key_file.read()
 
     return private_key, public_key

@@ -5,7 +5,9 @@ from pydantic import Field
 
 from pydantic import field_validator, ValidationInfo
 
-from wazuh.core.config.models.base import WazuhConfigBaseModel
+from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
+
+CERTIFICATE_TYPE = 'certificate'
 
 
 class SSLProtocol(str, Enum):
@@ -15,30 +17,6 @@ class SSLProtocol(str, Enum):
     tls_v1_1 = "TLSv1.1"
     tls_v1_2 = "TLSv1.2"
     auto = "auto"
-
-
-class ValidateFilePathMixin:
-    @classmethod
-    def _validate_file_path(cls, path: str, field_name: str):
-        """Validate that a single file path is non-empty and points to an existing file.
-
-        Parameters
-        ----------
-        path : str
-            File path to validate.
-        field_name : str
-            Name of the field being validated.
-
-        Raises
-        ------
-        ValueError
-            If the file path is empty or the file does not exist.
-        """
-        if path == '':
-            raise ValueError(f'{field_name}: missing certificate file')
-
-        if not os.path.isfile(path):
-            raise ValueError(f"{field_name}: the file '{path}' does not exist")
 
 
 class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
@@ -82,7 +60,7 @@ class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         str
             SSL certificate/key path.
         """
-        cls._validate_file_path(path, info.field_name)
+        cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
         return path
 
 
@@ -132,7 +110,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             SSL certificate/key path.
         """
         if info.data['use_ssl']:
-            cls._validate_file_path(path, info.field_name)
+            cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
         return path
 
     @field_validator('certificate_authorities')
@@ -159,7 +137,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         """
         if info.data['use_ssl']:
             for path in paths:
-                cls._validate_file_path(path, info.field_name)
+                cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
 
         return paths
 

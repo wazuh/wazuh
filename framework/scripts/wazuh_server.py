@@ -17,7 +17,6 @@ from functools import partial
 from typing import Any, List
 
 from wazuh.core import pyDaemonModule
-from wazuh.core.authentication import generate_keypair, keypair_exists
 from wazuh.core.common import WAZUH_SHARE, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.server import NodeType
@@ -374,11 +373,6 @@ def start():
 
     if server_config.node.type == NodeType.MASTER:
         main_function = master_main
-
-        # Generate JWT signing key pair if it doesn't exist
-        if not keypair_exists():
-            main_logger.info('Generating JWT signing key pair')
-            generate_keypair()
     else:
         main_function = worker_main
 

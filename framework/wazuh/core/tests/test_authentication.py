@@ -1,27 +1,22 @@
-from unittest.mock import patch, call
+from unittest.mock import patch, call, MagicMock
 
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import authentication
-        from wazuh.core.exception import WazuhInternalError
 
+@patch('wazuh.core.authentication.CentralizedConfig.get_server_config')
 @patch('builtins.open')
-def test_get_keypair(mock_open):
+def test_get_keypair(mock_open, get_server_config_mock):
     """Verify correct params when calling open method inside get_keypair."""
-    with patch('wazuh.core.authentication.keypair_exists', return_value=True):
-        authentication.get_keypair()
-        calls = [call(authentication._private_key_path, mode='r'),
-                 call(authentication._public_key_path, mode='r')]
-        mock_open.assert_has_calls(calls, any_order=True)
-
-
-def test_get_keypair_ko():
-    """Verify an exception is raised when there's no key pair."""
-    with patch('wazuh.core.authentication.keypair_exists', return_value=False):
-        with pytest.raises(WazuhInternalError, match='.*6003*.'):
-            authentication.get_keypair()
+    private_key = 'private_key'
+    public_key = 'public_key'
+    config_mock = MagicMock(**{"jwt.private_key": private_key, "jwt.public_key": public_key})
+    get_server_config_mock.return_value = config_mock
+    authentication.get_keypair()
+    calls = [call(private_key, mode='r'), call(public_key, mode='r')]
+    mock_open.assert_has_calls(calls, any_order=True)
 
 
 @patch('os.chmod')
