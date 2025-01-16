@@ -29,7 +29,7 @@ jobs:
           rm -f src/win32/setup-*.exe
           cp src/win32/*.exe src/exe_files/
       - name: Upload Artifact executables
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: executables
           path: src/exe_files
@@ -42,7 +42,7 @@ jobs:
           sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf
           cp src/win32/internal_options.conf src/configuration_files/
       - name: Upload Artifact configuration files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: configuration
           path: src/configuration_files
@@ -87,7 +87,7 @@ jobs:
           python -m pytest -vv ./test_dll_hijack.py
       - name: Upload .csv files
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: csv_files ${{ matrix.os }}
           path: C:\executables\*.csv

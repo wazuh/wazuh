@@ -32,7 +32,7 @@ jobs:
           cp ../wazuh.zip src/winagent/wazuh.zip
       # Upload build artifacts.
       - name: Upload Artifact winagent
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: winagent
           path: src/winagent
