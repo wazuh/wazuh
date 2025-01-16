@@ -30,7 +30,6 @@ constexpr auto PASSWORD_KEY {"password"};
 constexpr auto ELEMENTS_PER_BULK {1000};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
-constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
@@ -42,7 +41,7 @@ constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
  * @throws std::runtime_error If the CA root certificate file does not exist, could not be opened, written or the
  * ownership could not be changed.
  */
-static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
+static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, const std::string& caRootCertificate)
 {
     std::string caRootCertificateContentMerged;
 
@@ -61,8 +60,6 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, s
 
         caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     }
-
-    caRootCertificate = MERGED_CA_PATH;
 
     if (std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
         !std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
@@ -97,7 +94,7 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, s
 
 static void initConfiguration(SecureCommunication& secureCommunication, const IndexerConnectorOptions& config)
 {
-    std::string caRootCertificate;
+    std::string caRootCertificate = config.sslOptions.mergedCAPath;
     std::string sslCertificate;
     std::string sslKey;
     std::string username;
