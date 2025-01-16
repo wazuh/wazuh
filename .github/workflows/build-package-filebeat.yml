@@ -1,12 +1,72 @@
-name: Build and Upload Filebeat Packages
+run-name: Build ${{ inputs.system }} filebeat on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.id }}
+name: Build Filebeat
 
 on:
   workflow_dispatch:
+    inputs:
+      architecture:
+        description: |
+          Architecture of the package [amd64, arm64]
+        required: false
+        default: amd64
+        type: choice
+        options:
+          - amd64
+          - arm64
+      system:
+        description: |
+          Package format [deb, rpm]
+        required: false
+        default: deb
+        type: choice
+        options:
+          - deb
+          - rpm
+      revision:
+        description: |
+          Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        description: |
+          Build package with release format.
+          By default: false
+        type: boolean
+        required: false
+      checksum:
+        description: Generate package checksum.
+        type: boolean
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
   workflow_call:
-  pull_request:
-    types: [synchronize, opened, reopened, ready_for_review]
-    paths:
-        - ".github/workflows/build-package-filebeat.yml"
+    inputs:
+      architecture:
+        type: string
+        required: false
+      system:
+        type: string
+        required: false
+      revision:
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      id:
+        type: string
+        required: false
 
 jobs:
   build-and-upload:
@@ -15,7 +75,7 @@ jobs:
 
     env:
       FILEBEAT_VERSION: 7.10.2
-      S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
+      S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/packages/
 
     steps:
       - name: Cancel previous runs
@@ -68,40 +128,64 @@ jobs:
 
           sed -i '/func TestDocker(t \*testing\.T) {/,/^}$/d' dev-tools/packaging/package_test.go
 
-      - name: Package Filebeat AMD64
+      - name: Package Filebeat
         working-directory: filebeat
         run: |
-          PLATFORMS=linux/amd64 mage package
+          PLATFORMS=linux/${{ inputs.architecture }} PACKAGES=${{ inputs.system }} mage package
 
-      - name: Package Filebeat ARM64
-        working-directory: filebeat
-        run: |
-          PLATFORMS=linux/arm64 mage package
-
-      - name: Upload Filebeat modules to S3
+      - name: Upload Filebeat package to S3
         working-directory: filebeat/build/distributions
         run: |
-          files=("filebeat-oss-7.10.2-aarch64.rpm"
-                 "filebeat-oss-7.10.2-x86_64.rpm"
-                 "filebeat-oss-7.10.2-amd64.deb"
-                 "filebeat-oss-7.10.2-arm64.deb")
+          if [ "${{ inputs.system }}" = "rpm" ]; then
+            if [ "${{ inputs.architecture }}" = "amd64" ]; then
+              arch="x86_64"
+            elif [ "${{ inputs.architecture }}" = "arm64" ]; then
+              arch="aarch64"
+            fi
+            revision="-${{ inputs.revision }}."
+          else
+            arch="${{ inputs.architecture }}"
+            revision="-${{ inputs.revision }}_"
+          fi
 
-          for file in "${files[@]}"; do
-            aws s3 cp "$file" "${{ env.S3_BUCKET_PATH }}"
-            s3uri="${{ env.S3_BUCKET_PATH }}/$file"
-            echo "S3 URI: ${s3uri}"
-          done
+          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}"
+          if [ "${{ inputs.is_stage }}" = "false" ]; then
+            git_hash=$(git rev-parse --short "$GITHUB_SHA")
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}_${git_hash}.${{ inputs.system }}"
+          else
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}.${{ inputs.system }}"
+          fi
+
+          mv "$original_file" "$renamed_file"
+          aws s3 cp "$renamed_file" "${{ env.S3_BUCKET_PATH }}"
+          s3uri="${{ env.S3_BUCKET_PATH }}$renamed_file"
+          echo "S3 URI: ${s3uri}"
 
       - name: Upload Filebeat module SHA512 to S3
+        if: ${{ inputs.checksum }}
         working-directory: filebeat/build/distributions
         run: |
-          files=("filebeat-oss-7.10.2-aarch64.rpm.sha512"
-                 "filebeat-oss-7.10.2-x86_64.rpm.sha512"
-                 "filebeat-oss-7.10.2-amd64.deb.sha512"
-                 "filebeat-oss-7.10.2-arm64.deb.sha512")
+          if [ "${{ inputs.system }}" = "rpm" ]; then
+            if [ "${{ inputs.architecture }}" = "amd64" ]; then
+              arch="x86_64"
+            elif [ "${{ inputs.architecture }}" = "arm64" ]; then
+              arch="aarch64"
+            fi
+            revision="-${{ inputs.revision }}."
+          else
+            arch="${{ inputs.architecture }}"
+            revision="-${{ inputs.revision }}_"
+          fi
 
-          for file in "${files[@]}"; do
-            aws s3 cp "$file" "${{ env.S3_BUCKET_PATH }}"
-            s3uri="${{ env.S3_BUCKET_PATH }}/$file"
-            echo "S3 URI: ${s3uri}"
-          done
+          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}.sha512"
+          if [ "${{ inputs.is_stage }}" = "false" ]; then
+            git_hash=$(git rev-parse --short "$GITHUB_SHA")
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}_${git_hash}.${{ inputs.system }}.sha512"
+          else
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}.${{ inputs.system }}.sha512"
+          fi
+
+          mv "$original_file" "$renamed_file"
+          aws s3 cp "$renamed_file" "${{ env.S3_BUCKET_PATH }}"
+          s3uri="${{ env.S3_BUCKET_PATH }}$renamed_file"
+          echo "S3 sha512 URI: ${s3uri}"
