@@ -1,4 +1,4 @@
-#!/var/ossec/framework/python/bin/python3
+#!/usr/share/wazuh-server/framework/python/bin/python3
 
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.

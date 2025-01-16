@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/share/wazuh-server/framework/python/bin/python3
 
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -8,11 +8,13 @@ import argparse
 import asyncio
 import logging
 import os
+import psutil
 import signal
 import subprocess
 import sys
-from typing import List
 import time
+from functools import partial
+from typing import Any, List
 
 from wazuh.core import pyDaemonModule
 from wazuh.core.authentication import generate_keypair, keypair_exists
@@ -30,13 +32,12 @@ from wazuh.core.task.order import get_orders
 
 
 SERVER_DAEMON_NAME = 'wazuh-server'
-COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / 'wazuh_comms_apid.py'
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
-EMBEDDED_PYTHON_PATH = WAZUH_SHARE / 'framework' / 'python' / 'bin' / 'python3'
+COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / f'{COMMS_API_DAEMON_NAME}.py'
 ENGINE_BINARY_PATH = WAZUH_SHARE / 'bin' / 'wazuh-engine'
 ENGINE_DAEMON_NAME = 'wazuh-engined'
-MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / 'wazuh_apid.py'
 MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
+MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / f'{MANAGEMENT_API_DAEMON_NAME}.py'
 
 
 #
@@ -106,9 +107,9 @@ def start_daemons(root: bool):
 
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
-        COMMS_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, COMMS_API_SCRIPT_PATH]
+        COMMS_API_DAEMON_NAME: [COMMS_API_SCRIPT_PATH]
             + (['-r'] if root else []),
-        MANAGEMENT_API_DAEMON_NAME: [EMBEDDED_PYTHON_PATH, MANAGEMENT_API_SCRIPT_PATH]
+        MANAGEMENT_API_DAEMON_NAME: [MANAGEMENT_API_SCRIPT_PATH]
             + (['-r'] if root else []),
     }
 
@@ -338,7 +339,7 @@ def start():
     """Start function of the wazuh-server script in charge of starting the server process."""
     try:
         server_pid = pyDaemonModule.get_wazuh_server_pid(SERVER_DAEMON_NAME)
-        if server_pid:
+        if server_pid and psutil.pid_exists(server_pid):
             print(f'The server is already running on process {server_pid}')
             sys.exit(1)
     except StopIteration:
@@ -365,7 +366,10 @@ def start():
         os.setuid(wazuh_uid())
 
     server_pid = os.getpid()
+
     pyDaemonModule.create_pid(SERVER_DAEMON_NAME, server_pid)
+    signal.signal(signal.SIGTERM, partial(sigterm_handler, server_pid=server_pid))
+
     main_logger.info(f'Starting server (pid: {server_pid})')
 
     if server_config.node.type == NodeType.MASTER:
@@ -382,7 +386,9 @@ def start():
     background_tasks = set()
     try:
         loop = asyncio.new_event_loop()
+        loop.add_signal_handler(signal.SIGTERM, partial(stop_loop, loop))
         background_tasks.add(loop.create_task(get_orders(main_logger)))
+        background_tasks.add(loop.create_task(monitor_server_daemons(loop, psutil.Process(server_pid))))
         loop.run_until_complete(main_function(args, server_config, main_logger))
     except KeyboardInterrupt:
         main_logger.info('SIGINT received. Shutting down...')
@@ -390,10 +396,93 @@ def start():
         main_logger.error("Directory '/tmp' needs read, write & execution " "permission for 'wazuh' user")
     except WazuhDaemonError as e:
         main_logger.error(e)
+    except RuntimeError:
+        main_logger.info('Main loop stopped.')
     except Exception as e:
         main_logger.error(f'Unhandled exception: {e}')
     finally:
         shutdown_server(server_pid)
+
+
+def check_daemon(processes: list, proc_name: str, children_number: int):
+    """Check if the daemon is in the list of processes and has the correct number of children.
+
+    Parameters
+    ----------
+    processes : list
+        List of processes to search within.
+    proc_name : str
+        Name of the process to check.
+    children_number : int
+        Expected number of children to check.
+
+    Raises
+    ------
+    WazuhDaemonError
+        When the process does not have the correct number of children process.
+    """
+    child: psutil.Process = [i for i in processes if proc_name[:-1] in i.name()][0]
+    if child.status() == psutil.STATUS_ZOMBIE:
+        main_logger.error(f"Daemon `{proc_name}` is not running, stopping the whole server.")
+        clean_pid_files(proc_name)
+        return
+    if len(child.children()) != children_number:
+        raise WazuhDaemonError(f'Daemon `{proc_name}` does not have the correct number of children process.')
+
+
+async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: psutil.Process):
+    """Monitor the status of the server daemons.
+
+    Parameters
+    ----------
+    loop : asyncio.BaseEventLoop
+        The loop to stop in case any of the daemons does not meet the expected status.
+    server_process : int
+        Server process to get the children from.
+    """
+    comms_api_config = CentralizedConfig.get_comms_api_config()
+    process_children = {
+        MANAGEMENT_API_DAEMON_NAME: 3,
+        COMMS_API_DAEMON_NAME:  comms_api_config.workers + 4,
+        ENGINE_DAEMON_NAME:  0
+    }
+
+    while True:
+        await asyncio.sleep(10)
+        child_processes = server_process.children()
+
+        try:
+            for proc_name, children in process_children.items():
+                check_daemon(child_processes, proc_name, children)
+        except WazuhDaemonError as error:
+            main_logger.error(f'{error.code} Stopping the whole server.')
+            stop_loop(loop)
+
+
+def stop_loop(loop: asyncio.BaseEventLoop):
+    """Stop the given asyncio loop.
+
+    Parameters
+    ----------
+    loop : asyncio.BaseEventLoop
+        The loop to stop.
+    """
+    loop.stop()
+
+
+def sigterm_handler(signum: int, frame: Any, server_pid: int) -> None:
+    """Handle SIGTERM signal shutting down the server.
+
+    Parameters
+    ----------
+    signum : int
+        The signal number received.
+    frame : Any
+        The current stack frame (unused).
+    server_pid : int
+        The server process ID used to terminate.
+    """
+    shutdown_server(server_pid)
 
 
 def stop():
@@ -404,7 +493,6 @@ def stop():
         main_logger.warning('Wazuh server is not running.')
         sys.exit(0)
 
-    shutdown_server(server_pid)
     os.kill(server_pid, signal.SIGTERM)
 
 

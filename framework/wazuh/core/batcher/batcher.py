@@ -140,7 +140,6 @@ class Batcher:
         self._shutdown_event = asyncio.Event()
         loop = asyncio.get_running_loop()
         loop.add_signal_handler(signal.SIGTERM, self._handle_signal, signal.SIGTERM)
-        loop.add_signal_handler(signal.SIGINT, signal.SIG_IGN)
 
         try:
             while not self._shutdown_event.is_set():
@@ -219,7 +218,7 @@ def create_bulk_list(items: List[Item]) -> List[BulkDoc]:
     docs: List[BulkDoc] = []
     for item in items:
         if item.operation == Operation.CREATE.value:
-            docs.append(BulkDoc.create(index=item.index_name, doc_id=item.id, doc=item.content))    
+            docs.append(BulkDoc.create(index=item.index_name, doc_id=item.id, doc=item.content))
         elif item.operation == Operation.DELETE.value:
             docs.append(BulkDoc.delete(index=item.index_name, doc_id=item.id))
         elif item.operation == Operation.UPDATE.value:

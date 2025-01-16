@@ -112,6 +112,10 @@ override_dh_fixperms:
 	chown $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
 
+	# Scripts
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/framework/scripts/wazuh-server.py
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/api/scripts/wazuh-apid.py
 
 	# Services
 	chown root:root $(TARGET_DIR)/etc/init.d/wazuh-server
