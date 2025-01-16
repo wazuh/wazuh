@@ -8,7 +8,6 @@ from functools import lru_cache
 import yaml
 
 from api import __path__ as api_path
-from wazuh.core.authentication import generate_keypair
 from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
@@ -82,7 +81,6 @@ def revoke_tokens() -> dict:
     dict
         Confirmation message.
     """
-    generate_keypair()
     with TokenManager() as tm:
         tm.delete_all_rules()
 
