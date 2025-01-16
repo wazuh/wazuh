@@ -526,7 +526,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /boot/grub2/grub.cfg ->  r:400 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /boot/grub2/grub.cfg -> r:400 && r:0 root 0 root'
 
   # 1.4.2 Ensure bootloader password is set. (Scored)
   - id: 31032
@@ -768,7 +768,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/motd ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/motd -> r:644 && r:0 root 0 root'
 
   # 1.7.1.5 Ensure permissions on /etc/issue are configured. (Scored)
   - id: 31051
@@ -783,7 +783,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue -> r:644 && r:0 root 0 root'
 
   # 1.7.1.6 Ensure permissions on /etc/issue.net are configured. (Scored)
   - id: 31052
@@ -798,7 +798,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue.net ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue.net -> r:644 && r:0 root 0 root'
 
   # 1.7.2 Ensure GDM login banner is configured. (Scored)
   - id: 31053
@@ -1560,7 +1560,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.allow ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.allow -> r:644 && r:0 root 0 root'
 
   # 3.3.5 Ensure permissions on /etc/hosts.deny are configured. (Scored)
   - id: 31104
@@ -1575,7 +1575,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.deny ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.deny -> r:644 && r:0 root 0 root'
 
   # 3.4.1 Ensure DCCP is disabled. (Scored)
   - id: 31105
@@ -2214,7 +2214,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/crontab ->  r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/crontab -> r:600 && r:0 root 0 root'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Scored)
   - id: 31153
@@ -2229,7 +2229,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.hourly ->  r:700 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.hourly -> r:700 && r:0 root 0 root'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Scored)
   - id: 31154
@@ -2244,7 +2244,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.daily ->  r:700 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.daily -> r:700 && r:0 root 0 root'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Scored)
   - id: 31155
@@ -2259,7 +2259,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.weekly ->  r:700 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.weekly -> r:700 && r:0 root 0 root'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Scored)
   - id: 31156
@@ -2274,7 +2274,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.monthly ->  r:700 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.monthly -> r:700 && r:0 root 0 root'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Scored)
   - id: 31157
@@ -2289,7 +2289,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.d ->  r:700 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.d -> r:700 && r:0 root 0 root'
 
   # 5.1.8 Ensure at/cron is restricted to authorized users. (Scored)
   - id: 31158
@@ -2304,8 +2304,8 @@ checks:
     rules:
       - "c:stat -L /etc/cron.deny -> r:No such file or directory$"
       - "c:stat -L /etc/at.deny -> r:No such file or directory$"
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.allow ->  r:600 && r:0 root 0 root'
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/at.allow ->  r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.allow -> r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/at.allow -> r:600 && r:0 root 0 root'
 
   # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Scored)
   - id: 31159
@@ -2320,7 +2320,7 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/sshd_config ->  r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/sshd_config -> r:600 && r:0 root 0 root'
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured. (Scored)
   - id: 31160
@@ -2335,9 +2335,9 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key ->  r:600 && r:0 root 0 root'
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key ->  r:600 && r:0 root 0 root'
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ed25519_key ->  r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key -> r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key -> r:600 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ed25519_key -> r:600 && r:0 root 0 root'
 
   # 5.2.3 Ensure permissions on SSH public host key files are configured. (Scored)
   - id: 31161
@@ -2352,8 +2352,8 @@ checks:
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key.pub ->  r:644 && r:0 root 0 root'
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key. ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key.pub -> r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_ecdsa_key. -> r:644 && r:0 root 0 root'
 
   # 5.2.4 Ensure SSH Protocol is set to 2. (Scored) - Not Implemented
 
@@ -2817,7 +2817,7 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/passwd ->  r:644 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/passwd -> r:644 && r:0 root 0 root'
 
   # 6.1.3 Ensure permissions on /etc/shadow are configured. (Scored)
   - id: 31197
@@ -2829,10 +2829,10 @@ checks:
       - cis: ["6.1.3"]
       - cis_csc_v7: ["6 16.14", "16.4"]
       - iso_27001-2013: ["A.10.1.1"]
-    condition: all
+    condition: any
     rules:
-      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/shadow -> r:640|600|500|400|0 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/shadow -> r:640|600|500|400|0 && r:0 root \d+ shadow'
 
   # 6.1.4 Ensure permissions on /etc/group are configured. (Scored)
   - id: 31198
@@ -2846,7 +2846,7 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/group -> r:644 && r:0 root 0 root'
 
   # 6.1.5 Ensure permissions on /etc/gshadow are configured. (Scored)
   - id: 31199
@@ -2858,10 +2858,10 @@ checks:
       - cis: ["6.1.5"]
       - cis_csc_v7: ["6 16.14", "16.4"]
       - iso_27001-2013: ["A.10.1.1"]
-    condition: all
+    condition: any
     rules:
-      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/gshadow -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/gshadow -> r:640|600|500|400|0 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/gshadow -> r:640|600|500|400|0 && r:0 root \d+ shadow'
 
   # 6.1.6 Ensure permissions on /etc/passwd- are configured. (Scored)
   - id: 31200
@@ -2875,7 +2875,7 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/passwd- -> r:600|500|400|0 && r:0 root 0 root'
 
   # 6.1.7 Ensure permissions on /etc/shadow- are configured. (Scored)
   - id: 31201
@@ -2887,10 +2887,10 @@ checks:
       - cis: ["6.1.7"]
       - cis_csc_v7: ["6 16.14", "16.4"]
       - iso_27001-2013: ["A.10.1.1"]
-    condition: all
+    condition: any
     rules:
-      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/shadow- -> r:640|600|500|400|0 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/shadow- -> r:640|600|500|400|0 && r:0 root \d+ shadow'
 
   # 6.1.8 Ensure permissions on /etc/group- are configured. (Scored)
   - id: 31202
@@ -2904,7 +2904,7 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/group- -> r:644 && r:0 root 0 root'
 
   # 6.1.9 Ensure permissions on /etc/gshadow- are configured. (Scored)
   - id: 31203
@@ -2918,8 +2918,8 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /etc/gshadow- -> r:^Access:\s*\(0640/-rw-r-----\)|Access:\s*\(0600/-rw-------\) && r:\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/gshadow- -> r:640|600|500|400|0 && r:0 root 0 root'
+      - 'c:stat -Lc "%a %A %u %U %g %G" /etc/gshadow- -> r:640|600|500|400|0 && r:0 root \d+ shadow'
 
   # 6.1.10 Ensure no world writable files exist. (Scored) - Not Implemented
   # 6.1.11 Ensure no unowned files or directories exist. (Scored) - Not Implemented
