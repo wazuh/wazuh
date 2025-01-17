@@ -115,6 +115,18 @@ class EXPORTED IndexerConnector final
                                                     va_list)>& logFunction,
                            const nlohmann::json& config);
 
+    /*
+     * @brief Send bulk reactive, this method is used to send a bulk request to the indexer.
+     * @param actions Actions to be sent.
+     * @param url Indexer URL.
+     * @param secureCommunication Secure communication.
+     * @param depth Depth for recursive calls.
+     */
+    void sendBulkReactive(const std::vector<std::pair<std::string, bool>>& actions,
+                          const std::string& url,
+                          const SecureCommunication& secureCommunication,
+                          int depth = 1);
+
 public:
     /**
      * @brief Class constructor that initializes the publisher.

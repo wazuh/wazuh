@@ -486,6 +486,7 @@ void IndexerConnector::preInitialization(
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::string& templatePath,
+    const std::string& updateMappingsPath,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
