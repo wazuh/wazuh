@@ -1,64 +1,107 @@
+import yaml
 import shared.resource_handler as rs
-import json
+import shared.executor as exec
 from shared.default_settings import Constants as DefaultSettings
+from api_communication.client import APIClient
+from api_communication.proto import catalog_pb2 as api_catalog
+from api_communication.proto import kvdb_pb2 as api_kvdb
+from api_communication.proto.engine_pb2 import GenericStatus_Response
 
 
-def run(args, resource_handler: rs.ResourceHandler):
+def delete_asset_task(executor: exec.Executor, client: APIClient, asset_name: str, namespace: str) -> None:
+    # Backup asset
+    json_request = dict()
+    json_request['namespaceid'] = namespace
+    json_request['name'] = asset_name
+    json_request['format'] = 'json'
+
+    error, response = client.jsend(
+        json_request, api_catalog.ResourceGet_Request(), api_catalog.ResourceGet_Response())
+    if error:
+        raise Exception(f'Error getting asset {asset_name} backup: {error}')
+
+    asset_backup = response['content']
+
+    def do():
+        json_request = dict()
+        json_request['name'] = asset_name
+        json_request['namespaceid'] = namespace
+
+        error, _ = client.jsend(
+            json_request, api_catalog.ResourceDelete_Request(), GenericStatus_Response())
+        if error:
+            return error
+
+        return None
+
+    def undo():
+        json_request = dict()
+        json_request['content'] = asset_backup
+        json_request['namespaceid'] = namespace
+        json_request['format'] = 'json'
+        json_request['type'] = asset_name.split('/')[0]
+
+        error, _ = client.jsend(
+            json_request, api_catalog.ResourcePost_Request(), GenericStatus_Response())
+        if error:
+            return error
+
+        return None
+
+    executor.add(exec.RecoverableTask(do, undo, f'Delete asset [{namespace}]: {asset_name}'))
+
+
+def run(args, _: rs.ResourceHandler):
     api_socket = args['api_sock']
     namespace = args['namespace']
+    dry_run = args['dry-run']
+    integration_name = args['integration-name']
 
-    on_dry_run = False
-    if args['dry-run']:
-        on_dry_run = True
-
-    if args['integration-name']:
-        integration_name = args['integration-name']
-    else:
-        print(f'Error: Needs an integration name to delete')
+    print(f'Removing integration: {integration_name}')
+    print('Importantly, KVDBs will not be removed')
+    client: APIClient
+    try:
+        client = APIClient(api_socket)
+    except Exception as e:
+        print(f'Error: {e}')
         return -1
 
-    print(f'Removing integration named: {integration_name}')
+    executor = exec.Executor()
 
     # Get integration from store
-    available_integration_assets_list = []
+    json_request = dict()
+    json_request['namespaceid'] = namespace
+    json_request['name'] = integration_name
+    json_request['format'] = 'yaml'
+    error, response = client.jsend(
+        json_request, api_catalog.ResourceGet_Request(), api_catalog.ResourceGet_Response())
+    if error:
+        print(f'Error: {error}')
+        return -1
 
-    available_integration_assets = resource_handler.get_store_integration(
-        api_socket, integration_name, namespace)
-    if available_integration_assets['data']['content']:
-        available_integration_assets_json = json.loads(
-            available_integration_assets['data']['content'])
-    else:
+    integration = yaml.safe_load(response['content'])
+
+    # Create tasks to remove all assets from the integration
+    for asset_name in [
+        asset_name
+        for key, asset_list in integration.items()
+        if key != "name"
+        for asset_name in asset_list
+    ]:
+        delete_asset_task(executor, client, asset_name, namespace)
+
+    # Remove the integration
+    delete_asset_task(executor, client, integration_name, namespace)
+
+    print(f'Deleting {integration_name} from the catalog')
+    print('\nTasks:')
+    executor.list_tasks()
+    print('\nExecuting tasks...')
+    executor.execute(dry_run)
+    print('\nDone')
+    if dry_run:
         print(
-            f'Error can\'t update if the integration named {integration_name} does not exist')
-        exit(1)
-
-    # Get all assets from integration
-    asset_type = ['decoders', 'rules', 'outputs', 'filters']
-    for type_name in asset_type:
-        if type_name in available_integration_assets_json.keys():
-            for asset in available_integration_assets_json[type_name]:
-                name = str(asset)
-                available_integration_assets_list.append(name)
-                print(f'Deleting asset {name}')
-                if not on_dry_run:
-                    try:
-                        resource_handler.delete_catalog_file(
-                            api_socket, type_name, name, namespace)
-                    except Exception as err_inst:
-                        print(
-                            f'Will continue deleting, despite error: "{err_inst}"')
-                        continue
-
-    print(f'Deleting integration [{integration_name}]')
-    try:
-        if not on_dry_run:
-            resource_handler.delete_catalog_file(
-                api_socket, 'integration', f'integration/{integration_name}/0', namespace)
-    except:
-        print('Could not remove integration from the store')
-
-    if on_dry_run:
-        print('Finished dry-run.')
+            f'If you want to apply the changes, run again without the --dry-run flag')
 
 
 def configure(subparsers):
