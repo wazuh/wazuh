@@ -26,7 +26,7 @@ jobs:
       - name: Compress folder
         run: 7z a win-agent-base.zip ./*
       - name: Upload base branch folder
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: win-agent-base.zip
           path: win-agent-base.zip
@@ -56,7 +56,7 @@ jobs:
           mkdir C:\win-agent-released
           python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released
       - name: Download base folder
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: win-agent-base.zip
           path: C:\win-agent-base
@@ -74,13 +74,13 @@ jobs:
           python -m pytest -vv ./test_win_upgrade.py
       - name: Upload release installation log
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release_log
           path: C:\win-agent-released\win-agent-released.log
       - name: Upload base installation log
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: base_log
           path: C:\win-agent-base\win-agent-base.log
