@@ -7,17 +7,17 @@ on:
       architecture:
         description: |
           Architecture of the package [amd64, arm64]
-        required: false
-        default: amd64
+        required: true
         type: choice
         options:
           - amd64
+          - x86_64
+          - aarch64
           - arm64
       system:
         description: |
           Package format [deb, rpm]
-        required: false
-        default: deb
+        required: true
         type: choice
         options:
           - deb
@@ -50,10 +50,10 @@ on:
     inputs:
       architecture:
         type: string
-        required: false
+        required: true
       system:
         type: string
-        required: false
+        required: true
       revision:
         default: "0"
         type: string
@@ -131,22 +131,23 @@ jobs:
       - name: Package Filebeat
         working-directory: filebeat
         run: |
-          PLATFORMS=linux/${{ inputs.architecture }} PACKAGES=${{ inputs.system }} mage package
+          if [[ "${{ inputs.architecture }}" == "x86_64" ||  "${{ inputs.architecture }}" == "amd64" ]]; then
+            arch="amd64"
+          elif [[ "${{ inputs.architecture }}" == "aarch64" || "${{ inputs.architecture }}" == "arm64" ]]; then
+            arch="arm64"
+          fi
+          PLATFORMS=linux/${arch} PACKAGES=${{ inputs.system }} mage package
 
       - name: Upload Filebeat package to S3
         working-directory: filebeat/build/distributions
         run: |
           if [ "${{ inputs.system }}" = "rpm" ]; then
-            if [ "${{ inputs.architecture }}" = "amd64" ]; then
-              arch="x86_64"
-            elif [ "${{ inputs.architecture }}" = "arm64" ]; then
-              arch="aarch64"
-            fi
             revision="-${{ inputs.revision }}."
           else
-            arch="${{ inputs.architecture }}"
             revision="-${{ inputs.revision }}_"
           fi
+          arch="${{ inputs.architecture }}"
+
 
           original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}"
           if [ "${{ inputs.is_stage }}" = "false" ]; then
@@ -166,16 +167,11 @@ jobs:
         working-directory: filebeat/build/distributions
         run: |
           if [ "${{ inputs.system }}" = "rpm" ]; then
-            if [ "${{ inputs.architecture }}" = "amd64" ]; then
-              arch="x86_64"
-            elif [ "${{ inputs.architecture }}" = "arm64" ]; then
-              arch="aarch64"
-            fi
             revision="-${{ inputs.revision }}."
           else
-            arch="${{ inputs.architecture }}"
             revision="-${{ inputs.revision }}_"
           fi
+          arch="${{ inputs.architecture }}"
 
           original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}.sha512"
           if [ "${{ inputs.is_stage }}" = "false" ]; then
