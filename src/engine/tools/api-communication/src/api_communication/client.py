@@ -150,7 +150,7 @@ class APIClient:
 
         # Treat response as a generic status response
         if protoRes.status != ReturnStatus.OK:
-            return f'Error from server: {protoRes.error}', {}
+            return protoRes.error, {}
 
         # Return the response
         return None, json_response

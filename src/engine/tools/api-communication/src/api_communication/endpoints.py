@@ -29,9 +29,9 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
     if isinstance(message, catalog.ResourceGet_Request):
         return None, 'catalog/resource/get'
     if isinstance(message, catalog.ResourcePut_Request):
-        return None, 'catalog/resource/delete'
-    if isinstance(message, catalog.ResourceDelete_Request):
         return None, 'catalog/resource/put'
+    if isinstance(message, catalog.ResourceDelete_Request):
+        return None, 'catalog/resource/delete'
     if isinstance(message, catalog.ResourceValidate_Request):
         return None, 'catalog/resource/validate'
     if isinstance(message, catalog.NamespacesGet_Request):
