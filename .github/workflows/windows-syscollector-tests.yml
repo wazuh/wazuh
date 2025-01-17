@@ -34,31 +34,31 @@ jobs:
           cp src/win32/libwinpthread-1.dll src/shared_libraries/
       # Upload build artifacts for the shared libraries.
       - name: Upload Artifact shared_libraries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: shared_libraries
           path: src/shared_libraries
       # Upload build artifacts for the data provider.
       - name: Upload Artifact data_provider
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: data_provider
           path: src/data_provider/build/bin
       # Upload build artifacts for dbsync.
       - name: Upload Artifact dbsync
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dbsync
           path: src/shared_modules/dbsync/build/bin
       # Upload build artifacts for rsync.
       - name: Upload Artifact rsync
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rsync
           path: src/shared_modules/rsync/build/bin
       # Upload build artifacts for syscollector.
       - name: Upload Artifact syscollector
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: syscollector
           path: src/wazuh_modules/syscollector/build/bin
@@ -74,27 +74,27 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact data_provider
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: data_provider
           path: C:\data_provider\
       - name: Download Artifact dbsync
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: dbsync
           path: C:\dbsync\
       - name: Download Artifact rsync
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: rsync
           path: C:\rsync\
       - name: Download Artifact syscollector
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: syscollector
           path: C:\syscollector\
       - name: Download Artifact shared_libraries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: shared_libraries
           path: C:\shared_libraries\
