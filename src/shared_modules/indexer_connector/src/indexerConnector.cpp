@@ -27,7 +27,13 @@ constexpr auto NOT_USED {-1};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
-constexpr auto ELEMENTS_PER_BULK {1000};
+constexpr auto ELEMENTS_PER_BULK {25000};
+constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
+
+constexpr auto HTTP_BAD_REQUEST {400};
+constexpr auto HTTP_CONTENT_LENGTH {413};
+
+constexpr auto RECURSIVE_MAX_DEPTH {20};
 
 namespace Log
 {
@@ -273,6 +279,77 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
     return responseJson;
 }
 
+void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string, bool>>& actions,
+                                        const std::string& url,
+                                        const SecureCommunication& secureCommunication,
+                                        const int depth)
+{
+    if (depth > RECURSIVE_MAX_DEPTH)
+    {
+        throw std::runtime_error("Error 413 recursion limit reached, cannot split further.");
+    }
+
+    std::string bulkData;
+    // Iterate over the actions vector and build the bulk data.
+    // If the element is marked as deleted, the element will be deleted from the indexer.
+    // If the element is not marked as deleted, the element will be added to the indexer.
+    for (const auto& [id, deleted] : actions)
+    {
+        if (deleted)
+        {
+            builderBulkDelete(bulkData, id, m_indexName);
+        }
+        else
+        {
+            std::string data;
+            if (!m_db->get(id, data))
+            {
+                throw std::runtime_error("Failed to get data from the database.");
+            }
+            builderBulkIndex(bulkData, id, m_indexName, data);
+        }
+    }
+
+    if (!bulkData.empty())
+    {
+        const auto onSuccess = [](const std::string& response)
+        {
+            logDebug2(IC_NAME, "Response: %s", response.c_str());
+        };
+
+        const auto onError =
+            [this, &actions, &url, &secureCommunication, depth](const std::string& error, const long statusCode)
+        {
+            if (statusCode == HTTP_CONTENT_LENGTH)
+            {
+                logWarn(IC_NAME, "The request is too large. Splitting the bulk data.");
+                if (actions.size() == 1)
+                {
+                    logError(IC_NAME, "One document is too large, cannot split further.");
+                    throw std::runtime_error("Single-document 413, cannot split further.");
+                }
+
+                auto mid = actions.begin() + std::ptrdiff_t(actions.size() / 2);
+                std::vector<std::pair<std::string, bool>> left(actions.begin(), mid);
+                std::vector<std::pair<std::string, bool>> right(mid, actions.end());
+
+                sendBulkReactive(left, url, secureCommunication, depth + 1);
+                sendBulkReactive(right, url, secureCommunication, depth + 1);
+            }
+            else
+            {
+                logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                throw std::runtime_error(error);
+            }
+        };
+
+        HTTPRequest::instance().post(
+            RequestParameters {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
+    }
+}
+
 void IndexerConnector::diff(const nlohmann::json& responseJson,
                             const std::string& agentId,
                             const SecureCommunication& secureCommunication,
@@ -325,55 +402,18 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     auto url = selector->getNext();
     url.append("/_bulk?refresh=wait_for");
 
-    std::string bulkData;
-    // Iterate over the actions vector and build the bulk data.
-    // If the element is marked as deleted, the element will be deleted from the indexer.
-    // If the element is not marked as deleted, the element will be added to the indexer.
-    for (const auto& [id, deleted] : actions)
-    {
-        if (deleted)
-        {
-            builderBulkDelete(bulkData, id, m_indexName);
-        }
-        else
-        {
-            std::string data;
-            if (!m_db->get(id, data))
-            {
-                throw std::runtime_error("Failed to get data from the database.");
-            }
-            builderBulkIndex(bulkData, id, m_indexName, data);
-        }
-    }
-
-    if (!bulkData.empty())
-    {
-        const auto onSuccess = [](const std::string& response)
-        {
-            logDebug2(IC_NAME, "Response: %s", response.c_str());
-        };
-
-        const auto onError = [](const std::string& error, const long statusCode)
-        {
-            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-            throw std::runtime_error(error);
-        };
-
-        HTTPRequest::instance().post(
-            RequestParameters {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
-            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-            ConfigurationParameters {});
-    }
+    sendBulkReactive(actions, url, secureCommunication);
 }
 
 void IndexerConnector::initialize(const nlohmann::json& templateData,
+                                  const nlohmann::json& updateMappingsData,
                                   const std::shared_ptr<ServerSelector>& selector,
                                   const SecureCommunication& secureCommunication)
 {
     // Define the error callback
     auto onError = [](const std::string& error, const long statusCode)
     {
-        if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
+        if (statusCode != HTTP_BAD_REQUEST) // Assuming 400 is for bad requests which we expect to handle differently
         {
             std::string errorMessage = error;
             if (statusCode != NOT_USED)
@@ -405,6 +445,17 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                                    .secureCommunication = secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {});
+
+    // Create new mappings after update.
+    if (!updateMappingsData.empty())
+    {
+        HTTPRequest::instance().put(
+            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
+                               .data = updateMappingsData,
+                               .secureCommunication = secureCommunication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
+    }
 
     m_initialized = true;
     logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
@@ -452,6 +503,19 @@ IndexerConnector::IndexerConnector(
         throw std::runtime_error("Could not open template file: " + templatePath);
     }
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
+
+    // Read add mappings file.
+    nlohmann::json updateMappingsData = nlohmann::json::object();
+    if (!updateMappingsPath.empty())
+    {
+
+        std::ifstream updateMappingsFile(updateMappingsPath);
+        if (!updateMappingsFile.is_open())
+        {
+            throw std::runtime_error("Could not open the update mappings file: " + updateMappingsPath);
+        }
+        updateMappingsData = nlohmann::json::parse(updateMappingsFile);
+    }
 
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
@@ -549,15 +613,82 @@ IndexerConnector::IndexerConnector(
             }
 
             // Send data to the indexer to be processed.
-            const auto processData = [&secureCommunication](const std::string& data, const std::string& url)
+            const auto processData = [this, &secureCommunication](const std::string& data, const std::string& url)
             {
-                const auto onSuccess = [](const std::string& response)
+                const auto bulkSize = this->m_dispatcher->bulkSize();
+                constexpr auto SUCCESS_COUNT_TO_INCREASE_BULK_SIZE {5};
+
+                const auto onSuccess = [this, bulkSize](const std::string& response)
                 {
                     logDebug2(IC_NAME, "Response: %s", response.c_str());
+
+                    // If the request was successful and the current bulk size is less than ELEMENTS_PER_BULK, increase
+                    // the bulk size if the success count is SUCCESS_COUNT_TO_INCREASE_BULK_SIZE
+
+                    if (m_successCount < SUCCESS_COUNT_TO_INCREASE_BULK_SIZE)
+                    {
+                        m_successCount++;
+                    }
+
+                    m_error413FirstTime = false;
+
+                    if (bulkSize < ELEMENTS_PER_BULK)
+                    {
+                        if (m_successCount < SUCCESS_COUNT_TO_INCREASE_BULK_SIZE)
+                        {
+                            logDebug2(IC_NAME,
+                                      "Waiting for %d successful requests to increase the bulk size.",
+                                      SUCCESS_COUNT_TO_INCREASE_BULK_SIZE - m_successCount);
+                            return;
+                        }
+
+                        if (bulkSize * 2 > ELEMENTS_PER_BULK)
+                        {
+                            this->m_dispatcher->bulkSize(ELEMENTS_PER_BULK);
+                            logDebug2(
+                                IC_NAME, "Increasing the elements to be sent to the indexer: %d.", ELEMENTS_PER_BULK);
+                        }
+                        else
+                        {
+                            this->m_dispatcher->bulkSize(bulkSize * 2);
+                            logDebug2(IC_NAME, "Increasing the elements to be sent to the indexer: %d.", bulkSize * 2);
+                        }
+                    }
                 };
 
-                const auto onError = [](const std::string& error, const long statusCode)
+                const auto onError = [this, &data, bulkSize](const std::string& error, const long statusCode)
                 {
+                    if (statusCode == HTTP_CONTENT_LENGTH)
+                    {
+                        m_successCount = 0;
+                        if (bulkSize / 2 < MINIMAL_ELEMENTS_PER_BULK)
+                        {
+                            // If the bulk size is too small, log an error and throw an exception.
+                            // This error will be fixed by the user by increasing the http.max_content_length value in
+                            // the wazuh-indexer settings.
+                            if (m_error413FirstTime == false)
+                            {
+                                m_error413FirstTime = true;
+                                logError(IC_NAME,
+                                         "The amount of elements to process is too small, review the "
+                                         "'http.max_content_length' value in "
+                                         "the wazuh-indexer settings. Current data size: %llu.",
+                                         data.size());
+                            }
+
+                            throw std::runtime_error("The amount of elements to process is too small, review the "
+                                                     "'http.max_content_length' value in "
+                                                     "the wazuh-indexer settings.");
+                        }
+                        else
+                        {
+                            logDebug2(IC_NAME, "Reducing the elements to be sent to the indexer: %llu.", bulkSize / 2);
+                            this->m_dispatcher->bulkSize(bulkSize / 2);
+                            throw std::runtime_error("Bulk size is too large, reducing the elements to be sent to the "
+                                                     "indexer.");
+                        }
+                    }
+
                     logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
                     throw std::runtime_error(error);
                 };
@@ -612,7 +743,7 @@ IndexerConnector::IndexerConnector(
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
-        [this, templateData, selector, secureCommunication]()
+        [this, templateData, updateMappingsData, selector, secureCommunication]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock lock(m_mutex);
@@ -627,7 +758,7 @@ IndexerConnector::IndexerConnector(
                         sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
                     }
 
-                    initialize(templateData, selector, secureCommunication);
+                    initialize(templateData, updateMappingsData, selector, secureCommunication);
                 }
                 catch (const std::exception& e)
                 {
