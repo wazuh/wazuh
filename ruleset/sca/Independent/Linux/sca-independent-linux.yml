@@ -226,9 +226,12 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nosuid /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,nosuid /tmp."
     compliance:
       - cis: ["1.1.4"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:findmnt -kn /tmp -> r:nosuid"
@@ -241,9 +244,11 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,noexec /tmp or Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to remount /tmp : # mount -o remount,noexec /tmp."
     compliance:
       - cis: ["1.1.5"]
-      - cis_csc_v7: ["6 2", "2.6"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
+      - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
       - "c:findmnt -kn /tmp -> r:noexec"
@@ -259,9 +264,12 @@ checks:
       - "http://tldp.org/HOWTO/LVM-HOWTO/"
     compliance:
       - cis: ["1.1.6"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -kn /var -> r:\s*/var\s'
@@ -274,9 +282,12 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.7"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s'
@@ -289,9 +300,12 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,nodev /var/tmp."
     compliance:
       - cis: ["1.1.8"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:findmnt -kn /var/tmp -> r:nodev"
@@ -304,9 +318,12 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,nosuid /var/tmp."
     compliance:
       - cis: ["1.1.9"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:findmnt -kn /var/tmp -> r:nosuid"
@@ -319,9 +336,11 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,noexec /var/tmp."
     compliance:
       - cis: ["1.1.10"]
-      - cis_csc_v7: ["6 2", "2.6"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
+      - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
       - "c:findmnt -kn /var/tmp -> r:noexec"
@@ -337,8 +356,10 @@ checks:
       - "http://tldp.org/HOWTO/LVM-HOWTO/"
     compliance:
       - cis: ["1.1.11"]
-      - cis_csc_v7: ["6 6.3", "6.4"]
+      - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - 'c:findmnt -kn /var/log -> r:\s*/var/log\s'
@@ -354,8 +375,10 @@ checks:
       - "http://tldp.org/HOWTO/LVM-HOWTO/"
     compliance:
       - cis: ["1.1.12"]
-      - cis_csc_v7: ["6 6.3", "6.4"]
+      - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - 'c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s'
@@ -371,9 +394,12 @@ checks:
       - "http://tldp.org/HOWTO/LVM-HOWTO/"
     compliance:
       - cis: ["1.1.13"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:findmnt -kn /home -> r:\s*/home\s'
@@ -386,9 +412,12 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information. # mount -o remount,nodev /home Notes: The actions in this recommendation refer to the /homepartition, which is the default user partition that is defined in many distributions. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well."
     compliance:
       - cis: ["1.1.14"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:findmnt -kn /home -> r:nodev"
@@ -401,9 +430,12 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm : # mount -o remount,nodev /dev/shm Notes: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
     compliance:
       - cis: ["1.1.15"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:findmnt -kn /dev/shm -> r:nodev"
@@ -416,9 +448,12 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm : # mount -o remount,nosuid /dev/shm Notes: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
     compliance:
       - cis: ["1.1.16"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:findmnt -kn /dev/shm -> r:nosuid"
@@ -431,9 +466,11 @@ checks:
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec /dev/shm Notes: Some distributions mount /dev/shm through other means and require /dev/shm to be added to /etc/fstab even though it is already being mounted on boot. Others may configure /dev/shm in other locations and may override /etc/fstab configuration. Consult the documentation appropriate for your distribution."
     compliance:
       - cis: ["1.1.17"]
-      - cis_csc_v7: ["6 2", "2.6", "66 1.1.18", "1", "6 13", "5.1", "67 1.1.19"]
-      - iso_27001-2013: ["A.12.5.1", "A.12.6.2", "A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1046", "T1047", "T1051", "T1052", "T1053", "T1054", "T1055", "T1058", "T1064", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1091", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1118", "T1121", "T1127", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1164", "T1165", "T1166", "T1169", "T1170", "T1171", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1180", "T1184", "T1187", "T1190", "T1191", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1221", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1519", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
+      - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
       - "c:findmnt -kn /dev/shm -> r:noexec"
@@ -452,9 +489,11 @@ checks:
     remediation: "Run one of the following commands to disable autofs : # chkconfig autofs off # systemctl disable autofs # update-rc.d autofs disable."
     compliance:
       - cis: ["1.1.22"]
-      - cis_csc_v7: ["6 8.3", "8.4"]
+      - cis_csc_v7: ["8.4"]
+      - cmmc_v2.0: ["SI.1.213"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1027", "T1045", "T1091", "T1193", "T1194", "T1200", "T1215", "T1221"]
+      - nist_sp_800-53: ["SI-3"]
     condition: all
     rules:
       - "not c:systemctl is-enabled autofs -> r:enabled"
@@ -467,9 +506,11 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/usb-storage.conf and add the following line: install usb-storage /bin/true Run the following command to unload the usb-storage module: rmmod usb-storage."
     compliance:
       - cis: ["1.1.23"]
-      - cis_csc_v7: ["6 8.3", "8.4"]
+      - cis_csc_v7: ["8.4"]
+      - cmmc_v2.0: ["SI.1.213"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1027", "T1045", "T1091", "T1193", "T1194", "T1200", "T1215", "T1221"]
+      - nist_sp_800-53: ["SI-3"]
     condition: all
     rules:
       - "c:modprobe -n -v usb-storage -> r:install /bin/false|install /bin/true"
@@ -488,8 +529,11 @@ checks:
       - "http://aide.sourceforge.net/stable/manual.html"
     compliance:
       - cis: ["1.3.1"]
-      - cis_csc_v7: ["6 3.5", "14.9"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.3.050"]
       - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
       - "c:which aide -> r:/aide"
@@ -505,8 +549,11 @@ checks:
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
     compliance:
       - cis: ["1.3.2"]
-      - cis_csc_v7: ["6 3.5", "14.9"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.3.050"]
       - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
       - "c:systemctl is-enabled aidecheck.service -> r:enabled"
@@ -521,9 +568,12 @@ checks:
     remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub2/grub.cfg # chmod og-rwx /boot/grub2/grub.cfg OR # chown root:root /boot/grub/grub.cfg # chmod og-rwx /boot/grub/grub.cfg Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub2/grub.cfg with the appropriate grub configuration file for your environment."
     compliance:
       - cis: ["1.4.1"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /boot/grub2/grub.cfg -> r:400 && r:0 root 0 root'
@@ -537,9 +587,12 @@ checks:
     remediation: 'For grub based systems create an encrypted password with grub-md5-crypt: # grub-crypt Password: <password> Retype Password: <password> <encrypted-password> Copy and paste the <encrypted-password> into the global section of /boot/grub/menu.lst: password <encrypted-password> For grub2 based systems Create an encrypted password with grub2-setpassword : # grub2-setpassword Enter password: <password> Confirm password: <password> OR create an encrypted password with grub-mkpasswd-pbkdf2: # grub-mkpasswd-pbkdf2 Enter password: <password> Reenter password: <password> Your PBKDF2 is <encrypted-password> Add the following into /etc/grub.d/00_header or a custom /etc/grub.d configuration file: cat <<EOF set superusers="<username>" password_pbkdf2 <username> <encrypted-password> EOF Run the following command to update the grub2 configuration: # grub2-mkconfig -o /boot/grub2/grub.cfg OR # update-grub.'
     compliance:
       - cis: ["1.4.2"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*set superusers="
@@ -557,8 +610,9 @@ checks:
     remediation: "On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit systems: If necessary configure your bootloader to load the new kernel and reboot the system. You may need to enable NX or XD support in your bios. Notes: Ensure your system supports the XD or NX bit and has PAE support before implementing this recommendation as this may prevent it from booting if these are not supported by your hardware."
     compliance:
       - cis: ["1.5.2"]
-      - cis_csc_v7: ["6 8.4", "8.3"]
+      - cis_csc_v7: ["8.3"]
       - mitre_techniques: ["T1003", "T1068", "T1080", "T1085", "T1101", "T1117", "T1131", "T1189", "T1190", "T1203", "T1210", "T1211", "T1212"]
+      - nist_sp_800-53: ["SC-39", "SI-16"]
     condition: all
     rules:
       - "c:journalctl -> r:protection: active && r:kernel: NX"
@@ -571,8 +625,9 @@ checks:
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2."
     compliance:
       - cis: ["1.5.3"]
-      - cis_csc_v7: ["6 8.4", "8.3"]
+      - cis_csc_v7: ["8.3"]
       - mitre_techniques: ["T1003", "T1068", "T1080", "T1085", "T1101", "T1117", "T1131", "T1189", "T1190", "T1203", "T1210", "T1211", "T1212"]
+      - nist_sp_800-53: ["SC-39", "SI-16"]
     condition: any
     rules:
       - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
@@ -587,12 +642,14 @@ checks:
     remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # yum remove prelink # apt-get remove prelink # zypper remove prelink."
     compliance:
       - cis: ["1.5.4"]
-      - cis_csc_v7: ["6 3.5", "14.9"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.3.050"]
       - iso_27001-2013: ["A.12.4.3"]
-    condition: any
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
+    condition: all
     rules:
-      - "c:dpkg -s prelink -> r:package prelink is not installed"
-      - "c:rpm -q prelink -> r:package prelink is not installed"
+      - "not c:which prelink -> r:/prelink"
 
   # 1.6.1.1 Ensure SELinux or AppArmor are installed. (Scored)
   - id: 31039
@@ -602,9 +659,12 @@ checks:
     remediation: "Install SELinux or apparmor using the appropriate package manager or manual installation: # yum install libselinux # apt-get install libselinux1 # zypper install libselinux The previous commands install SELinux, use the appropriate package if AppArmor is desired. Notes: SELinux and AppArmor both have several package names in use on different distributions. Research the appropriate packages for your environment."
     compliance:
       - cis: ["1.6.1.1"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: any
     rules:
       - "c:which setenforce -> r:/setenforce"
@@ -618,9 +678,12 @@ checks:
     remediation: 'For grub based systems edit /boot/grub/menu.lst and remove all instances of selinux=0 and enforcing=0 on all kernel lines. For grub2 based systems edit /etc/default/grub and remove all instances of selinux=0 and enforcing=0 from all CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX_DEFAULT="quiet" GRUB_CMDLINE_LINUX="" Run the following command to update the grub2 configuration: # update-grub or # grub2-mkconfig -o /boot/grub2/guub.cfg Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
     compliance:
       - cis: ["1.6.2.1"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:selinux=0|enforcing=0'
@@ -634,9 +697,12 @@ checks:
     remediation: "Edit the /etc/selinux/config file to set the SELINUX parameter: SELINUX=enforcing."
     compliance:
       - cis: ["1.6.2.2"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - 'c:sestatus -> r:^SELinux\s*status:\s*\t*enabled$'
@@ -652,9 +718,12 @@ checks:
     remediation: "Edit the /etc/selinux/config file to set the SELINUXTYPE parameter: SELINUXTYPE=targeted Notes: If your organization requires stricter policies, ensure that they are set in the /etc/selinux/config file."
     compliance:
       - cis: ["1.6.2.3"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - 'c:sestatus -> r:^Policy from config file:\s*\t*targeted$|^Policy from config file:\s+mls$|^Loaded policy name:\s*\t*targeted$|Loaded policy name:\s+mls$|'
@@ -668,9 +737,12 @@ checks:
     remediation: "Uninstall setroubleshoot using the appropriate package manager or manual installation: # yum remove setroubleshoot # apt-get remove setroubleshoot # zypper remove setroubleshoot."
     compliance:
       - cis: ["1.6.2.4"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - "not c:which sealert -> r:/sealert"
@@ -683,9 +755,12 @@ checks:
     remediation: "Uninstall mcstrans using the appropriate package manager or manual installation: yum remove mcstrans apt-get remove mcstrans zypper remove mcstrans."
     compliance:
       - cis: ["1.6.2.5"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - "not c:which mcstransd -> r:/mcstransd"
@@ -699,9 +774,12 @@ checks:
     remediation: 'For grub based systems edit /boot/grub/menu.lst and remove all instances of apparmor=0 on all kernel lines. For grub2 based systems edit /etc/default/grub and remove all instances of apparmor=0 from all CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX_DEFAULT="quiet" GRUB_CMDLINE_LINUX="" Run the following command to update the grub2 configuration: # update-grub Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub/menu.lst with the appropriate grub configuration file for your environment.'
     compliance:
       - cis: ["1.6.3.1"]
-      - cis_csc_v7: ["6 14.4", "14.6"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.2.007", "MP.2.120"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:apparmor=0'
@@ -717,9 +795,12 @@ checks:
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform."
     compliance:
       - cis: ["1.7.1.1"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
       - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s'
@@ -733,9 +814,12 @@ checks:
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
     compliance:
       - cis: ["1.7.1.2"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s'
@@ -748,9 +832,12 @@ checks:
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
     compliance:
       - cis: ["1.7.1.3"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: none
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s'
@@ -763,9 +850,12 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root /etc/motd # chmod 644 /etc/motd."
     compliance:
       - cis: ["1.7.1.4"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/motd -> r:644 && r:0 root 0 root'
@@ -778,9 +868,12 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root /etc/issue # chmod 644 /etc/issue."
     compliance:
       - cis: ["1.7.1.5"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue -> r:644 && r:0 root 0 root'
@@ -793,9 +886,12 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root /etc/issue.net # chmod 644 /etc/issue.net."
     compliance:
       - cis: ["1.7.1.6"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/issue.net -> r:644 && r:0 root 0 root'
@@ -808,9 +904,12 @@ checks:
     remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and add the following: [org/gnome/login-screen] banner-message-enable=true banner-message-text='Authorized uses only. All activity may be monitored and reported.' Notes: Additional options and sections may appear in the /etc/dconf/db/gdm.d/01-banner- message file. If a different GUI login service is in use, consult your documentation and apply an equivalent banner."
     compliance:
       - cis: ["1.7.2"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]"
@@ -830,12 +929,15 @@ checks:
     remediation: "Comment out or remove any lines starting with chargen from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all chargen services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.1"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^chargen'
+      - 'd:/etc -> r:inetd.\w+ -> r:^chargen'
 
   # 2.1.2 Ensure daytime services are not enabled. (Scored)
   - id: 31056
@@ -845,12 +947,15 @@ checks:
     remediation: "Comment out or remove any lines starting with daytime from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all daytime services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.2"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^daytime'
+      - 'd:/etc -> r:inetd.\w+ -> r:^daytime'
 
   # 2.1.3 Ensure discard services are not enabled. (Scored)
   - id: 31057
@@ -860,12 +965,15 @@ checks:
     remediation: "Comment out or remove any lines starting with discard from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all discard services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.3"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^discard'
+      - 'd:/etc -> r:inetd.\w+ -> r:^discard'
 
   # 2.1.4 Ensure echo services are not enabled. (Scored)
   - id: 31058
@@ -875,12 +983,15 @@ checks:
     remediation: "Comment out or remove any lines starting with echo from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all echo services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.4"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^echo'
+      - 'd:/etc -> r:inetd.\w+ -> r:^echo'
 
   # 2.1.5 Ensure time services are not enabled. (Scored)
   - id: 31059
@@ -890,12 +1001,15 @@ checks:
     remediation: "Comment out or remove any lines starting with time from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all time services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.5"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^time'
+      - 'd:/etc -> r:inetd.\w+ -> r:^time'
 
   # 2.1.6 Ensure rsh server is not enabled. (Scored)
   - id: 31060
@@ -905,13 +1019,14 @@ checks:
     remediation: "Comment out or remove any lines starting with shell , login , or exec from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all rsh , rlogin , and rexec services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.6"]
-      - cis_csc_v7: ["6 3.4", "9.1"]
+      - cis_csc_v7: ["9.1"]
       - iso_27001-2013: ["A.13.1.2"]
+      - pci_dss_v3.2.1: ["2.2.2"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^shell'
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^login'
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^exec'
+      - 'd:/etc -> r:inetd.\w+ -> r:^shell'
+      - 'd:/etc -> r:inetd.\w+ -> r:^login'
+      - 'd:/etc -> r:inetd.\w+ -> r:^exec'
 
   # 2.1.7 Ensure talk server is not enabled. (Scored)
   - id: 31061
@@ -921,13 +1036,16 @@ checks:
     remediation: "Comment out or remove any lines starting with talk or ntalk from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all talk services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.7"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^talk'
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^ntalk'
+      - 'd:/etc -> r:inetd.\w+ -> r:^talk'
+      - 'd:/etc -> r:inetd.\w+ -> r:^ntalk'
 
   # 2.1.8 Ensure telnet server is not enabled. (Scored)
   - id: 31062
@@ -937,11 +1055,12 @@ checks:
     remediation: "Comment out or remove any lines starting with telnet from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all telnet services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.8"]
-      - cis_csc_v7: ["6 3.4", "9.1"]
+      - cis_csc_v7: ["9.1"]
       - iso_27001-2013: ["A.13.1.2"]
+      - pci_dss_v3.2.1: ["2.2.2"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^telnet'
+      - 'd:/etc -> r:inetd.\w+ -> r:^telnet'
 
   # 2.1.9 Ensure tftp server is not enabled. (Scored)
   - id: 31063
@@ -951,12 +1070,15 @@ checks:
     remediation: "Comment out or remove any lines starting with tftp from /etc/inetd.conf and /etc/inetd.d/* . Set disable = yes on all tftp services in /etc/xinetd.conf and /etc/xinetd.d/* ."
     compliance:
       - cis: ["2.1.9"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:\.^inetd.*$ -> r:^tftp'
+      - 'd:/etc -> r:inetd.\w+ -> r:^tftp'
 
   # 2.1.10 Ensure xinetd is not enabled. (Scored)
   - id: 31064
@@ -966,9 +1088,12 @@ checks:
     remediation: "Run one of the following commands to disable xinetd: # chkconfig xinetd off # systemctl disable xinetd # update-rc.d xinetd disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
       - cis: ["2.1.10"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
       - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled"
@@ -981,8 +1106,11 @@ checks:
     remediation: "On physical systems or virtual systems where host based time synchronization is not available install NTP or chrony using the appropriate package manager or manual installation: # yum install ntp # dnf install ntp # apt-get install ntp # zypper install ntp # emerge ntp The previous commands install NTP, use the appropriate package if chrony is desired. On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization. Notes: systemd-timesyncd is part of systemd. Some versions of systemd have been compiled without systemd-timesycnd. On these distributions, chrony or NTP should be used instead of systemd-timesycnd."
     compliance:
       - cis: ["2.2.1.1"]
-      - cis_csc_v7: ["6 6.1", "6.1"]
+      - cis_csc_v7: ["6.1"]
+      - cmmc_v2.0: ["AU.2.043"]
       - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: any
     rules:
       - "c:which chronyd -> r:/chronyd"
@@ -996,8 +1124,11 @@ checks:
     remediation: 'Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server> Configure ntp to run as the ntp user by adding or editing one of the following files as appropriate for your distribution: /etc/sysconfig/ntpd : OPTIONS="-u ntp:ntp" /etc/sysconfig/ntp : NTPD_OPTIONS="-u ntp:ntp" /etc/init.d/ntp: RUNASUSER=ntp.'
     compliance:
       - cis: ["2.2.1.2"]
-      - cis_csc_v7: ["6 6.1", "6.1"]
+      - cis_csc_v7: ["6.1"]
+      - cmmc_v2.0: ["AU.2.043"]
       - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
       - "f:/etc/ntp.conf"
@@ -1013,8 +1144,11 @@ checks:
     remediation: "Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server> Configure chrony to run as the chrony user by configuring the appropriate startup script for your distribution. Startup scripts are typically stored in /etc/init.d or /etc/systemd."
     compliance:
       - cis: ["2.2.1.3"]
-      - cis_csc_v7: ["6 6.1", "6.1"]
+      - cis_csc_v7: ["6.1"]
+      - cmmc_v2.0: ["AU.2.043"]
       - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: all
     rules:
       - "f:/etc/chrony.conf"
@@ -1028,8 +1162,11 @@ checks:
     remediation: "Run the following command to enable systemd-timesyncd systemctl enable systemd-timesyncd.service edit the file /etc/systemd/timesyncd.conf and add/modify the following lines: NTP=0.debian.pool.ntp.org 1.debian.pool.ntp.org #Servers listed should be In Accordence With Local Policy FallbackNTP=2.debian.pool.ntp.org 3.debian.pool.ntp.org #Servers listed should be In Accordence With Local Policy RootDistanceMax=1 #should be In Accordence With Local Policy Run the following commands to start systemd-timesyncd.service # systemctl start systemd-timesyncd.service # timedatectl set-ntp true Notes: some versions of systemd have been compiled without systemd-timesycnd. On these distributions, chrony or NTP should be used instead of systemd-timesycnd. Not all options are avalible on all versions of systemd-timesyncd."
     compliance:
       - cis: ["2.2.1.4"]
-      - cis_csc_v7: ["6 6.1", "6.1"]
+      - cis_csc_v7: ["6.1"]
+      - cmmc_v2.0: ["AU.2.043"]
       - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-8"]
+      - pci_dss_v3.2.1: ["10.4"]
     condition: any
     rules:
       - "f:/etc/systemd/timesyncd.conf -> r:^NTP|^FallbackNTP"
@@ -1043,9 +1180,11 @@ checks:
     remediation: "Remove the X Windows System packages using the appropriate package manager or manual installation: yum remove xorg-x11* apt-get remove xserver-xorg* zypper remove xorg-x11*."
     compliance:
       - cis: ["2.2.2"]
-      - cis_csc_v7: ["6 2", "2.6"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
+      - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
       - "not c:which Xorg -> r:/Xorg"
@@ -1058,9 +1197,12 @@ checks:
     remediation: "Run one of the following commands to disable avahi-daemon: # chkconfig avahi-daemon off # systemctl disable avahi-daemon # update-rc.d avahi-daemon disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
       - cis: ["2.2.3"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl show avahi-daemon.socket avahi-daemon.service -> r:^LoadState=loaded|^ActiveState=active"
@@ -1076,9 +1218,12 @@ checks:
       - "http://www.cups.org."
     compliance:
       - cis: ["2.2.4"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled cups.service -> r:^enabled"
@@ -1093,9 +1238,12 @@ checks:
       - "http://www.isc.org/software/dhcp."
     compliance:
       - cis: ["2.2.5"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled dhcpd.service -> r:^enabled"
@@ -1110,9 +1258,12 @@ checks:
       - "http://www.openldap.org."
     compliance:
       - cis: ["2.2.6"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled slapd.service -> r:^enabled"
@@ -1125,9 +1276,12 @@ checks:
     remediation: "Run one of the following commands to disable nfs and rpcbind : # chkconfig nfs off # chkconfig rpcbind off # systemctl disable nfs # systemctl disable rpcbind # update-rc.d nfs disable # update-rc.d rpcbind disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
       - cis: ["2.2.7"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled nfs.service -> r:^enabled"
@@ -1141,9 +1295,12 @@ checks:
     remediation: "Run one of the following commands to disable named : # chkconfig named off # systemctl disable named # update-rc.d named disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
       - cis: ["2.2.8"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled named.service -> r:^enabled"
@@ -1156,9 +1313,12 @@ checks:
     remediation: "Run one of the following commands to disable vsftpd : # chkconfig vsftpd off # systemctl disable vsftpd # update-rc.d vsftpd disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods. Additional FTP servers also exist and should be audited."
     compliance:
       - cis: ["2.2.9"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled vsftpd.service -> r:^enabled"
@@ -1171,9 +1331,12 @@ checks:
     remediation: "Run one of the following commands to disable httpd : # chkconfig httpd off # systemctl disable httpd # update-rc.d httpd disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods. Several httpd servers exist and can use other service names. apache, apache2, lighttpd, and nginx are example services that provide an HTTP server. These and other services should also be audited."
     compliance:
       - cis: ["2.2.10"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled httpd.service -> r:^enabled"
@@ -1186,9 +1349,12 @@ checks:
     remediation: "Run one of the following commands to disable dovecot : # chkconfig dovecot off # systemctl disable dovecot # update-rc.d dovecot disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods. Several IMAP/POP3 servers exist and can use other service names. courier-imap and cyrus-imap are example services that provide a mail server. These and other services should also be audited."
     compliance:
       - cis: ["2.2.11"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled dovecot.service dovecot-imapd.socket dovecot-pop3d.socket -> r:^enabled"
@@ -1201,9 +1367,12 @@ checks:
     remediation: "Run one of the following commands to disable smb : # chkconfig smb off # systemctl disable smb # update-rc.d smb disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods. On some distributions the samba service is known as samba, not smb."
     compliance:
       - cis: ["2.2.12"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled smbd.service -> r:^enabled"
@@ -1216,9 +1385,12 @@ checks:
     remediation: "Run one of the following commands to disable squid : # chkconfig squid off # systemctl disable squid # update-rc.d squid disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods. On some distributions the squid service is known as squid3, not squid. Several HTTP proxy servers exist. These and other services should be checked."
     compliance:
       - cis: ["2.2.13"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled squid.service -> r:^enabled"
@@ -1231,9 +1403,12 @@ checks:
     remediation: "Run one of the following commands to disable snmpd: # chkconfig snmpd off # systemctl disable snmpd # update-rc.d snmpd disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
       - cis: ["2.2.14"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled snmpd.service -> r:^enabled"
@@ -1246,9 +1421,12 @@ checks:
     remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only Restart postfix with one of the following commands: # systemctl restart postfix OR # service postfix restart Notes: This recommendation is designed around the postfix mail server, depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
     compliance:
       - cis: ["2.2.15"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: any
     rules:
       - 'c:ss -lntu -> r:\.*:25\.* && !r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
@@ -1262,9 +1440,12 @@ checks:
     remediation: "Run one of the following commands to disable rsyncd : # chkconfig rsyncd off # systemctl disable rsyncd # update-rc.d rsyncd disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods. On some distributions the rsync service is known as rsync, not rsyncd."
     compliance:
       - cis: ["2.2.16"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "c:not systemctl is-enabled rsyncd -> r:^enabled"
@@ -1277,9 +1458,12 @@ checks:
     remediation: "Run one of the following commands to disable ypserv : # chkconfig ypserv off # systemctl disable ypserv # update-rc.d ypserv disable Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods. On some distributions the NIS service is known as nis, not ypserv."
     compliance:
       - cis: ["2.2.17"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "not c:systemctl is-enabled ypserv.service -> r:^enabled"
@@ -1292,9 +1476,11 @@ checks:
     remediation: "Uninstall ypbind using the appropriate package manager or manual installation: yum remove ypbind apt-get remove ypbind zypper remove ypbind."
     compliance:
       - cis: ["2.3.1"]
-      - cis_csc_v7: ["6 2", "2.6"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
+      - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
       - "not c:which ypbind -> r:/ypbind"
@@ -1307,9 +1493,11 @@ checks:
     remediation: "Uninstall rsh using the appropriate package manager or manual installation: yum remove rsh apt-get remove rsh zypper remove rsh."
     compliance:
       - cis: ["2.3.2"]
-      - cis_csc_v7: ["6 3.4", "4.5"]
+      - cis_csc_v7: ["4.5"]
+      - cmmc_v2.0: ["IA.3.083"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
+      - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
     condition: all
     rules:
       - "not c:which rsh -> r:/rsh"
@@ -1322,9 +1510,11 @@ checks:
     remediation: "Uninstall talk using the appropriate package manager or manual installation: yum remove talk apt-get remove talk zypper remove talk."
     compliance:
       - cis: ["2.3.3"]
-      - cis_csc_v7: ["6 2", "2.6"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.2.063", "CM.3.069", "CM.4.073"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
       - mitre_techniques: ["T1028", "T1046", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1210", "T1221", "T1519"]
+      - nist_sp_800-53: ["CM-11"]
     condition: all
     rules:
       - "not c:which talk -> r:/talk"
@@ -1337,9 +1527,11 @@ checks:
     remediation: "Uninstall telnet using the appropriate package manager or manual installation: # yum remove telnet # apt-get remove telnet # zypper remove telnet."
     compliance:
       - cis: ["2.3.4"]
-      - cis_csc_v7: ["6 3.4", "4.5"]
+      - cis_csc_v7: ["4.5"]
+      - cmmc_v2.0: ["IA.3.083"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
+      - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
     condition: all
     rules:
       - "not c:which telnet -> r:/telnet"
@@ -1353,9 +1545,11 @@ checks:
     remediation: "Uninstall openldap-clients using the appropriate package manager or manual installation: # yum remove openldap-clients # apt-get remove openldap-clients # zypper remove openldap-clients."
     compliance:
       - cis: ["2.3.5"]
-      - cis_csc_v7: ["6 3.4", "4.5"]
+      - cis_csc_v7: ["4.5"]
+      - cmmc_v2.0: ["IA.3.083"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1021", "T1028", "T1035", "T1040", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1110", "T1114", "T1133", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525", "T1530", "T1539"]
+      - pci_dss_v3.2.1: ["2.3", "8.3", "8.3.1", "8.3.2"]
     condition: all
     rules:
       - "not c:which ldapsearch -> r:/ldapsearch"
@@ -1368,7 +1562,7 @@ checks:
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0 net.ipv6.conf.all.forwarding = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv6.conf.all.forwarding=0 # sysctl -w net.ipv4.route.flush=1 # sysctl -w net.ipv6.route.flush=1."
     compliance:
       - cis: ["3.1.1"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
@@ -1382,7 +1576,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1."
     compliance:
       - cis: ["3.1.2"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:=\s*\t*0$'
@@ -1396,7 +1590,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0 net.ipv6.conf.all.accept_source_route = 0 net.ipv6.conf.default.accept_source_route = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv6.conf.all.accept_source_route=0 # sysctl -w net.ipv6.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1 # sysctl -w net.ipv6.route.flush=1."
     compliance:
       - cis: ["3.2.1"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*\t*0$'
@@ -1412,7 +1606,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1 # sysctl -w net.ipv6.route.flush=1."
     compliance:
       - cis: ["3.2.2"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*\t*0$'
@@ -1428,7 +1622,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1."
     compliance:
       - cis: ["3.2.3"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*\t*0$'
@@ -1442,8 +1636,11 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
       - cis: ["3.2.4"]
-      - cis_csc_v7: ["6 6", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:=\s*\t*1$'
@@ -1457,7 +1654,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
       - cis: ["3.2.5"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*\t*1$'
@@ -1470,7 +1667,7 @@ checks:
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
       - cis: ["3.2.6"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*\t*1$'
@@ -1483,7 +1680,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
       - cis: ["3.2.7"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:=\s*\t*1$'
@@ -1497,7 +1694,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1."
     compliance:
       - cis: ["3.2.8"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
@@ -1510,7 +1707,7 @@ checks:
     remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_ra=0 # sysctl -w net.ipv6.conf.default.accept_ra=0 # sysctl -w net.ipv6.route.flush=1."
     compliance:
       - cis: ["3.2.9"]
-      - cis_csc_v7: ["6 3", "11"]
+      - cis_csc_v7: ["11"]
     condition: all
     rules:
       - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
@@ -1524,8 +1721,10 @@ checks:
     remediation: "Run the following command to install TCP Wrappers: # yum install tcp_wrappers # apt-get install tcpd # zypper install tcpd."
     compliance:
       - cis: ["3.3.1"]
-      - cis_csc_v7: ["6 9.2", "9.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: any
     rules:
       - "c:rpm -q tcp_wrappers -> r:^package tcp_wrappers is not installed"
@@ -1541,8 +1740,10 @@ checks:
     remediation: 'Run the following command to create /etc/hosts.deny: # echo "ALL: ALL" >> /etc/hosts.deny Notes: Contents of the /etc/hosts.deny file may include additional options depending on your network configuration.'
     compliance:
       - cis: ["3.3.3"]
-      - cis_csc_v7: ["6 9.2", "9.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - "f:/etc/hosts.deny -> r:^ALL: ALL$"
@@ -1555,9 +1756,12 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/hosts.allow: # chown root:root /etc/hosts.allow # chmod 644 /etc/hosts.allow."
     compliance:
       - cis: ["3.3.4"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.allow -> r:644 && r:0 root 0 root'
@@ -1570,9 +1774,12 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/hosts.deny : # chown root:root /etc/hosts.deny # chmod 644 /etc/hosts.deny."
     compliance:
       - cis: ["3.3.5"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/hosts.deny -> r:644 && r:0 root 0 root'
@@ -1585,9 +1792,12 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/dccp.conf and add the following line: install dccp /bin/true."
     compliance:
       - cis: ["3.4.1"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "c:modprobe -n -v dccp -> r:install /bin/false|install /bin/true"
@@ -1601,9 +1811,12 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/sctp.conf and add the following line: install sctp /bin/true."
     compliance:
       - cis: ["3.4.2"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "c:modprobe -n -v sctp -> r:install /bin/false|install /bin/true"
@@ -1617,9 +1830,12 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/rds.conf and add the following line: install rds /bin/true."
     compliance:
       - cis: ["3.4.3"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "c:modprobe -n -v rds -> r:install /bin/false|install /bin/true"
@@ -1633,9 +1849,12 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/tipc.conf and add the following line: install tipc /bin/true."
     compliance:
       - cis: ["3.4.4"]
-      - cis_csc_v7: ["6 9.1", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - "c:modprobe -n -v tipc -> r:install /bin/false|install /bin/true"
@@ -1649,8 +1868,10 @@ checks:
     remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     compliance:
       - cis: ["3.5.1.1"]
-      - cis_csc_v7: ["6 9.1", "9.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - "c:ip6tables -L -> r:^Chain INPUT && r:policy DROP"
@@ -1665,8 +1886,10 @@ checks:
     remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     compliance:
       - cis: ["3.5.1.2"]
-      - cis_csc_v7: ["6 9.1", "9.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.*\p\.*::/0\.*::/0'
@@ -1684,8 +1907,10 @@ checks:
     remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     compliance:
       - cis: ["3.5.2.1"]
-      - cis_csc_v7: ["6 9.1", "9.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - 'c:iptables -L -> r:Chain INPUT \(policy && r:DROP\)|REJECT\)'
@@ -1700,8 +1925,10 @@ checks:
     remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     compliance:
       - cis: ["3.5.2.2"]
-      - cis_csc_v7: ["6 9.1", "9.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
       - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.*\p\.*0.0.0.0/0\.*0.0.0.0/0'
@@ -1719,8 +1946,10 @@ checks:
     remediation: "Run the following command to install iptables: # yum install iptables # apt-get install iptables # zypper install iptables."
     compliance:
       - cis: ["3.5.3"]
-      - cis_csc_v7: ["6 9.1", "9.4"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["CM.3.068"]
       - iso_27001-2013: ["A.13.1.1"]
+      - pci_dss_v3.2.1: ["1.4"]
     condition: any
     rules:
       - "c:dpkg -s iptables -> r:Status: install ok installed"
@@ -1734,8 +1963,9 @@ checks:
     remediation: "Run the following command to disable any wireless interfaces: # ip link set <interface> down Disable any wireless interfaces in your network configuration."
     compliance:
       - cis: ["3.6"]
-      - cis_csc_v7: ["6 15.4", "15.4"]
+      - cis_csc_v7: ["15.4"]
       - iso_27001-2013: ["A.8.1.3"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "c:nmcli radio wifi -> r:^disabled"
@@ -1751,8 +1981,10 @@ checks:
     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB> Notes: The max_log_file parameter is measured in megabytes. Other methods of log rotation may be appropriate based on site policy. One example is time-based rotation strategies which don't have native support in auditd configurations. Manual audit of custom configurations should be evaluated for effectiveness and completeness."
     compliance:
       - cis: ["4.1.1.1"]
-      - cis_csc_v7: ["6 6.3", "6.4"]
+      - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:max_log_file\s*\t*=\s*\t*\d+'
@@ -1765,8 +1997,10 @@ checks:
     remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root admin_space_left_action = halt."
     compliance:
       - cis: ["4.1.1.2"]
-      - cis_csc_v7: ["6 6.3", "6.4"]
+      - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:space_left_action\s*\t*=\s*\t*email'
@@ -1781,8 +2015,10 @@ checks:
     remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs."
     compliance:
       - cis: ["4.1.1.3"]
-      - cis_csc_v7: ["6 6.3", "6.4"]
+      - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:max_log_file_action\s*\t*=\s*\t*keep_logs'
@@ -1795,8 +2031,11 @@ checks:
     remediation: "Run the following command to Install auditd # yum install audit audit-libs # apt-get install auditd audispd-plugins # zipper install audit audit-libs."
     compliance:
       - cis: ["4.1.2"]
-      - cis_csc_v7: ["6 6.2", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
       - "c:which auditd -> r:/auditd"
@@ -1809,8 +2048,11 @@ checks:
     remediation: "Run one of the following commands to enable auditd : # chkconfig auditd on # systemctl enable auditd # update-rc.d auditd enable Notes: Additional methods of enabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
       - cis: ["4.1.3"]
-      - cis_csc_v7: ["6 6.2", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: any
     rules:
       - "p:auditd"
@@ -1824,8 +2066,11 @@ checks:
     remediation: 'For grub2 based systems edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # grub2-mkconfig -o /boot/grub2/grub.cfg or # update-grub For grub based systems edit /boot/grub/menu.lst to include audit=1 on all kernel lines. Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings. Replace /boot/grub2/grub.cfg, /boot/grub/grun.cfg, /boot/grub/menu.lst with the appropriate grub configuration file for your environment.'
     compliance:
       - cis: ["4.1.4"]
-      - cis_csc_v7: ["6 6.2", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: any
     rules:
       - 'not f:/boot/grub/grub.cfg -> !r:^\s*\t*linux && r:audit=1'
@@ -1840,9 +2085,11 @@ checks:
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in x.rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines -a always exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time change -a always exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in x.rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines -a always exit -F arch=b64 -S adjtimex -S settimeofday -k time-change -a always exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time change -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.5"]
-      - cis_csc_v7: ["6 3.6", "5.5"]
+      - cis_csc_v7: ["5.5"]
       - iso_27001-2013: ["A.12.1.2"]
-      - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - nist_sp_800-53: ["CM-6"]
+      - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
@@ -1864,9 +2111,11 @@ checks:
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.6"]
-      - cis_csc_v7: ["6 5.4", "4.8"]
+      - cis_csc_v7: ["4.8"]
       - iso_27001-2013: ["A.12.4.3"]
-      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1047", "T1051", "T1053", "T1054", "T1055", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1088", "T1089", "T1096", "T1097", "T1098", "T1100", "T1134", "T1136", "T1145", "T1146", "T1150", "T1156", "T1157", "T1165", "T1169", "T1175", "T1184", "T1190", "T1196", "T1198", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1489", "T1492", "T1494", "T1495", "T1501", "T1504", "T1505", "T1525", "T1530"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa'
@@ -1894,9 +2143,11 @@ checks:
     remediation: "On systems using SELinux Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/selinux/ -p wa -k MAC-policy -w /usr/share/selinux/ -p wa -k MAC-policy On systems using AppArmor Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.8"]
-      - cis_csc_v7: ["6 3.6", "5.5"]
+      - cis_csc_v7: ["5.5"]
       - iso_27001-2013: ["A.12.1.2"]
-      - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - nist_sp_800-53: ["CM-6"]
+      - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa'
@@ -1916,8 +2167,10 @@ checks:
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /var/log/faillog -p wa -k logins -w /var/log/lastlog -p wa -k logins -w /var/log/tallylog -p wa -k logins Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.9"]
-      - cis_csc_v7: ["6 5.5", "16.10"]
-      - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1110", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
+      - cis_csc_v7: ["16.10"]
+      - cmmc_v2.0: ["IA.3.085", "IA.3.086"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078", "T1134", "T1197", "T1538", "T1089", "T1157", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1075", "T1097", "T1163", "T1021", "T1489", "T1051", "T1023", "T1165", "T1501", "T1072", "T1537", "T1047", "T1084", "T1004"]
+      - pci_dss_v3.2.1: ["8.1.4"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa'
@@ -1933,8 +2186,10 @@ checks:
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k logins -w /var/log/btmp -p wa -k logins Notes: The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp) Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.10"]
-      - cis_csc_v7: ["6 5.5", "16.10"]
-      - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1110", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
+      - cis_csc_v7: ["16.10"]
+      - cmmc_v2.0: ["IA.3.085", "IA.3.086"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078", "T1134", "T1197", "T1538", "T1089", "T1157", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1075", "T1097", "T1163", "T1021", "T1489", "T1051", "T1023", "T1165", "T1501", "T1072", "T1537", "T1047", "T1084", "T1004"]
+      - pci_dss_v3.2.1: ["8.1.4"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa'
@@ -1952,9 +2207,11 @@ checks:
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.11"]
-      - cis_csc_v7: ["6 3.6", "5.5"]
+      - cis_csc_v7: ["5.5"]
       - iso_27001-2013: ["A.12.1.2"]
-      - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+      - nist_sp_800-53: ["CM-6"]
+      - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -1978,8 +2235,11 @@ checks:
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.12"]
-      - cis_csc_v7: ["6 14.6", "14.9"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.3.050"]
       - iso_27001-2013: ["A.12.4.3"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2001,9 +2261,12 @@ checks:
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k mounts For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S mount -F auid>=500 -F auid!=4294967295 -k mounts -a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k mounts Notes: This tracks successful and unsuccessful mount commands. File system mounts do not have to come from external media and this action still does not verify write (e.g. CD ROMS). Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.14"]
-      - cis_csc_v7: ["6 13", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2019,7 +2282,7 @@ checks:
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete Notes: At a minimum, configure the audit system to collect file deletion events for all users and root. Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.15"]
-      - cis_csc_v7: ["6 13", "13"]
+      - cis_csc_v7: ["13"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2035,9 +2298,11 @@ checks:
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d/ -p wa -k scope Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.16"]
-      - cis_csc_v7: ["6 5.4", "4.8"]
+      - cis_csc_v7: ["4.8"]
       - iso_27001-2013: ["A.12.4.3"]
-      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1047", "T1051", "T1053", "T1054", "T1055", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1088", "T1089", "T1096", "T1097", "T1098", "T1100", "T1134", "T1136", "T1145", "T1146", "T1150", "T1156", "T1157", "T1165", "T1169", "T1175", "T1184", "T1190", "T1196", "T1198", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1489", "T1492", "T1494", "T1495", "T1501", "T1504", "T1505", "T1525", "T1530"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028", "T1156", "T1146", "T1196", "T1081", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1145", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209"]
+      - nist_sp_800-53: ["AU-3"]
+      - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
@@ -2055,9 +2320,12 @@ checks:
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /sbin/insmod -p x -k modules -w /sbin/rmmod -p x -k modules -w /sbin/modprobe -p x -k modules -a always,exit -F arch=b32 -S init_module -S delete_module -k modules For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/audit.rules and add the following lines: -w /sbin/insmod -p x -k modules -w /sbin/rmmod -p x -k modules -w /sbin/modprobe -p x -k modules -a always,exit -F arch=b64 -S init_module -S delete_module -k modules Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.18"]
-      - cis_csc_v7: ["6 3", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
@@ -2078,7 +2346,7 @@ checks:
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file Notes: This setting will ensure reloading the auditd config to set active settings requires a system reboot."
     compliance:
       - cis: ["4.1.19"]
-      - cis_csc_v7: ["6 3", "6"]
+      - cis_csc_v7: ["6"]
     condition: any
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\s*\t*2'
@@ -2092,8 +2360,11 @@ checks:
     remediation: "Install rsyslog or using the appropriate package manager or manual installation: # yum install rsyslog # apt-get install rsyslog # zypper install rsyslog."
     compliance:
       - cis: ["4.2.1.1"]
-      - cis_csc_v7: ["6 6.2", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
       - "c:which rsyslogd -> r:/rsyslogd"
@@ -2106,8 +2377,11 @@ checks:
     remediation: "Run one of the following commands to enable rsyslog : # chkconfig rsyslog on # systemctl enable rsyslog # update-rc.d rsyslog enable Notes: Additional methods of enabling a service exist. Consult your distribution documentation for appropriate methods. Some distributions may configure syslog daemon selection via a setting in a configuration file such as /etc/sysconfig/syslog and a centralized init script."
     compliance:
       - cis: ["4.2.1.2"]
-      - cis_csc_v7: ["6 6.2", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: any
     rules:
       - "c:systemctl is-enabled rsyslog -> r:^enabled"
@@ -2124,9 +2398,12 @@ checks:
     remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640."
     compliance:
       - cis: ["4.2.1.4"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
@@ -2145,7 +2422,9 @@ checks:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.1"]
-      - cis_csc_v7: ["6 6.2", "6.5"]
+      - cis_csc_v7: ["6.5"]
+      - cmmc_v2.0: ["AU.3.048"]
+      - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
@@ -2160,8 +2439,10 @@ checks:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.2"]
-      - cis_csc_v7: ["6 6.2", "6.4"]
+      - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-4"]
+      - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*=\s*yes'
@@ -2176,8 +2457,11 @@ checks:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     compliance:
       - cis: ["4.2.2.3"]
-      - cis_csc_v7: ["6 6.2", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*=\s*persistent'
@@ -2193,9 +2477,12 @@ checks:
     remediation: "Based on your system configuration, run the appropriate one of the following commands to enable cron : # chkconfig crond on # systemctl enable crond # update-rc.d crond enable Notes: Additional methods of enabling a service exist. Consult your distribution documentation for appropriate methods."
     compliance:
       - cis: ["5.1"]
-      - cis_csc_v7: ["6 6", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
       - "c:systemctl is-enabled crond.service -> r:enabled"
@@ -2209,9 +2496,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
     compliance:
       - cis: ["5.1.2"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/crontab -> r:600 && r:0 root 0 root'
@@ -2224,9 +2514,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : # chown root:root /etc/cron.hourly # chmod og-rwx /etc/cron.hourly."
     compliance:
       - cis: ["5.1.3"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.hourly -> r:700 && r:0 root 0 root'
@@ -2239,10 +2532,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : # chown root:root /etc/cron.daily # chmod og-rwx /etc/cron.daily."
     compliance:
       - cis: ["5.1.4"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-    condition: all
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.daily -> r:700 && r:0 root 0 root'
 
@@ -2254,9 +2549,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : # chown root:root /etc/cron.weekly # chmod og-rwx /etc/cron.weekly."
     compliance:
       - cis: ["5.1.5"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.weekly -> r:700 && r:0 root 0 root'
@@ -2269,9 +2567,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : # chown root:root /etc/cron.monthly # chmod og-rwx /etc/cron.monthly."
     compliance:
       - cis: ["5.1.6"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.monthly -> r:700 && r:0 root 0 root'
@@ -2284,9 +2585,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.d : # chown root:root /etc/cron.d # chmod og-rwx /etc/cron.d."
     compliance:
       - cis: ["5.1.7"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/cron.d -> r:700 && r:0 root 0 root'
@@ -2299,7 +2603,7 @@ checks:
     remediation: "Run the following commands to remove /etc/cron.deny and /etc/at.deny and create and set permissions and ownership for /etc/cron.allow and /etc/at.allow : # rm /etc/cron.deny # rm /etc/at.deny # touch /etc/cron.allow # touch /etc/at.allow # chmod og-rwx /etc/cron.allow # chmod og-rwx /etc/at.allow # chown root:root /etc/cron.allow # chown root:root /etc/at.allow."
     compliance:
       - cis: ["5.1.8"]
-      - cis_csc_v7: ["6 16", "16"]
+      - cis_csc_v7: ["16"]
     condition: all
     rules:
       - "c:stat -L /etc/cron.deny -> r:No such file or directory$"
@@ -2315,9 +2619,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config."
     compliance:
       - cis: ["5.2.1"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/sshd_config -> r:600 && r:0 root 0 root'
@@ -2330,9 +2637,12 @@ checks:
     remediation: "Run the following commands to set ownership and permissions on the private SSH host key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0600 {} \\;."
     compliance:
       - cis: ["5.2.2"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key -> r:600 && r:0 root 0 root'
@@ -2347,9 +2657,12 @@ checks:
     remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod 0644 {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;."
     compliance:
       - cis: ["5.2.3"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/ssh/ssh_host_rsa_key.pub -> r:644 && r:0 root 0 root'
@@ -2367,8 +2680,11 @@ checks:
       - "https://www.ssh.com/ssh/sshd_config/"
     compliance:
       - cis: ["5.2.5"]
-      - cis_csc_v7: ["6 16", "6.2"]
+      - cis_csc_v7: ["6.2"]
+      - cmmc_v2.0: ["AU.2.042", "AU.5.055"]
       - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-3"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*LogLevel\s+VERBOSE|^\s*loglevel\s+INFO'
@@ -2381,9 +2697,12 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: X11Forwarding no."
     compliance:
       - cis: ["5.2.6"]
-      - cis_csc_v7: ["6 16", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*x11Forwarding\s*\t*no'
@@ -2396,7 +2715,8 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4."
     compliance:
       - cis: ["5.2.7"]
-      - cis_csc_v7: ["6 16", "16.13"]
+      - cis_csc_v7: ["16.13"]
+      - cmmc_v2.0: ["AC.4.032", "SI.5.223"]
       - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1134", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538"]
     condition: any
     rules:
@@ -2411,9 +2731,12 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes."
     compliance:
       - cis: ["5.2.8"]
-      - cis_csc_v7: ["6 9", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - 'c:sshd -T -> !r:^# && r:ignorerhosts\s*\t*yes'
@@ -2426,8 +2749,9 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no."
     compliance:
       - cis: ["5.2.9"]
-      - cis_csc_v7: ["6 9", "16.3"]
+      - cis_csc_v7: ["16.3"]
       - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
+      - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
       - 'c:sshd -T -> !r:^# && r:HostbasedAuthentication\s*\t*no'
@@ -2440,9 +2764,11 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no."
     compliance:
       - cis: ["5.2.10"]
-      - cis_csc_v7: ["6 5.8", "4.3"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.2.008", "IA.1.076", "IA.1.077", "SC.3.181"]
       - iso_27001-2013: ["A.9.2.3"]
       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1176", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
     condition: all
     rules:
       - 'c:sshd -T -> !r:^# && r:PermitRootLogin\s*\t*no'
@@ -2455,8 +2781,9 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no."
     compliance:
       - cis: ["5.2.11"]
-      - cis_csc_v7: ["6 16", "16.3"]
+      - cis_csc_v7: ["16.3"]
       - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
+      - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
       - 'c:sshd -T -> !r:^# && r:PermitEmptyPasswords\s*\t*no'
@@ -2468,8 +2795,9 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
     compliance:
       - cis: ["5.2.11"]
-      - cis_csc_v7: ["6 16", "16.3"]
+      - cis_csc_v7: ["16.3"]
       - mitre_techniques: ["T1004", "T1017", "T1021", "T1023", "T1031", "T1034", "T1040", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1075", "T1076", "T1078", "T1084", "T1089", "T1097", "T1098", "T1110", "T1114", "T1133", "T1134", "T1136", "T1152", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1185", "T1197", "T1213", "T1484", "T1489", "T1501", "T1528", "T1530", "T1537", "T1538", "T1539"]
+      - pci_dss_v3.2.1: ["8.3"]
     condition: all
     rules:
       - 'c:sshd -T -> !r:^# && r:PermitUserEnvironment\s*\t*no'
@@ -2489,9 +2817,11 @@ checks:
       - "https://nvd.nist.gov/vuln/detail/CVE-2013-4548"
     compliance:
       - cis: ["5.2.13"]
-      - cis_csc_v7: ["6 3.4", "14.4"]
+      - cis_csc_v7: ["14.4"]
+      - cmmc_v2.0: ["SC.3.177", "SC.3.185"]
       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
+      - pci_dss_v3.2.1: ["4.1"]
     condition: none
     rules:
       - "c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
@@ -2506,9 +2836,11 @@ checks:
       - "http://www.mitls.org/pages/attacks/SLOTH"
     compliance:
       - cis: ["5.2.14"]
-      - cis_csc_v7: ["6 3.4", "14.4"]
+      - cis_csc_v7: ["14.4"]
+      - cmmc_v2.0: ["SC.3.177", "SC.3.185"]
       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
+      - pci_dss_v3.2.1: ["4.1"]
     condition: none
     rules:
       - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
@@ -2521,9 +2853,10 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman- group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18- sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie- hellman-group-exchange-sha256."
     compliance:
       - cis: ["5.2.15"]
-      - cis_csc_v7: ["6 3.4", "14.4"]
+      - cmmc_v2.0: ["SC.3.177", "SC.3.185"]
       - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1070", "T1114", "T1119", "T1145", "T1208", "T1492", "T1493", "T1527", "T1530"]
+      - pci_dss_v3.2.1: ["4.1"]
     condition: none
     rules:
       - "c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
@@ -2536,9 +2869,11 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy: ClientAliveInterval 300 ClientAliveCountMax 0."
     compliance:
       - cis: ["5.2.16"]
-      - cis_csc_v7: ["6 16.4", "16.11"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.2.010", "AC.3.019", "IA.3.086"]
       - iso_27001-2013: ["A.8.1.3"]
       - mitre_techniques: ["T1031", "T1034", "T1038", "T1044", "T1053", "T1073", "T1076", "T1078", "T1081", "T1088", "T1110", "T1114", "T1145", "T1161", "T1176", "T1213", "T1214", "T1482", "T1484", "T1505", "T1525", "T1527", "T1528", "T1530"]
+      - pci_dss_v3.2.1: ["10.2.5", "8.1.8"]
     condition: all
     rules:
       - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare != 0'
@@ -2552,9 +2887,12 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60."
     compliance:
       - cis: ["5.2.17"]
-      - cis_csc_v7: ["6 16", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:sshd -T -> n:LoginGraceTime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
@@ -2567,7 +2905,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> AllowGroups <grouplist> DenyUsers <userlist> DenyGroups <grouplist>."
     compliance:
       - cis: ["5.2.18"]
-      - cis_csc_v7: ["6 5.1", "5.8"]
+      - cis_csc_v7: ["5.8"]
     condition: any
     rules:
       - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers'
@@ -2583,9 +2921,12 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net."
     compliance:
       - cis: ["5.2.19"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*Banner\s*\t*/etc/issue.net'
@@ -2598,9 +2939,12 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
     compliance:
       - cis: ["5.2.20"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*usepam\s+yes'
@@ -2616,9 +2960,12 @@ checks:
       - "https://www.ssh.com/ssh/tunneling/example"
     compliance:
       - cis: ["5.2.21"]
-      - cis_csc_v7: ["6 16", "9.2"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.3.068", "SC.5.230"]
       - iso_27001-2013: ["A.13.1.3"]
       - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["SI-4"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
@@ -2631,9 +2978,12 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: maxstartups 10:30:60."
     compliance:
       - cis: ["5.2.22"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
@@ -2648,9 +2998,12 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 4."
     compliance:
       - cis: ["5.2.23"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*MaxSessions\s+(\d+) compare <= 4'
@@ -2663,9 +3016,11 @@ checks:
     remediation: "Set password creation requirements to conform to site policy. Many distributions provide tools for updating PAM configuration, consult your documentation for details. If no tooling is provided edit the appropriate /etc/pam.d/ configuration file and add or modify the pam_cracklib.so or pam_pwquality.so lines to include the required options: password required pam_cracklib.so try_first_pass retry=3 minlen=14 dcredit=-1 ucredit=-1 ocredit=-1 lcredit=-1 password requisite pam_pwquality.so try_first_pass retry=3 If pam_pwquality.so is in use also configure settings in /etc/security/pwquality.conf : minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Notes: Consult your documentation for the appropriate PAM file and module. Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. Settings in /etc/security/pwquality.conf must use spaces around the = symbol."
     compliance:
       - cis: ["5.3.1"]
-      - cis_csc_v7: ["6.5.7", "14", "16.12", "14.0"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1004", "T1021", "T1023", "T1031", "T1034", "T1038", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1072", "T1073", "T1075", "T1076", "T1078", "T1081", "T1084", "T1088", "T1089", "T1097", "T1114", "T1134", "T1145", "T1152", "T1157", "T1159", "T1160", "T1161", "T1162", "T1163", "T1165", "T1168", "T1176", "T1185", "T1197", "T1213", "T1214", "T1482", "T1484", "T1489", "T1501", "T1505", "T1525", "T1527", "T1528", "T1530", "T1537", "T1538"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
@@ -2682,7 +3037,7 @@ checks:
     remediation: "Set remembered password history to conform to site policy. Many distributions provide tools for updating PAM configuration, consult your documentation for details. If no tooling is provided edit the appropriate /etc/pam.d/ configuration file and add or modify the pam_pwhistory.so or pam_unix.so lines to include the remember option: password required pam_pwhistory.so remember=5 password sufficient pam_unix.so remember=5 Notes: Consult your documentation for the appropriate PAM file and module. Additional module options may be set, recommendation only covers those listed here."
     compliance:
       - cis: ["5.3.3"]
-      - cis_csc_v7: ["6 16", "16"]
+      - cis_csc_v7: ["16"]
     condition: any
     rules:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
@@ -2698,8 +3053,11 @@ checks:
     remediation: 'Set password hashing algorithm to sha512. Many distributions provide tools for updating PAM configuration, consult your documentation for details. If no tooling is provided edit the appropriate /etc/pam.d/ configuration file and add or modify the pam_unix.so lines to include the sha512 option: password sufficient pam_unix.so sha512 Notes: Consult your documentation for the appropriate PAM file and module. Additional module options may be set, recommendation only covers those listed here. If it is determined that the password algorithm being used is not SHA-512, once it is changed, it is recommended that all user ID''s be immediately expired and forced to change their passwords on next login. To accomplish that, the following commands can be used. Any system accounts that need to be expired should be carefully done separately by the system administrator to prevent any potential problems. # cat /etc/passwd | awk -F: ''( $3 >= 500 && $1 != "nfsnobody" ) { print $1 }'' | xargs -n 1 chage -d 0 This command assumes a system UID split at 500. Some distributions split at UID 1000 instead, consult your documentation and/or the UID_MIN setting in /etc/login.defs to determine which is appropriate for you.'
     compliance:
       - cis: ["5.3.4"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
       - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_unix\.so && r:sha512'
@@ -2714,9 +3072,11 @@ checks:
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user> Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. Note: A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password."
     compliance:
       - cis: ["5.4.1.1"]
-      - cis_csc_v7: ["6 16", "4.4"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
@@ -2729,9 +3089,11 @@ checks:
     remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs : PASS_MIN_DAYS 7 Modify user parameters for all users with a password set to match: # chage --mindays 7 <user> Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
     compliance:
       - cis: ["5.4.1.2"]
-      - cis_csc_v7: ["6 16", "4.4"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 7'
@@ -2744,9 +3106,11 @@ checks:
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs : PASS_WARN_AGE 7 Modify user parameters for all users with a password set to match: # chage --warndays 7 <user> Notes: You can also check this setting in /etc/shadow directly. The 6th field should be 7 or more for all users with a password."
     compliance:
       - cis: ["5.4.1.3"]
-      - cis_csc_v7: ["6 16", "4.4"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
@@ -2759,9 +3123,11 @@ checks:
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user> Notes: You can also check this setting in /etc/shadow directly. The 7th field should be 30 or less for all users with a password. Note: A value of -1 would disable this setting."
     compliance:
       - cis: ["5.4.1.4"]
-      - cis_csc_v7: ["6 16", "4.4"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*(\d+) compare <= 30'
@@ -2777,9 +3143,12 @@ checks:
     remediation: "Run the following command to set the root user default group to GID 0 : # usermod -g 0 root."
     compliance:
       - cis: ["5.4.3"]
-      - cis_csc_v7: ["6 5", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'f:/etc/passwd -> r:^root:\w:\w:0'
@@ -2796,9 +3165,12 @@ checks:
     remediation: "Add the following line to the /etc/pam.d/su file: auth required pam_wheel.so use_uid Create a comma separated list of users in the wheel statement in the /etc/group file: wheel:x:10:root,<user list>."
     compliance:
       - cis: ["5.6"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> !r:# && r:auth && r:required && r:pam_wheel.so\s*\t*use_uid'
@@ -2813,8 +3185,11 @@ checks:
     remediation: "Run the following command to set permissions on /etc/passwd : # chown root:root /etc/passwd # chmod 644 /etc/passwd."
     compliance:
       - cis: ["6.1.2"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/passwd -> r:644 && r:0 root 0 root'
@@ -2827,8 +3202,11 @@ checks:
     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/shadow : # chown root:root /etc/shadow # chown root:shadow /etc/shadow # chmod o-rwx,g-wx /etc/shadow."
     compliance:
       - cis: ["6.1.3"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/shadow -> r:640|600|500|400|0 && r:0 root 0 root'
@@ -2842,8 +3220,11 @@ checks:
     remediation: "Run the following command to set permissions on /etc/group : # chown root:root /etc/group # chmod 644 /etc/group."
     compliance:
       - cis: ["6.1.4"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/group -> r:644 && r:0 root 0 root'
@@ -2856,8 +3237,11 @@ checks:
     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/gshadow : # chown root:root /etc/gshadow # chown root:shadow /etc/gshadow # chmod o-rwx,g-rw /etc/gshadow."
     compliance:
       - cis: ["6.1.5"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/gshadow -> r:640|600|500|400|0 && r:0 root 0 root'
@@ -2871,8 +3255,11 @@ checks:
     remediation: "Run the following command to set permissions on /etc/passwd- : # chown root:root /etc/passwd- # chmod u-x,go-rwx /etc/passwd-."
     compliance:
       - cis: ["6.1.6"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/passwd- -> r:600|500|400|0 && r:0 root 0 root'
@@ -2885,8 +3272,11 @@ checks:
     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/shadow- : # chown root:root /etc/shadow- # chown root:shadow /etc/shadow- # chmod o-rwx,g-rw /etc/shadow-."
     compliance:
       - cis: ["6.1.7"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/shadow- -> r:640|600|500|400|0 && r:0 root 0 root'
@@ -2900,8 +3290,11 @@ checks:
     remediation: "Run the following command to set permissions on /etc/group- : # chown root:root /etc/group- # chmod u-x,go-wx /etc/group-."
     compliance:
       - cis: ["6.1.8"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/group- -> r:644 && r:0 root 0 root'
@@ -2914,8 +3307,11 @@ checks:
     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/gshadow- : # chown root:root /etc/gshadow- # chown root:shadow /etc/gshadow- # chmod o-rwx,g-rw /etc/gshadow-."
     compliance:
       - cis: ["6.1.9"]
-      - cis_csc_v7: ["6 16.14", "16.4"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.2.081"]
       - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
+      - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: all
     rules:
       - 'c:stat -Lc "%a %A %u %U %g %G" /etc/gshadow- -> r:640|600|500|400|0 && r:0 root 0 root'
@@ -2935,9 +3331,11 @@ checks:
     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username> Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
     compliance:
       - cis: ["6.2.1"]
-      - cis_csc_v7: ["6 16", "4.4"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.2.078", "IA.2.079"]
       - iso_27001-2013: ["A.9.4.3"]
       - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - nist_sp_800-53: ["IA-5 (1)"]
     condition: none
     rules:
       - 'f:/etc/shadow -> !r:^# && r:^\w+::'
@@ -2950,7 +3348,7 @@ checks:
     remediation: "Remove any legacy '+' entries from /etc/passwd if they exist."
     compliance:
       - cis: ["6.2.2"]
-      - cis_csc_v7: ["6 16.9", "16.2"]
+      - cis_csc_v7: ["16.2"]
     condition: none
     rules:
       - 'f:/etc/passwd -> r:\+'
@@ -2963,7 +3361,7 @@ checks:
     remediation: "Remove any legacy '+' entries from /etc/shadow if they exist."
     compliance:
       - cis: ["6.2.3"]
-      - cis_csc_v7: ["6 16.9", "16.2"]
+      - cis_csc_v7: ["16.2"]
     condition: none
     rules:
       - 'f:/etc/shadow -> r:\+'
@@ -2976,7 +3374,7 @@ checks:
     remediation: "Remove any legacy '+' entries from /etc/group if they exist."
     compliance:
       - cis: ["6.2.4"]
-      - cis_csc_v7: ["6 16.9", "16.2"]
+      - cis_csc_v7: ["16.2"]
     condition: none
     rules:
       - 'f:/etc/group -> r:\+'
@@ -2989,9 +3387,12 @@ checks:
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
       - cis: ["6.2.5"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
@@ -3004,9 +3405,12 @@ checks:
     remediation: "Correct or justify any items discovered in the Audit step."
     compliance:
       - cis: ["6.2.6"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - "f:/root/.bash_profile -> r:umask && r:0027|0077"
@@ -3028,7 +3432,7 @@ checks:
     remediation: "Analyze the output of the Audit step above and perform the appropriate action to correct any discrepancies found."
     compliance:
       - cis: ["6.2.15"]
-      - cis_csc_v7: ["6 16", "16"]
+      - cis_csc_v7: ["16"]
     condition: all
     rules:
       - 'f:/etc/group -> !r:^# && r:shadow:\w*:\d+:$'
@@ -3041,7 +3445,7 @@ checks:
     remediation: "Based on the results of the audit script, establish unique UIDs and review all files owned by the shared UIDs to determine which UID they are supposed to belong to."
     compliance:
       - cis: ["6.2.16"]
-      - cis_csc_v7: ["6 16", "16"]
+      - cis_csc_v7: ["16"]
     condition: all
     rules:
       - 'c:sh -c "cut -f3 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
@@ -3054,7 +3458,7 @@ checks:
     remediation: "Based on the results of the audit script, establish unique GIDs and review all files owned by the shared GID to determine which group they are supposed to belong to. Notes: You can also use the grpck command to check for other inconsistencies in the /etc/group file."
     compliance:
       - cis: ["6.2.17"]
-      - cis_csc_v7: ["6 16", "16"]
+      - cis_csc_v7: ["16"]
     condition: all
     rules:
       - 'c:sh -c "cut -f3 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
@@ -3067,7 +3471,7 @@ checks:
     remediation: "Based on the results of the audit script, establish unique user names for the users. File ownerships will automatically reflect the change as long as the users have unique UIDs."
     compliance:
       - cis: ["6.2.18"]
-      - cis_csc_v7: ["6 16", "16"]
+      - cis_csc_v7: ["16"]
     condition: all
     rules:
       - 'c:sh -c "cut -f1 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
@@ -3080,7 +3484,7 @@ checks:
     remediation: "Based on the results of the audit script, establish unique names for the user groups. File group ownerships will automatically reflect the change as long as the groups have unique GIDs."
     compliance:
       - cis: ["6.2.19"]
-      - cis_csc_v7: ["6 16", "16"]
+      - cis_csc_v7: ["16"]
     condition: all
     rules:
       - 'c:sh -c "cut -f1 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
@@ -3093,9 +3497,12 @@ checks:
     remediation: "Remove all users from the shadow group, and change the primary group of any users with shadow as their primary group."
     compliance:
       - cis: ["6.2.20"]
-      - cis_csc_v7: ["6 5.1", "5.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180"]
       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SC-20", "SC-21"]
+      - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
       - 'f:/etc/group -> !r:^# && r:^shadow:\w*:\d+:$'
