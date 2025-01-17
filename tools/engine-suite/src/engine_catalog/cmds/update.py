@@ -1,25 +1,34 @@
 import sys
-import shared.resource_handler as rs
-from shared.resource_handler import Format, StringToFormat
+from api_communication.client import APIClient
+from api_communication.proto.catalog_pb2 import ResourcePut_Request
+from api_communication.proto.engine_pb2 import GenericStatus_Response
 
 
-def run(args, resource_handler: rs.ResourceHandler):
+def run(args):
 
     # Get the params
     api_socket: str = args['api_socket']
-    namespace: str = args['namespace']
-    name: str = args['asset-name']
-    inFormat: Format = StringToFormat(args['format'])
+
+    json_request = dict()
+    json_request['namespaceid'] = args['namespace']
+    json_request['name'] = args['asset-name']
+    json_request['format'] = args['format']
     content = args['content']
 
     # Read all content from stdin
     if not content:
         content = sys.stdin.read()
 
+    json_request['content'] = content
+
     # Create the api request
     try:
-        resource_handler.update_catalog_file(
-            api_socket, '', name, content, namespace, inFormat)
+        client = APIClient(api_socket)
+        error, response = client.jsend(
+            json_request, ResourcePut_Request(), GenericStatus_Response())
+
+        if error:
+            sys.exit(f'Error updating asset: {error}')
     except Exception as e:
         sys.exit(f'Error updating asset: {e}')
 
