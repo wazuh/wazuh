@@ -53,16 +53,20 @@ class EXPORTED IndexerConnector final
     std::mutex m_syncMutex;
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
     std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
+    uint32_t m_successCount {0};
+    bool m_error413FirstTime {false};
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
      *
      * @param templateData Template data.
+     * @param updateMappingsData Create mappings data.
      * @param indexName Index name.
      * @param selector Server selector.
      * @param secureCommunication Secure communication.
      */
     void initialize(const nlohmann::json& templateData,
+                    const nlohmann::json& updateMappingsData,
                     const std::shared_ptr<ServerSelector>& selector,
                     const SecureCommunication& secureCommunication);
 
@@ -111,17 +115,31 @@ class EXPORTED IndexerConnector final
                                                     va_list)>& logFunction,
                            const nlohmann::json& config);
 
+    /*
+     * @brief Send bulk reactive, this method is used to send a bulk request to the indexer.
+     * @param actions Actions to be sent.
+     * @param url Indexer URL.
+     * @param secureCommunication Secure communication.
+     * @param depth Depth for recursive calls.
+     */
+    void sendBulkReactive(const std::vector<std::pair<std::string, bool>>& actions,
+                          const std::string& url,
+                          const SecureCommunication& secureCommunication,
+                          int depth = 1);
+
 public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
      * @param templatePath Path to the template file.
+     * @param updateMappingsPath Path to the update mappings query.
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      */
     explicit IndexerConnector(const nlohmann::json& config,
                               const std::string& templatePath,
+                              const std::string& updateMappingsPath,
                               const std::function<void(const int,
                                                        const std::string&,
                                                        const std::string&,
