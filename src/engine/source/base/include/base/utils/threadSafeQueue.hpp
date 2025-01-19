@@ -11,13 +11,12 @@
 
 #ifndef THREAD_SAFE_QUEUE_H
 #define THREAD_SAFE_QUEUE_H
+
 #include <atomic>
 #include <condition_variable>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <queue>
-#include <thread>
 
 namespace base::utils::queue
 {
@@ -116,9 +115,13 @@ public:
         // If the queue is not canceled, get the elements.
         if (!m_canceled)
         {
-            for (auto i = 0; i < elementsQuantity && i < m_queue.size(); ++i)
+            try
             {
-                bulkQueue.push(std::move(m_queue.at(i)));
+                m_queue.frontQueue(bulkQueue, m_queue.size() > elementsQuantity ? elementsQuantity : m_queue.size());
+            }
+            catch (const std::exception& e)
+            {
+                bulkQueue = {};
             }
         }
 
@@ -128,9 +131,12 @@ public:
     void popBulk(const uint64_t elementsQuantity)
     {
         std::scoped_lock lock {m_mutex};
-        for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
+        auto counter = 0ULL;
+
+        while (counter < elementsQuantity && !m_queue.empty())
         {
             m_queue.pop();
+            ++counter;
         }
     }
 

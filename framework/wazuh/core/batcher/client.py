@@ -41,8 +41,4 @@ class BatcherClient:
         Optional[dict]
             Indexer response if available, None otherwise.
         """
-        while True:
-            if not self.queue.is_response_pending(packet_id):
-                return self.queue.receive_from_demux(packet_id)
-            
-            await asyncio.sleep(self.wait_frequency)
+        return await asyncio.to_thread(self.queue.receive_from_demux, packet_id)

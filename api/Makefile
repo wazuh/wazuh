@@ -28,7 +28,7 @@ install:
     # Copy files and create folders
 	# SHARE
 	$(INSTALL_DIR) $(SHARE_INSTALLDIR)/api/scripts
-	$(INSTALL_FILE) scripts/wazuh_apid.py ${SHARE_INSTALLDIR}/api/scripts
+	$(INSTALL_EXEC) scripts/wazuh_apid.py ${SHARE_INSTALLDIR}/api/scripts/wazuh-apid.py
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) api/wrappers/generic_wrapper.sh $(patsubst scripts/%.py,${BIN_INSTALLDIR}/%,$(script));)

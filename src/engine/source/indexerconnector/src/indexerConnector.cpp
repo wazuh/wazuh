@@ -30,7 +30,6 @@ constexpr auto PASSWORD_KEY {"password"};
 constexpr auto ELEMENTS_PER_BULK {1000};
 constexpr auto WAZUH_OWNER {"wazuh"};
 constexpr auto WAZUH_GROUP {"wazuh"};
-constexpr auto MERGED_CA_PATH {"/tmp/wazuh-server/root-ca-merged.pem"};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
@@ -42,7 +41,7 @@ constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
  * @throws std::runtime_error If the CA root certificate file does not exist, could not be opened, written or the
  * ownership could not be changed.
  */
-static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
+static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, const std::string& caRootCertificate)
 {
     std::string caRootCertificateContentMerged;
 
@@ -61,8 +60,6 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, s
 
         caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     }
-
-    caRootCertificate = MERGED_CA_PATH;
 
     if (std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
         !std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
@@ -97,7 +94,7 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, s
 
 static void initConfiguration(SecureCommunication& secureCommunication, const IndexerConnectorOptions& config)
 {
-    std::string caRootCertificate;
+    std::string caRootCertificate = config.sslOptions.mergedCAPath;
     std::string sslCertificate;
     std::string sslKey;
     std::string username;
@@ -136,7 +133,8 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
     secureCommunication.basicAuth(username + ":" + password)
         .sslCertificate(sslCertificate)
         .sslKey(sslKey)
-        .caRootCertificate(caRootCertificate);
+        .caRootCertificate(caRootCertificate)
+        .skipPeerVerification(config.sslOptions.skipVerifyPeer);
 }
 
 static void builderBulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
@@ -214,19 +212,46 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data, nullptr, false);
 
+                // If the data is not a valid JSON, log a warning and continue.
                 if (parsedData.is_discarded())
                 {
+                    LOG_WARNING("Failed to parse event data: {}", data);
                     continue;
                 }
 
-                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+                // Validate required fields.
+                if (!parsedData.contains("operation"))
                 {
-                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
+                    LOG_WARNING("Event required field (operation) is missing: {}", data);
+                    continue;
+                }
+
+                // Operation is the action to be performed on the element.
+                const auto& operation = parsedData.at("operation").get_ref<const std::string&>();
+
+                // Id is the unique identifier of the element.
+                const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
+
+                if (operation.compare("DELETED") == 0)
+                {
+                    // Validate required fields.
+                    if (id.empty())
+                    {
+                        LOG_WARNING("Event required field (id) is missing: {}", data);
+                        continue;
+                    }
+
                     builderBulkDelete(bulkData, id, indexNameCurrentDate);
                 }
                 else
                 {
-                    const auto& id = parsedData.contains("id") ? parsedData.at("id").get_ref<const std::string&>() : "";
+                    // Validate required fields.
+                    if (!parsedData.contains("data"))
+                    {
+                        LOG_WARNING("Event required field (data) is missing: {}", data);
+                        continue;
+                    }
+
                     const auto dataString = parsedData.at("data").dump();
                     builderBulkIndex(bulkData, id, indexNameCurrentDate, dataString);
                 }

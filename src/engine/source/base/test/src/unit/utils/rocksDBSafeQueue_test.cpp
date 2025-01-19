@@ -9,51 +9,67 @@
  * Foundation.
  */
 
-#include "rocksDBSafeQueue_test.hpp"
 #include <filesystem>
+#include <memory>
+#include <string>
+#include <thread>
 
-void RocksDBSafeQueueTest::SetUp()
+#include <gtest/gtest.h>
+
+#include <base/utils/rocksDBQueue.hpp>
+#include <base/utils/threadSafeQueue.hpp>
+
+class RocksDBSafeQueueTest : public ::testing::Test
 {
-    std::error_code ec;
-    std::filesystem::remove_all("test.db", ec);
-    queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(RocksDBQueue<std::string>("test.db"));
+protected:
+    RocksDBSafeQueueTest() = default;
+    ~RocksDBSafeQueueTest() override = default;
+
+    void SetUp() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all("test.db", ec);
+        queue = std::make_unique<base::utils::queue::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+            RocksDBQueue<std::string>("test.db"));
+    }
+
+    void TearDown() override {}
+
+    std::unique_ptr<base::utils::queue::SafeQueue<std::string, RocksDBQueue<std::string>>> queue;
 };
-
-void RocksDBSafeQueueTest::TearDown() {};
-
 
 TEST_F(RocksDBSafeQueueTest, PopInCancelledQueue)
 {
     queue->cancel();
     EXPECT_TRUE(queue->cancelled());
     EXPECT_TRUE(queue->empty());
-    std::string ret_val{};
+    std::string ret_val {};
     EXPECT_FALSE(queue->pop(ret_val, false));
-    auto spValue{queue->pop(false)};
+    auto spValue {queue->pop(false)};
     EXPECT_FALSE(spValue);
 }
 
 TEST_F(RocksDBSafeQueueTest, PopEmptyQueue)
 {
-    std::string ret_val{};
+    std::string ret_val {};
     EXPECT_TRUE(queue->empty());
     EXPECT_FALSE(queue->cancelled());
     EXPECT_FALSE(queue->pop(ret_val, false));
-    auto spValue{queue->pop(false)};
+    auto spValue {queue->pop(false)};
     EXPECT_FALSE(spValue);
 }
 
 TEST_F(RocksDBSafeQueueTest, PopWithData)
 {
     queue->push("test");
-    std::string ret_val{};
+    std::string ret_val {};
     EXPECT_TRUE(queue->pop(ret_val, false));
     EXPECT_EQ("test", ret_val);
 
     EXPECT_FALSE(queue->pop(ret_val, false));
 
     queue->push("test2");
-    auto spValue{queue->pop(false)};
+    auto spValue {queue->pop(false)};
     EXPECT_TRUE(spValue);
     EXPECT_EQ("test2", *spValue);
 
@@ -66,7 +82,7 @@ TEST_F(RocksDBSafeQueueTest, PopWithData)
     queue->push("test3");
     EXPECT_FALSE(queue->pop(ret_val, false));
     EXPECT_TRUE(queue->empty());
- }
+}
 
 TEST_F(RocksDBSafeQueueTest, PopWithMultipleData)
 {
@@ -78,7 +94,7 @@ TEST_F(RocksDBSafeQueueTest, PopWithMultipleData)
         queue->push(data + std::to_string(i));
     }
 
-    std::string ret_val{};
+    std::string ret_val {};
 
     for (int i = 0; i < ITERATION_COUNT; i++)
     {
@@ -91,15 +107,12 @@ TEST_F(RocksDBSafeQueueTest, PopWithMultipleData)
 
 TEST_F(RocksDBSafeQueueTest, BlockingPopByRef)
 {
-    std::thread t1
-    {
-        [this]()
-        {
-            std::string ret_val{};
-            EXPECT_TRUE(queue->pop(ret_val));
-            EXPECT_EQ("0", ret_val);
-        }
-    };
+    std::thread t1 {[this]()
+                    {
+                        std::string ret_val {};
+                        EXPECT_TRUE(queue->pop(ret_val));
+                        EXPECT_EQ("0", ret_val);
+                    }};
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     queue->push("0");
     t1.join();
@@ -107,15 +120,12 @@ TEST_F(RocksDBSafeQueueTest, BlockingPopByRef)
 
 TEST_F(RocksDBSafeQueueTest, BlockingPopBySmartPtr)
 {
-    std::thread t1
-    {
-        [this]()
-        {
-            auto ret_val{queue->pop()};
-            EXPECT_TRUE(ret_val);
-            EXPECT_EQ("0", *ret_val);
-        }
-    };
+    std::thread t1 {[this]()
+                    {
+                        auto ret_val {queue->pop()};
+                        EXPECT_TRUE(ret_val);
+                        EXPECT_EQ("0", *ret_val);
+                    }};
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     queue->push("0");
     t1.join();
@@ -123,24 +133,18 @@ TEST_F(RocksDBSafeQueueTest, BlockingPopBySmartPtr)
 
 TEST_F(RocksDBSafeQueueTest, CancelBlockingPop)
 {
-    std::thread t1
-    {
-        [this]()
-        {
-            auto ret_val{queue->pop()};
-            EXPECT_FALSE(ret_val);
-            EXPECT_TRUE(queue->cancelled());
-        }
-    };
-    std::thread t2
-    {
-        [this]()
-        {
-            int ret_val{};
-            EXPECT_FALSE(queue->pop(ret_val));
-            EXPECT_TRUE(queue->cancelled());
-        }
-    };
+    std::thread t1 {[this]()
+                    {
+                        auto ret_val {queue->pop()};
+                        EXPECT_FALSE(ret_val);
+                        EXPECT_TRUE(queue->cancelled());
+                    }};
+    std::thread t2 {[this]()
+                    {
+                        int ret_val {};
+                        EXPECT_FALSE(queue->pop(ret_val));
+                        EXPECT_TRUE(queue->cancelled());
+                    }};
     queue->cancel();
     t1.join();
     t2.join();
@@ -151,8 +155,9 @@ TEST_F(RocksDBSafeQueueTest, CreateFolderRecursively)
     const std::string DATABASE_NAME {"folder1/folder2/test.db"};
 
     EXPECT_NO_THROW({
-            (std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(RocksDBQueue<std::string>(DATABASE_NAME)));
-        });
+        (std::make_unique<base::utils::queue::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+            RocksDBQueue<std::string>(DATABASE_NAME)));
+    });
 
     std::error_code ec;
     std::filesystem::remove_all(DATABASE_NAME, ec);

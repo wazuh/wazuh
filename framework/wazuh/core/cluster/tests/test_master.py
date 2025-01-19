@@ -32,7 +32,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core.cluster.master import DEFAULT_DATE
             from wazuh.core import common
             from wazuh.core.cluster.dapi import dapi
-            from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 # Global variables
 
@@ -352,12 +351,6 @@ def test_master_handler_process_request(logger_mock):
                 json_loads_mock.assert_called_once_with(b"data")
                 get_health_mock.assert_called_once_with(b"ok")
                 json_dumps_mock.assert_called_once()
-
-    # Test the dist_orders condition
-    with patch("wazuh.core.cluster.master.MasterHandler.distribute_orders", return_value=b'ok') as distribute_orders_mock:
-        data = b'data'
-        assert master_handler.process_request(command=b'dist_orders', data=data) == b'ok'
-        distribute_orders_mock.assert_called_once_with(data)
 
     # Test the random condition
     with patch("wazuh.core.cluster.server.AbstractServerHandler.process_request",
@@ -1166,34 +1159,6 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
         clean_up_mock.assert_called_once_with(node_name=worker_name)
     else:
         clean_up_mock.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_master_handler_distribute_orders(event_loop):
-    """Check that the `distribute_orders` method works as expected."""
-    class ClientMock:
-        def send_request(self, data):
-            pass
-
-    class ServerMock:
-        def __init__(self):
-            self.clients = {'worker2': ClientMock}
-
-    def callback_mock(future: asyncio.Future):
-        assert future.result() == 'ok'
-
-    server_mock = ServerMock()
-    name = b'worker1'
-    orders = b'orders'
-    master_handler = get_master_handler()
-    master_handler.server = server_mock
-
-    with patch.object(server_mock.clients['worker2'], 'send_request', return_value='ok') as send_request_mock:
-        with patch.object(master_handler, 'send_orders', side_effect=callback_mock) as send_orders_mock:
-            result = master_handler.distribute_orders(data=name + b' ' + orders)
-            assert result == (b'ok', b'Orders forwarded to other nodes')
-            send_orders_mock.assert_called_once_with(orders)
-            send_request_mock.assert_called_with(b'dist_orders', orders)
 
 
 # Test Master class

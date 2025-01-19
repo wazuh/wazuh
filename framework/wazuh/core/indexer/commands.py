@@ -2,14 +2,19 @@ from dataclasses import asdict
 from typing import List
 
 from opensearchpy import exceptions
+from opensearchpy._async.helpers.search import AsyncSearch
+from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
+
 
 from .base import BaseIndex, IndexerKey, POST_METHOD
 from .utils import convert_enums
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.models.commands import Action, Command, Source, Target, TargetType, CreateCommandResponse, \
-    ResponseResult
- 
+from wazuh.core.indexer.models.commands import (
+    Action, Command, Source, Target, TargetType, CreateCommandResponse, ResponseResult
+)
+
 COMMAND_USER_NAME = 'Management API'
+COMMAND_KEY = 'command'
 
 
 class CommandsManager(BaseIndex):
@@ -18,14 +23,16 @@ class CommandsManager(BaseIndex):
     INDEX = '.commands'
     PLUGIN_URL = '/_plugins/_command_manager'
 
+    UPDATE_STATUS_SCRIPT = 'ctx._source.command.status = new String[] {params.status};'
+
     async def create(self, commands: List[Command]) -> CreateCommandResponse:
         """Create a new command.
-        
+
         Parameters
         ----------
         commands : List[Command]
             New commands list.
-        
+
         Returns
         -------
         CreateCommandResponse
@@ -55,15 +62,59 @@ class CommandsManager(BaseIndex):
             result=ResponseResult(response.get(IndexerKey.RESULT)),
         )
 
+    async def get_commands(self, status: str) -> List[Command]:
+        """Get commands that match with the given parameters.
+
+        Parameters
+        ----------
+        status : str
+            Status name.
+
+        Returns
+        -------
+        commands : List[Command]
+            Command list.
+        """
+        query = AsyncSearch(using=self._client, index=self.INDEX).filter({
+            IndexerKey.TERM: {
+                f'{COMMAND_KEY}.{IndexerKey.STATUS}': status
+            }
+        })
+        response = await query.execute()
+
+        commands = []
+        for hit in response:
+            commands.append(Command(**hit.to_dict()[COMMAND_KEY]))
+
+        return commands
+
+    async def update_commands_status(self, order_ids: List[str], status: str):
+        """Update the status for a list of order id's
+
+        Args:
+            order_ids (List[str]): List of order id's to update.
+            status (str): New status to set.
+        """
+        query = AsyncUpdateByQuery(using=self._client, index=self.INDEX).filter(
+            {
+                IndexerKey.TERMS: {'command.order_id': order_ids}
+            }
+        ).script(
+            source=self.UPDATE_STATUS_SCRIPT,
+            lang=IndexerKey.PAINLESS,
+            params={'status': status}
+        )
+        _ = await query.execute()
+
 
 def create_restart_command(agent_id: str) -> Command:
     """Create a restart command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
-    
+
     Returns
     -------
     Command
@@ -88,14 +139,14 @@ def create_restart_command(agent_id: str) -> Command:
 
 def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
     """Create a set group command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
     groups : List[str]
         Group names list.
-    
+
     Returns
     -------
     Command
@@ -119,12 +170,12 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
 
 def create_update_group_command(agent_id: str) -> Command:
     """Create a update group command for an agent with the ID specified.
-    
+
     Parameters
     ----------
     agent_id : str
         Agent ID.
-    
+
     Returns
     -------
     Command

@@ -215,6 +215,14 @@ chown %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}usr/share/wazuh-server/bin
 chmod 750 %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
 chown %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server
 
+# Scripts
+chmod 750 %{_localstatedir}usr/share/wazuh-server/framework/scripts/wazuh-server.py
+chown %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}usr/share/wazuh-server/framework/scripts/wazuh-server.py
+chmod 750 %{_localstatedir}usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
+chown %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
+chmod 750 %{_localstatedir}usr/share/wazuh-server/api/scripts/wazuh-comms-apid.py
+chown %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}usr/share/wazuh-server/api/scripts/wazuh-apid.py
+
 # Fix Python permissions
 chmod -R 0750 %{_localstatedir}usr/share/wazuh-server/framework/python/bin
 

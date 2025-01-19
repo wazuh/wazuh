@@ -152,13 +152,3 @@ default_policies:
         resources:
           - node:id:*
         effect: allow
-
-  orders_send:
-    description: Allow sending orders to the server.
-    policies:
-      resourceless:
-        actions:
-          - order:send
-        resources:
-          - '*:*:*'
-        effect: allow

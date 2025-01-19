@@ -8,11 +8,9 @@ import logging
 import sys
 from functools import partial
 from collections import defaultdict
-from unittest.mock import patch, MagicMock, AsyncMock, call, ANY
-import datetime
+from unittest.mock import patch, MagicMock, call
 
 import pytest
-from uvloop import EventLoopPolicy, Loop
 from freezegun import freeze_time
 
 import wazuh.core.exception as exception
@@ -197,12 +195,6 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
                                               data=b"data") == (b'ok', b'Added request to API requests queue')
         add_request_mock.assert_called_once_with(b"master*data")
         logger_mock.assert_called_with("Command received: 'b'dapi''")
-    # Test the dist_orders condition
-    with patch("wazuh.core.cluster.common.Handler.send_orders", side_effect=b"ok") as send_orders_mock:
-        response = worker_handler.process_request(command=b"dist_orders", data=b"data")
-        assert response == (b'ok', b'Orders sent to the Communications API unix server')
-        send_orders_mock.assert_called_with(b"data")
-        logger_mock.assert_called_with("Command received: 'b'dist_orders''")
     # Test the random condition
     with patch("wazuh.core.cluster.worker.client.AbstractClient.process_request",
                return_value=True) as process_request_mock:

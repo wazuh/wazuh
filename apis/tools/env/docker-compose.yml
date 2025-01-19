@@ -20,9 +20,9 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
-      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
-      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
+      - ../../../api/scripts/wazuh_apid.py:/usr/share/wazuh-server/api/scripts/wazuh-apid.py
+      - ../../comms_api/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
       - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
       - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
       - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
@@ -57,9 +57,9 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
-      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
-      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
+      - ../../../api/scripts/wazuh_apid.py:/usr/share/wazuh-server/api/scripts/wazuh-apid.py
+      - ../../comms_api/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
       - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
       - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
       - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
@@ -95,9 +95,9 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../framework/scripts:/usr/share/wazuh-server/framework/scripts
-      - ../../../api/scripts:/usr/share/wazuh-server/api/scripts
-      - ../../comms_api/scripts:/usr/share/wazuh-server/apis/scripts
+      - ../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
+      - ../../../api/scripts/wazuh_apid.py:/usr/share/wazuh-server/api/scripts/wazuh-apid.py
+      - ../../comms_api/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
       - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
       - ../../../api/api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
       - ../../comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api

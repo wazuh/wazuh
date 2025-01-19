@@ -9,13 +9,6 @@ VERSION="$2"
 MAJOR=$(echo "$VERSION" | cut -dv -f2 | cut -d. -f1)
 WAZUH_USER="wazuh-server"
 
-# environment configuration
-if [ ! -d ${WAZUH_TMP_DIR} ]; then
-    mkdir -p ${WAZUH_TMP_DIR}
-else
-    rm -rf ${WAZUH_TMP_DIR}
-    mkdir -p ${WAZUH_TMP_DIR}
-fi
 
 case "$1" in
     install|upgrade)

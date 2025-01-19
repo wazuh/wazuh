@@ -33,6 +33,8 @@
 
 #define BUFFER_SIZE 256
 
+const auto MERGED_CA_PATH {"./root-ca-merged.pem"};
+
 class IndexerConnectorTest : public ::testing::Test
 {
 protected:
@@ -207,7 +209,7 @@ extern "C" struct group* __wrap_getgrnam(const char* name)
 extern "C" int __wrap_chown(const char* path, uid_t owner, gid_t group)
 {
     // Simulate a successful chown operation for the "/tmp/success" file
-    if (strcmp(path, "/tmp/wazuh-server/root-ca-merged.pem") == 0)
+    if (strcmp(path, MERGED_CA_PATH) == 0)
     {
         return 0; // Return success
     }
@@ -265,7 +267,6 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
     // Setup for the test
     const std::string certFileOne = "./root-ca-one.pem";
     const std::string certFileTwo = "./root-ca-two.pem";
-    const std::string mergedCertFile = "/tmp/wazuh-server/root-ca-merged.pem";
 
     // Create the first certificate file
     std::ofstream outputFile(certFileOne);
@@ -282,14 +283,15 @@ TEST_F(IndexerConnectorTest, ConnectionWithCertsArray)
                                            .hosts = {A_ADDRESS},
                                            .sslOptions = {.cacert = {certFileOne, certFileTwo},
                                                           .cert = "/etc/filebeat/certs/filebeat.pem",
-                                                          .key = "/etc/filebeat/certs/filebeat-key.pem"},
+                                                          .key = "/etc/filebeat/certs/filebeat-key.pem",
+                                                          .mergedCAPath = MERGED_CA_PATH},
                                            .timeout = INDEXER_TIMEOUT};
 
     // Attempt to create the connector and expect no exceptions for valid certificates
     ASSERT_NO_THROW({ IndexerConnector indexerConnector(indexerConfig); });
 
     // Check that the content of the merged file is as expected
-    std::ifstream file(mergedCertFile);
+    std::ifstream file(MERGED_CA_PATH);
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     file.close();
 
@@ -539,6 +541,7 @@ TEST_F(IndexerConnectorTest, PublishInvalidData)
     ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
 }
+
 /**
  * @brief Test the connection and posterior discard of invalid JSON.
  *
@@ -716,4 +719,59 @@ TEST_F(IndexerConnectorTest, PublishDatePlaceholder)
     publishData["data"] = INDEX_DATA;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test the connection and posterior publication of invalid data to an available server.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishInvalidNoOperation)
+{
+    // Callback function that checks if the callback was executed or not.
+    auto callbackCalled {false};
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+                                    {
+                                        std::ignore = data;
+                                        callbackCalled = true;
+                                    }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
+
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME, .hosts = {A_ADDRESS}};
+    auto indexerConnector {IndexerConnector(indexerConfig)};
+
+    // Trigger publication and expect that it is not made.
+    nlohmann::json publishData;
+    publishData["id"] = "111";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+                 std::runtime_error);
+    ASSERT_EQ(callbackCalled, false);
+}
+
+/**
+ * @brief Test the connection and posterior publication of invalid data to an available server.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishNoInsertData)
+{
+    // Callback function that checks if the callback was executed or not.
+    auto callbackCalled {false};
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+                                    {
+                                        std::ignore = data;
+                                        callbackCalled = true;
+                                    }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
+
+    IndexerConnectorOptions indexerConfig {.name = INDEXER_NAME, .hosts = {A_ADDRESS}};
+    auto indexerConnector {IndexerConnector(indexerConfig)};
+
+    // Trigger publication and expect that it is not made.
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+                 std::runtime_error);
+    ASSERT_EQ(callbackCalled, false);
 }
