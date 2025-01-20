@@ -209,7 +209,7 @@ def test_process_file_sends_expected_messages(mock_debug):
 
         log_with_match = {'full_log': 'some log entry matching discard regex'}
         formatted_logs_with_match = [log_with_match]
-        
+
         processor.send_msg.reset_mock()
         processor.obtain_logs.return_value = formatted_logs_with_match
         processor.process_file(message_body)
