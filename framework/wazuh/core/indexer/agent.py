@@ -69,7 +69,6 @@ class AgentsIndex(BaseIndex):
             raw_key=key,
             type=type,
             version=version,
-            groups=[DEFAULT_GROUP],
             host=host if host else None
         )
         try:
