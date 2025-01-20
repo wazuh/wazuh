@@ -1,9 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from pydantic import ValidationError
 
 from wazuh.core.config.models.server import MasterIntervalsConfig, MasterProcesses, MasterConfig, NodeConfig, \
     ZipConfig, CommunicationsTimeoutConfig, CommunicationsConfig, WorkerIntervalsConfig, WorkerRetriesConfig, \
-    WorkerConfig, ServerSyncConfig, CTIConfig, ServerConfig, SharedFiles, DEFAULT_CTI_URL
+    WorkerConfig, ServerSyncConfig, CTIConfig, ServerConfig, SharedFiles, DEFAULT_CTI_URL, JWTConfig
 
 
 @pytest.mark.parametrize('init_values, expected', [
@@ -289,13 +291,37 @@ def test_cti_config_default_values(init_values, expected):
     assert config.url == expected['url']
 
 
+@pytest.mark.parametrize('init_values', [
+    {'private_key': 'private_key_example', 'public_key': 'public_key_example'}
+])
+@patch('os.path.isfile', return_value=True)
+def test_jwt_config_default_values(file_exists_mock, init_values):
+    """Check the correct initialization of the `JWTConfig` class."""
+    jwt_config = JWTConfig(**init_values)
+
+    assert jwt_config.private_key == init_values['private_key']
+    assert jwt_config.public_key == init_values['public_key']
+
+
+@pytest.mark.parametrize('init_values', [
+    {},
+    {'private_key': 'key_example'},
+    {'public_key': 'key_example'},
+])
+def test_jwt_config_fails_without_values(init_values):
+    'Check the correct behavior of the `JWTConfig` class validations.'
+    with pytest.raises(ValidationError):
+        JWTConfig(**init_values)
+
+
 @pytest.mark.parametrize('init_values, expected', [
     ({'nodes': ['master'], 'node': {'name': 'example', 'type': 'master', 'ssl':
-        {'key': 'value', 'cert': 'value', 'ca': 'value'}}},
+        {'key': 'value', 'cert': 'value', 'ca': 'value'}}, 'jwt': {'public_key': 'value', 'private_key': 'value'}},
      {'port': 1516, 'bind_addr': 'localhost', 'nodes': ['master'], 'hidden': False, 'update_check': False, 'node':
          {'name': 'example', 'type': 'master', 'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}}})
 ])
-def test_server_config_default_values(init_values, expected):
+@patch('wazuh.core.config.models.base.ValidateFilePathMixin._validate_file_path')
+def test_server_config_default_values(file_path_validation_mock, init_values, expected):
     """Check the correct initialization of the `ServerConfig` class."""
     config = ServerConfig(**init_values)
 
@@ -318,4 +344,3 @@ def test_server_config_invalid_values(values):
     node_dict = {'name': 'example', 'type': 'master', 'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}}
     with pytest.raises(ValidationError):
         _ = ServerConfig(node=node_dict, **values)
-

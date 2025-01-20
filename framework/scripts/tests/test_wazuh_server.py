@@ -413,8 +413,6 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
             wazuh_server.args = args
             with patch('wazuh.core.cluster.cluster.clean_up') as clean_up_mock, \
                 patch('scripts.wazuh_server.clean_pid_files') as clean_pid_files_mock, \
-                patch('wazuh.core.authentication.keypair_exists', return_value=False), \
-                patch('wazuh.core.authentication.generate_keypair') as generate_keypair_mock, \
                 patch('scripts.wazuh_server.start_daemons') as start_daemons_mock, \
                 patch.object(wazuh_server.pyDaemonModule, 'get_parent_pid', return_value=999), \
                 patch('os.kill') as os_kill_mock, \
@@ -444,7 +442,6 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
                     call('Shutting down wazuh-apid (pid: 999)'),
                     call('Shutting down wazuh-comms-apid (pid: 999)'),
                 ])
-                generate_keypair_mock.assert_called_once()
                 start_daemons_mock.assert_called_once()
 
                 args.foreground = True

@@ -1,9 +1,10 @@
-from pydantic import PositiveInt, conint, confloat, PrivateAttr, Field
 from typing import List, Optional
 from enum import Enum
 
-from wazuh.core.common import WAZUH_ETC, WAZUH_GROUPS
-from wazuh.core.config.models.base import WazuhConfigBaseModel
+from pydantic import PositiveInt, conint, confloat, PrivateAttr, Field, field_validator, ValidationInfo
+
+from wazuh.core.common import WAZUH_GROUPS
+from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import SSLConfig
 from wazuh.core.config.models.logging import LoggingConfig, LoggingLevel
 
@@ -260,19 +261,48 @@ class CTIConfig(WazuhConfigBaseModel):
     url: str = DEFAULT_CTI_URL
 
 
+class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
+    """Configuration for JWT key pair.
+
+    Parameters
+    ----------
+    private_key : str
+        The path to the private JTW key file.
+    public_key : str
+        The path to the public JTW key file.
+    """
+    private_key: str
+    public_key: str
+
+
+    @field_validator('private_key', 'public_key')
+    @classmethod
+    def validate_key_files(cls, path: str, info: ValidationInfo) -> str:
+        """Validate that the JWT keys exist.
+
+        Parameters
+        ----------
+        path : str
+            Path to the JTW key.
+        info : ValidationInfo
+            Validation context information.
+
+        Raises
+        ------
+        ValueError
+            Invalid JWT file path.
+
+        Returns
+        ------
+        str
+            JWT key path.
+        """
+        cls._validate_file_path(path, info.field_name, 'key')
+        return path
+
+
 DEFAULT_SERVER_INTERNAL_CONFIG = ServerSyncConfig(
     files=[
-        SharedFiles(
-            dir=WAZUH_ETC.as_posix(),
-            description='JWT signing key pair',
-            permissions=416,
-            source='master',
-            names=['private_key.pem', 'public_key.pem'],
-            recursive=False,
-            restart=False,
-            remove_subdirs_if_empty=False,
-            extra_valid=False,
-        ),
         SharedFiles(
             dir=WAZUH_GROUPS.as_posix(),
             description='group files',
@@ -332,6 +362,7 @@ class ServerConfig(WazuhConfigBaseModel):
     communications: CommunicationsConfig = CommunicationsConfig()
     logging: LoggingConfig = LoggingConfig(level=LoggingLevel.info)
     cti: CTIConfig = CTIConfig()
+    jwt: JWTConfig
     _internal: ServerSyncConfig = PrivateAttr(DEFAULT_SERVER_INTERNAL_CONFIG)
 
     def get_internal_config(self) -> ServerSyncConfig:
