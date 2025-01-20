@@ -300,8 +300,8 @@ async def test_agent_delete_agents(
 async def test_agent_add_agent(
     mock_group_exists,
     create_indexer_mock,
-    name,
     id,
+    name,
     key,
     groups,
     type,
@@ -318,9 +318,6 @@ async def test_agent_add_agent(
     )
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
-    create_response = CreateCommandResponse(index='.commands', document_ids=['pwrD5Ddf'], result=ResponseResult.CREATED)
-    commands_create_mock = AsyncMock(return_value=create_response)
-    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
 
     result = await add_agent(
         name=name,

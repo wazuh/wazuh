@@ -387,11 +387,6 @@ async def add_agent(
             ) if host else None
         )
 
-        command = create_update_group_command(agent_id=id)
-        response = await indexer_client.commands_manager.create([command])
-        if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
-            raise WazuhError(1762, extra_message=response.result.value)
-
     return WazuhResult({'data': new_agent})
 
 
