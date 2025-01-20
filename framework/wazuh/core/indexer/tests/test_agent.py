@@ -16,7 +16,6 @@ class TestAgentIndex:
     create_params = {
         'name': 'test',
         'key': '015fb915771223a3fdd7c0c0a5adcab8',
-        'groups': 'group1',
         'type': 'endpoint',
         'version': '5.0.0',
     }

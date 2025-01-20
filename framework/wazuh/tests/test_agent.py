@@ -285,12 +285,11 @@ async def test_agent_delete_agents(
         assert list(result.failed_items.values())[0] == set(agent_list[1:])
 
 
-@pytest.mark.parametrize('id,name,key,groups,type,version', [
+@pytest.mark.parametrize('id,name,key,type,version', [
     (
         '019008da-1575-7375-b54f-ef43e393517ef',
         'test',
         '95fffd306c752289d426e66013881538',
-        ['group1'],
         'endpoint',
         '5.0.0'
     ),
@@ -300,10 +299,9 @@ async def test_agent_delete_agents(
 async def test_agent_add_agent(
     mock_group_exists,
     create_indexer_mock,
-    name,
     id,
+    name,
     key,
-    groups,
     type,
     version,
 ):
@@ -314,13 +312,9 @@ async def test_agent_add_agent(
         raw_key=key,
         type=type,
         version=version,
-        groups=groups,
     )
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
-    create_response = CreateCommandResponse(index='.commands', document_ids=['pwrD5Ddf'], result=ResponseResult.CREATED)
-    commands_create_mock = AsyncMock(return_value=create_response)
-    create_indexer_mock.return_value.commands_manager.create = commands_create_mock
 
     result = await add_agent(
         name=name,
@@ -328,7 +322,6 @@ async def test_agent_add_agent(
         key=key,
         type=type,
         version=version,
-        groups=groups,
 
     )
 
@@ -337,7 +330,6 @@ async def test_agent_add_agent(
     assert result.dikt['data'].key == new_agent.key
     assert result.dikt['data'].type == new_agent.type
     assert result.dikt['data'].version == new_agent.version
-    assert result.dikt['data'].groups == new_agent.groups
 
 
 @pytest.mark.parametrize(

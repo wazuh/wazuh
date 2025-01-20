@@ -326,7 +326,6 @@ async def add_agent(
     key: str,
     type: str,
     version: str,
-    groups: List[str] = None,
     host: Host = None,
 ) -> WazuhResult:
     """Add a new Wazuh agent.
@@ -343,8 +342,6 @@ async def add_agent(
         Agent type.
     version : str
         Agent version.
-    groups : List[str]
-        Agent groups.
     host : Host
         Agent host information.
 
@@ -352,10 +349,6 @@ async def add_agent(
     ------
     WazuhError(1738)
         Name length is greater than 128 characters.
-    WazuhError(1710)
-        Group doesn't exist.
-    WazuhError(1762)
-        Failed while creating the update-group order.
     
     Returns
     -------
@@ -366,11 +359,6 @@ async def add_agent(
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
-    if groups is not None:
-        for group in groups:
-            if not Agent.group_exists(group):
-                raise WazuhError(1710, extra_message=group)
-
     async with get_indexer_client() as indexer_client:
         new_agent = await indexer_client.agents.create(
             id=id,
@@ -378,7 +366,6 @@ async def add_agent(
             key=key,
             type=type,
             version=version,
-            groups=groups,
             host=IndexerAgentHost(
                 architecture=host['architecture'],
                 ip=host['ip'],
@@ -386,11 +373,6 @@ async def add_agent(
                 os=host['os'],
             ) if host else None
         )
-
-        command = create_update_group_command(agent_id=id)
-        response = await indexer_client.commands_manager.create([command])
-        if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
-            raise WazuhError(1762, extra_message=response.result.value)
 
     return WazuhResult({'data': new_agent})
 
