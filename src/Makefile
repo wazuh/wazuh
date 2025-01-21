@@ -1455,9 +1455,6 @@ EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 SHARED_RES := http-request
 SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 
-.PHONY: deps
-deps: $(EXTERNAL_TAR) $(SHARED_TAR)
-
 # Determine CPYTHON_ARCHIVE based on architecture
 CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
 ifeq ($(PRECOMPILED_ARCH),/aarch64)
@@ -1465,6 +1462,10 @@ ifeq ($(PRECOMPILED_ARCH),/aarch64)
 else
 	CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
 endif
+
+
+.PHONY: deps
+deps: $(EXTERNAL_TAR) $(SHARED_TAR)
 
 # Python interpreter logic
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
