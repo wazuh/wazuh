@@ -1462,11 +1462,16 @@ external/$(CPYTHON).tar.gz:
 # Python interpreter
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifneq (,$(PRECOMPILED_RES))
-external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
-	test -e $(patsubst %.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
-	test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
+external/$(CPYTHON).tar.gz:
+ifeq ($(PRECOMPILED_ARCH),/aarch64)
+    CPYTHON_ARCHIVE := cpython_arm64.tar.gz
+else
+    CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
+endif
+	test -e external/$(CPYTHON_ARCHIVE) ||\
+	($(CURL) external/$(CPYTHON_ARCHIVE) $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE) &&\
+	cd external && $(GUNZIP) $(CPYTHON_ARCHIVE) && $(TAR) $(patsubst %.gz,%,$(CPYTHON_ARCHIVE)) && rm $(patsubst %.gz,%,$(CPYTHON_ARCHIVE)))
+	test -d $(patsubst %.tar.gz,%,$(CPYTHON_ARCHIVE)) || (cd external && $(GZIP) $(patsubst %.gz,%,$(CPYTHON_ARCHIVE)))
 
 external-precompiled/$(CPYTHON).tar.gz:
 	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
