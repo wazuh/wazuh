@@ -192,6 +192,7 @@ checks:
       - soc_2: ["CC6.6", "CC7.1", "CC7.2", "CC8.1"]
     condition: any
     rules:
+      - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate -> r:^Firewall\s*\t*is\s*\t*enabled'
       - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
       - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableFirewall -> r:^1$|^2$|^true$"
 
@@ -216,6 +217,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: any
     rules:
+      - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode -> r:^Firewall\s*\t*stealth\s*\t*mode\s*\t*is\s*\t*on'
       - "c:defaults read /Library/Preferences/com.apple.alf stealthenabled -> r:^1$|^2$"
       - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableStealthMode -> r:^1$|^2$|^true$"
 
@@ -600,7 +602,7 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition: all
+    condition: any
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
       - 'c:osascript -l JavaScript -e "osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^0$'
@@ -626,7 +628,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:>false<"
+      - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:<false"
 
   # 2.7.1 Ensure Screen Saver Corners Are Secure. (Automated) - Not Implemented
   # 2.7.2 Audit iPhone Mirroring (Manual) - Not Implemented
@@ -660,7 +662,7 @@ checks:
     title: "Ensure Wake for Network Access Is Disabled."
     description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer's shared resources, such as shared printers or Apple Music playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer, it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist, the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
-    impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs. Turning off Wake for Network Access will also not allow Find My to work when the computer is asleep. It will also give this warning \"You won't be able to locate, lock, or erase this Mac while it's asleep because Wake for network access is turned off.\"."
+    impact: 'Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs. Turning off Wake for Network Access will also not allow Find My to work when the computer is asleep. It will also give this warning "You won''t be able to locate, lock, or erase this Mac while it''s asleep because Wake for network access is turned off.".'
     remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: 1. Open System Settings 2. Select Energy Saver 3. Set Wake for network access to disabled Laptop Instructions: 1. Open System Settings 2. Select Battery 3. Select Options... 4. Set Wake for network access to Never Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is com.apple.EnergySaver.desktop.ACPower 3. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 4. The key to also include is com.apple.EnergySaver.portable.ACPower 5. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 6. The key to also include is com.apple.EnergySaver.portable.BatteryPower 7. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky."
     compliance:
       - cis: ["2.9.3"]
@@ -699,8 +701,8 @@ checks:
       - soc_2: ["CC6.3"]
     condition: all
     rules:
-      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPassword'')" -> n:^(\d+)$ compare == 1'
-      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPasswordDelay'')" -> n:^(\d+)$ compare <= 5'
+      - 'c:defaults -currentHost read com.apple.screensaver askForPassword 2>/dev/null -> n:^(\d+)$ compare == 1'
+      - 'c:defaults -currentHost read com.apple.screensaver askForPasswordDelay 2>/dev/null -> n:^(\d+)$ compare <= 5'
 
   # 2.10.3 Ensure a Custom Message for the Login Screen Is Enabled. (Automated)
   - id: 35029
@@ -781,7 +783,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not c:dscl . -list /Users hint -> r:^\w*$'
+      - 'not c:dscl . -list /Users hint -> r:^\S+$'
 
   # 2.11.2 Audit Touch ID. (Manual) - Not Implemented
 
