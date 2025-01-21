@@ -1459,6 +1459,7 @@ SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 deps: $(EXTERNAL_TAR) $(SHARED_TAR)
 
 # Determine CPYTHON_ARCHIVE based on architecture
+CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
 ifeq ($(PRECOMPILED_ARCH),/aarch64)
 	CPYTHON_ARCHIVE := cpython_arm64.tar.gz
 else
