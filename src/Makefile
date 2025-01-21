@@ -1464,9 +1464,9 @@ ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifneq (,$(PRECOMPILED_RES))
 external/$(CPYTHON).tar.gz:
 ifeq ($(PRECOMPILED_ARCH),/aarch64)
-    CPYTHON_ARCHIVE := cpython_arm64.tar.gz
+	CPYTHON_ARCHIVE := cpython_arm64.tar.gz
 else
-    CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
+	CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
 endif
 	test -e external/$(CPYTHON_ARCHIVE) ||\
 	($(CURL) external/$(CPYTHON_ARCHIVE) $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE) &&\
