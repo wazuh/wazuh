@@ -40,5 +40,5 @@ TEST_F(CleanUpContentTest, OutputPathSet)
 
     // Check the folder content
     EXPECT_TRUE(std::filesystem::is_empty(DOWNLOAD_DIR));
-    EXPECT_FALSE(std::filesystem::is_empty(CONTENTS_DIR));
+    EXPECT_TRUE(std::filesystem::is_empty(CONTENTS_DIR));
 }
