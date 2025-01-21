@@ -1469,31 +1469,31 @@ deps: $(EXTERNAL_TAR) $(SHARED_TAR)
 
 # Python interpreter logic
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
-	ifneq (,$(PRECOMPILED_RES))
-		external/$(CPYTHON_ARCHIVE): external-precompiled/$(CPYTHON_ARCHIVE)
-			test -e $(patsubst %.gz,%,$@) || \
-			($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) && \
-			cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && \
-			rm $(patsubst external/%.gz,%,$@))
-			test -d $(patsubst %.tar.gz,%,$@) || \
-			(cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
+ifneq (,$(PRECOMPILED_RES))
+external/$(CPYTHON_ARCHIVE): external-precompiled/$(CPYTHON_ARCHIVE)
+	test -e $(patsubst %.gz,%,$@) || \
+	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) && \
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && \
+	rm $(patsubst external/%.gz,%,$@))
+	test -d $(patsubst %.tar.gz,%,$@) || \
+	(cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
 
-		external-precompiled/$(CPYTHON_ARCHIVE):
+external-precompiled/$(CPYTHON_ARCHIVE):
 		-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
 		-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
-	else
-		external/$(CPYTHON_ARCHIVE):
-			$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-			cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-			cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-			rm $(patsubst %.gz,%,$@)
-	endif
 else
-	external/$(CPYTHON_ARCHIVE):
+external/$(CPYTHON_ARCHIVE):
 		$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 		cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 		cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 		rm $(patsubst %.gz,%,$@)
+endif
+else
+external/$(CPYTHON_ARCHIVE):
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
 endif
 
 
