@@ -46,7 +46,7 @@ Feature: Policy API Management
   Scenario: Get a policy with invalid name
     Given I have a policy called "policy/wazuh/0"
     When I send a request to get the policy called "policy/wazuh" in the namespaces "wazuh system user"
-    Then I should receive a failed response indicating "Error: Policy name (/policy) must have 3 parts"
+    Then I should receive a failed response indicating "Invalid policy name: policy/wazuh, expected 3 parts"
 
   Scenario: List all policies
     Given I have a policy called "policy/wazuh/0"
