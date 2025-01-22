@@ -96,6 +96,7 @@ def validate_resource(resource_name: str, format_type: str, content: str):
     request.name = resource_name
     request.format = string_to_resource_format(format_type)
     request.content = content
+    request.namespaceid = "test"
 
     error, response = send_recv(request, api_engine.GenericStatus_Response())
     return response

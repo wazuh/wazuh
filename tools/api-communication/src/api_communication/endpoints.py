@@ -62,6 +62,8 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str]:
         return None, 'kvdb/manager/delete'
     if isinstance(message, kvdb.managerDump_Request):
         return None, 'kvdb/manager/dump'
+    if isinstance(message, kvdb.dbSearch_Request):
+        return None, 'kvdb/db/search'
 
     # Policy
     if isinstance(message, policy.StorePost_Request):
