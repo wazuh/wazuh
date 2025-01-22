@@ -1058,6 +1058,22 @@ void w_get_attr_val_by_name_found(void ** state) {
     assert_string_equal(retval, "test_attr_value");
 }
 
+
+// Test OS_ReadXMLString
+void OS_ReadXMLString_simple_invalid_xml(void **state) {
+     OS_XML xml;
+    const char * const list_xml[] = {
+        "<!ers unclosed bad comment and end string",
+        "<event attr=\"unclosed tag end string",
+        NULL
+    };
+
+    for (int i = 0; list_xml[i] != NULL; i++) {
+        assert_int_not_equal(OS_ReadXMLString(list_xml[i], &xml), 0);
+        OS_ClearXML(&xml);
+    }
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -1237,6 +1253,10 @@ int main(void) {
 
         // Truncate node attribute value inside XML overflow test
         cmocka_unit_test_setup_teardown(test_node_attribute_value_truncate_overflow, test_setup, test_teardown),
+
+        // OS_ReadXMLString tests
+        cmocka_unit_test(OS_ReadXMLString_simple_invalid_xml),
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
