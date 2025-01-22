@@ -432,6 +432,36 @@ engine-health-test dynamic -e health_test/environment run --target rules
 engine-health-test dynamic -e health_test/environment run --target decoder --skip windows,wazuh-core
 ```
 
+### Coverage report
+A tool that measures the percentage of coverage of an asset.
+with a detailed report on the successful and failed traces for each stage of the asset.
+```bash
+usage: engine-health-test dynamic -e health_test/environment coverage_validate [-h] [-i INTEGRATION] [--rule_folder rule_folder] [--skip SKIP] --target TARGET
+
+options:
+  -h, --help            show this help message and exit
+  -i INTEGRATION, --integration INTEGRATION
+                        Specify the name of the integration to test
+  --rule_folder rule_folder
+                        Specify the name of the rule folder to test
+  --skip SKIP           Skip the tests with the specified name
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.
+```
+
+#### Usage
+```bash
+# To run a specific integration
+engine-health-test dynamic -e health_test/environment coverage_validate --integration windows
+# To run a specific rule folder
+engine-health-test dynamic -e health_test/environment coverage_validate --rule_folder windows
+# To run all tests in decoders
+engine-health-test dynamic -e health_test/environment coverage_validate --target decoder
+# To run all tests in rules
+engine-health-test dynamic -e health_test/environment coverage_validate --target rules
+# To skip specific tests in decoders
+engine-health-test dynamic -e health_test/environment coverage_validate --target decoder --skip windows,wazuh-core
+```
+
 ## Error Handling and Reports
 
 After the test execution, a report is generated. If any test fails, the exit code will be non-zero, and details will be printed to stdout. This helps in identifying and resolving issues effectively.
