@@ -116,6 +116,29 @@ TEST(startsWith, Failure)
     ASSERT_FALSE(base::utils::string::startsWith(input, prefix));
 }
 
+TEST(endsWith, Success)
+{
+    std::string input = "this is a test";
+    std::string suffix = "test";
+    ASSERT_TRUE(base::utils::string::endsWith(input, suffix));
+
+    suffix = "this is a test";
+    ASSERT_TRUE(base::utils::string::endsWith(input, suffix));
+}
+
+TEST(endsWith, Failure)
+{
+    std::string input = "this is a test";
+    std::string suffix = "is a test1";
+    ASSERT_FALSE(base::utils::string::endsWith(input, suffix));
+
+    suffix = "test1";
+    ASSERT_FALSE(base::utils::string::endsWith(input, suffix));
+
+    suffix = "this is a test1";
+    ASSERT_FALSE(base::utils::string::endsWith(input, suffix));
+}
+
 TEST(join, defaut_separator)
 {
     const std::string expected = "test";
