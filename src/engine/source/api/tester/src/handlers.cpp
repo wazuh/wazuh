@@ -446,25 +446,22 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         // Run the test
         auto opt = ::router::test::Options(traceLevel, assetToTrace, protoReq.name());
 
-        auto responseCallback = [&res](base::RespOrError<::router::test::Output>&& output)
-        {
-            ResponseType eResponse {};
-            if (base::isError(output))
-            {
-                res = adapter::userErrorResponse<ResponseType>("Error running test: " + base::getError(output).message);
-                return;
-            }
-            eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(output)));
-            eResponse.set_status(eEngine::ReturnStatus::OK);
-            res = adapter::userResponse(eResponse);
-        };
+        auto futureResult = tester->ingestTest(std::move(events.front()), opt);
+        events.pop();
 
-        auto error = tester->ingestTest(std::move(events.front()), opt, responseCallback);
-        if (error)
+        futureResult.wait_for(std::chrono::seconds(5));
+        auto response = futureResult.get();
+
+        if (base::isError(response))
         {
-            res = adapter::userErrorResponse<ResponseType>(error.value().message);
+            res = adapter::userErrorResponse<ResponseType>(base::getError(response).message);
             return;
         }
+
+        ResponseType eResponse {};
+        eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(response)));
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        res = adapter::userResponse(eResponse);
     };
 }
 
