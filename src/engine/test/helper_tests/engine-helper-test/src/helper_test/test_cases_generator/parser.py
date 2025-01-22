@@ -130,8 +130,14 @@ class Parser:
         """
         types = []
         if self.has_arguments():
-            for argument in self.yaml_data["arguments"].values():
-                types.append(argument.get("generate", "string"))
+            for name, argument in self.yaml_data["arguments"].items():
+                if "generate" in argument:
+                    if isinstance(argument["generate"], list):
+                        types.append({name: argument["generate"]})
+                    else:
+                        types.append(argument["generate"])
+                else:
+                    types.append("string")
         return types
 
     def get_skips(self) -> list:
