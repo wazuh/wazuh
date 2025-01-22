@@ -365,6 +365,20 @@ FilterOp opBuilderHelperNotContains(const Reference& targetField,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Checks if the string stored in the field ends with the value provided.
+ *
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return FilterOp
+ *
+ * @throws std::runtime_error if cannot create the filter.
+ */
+FilterOp opBuilderHelperEndsWith(const Reference& targetField,
+                                 const std::vector<OpArg>& opArgs,
+                                 const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Create the helper function `array_not_contains_any` that filters events if the field
  * is an array and does not contain at least one of the specified values.
  *

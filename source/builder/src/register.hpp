@@ -141,6 +141,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "starts_with",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperStringStarts});
     registry->template add<builders::OpBuilderEntry>(
+        "ends_with",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperEndsWith});
+    registry->template add<builders::OpBuilderEntry>(
         "contains",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperStringContains});
     registry->template add<builders::OpBuilderEntry>(
