@@ -5,7 +5,7 @@ Feature: Tester API Management
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
     And I create a "default" session that points to policy "policy/wazuh/0"
     When I send a request to the tester to add a new session called "default" with the data from policy:"policy/wazuh/0"
-    Then I should receive a failture response indicating that "Error creating session: The name of the testing environment already exist"
+    Then I should receive a failture response indicating that "The name of the testing environment already exist"
 
   Scenario: Add a new session for testing via API
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
@@ -25,7 +25,7 @@ Feature: Tester API Management
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
     And I create a "default" session that points to policy "policy/wazuh/0"
     When I send a request to the tester to delete the session "non-existent"
-    Then I should receive a failture response indicating that "Error deleting session: The testing environment not exist"
+    Then I should receive a failture response indicating that "The testing environment not exist"
 
   Scenario: Get all sessions via API
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
