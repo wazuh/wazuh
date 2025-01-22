@@ -160,7 +160,9 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
         ),
         action=Action(
             name='set-group',
-            args=groups,
+            args={
+                'groups': groups
+            },
             version='5.0.0'
         ),
         user=COMMAND_USER_NAME,

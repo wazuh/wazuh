@@ -161,7 +161,9 @@ def test_create_set_group_command():
         ),
         action=Action(
             name='set-group',
-            args=groups,
+            args={
+                'groups': groups
+            },
             version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
