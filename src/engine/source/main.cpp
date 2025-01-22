@@ -644,11 +644,11 @@ int main(int argc, char* argv[])
              * {"log": {"file": {"path": "/var/log/apache2/access.log"}}, "tags": ["production-server"], "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "created": "2023-12-26T09:22:14.000Z", "module": "apache-access", "provider": "file"}}
              * {"log":{"file":{"path":"/var/log/apache2/error.log"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","created":"2023-12-26T09:22:14.000Z","module":"apache-error","provider":"file"}}
              * {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production-server"],"event":{"original":"::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209","created":"2023-12-26T09:22:14.000Z","module":"syslog","provider":"file"}}
-             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","module":"$CHANEL_NAME","provider":"windows-evenchannel"}}
-             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","module":"Microsoft-Windows-Security-Auditing","provider":"windows-evenchannel"}}
-             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","module":"Windows PowerShell","provider":"windows-evenchannel"}}
-             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","created":"2023-12-26T09:22:14.000Z","module":"$UNIT_NAME","provider":"journald"}}
-             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","created":"2023-12-26T09:22:14.000Z","module":"ssh.service","provider":"journald"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","module":"windows-evenchannel","provider":"$CHANEL_NAME"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","module":"windows-evenchannel","provider":"Microsoft-Windows-Security-Auditing"}}
+             * {"tags":["production-server"],"event":{"original":"XML EVENT AS STRING","created":"2023-12-26T09:22:14.000Z","module":"windows-evenchannel","provider":"Windows PowerShell"}}
+             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","created":"2023-12-26T09:22:14.000Z","module":"journald","provider":"$UNIT_NAME"}}
+             * {"tags":["production-server"],"event":{"original":"JSON EVENT OF JOURNALD AS STRING","created":"2023-12-26T09:22:14.000Z","module":"journald","provider":"ssh.service"}}
              * {"module": "inventory", "type": "package"}
              * {"tags": ["string"], "event": {"original": "string", "created": "string", "module": "string", "provider": "string"}}
              * ```
