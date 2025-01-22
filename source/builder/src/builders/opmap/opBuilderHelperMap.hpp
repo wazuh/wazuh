@@ -141,15 +141,16 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
 MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Transforms an integer. Stores the result of a mathematical operation
+ * @brief Transforms an number. Stores the result of a mathematical operation
  * of a single or a set of values or references into the target field.
  *
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @param intCalc If true, only integers are used; if false, integers and floats.
  * @return base::Expression The lifter with the `mathematical operation` transformation.
- * @throw std::runtime_error if the parameter is not a integer.
+ * @throw If parameter is not an integer when intCalc is true or if parameter is not a number when intCalc is false.
  */
-MapOp opBuilderHelperIntCalc(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+MapBuilder getOpBuilderHelperCalc(bool intCalc);
 
 //*************************************************
 //*             JSON tranform                     *

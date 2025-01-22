@@ -67,9 +67,16 @@ class BuildtimeCases:
                 j = i % self.parser.get_minimum_arguments()
                 argument = Argument()
                 if not isinstance(self.types[j], list):
-                    argument.configure_generation(
-                        self.types[j], self.subsets[j], self.sources[j], [])
-                    val = argument.get()
+                    if not isinstance(self.subsets[j], dict):
+                        argument.configure_generation(
+                            self.types[j], self.subsets[j], self.sources[j], [])
+                        val = argument.get()
+                    else:
+                        subset = self.subsets[j][list(self.subsets[j].keys())[0]][0]
+                        argument.configure_generation(
+                            self.types[j], subset, self.sources[j], [])
+                        val = argument.get()
+
 
             if val != None:
                 if argument.is_reference(val):

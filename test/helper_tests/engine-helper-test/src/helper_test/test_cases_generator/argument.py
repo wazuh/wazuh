@@ -19,19 +19,23 @@ class Argument:
         self.allowed = []
 
     def configure_generation(
-            self, type_: str, subset: str, source: str, restriction: dict, ignore_allowed=False) -> None:
+            self, type_: str, subset, source: str, restriction: dict, ignore_allowed=False) -> None:
         """
         Configures the generation parameters for the argument.
 
         Args:
             type_ (str): Type of the argument.
-            subset (str): Subset of the argument.
+            subset (str or list): Subset of the argument. One or more subsets are accepted.
             source (str): Source of the argument.
             restriction (dict): Restrictions for the argument.
             ignore_allowed (bool, optional): Whether to ignore allowed restrictions.
         """
         self.type_ = convert_string_to_type(type_)
-        self.subset = convert_string_to_subset(subset)
+        if not isinstance(subset, dict):
+            self.subset = convert_string_to_subset(subset)
+        else:
+            subset = subset[list(subset.keys())[0]]
+            self.subset = convert_string_to_subset(random.choice(subset))
         self.source = convert_string_to_source(source)
         self.restriction = restriction
         self.ignore_allowed = ignore_allowed
