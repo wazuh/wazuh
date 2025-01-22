@@ -7,7 +7,6 @@
 
 static std::random_device RD;
 static std::mt19937 ENG(RD());
-const std::string MERGED_CA_DEFAULT_PATH = "/var/lib/wazuh-server/tmp/root-ca-merged.pem";
 
 std::string generateRandomString(size_t length)
 {
@@ -120,16 +119,6 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
         {
             indexerConnectorOptions.sslOptions.key = config.at("ssl").at("key").get_ref<const std::string&>();
         }
-
-        if (config.at("ssl").contains("merged_ca_path"))
-        {
-            indexerConnectorOptions.sslOptions.mergedCAPath =
-                config.at("ssl").at("merged_ca_path").get_ref<const std::string&>();
-        }
-        else
-        {
-            indexerConnectorOptions.sslOptions.mergedCAPath = MERGED_CA_DEFAULT_PATH;
-        }
     }
 
     if (config.contains("username"))
@@ -150,6 +139,7 @@ int main(const int argc, const char* argv[])
 
         CmdLineArgs cmdArgParser(argc, argv);
         logging::start({cmdArgParser.getLogFilePath(), logging::Level::Debug});
+
         // Read configuration file.
         std::ifstream configurationFile(cmdArgParser.getConfigurationFilePath());
         if (!configurationFile.is_open())
@@ -163,6 +153,7 @@ int main(const int argc, const char* argv[])
 
         // Create indexer connector.
         IndexerConnector indexerConnector(indexerConnectorOptions);
+
         // Read events file.
         // If the events file path is empty, then the events are generated
         // automatically.
