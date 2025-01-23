@@ -33,4 +33,4 @@ jobs:
           pip install -r framework/requirements-dev.txt --no-build-isolation
 
       - name: Run API tests
-        run: python -m pytest api/api --cov
+        run: python -m pytest apis/server_management/server_management_api --cov
