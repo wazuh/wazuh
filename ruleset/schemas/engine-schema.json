@@ -905,6 +905,10 @@
       "type": "keyword",
       "array": false
     },
+    "event.collector": {
+      "type": "keyword",
+      "array": false
+    },
     "event.created": {
       "type": "date",
       "array": false
