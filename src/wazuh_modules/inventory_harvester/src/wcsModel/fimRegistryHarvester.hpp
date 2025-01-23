@@ -12,7 +12,6 @@
 #ifndef _FIM_REGISTRY_HARVESTER_HPP
 #define _FIM_REGISTRY_HARVESTER_HPP
 
-#include "inventory_harvester/src/wcsModel/wcsClasses/registry.hpp"
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/file.hpp"

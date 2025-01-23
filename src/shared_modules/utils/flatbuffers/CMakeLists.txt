@@ -23,3 +23,5 @@ file(GLOB FLATBUFFERS_TOOL_SRC
 add_executable(flatbuffer_tool ${FLATBUFFERS_TOOL_SRC})
 
 target_link_libraries(flatbuffer_tool flatbuffers)
+
+add_subdirectory(schemas)

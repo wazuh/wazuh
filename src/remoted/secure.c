@@ -15,14 +15,16 @@
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
-#include "utils/flatbuffers/include/syscollector_synchronization_schema.h"
+#include "utils/flatbuffers/include/rsync_schema.h"
 #include "utils/flatbuffers/include/syscollector_deltas_schema.h"
+#include "utils/flatbuffers/include/syscheck_deltas_schema.h"
 #include "agent_messages_adapter.h"
 
 enum msg_type {
     MT_INVALID,
     MT_SYS_DELTAS,
-    MT_SYS_SYNC,
+    MT_SYNC,
+    MT_SYSCHECK_DELTAS,
 } msg_type_t;
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -48,16 +50,28 @@ OSHash *remoted_agents_state;
 extern remoted_state_t remoted_state;
 ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 
 // Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
-#define DBSYNC_SYSCOLLECTOR_HEADER "5:syscollector:"
+#define DBSYNC_HEADER "5:"
+#define DBSYNC_HEADER_SIZE 2
 #define SYSCOLLECTOR_HEADER "d:syscollector:"
-#define DBSYNC_SYSCOLLECTOR_HEADER_SIZE 15
 #define SYSCOLLECTOR_HEADER_SIZE 15
+#define SYSCHECK_HEADER "8:syscheck:"
+#define SYSCHECK_HEADER_SIZE 11
+
+#define SYSCOLLECTOR_SYNC_HEADER "syscollector:"
+#define SYSCOLLECTOR_SYNC_HEADER_SIZE 13
+#define SYSCHECK_FILE_HEADER "fim_file:"
+#define SYSCHECK_FILE_HEADER_SIZE 9
+#define SYSCHECK_REGISTRY_KEY_HEADER "fim_registry_key:"
+#define SYSCHECK_REGISTRY_KEY_HEADER_SIZE 17
+#define SYSCHECK_REGISTRY_VALUE_HEADER "fim_registry_value:"
+#define SYSCHECK_REGISTRY_VALUE_HEADER_SIZE 19
 
 // Router message forwarder
 void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name);
@@ -190,7 +204,11 @@ void HandleSecure()
         mdebug2("Failed to create router handle for 'syscollector'.");
     }
 
-    if (router_rsync_handle = router_provider_create("rsync-syscollector", false), !router_rsync_handle) {
+    if (router_syscheck_handle = router_provider_create("deltas-syscheck", false), !router_syscheck_handle) {
+        mdebug2("Failed to create router handle for 'syscheck'.");
+    }
+
+    if (router_rsync_handle = router_provider_create("rsync", false), !router_rsync_handle) {
         mdebug2("Failed to create router handle for 'rsync'.");
     }
 
@@ -479,8 +497,10 @@ STATIC const char * get_schema(const int type)
 {
     if (type == MT_SYS_DELTAS) {
         return syscollector_deltas_SCHEMA;
-    } else if (type == MT_SYS_SYNC) {
-        return syscollector_synchronization_SCHEMA;
+    } else if (type == MT_SYNC) {
+        return rsync_SCHEMA;
+    } else if (type == MT_SYSCHECK_DELTAS) {
+        return syscheck_deltas_SCHEMA;
     }
     return NULL;
 
@@ -838,14 +858,46 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
         router_handle = router_syscollector_handle;
         message_header_size = SYSCOLLECTOR_HEADER_SIZE;
         schema_type = MT_SYS_DELTAS;
-    } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
+    } else if(strncmp(msg, DBSYNC_HEADER, DBSYNC_HEADER_SIZE) == 0) {
         if (!router_rsync_handle) {
             mdebug2("Router handle for 'rsync' not available.");
             return;
         }
+
+        int message_subheader_size = 0;
+
+        if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_FILE_HEADER, SYSCHECK_FILE_HEADER_SIZE) == 0) {
+            message_subheader_size = SYSCHECK_FILE_HEADER_SIZE;
+        }
+        else if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_KEY_HEADER, SYSCHECK_REGISTRY_KEY_HEADER_SIZE) == 0) {
+            message_subheader_size = SYSCHECK_REGISTRY_KEY_HEADER_SIZE;
+        }
+        else if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_VALUE_HEADER, SYSCHECK_REGISTRY_VALUE_HEADER_SIZE) == 0) {
+            message_subheader_size = SYSCHECK_REGISTRY_VALUE_HEADER_SIZE;
+        }
+        else if (strncmp(msg+DBSYNC_HEADER_SIZE, SYSCOLLECTOR_SYNC_HEADER, SYSCOLLECTOR_SYNC_HEADER_SIZE) == 0) {
+            message_subheader_size = SYSCOLLECTOR_SYNC_HEADER_SIZE;
+        }
+        else {
+            mdebug2("Syscheck message not recognized %s", msg);
+            return;
+        }
+
         router_handle = router_rsync_handle;
-        message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
-        schema_type = MT_SYS_SYNC;
+        message_header_size = DBSYNC_HEADER_SIZE + message_subheader_size;
+        schema_type = MT_SYNC;
+    } else if(strncmp(msg, SYSCHECK_HEADER, SYSCHECK_HEADER_SIZE) == 0) {
+        if (!router_syscheck_handle) {
+            mdebug2("Router handle for 'syscheck' not available.");
+            return;
+        }
+
+        router_handle = router_syscheck_handle;
+        message_header_size = SYSCHECK_HEADER_SIZE;
+        schema_type = MT_SYSCHECK_DELTAS;
+    }
+    else {
+        mdebug2("%s message not recognized %s", agent_id, msg);
     }
 
     if (!router_handle) {
@@ -856,13 +908,17 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
     char* msg_start = msg + message_header_size;
     size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
     if ((msg_size + message_header_size) < OS_MAXSTR) {
-        if (schema_type == MT_SYS_DELTAS) {
+        if (schema_type == MT_SYS_DELTAS || schema_type == MT_SYSCHECK_DELTAS) {
             msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
-        } else if (schema_type == MT_SYS_SYNC) {
+        } else if (schema_type == MT_SYNC) {
             msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
+        }
+        else {
+            mdebug2("Message parsed with flatbuffer %s", msg);
         }
 
         if (msg_to_send) {
+            minfo("Forwarding message %s", msg_to_send);
             if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
                 mdebug2("Unable to forward message '%s' for agent %s", msg_to_send, agent_id);
             }

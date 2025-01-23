@@ -1,7 +1,7 @@
 /*
- * Wazuh Vulnerability scanner
+ * Wazuh inventory harvester
  * Copyright (C) 2015, Wazuh Inc.
- * March 25, 2023.
+ * January 20, 2025.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,16 +9,19 @@
  * Foundation.
  */
 
-#ifndef _VULNERABILITY_SCANNER_FACADE_HPP
-#define _VULNERABILITY_SCANNER_FACADE_HPP
+#ifndef _INVENTORY_ORCHESTRATOR_FACADE_HPP
+#define _INVENTORY_ORCHESTRATOR_FACADE_HPP
 
-#include "indexerConnector.hpp"
+#include "flatbuffers/include/messageBuffer_generated.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
+#include "threadEventDispatcher.hpp"
 #include "timeHelper.h"
 #include <functional>
 #include <harvesterConfiguration.hpp>
 #include <memory>
+#include <queue>           // Add this line to include the <queue> header file
+#include <rocksdb/slice.h> // Add this line to include the rocksdb namespace
 #include <string>
 
 using EventDispatcher = TThreadEventDispatcher<rocksdb::Slice,
@@ -59,18 +62,37 @@ public:
      * @param message event message.
      * @param type event type.
      */
-    // void pushEvent(const std::vector<char>& message, BufferType type) const
-    // {
-    //     flatbuffers::FlatBufferBuilder builder;
-    //     auto object = CreateMessageBufferDirect(
-    //         builder, reinterpret_cast<const std::vector<int8_t>*>(&message), type, Utils::getSecondsFromEpoch());
+    void pushFimEvent(const std::vector<char>& message, BufferType type) const
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        auto object = CreateMessageBufferDirect(
+            builder, reinterpret_cast<const std::vector<int8_t>*>(&message), type, Utils::getSecondsFromEpoch());
 
-    //     builder.Finish(object);
-    //     auto bufferData = reinterpret_cast<const char*>(builder.GetBufferPointer());
-    //     size_t bufferSize = builder.GetSize();
-    //     const rocksdb::Slice messageSlice(bufferData, bufferSize);
-    //     m_eventDispatcher->push(messageSlice);
-    // }
+        builder.Finish(object);
+        auto bufferData = reinterpret_cast<const char*>(builder.GetBufferPointer());
+        size_t bufferSize = builder.GetSize();
+        const rocksdb::Slice messageSlice(bufferData, bufferSize);
+        m_eventFimInventoryDispatcher->push(messageSlice);
+    }
+
+    /**
+     * @brief push event to the event dispatcher.
+     * This method is used to push an event to the event dispatcher.
+     * @param message event message.
+     * @param type event type.
+     */
+    void pushSystemEvent(const std::vector<char>& message, BufferType type) const
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        auto object = CreateMessageBufferDirect(
+            builder, reinterpret_cast<const std::vector<int8_t>*>(&message), type, Utils::getSecondsFromEpoch());
+
+        builder.Finish(object);
+        auto bufferData = reinterpret_cast<const char*>(builder.GetBufferPointer());
+        size_t bufferSize = builder.GetSize();
+        const rocksdb::Slice messageSlice(bufferData, bufferSize);
+        m_eventSystemInventoryDispatcher->push(messageSlice);
+    }
 
 private:
     /**
@@ -83,15 +105,17 @@ private:
     std::unique_ptr<RouterSubscriber> m_fimDeltasSubscription;
     std::unique_ptr<RouterSubscriber> m_fimRsyncSubscription;
     std::unique_ptr<RouterSubscriber> m_wdbAgentEventsSubscription;
-    std::shared_ptr<IndexerConnector> m_indexerConnector;
     bool m_noWaitToStop {true};
-    std::shared_ptr<EventDispatcher> m_eventDispatcher;
+    std::shared_ptr<EventDispatcher> m_eventSystemInventoryDispatcher;
+    std::shared_ptr<EventDispatcher> m_eventFimInventoryDispatcher;
 
     void initInventoryDeltasSubscription();
     void initInventoryRsyncSubscription();
     void initFimDeltasSubscription();
     void initFimRsyncSubscription();
     void initWazuhDBEventSubscription();
+    void initSystemEventDispatcher();
+    void initFimEventDispatcher();
 };
 
-#endif // _VULNERABILITY_SCANNER_FACADE_HPP
+#endif // _INVENTORY_ORCHESTRATOR_FACADE_HPP
