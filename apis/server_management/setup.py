@@ -14,7 +14,7 @@ from setuptools import setup, find_namespace_packages
 # http://pypi.python.org/pypi/setuptools
 
 setup(
-    name='api',
+    name='server_management_api',
     version='5.0.0',
     description="Wazuh API",
     author_email="hello@wazuh.com",
