@@ -18,7 +18,6 @@ services:
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
       - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
-      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
@@ -57,7 +56,6 @@ services:
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
       - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
-      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
@@ -97,7 +95,6 @@ services:
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
       - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
-      - ./certs/root-ca.pem:/etc/wazuh-server/certs/root-ca.pem
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
