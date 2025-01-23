@@ -18,6 +18,7 @@ from health_test.rule_mapping_validate import run as rule_mapping_validate_run
 from health_test.validate_successful_assets import run as validate_successful_assets_run
 from health_test.validate_non_modifiables_fields import run as validate_non_modifiables_fields_run
 from health_test.validate_custom_field_documentation import run as validate_custom_field_documentation_run
+from health_test.coverage_validate import run as coverage_validate_run
 
 
 def parse_args() -> Namespace:
@@ -221,6 +222,25 @@ def parse_args() -> Namespace:
         help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
         required=False)
     test_parser.set_defaults(func=test_run)
+
+    # coverage test subcommand
+    coverage_validate_parser = dynamic_subparsers.add_parser(
+        'coverage_validate', help=(
+            'A tool that measures the percentage of coverage of an asset.'
+            'With a detailed report on the successful and failed traces for each stage of the asset'))
+    coverage_validate_parser.add_argument(
+        '--integration', help='Specify the name of the integration to test.', default=None)
+    coverage_validate_parser.add_argument(
+        '--rule_folder', help='Specify the name of the rule folder to test', default=None)
+    coverage_validate_parser.add_argument(
+        '--output_file', help='Specifies the output file where the report will be stored', required=True)
+    coverage_validate_parser.add_argument(
+        '--skip', help='Skip the tests with the specified name', required=False)
+    coverage_validate_parser.add_argument(
+        '--target',
+        help='Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.',
+        required=False)
+    coverage_validate_parser.set_defaults(func=coverage_validate_run)
 
     return parser.parse_args()
 
