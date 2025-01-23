@@ -74,7 +74,7 @@ class Agent:
     key: str = None
     type: str = None
     version: str = None
-    groups: List[str] = None
+    groups: List[str] | None = None
     last_login: datetime = None
     status: Status = None
     host: Host = None
