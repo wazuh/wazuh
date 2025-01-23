@@ -5,9 +5,9 @@ server:
     name: server_01
     type: master
     ssl:
-      key: /etc/wazuh-server/certs/server.key
-      cert: /etc/wazuh-server/certs/server.crt
-      ca: /etc/wazuh-server/certs/server.ca
+      key: /etc/wazuh-server/certs/server-key.pem
+      cert: /etc/wazuh-server/certs/server.pem
+      ca: /etc/wazuh-server/certs/root-ca.pem
   jwt:
       private_key: /etc/wazuh-server/certs/private-key.pem
       public_key: /etc/wazuh-server/certs/public-key.pem
@@ -19,25 +19,25 @@ indexer:
   password: admin
   ssl:
     use_ssl: true
-    key: <KEY_FILE_PATH>
-    certificate: <CERT_FILE_PATH>
+    key: /etc/wazuh-server/certs/indexer-key.pem
+    certificate: /etc/wazuh-server/certs/indexer.pem
     certificate_authorities:
-      - <CA_FILE_PATH>
+      - /etc/wazuh-server/certs/root-ca.pem
 communications_api:
   host: localhost
   port: 27000
   ssl:
-    key: /etc/wazuh-server/certs/api.key
-    cert: /etc/wazuh-server/certs/api.crt
+    key: /etc/wazuh-server/certs/api-key.pem
+    cert: /etc/wazuh-server/certs/api.pem
     use_ca: false
-    ca: <CA_FILE_PATH>
+    ca: /etc/wazuh-server/certs/root-ca.pem
 management_api:
   host:
     - localhost
     - ::1
   port: 55000
   ssl:
-    key: /etc/wazuh-server/certs/api.key
-    cert: /etc/wazuh-server/certs/api.crt
+    key: /etc/wazuh-server/certs/api-key.pem
+    cert: /etc/wazuh-server/certs/api.pem
     use_ca: false
-    ca: <CA_FILE_PATH>
+    ca: /etc/wazuh-server/certs/root-ca.pem
