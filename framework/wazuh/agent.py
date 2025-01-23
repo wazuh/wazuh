@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os import chmod, chown, path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from api.models.agent_registration_model import Host
 
@@ -578,7 +578,6 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     WazuhResourceNotFound(1710)
         If the group was not found.
 
-
     Returns
     -------
     AffectedItemsWazuhResult
@@ -595,10 +594,10 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
 
-    if len(agent_list) != 0:
-        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
-    else:
+    if len(agent_list) == 0:
         query = {IndexerKey.MATCH_ALL: {}}
+    else:
+        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
 
     async with get_indexer_client() as indexer_client:
         available_agents = await indexer_client.agents.search(
@@ -606,34 +605,34 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
             select='agent.id,agent.groups',
         )
 
-        available_agents_ids = []
-        for i, agent in enumerate(available_agents):
-            if group_id in agent.groups:
-                result.add_failed_item(id_=agent.id, error=WazuhError(1766))
-                available_agents.pop(i)
-                agent_list.remove(agent.id)
-                continue
-
-            available_agents_ids.append(agent.id)
-
-        for not_found_id in set(agent_list) - set(available_agents_ids):
+        # Check for nonexistent agents
+        for not_found_id in set(agent_list) - set([agent.id for agent in available_agents]):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
 
-        if len(agent_list) > 0:
+        commands = []
+        for agent in available_agents:
+            # Check if the agent already belongs to the group
+            if agent.groups is not None and group_id in agent.groups:
+                result.add_failed_item(id_=agent.id, error=WazuhError(1766))
+                continue
+
             await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list, override=replace)
 
-            commands = []
-            for agent_id in agent_list:
-                command = create_set_group_command(agent_id=agent_id, groups=[group_id])
-                commands.append(command)
-
-            response = await indexer_client.commands_manager.create(commands)
-            if response.result in (ResponseResult.OK, ResponseResult.CREATED):
-                result.affected_items.extend(agent_list)
+            if agent.groups is None:
+                agent.groups = [group_id]
             else:
-                for agent_id in agent_list:
-                    result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
+                agent.groups.append(group_id)
+
+            command = create_set_group_command(agent_id=agent.id, groups=agent.groups)
+            commands.append(command)
+
+        response = await indexer_client.commands_manager.create(commands)
+        if response.result in (ResponseResult.OK, ResponseResult.CREATED):
+            result.affected_items.extend(agent_list)
+        else:
+            for agent_id in agent_list:
+                result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
 
     result.total_affected_items = len(result.affected_items)
 
