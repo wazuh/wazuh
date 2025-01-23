@@ -201,7 +201,7 @@ IndexerConnector::IndexerConnector(const IndexerConnectorOptions& indexerConnect
 
             auto url = selector->getNext();
             std::string bulkData;
-            url.append("/_bulk?refresh=wait_for");
+            url.append("/_bulk");
 
             std::string indexNameCurrentDate = m_indexName;
             base::utils::string::replaceAll(indexNameCurrentDate, "$(date)", base::utils::time::getCurrentDate("."));
