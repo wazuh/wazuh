@@ -1,4 +1,4 @@
-namespace SyscollectorSynchronization;
+namespace Synchronization;
 
 table AgentInfo {
     agent_id:string;

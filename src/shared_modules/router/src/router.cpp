@@ -253,6 +253,8 @@ extern "C"
             else
             {
                 flatbuffers::Parser parser;
+                parser.opts.skip_unexpected_fields_in_json = true;
+
                 if (!parser.Parse(schema))
                 {
                     throw std::runtime_error("Error parsing schema, " + std::string(parser.error_));
