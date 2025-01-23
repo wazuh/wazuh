@@ -1,25 +1,31 @@
 import sys
-import shared.resource_handler as rs
-from shared.resource_handler import Format, StringToFormat
+from api_communication.client import APIClient
+from api_communication.proto.catalog_pb2 import ResourceGet_Request, ResourceGet_Response
 
 
-def run(args, resource_handler: rs.ResourceHandler):
+def run(args):
 
     # Get the params
     api_socket: str = args['api_socket']
-    namespace: str = args['namespace']
-    asset: str = args['asset']
-    outFormat: Format = StringToFormat(args['format'])
+
+    json_request = dict()
+    json_request['namespaceid'] = args['namespace']
+    json_request['name'] = args['asset']
+    json_request['format'] = args['format']
 
     # Create the api request
     try:
-        result = resource_handler.get_catalog_file(
-            api_socket, '', asset, namespace, outFormat)['data']['content']
-        print(result)
+        client = APIClient(api_socket)
+        error, response = client.jsend(
+            json_request, ResourceGet_Request(), ResourceGet_Response())
+
+        if error:
+            sys.exit(f'Error getting asset or collection: {error}')
+
+        print(response['content'])
 
     except Exception as e:
         sys.exit(f'Error getting asset or collection: {e}')
-
 
     return 0
 
