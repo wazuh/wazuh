@@ -8,6 +8,9 @@ WAZUH_GROUP="wazuh-server"
 
 case "$1" in
     remove|failed-upgrade|abort-install|abort-upgrade|disappear)
+        if [ -d "/run/wazuh-server" ]; then
+            rm -rf /run/wazuh-server || true
+        fi
 
     ;;
 
