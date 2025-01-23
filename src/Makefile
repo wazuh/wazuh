@@ -1428,6 +1428,15 @@ endif
 endif
 endif
 
+# Determine CPYTHON_ARCHIVE based on architecture
+CPYTHON_ARCHIVE := cpython_x86_64
+ifeq ($(PRECOMPILED_ARCH),/aarch64)
+	CPYTHON_ARCHIVE := cpython_arm64
+else
+	CPYTHON_ARCHIVE := cpython_x86_64
+endif
+
+
 ifeq ($(CHECK_CENTOS5),YES)
 PRECOMPILED_OS := el5
 # Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
@@ -1444,7 +1453,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
+	EXTERNAL_RES += $(CPYTHON_ARCHIVE) jemalloc flatbuffers
 endif
 endif
 
@@ -1454,14 +1463,6 @@ EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 # Shared tools like dependencies
 SHARED_RES := http-request
 SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
-
-# Determine CPYTHON_ARCHIVE based on architecture
-CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
-ifeq ($(PRECOMPILED_ARCH),/aarch64)
-	CPYTHON_ARCHIVE := cpython_arm64.tar.gz
-else
-	CPYTHON_ARCHIVE := cpython_x86_64.tar.gz
-endif
 
 
 .PHONY: deps
