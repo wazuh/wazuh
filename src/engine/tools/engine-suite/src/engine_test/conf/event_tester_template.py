@@ -18,7 +18,7 @@ class TesterMessageTemplate:
     '''
     TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ" # 2023-12-26T09:22:14.000Z
 
-    def __init__(self, provider: str, module: str, created: str = "auto"):
+    def __init__(self, provider: str, module: str, collector: str, created: str = "auto"):
         '''
         Initializes the template with the given provider, module and created time.
 
@@ -61,6 +61,7 @@ class TesterMessageTemplate:
             "event": {
                 "created": created,
                 "module": module,
+                "collector": collector,
                 "original": "$EVENT_AS_STRING",
                 "provider": provider
             },
