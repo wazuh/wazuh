@@ -30,7 +30,7 @@ on:
 
 jobs:
   Upload-package-building-images:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     name: Package - Retag Docker images
 
@@ -64,10 +64,10 @@ jobs:
       - name: Run retag script
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            new_version=$(sed 's|[/\]|--|g' <<< ${{ inputs.new_version }})
-            old_version=$(sed 's|[/\]|--|g' <<< ${{ inputs.old_version }})
+            new_version=$(sed 's|[/\]|--|g' <<< "${{ inputs.new_version }}")
+            old_version=$(sed 's|[/\]|--|g' <<< "${{ inputs.old_version }}")
           else
-            new_version=${{ env.NEW_VERSION }}
-            old_version=${{ env.OLD_VERSION }}
+            new_version="${{ env.NEW_VERSION }}"
+            old_version="${{ env.OLD_VERSION }}"
           fi
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/retag_image.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} $old_version $new_version ${{ inputs.single_docker_image }}
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/retag_image.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor}}" "$old_version" "$new_version" "${{ inputs.single_docker_image }}"
