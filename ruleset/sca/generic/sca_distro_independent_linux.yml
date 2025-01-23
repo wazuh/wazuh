@@ -670,6 +670,7 @@ checks:
     rules:
       - "c:which setenforce -> r:/setenforce"
       - "c:which getenforce -> r:/getenforce"
+      - "c:which aa-status -> r:/aa-status"
 
   # 1.6.2.1 Ensure SELinux is not disabled in bootloader configuration. (Scored)
   - id: 36034
@@ -689,6 +690,7 @@ checks:
     rules:
       - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:selinux=0|enforcing=0'
       - 'f:/boot/grub2/grub.cfg -> r:^\s*linux && !r:selinux=0|enforcing=0'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:selinux=0|enforcing=0'
 
   # 1.6.2.2 Ensure the SELinux state is enforcing. (Scored)
   - id: 36035
@@ -781,11 +783,10 @@ checks:
       - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
       - nist_sp_800-53: ["AC-3"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-    condition: all
+    condition: any
     rules:
-      - "f:/boot/grub/menu.lst"
-      - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:apparmor=0'
-      - 'f:/boot/grub/menu.lst -> r:^\s*linux && !r:apparmor=0'
+      - 'f:/boot/grub/menu.lst -> r:^\s*kernel|^\s*linux && !r:apparmor=0'
+      - 'f:/etc/default/grub -> r:^\s*kernel|^\s*linux && !r:apparmor=0'
 
     # 1.6.3.2 Ensure all AppArmor Profiles are enforcing. (Scored)- Not Implemented
 
@@ -1731,7 +1732,7 @@ checks:
     condition: any
     rules:
       - "c:rpm -q tcp_wrappers -> r:^package tcp_wrappers is not installed"
-      - "not c:dpkg -s -> r:^Status: install ok installed"
+      - "c:dpkg -s tcpd -> r:^Status: install ok installed"
 
   # 3.3.2 Ensure /etc/hosts.allow is configured. (Not Scored) - Not Implemented
 
@@ -1990,6 +1991,7 @@ checks:
       - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
+      - "f:/etc/audit/auditd.conf"
       - 'f:/etc/audit/auditd.conf -> r:max_log_file\s*\t*=\s*\t*\d+'
 
   # 4.1.1.2 Ensure system is disabled when audit logs are full. (Scored)
@@ -2006,6 +2008,7 @@ checks:
       - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
+      - "f:/etc/audit/auditd.conf"
       - 'f:/etc/audit/auditd.conf -> r:space_left_action\s*\t*=\s*\t*email'
       - 'f:/etc/audit/auditd.conf -> r:action_mail_acct\s*\t*=\s*\t*root'
       - 'f:/etc/audit/auditd.conf -> r:admin_space_left_action\s*\t*=\s*\t*halt'
@@ -2024,6 +2027,7 @@ checks:
       - pci_dss_v3.2.1: ["10.7"]
     condition: all
     rules:
+      - "f:/etc/audit/auditd.conf"
       - 'f:/etc/audit/auditd.conf -> r:max_log_file_action\s*\t*=\s*\t*keep_logs'
 
   # 4.1.2 Ensure auditd is installed. (Scored)
@@ -2095,6 +2099,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0'
@@ -2121,6 +2126,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa'
@@ -2153,6 +2159,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor.d && r:-p wa'
       - "c:auditctl -l -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa"
@@ -2176,6 +2183,7 @@ checks:
       - pci_dss_v3.2.1: ["8.1.4"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa'
       - "c:auditctl -l -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa"
@@ -2195,6 +2203,7 @@ checks:
       - pci_dss_v3.2.1: ["8.1.4"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa'
@@ -2217,6 +2226,7 @@ checks:
       - pci_dss_v3.2.1: ["11.5"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2245,6 +2255,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2272,6 +2283,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2288,6 +2300,7 @@ checks:
       - cis_csc_v7: ["13"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2308,6 +2321,7 @@ checks:
       - pci_dss_v3.2.1: ["10.2.5"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
       - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
@@ -2331,6 +2345,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
@@ -2352,6 +2367,7 @@ checks:
       - cis_csc_v7: ["6"]
     condition: any
     rules:
+      - "d:/etc/audit/rules.d"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\s*\t*2'
       - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
 
@@ -3031,6 +3047,7 @@ checks:
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
       - 'f:/etc/pam.d/system-auth -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
 
   # 5.3.2 Ensure lockout for failed password attempts is configured (Not Scored)
 
@@ -3047,6 +3064,10 @@ checks:
     rules:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
       - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
 
   # 5.3.4 Ensure password hashing algorithm is SHA-512. (Not Scored)
   - id: 36163
@@ -3063,7 +3084,7 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
-      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_unix\.so && r:sha512'
+      - 'f:/etc/pam.d/common-password -> r:^\s*password && r:pam_unix\.so && r:sha512'
       - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix\.so && r:sha512'
 
   # 5.4.1.1 Ensure password expiration is 365 days or less. (Scored)
