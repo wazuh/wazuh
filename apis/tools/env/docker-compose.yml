@@ -26,8 +26,8 @@ services:
       - ../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
       - ../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
       - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../server_management:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management
-      - ../../communications:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/communications
+      - ../../server_management:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../communications:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     ports:
@@ -65,8 +65,8 @@ services:
       - ../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
       - ../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
       - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../server_management:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management
-      - ../../communications:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/communications
+      - ../../server_management:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../communications:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     depends_on:
@@ -105,8 +105,8 @@ services:
       - ../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
       - ../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
       - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../server_management:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management
-      - ../../communications:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/communications
+      - ../../server_management:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
+      - ../../communications:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     depends_on:
