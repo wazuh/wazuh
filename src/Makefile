@@ -1468,6 +1468,7 @@ endif
 deps: $(EXTERNAL_TAR) $(SHARED_TAR)
 
 # Python interpreter logic
+external/$(CPYTHON_ARCHIVE).tar.gz:
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifneq (,$(PRECOMPILED_RES))
 external/$(CPYTHON_ARCHIVE): external-precompiled/$(CPYTHON_ARCHIVE)
