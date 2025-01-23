@@ -12,7 +12,7 @@ inputs:
 
 runs:
   using: "composite"
-  steps:    
+  steps:
       - name: Dependencies for local execution
         if: env.ACT # Only run for local execution
         shell: bash
@@ -22,11 +22,11 @@ runs:
           sudo apt update
 
       # Dependencies for testing:
-      # - clang-format 
+      # - clang-format
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
-          packages: clang-format 
+          packages: clang-format
           version: 1.0
 
       - name: Check Coding style
