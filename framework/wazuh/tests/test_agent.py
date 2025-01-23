@@ -532,7 +532,6 @@ async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list,
 @pytest.mark.parametrize('group_list, agent_list', [
     (['group-1'], ['0191c7fa-26d5-705f-bc3c-f54810d30d79'])
 ])
-@patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.core.indexer.create_indexer')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
 async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mock, mock_unset, group_list, agent_list):
@@ -692,63 +691,6 @@ def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents
         for item in result['data']['affected_items']:
             assert item['id'] in expected_ids, f'Received ID {item["id"]} is not within expected IDs {expected_ids}.'
 
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('agent_groups, agent_id, group_id', [
-    (['dmz'], '005', 'dmz'),
-    (['dmz', 'webserver'], '005', 'dmz'),
-    (['dmz', 'webserver', 'database'], '005', 'dmz')
-])
-@patch('wazuh.core.agent.Agent.get_agent_groups', new_callable=AsyncMock)
-@patch('wazuh.core.agent.Agent.set_agent_group_relationship', new_callable=AsyncMock)
-@patch('wazuh.core.agent.Agent.set_agent_group_file')
-@patch('wazuh.core.agent.Agent')
-async def test_unset_single_group_agent(agent_patch, set_agent_group_patch, set_relationship_mock, get_groups_patch,
-                                        agent_groups, agent_id, group_id):
-    """Test successfully unsetting a group from an agent.
-
-    Parameters
-    ----------
-    agent_groups: list
-        List of groups an agent belongs to.
-    agent_id: str
-        Agent ID.
-    group_id: str
-        Group ID.
-    """
-    get_groups_patch.return_value = agent_groups
-
-    ret_msg = await Agent.unset_single_group_agent(agent_id, group_id, force=True)
-
-    assert ret_msg == f"Agent '{agent_id}' removed from '{group_id}'."
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('agent_id, group_id, force, expected_exc', [
-    ('0191c87f-a892-77b4-b53f-d5a3ad313665', 'whatever', False, 1710),
-    ('0191c87f-a892-77b4-b53f-d5a3ad313665', 'not_exists', True, 1734),
-    ('0191c87f-a892-77b4-b53f-d5a3ad313665', 'default', True, 1745),
-])
-@patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])
-@patch('wazuh.core.agent.Agent.group_exists', return_value=False)
-@patch('wazuh.core.indexer.create_indexer')
-async def test_unset_single_group_agent_ko(create_indexer_mock, group_exists_mock, get_groups_mock, agent_id, group_id,
-                                      force, expected_exc):
-    """Test `remove_single_group_agent` method exceptions.
-
-    Parameters
-    ----------
-    agent_id: str
-        Agent ID.
-    group_id: str
-        Group ID.
-    force: bool
-        Whether to force the agent-group relationship or not.
-    expected_exc: int
-        Expected WazuhException code error.
-    """
-    with pytest.raises(WazuhException, match=f".* {expected_exc} .*"):
-        await Agent.unset_single_group_agent(agent_id, group_id, force=force)
 
 @pytest.mark.parametrize(
     'agent_list,filters,expected_filters',

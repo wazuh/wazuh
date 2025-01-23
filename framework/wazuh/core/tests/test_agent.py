@@ -985,68 +985,6 @@ async def test_agent_set_agent_group_relationship_ko(get_client_mock):
         await Agent.set_agent_group_relationship('002', 'test_group')
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize('agent_id, group_id, force, previous_groups', [
-    ('002', 'test_group', False, ['default', 'test_group', 'another_test']),
-    ('002', 'test_group', True, ['default', 'test_group', 'another_test']),
-    ('002', 'test_group', False, ['test_group']),
-    ('002', 'test_group', False, ['test_group', 'another_test'])
-])
-@patch('wazuh.core.agent.Agent.set_agent_group_relationship')
-@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
-@patch('wazuh.core.indexer.Indexer._get_opensearch_client')
-@patch('wazuh.core.indexer.Indexer.connect')
-@patch('wazuh.core.indexer.Indexer.close')
-@patch('wazuh.core.indexer.agent.AgentsIndex.get')
-async def test_agent_unset_single_group_agent(get_agent_mock, close_mock, connect_mock, get_os_client_mock,
-                                              group_exists_mock, set_agent_group_mock, agent_id, group_id, force,
-                                              previous_groups):
-    """Test if unset_single_group_agent() returns expected message and removes group from agent.
-
-    Parameters
-    ----------
-    agent_id : str
-        Id of the agent.
-    group_id : str
-        Name of the group.
-    force : bool
-        Do not check if agent or group exists.
-    previous_groups : str
-        Groups to which the agent belongs.
-    set_default : bool
-        The agent belongs to 'default' group.
-    """
-    with patch('wazuh.core.agent.Agent.get_agent_groups', return_value=previous_groups):
-        result = await Agent.unset_single_group_agent(agent_id, group_id, force)
-
-    not force and get_agent_mock.assert_called_once()
-
-    set_agent_group_mock.assert_called_once_with(agent_id, group_id, remove=True)
-    assert result == f"Agent '{agent_id}' removed from '{group_id}'.", 'Result message not as expected.'
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.indexer.create_indexer')
-async def test_agent_unset_single_group_agent_ko(create_indexer_mock):
-    """Test if unset_single_group_agent() raises expected exceptions."""
-    # Group does not exists
-    with patch('wazuh.core.agent.Agent.group_exists', return_value=False):
-        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
-            await Agent.unset_single_group_agent('002', 'test_group')
-
-    # Agent does not belong to group
-    with patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['new_group', 'new_group2']):
-        # Group_id is not within group_list
-        with pytest.raises(WazuhError, match='.* 1734 .*'):
-            await Agent.unset_single_group_agent('002', 'test_group', force=True)
-
-    # Group ID is 'default' and it is the last only one remaining
-    with patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default']):
-        # Agent file does not exists
-        with pytest.raises(WazuhError, match='.* 1745 .*'):
-            await Agent.unset_single_group_agent('002', 'default', force=True)
-
-
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
