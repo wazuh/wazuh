@@ -191,6 +191,7 @@ def create_update_group_command(agent_id: str) -> Command:
         ),
         action=Action(
             name='update-group',
+            args={},
             version='5.0.0'
         ),
         user=COMMAND_USER_NAME,

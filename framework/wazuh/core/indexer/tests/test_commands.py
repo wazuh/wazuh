@@ -186,8 +186,9 @@ def test_create_update_group_command():
             id=agent_id,
         ),
         action=Action(
-            name='update-group',
-            version='5.0.0'
+            name='fetch-config',
+            version='5.0.0',
+            args={}
         ),
         user=COMMAND_USER_NAME,
         timeout=100
