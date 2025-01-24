@@ -47,17 +47,18 @@
 #define FIELD_GFREQUENCY 0x02
 
 /* Alert options  - store on a uint16 */
-#define DO_FTS          0x0001
-#define DO_MAILALERT    0x0002
-#define DO_LOGALERT     0x0004
-#define NO_AR           0x0008
-#define NO_ALERT        0x0010
-#define DO_OVERWRITE    0x0020
-#define DO_PACKETINFO   0x0040
-#define DO_EXTRAINFO    0x0100
-#define SAME_EXTRAINFO  0x0200
-#define NO_FULL_LOG     0x0400
-#define NO_COUNTER      0x1000
+#define DO_FTS              0x0001
+#define DO_MAILALERT        0x0002
+#define DO_LOGALERT         0x0004
+#define NO_AR               0x0008
+#define NO_ALERT            0x0010
+#define DO_OVERWRITE        0x0020
+#define DO_PACKETINFO       0x0040
+#define DO_EXTRAINFO        0x0100
+#define SAME_EXTRAINFO      0x0200
+#define NO_FULL_LOG         0x0400
+#define NO_COUNTER          0x1000
+#define NO_PREVIOUS_OUTPUT  0x2000
 
 #define RULE_MASTER     1
 #define RULE_SRCIP      2
