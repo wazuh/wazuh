@@ -82,14 +82,14 @@ class TestCommandsManager:
         client_mock.search.return_value = search_result
         expected_result = [Command(document_id=document_id)]
 
-        result = await index_instance.get_commands(Status.PENDING.value)
+        result = await index_instance.get_commands(Status.PENDING)
 
         query = {
             IndexerKey.QUERY: {
                 IndexerKey.BOOL: {
                     IndexerKey.FILTER: [
                         {
-                            IndexerKey.TERM: {'command.status': Status.PENDING.value}
+                            IndexerKey.TERM: {'command.status': Status.PENDING}
                         }
                     ]
                 }
