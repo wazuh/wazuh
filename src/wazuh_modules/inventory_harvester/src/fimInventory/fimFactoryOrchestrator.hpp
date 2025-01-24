@@ -12,7 +12,10 @@
 #ifndef _FIM_FACTORY_ORCHESTRATOR_HPP
 #define _FIM_FACTORY_ORCHESTRATOR_HPP
 
+#include "../common/clearAgent.hpp"
+#include "../common/clearElements.hpp"
 #include "../common/elementDispatch.hpp"
+#include "../common/indexSync.hpp"
 #include "chainOfResponsability.hpp"
 #include "deleteElement.hpp"
 #include "fimContext.hpp"
@@ -39,47 +42,36 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<FimContext>>>
     create(FimContext::Operation operation,
-           const std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>>& indexerConnectorInstances)
+           const std::map<FimContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+               indexerConnectorInstances)
     {
         std::shared_ptr<AbstractHandler<std::shared_ptr<FimContext>>> orchestration;
         if (operation == FimContext::Operation::Upsert)
         {
             orchestration = std::make_shared<UpsertFimElement<FimContext>>();
+            orchestration->setLast(std::make_shared<ElementDispatch<FimContext>>(indexerConnectorInstances));
         }
         else if (operation == FimContext::Operation::Delete)
         {
             orchestration = std::make_shared<DeleteFimElement<FimContext>>();
+            orchestration->setLast(std::make_shared<ElementDispatch<FimContext>>(indexerConnectorInstances));
         }
-        // else if (operation == FimContext::Operation::DeleteAgent)
-        // {
-        // }
-        // else if (operation == FimContext::Operation::DeleteAllEntries)
-        // {
-        //     switch (type)
-        //     {
-        //         case FimContext::AffectedComponentType::Package:
-        //         case FimContext::AffectedComponentType::System:
-        //         case FimContext::AffectedComponentType::Process: break;
-
-        //         default: break;
-        //     }
-        // }
-        // else if (operation == FimContext::Operation::IndexSync)
-        // {
-        //     switch (type)
-        //     {
-        //         case FimContext::AffectedComponentType::Package:
-        //         case FimContext::AffectedComponentType::System:
-        //         case FimContext::AffectedComponentType::Process: break;
-
-        //         default: break;
-        //     }
-        // }
+        else if (operation == FimContext::Operation::DeleteAgent)
+        {
+            orchestration = std::make_shared<ClearAgent<FimContext>>(indexerConnectorInstances);
+        }
+        else if (operation == FimContext::Operation::DeleteAllEntries)
+        {
+            orchestration = std::make_shared<ClearElements<FimContext>>(indexerConnectorInstances);
+        }
+        else if (operation == FimContext::Operation::IndexSync)
+        {
+            orchestration = std::make_shared<IndexSync<FimContext>>(indexerConnectorInstances);
+        }
         else
         {
             throw std::runtime_error("Invalid orchestration operation");
         }
-        orchestration->setLast(std::make_shared<ElementDispatch<FimContext>>(indexerConnectorInstances));
         return orchestration;
     }
 };

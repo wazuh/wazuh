@@ -28,7 +28,8 @@
  */
 class FimInventoryOrchestrator final
 {
-    std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>> m_indexerConnectorInstances;
+    std::map<FimContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>
+        m_indexerConnectorInstances;
     std::map<FimContext::Operation, std::shared_ptr<AbstractHandler<std::shared_ptr<FimContext>>>> m_orchestrations;
 
     void
@@ -64,9 +65,10 @@ public:
 
     FimInventoryOrchestrator()
     {
-        m_indexerConnectorInstances["packages"] = std::make_unique<IndexerConnector>("packages", "template");
-        m_indexerConnectorInstances["system"] = std::make_unique<IndexerConnector>("system", "template");
-        m_indexerConnectorInstances["processes"] = std::make_unique<IndexerConnector>("processes", "template");
+        m_indexerConnectorInstances[FimContext::AffectedComponentType::File] =
+            std::make_unique<IndexerConnector>("file", "template");
+        m_indexerConnectorInstances[FimContext::AffectedComponentType::Registry] =
+            std::make_unique<IndexerConnector>("registry", "template");
 
         m_orchestrations[FimContext::Operation::Upsert] =
             FimFactoryOrchestrator::create(FimContext::Operation::Upsert, m_indexerConnectorInstances);

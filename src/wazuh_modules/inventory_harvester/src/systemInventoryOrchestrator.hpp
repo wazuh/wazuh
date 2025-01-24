@@ -27,7 +27,8 @@
  */
 class SystemInventoryOrchestrator final
 {
-    std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>> m_indexerConnectorInstances;
+    std::map<SystemContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>
+        m_indexerConnectorInstances;
     std::map<SystemContext::Operation, std::shared_ptr<AbstractHandler<std::shared_ptr<SystemContext>>>>
         m_orchestrations;
 
@@ -67,9 +68,12 @@ public:
 
     SystemInventoryOrchestrator()
     {
-        m_indexerConnectorInstances["packages"] = std::make_unique<IndexerConnector>("packages", "template");
-        m_indexerConnectorInstances["system"] = std::make_unique<IndexerConnector>("system", "template");
-        m_indexerConnectorInstances["processes"] = std::make_unique<IndexerConnector>("processes", "template");
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Package] =
+            std::make_unique<IndexerConnector>("packages", "template");
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::System] =
+            std::make_unique<IndexerConnector>("system", "template");
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Process] =
+            std::make_unique<IndexerConnector>("processes", "template");
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);
