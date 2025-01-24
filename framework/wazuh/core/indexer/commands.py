@@ -10,7 +10,7 @@ from .base import BaseIndex, IndexerKey, POST_METHOD
 from .utils import convert_enums
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.models.commands import (
-    Action, Command, Source, Target, TargetType, CreateCommandResponse, ResponseResult
+    Action, Command, Source, Status, Target, TargetType, CreateCommandResponse, ResponseResult
 )
 
 COMMAND_USER_NAME = 'Management API'
@@ -62,12 +62,12 @@ class CommandsManager(BaseIndex):
             result=ResponseResult(response.get(IndexerKey.RESULT)),
         )
 
-    async def get_commands(self, status: str) -> List[Command]:
+    async def get_commands(self, status: Status) -> List[Command]:
         """Get commands that match with the given parameters.
 
         Parameters
         ----------
-        status : str
+        status : Status
             Status name.
 
         Returns
@@ -77,7 +77,7 @@ class CommandsManager(BaseIndex):
         """
         query = AsyncSearch(using=self._client, index=self.INDEX).filter({
             IndexerKey.TERM: {
-                f'{COMMAND_KEY}.{IndexerKey.STATUS}': status
+                f'{COMMAND_KEY}.{IndexerKey.STATUS}': status.value
             }
         })
         response = await query.execute()
