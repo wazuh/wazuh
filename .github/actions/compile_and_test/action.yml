@@ -25,7 +25,7 @@ runs:
       # Dependencies for testing:
       # - valgrind
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: valgrind
           version: 1.0
@@ -33,7 +33,7 @@ runs:
       # Dependencies for coverage:
       # - lcov
       - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
+        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: lcov
           version: 1.0
