@@ -100,7 +100,7 @@ table syscollector_packages {
     name:string;
     priority:string;
     scan_time:string;
-    size:int;
+    size:long;
     source:string;
     vendor:string;
     version:string;
