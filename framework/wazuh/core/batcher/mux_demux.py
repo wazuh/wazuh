@@ -117,7 +117,7 @@ class Packet:
             id=header.id,
             operation=header.operation,
             content=content,
-            index_name=get_module_index_name(header.module, header.type)
+            index_name=get_module_index_name(header.module, header.collector)
         )
         self.add_item(item)
 
