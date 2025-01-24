@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include <base/logging.hpp>
+#include <base/utils/timeUtils.hpp>
 
 #include "metricSerializer.hpp"
 #include "pointDataSerializer.hpp"
@@ -20,6 +21,7 @@ otsdk::ExportResult IndexerMetricsExporter::Export(const otsdk::ResourceMetrics&
         {
             json::Json jsonMessage;
             jsonMessage.setString("ADD", "/operation");
+
             jsonMessage.set("/data", details::scopeToJson(*record.scope_));
             for (const auto& metric : record.metric_data_)
             {
@@ -31,6 +33,9 @@ otsdk::ExportResult IndexerMetricsExporter::Export(const otsdk::ResourceMetrics&
                 }
                 jsonMessage.appendJson(metricJson, "/data/metrics");
             }
+
+            const auto timestamp = base::utils::time::getCurrentISO8601();
+            jsonMessage.setString(timestamp, "/data/timestamp");
 
             this->m_indexerConnector->publish(jsonMessage.str());
         }
