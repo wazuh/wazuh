@@ -20,7 +20,8 @@
 template<typename TContext>
 class ElementDispatch final : public AbstractHandler<std::shared_ptr<TContext>>
 {
-    const std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>>& m_indexerConnectorInstances;
+    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+        m_indexerConnectorInstances;
 
 public:
     // LCOV_EXCL_START
@@ -31,7 +32,8 @@ public:
     ~ElementDispatch() = default;
 
     explicit ElementDispatch(
-        const std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>>& indexerConnectorInstances)
+        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+            indexerConnectorInstances)
         : m_indexerConnectorInstances(indexerConnectorInstances)
     {
     }

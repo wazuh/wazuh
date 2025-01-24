@@ -19,6 +19,15 @@
 
 struct FimContext final
 {
+private:
+    enum class VariantType
+    {
+        Delta,
+        SyncMsg,
+        Json,
+        Invalid
+    };
+
 public:
     enum class Operation
     {
@@ -54,19 +63,24 @@ public:
                 if constexpr (std::is_same_v<T, const SyscheckDeltas::Delta*>)
                 {
                     m_data = std::forward<decltype(arg)>(arg);
-                    auto delta = std::get<const SyscheckDeltas::Delta*>(m_data);
+                    m_delta = std::get<const SyscheckDeltas::Delta*>(m_data);
+                    m_type = VariantType::Delta;
 
-                    buildDeltaContext(delta);
+                    buildDeltaContext(m_delta);
                 }
                 else if constexpr (std::is_same_v<T, const Synchronization::SyncMsg*>)
                 {
                     m_data = std::forward<decltype(arg)>(arg);
-                    auto syncMsg = std::get<const Synchronization::SyncMsg*>(m_data);
+                    m_syncMsg = std::get<const Synchronization::SyncMsg*>(m_data);
+                    m_type = VariantType::SyncMsg;
 
-                    buildSyncContext(syncMsg);
+                    buildSyncContext(m_syncMsg);
                 }
                 else if constexpr (std::is_same_v<T, const nlohmann::json*>)
                 {
+                    m_data = std::forward<decltype(arg)>(arg);
+                    m_jsonData = std::get<const nlohmann::json*>(m_data);
+                    m_type = VariantType::Json;
                 }
                 else
                 {
@@ -85,12 +99,48 @@ public:
         return m_originTable;
     }
 
+    AffectedComponentType affectedComponentType() const
+    {
+        return m_affectedComponentType;
+    }
+
+    std::string_view agentId()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->agent_info() && m_delta->agent_info()->agent_id())
+            {
+                return m_delta->agent_info()->agent_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->agent_info() && m_syncMsg->agent_info()->agent_id())
+            {
+                return m_syncMsg->agent_info()->agent_id()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/agent_info/agent_id"_json_pointer))
+            {
+                return m_jsonData->at("/agent_info/agent_id"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
     std::string m_serializedElement;
 
 private:
     Operation m_operation = Operation::Invalid;
     AffectedComponentType m_affectedComponentType = AffectedComponentType::Invalid;
     OriginTable m_originTable = OriginTable::Invalid;
+    VariantType m_type = VariantType::Invalid;
+
+    const SyscheckDeltas::Delta* m_delta = nullptr;
+    const Synchronization::SyncMsg* m_syncMsg = nullptr;
+    const nlohmann::json* m_jsonData = nullptr;
 
     /**
      * @brief Scan context.

@@ -12,7 +12,10 @@
 #ifndef _SYSTEM_FACTORY_ORCHESTRATOR_HPP
 #define _SYSTEM_FACTORY_ORCHESTRATOR_HPP
 
+#include "../common/clearAgent.hpp"
+#include "../common/clearElements.hpp"
 #include "../common/elementDispatch.hpp"
+#include "../common/indexSync.hpp"
 #include "chainOfResponsability.hpp"
 #include "deleteElement.hpp"
 #include "indexerConnector.hpp"
@@ -39,7 +42,8 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<SystemContext>>>
     create(SystemContext::Operation operation,
-           const std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>>& indexerConnectorInstances)
+           const std::map<SystemContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+               indexerConnectorInstances)
     {
         std::shared_ptr<AbstractHandler<std::shared_ptr<SystemContext>>> orchestration;
         if (operation == SystemContext::Operation::Upsert)
@@ -54,14 +58,15 @@ public:
         }
         else if (operation == SystemContext::Operation::DeleteAgent)
         {
+            orchestration = std::make_shared<ClearAgent<SystemContext>>(indexerConnectorInstances);
         }
         else if (operation == SystemContext::Operation::DeleteAllEntries)
         {
-            orchestration->setLast(std::make_shared<ElementDispatch<SystemContext>>(indexerConnectorInstances));
+            orchestration = std::make_shared<ClearElements<SystemContext>>(indexerConnectorInstances);
         }
         else if (operation == SystemContext::Operation::IndexSync)
         {
-            orchestration->setLast(std::make_shared<ElementDispatch<SystemContext>>(indexerConnectorInstances));
+            orchestration = std::make_shared<IndexSync<SystemContext>>(indexerConnectorInstances);
         }
         else
         {
