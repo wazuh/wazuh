@@ -20,7 +20,7 @@ COMMAND_KEY = 'command'
 class CommandsManager(BaseIndex):
     """Set of methods to interact with the commands manager."""
 
-    INDEX = '.commands'
+    INDEX = 'wazuh-commands'
     PLUGIN_URL = '/_plugins/_command_manager'
 
     UPDATE_STATUS_SCRIPT = 'ctx._source.command.status = new String[] {params.status};'

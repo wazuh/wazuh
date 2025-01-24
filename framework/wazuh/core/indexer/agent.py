@@ -17,7 +17,7 @@ AGENT_KEY = 'agent'
 class AgentsIndex(BaseIndex):
     """Set of methods to interact with the `agents` index."""
 
-    INDEX = '.agents'
+    INDEX = 'wazuh-agents'
     SECONDARY_INDEXES = []
     REMOVE_GROUP_SCRIPT = """
     for (int i=ctx._source.agent.groups.length-1; i>=0; i--) {
