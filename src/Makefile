@@ -1368,7 +1368,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 37
+DEPS_VERSION = 40
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -1428,6 +1428,15 @@ endif
 endif
 endif
 
+# Determine CPYTHON_ARCHIVE based on architecture
+CPYTHON_ARCHIVE := cpython_x86_64
+ifeq ($(PRECOMPILED_ARCH),/aarch64)
+	CPYTHON_ARCHIVE := cpython_arm64
+else
+	CPYTHON_ARCHIVE := cpython_x86_64
+endif
+
+
 ifeq ($(CHECK_CENTOS5),YES)
 PRECOMPILED_OS := el5
 # Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
@@ -1444,7 +1453,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
+	EXTERNAL_RES += $(CPYTHON_ARCHIVE) jemalloc flatbuffers
 endif
 endif
 
@@ -1455,36 +1464,40 @@ EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 SHARED_RES := http-request
 SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 
+
 .PHONY: deps
 deps: $(EXTERNAL_TAR) $(SHARED_TAR)
 
-external/$(CPYTHON).tar.gz:
-# Python interpreter
+# Python interpreter logic
+external/$(CPYTHON_ARCHIVE).tar.gz:
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifneq (,$(PRECOMPILED_RES))
-external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
-	test -e $(patsubst %.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
-	test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
+external/$(CPYTHON_ARCHIVE): external-precompiled/$(CPYTHON_ARCHIVE)
+	test -e $(patsubst %.gz,%,$@) || \
+	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) && \
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && \
+	rm $(patsubst external/%.gz,%,$@))
+	test -d $(patsubst %.tar.gz,%,$@) || \
+	(cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
 
-external-precompiled/$(CPYTHON).tar.gz:
-	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
-	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
+external-precompiled/$(CPYTHON_ARCHIVE):
+		-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+		-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
-external/$(CPYTHON).tar.gz:
+external/$(CPYTHON_ARCHIVE):
+		$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+		cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+		cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+		rm $(patsubst %.gz,%,$@)
+endif
+else
+external/$(CPYTHON_ARCHIVE):
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 endif
-else
-external/$(CPYTHON).tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
-endif
+
 
 ifeq (${uname_S},HP-UX)
 # nlohmann library
