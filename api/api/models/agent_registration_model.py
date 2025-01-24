@@ -199,7 +199,7 @@ class AgentRegistrationModel(Body):
         id: str = None,
         name: str = None,
         key: str = None,
-        type: str = None,
+        collector: str = None,
         version: str = None,
         host: Host = None,
     ):
@@ -207,7 +207,7 @@ class AgentRegistrationModel(Body):
             'id': str,
             'name': str,
             'key': str,
-            'type': str,
+            'collector': str,
             'version': str,
             'host': Host,
         }
@@ -216,7 +216,7 @@ class AgentRegistrationModel(Body):
             'id': 'id',
             'name': 'name',
             'key': 'key',
-            'type': 'type',
+            'collector': 'collector',
             'version': 'version',
             'host': 'host',
         }
@@ -224,7 +224,7 @@ class AgentRegistrationModel(Body):
         self._id = id
         self._name = name
         self._key = key
-        self._type = type
+        self._collector = collector
         self._version = version
         self._host = host
 
@@ -255,12 +255,12 @@ class AgentRegistrationModel(Body):
         self._key = key
     
     @property
-    def type(self) -> str:
-        return self._type
+    def collector(self) -> str:
+        return self._collector
 
-    @type.setter
-    def type(self, type: str):
-        self._type = type
+    @collector.setter
+    def collector(self, collector: str):
+        self._collector = collector
 
     @property
     def version(self) -> str:

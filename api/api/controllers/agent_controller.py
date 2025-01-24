@@ -26,7 +26,7 @@ async def delete_agents(
     agents_list: list = None,
     name: str = None,
     group: str = None,
-    type: str = None,
+    collector: str = None,
     version: str = None,
     older_than: str = None,
     is_connected: bool = None,
@@ -45,8 +45,8 @@ async def delete_agents(
         Filter by name.
     group : str
         Filter by group.
-    type : str
-        Filter by type.
+    collector : str
+        Filter by collector.
     version : str
         Filter by version.
     older_than : str
@@ -68,7 +68,7 @@ async def delete_agents(
         'filters': {
             'name': name,
             'groups': group,
-            'type': type,
+            'collector': collector,
             'version': version,
             'last_login': older_than,
             'is_connected': is_connected,
@@ -98,7 +98,7 @@ async def get_agents(
     agents_list: list = None,
     name: str = None,
     group: str = None,
-    type: str = None,
+    collector: str = None,
     version: str = None,
     older_than: str = None,
     offset: int = 0,
@@ -121,8 +121,8 @@ async def get_agents(
         Filter by agent name.
     group : str
         Filter by agent group.
-    type : str
-        Filter by agents type.
+    collector : str
+        Filter by agents collector.
     version : str
         Filter by agents version.
     older_than : str
@@ -153,7 +153,7 @@ async def get_agents(
         'filters': {
             'name': name,
             'groups': group,
-            'type': type,
+            'collector': collector,
             'version': version,
             'last_login': older_than,
             'is_connected': is_connected,

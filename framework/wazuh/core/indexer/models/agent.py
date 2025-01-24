@@ -72,7 +72,7 @@ class Agent:
     id: str = None
     name: str = None
     key: str = None
-    type: str = None
+    collector: str = None
     version: str = None
     groups: List[str] = None
     last_login: datetime = None

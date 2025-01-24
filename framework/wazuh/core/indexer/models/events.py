@@ -25,7 +25,7 @@ class Agent(BaseModel):
     id: str
     name: str
     groups: List[str]
-    type: str
+    collector: str
     version: str
     host: AgentHost
 

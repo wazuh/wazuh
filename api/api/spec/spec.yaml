@@ -749,7 +749,7 @@ components:
           description: "Agent authentication key"
           type: string
           format: alphanumeric_symbols
-        type:
+        collector:
           description: "Agent type"
           type: string
         version:
@@ -780,7 +780,7 @@ components:
       - id
       - name
       - key
-      - type
+      - collector
       - version
 
     AgentGroup:
@@ -2572,7 +2572,7 @@ paths:
               id: 019008da-1575-7375-b54f-ef43e393517ef
               name: NewHost_2
               key: 7b8276c3bf96aff5709346d368f04fed
-              type: endpoint
+              collector: endpoint
               version: 5.0.0
               host:
                 architecture: x86_64
@@ -3030,7 +3030,7 @@ paths:
                         - default
                         - group1
                       name: b2497efbf876
-                      type: endpoint
+                      collector: endpoint
                       version: Wazuh v5.0.0
                       last_login: 2024-08-27T10:03:23Z
                     - id: 0191c761-fd0d-76e3-a0e2-016e9ea453cc
@@ -3038,7 +3038,7 @@ paths:
                         - default
                         - group2
                       name: 600e27371700
-                      type: endpoint
+                      collector: endpoint
                       version: Wazuh v5.0.0
                       last_login: 2024-08-27T09:23:52Z
                     - id: 01912d07-b9b4-7528-bdad-15da902d651c
@@ -3046,7 +3046,7 @@ paths:
                         - default
                         - group3
                       name: 4bdac19ce5e3
-                      type: endpoint
+                      collector: endpoint
                       version: Wazuh v5.0.0
                       last_login: 2024-08-27T12:16:44Z
                   total_affected_items: 3
