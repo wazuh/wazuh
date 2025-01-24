@@ -12,6 +12,7 @@
 #ifndef _CLEAR_AGENT_HPP
 #define _CLEAR_AGENT_HPP
 
+#include "../wcsModel/deleteAgent.hpp"
 #include "chainOfResponsability.hpp"
 #include "indexerConnector.hpp"
 #include <map>
@@ -20,7 +21,8 @@
 template<typename TContext>
 class ClearAgent final : public AbstractHandler<std::shared_ptr<TContext>>
 {
-    const std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>>& m_indexerConnectorInstances;
+    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+        m_indexerConnectorInstances;
 
 public:
     // LCOV_EXCL_START
@@ -31,7 +33,8 @@ public:
     ~ClearAgent() = default;
 
     explicit ClearAgent(
-        const std::map<std::string, std::unique_ptr<IndexerConnector>, std::less<>>& indexerConnectorInstances)
+        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+            indexerConnectorInstances)
         : m_indexerConnectorInstances(indexerConnectorInstances)
     {
     }
@@ -45,6 +48,13 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
+        for (const auto& [_, indexer] : m_indexerConnectorInstances)
+        {
+            DeleteAgentHarvester deleteAgent;
+            deleteAgent.operation = "DELETED_BY_QUERY";
+            deleteAgent.id = data->agentId();
+            indexer->publish(serializeToJSON(deleteAgent));
+        }
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };

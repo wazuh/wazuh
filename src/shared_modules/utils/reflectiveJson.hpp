@@ -13,6 +13,7 @@
 #define _REFLECTIVE_JSON_HPP
 
 #include <charconv>
+#include <map>
 #include <string>
 #include <string_view>
 #include <tuple>
