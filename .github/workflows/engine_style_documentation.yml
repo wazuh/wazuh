@@ -148,11 +148,10 @@ jobs:
 
       # Dependencies for testing:
       # - clang-format 
-      - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-            packages: clang-format 
-            version: 1.0
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
 
       - name: Check Coding style
         shell: bash
