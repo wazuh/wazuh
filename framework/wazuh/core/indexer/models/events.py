@@ -64,7 +64,7 @@ class InventoryType(str, Enum):
     """Stateful events inventory types."""
     HARDWARE = 'hardware'
     HOTFIXES = 'hotfixes'
-    PACAKGES = 'packages'
+    PACKAGES = 'packages'
     NETWORKS = 'networks'
     SYSTEM = 'system'
     PORTS = 'ports'
@@ -81,7 +81,7 @@ STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
 INVENTORY_EVENTS: Dict[InventoryType, str] = {
     InventoryType.HARDWARE: INVENTORY_HARDWARE_INDEX,
     InventoryType.HOTFIXES: INVENTORY_HOTFIXES_INDEX,
-    InventoryType.PACAKGES: INVENTORY_PACKAGES_INDEX,
+    InventoryType.PACKAGES: INVENTORY_PACKAGES_INDEX,
     InventoryType.NETWORKS: INVENTORY_NETWORKS_INDEX,
     InventoryType.SYSTEM: INVENTORY_SYSTEM_INDEX,
     InventoryType.PORTS: INVENTORY_PORTS_INDEX,

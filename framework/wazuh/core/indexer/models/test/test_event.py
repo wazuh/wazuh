@@ -11,7 +11,7 @@ from wazuh.core.indexer.models.events import get_module_index_name, Module, FIM_
     (Module.INVENTORY, InventoryType.HARDWARE, INVENTORY_HARDWARE_INDEX),
     (Module.INVENTORY, InventoryType.HOTFIXES, INVENTORY_HOTFIXES_INDEX),
     (Module.INVENTORY, InventoryType.NETWORKS, INVENTORY_NETWORKS_INDEX),
-    (Module.INVENTORY, InventoryType.PACAKGES, INVENTORY_PACKAGES_INDEX),
+    (Module.INVENTORY, InventoryType.PACKAGES, INVENTORY_PACKAGES_INDEX),
     (Module.INVENTORY, InventoryType.PORTS, INVENTORY_PORTS_INDEX),
     (Module.INVENTORY, InventoryType.PROCESSES, INVENTORY_PROCESSES_INDEX),
     (Module.INVENTORY, InventoryType.SYSTEM, INVENTORY_SYSTEM_INDEX),
