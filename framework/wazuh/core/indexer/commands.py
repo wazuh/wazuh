@@ -170,8 +170,8 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
     )
 
 
-def create_update_group_command(agent_id: str) -> Command:
-    """Create a update group command for an agent with the ID specified.
+def create_fetch_config_command(agent_id: str) -> Command:
+    """Create a fetch config command for an agent with the ID specified.
 
     Parameters
     ----------
@@ -181,7 +181,7 @@ def create_update_group_command(agent_id: str) -> Command:
     Returns
     -------
     Command
-        Update group command.
+        Fetch config command.
     """
     return Command(
         source=Source.SERVICES,
@@ -190,7 +190,7 @@ def create_update_group_command(agent_id: str) -> Command:
             id=agent_id,
         ),
         action=Action(
-            name='update-group',
+            name='fetch-config',
             args={},
             version='5.0.0'
         ),

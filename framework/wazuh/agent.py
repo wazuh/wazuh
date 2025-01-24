@@ -19,7 +19,7 @@ from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Host as IndexerAgentHost
 from wazuh.core.indexer.models.commands import ResponseResult
-from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_update_group_command
+from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_fetch_config_command
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
@@ -535,7 +535,7 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
                 if len(agents) > 0:
                     commands = []
                     for agent in agents:
-                        command = create_update_group_command(agent_id=agent.id)
+                        command = create_fetch_config_command(agent_id=agent.id)
                         commands.append(command)
 
                     response = await indexer_client.commands_manager.create(commands)
@@ -691,7 +691,7 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
 
             commands = []
             for agent_id in agent_list:
-                command = create_update_group_command(agent_id=agent_id)
+                command = create_fetch_config_command(agent_id=agent_id)
                 commands.append(command)
 
             response = await indexer_client.commands_manager.create(commands)
