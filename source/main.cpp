@@ -201,8 +201,18 @@ int main(int argc, char* argv[])
 
             SingletonLocator::instance<metrics::IManager>().configure(config);
 
-            // TODO add enabled flag to the configuration when config refactor is done
-            SingletonLocator::instance<metrics::IManager>().enable();
+            LOG_INFO("Metrics initialized.");
+
+            if (confManager.get<bool>(conf::key::METRICS_ENABLED))
+            {
+                SingletonLocator::instance<metrics::IManager>().enable();
+                LOG_INFO("Metrics enabled.");
+            }
+            else
+            {
+                SingletonLocator::instance<metrics::IManager>().disable();
+                LOG_INFO("Metrics disabled.");
+            }
 
             exitHandler.add(
                 []()
@@ -210,8 +220,6 @@ int main(int argc, char* argv[])
                     SingletonLocator::instance<metrics::IManager>().disable();
                     SingletonLocator::clear();
                 });
-
-            LOG_INFO("Metrics initialized.");
         }
 
         // Store

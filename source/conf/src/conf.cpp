@@ -92,6 +92,7 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);
 
     // Metrics module
+    addUnit<bool>(key::METRICS_ENABLED, "WAZUH_METRICS_ENABLED", false);
     addUnit<int64_t>(key::METRICS_EXPORT_INTERVAL, "WAZUH_METRICS_EXPORT_INTERVAL", 10000);
     addUnit<int64_t>(key::METRICS_EXPORT_TIMEOUT, "WAZUH_METRICS_EXPORT_TIMEOUT", 1000);
 };
