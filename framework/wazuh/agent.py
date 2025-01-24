@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os import chmod, chown, path
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from api.models.agent_registration_model import Host
 
@@ -17,9 +17,10 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.agent import DEFAULT_GROUP
 from wazuh.core.indexer.models.agent import Host as IndexerAgentHost
 from wazuh.core.indexer.models.commands import ResponseResult
-from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_update_group_command
+from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_fetch_config_command
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
@@ -525,17 +526,18 @@ async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
             # Check if group exists
             if group_id not in system_groups:
                 raise WazuhResourceNotFound(1710)
-            elif group_id == 'default':
+            elif group_id == DEFAULT_GROUP:
                 raise WazuhError(1712)
 
             async with get_indexer_client() as indexer_client:
-                # Get the list of agents belonging to the group to send them the update-group command
+                # Get the list of agents belonging to the group to send them the set-group command
                 agents = await indexer_client.agents.get_group_agents(group_name=group_id)
 
                 if len(agents) > 0:
                     commands = []
                     for agent in agents:
-                        command = create_update_group_command(agent_id=agent.id)
+                        agent.groups.remove(group_id)
+                        command = create_set_group_command(agent_id=agent.id, groups=agent.groups)
                         commands.append(command)
 
                     response = await indexer_client.commands_manager.create(commands)
@@ -578,7 +580,6 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     WazuhResourceNotFound(1710)
         If the group was not found.
 
-
     Returns
     -------
     AffectedItemsWazuhResult
@@ -595,10 +596,10 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
 
-    if len(agent_list) != 0:
-        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
-    else:
+    if len(agent_list) == 0:
         query = {IndexerKey.MATCH_ALL: {}}
+    else:
+        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
 
     async with get_indexer_client() as indexer_client:
         available_agents = await indexer_client.agents.search(
@@ -606,28 +607,29 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
             select='agent.id,agent.groups',
         )
 
-        available_agents_ids = []
-        for i, agent in enumerate(available_agents):
-            if group_id in agent.groups:
-                result.add_failed_item(id_=agent.id, error=WazuhError(1766))
-                available_agents.pop(i)
-                agent_list.remove(agent.id)
-                continue
-
-            available_agents_ids.append(agent.id)
-
-        for not_found_id in set(agent_list) - set(available_agents_ids):
+        # Check for nonexistent agents
+        for not_found_id in set(agent_list) - set([agent.id for agent in available_agents]):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
 
-        if len(agent_list) > 0:
+        commands = []
+        for agent in available_agents:
+            # Check if the agent already belongs to the group
+            if agent.groups is not None and group_id in agent.groups:
+                result.add_failed_item(id_=agent.id, error=WazuhError(1766))
+                continue
+
             await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list, override=replace)
 
-            commands = []
-            for agent_id in agent_list:
-                command = create_set_group_command(agent_id=agent_id, groups=[group_id])
-                commands.append(command)
+            if agent.groups is None:
+                agent.groups = [group_id]
+            else:
+                agent.groups.append(group_id)
 
+            command = create_set_group_command(agent_id=agent.id, groups=agent.groups)
+            commands.append(command)
+
+        if len(commands) > 0:
             response = await indexer_client.commands_manager.create(commands)
             if response.result in (ResponseResult.OK, ResponseResult.CREATED):
                 result.affected_items.extend(agent_list)
@@ -673,17 +675,15 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
     if group_id not in system_groups:
         raise WazuhResourceNotFound(1710)
 
-    if len(agent_list) != 0:
-        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
-    else:
+    if len(agent_list) == 0:
         query = {IndexerKey.MATCH_ALL: {}}
+    else:
+        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
 
     async with get_indexer_client() as indexer_client:
-        available_agents = [item.id for item in
-            await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='agent.id')
-        ]
+        agents = await indexer_client.agents.search(query={IndexerKey.QUERY: query}, select='agent.id,agent.groups')
 
-        for not_found_id in set(agent_list) - set(available_agents):
+        for not_found_id in set(agent_list) - set([agent.id for agent in agents]):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
 
@@ -691,16 +691,22 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
             await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=agent_list)
 
             commands = []
-            for agent_id in agent_list:
-                command = create_update_group_command(agent_id=agent_id)
-                commands.append(command)
+            for agent in agents:
+                if agent.groups is None or group_id not in agent.groups:
+                    result.add_failed_item(not_found_id, error=WazuhError(1734))
+                    continue
 
-            response = await indexer_client.commands_manager.create(commands)
-            if response.result in (ResponseResult.OK, ResponseResult.CREATED):
-                result.affected_items.extend(agent_list)
-            else:
-                for agent_id in agent_list:
-                    result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
+                agent.groups.remove(group_id)
+                command = create_set_group_command(agent_id=agent.id, groups=agent.groups)
+                commands.append(command)
+            
+            if len(commands) > 0:
+                response = await indexer_client.commands_manager.create(commands)
+                if response.result in (ResponseResult.OK, ResponseResult.CREATED):
+                    result.affected_items.extend(agent_list)
+                else:
+                    for agent_id in agent_list:
+                        result.add_failed_item(id_=agent_id, error=WazuhError(1762, extra_message=response.result.value))
 
     result.total_affected_items = len(result.affected_items)
 

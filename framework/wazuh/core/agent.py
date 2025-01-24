@@ -4,13 +4,11 @@
 
 import ipaddress
 import re
-import threading
 from base64 import b64encode
-from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from os import listdir, path, remove
-from typing import List
+from typing import List, Optional
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
@@ -892,7 +890,7 @@ class Agent:
         return path.exists(get_group_file_path(group_id))
 
     @staticmethod
-    async def get_agent_groups(agent_id: str) -> List[str]:
+    async def get_agent_groups(agent_id: str) -> Optional[List[str]]:
         """Return all agent's groups.
 
         Parameters
@@ -902,12 +900,11 @@ class Agent:
 
         Returns
         -------
-        List[str]
-            List of group names.
+        Optional[List[str]]
+            List of group names or None.
         """
-        async with get_indexer_client() as indexer_client:
-            agent = await indexer_client.agents.get(agent_id)
-            return agent.groups
+        agent = await Agent.get(agent_id)
+        return agent.groups
 
     @staticmethod
     async def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False):
@@ -931,54 +928,6 @@ class Agent:
 
             await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=[agent_id],
                                                             override=override)
-
-    @staticmethod
-    async def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
-        """Unset agent group. If agent has multiple groups, it will preserve all previous groups except the last one.
-
-        Parameters
-        ----------
-        agent_id : str
-            Agent ID.
-        group_id : str
-            Group ID.
-        force : bool
-            Do not check if agent or group exists.
-
-        Raises
-        ------
-        WazuhResourceNotFound(1710)
-            The group was not found.
-        WazuhError(1734)
-            Error removing agent from group.
-        WazuhError(1745)
-            Agent only belongs to 'default' and it cannot be unassigned from this group.
-
-        Returns
-        -------
-        str
-            Confirmation message.
-        """
-        if not force:
-            # Check if agent and the group exists
-            _ = await Agent.get(agent_id)
-
-            if not Agent.group_exists(group_id):
-                raise WazuhResourceNotFound(1710)
-
-        # Get agent's group
-        group_list = set(await Agent.get_agent_groups(agent_id))
-
-        # Check agent belongs to group group_id
-        if group_id not in group_list:
-            raise WazuhError(1734)
-        elif len(group_list) == 1:
-            if group_id == 'default':
-                raise WazuhError(1745)
-
-        await Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
-
-        return f"Agent '{agent_id}' removed from '{group_id}'."
 
     def get_config(self, component: str = '', config: str = '', agent_version: str = '') -> dict:
         """Read agent's loaded configuration.

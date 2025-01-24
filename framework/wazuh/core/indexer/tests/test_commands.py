@@ -12,7 +12,7 @@ from wazuh.core.indexer.commands import (
     COMMAND_KEY,
     COMMAND_USER_NAME,
     create_set_group_command,
-    create_update_group_command
+    create_fetch_config_command
 )
 from wazuh.core.indexer.base import POST_METHOD, IndexerKey
 from wazuh.core.indexer.utils import convert_enums
@@ -161,7 +161,9 @@ def test_create_set_group_command():
         ),
         action=Action(
             name='set-group',
-            args=groups,
+            args={
+                'groups': groups
+            },
             version='5.0.0'
         ),
         user=COMMAND_USER_NAME,
@@ -174,8 +176,8 @@ def test_create_set_group_command():
     assert command.document_id is None
 
 
-def test_create_update_group_command():
-    """Check the correct functionality of the `create_update_group_command` function."""
+def test_create_fetch_config_command():
+    """Check the correct functionality of the `create_fetch_config_command` function."""
     agent_id = '0191dd54-bd16-7025-80e6-ae49bc101c7a'
     expected_command = Command(
         source=Source.SERVICES,
@@ -184,14 +186,15 @@ def test_create_update_group_command():
             id=agent_id,
         ),
         action=Action(
-            name='update-group',
-            version='5.0.0'
+            name='fetch-config',
+            version='5.0.0',
+            args={}
         ),
         user=COMMAND_USER_NAME,
         timeout=100
     )
 
-    command = create_update_group_command(agent_id=agent_id)
+    command = create_fetch_config_command(agent_id=agent_id)
 
     assert command == expected_command
     assert command.document_id is None

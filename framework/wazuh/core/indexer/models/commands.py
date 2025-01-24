@@ -8,7 +8,7 @@ class Action:
     """Command action data model."""
     name: str
     version: str
-    args: List[str] = None
+    args: dict = None
 
 
 @dataclass

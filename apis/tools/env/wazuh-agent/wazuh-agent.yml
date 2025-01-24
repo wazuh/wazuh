@@ -2,6 +2,7 @@ agent:
   thread_count: 4
   server_url: https://nginx-lb:27000
   retry_interval: 30s
+  verification_mode: none
 inventory:
   enabled: true
   interval: 1h
