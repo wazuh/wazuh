@@ -668,7 +668,7 @@ async def test_monitor_server_daemons(
 
     check_daemon_mock.assert_has_calls(
         [
-            call(proc_list, wazuh_server.MANAGEMENT_API_DAEMON_NAME, 3),
+            call(proc_list, wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15], 3),
             call(proc_list, wazuh_server.COMMS_API_DAEMON_NAME, 8),
             call(proc_list, wazuh_server.ENGINE_DAEMON_NAME, 0)
         ],

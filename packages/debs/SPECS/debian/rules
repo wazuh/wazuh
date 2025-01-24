@@ -68,7 +68,7 @@ override_dh_install:
 
 
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
-	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
+	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server-management-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
 	cp -p $(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-keystore $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/
@@ -105,8 +105,8 @@ override_dh_fixperms:
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-keystore
 	chown $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-engine
-	chown $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
-	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-apid
+	chown $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server-management-apid
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server-management-apid
 	chown $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-comms-apid
 	chown $(WAZUH_USER):$(WAZUH_GROUP) $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/bin/wazuh-server
@@ -115,7 +115,7 @@ override_dh_fixperms:
 	# Scripts
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/framework/scripts/wazuh-server.py
 	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
-	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/api/scripts/wazuh-apid.py
+	chmod 750 $(TARGET_DIR)$(INSTALLATION_DIR)usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
 
 	# Services
 	chown root:root $(TARGET_DIR)/etc/init.d/wazuh-server
