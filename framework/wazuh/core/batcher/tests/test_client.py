@@ -16,7 +16,7 @@ def test_send_event(queue_mock):
         id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
         name='test',
         groups=['group1', 'group2'],
-        type='endpoint',
+        collector='endpoint',
         version='5.0.0',
         host=Host(
             architecture='x86_64',

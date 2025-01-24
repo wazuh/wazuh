@@ -63,7 +63,7 @@ async def test_send_stateful_events(send_events_mock, batcher_client_mock):
         id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
         name='test',
         groups=[],
-        type='endpoint',
+        collector='endpoint',
         version='5.0.0',
         host=Host(
             architecture='x86_64',
@@ -128,7 +128,7 @@ async def test_parse_stateful_events():
         id='01929571-49b5-75e8-a3f6-1d2b84f4f71a',
         name='test',
         groups=['group1', 'group2'],
-        type='endpoint',
+        collector='endpoint',
         version='5.0.0',
         host=Host(
             architecture='x86_64',
@@ -194,7 +194,7 @@ async def test_send_events(gather_mock, create_task_mock, parse_tasks_results_mo
             id='ac5f7bed-363a-4095-bc19-5c1ebffd1be0',
             name='test',
             groups=[],
-            type='endpoint',
+            collector='endpoint',
             version='5.0.0',
             host=Host(
                 architecture='x86_64',
