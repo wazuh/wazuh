@@ -75,7 +75,7 @@ def test_packet_build_and_add_item():
     assert packet.items[0].id == header.id
     assert packet.items[0].operation == header.operation
     assert packet.items[0].content is None
-    assert packet.items[0].index_name == get_module_index_name(header.module, header.type)
+    assert packet.items[0].index_name == get_module_index_name(header.module, header.collector)
 
 
 def test_packet_add_item():

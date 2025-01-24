@@ -210,7 +210,7 @@ class WazuhException(Exception):
                'remediation': 'Please check the request body and try again'
                },
         1762: 'Error sending command to the commands manager',
-        1763: 'Invalid inventory module type. It must be {types}',
+        1763: 'Invalid inventory module collector. It must be {collectors}',
         1764: "Invalid User-Agent HTTP header value. It must follow the format '<name> <type> <version>'",
         1765: 'Invalid module name. It must be {modules}',
         1766: {'message': 'The agent already belongs to the group'},

@@ -56,12 +56,12 @@ class Header(BaseModel):
     """Stateful event header."""
     id: Optional[str] = None
     module: Module
-    type: Optional[str] = None
+    collector: Optional[str] = None
     operation: Operation = None
 
 
-class InventoryType(str, Enum):
-    """Stateful events inventory types."""
+class Collector(str, Enum):
+    """Stateful events inventory collector."""
     HARDWARE = 'hardware'
     HOTFIXES = 'hotfixes'
     PACKAGES = 'packages'
@@ -78,26 +78,26 @@ STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
     Module.COMMAND: CommandsManager.INDEX
 }
 
-INVENTORY_EVENTS: Dict[InventoryType, str] = {
-    InventoryType.HARDWARE: INVENTORY_HARDWARE_INDEX,
-    InventoryType.HOTFIXES: INVENTORY_HOTFIXES_INDEX,
-    InventoryType.PACKAGES: INVENTORY_PACKAGES_INDEX,
-    InventoryType.NETWORKS: INVENTORY_NETWORKS_INDEX,
-    InventoryType.SYSTEM: INVENTORY_SYSTEM_INDEX,
-    InventoryType.PORTS: INVENTORY_PORTS_INDEX,
-    InventoryType.PROCESSES: INVENTORY_PROCESSES_INDEX
+INVENTORY_EVENTS: Dict[Collector, str] = {
+    Collector.HARDWARE: INVENTORY_HARDWARE_INDEX,
+    Collector.HOTFIXES: INVENTORY_HOTFIXES_INDEX,
+    Collector.PACKAGES: INVENTORY_PACKAGES_INDEX,
+    Collector.NETWORKS: INVENTORY_NETWORKS_INDEX,
+    Collector.SYSTEM: INVENTORY_SYSTEM_INDEX,
+    Collector.PORTS: INVENTORY_PORTS_INDEX,
+    Collector.PROCESSES: INVENTORY_PROCESSES_INDEX
 }
 
 
-def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
+def get_module_index_name(module: Module, collector: Optional[str] = None) -> str:
     """Get the index name corresponding to the specified module and type.
 
     Parameters
     ----------
     module : Module
         Event module.
-    type : Optional[str]
-        Event module type
+    collector : Optional[str]
+        Event module collector.
     
     Raises
     ------
@@ -112,14 +112,14 @@ def get_module_index_name(module: Module, type: Optional[str] = None) -> str:
         Index name.
     """
     if module == Module.INVENTORY:
-        types = list(INVENTORY_EVENTS.keys())
-        if type not in types:
+        collectors = list(INVENTORY_EVENTS.keys())
+        if collector not in collectors:
             extra_info = {
-                'types': ', '.join(types[:-1]) + ' or ' + types[-1]
+                'collectors': ', '.join(collectors[:-1]) + ' or ' + collectors[-1]
             }
             raise WazuhError(1763, extra_message=extra_info)
         
-        return INVENTORY_EVENTS[type]
+        return INVENTORY_EVENTS[collector]
 
     try:
         return STATEFUL_EVENTS_INDICES[module]
