@@ -9,5 +9,5 @@ INSTALLATION_UID_PATH = common.WAZUH_LIB / 'installation_uid'
 INSTALLATION_UID_KEY = 'installation_uid'
 UPDATE_INFORMATION_KEY = 'update_information'
 
-API_KEY_PATH = CERTS_PATH / 'api.key'
-API_CERT_PATH = CERTS_PATH / 'api.crt'
+API_KEY_PATH = CERTS_PATH / 'api-key.pem'
+API_CERT_PATH = CERTS_PATH / 'api.pem'

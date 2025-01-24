@@ -6,7 +6,7 @@ server:
     name: server_01
     type: master
     ssl:
-      key: /etc/wazuh-server/certs/server.key
+      key: /etc/wazuh-server/certs/server-key.pem
       cert: /etc/wazuh-server/certs/server.pem
       ca: /etc/wazuh-server/certs/root-ca.pem
   logging:
