@@ -3,9 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.11.0]
 
-### Manager  
+### Manager
 
-#### Fixed  
+#### Fixed
 - Fixed integration tests for Remoted to ensure proper execution. ([#25939](https://github.com/wazuh/wazuh/pull/25939))  
 - Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled. ([#26132](https://github.com/wazuh/wazuh/pull/26132))  
 - Fixed concurrent access errors in the Vulnerability Detector's OS scan column family. ([#26378](https://github.com/wazuh/wazuh/pull/26378))  
@@ -20,6 +20,12 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Updated standard Python and NPM package location in Syscollector to align with common installation paths. ([#26236](https://github.com/wazuh/wazuh/pull/26236))
+
+### RESTful API
+
+#### Fixed
+
+- Added the `security:revoke` action to the `PUT /security/user/revoke` endpoint. ([#26255](https://github.com/wazuh/wazuh/pull/26255))
 
 
 ## [v4.10.1]
