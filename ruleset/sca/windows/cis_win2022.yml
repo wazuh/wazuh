@@ -685,9 +685,9 @@ checks:
       - cis: ["2.3.7.4"]
     condition: all
     rules:
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext-> r:\w+'
+      - 'c:powershell \"(Test-Path -Path \\\"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\system\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\system\\\") | Select-Object -ExpandProperty legalnoticetext -ErrorAction SilentlyContinue\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\\" -Name LegalNoticeText) -ne \\\"\\\"\" -> r:1'
 
   # 2.3.7.5 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 27032 
@@ -3691,11 +3691,11 @@ checks:
       - cis: ["18.6.14.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\NETLOGON\\\") -ne $null\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\SYSVOL\\\") -ne $null\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\NETLOGON\\\") -match \\\"RequireMutualAuthentication=1\\\" -and (Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\NETLOGON\\\") -match \\\"RequireIntegrity=1\\\"\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\SYSVOL\\\") -match \\\"RequireMutualAuthentication=1\\\" -and (Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\NetworkProvider\\HardenedPaths\\\" -Name \\\"\\\\\\\\*\\\\SYSVOL\\\") -match \\\"RequireIntegrity=1\\\"\" -> r:1'
 
   # 18.6.19.2.1 (L2) Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)'). (Automated)
   - id: 27181 
@@ -5322,10 +5322,9 @@ checks:
     compliance:
       - cis: ["18.10.12.1"]
     condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableConsumerAccountStateContent -> 1'
+      - 'c:powershell \"(Test-Path -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\\") | Select-Object -ExpandProperty DisableConsumerAccountStateContent -ErrorAction SilentlyContinue\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\\" -Name DisableConsumerAccountStateContent) -eq 1\" -> r:1'
 
   # 18.10.12.2 (L2) Ensure 'Turn off cloud optimized content' is set to 'Enabled'. (Automated)
   - id: 27263 
@@ -6676,9 +6675,9 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
+      - 'c:powershell \"(Test-Path -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\\")\" -> r:1'
+      - 'c:powershell \"(Get-ItemProperty -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\\") | Select-Object -ExpandProperty AllowCloudSearch -ErrorAction SilentlyContinue\" -> r:1'
+      - 'c:powershell \"(Get-ItemPropertyValue -Path \\\"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\\" -Name AllowCloudSearch) -eq 0\" -> r:1'
 
   # 18.10.59.3 (L1) Ensure 'Allow indexing of encrypted files' is set to 'Disabled'. (Automated)
   - id: 27331 
