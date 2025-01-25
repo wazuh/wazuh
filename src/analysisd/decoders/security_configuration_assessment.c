@@ -186,7 +186,7 @@ int DecodeSCA(Eventinfo *lf, int *socket)
     /* TODO - Check if the event is a final event */
     type = cJSON_GetObjectItem(json_event, "type");
 
-    if(type) {
+    if(type && cJSON_IsString(type)) {
 
         if (strcmp(type->valuestring,"check") == 0){
             char *msg_unformatted = cJSON_PrintUnformatted(json_event);
@@ -1707,15 +1707,15 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         fillData(lf, "sca.scan_id", value);
     }
 
-    if(name) {
+    if(name && cJSON_IsString(name)) {
         fillData(lf, "sca.policy", name->valuestring);
     }
 
-    if(description) {
+    if(description && cJSON_IsString(description)) {
         fillData(lf, "sca.description", description->valuestring);
     }
 
-    if(policy_id) {
+    if(policy_id && cJSON_IsString(policy_id)) {
         fillData(lf, "sca.policy_id", policy_id->valuestring);
     }
 
@@ -1794,7 +1794,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         fillData(lf, "sca.score", value);
     }
 
-    if(file){
+    if(file && cJSON_IsString(file)) {
         fillData(lf, "sca.file", file->valuestring);
     }
 }
