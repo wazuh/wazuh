@@ -1,0 +1,8 @@
+[
+    "Translation for package 'wazuh-agent' on platform 'ubuntu' found in Level 2 cache.",
+    "Match found, the package 'wazuh-agent', is vulnerable to 'CVE-2023-50260'. Current version: '4.2.0-1' (less than '4.7.2' or equal to ''). - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'wazuh-agent', is vulnerable to 'CVE-2023-42463'. Current version: '4.2.0-1' (less than '4.5.3' or equal to ''). - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'wazuh-agent', is vulnerable to 'CVE-2022-40497'. Current version: '4.2.0-1' (less than '4.2.7' or equal to ''). - Agent '' (ID: '001', Version: '').",
+    "Match found, the package 'wazuh-agent', is vulnerable to 'CVE-2021-44079'. Current version: '4.2.0-1' (less than '4.2.5' or equal to ''). - Agent '' (ID: '001', Version: '').",
+    "No match due to default status for Package: wazuh-agent, Version: 4.2.0-1 while scanning for Vulnerability: CVE-2018-19666"
+]
