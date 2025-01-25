@@ -255,5 +255,17 @@
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <same_source_ip />
   </rule>
+  
+    <rule id="64034" level="3">
+    <if_sid>64004</if_sid>
+    <id>^4-722051</id>
+    <description>ASA (VPN) assigned to session.</description>
+  </rule>
+
+  <rule id="64035" level="3">
+    <if_sid>64004</if_sid>
+    <id>^4-113019</id>
+    <description>ASA (VPN) session disconnected.</description>
+  </rule>
 </group>
 
