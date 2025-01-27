@@ -17,19 +17,23 @@ class UnitResult(UnitResultInterface):
         if not self.success:
             self.error = actual.error
             return
-    
+
         self.setup(actual.output)
 
     def setup(self, actual_output: dict):
         traces = actual_output.get('traces', [])
-        any = False
+        any_asset = False
         for trace in traces:
             if self.is_rule_asset(trace.get('asset')) and trace.get('success'):
-                any = True
+                any_asset = True
                 self.check_trace(trace)
 
-        if not any:
-            sys.exit("The rules were not added to the policy. You must run the rules load")
+        if not any_asset:
+            self.diff.setdefault(self.index, {}).setdefault("events_not_consumed", {}).update({
+                "status": "events not consumed by any decoder",
+                "event": actual_output['output']['event']['original']
+            })
+            self.success = False
 
     def is_rule_asset(self, asset: str) -> bool:
         parts = asset.split('/')
@@ -68,7 +72,7 @@ class UnitResult(UnitResultInterface):
             self.allowed_rule_mapping = rs.ResourceHandler().load_file(allowed_rule_mapping_path.as_posix())
         except Exception as e:
             return f"Error loading allowed rule mapping from '{allowed_rule_mapping_path}': {e}"
-    
+
 def run(args):
     if not args["rule_folder"]:
         args["target"] = "rule"

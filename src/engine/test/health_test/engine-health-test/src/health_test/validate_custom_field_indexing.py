@@ -154,23 +154,6 @@ def is_valid_ip(value):
         return False
 
 
-def is_valid_date(value):
-    try:
-        datetime.fromisoformat(value)
-        return True
-    except ValueError:
-        return False
-
-
-def is_valid_ip(value):
-    """ Check if the value is a valid IP address. """
-    try:
-        ipaddress.ip_address(value)
-        return True
-    except ValueError:
-        return False
-
-
 def get_validation_function(field_type):
     if field_type == 'object':
         return lambda value: isinstance(value, dict) and bool(value)
@@ -222,7 +205,6 @@ def load_custom_fields(integration, custom_fields_path, allowed_types):
         return custom_fields_map, failure_load_custom_fields
     except Exception as e:
         sys.exit(f"Error loading custom fields from {custom_fields_path}: {e}")
-        return {}, failure_load_custom_fields
 
 
 def get_value_from_hierarchy(data, field):
@@ -309,16 +291,16 @@ class OpensearchManagement:
     def check_custom_fields(self, custom_fields: dict, all_custom_fields: set, hits: list):
         filtered_invalid_fields = set(all_custom_fields)
         for hit in hits:
-            for field, (type, validate_function) in custom_fields.items():
+            for field, (type_, validate_function) in custom_fields.items():
                 expected_value = get_value_from_hierarchy(hit['_source'], field)
                 if expected_value == None:
                     continue
                 if validate_function(expected_value):
-                    if type == 'object':
+                    if type_ == 'object':
                         for invalid_field in filtered_invalid_fields:
                             if invalid_field.startswith(field + '.'):
                                 all_custom_fields.discard(invalid_field)
-                    elif type == 'nested':
+                    elif type_ == 'nested':
                         for invalid_field in filtered_invalid_fields:
                             all_custom_fields.discard(invalid_field)
                     else:
