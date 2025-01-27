@@ -46,8 +46,8 @@ inline std::vector<base::Event> createEventsFromBatch(const std::list<std::strin
     const std::size_t headerSize = 2; // Header and subheader
     const auto isSubHeader = [](const base::Event& event) -> bool
     {
-        return event->isString("/module");
-    }; // '/module' is a mandatory field and not present in wazuh common schema
+        return event->isString("/module") && event->isString("/collector");
+    }; // '/module' and '/collector' are mandatory fields and not present in wazuh common schema
 
     // Extract the header for futher merge with the events.
     json::Json agentInfo {};
@@ -61,6 +61,24 @@ inline std::vector<base::Event> createEventsFromBatch(const std::list<std::strin
         throw std::runtime_error {"Error parsing agent info, invalid header, discarting ndjson"};
     }
 
+    // Extract the subheader for futher merge with the events.
+    base::Event subHeader;
+    try
+    {
+        subHeader = std::make_shared<json::Json>(std::next(batch.begin(), 1)->data());
+    }
+    catch (const std::exception& e)
+    {
+        LOG_DEBUG("Error parsing subheader: '{}'", e.what());
+        throw std::runtime_error {"Error parsing subheader, invalid subheader, discarting ndjson"};
+    }
+
+    if (!isSubHeader(subHeader))
+    {
+        LOG_DEBUG("Invalid subheader, discarting ndjson");
+        throw std::runtime_error {"Invalid subheader, discarting ndjson"};
+    }
+
     std::vector<base::Event> events {};
     events.reserve(maxEvents);
     for (auto it = std::next(batch.begin(), headerSize); it != batch.end() && events.size() < maxEvents; ++it)
@@ -68,12 +86,15 @@ inline std::vector<base::Event> createEventsFromBatch(const std::list<std::strin
         try
         {
             auto event = std::make_shared<json::Json>(it->data());
-            if (event->isString("/module"))
+            if (isSubHeader(event))
             {
-                LOG_TRACE("Ignoring subheader event");
+                subHeader = event;
                 continue;
             }
+
             event->merge(true, agentInfo);
+            event->set("/event/module", subHeader->getJson("/module").value());
+            event->set("/event/collector", subHeader->getJson("/collector").value());
             events.emplace_back(event);
         }
         catch (const std::exception& e)
