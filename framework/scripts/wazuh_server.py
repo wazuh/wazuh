@@ -35,8 +35,8 @@ COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
 COMMS_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / f'{COMMS_API_DAEMON_NAME}.py'
 ENGINE_BINARY_PATH = WAZUH_SHARE / 'bin' / 'wazuh-engine'
 ENGINE_DAEMON_NAME = 'wazuh-engined'
-MANAGEMENT_API_DAEMON_NAME = 'wazuh-apid'
-MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'api' / 'scripts' / f'{MANAGEMENT_API_DAEMON_NAME}.py'
+MANAGEMENT_API_DAEMON_NAME = 'wazuh-server-management-apid'
+MANAGEMENT_API_SCRIPT_PATH = WAZUH_SHARE / 'apis' / 'scripts' / f'{MANAGEMENT_API_DAEMON_NAME}.py'
 
 
 #
@@ -436,7 +436,7 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
     """
     comms_api_config = CentralizedConfig.get_comms_api_config()
     process_children = {
-        MANAGEMENT_API_DAEMON_NAME: 3,
+        MANAGEMENT_API_DAEMON_NAME[:15]: 3,
         COMMS_API_DAEMON_NAME:  comms_api_config.workers + 4,
         ENGINE_DAEMON_NAME:  0
     }

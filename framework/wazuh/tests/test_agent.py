@@ -51,7 +51,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.tests.test_agent import InitAgent
         from wazuh.core.utils import GROUP_FILE_EXT
 
-        from api.util import remove_nones_to_dict
+        from server_management_api.util import remove_nones_to_dict
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')

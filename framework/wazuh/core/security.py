@@ -7,7 +7,7 @@ from functools import lru_cache
 
 import yaml
 
-from api import __path__ as api_path
+from server_management_api import __path__ as api_path
 from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
