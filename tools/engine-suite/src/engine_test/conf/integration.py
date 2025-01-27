@@ -31,7 +31,7 @@ class Formats(Enum):
     def enum_to_str(format) -> str:
         return format.value
 
-    def is_collected_as_multiline(format : 'Formats') -> bool:
+    def is_collected_as_multiline(format: 'Formats') -> bool:
         if format == Formats.SINGLE_LINE:
             return False
         if format == Formats.MULTI_LINE:
@@ -43,13 +43,12 @@ class Formats(Enum):
         raise ValueError("Invalid format.")
 
 
-
 class IntegrationConf:
     '''
     Represents the configuration of an integration.
     '''
 
-    def __init__(self, name: str, format: str, module: str, provider: str, date: str, lines: int = None):
+    def __init__(self, name: str, format: str, module: str, collector: str, provider: str, date: str, lines: int = None):
         '''
         Represents the configuration of an integration.
         '''
@@ -65,7 +64,8 @@ class IntegrationConf:
             raise ValueError("Lines are required for multi-line format.")
 
         # Create template
-        self.template = TesterMessageTemplate(provider, module, date)
+        self.template = TesterMessageTemplate(
+            provider, module, collector, date)
 
     def dump_as_tuple(self) -> tuple:
         '''
@@ -90,12 +90,14 @@ class IntegrationConf:
         template_data = data["template"]
 
         # Extract necessary values from the template data for initialization
-        provider = template_data["event"]["event"]["provider"]
+        provider = template_data["event"]["event"]["provider"] if "provider" in template_data["event"]["event"] else None
         module = template_data["event"]["event"]["module"]
+        collector = template_data["event"]["event"]["collector"]
         date = template_data["event"]["event"]["created"]
 
         # Create a new instance with the extracted values
-        instance = IntegrationConf(name, format.value, module, provider, date, lines)
+        instance = IntegrationConf(
+            name, format.value, module, collector, provider, date, lines)
 
         # Restore the full template data
         instance.template.reload_template(template_data)
