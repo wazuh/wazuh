@@ -1,4 +1,3 @@
-import os
 from enum import Enum
 from typing import List
 from pydantic import Field
@@ -6,8 +5,6 @@ from pydantic import Field
 from pydantic import field_validator, ValidationInfo
 
 from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
-
-CERTIFICATE_TYPE = 'certificate'
 
 
 class SSLProtocol(str, Enum):
@@ -60,7 +57,7 @@ class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         str
             SSL certificate/key path.
         """
-        cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
+        cls._validate_file_path(path, info.field_name)
         return path
 
 
@@ -110,7 +107,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             SSL certificate/key path.
         """
         if info.data['use_ssl']:
-            cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
+            cls._validate_file_path(path, info.field_name)
         return path
 
     @field_validator('certificate_authorities')
@@ -137,12 +134,12 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         """
         if info.data['use_ssl']:
             for path in paths:
-                cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
+                cls._validate_file_path(path, info.field_name)
 
         return paths
 
 
-class APISSLConfig(WazuhConfigBaseModel):
+class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     """Configuration for API SSL settings.
 
     Parameters
@@ -163,6 +160,33 @@ class APISSLConfig(WazuhConfigBaseModel):
     key: str
     cert: str
     use_ca: bool = False
-    ca: str = ""
+    ca: str = ''
     ssl_protocol: SSLProtocol = SSLProtocol.auto
-    ssl_ciphers: str = ""
+    ssl_ciphers: str = ''
+
+    @field_validator('ca')
+    @classmethod
+    def validate_ca_file(cls, path: str, info: ValidationInfo) -> str:
+        """Validate that the certificate authority file exists.
+
+        Parameters
+        ----------
+        path : str
+            Path to the SSL certificate authority file.
+        info : ValidationInfo
+            Validation context information.
+
+        Raises
+        ------
+        ValueError
+            Invalid SSL file path.
+
+        Returns
+        ------
+        str
+            SSL certificate authority file path.
+        """
+        if info.data['use_ca']:
+            cls._validate_file_path(path, info.field_name)
+
+        return path
