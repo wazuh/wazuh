@@ -18,7 +18,7 @@
 void fillData(Eventinfo *lf, const char *key, const char *value)
 {
 
-    if (!key)
+    if (!key || !value)
         return;
 
     if (strcmp(key, "srcip") == 0){

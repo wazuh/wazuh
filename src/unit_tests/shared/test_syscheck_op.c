@@ -2613,6 +2613,114 @@ static void test_decode_win_permissions_overrun_inner_buffer(void **state) {
     assert_true(strlen(output) < MAX_WIN_PERM_SIZE);
 }
 
+static void test_decode_win_permissions_empty_permissions(void **state) {
+    char *raw_perm = "";
+    char *output;
+
+    output = decode_win_permissions(raw_perm);
+
+    assert_string_equal(output, "");
+    os_free(output);
+}
+
+static void test_decode_win_permissions_single_pipe(void **state) {
+    char *raw_perm = "|";
+    char *output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|'.");
+    output = decode_win_permissions(raw_perm);
+
+    assert_null(output);
+}
+
+static void test_decode_win_permissions_bad_format_1(void **state) {
+    char *raw_perm = "|,";
+    char *output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|,'.");
+    output = decode_win_permissions(raw_perm);
+
+    assert_null(output);
+}
+
+
+static void test_decode_win_permissions_bad_format_2(void **state) {
+
+    char *raw_perm;
+    w_strdup("|,|", raw_perm);
+    char *output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|,|'.");
+    output = decode_win_permissions(raw_perm);
+
+    os_free(raw_perm);
+
+    assert_null(output);
+
+}
+
+static void test_decode_win_permissions_bad_format_3(void **state) {
+    char *raw_perm;
+    w_strdup("||", raw_perm);
+    char *output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '||'.");
+    output = decode_win_permissions(raw_perm);
+    os_free(raw_perm);
+
+    assert_null(output);
+}
+
+static void test_decode_win_permissions_bad_format_4(void **state) {
+    char *raw_perm;
+    w_strdup("|,|,|,", raw_perm);
+    char *output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|,|,|,'.");
+    output = decode_win_permissions(raw_perm);
+    os_free(raw_perm);
+
+    assert_null(output);
+}
+
+static void test_decode_win_permissions_bad_format_5(void **state) {
+    char *raw_perm;
+    w_strdup("|account,0,123|", raw_perm);
+    char *output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|account,0,123|'.");
+    output = decode_win_permissions(raw_perm);
+    os_free(raw_perm);
+
+    assert_null(output);
+}
+
+
+static void test_decode_win_permissions_incomplete_format_1(void **state) {
+    char *raw_perm;
+    w_strdup("|account,0,", raw_perm);
+    char *output;
+
+    output = decode_win_permissions(raw_perm);
+    os_free(raw_perm);
+
+    assert_string_equal(output, "account (allowed):");
+    os_free(output);
+}
+
+static void test_decode_win_permissions_incomplete_format_2(void **state) {
+    char *raw_perm;
+    w_strdup("|account,0,0", raw_perm);
+    char *output;
+
+    output = decode_win_permissions(raw_perm);
+    os_free(raw_perm);
+
+    assert_string_equal(output, "account (allowed):");
+    os_free(output);
+}
+
+
 /* compare_win_permissions */
 #define BASE_WIN_ALLOWED_ACE "[" \
     "\"delete\"," \
@@ -4780,6 +4888,17 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_decode_win_permissions_fail_no_access_type, teardown_string),
         cmocka_unit_test_teardown(test_decode_win_permissions_fail_wrong_format, teardown_string),
         cmocka_unit_test_teardown(test_decode_win_permissions_overrun_inner_buffer, teardown_string),
+        cmocka_unit_test(test_decode_win_permissions_empty_permissions),
+        cmocka_unit_test(test_decode_win_permissions_single_pipe),
+        cmocka_unit_test(test_decode_win_permissions_bad_format_1),
+        cmocka_unit_test(test_decode_win_permissions_bad_format_2),
+        cmocka_unit_test(test_decode_win_permissions_bad_format_3),
+        cmocka_unit_test(test_decode_win_permissions_bad_format_4),
+        cmocka_unit_test(test_decode_win_permissions_bad_format_5),
+        cmocka_unit_test(test_decode_win_permissions_incomplete_format_1),
+        cmocka_unit_test(test_decode_win_permissions_incomplete_format_2),
+
+
 
         /* compare_win_permissions */
         cmocka_unit_test(test_compare_win_permissions_equal_acls),
