@@ -1657,8 +1657,14 @@ char *decode_win_permissions(char *raw_perm) {
     int perm_size = MAX_WIN_PERM_SIZE;
     char *decoded_it = decoded_perm;
     char *perm_it = raw_perm;
+    char *perm_end = perm_it + strlen(raw_perm);
 
     while (perm_it = strchr(perm_it, '|'), perm_it) {
+        // Minimum size for the next permission
+        if (perm_end - perm_it < 3) {
+            goto error;
+        }
+
         // Get the account/group name
         base_it = ++perm_it;
         if (perm_it = strchr(perm_it, ','), !perm_it) {
@@ -1743,7 +1749,7 @@ char *decode_win_permissions(char *raw_perm) {
         }
     }
 
-    if (decoded_it && size > 1) {
+    if (decoded_it && decoded_it - 2 >= decoded_perm && size > 1) {
         *(decoded_it - 2) = '\0';
         // Adjusts the final size
         os_realloc(decoded_perm, written * sizeof(char), decoded_perm);
@@ -1751,8 +1757,8 @@ char *decode_win_permissions(char *raw_perm) {
 
     return decoded_perm;
 error:
-    free(decoded_perm);
-    free(account_name);
+    os_free(decoded_perm);
+    os_free(account_name);
     mdebug1("The file permissions could not be decoded: '%s'.", raw_perm);
     return NULL;
 }
