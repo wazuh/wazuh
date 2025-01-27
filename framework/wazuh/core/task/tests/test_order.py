@@ -38,7 +38,6 @@ async def test_get_orders(
     update_command
 ):
     """Check the correct functionality of the `get_orders` function."""
-
     commands_list = [
         Command(
             document_id='test',
@@ -48,7 +47,7 @@ async def test_get_orders(
             user='test',
             target=Target(id='test', type=TargetType.AGENT.value),
             timeout=1,
-            status=Status.PENDING.value
+            status=Status.PENDING
         )
     ] if pending_commands else []
 
@@ -68,7 +67,7 @@ async def test_get_orders(
         await get_orders(logger_mock)
 
     transport_mock.assert_called_with(uds=common.COMMS_API_SOCKET_PATH)
-    get_commands_mock.assert_called_once_with(Status.PENDING.value)
+    get_commands_mock.assert_called_once_with(Status.PENDING)
 
     if pending_commands:
         client_mock.assert_called_with(
@@ -104,8 +103,19 @@ async def test_get_orders_ko(
     create_indexer_mock, config_mock, sleep_mock, transport_mock, client_mock, exception, message
 ):
     """Check the error handling of the `get_orders` method."""
-
-    commands_mock = AsyncMock(return_value=[])
+    commands_list = [
+        Command(
+            document_id='test',
+            request_id='test',
+            order_id='test',
+            source=Source.SERVICES,
+            user='test',
+            target=Target(id='test', type=TargetType.AGENT),
+            timeout=1,
+            status=Status.PENDING
+        )
+    ]
+    commands_mock = AsyncMock(return_value=commands_list)
     create_indexer_mock.return_value.commands_manager.get_commands = commands_mock
     client_mock.side_effect = exception(message)
 
@@ -116,6 +126,6 @@ async def test_get_orders_ko(
         await get_orders(logger_mock)
 
     transport_mock.assert_called_with(uds=common.COMMS_API_SOCKET_PATH)
-    commands_mock.assert_called_once_with(Status.PENDING.value)
+    commands_mock.assert_called_once_with(Status.PENDING)
 
     logger_mock.error.assert_called_with('An error occurs sending the orders to the Communications API :', message)

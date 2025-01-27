@@ -25,7 +25,7 @@ async def get_orders(logger: WazuhLogger):
         logger.info('Getting orders from indexer')
 
         async with get_indexer_client() as indexer_client:
-            pending_commands = await indexer_client.commands_manager.get_commands(Status.PENDING.value)
+            pending_commands = await indexer_client.commands_manager.get_commands(Status.PENDING)
             logger.debug(f'Commands index response: {pending_commands}')
             pending_commands = {
                 COMMANDS_KEY: [asdict(command, dict_factory=convert_enums) for command in pending_commands]
@@ -60,7 +60,6 @@ async def get_orders(logger: WazuhLogger):
                         order_ids=processed_commands_ids,
                         status=Status.SENT.value
                     )
-
 
             except (httpx.ConnectError, httpx.TimeoutException) as e:
                 logger.error(f'An error occurs sending the orders to the Communications API :', str(e))
