@@ -6,9 +6,8 @@ import datetime
 import os
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
 import wazuh.core.utils as core_utils
@@ -95,47 +94,20 @@ default_api_configuration = {
 }
 
 
-def generate_private_key(private_key_path: str, public_exponent: int = 65537,
-                         key_size: int = 2048) -> rsa.RSAPrivateKey:
-    """Generate a private key in 'CERTS_PATH/api.key'.
-
-    Parameters
-    ----------
-    private_key_path : str
-        Path where the private key will be generated.
-    public_exponent : int, optional
-        Key public exponent. Default `65537`
-    key_size : int, optional
-        Key size. Default `2048`
-
-    Returns
-    -------
-    rsa.RSAPrivateKey
-        Private key.
-    """
-    key = rsa.generate_private_key(
-        public_exponent,
-        key_size,
-        crypto_default_backend()
-    )
-    with open(private_key_path, 'wb') as f:
-        f.write(key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
-    os.chmod(private_key_path, 0o400)
-
-    return key
+def load_private_key(private_key_path: str) -> ec.EllipticCurvePrivateKey:
+    """Load an existing ECDSA private key."""
+    with open(private_key_path, 'rb') as key_file:
+        private_key = serialization.load_pem_private_key(key_file.read(), password=None)
+    return private_key
 
 
-def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
+def generate_self_signed_certificate(private_key: ec.EllipticCurvePrivateKey, certificate_path: str):
     """Generate a self-signed certificate using a generated private key. The certificate will be created in
     'CERTS_PATH/api.crt'.
 
     Parameters
     ----------
-    private_key : RSAPrivateKey
+    private_key : EllipticCurvePrivateKey
         Private key.
     certificate_path : str
         Path where the self-signed certificate will be generated.

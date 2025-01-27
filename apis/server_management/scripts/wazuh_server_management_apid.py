@@ -28,7 +28,7 @@ from server_management_api import __path__ as api_path
 from server_management_api import error_handler
 from server_management_api.alogging import set_logging
 from server_management_api.api_exception import APIError, ExpectFailedException
-from server_management_api.configuration import generate_private_key, generate_self_signed_certificate
+from server_management_api.configuration import load_private_key, generate_self_signed_certificate
 from server_management_api.middlewares import (
     CheckBlockedIP,
     CheckRateLimitsMiddleware,
@@ -41,11 +41,11 @@ from server_management_api.uri_parser import APIUriParser
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.cluster.utils import print_version
-from wazuh.core.config.models.central_config import ManagementAPIConfig
 from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.rbac.orm import check_database_integrity
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.management_api import ManagementAPIConfig
+from wazuh.core.config.models.server import ServerConfig
 
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
@@ -88,7 +88,7 @@ def spawn_authentication_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def configure_ssl(params: dict, config: APISSLConfig):
+def configure_ssl(params: dict, config: APISSLConfig, server_config: ServerConfig):
     """Configure https files and permission, and set the uvicorn dictionary configuration keys.
 
     Parameters
@@ -101,10 +101,10 @@ def configure_ssl(params: dict, config: APISSLConfig):
 
     try:
         # Generate SSL if it does not exist and HTTPS is enabled
-        if not os.path.exists(config.key) or not os.path.exists(config.cert):
+        if not os.path.exists(config.cert):
             logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
                         'Attempting to generate them')
-            private_key = generate_private_key(config.key)
+            private_key = load_private_key(server_config.jwt.private_key)
             logger.info(
                 f"Generated private key file in {config.key}")
             generate_self_signed_certificate(private_key, config.cert)
@@ -308,6 +308,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     management_config = CentralizedConfig.get_management_api_config()
+    server_config = CentralizedConfig.get_server_config()
 
     # Configure uvicorn parameters dictionary
     uvicorn_params = {}
@@ -328,7 +329,7 @@ if __name__ == '__main__':
     logging.config.dictConfig(uvicorn_params['log_config'])
     logger = logging.getLogger('wazuh-api')
 
-    configure_ssl(uvicorn_params, management_config.ssl)
+    configure_ssl(uvicorn_params, management_config.ssl, server_config)
 
     # Check for unused PID files
     utils.clean_pid_files(API_MAIN_PROCESS)

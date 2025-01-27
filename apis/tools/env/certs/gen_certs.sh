@@ -71,7 +71,6 @@ openssl pkcs8 -topk8 -inform pem -in $name-key.pem -outform pem -nocrypt -out $n
 
 gen_jwt_keys() {
   openssl ecparam -name secp256k1 -genkey -noout -out private-key.pem
-  openssl ec -in private-key.pem -pubout -out public-key.pem
 }
 
 hosts=(wazuh-indexer wazuh-manager wazuh-worker1 wazuh-worker2)

@@ -25,7 +25,7 @@ from gunicorn.app.base import BaseApplication
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from server_management_api.alogging import set_logging
-from server_management_api.configuration import generate_private_key, generate_self_signed_certificate
+from server_management_api.configuration import load_private_key, generate_self_signed_certificate
 from server_management_api.middlewares import SecureHeadersMiddleware
 from comms_api.core.batcher import create_batcher_process
 from comms_api.core.commands import CommandsManager
@@ -41,6 +41,7 @@ from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.logging import APILoggingConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
+from wazuh.core.config.models.server import ServerConfig
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 LOGGING_TAG = 'Communications API'
@@ -108,8 +109,8 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
         File permissions or path error.
     """
     try:
-        if not os.path.exists(keyfile) or not os.path.exists(certfile):
-            private_key = generate_private_key(keyfile)
+        if not os.path.exists(certfile):
+            private_key = load_private_key(keyfile)
             logger.info(f"Generated private key file in {keyfile}")
 
             generate_self_signed_certificate(private_key, certfile)
@@ -143,7 +144,7 @@ def post_worker_init(worker):
     atexit.unregister(_exit_function)
 
 
-def get_gunicorn_options(pid: int, log_config_dict: dict, config: CommsAPIConfig) -> dict:
+def get_gunicorn_options(pid: int, log_config_dict: dict, config: CommsAPIConfig, server_config: ServerConfig) -> dict:
     """Get the gunicorn app configuration options.
 
     Parameters
@@ -160,7 +161,7 @@ def get_gunicorn_options(pid: int, log_config_dict: dict, config: CommsAPIConfig
     dict
         Gunicorn configuration options.
     """
-    configure_ssl(config.ssl.key, config.ssl.cert)
+    configure_ssl(server_config.jwt.private_key, config.ssl.cert)
 
     pidfile = common.WAZUH_RUN / f'{MAIN_PROCESS}-{pid}.pid'
 
@@ -172,7 +173,7 @@ def get_gunicorn_options(pid: int, log_config_dict: dict, config: CommsAPIConfig
         'workers': config.workers,
         'worker_class': 'uvicorn.workers.UvicornWorker',
         'preload_app': True,
-        'keyfile': config.ssl.key,
+        'keyfile': server_config.jwt.private_key,
         'certfile': config.ssl.cert,
         'ca_certs': config.ssl.ca if config.ssl.use_ca else None,
         'ssl_context': ssl_context,
@@ -286,6 +287,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     comms_api_config = CentralizedConfig.get_comms_api_config()
+    server_config = CentralizedConfig.get_server_config()
 
     utils.clean_pid_files(MAIN_PROCESS)
 
@@ -321,7 +323,7 @@ if __name__ == '__main__':
     exit_code = 0
     try:
         app = create_app(mux_demux_manager.get_queue(), commands_manager)
-        options = get_gunicorn_options(pid, log_config_dict, comms_api_config)
+        options = get_gunicorn_options(pid, log_config_dict, comms_api_config, server_config)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
         logger.error(f'Error when trying to start the Wazuh Communications API. {e}')
