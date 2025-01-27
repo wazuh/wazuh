@@ -18,11 +18,11 @@ const std::string G_NDJ_AGENT_HEADER {
     R"({"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}})"};
 const std::string G_NDJ_MODULE_SUBHEADER_1 {R"({"module": "logcollector", "collector": "file"})"};
 const std::string G_NDJ_EVENT_1 {
-    R"({"log": {"file": {"path": "/var/log/apache2/access.log"}}, "base": {"tags": ["production-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z", "module": "apache-access", "provider": "file"}})"};
+    R"({"log": {"file": {"path": "/var/log/apache2/access.log"}}, "base": {"tags": ["production-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z"}})"};
 const std::string G_NDJ_EVENT_2 {
-    R"({"log": {"file": {"path": "/var/log/apache2/error.log"}}, "base": {"tags": ["testing-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z", "module": "apache-error", "provider": "file"}})"};
+    R"({"log": {"file": {"path": "/var/log/apache2/error.log"}}, "base": {"tags": ["testing-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z"}})"};
 const std::string G_NDJ_EVENT_3 {
-    R"({"log": {"file": {"path": "/tmp/syslog.log"}}, "event": {"original": "SYSLOG EXAMPLE", "ingested": "2023-12-26T09:22:14.000Z", "module": "custom-syslog-app", "provider": "file"}})"};
+    R"({"log": {"file": {"path": "/tmp/syslog.log"}}, "event": {"original": "SYSLOG EXAMPLE", "ingested": "2023-12-26T09:22:14.000Z"}})"};
 
 // Avoid string comparison issues with json
 MATCHER_P(isEqualsEvent, expectedJson, "is not equal to expected JSON")
@@ -915,8 +915,8 @@ TEST_F(OrchestratorTest, postRawNdjsonSuccess_oneEvent)
     const auto subheader = std::make_shared<json::Json>(G_NDJ_MODULE_SUBHEADER_1.c_str());
     auto finalEvent = std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str());
     finalEvent->merge(true, *event);
-    finalEvent->set("/event.module", subheader->getJson("/module").value());
-    finalEvent->set("/event.collector", subheader->getJson("/collector").value());
+    finalEvent->set("/event/module", subheader->getJson("/module").value());
+    finalEvent->set("/event/collector", subheader->getJson("/collector").value());
     // 1 event 1 free slot
     EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), aproxFreeSlots()).Times(1).WillOnce(testing::Return(1));
     EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(finalEvent)))
@@ -940,14 +940,14 @@ TEST_F(OrchestratorTest, postRawNdjsonSuccess_multiEvent)
         const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
         const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_2.c_str());
         const auto event3 = std::make_shared<json::Json>(G_NDJ_EVENT_3.c_str());
-        events[0]->set("/event.module", subheader->getJson("/module").value());
-        events[0]->set("/event.collector", subheader->getJson("/collector").value());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
         events[0]->merge(true, *event1);
-        events[1]->set("/event.module", subheader->getJson("/module").value());
-        events[1]->set("/event.collector", subheader->getJson("/collector").value());
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
         events[1]->merge(true, *event2);
-        events[2]->set("/event.module", subheader->getJson("/module").value());
-        events[2]->set("/event.collector", subheader->getJson("/collector").value());
+        events[2]->set("/event/module", subheader->getJson("/module").value());
+        events[2]->set("/event/collector", subheader->getJson("/collector").value());
         events[2]->merge(true, *event3);
     }
 
@@ -984,14 +984,14 @@ TEST_F(OrchestratorTest, postRawNdjsonSuccess_multiEvent_freeSlot)
         const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
         const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_2.c_str());
         const auto event3 = std::make_shared<json::Json>(G_NDJ_EVENT_3.c_str());
-        events[0]->set("/event.module", subheader->getJson("/module").value());
-        events[0]->set("/event.collector", subheader->getJson("/collector").value());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
         events[0]->merge(true, *event1);
-        events[1]->set("/event.module", subheader->getJson("/module").value());
-        events[1]->set("/event.collector", subheader->getJson("/collector").value());
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
         events[1]->merge(true, *event2);
-        events[2]->set("/event.module", subheader->getJson("/module").value());
-        events[2]->set("/event.collector", subheader->getJson("/collector").value());
+        events[2]->set("/event/module", subheader->getJson("/module").value());
+        events[2]->set("/event/collector", subheader->getJson("/collector").value());
         events[2]->merge(true, *event3);
     }
 
@@ -1027,11 +1027,11 @@ TEST_F(OrchestratorTest, postRawNdjsonSuccess_3Events_2freeSlot)
     {
         const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
         const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_2.c_str());
-        events[0]->set("/event.module", subheader->getJson("/module").value());
-        events[0]->set("/event.collector", subheader->getJson("/collector").value());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
         events[0]->merge(true, *event1);
-        events[1]->set("/event.module", subheader->getJson("/module").value());
-        events[1]->set("/event.collector", subheader->getJson("/collector").value());
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
         events[1]->merge(true, *event2);
     }
 
@@ -1063,11 +1063,11 @@ TEST_F(OrchestratorTest, postRawNdjsonSuccess_multiEvent_discartMalformed)
     {
         const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
         const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_3.c_str());
-        events[0]->set("/event.module", subheader->getJson("/module").value());
-        events[0]->set("/event.collector", subheader->getJson("/collector").value());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
         events[0]->merge(true, *event1);
-        events[1]->set("/event.module", subheader->getJson("/module").value());
-        events[1]->set("/event.collector", subheader->getJson("/collector").value());
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
         events[1]->merge(true, *event2);
     }
 

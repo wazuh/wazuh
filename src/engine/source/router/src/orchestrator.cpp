@@ -93,8 +93,8 @@ inline std::vector<base::Event> createEventsFromBatch(const std::list<std::strin
             }
 
             event->merge(true, agentInfo);
-            event->set("/event.module", subHeader->getJson("/module").value());
-            event->set("/event.collector", subHeader->getJson("/collector").value());
+            event->set("/event/module", subHeader->getJson("/module").value());
+            event->set("/event/collector", subHeader->getJson("/collector").value());
             events.emplace_back(event);
         }
         catch (const std::exception& e)
