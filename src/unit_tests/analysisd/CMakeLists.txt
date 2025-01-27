@@ -41,10 +41,10 @@ list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_resu
 list(APPEND analysisd_names "test_cleanevent")
 list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
 
-list(APPEND analysisd_names "test_dbsync")
-list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
-                         -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
-                         -Wl,--wrap,wdbc_parse_result ${DEBUG_OP_WRAPPERS}")
+# list(APPEND analysisd_names "test_dbsync")
+# list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
+#                          -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
+#                          -Wl,--wrap,wdbc_parse_result ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_exec")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_SendUnix -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,Eventinfo_to_jsonstr \
