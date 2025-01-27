@@ -174,7 +174,7 @@ def get_gunicorn_options(pid: int, log_config_dict: dict, config: CommsAPIConfig
         'preload_app': True,
         'keyfile': config.ssl.key,
         'certfile': config.ssl.cert,
-        'ca_certs': config.ssl.ca,
+        'ca_certs': config.ssl.ca if config.ssl.use_ca else None,
         'ssl_context': ssl_context,
         'ciphers': config.ssl.ssl_ciphers,
         'logconfig_dict': log_config_dict,
