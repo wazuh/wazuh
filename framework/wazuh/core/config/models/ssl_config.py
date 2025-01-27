@@ -1,4 +1,3 @@
-import os
 from enum import Enum
 from typing import List
 from pydantic import Field
@@ -140,7 +139,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         return paths
 
 
-class APISSLConfig(WazuhConfigBaseModel):
+class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     """Configuration for API SSL settings.
 
     Parameters
@@ -161,6 +160,33 @@ class APISSLConfig(WazuhConfigBaseModel):
     key: str
     cert: str
     use_ca: bool = False
-    ca: str = ""
+    ca: str = ''
     ssl_protocol: SSLProtocol = SSLProtocol.auto
-    ssl_ciphers: str = ""
+    ssl_ciphers: str = ''
+
+    @field_validator('ca')
+    @classmethod
+    def validate_ca_file(cls, path: str, info: ValidationInfo) -> str:
+        """Validate that the certificate authority file exists.
+
+        Parameters
+        ----------
+        path : str
+            Path to the SSL certificate authority file.
+        info : ValidationInfo
+            Validation context information.
+
+        Raises
+        ------
+        ValueError
+            Invalid SSL file path.
+
+        Returns
+        ------
+        str
+            SSL certificate authority file path.
+        """
+        if info.data['use_ca']:
+            cls._validate_file_path(path, info.field_name)
+
+        return path

@@ -80,7 +80,8 @@ def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expect
         {'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.tls, 'ssl_ciphers': 'cipher_example'}
     )
 ])
-def test_api_ssl_config_default_values(init_values, expected):
+@patch('os.path.isfile', return_value=True)
+def test_api_ssl_config_default_values(isfile_mock, init_values, expected):
     """Check the correct initialization of the `APISSLConfig` class."""
     ssl_config = APISSLConfig(**init_values)
 
