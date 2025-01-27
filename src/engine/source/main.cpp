@@ -307,7 +307,6 @@ int main(int argc, char* argv[])
                 icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                 icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
                 icConfig.sslOptions.skipVerifyPeer = !confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTS);
-                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::MERGED_CA_PATH);
             }
             else
             {
