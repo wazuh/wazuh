@@ -10,7 +10,7 @@ class WazuhConfigBaseModel(BaseModel):
 
 class ValidateFilePathMixin:
     @classmethod
-    def _validate_file_path(cls, path: str, field_name: str, file_type: str):
+    def _validate_file_path(cls, path: str, field_name: str):
         """Validate that a single file path is non-empty and points to an existing file.
 
         Parameters
@@ -26,7 +26,7 @@ class ValidateFilePathMixin:
             If the file path is empty or the file does not exist.
         """
         if path == '':
-            raise ValueError(f'{field_name}: missing {file_type} file')
+            raise ValueError(f'{field_name}: no file path specified')
 
         if not os.path.isfile(path):
             raise ValueError(f"{field_name}: the file '{path}' does not exist")

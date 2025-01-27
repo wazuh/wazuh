@@ -7,8 +7,6 @@ from pydantic import field_validator, ValidationInfo
 
 from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
 
-CERTIFICATE_TYPE = 'certificate'
-
 
 class SSLProtocol(str, Enum):
     """Enum representing supported SSL/TLS protocols."""
@@ -60,7 +58,7 @@ class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         str
             SSL certificate/key path.
         """
-        cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
+        cls._validate_file_path(path, info.field_name)
         return path
 
 
@@ -110,7 +108,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             SSL certificate/key path.
         """
         if info.data['use_ssl']:
-            cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
+            cls._validate_file_path(path, info.field_name)
         return path
 
     @field_validator('certificate_authorities')
@@ -137,7 +135,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         """
         if info.data['use_ssl']:
             for path in paths:
-                cls._validate_file_path(path, info.field_name, CERTIFICATE_TYPE)
+                cls._validate_file_path(path, info.field_name)
 
         return paths
 
