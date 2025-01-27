@@ -226,6 +226,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "replace", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringReplace});
     registry->template add<builders::OpBuilderEntry>(
         "trim", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringTrim});
+    registry->template add<builders::OpBuilderEntry>(
+        "to_int", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opBuilderHelperToInt});
     // Transform helpers: Definition functions
     registry->template add<builders::OpBuilderEntry>(
         "get_key_in", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
