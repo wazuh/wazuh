@@ -13,7 +13,6 @@ server:
     level: debug2
   jwt:
     private_key: /etc/wazuh-server/certs/private-key.pem
-    public_key: /etc/wazuh-server/certs/public-key.pem
 indexer:
   hosts:
     - host: wazuh-indexer

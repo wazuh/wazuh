@@ -106,7 +106,7 @@ def configure_ssl(params: dict, config: APISSLConfig, server_config: ServerConfi
                         'Attempting to generate them')
             private_key = load_private_key(server_config.jwt.private_key)
             logger.info(
-                f"Generated private key file in {config.key}")
+                f"Loaded private key file in {server_config.jwt.private_key}")
             generate_self_signed_certificate(private_key, config.cert)
             logger.info(
                 f"Generated certificate file in {config.cert}")
@@ -129,7 +129,7 @@ def configure_ssl(params: dict, config: APISSLConfig, server_config: ServerConfi
                 logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
 
         # Check and assign ownership to wazuh user for the api.key and api.crt files
-        utils.assign_wazuh_ownership(config.key)
+        utils.assign_wazuh_ownership(server_config.jwt.private_key)
         utils.assign_wazuh_ownership(config.cert)
 
         params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
@@ -139,7 +139,7 @@ def configure_ssl(params: dict, config: APISSLConfig, server_config: ServerConfi
             params['ssl_ca_certs'] = config.ca
 
         params['ssl_certfile'] = config.cert
-        params['ssl_keyfile'] = config.key
+        params['ssl_keyfile'] = server_config.jwt.private_key
 
         # Load SSL ciphers if any has been specified
         if config.ssl_ciphers != "":
