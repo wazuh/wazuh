@@ -175,8 +175,6 @@ InstallEngine()
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/vd
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine
-  ${INSTALL} -d -m 0755 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server
-  ${INSTALL} -d -m 0755 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}var/log/wazuh-server/engine
 
   cp -rp engine/build/tzdb ${INSTALLDIR}var/lib/wazuh-server/engine/
   chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}var/lib/wazuh-server/engine/tzdb
