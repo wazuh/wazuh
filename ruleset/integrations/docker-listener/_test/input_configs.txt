@@ -1,1 +1,0 @@
-{"integration": "docker", "docker": {"Type": "config", "Action": "create", "Actor": {"ID": "6xpt4kk38w8qyxj0ggy2qlbhe", "Attributes": {"name": "my-config"}}, "scope": "swarm", "time": 1686331092, "timeNano": 1686331092998340525}}

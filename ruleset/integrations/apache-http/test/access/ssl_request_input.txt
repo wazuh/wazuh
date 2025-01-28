@@ -1,2 +1,0 @@
-[10/Dec/2020:09:45:56 +0100] 172.31.0.120 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 "GET /nagiosxi/ajaxhelper.php?cmd=getxicoreajax&amp;opts=%7B%22func%22%3A%22get_admin_tasks_html%22%2C%22args%22%3A%22%22%7D&amp;nsp=b5c7d5d4b6f7d0cf0c92f9cbdf737f6a5c838218425e6ae21 HTTP/1.1" 1375
-[16/Jun/2021:11:53:47 +0100] 89.159.20.140 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 "GET /appl/ajaxhelper.php?cmd=getxicoreajax&opts=%7B%22func%22%3A%22get_pagetop_alert_content_html%22%2C%22args%22%3A%22%22%7D&nsp=c2700eab9797eda8a9f65a3ab17a6adbceccd60a6cca7708650a5923950d HTTP/1.1" -
