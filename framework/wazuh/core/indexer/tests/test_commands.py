@@ -78,9 +78,18 @@ class TestCommandsManager:
     async def test_get_commands(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `get_commands` method."""
         document_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
-        search_result = {'_hits': [Hit({IndexerKey._SOURCE: {COMMAND_KEY: {'document_id': document_id}}})]}
+        search_result = {'_hits': [
+            Hit({
+                IndexerKey._ID: document_id,
+                IndexerKey._SOURCE: {
+                    COMMAND_KEY: {
+                        'source': Source.SERVICES
+                    }
+                }
+            })
+        ]}
         client_mock.search.return_value = search_result
-        expected_result = [Command(document_id=document_id)]
+        expected_result = [Command(document_id=document_id, source=Source.SERVICES)]
 
         result = await index_instance.get_commands(Status.PENDING)
 

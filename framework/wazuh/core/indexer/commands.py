@@ -84,7 +84,10 @@ class CommandsManager(BaseIndex):
 
         commands = []
         for hit in response:
-            commands.append(Command(**hit.to_dict()[COMMAND_KEY]))
+            commands.append(Command(
+                document_id=hit.meta[IndexerKey.ID],
+                **hit.to_dict()[COMMAND_KEY]
+            ))
 
         return commands
 
