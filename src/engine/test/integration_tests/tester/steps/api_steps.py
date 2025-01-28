@@ -219,14 +219,18 @@ def step_impl(context, message: str, session_name: str, debug_level: str, queue_
             "id": queue_char
         }
     }
+    subheader_json_event : dict = {
+        "collector": "file",
+        "module": "logcollector"
+    }
     str_json_event = json.dumps(json_event, separators=(",", ":"))
     str_header_json_event = json.dumps(header_json_event, separators=(",", ":"))
-
+    str_subheader_json_event = json.dumps(subheader_json_event, separators=(",", ":"))
 
     request = api_tester.RunPost_Request()
     request.name = session_name
     request.trace_level = debug_level_to_int[debug_level]
-    request.ndjson_event = str_header_json_event + "\n" + str_json_event
+    request.ndjson_event = str_header_json_event + "\n" + str_subheader_json_event + "\n" + str_json_event
     request.namespaces.extend([namespace])
     request.asset_trace.extend([asset_trace])
     error, context.result = send_recv(request, api_tester.RunPost_Response())
