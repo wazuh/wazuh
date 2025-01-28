@@ -90,9 +90,9 @@ class IntegrationConf:
         template_data = data["template"]
 
         # Extract necessary values from the template data for initialization
+        collector = template_data["subheader"]["collector"]
+        module = template_data["subheader"]["module"]
         provider = template_data["event"]["event"]["provider"] if "provider" in template_data["event"]["event"] else None
-        module = template_data["event"]["event"]["module"]
-        collector = template_data["event"]["event"]["collector"]
         date = template_data["event"]["event"]["created"]
 
         # Create a new instance with the extracted values
