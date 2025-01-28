@@ -15,6 +15,7 @@
 #include "iVersionObjectInterface.hpp"
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <memory>
 #include <regex>
 #include <string>
@@ -117,59 +118,146 @@ public:
      *
      * @return bool true if match, false otherwise.
      */
-    static bool match(const std::string& version, PEP440& data)
+    static bool match(std::string version, PEP440& data)
     {
-        std::smatch parserMatches;
-        if (!std::regex_match(version, parserMatches, m_parserRegex))
+        size_t pos = 0;
+
+        // Transform the string to lowercase directly
+        std::transform(version.begin(), version.end(), version.begin(), ::tolower);
+
+        // Remove leading 'v' if present
+        if (!version.empty() && version[0] == 'v')
         {
-            return false;
+            version = version.substr(1);
         }
 
-        // Epoch
-        data.epoch = parserMatches.str(1).empty() ? 0 : static_cast<uint32_t>(std::stoul(parserMatches.str(1)));
-
-        // Release version string
-        data.versionStr = parserMatches.str(2);
-
-        // Pre-release
-        data.hasPreRelease = parserMatches[3].matched;
-        if (data.hasPreRelease)
+        // Parse epoch
+        size_t exclamationPos = version.find('!');
+        if (exclamationPos != std::string::npos)
         {
-            data.preReleaseStr = parserMatches.str(3);
-            std::transform(data.preReleaseStr.begin(), data.preReleaseStr.end(), data.preReleaseStr.begin(), ::tolower);
-            if (data.preReleaseStr == "alpha")
+            data.epoch = std::stoul(version.substr(0, exclamationPos));
+            pos = exclamationPos + 1;
+        }
+
+        // Parse release version
+        size_t start = pos;
+        while (pos < version.size() && (std::isdigit(version[pos]) || version[pos] == '.'))
+        {
+            ++pos;
+        }
+        data.versionStr = version.substr(start, pos - start);
+
+        // If last character is a '.', remove it
+        if (!data.versionStr.empty() && data.versionStr.back() == '.')
+        {
+            data.versionStr.pop_back();
+        }
+
+        // Helper to skip separators
+        auto skipSeparators = [&]()
+        {
+            while (pos < version.size() && (version[pos] == '.' || version[pos] == '-' || version[pos] == '_'))
             {
-                data.preReleaseStr = "a";
+                ++pos;
             }
-            else if (data.preReleaseStr == "beta")
-            {
-                data.preReleaseStr = "b";
-            }
-            else if (data.preReleaseStr == "c" || data.preReleaseStr == "pre" || data.preReleaseStr == "preview")
-            {
-                data.preReleaseStr = "rc";
-            }
-        }
-        data.preReleaseNumber = parserMatches.str(4).empty() ? 0 : std::stoul(parserMatches.str(4));
+        };
+        skipSeparators();
 
-        // Post release
-        data.hasPostRelease = parserMatches[6].matched || parserMatches[5].matched;
-
-        if (parserMatches[5].matched)
+        // Parse pre-release
+        static constexpr const char* preIdentifiers[] = {"preview", "pre", "rc", "alpha", "beta", "c", "b", "a"};
+        data.hasPreRelease = false;
+        for (const char* id : preIdentifiers)
         {
-            data.postReleaseNumber = std::stoul(parserMatches.str(5));
+            size_t idLen = std::strlen(id);
+            if (version.substr(pos, idLen) == id)
+            {
+                data.hasPreRelease = true;
+                data.preReleaseStr = id;
+                pos += idLen;
+
+                // Normalize pre-release type
+                if (data.preReleaseStr == "alpha")
+                {
+                    data.preReleaseStr = "a";
+                }
+                else if (data.preReleaseStr == "beta")
+                {
+                    data.preReleaseStr = "b";
+                }
+                else if (data.preReleaseStr == "c" || data.preReleaseStr == "pre" || data.preReleaseStr == "preview")
+                {
+                    data.preReleaseStr = "rc";
+                }
+
+                skipSeparators();
+
+                // Parse pre-release number
+                start = pos;
+                while (pos < version.size() && std::isdigit(version[pos]))
+                {
+                    ++pos;
+                }
+                if (start != pos)
+                {
+                    data.preReleaseNumber = std::stoul(version.substr(start, pos - start));
+                }
+                break;
+            }
         }
-        else
+
+        skipSeparators();
+
+        // Parse post-release
+        static constexpr const char* postIdentifiers[] = {"post", "rev", "r"};
+        data.hasPostRelease = false;
+        for (const char* id : postIdentifiers)
         {
-            data.postReleaseNumber = parserMatches.str(7).empty() ? 0 : std::stoul(parserMatches.str(7));
+            size_t idLen = std::strlen(id);
+            if (version.substr(pos, idLen) == id)
+            {
+                data.hasPostRelease = true;
+                pos += idLen;
+
+                skipSeparators();
+
+                // Parse post-release number
+                start = pos;
+                while (pos < version.size() && std::isdigit(version[pos]))
+                {
+                    ++pos;
+                }
+                if (start != pos)
+                {
+                    data.postReleaseNumber = std::stoul(version.substr(start, pos - start));
+                }
+                break;
+            }
         }
 
-        // Development release
-        data.hasDevRelease = parserMatches[8].matched;
+        skipSeparators();
 
-        data.devReleaseNumber = parserMatches.str(9).empty() ? 0 : std::stoul(parserMatches.str(9));
+        // Parse dev-release
+        data.hasDevRelease = false;
+        if (version.substr(pos, 3) == "dev")
+        {
+            data.hasDevRelease = true;
+            pos += 3;
 
-        return true;
+            skipSeparators();
+
+            // Parse dev-release number
+            start = pos;
+            while (pos < version.size() && std::isdigit(version[pos]))
+            {
+                ++pos;
+            }
+            if (start != pos)
+            {
+                data.devReleaseNumber = std::stoul(version.substr(start, pos - start));
+            }
+        }
+
+        return !data.versionStr.empty(); // Successfully parsed
     }
 
     /**
