@@ -424,6 +424,36 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
         raise WazuhDaemonError(f'Daemon `{proc_name}` does not have the correct number of children process.')
 
 
+async def check_for_server_state(server_process: psutil.Process, expected_state: dict):
+    """Check the server meets the expected processes requirements.
+
+    Args:
+        server_process (psutil.Process): Main server process to get current daemons status.
+        expected_state (dict): Expected processes names and children number.
+    """
+    while True:
+        states = {}
+        processes = server_process.children()
+
+        for proc_name, children in expected_state.items():
+            try:
+                child: psutil.Process = [i for i in processes if proc_name[:-1] in i.name()][0]
+            except IndexError:
+                states.update({proc_name: False})
+                continue
+
+            if len(child.children()) == children:
+                states.update({proc_name: True})
+            else:
+                states.update({proc_name: False})
+
+        if all(states.values()):
+            return
+        else:
+            main_logger.debug(f'Server daemons state: {states}. Sleeping until next checking...')
+        await asyncio.sleep(5)
+
+
 async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: psutil.Process):
     """Monitor the status of the server daemons.
 
@@ -440,9 +470,11 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
         COMMS_API_DAEMON_NAME:  comms_api_config.workers + 4,
         ENGINE_DAEMON_NAME:  0
     }
+    await check_for_server_state(server_process, process_children)
 
     while True:
         await asyncio.sleep(10)
+        main_logger.debug('Checking server daemons status...')
         child_processes = server_process.children()
 
         try:
