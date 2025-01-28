@@ -144,8 +144,6 @@ class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
 
     Parameters
     ----------
-    key : str
-        The path to the SSL key file.
     cert : str
         The path to the SSL certificate file.
     use_ca : bool
@@ -157,7 +155,6 @@ class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     ssl_ciphers : str
         The SSL ciphers to use. Default is an empty string.
     """
-    key: str
     cert: str
     use_ca: bool = False
     ca: str = ''

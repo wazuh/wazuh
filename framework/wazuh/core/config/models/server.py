@@ -268,14 +268,10 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     ----------
     private_key : str
         The path to the private JTW key file.
-    public_key : str
-        The path to the public JTW key file.
     """
     private_key: str
-    public_key: str
 
-
-    @field_validator('private_key', 'public_key')
+    @field_validator('private_key')
     @classmethod
     def validate_key_files(cls, path: str, info: ValidationInfo) -> str:
         """Validate that the JWT keys exist.

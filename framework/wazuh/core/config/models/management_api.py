@@ -102,7 +102,6 @@ class ManagementAPIConfig(WazuhConfigBaseModel):
 
     intervals: ManagementAPIIntervals = ManagementAPIIntervals()
     ssl: APISSLConfig = APISSLConfig(
-        key=API_KEY_PATH.as_posix(),
         cert=API_CERT_PATH.as_posix()
     )
     logging: APILoggingConfig = APILoggingConfig()

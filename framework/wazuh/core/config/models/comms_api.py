@@ -50,7 +50,6 @@ class CommsAPIConfig(WazuhConfigBaseModel):
     logging: APILoggingConfig = APILoggingConfig()
     batcher: BatcherConfig = BatcherConfig()
     ssl: APISSLConfig = APISSLConfig(
-        key=API_KEY_PATH.as_posix(),
         cert=API_CERT_PATH.as_posix(),
         ssl_ciphers=""
     )

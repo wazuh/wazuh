@@ -14,7 +14,6 @@ services:
       - ./certs/wazuh-manager.pem:/etc/wazuh-server/certs/server.pem
       - ./certs/wazuh-manager.key:/etc/wazuh-server/certs/server-key.pem
       - ./certs/private-key.pem:/etc/wazuh-server/certs/private-key.pem
-      - ./certs/public-key.pem:/etc/wazuh-server/certs/public-key.pem
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
       - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
@@ -52,7 +51,6 @@ services:
       - ./certs/wazuh-worker1.pem:/etc/wazuh-server/certs/server.pem
       - ./certs/wazuh-worker1.key:/etc/wazuh-server/certs/server-key.pem
       - ./certs/private-key.pem:/etc/wazuh-server/certs/private-key.pem
-      - ./certs/public-key.pem:/etc/wazuh-server/certs/public-key.pem
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
       - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem
@@ -91,7 +89,6 @@ services:
       - ./certs/wazuh-worker2.pem:/etc/wazuh-server/certs/server.pem
       - ./certs/wazuh-worker2.key:/etc/wazuh-server/certs/server-key.pem
       - ./certs/private-key.pem:/etc/wazuh-server/certs/private-key.pem
-      - ./certs/public-key.pem:/etc/wazuh-server/certs/public-key.pem
       # Indexer certificates
       - ./certs/wazuh-indexer.pem:/etc/wazuh-server/certs/indexer.pem
       - ./certs/wazuh-indexer-key.pem:/etc/wazuh-server/certs/indexer-key.pem

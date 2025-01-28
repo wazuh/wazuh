@@ -10,7 +10,6 @@ server:
       ca: /etc/wazuh-server/certs/root-ca.pem
   jwt:
       private_key: /etc/wazuh-server/certs/private-key.pem
-      public_key: /etc/wazuh-server/certs/public-key.pem
 indexer:
   hosts:
     - host: localhost
@@ -27,7 +26,6 @@ communications_api:
   host: localhost
   port: 27000
   ssl:
-    key: /etc/wazuh-server/certs/api-key.pem
     cert: /etc/wazuh-server/certs/api.pem
     use_ca: false
     ca: /etc/wazuh-server/certs/root-ca.pem
@@ -37,7 +35,6 @@ management_api:
     - ::1
   port: 55000
   ssl:
-    key: /etc/wazuh-server/certs/api-key.pem
     cert: /etc/wazuh-server/certs/api.pem
     use_ca: false
     ca: /etc/wazuh-server/certs/root-ca.pem
