@@ -210,7 +210,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/vdscanner)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wazuh-http-request)
 add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
-add_subdirectory(${ENGINE_SOURCE_DIR}/sockiface)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rbac)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
@@ -224,7 +223,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/logicexpr)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/yml)
-add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
@@ -254,8 +252,6 @@ target_link_libraries(main
     metrics
     geo
     schemf
-    wdb
-    sockiface
     rbac
     geo::igeo
     vdscanner

@@ -42,11 +42,9 @@
 #include <server/endpoints/unixStream.hpp>
 #include <server/engineServer.hpp>
 #include <server/protocolHandlers/wStream.hpp>
-#include <sockiface/unixSocketFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
 #include <vdscanner/scanOrchestrator.hpp>
-#include <wdb/wdbManager.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
@@ -136,8 +134,6 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
-    std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
-    std::shared_ptr<wazuhdb::WDBManager> wdbManager;
     std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::IPolicy> policyManager;
     std::shared_ptr<vdscanner::ScanOrchestrator> vdScanner;
@@ -348,9 +344,6 @@ int main(int argc, char* argv[])
             builderDeps.logpar = logpar;
             builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
-            builderDeps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
-            builderDeps.wdbManager =
-                std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), builderDeps.sockFactory);
             builderDeps.geoManager = geoManager;
             builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
