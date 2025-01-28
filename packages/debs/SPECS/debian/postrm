@@ -34,10 +34,6 @@ case "$1" in
         if [ -d "/etc/wazuh-server" ]; then
             rm -rf /etc/wazuh-server || true
         fi
-
-        if [ -d "/var/log/wazuh-server" ]; then
-            rm -rf /var/log/wazuh-server || true
-        fi
     ;;
 
     upgrade)

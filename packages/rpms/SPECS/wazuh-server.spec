@@ -91,7 +91,6 @@ cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-server ${RPM_BUILD_ROOT}
 cp -p %{_localstatedir}usr/share/wazuh-server/bin/wazuh-keystore ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/wazuh-server/bin/
 
 cp -pr %{_localstatedir}var/lib/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/lib/
-cp -pr %{_localstatedir}var/log/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}var/log/
 cp -pr %{_localstatedir}usr/share/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}usr/share/
 cp -pr %{_localstatedir}etc/wazuh-server ${RPM_BUILD_ROOT}%{_localstatedir}etc/
 
@@ -174,7 +173,6 @@ if [ $1 = 0 ];then
   # Remove lingering folders and files
   rm -rf %{_localstatedir}run/wazuh-server
   rm -rf %{_localstatedir}var/lib/wazuh-server
-  rm -rf %{_localstatedir}var/log/wazuh-server
   rm -rf %{_localstatedir}usr/share/wazuh-server
   rm -rf %{_localstatedir}etc/wazuh-server
 fi
@@ -198,8 +196,6 @@ fi
 
 chown -R %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}var/lib/wazuh-server
 find %{_localstatedir}var/lib/wazuh-server -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
-chown -R %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}var/log/wazuh-server
-find %{_localstatedir}var/log/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 chown -R %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}usr/share/wazuh-server
 find %{_localstatedir}usr/share/wazuh-server -type d -exec chmod 755 {} \; -o -type f -exec chmod 644 {} \;
 chown -R %{_wazuh_user}:%{_wazuh_group} %{_localstatedir}etc/wazuh-server
@@ -241,8 +237,6 @@ rm -fr %{buildroot}
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/tmp
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/engine
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/lib/wazuh-server/engine/tzdb
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/log/wazuh-server
-%dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}var/log/wazuh-server/engine
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/certs
 %dir %attr(750, %{_wazuh_user}, %{_wazuh_group}) %{_localstatedir}etc/wazuh-server/cluster

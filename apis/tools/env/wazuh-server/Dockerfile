@@ -62,8 +62,6 @@ RUN groupmod -n "$GROUP" ubuntu && usermod -l "$USER" ubuntu
 # Copy directories from builder
 COPY --from=builder --chown=${USER}:${GROUP} /etc/wazuh-server /etc/wazuh-server
 
-COPY --from=builder --chown=${USER}:${GROUP} /var/log/wazuh-server /var/log/wazuh-server
-
 COPY --from=builder --chown=${USER}:${GROUP} /var/lib/wazuh-server /var/lib/wazuh-server
 
 COPY --from=builder --chown=${USER}:${GROUP} /usr/share/wazuh-server /usr/share/wazuh-server
