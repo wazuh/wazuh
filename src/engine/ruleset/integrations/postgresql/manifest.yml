@@ -1,4 +1,0 @@
-decoders:
-- decoder/postgresql-csv/0
-- decoder/postgresql-csv-msg-parse/0
-name: integration/postgresql/0

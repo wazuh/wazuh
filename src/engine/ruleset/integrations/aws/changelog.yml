@@ -1,8 +1,0 @@
-items:
-  - version: 0.0.2-dev
-    short: Created integration for Amazon Wodle
-    pr: "[#17648](https://github.com/wazuh/wazuh/pull/17648)"
-
-  - version: 0.0.1-dev
-    short: Created base integration for AWS
-    pr: "[#16766](#)"

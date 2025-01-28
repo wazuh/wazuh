@@ -1,4 +1,0 @@
-decoders:
-- decoder/auditd-kv/0
-- decoder/auditd/0
-name: integration/auditd/0
