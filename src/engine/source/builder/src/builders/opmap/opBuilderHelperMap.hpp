@@ -344,7 +344,8 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                           bool isMerge = false);
+                                           bool isMerge = false,
+                                           bool isRecurive = false);
 
 /**
  * @brief Get the 'get_key_in' function helper builder
@@ -371,6 +372,18 @@ TransformOp opBuilderHelperMergeValue(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Get the 'merge_recursive_key_in' function helper builder
+ *
+ * <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return builder
+ */
+TransformOp opBuilderHelperMergeRecursiveValue(const Reference& targetField,
+                                               const std::vector<OpArg>& opArgs,
+                                               const std::shared_ptr<const IBuildCtx>& buildCtx);
 } // namespace builder::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H

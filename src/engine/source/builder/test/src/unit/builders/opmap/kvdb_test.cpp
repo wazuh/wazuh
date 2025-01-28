@@ -400,6 +400,40 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
                        getTrBuilderExpectHandlerError(getOpBuilderKVDBGetMerge, "dbname"),
                        FAILURE()),
+        /*** GET MERGE RECURSIVE***/
+        TransformDepsT({}, getTrBuilder(getOpBuilderKVDBGetMergeRecursive), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBGetMergeRecursive), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetMergeRecursive, "dbname"),
+                       SUCCESS()),
+        TransformDepsT({makeRef("ref"), makeValue(R"("key")")},
+                       getTrBuilder(getOpBuilderKVDBGetMergeRecursive),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetMergeRecursive, "dbname"),
+                       SUCCESS(customRefExpected("ref", "targetField"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
+                       getTrBuilder(getOpBuilderKVDBGetMergeRecursive),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(1)")},
+                       getTrBuilder(getOpBuilderKVDBGetMergeRecursive),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetMergeRecursive, "dbname"),
+                       SUCCESS(
+                           [](const auto& mocks)
+                           {
+                               jTypeRefExpected("ref", json::Json::Type::String)(mocks);
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderKVDBGetMergeRecursive),
+                       FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandlerError(getOpBuilderKVDBGetMergeRecursive, "dbname"),
+                       FAILURE()),
         /*** SET ***/
         TransformDepsT({}, getTrBuilder(getOpBuilderKVDBSet), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBSet), FAILURE()),

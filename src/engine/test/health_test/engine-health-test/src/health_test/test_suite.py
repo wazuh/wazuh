@@ -130,7 +130,7 @@ def validate(name: str, expected_file: Path, output: EngineTestOutput, unit_resu
         return f"Expected {len(expected_json)} results, but got {len(output.results)}", result
 
     for i, (expected, actual) in enumerate(zip(expected_json, output.results)):
-        result.add_result(unit_result(i, expected, actual, target, help))
+        result.add_result(unit_result(i, expected, actual, target, expected_file))
 
     return None, result
 

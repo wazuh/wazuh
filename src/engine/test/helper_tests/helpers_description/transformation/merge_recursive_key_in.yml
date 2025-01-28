@@ -1,0 +1,117 @@
+# Name of the helper function
+name: merge_recursive_key_in
+
+metadata:
+  description: |
+    Recursively merge the target field value with the content of a specified key in the given object.
+    The key is identified through a reference to another field.
+    If the key's value contains nested objects, the merge operation is applied recursively, combining all levels of the structure.
+    The object parameter must be a definition object or a reference to a field containing the object.
+    This helper function is typically used in the map stage to ensure deep merging of complex objects.
+
+  keywords:
+    - undefined
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type: object  # Accept only object
+    generate: object
+    source: both # Includes values or references (their names start with $)
+  key:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+# Key not found
+skipped:
+  - success_cases
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      any_object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+      nested:
+        n1: value1
+        n2: value2
+    description: The value from the specified key `input_key_1` is merged into `target_field`, including nested structures.
+  - arguments:
+      any_object:
+        input_key_1:
+          v1: k1
+          other_nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v0: k0
+      v1: k1
+      other_nested:
+        n1: value1
+      nested:
+        n2: value2
+    description: The value from the specified key `input_key_1`, including a different nested structure (`other_nested`), is merged into `target_field`.
+  - arguments:
+      any_object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_1
+    target_field:
+      v1: k1
+      nested:
+        n2: value2
+    should_pass: true
+    expected:
+      v1: k1
+      nested:
+        n1: value1
+        n2: value2
+    description: The `nested` content from the specified key `input_key_1` is merged into `target_field`, preserving existing fields.
+  - arguments:
+      any_object:
+        input_key_1:
+          v1: k1
+          nested:
+            n1: value1
+        input_key_2:
+          v2: k2
+      key: input_key_not_exists
+    target_field:
+      v0: k0
+      nested:
+        n2: value2
+    should_pass: false
+    description: The specified key `input_key_not_exists` does not exist in `any_object`, so no merge is performed, and the test fails as expected.
