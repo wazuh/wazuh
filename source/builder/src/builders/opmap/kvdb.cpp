@@ -20,7 +20,8 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                     const Reference& targetField,
                     const std::vector<OpArg>& opArgs,
                     const std::shared_ptr<const IBuildCtx>& buildCtx,
-                    const bool doMerge)
+                    const bool doMerge,
+                    const bool isRecursive)
 {
     // Assert expected number of parameters
     utils::assertSize(opArgs, 2);
@@ -177,7 +178,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                 {
                     RETURN_FAILURE(runState, event, failureTrace5)
                 }
-                event->merge(json::NOT_RECURSIVE, value, targetField);
+                event->merge(isRecursive ? json::RECURSIVE : json::NOT_RECURSIVE, value, targetField);
             }
             else
             {
@@ -212,6 +213,18 @@ TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbMana
                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
         return KVDBGet(kvdbManager, kvdbScopeName, targetField, opArgs, buildCtx, true);
+    };
+}
+
+// <field>: +kvdb_get_merge_recursive/<DB>/<ref_key>
+TransformBuilder getOpBuilderKVDBGetMergeRecursive(std::shared_ptr<IKVDBManager> kvdbManager,
+                                                   const std::string& kvdbScopeName)
+{
+    return [kvdbManager, kvdbScopeName](const Reference& targetField,
+                                        const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+    {
+        return KVDBGet(kvdbManager, kvdbScopeName, targetField, opArgs, buildCtx, true, true);
     };
 }
 
