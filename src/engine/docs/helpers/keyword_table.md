@@ -3,6 +3,7 @@
 | ------ | -------- |
 | [binary_and](documentation.md#binary_and) | undefined |
 | [contains](documentation.md#contains) | undefined |
+| [ends_with](documentation.md#ends_with) | string |
 | [exists](documentation.md#exists) | undefined |
 | [exists_key_in](documentation.md#exists_key_in) | undefined |
 | [int_equal](documentation.md#int_equal) | comparison, integer |
@@ -38,7 +39,9 @@
 | [date_from_epoch](documentation.md#date_from_epoch) | undefined |
 | [decode_base16](documentation.md#decode_base16) | undefined |
 | [downcase](documentation.md#downcase) | string |
+| [float_calculate](documentation.md#float_calculate) | math |
 | [geoip](documentation.md#geoip) | max_min_db |
+| [get_date](documentation.md#get_date) | time |
 | [hex_to_number](documentation.md#hex_to_number) | undefined |
 | [int_calculate](documentation.md#int_calculate) | math |
 | [ip_version](documentation.md#ip_version) | ip |
@@ -63,8 +66,11 @@
 | [kvdb_get](documentation.md#kvdb_get) | kvdb |
 | [kvdb_get_array](documentation.md#kvdb_get_array) | kvdb |
 | [kvdb_get_merge](documentation.md#kvdb_get_merge) | kvdb |
+| [kvdb_get_merge_recursive](documentation.md#kvdb_get_merge_recursive) | kvdb, recursive |
 | [kvdb_set](documentation.md#kvdb_set) | kvdb |
 | [merge](documentation.md#merge) | undefined |
+| [merge_key_in](documentation.md#merge_key_in) | undefined |
+| [merge_recursive_key_in](documentation.md#merge_recursive_key_in) | undefined |
 | [parse_alphanumeric](documentation.md#parse_alphanumeric) | parser |
 | [parse_between](documentation.md#parse_between) | parser |
 | [parse_binary](documentation.md#parse_binary) | parser |

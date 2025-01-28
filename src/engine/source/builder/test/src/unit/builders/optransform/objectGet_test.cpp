@@ -77,6 +77,31 @@ INSTANTIATE_TEST_SUITE_P(
                            EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
                                .WillOnce(testing::Return(false));
                            return None {};
+                       })),
+        /*** Merge Recursive Value ***/
+        TransformT({}, opBuilderHelperMergeRecursiveValue, FAILURE()),
+        TransformT({makeValue(R"({})")}, opBuilderHelperMergeRecursiveValue, FAILURE()),
+        TransformT({makeRef("ref")}, opBuilderHelperMergeRecursiveValue, FAILURE()),
+        TransformT({makeRef("ref"), makeValue(R"({})")}, opBuilderHelperMergeRecursiveValue, FAILURE()),
+        TransformT({makeRef("obj"), makeRef("key")},
+                   opBuilderHelperMergeRecursiveValue,
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customRefExpected("obj", "key")(mocks);
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
+        TransformT({makeValue(R"({"key": "value"})"), makeRef("ref")},
+                   opBuilderHelperMergeRecursiveValue,
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customRefExpected("ref")(mocks);
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
                        }))),
     testNameFormatter<TransformBuilderTest>("ObjectGet"));
 } // namespace transformbuildtest
@@ -199,6 +224,31 @@ INSTANTIATE_TEST_SUITE_P(
                    opBuilderHelperMergeValue,
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
-                   FAILURE(customRefExpected("ref1", "ref2", "target")))),
+                   FAILURE(customRefExpected("ref1", "ref2", "target"))),
+        /*** Merge Recursive Value ***/
+        TransformT(R"({"ref": "key", "target": {"k0": "v0", "nested": {"k1": "v1"}}})",
+                   opBuilderHelperMergeRecursiveValue,
+                   "target",
+                   {makeValue(R"({"key": {"nested": {"k2": "v2"}}})"), makeRef("ref")},
+                   SUCCESS(customRefExpected(
+                       makeEvent(R"({"ref": "key", "target": {"k0": "v0", "nested": {"k1": "v1", "k2": "v2"}}})"),
+                       "ref",
+                       "target"))),
+        TransformT(R"({"ref": "key-not-exits", "target": {"k0": "v0", "nested": {"k1": "v1"}}})",
+                   opBuilderHelperMergeRecursiveValue,
+                   "target",
+                   {makeValue(R"({"key": {"nested": {"k2": "v2"}}})"), makeRef("ref")},
+                   FAILURE(customRefExpected("ref", "target"))),
+        TransformT(
+            R"({"ref1": "key", "ref2": {"key": {"nested": {"k0": "v0"}}}, "target": {"nested": {"k1": "v1"}}})",
+            opBuilderHelperMergeRecursiveValue,
+            "target",
+            {makeRef("ref2"), makeRef("ref1")},
+            SUCCESS(customRefExpected(
+                makeEvent(
+                    R"({"ref1": "key", "ref2": {"key": {"nested": {"k0": "v0"}}}, "target": {"nested": {"k1": "v1", "k0": "v0"}}})"),
+                "ref1",
+                "ref2",
+                "target")))),
     testNameFormatter<TransformOperationTest>("ObjectGet"));
 } // namespace transformoperatestest

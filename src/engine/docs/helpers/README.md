@@ -5,6 +5,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 ## Filter
 - [binary_and](#binary_and)
 - [contains](#contains)
+- [ends_with](#ends_with)
 - [exists](#exists)
 - [exists_key_in](#exists_key_in)
 - [int_equal](#int_equal)
@@ -41,7 +42,9 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [date_from_epoch](#date_from_epoch)
 - [decode_base16](#decode_base16)
 - [downcase](#downcase)
+- [float_calculate](#float_calculate)
 - [geoip](#geoip)
+- [get_date](#get_date)
 - [hex_to_number](#hex_to_number)
 - [int_calculate](#int_calculate)
 - [ip_version](#ip_version)
@@ -67,8 +70,11 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [kvdb_get](#kvdb_get)
 - [kvdb_get_array](#kvdb_get_array)
 - [kvdb_get_merge](#kvdb_get_merge)
+- [kvdb_get_merge_recursive](#kvdb_get_merge_recursive)
 - [kvdb_set](#kvdb_set)
 - [merge](#merge)
+- [merge_key_in](#merge_key_in)
+- [merge_recursive_key_in](#merge_recursive_key_in)
 - [parse_alphanumeric](#parse_alphanumeric)
 - [parse_between](#parse_between)
 - [parse_binary](#parse_binary)
@@ -159,6 +165,40 @@ In case of error, the function will evaluate to false.
 **Keywords**
 
 - `undefined` 
+
+---
+# ends_with
+
+## Signature
+
+```
+
+field: ends_with(conteined)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| conteined | string | value or reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Checks if the string stored in the field ends with the value provided.
+If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+
+
+**Keywords**
+
+- `string` 
 
 ---
 # exists
@@ -1269,8 +1309,7 @@ field: date_from_epoch(epoch)
 ## Description
 
 Date from epoch will convert the input value, can be a reference or a value representing the epoch time to a human readable date time.
-Remember epoch, understood as UNIX epoch, is the seconds passed since january first of 1970, so it will fail on negative values.
-Floating points numbers will be converted to integers.
+Transforms UNIX epoch time to a human readable date time in the format of 'YYYY-MM-DDTHH:MM:SSZ'.
 
 
 **Keywords**
@@ -1347,6 +1386,51 @@ If the field field already exists, then it will be replaced. In case of errors â
 - `string` 
 
 ---
+# float_calculate
+
+## Signature
+
+```
+
+field: float_calculate(operator, operand_left, operand_right, [...])
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| operator | string | value | mul, div, sub, sum |
+| operand_left | number | value or reference |
+| operand_right | number | value or reference |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| number |
+
+
+## Description
+
+The function `float_calculate` performs basic arithmetic operations on floats and integers.
+The function receives an operator and two or more operands.
+The function applies the operator to the first two operands and then applies the result to the next operand.
+The result of the operation is stored in the field `field`.
+The function supports the following operators: `sum` (addition), `sub` (subtraction), `mul` (multiplication), and `div` (division).
+
+
+**Keywords**
+
+- `math` 
+
+## Notes
+
+- Division by zero is not allowed (the function will fail).
+
+- The limit for a float is 3.402823466e+38
+
+---
 # geoip
 
 ## Signature
@@ -1391,6 +1475,32 @@ In case of success it will return an object with the following fields:
 **Keywords**
 
 - `max_min_db` 
+
+---
+# get_date
+
+## Signature
+
+```
+
+field: get_date()
+```
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Get the current date in the format "%Y-%m-%dT%H:%M:%SZ". The date is generated in UTC time zone.
+
+
+**Keywords**
+
+- `time` 
 
 ---
 # hex_to_number
@@ -2264,6 +2374,45 @@ value type hold by field. This helper function is typically used in the map stag
 - `kvdb` 
 
 ---
+# kvdb_get_merge_recursive
+
+## Signature
+
+```
+
+field: kvdb_get_merge_recursive(db-name, key)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| db-name | string | value | Any string |
+| key | string | value or reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [object, array] | - |
+
+
+## Description
+
+Gets the value of a given key in the DB named db-name and, if successful, merges this value with what the field had before.
+The merge process is recursive, meaning that for object or array types, the new value is deeply integrated with the existing value in the field.
+Key value type can be string, number, object, array, or null, and it must match the previous value type held by the field.
+This helper function is typically used in the map stage.
+
+
+**Keywords**
+
+- `kvdb` 
+
+- `recursive` 
+
+---
 # kvdb_set
 
 ## Signature
@@ -2334,6 +2483,80 @@ When merging objects, if a collision is produced the target key will be overridd
 When merging arrays, if a collision is produced the target key will be preserved in its original order
 and will be not duplicated.
 This helper function is typically used in the map stage
+
+
+**Keywords**
+
+- `undefined` 
+
+---
+# merge_key_in
+
+## Signature
+
+```
+
+field: merge_key_in(any_object, key)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_object | object | value or reference | Any object |
+| key | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Merge in target field value with the content of some key in the specified object, where the key is specified with a reference to another field.
+The object parameter must be a definition object or a reference to a field containing the object.
+This helper function is typically used in the map stage.
+
+
+**Keywords**
+
+- `undefined` 
+
+---
+# merge_recursive_key_in
+
+## Signature
+
+```
+
+field: merge_recursive_key_in(any_object, key)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_object | object | value or reference | Any object |
+| key | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Recursively merge the target field value with the content of a specified key in the given object.
+The key is identified through a reference to another field.
+If the key's value contains nested objects, the merge operation is applied recursively, combining all levels of the structure.
+The object parameter must be a definition object or a reference to a field containing the object.
+This helper function is typically used in the map stage to ensure deep merging of complex objects.
 
 
 **Keywords**
