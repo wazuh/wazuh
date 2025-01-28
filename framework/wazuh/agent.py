@@ -154,7 +154,7 @@ async def restart_agents(agent_list: list) -> AffectedItemsWazuhResult:
                 commands.append(command)
 
             response = await indexer_client.commands_manager.create(commands)
-            if response.result not in (ResponseResult.OK, ResponseResult.CREATED):
+            if response.result in (ResponseResult.OK, ResponseResult.CREATED):
                 result.affected_items.extend(agent_list)
             else:
                 for agent_id in agent_list:
