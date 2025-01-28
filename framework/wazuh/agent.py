@@ -20,7 +20,7 @@ from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.agent import DEFAULT_GROUP
 from wazuh.core.indexer.models.agent import Host as IndexerAgentHost
 from wazuh.core.indexer.models.commands import ResponseResult
-from wazuh.core.indexer.commands import create_restart_command, create_set_group_command, create_fetch_config_command
+from wazuh.core.indexer.commands import create_restart_command, create_set_group_command
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
