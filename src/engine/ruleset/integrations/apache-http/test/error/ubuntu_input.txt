@@ -1,7 +1,0 @@
-[Mon Dec 26 16:17:53 2016] [notice] Apache/2.2.22 (Ubuntu) configured -- resuming normal operations
-[Mon Dec 26 16:22:00 2016] [error] [client 192.168.33.1] File does not exist: /var/www/favicon.ico, referer: http://192.168.33.72/
-[Mon Dec 26 16:22:08 2016] [error] [client 192.168.33.1] File does not exist: /var/www/favicon.ico
-[Mon Dec 26 16:22:08 2016] [error] [client 192.168.33.1] File does not exist: /var/www/favicon.ico
-[Mon Dec 26 16:22:10 2016] [error] [client 192.168.33.1] File does not exist: /var/www/test
-[Mon Dec 26 16:22:13 2016] [error] [client 192.168.33.1] File does not exist: /var/www/hello
-[Mon Dec 26 16:22:17 2016] [error] [client 192.168.33.1] File does not exist: /var/www/crap

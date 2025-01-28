@@ -1,3 +1,0 @@
-Oct 11 09:10:48 server01 useradd[10001]: failed adding user 'user01', exit code: 4
-Oct 14 16:49:59 server02 userdel[10002]: delete user 'user02'
-Oct 19 12:54:40 server03 usermod[10003]: change user 'user03' expiration from '2001-01-01' to '2243-10-16'
