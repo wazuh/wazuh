@@ -713,17 +713,17 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
 
             char ctime_old_buffer[sizeof("Wed Jun 30 21:49:08 1993\n")] = {0};
             char ctime_new_buffer[sizeof("Wed Jun 30 21:49:08 1993\n")] = {0};
-            char *old_ctime = ctime_r(&oldsum->mtime, ctime_old_buffer);
-            char *new_ctime = ctime_r(&newsum->mtime, ctime_new_buffer);
-            if (*old_ctime == '\0' || *new_ctime == '\0') {
+            char* old_ctime = ctime_r(&oldsum->mtime, ctime_old_buffer);
+            char* new_ctime = ctime_r(&newsum->mtime, ctime_new_buffer);
+            if (old_ctime == NULL || new_ctime == NULL) {
                 mdebug1("Error converting modification time '%ld' - '%ld'", oldsum->mtime, newsum->mtime);
                 old_ctime = new_ctime = "Unknown";
             } else {
                 old_ctime[strlen(old_ctime) - 1] = '\0';
                 new_ctime[strlen(new_ctime) - 1] = '\0';
             }
-            snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
-
+            snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n",
+                     old_ctime, new_ctime);
         } else {
             localsdb->mtime[0] = '\0';
         }
@@ -799,6 +799,9 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     free(lf->full_log);
     os_strdup(localsdb->comment, lf->full_log);
     lf->log = lf->full_log;
+    // Force clean event
+    lf->program_name = NULL;
+    lf->dec_timestamp = NULL;
 
     return (0);
 }
