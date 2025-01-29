@@ -14,6 +14,7 @@
 
 #include "iVersionObjectInterface.hpp"
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstring>
 #include <memory>
@@ -120,16 +121,17 @@ public:
      */
     static bool match(std::string version, PEP440& data)
     {
-        size_t pos = 0;
-
-        // Transform the string to lowercase directly
-        std::transform(version.begin(), version.end(), version.begin(), ::tolower);
+        // Transform the string to lowercase in-place
+        std::transform(
+            version.begin(), version.end(), version.begin(), [](unsigned char c) { return std::tolower(c); });
 
         // Remove leading 'v' if present
         if (!version.empty() && version[0] == 'v')
         {
-            version = version.substr(1);
+            version.erase(version.begin());
         }
+
+        size_t pos = 0;
 
         // Parse epoch
         size_t exclamationPos = version.find('!');
@@ -147,14 +149,14 @@ public:
         }
         data.versionStr = version.substr(start, pos - start);
 
-        // If last character is a '.', remove it
+        // Remove trailing '.' if present
         if (!data.versionStr.empty() && data.versionStr.back() == '.')
         {
             data.versionStr.pop_back();
         }
 
         // Helper to skip separators
-        auto skipSeparators = [&]()
+        auto skipSeparators = [&version, &pos]()
         {
             while (pos < version.size() && (version[pos] == '.' || version[pos] == '-' || version[pos] == '_'))
             {
@@ -164,12 +166,12 @@ public:
         skipSeparators();
 
         // Parse pre-release
-        static constexpr const char* preIdentifiers[] = {"preview", "pre", "rc", "alpha", "beta", "c", "b", "a"};
-        data.hasPreRelease = false;
+        static constexpr std::array<const char*, 8> preIdentifiers = {
+            "preview", "pre", "rc", "alpha", "beta", "c", "b", "a"};
         for (const char* id : preIdentifiers)
         {
             size_t idLen = std::strlen(id);
-            if (version.substr(pos, idLen) == id)
+            if (version.compare(pos, idLen, id) == 0)
             {
                 data.hasPreRelease = true;
                 data.preReleaseStr = id;
@@ -208,12 +210,11 @@ public:
         skipSeparators();
 
         // Parse post-release
-        static constexpr const char* postIdentifiers[] = {"post", "rev", "r"};
-        data.hasPostRelease = false;
+        static constexpr std::array<const char*, 3> postIdentifiers = {"post", "rev", "r"};
         for (const char* id : postIdentifiers)
         {
             size_t idLen = std::strlen(id);
-            if (version.substr(pos, idLen) == id)
+            if (version.compare(pos, idLen, id) == 0)
             {
                 data.hasPostRelease = true;
                 pos += idLen;
@@ -237,8 +238,7 @@ public:
         skipSeparators();
 
         // Parse dev-release
-        data.hasDevRelease = false;
-        if (version.substr(pos, 3) == "dev")
+        if (version.compare(pos, 3, "dev") == 0)
         {
             data.hasDevRelease = true;
             pos += 3;
