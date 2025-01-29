@@ -141,20 +141,22 @@ jobs:
       - name: Upload Filebeat package to S3
         working-directory: filebeat/build/distributions
         run: |
-          if [ "${{ inputs.system }}" = "rpm" ]; then
-            revision="-${{ inputs.revision }}."
-          else
-            revision="-${{ inputs.revision }}_"
-          fi
-          arch="${{ inputs.architecture }}"
 
+          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${{ inputs.architecture }}.${{ inputs.system }}"
 
-          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}"
           if [ "${{ inputs.is_stage }}" = "false" ]; then
             git_hash=$(git rev-parse --short "$GITHUB_SHA")
-            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}_${git_hash}.${{ inputs.system }}"
+            if [ "${{ inputs.system }}" = "rpm" ]; then
+              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}"
+            else
+              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}"
+            fi
           else
-            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}.${{ inputs.system }}"
+            if [ "${{ inputs.system }}" = "rpm" ]; then
+              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}.${{ inputs.system }}"
+            else
+              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}.${{ inputs.system }}"
+            fi
           fi
 
           mv "$original_file" "$renamed_file"
@@ -166,19 +168,22 @@ jobs:
         if: ${{ inputs.checksum }}
         working-directory: filebeat/build/distributions
         run: |
-          if [ "${{ inputs.system }}" = "rpm" ]; then
-            revision="-${{ inputs.revision }}."
-          else
-            revision="-${{ inputs.revision }}_"
-          fi
-          arch="${{ inputs.architecture }}"
 
-          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}.sha512"
+          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${{ inputs.architecture }}.${{ inputs.system }}.sha512"
+
           if [ "${{ inputs.is_stage }}" = "false" ]; then
             git_hash=$(git rev-parse --short "$GITHUB_SHA")
-            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}_${git_hash}.${{ inputs.system }}.sha512"
+            if [ "${{ inputs.system }}" = "rpm" ]; then
+              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}.sha512"
+            else
+              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}.sha512"
+            fi
           else
-            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}.${{ inputs.system }}.sha512"
+            if [ "${{ inputs.system }}" = "rpm" ]; then
+              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}.${{ inputs.system }}.sha512"
+            else
+              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}.${{ inputs.system }}.sha512"
+            fi
           fi
 
           mv "$original_file" "$renamed_file"
