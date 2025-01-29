@@ -154,7 +154,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed vulnerability detector issue where RPM upgrade wouldn't download new content. ([#24909](https://github.com/wazuh/wazuh/pull/24909))
 - Fixed uncaught exception at Keystore test tool. ([#25667](https://github.com/wazuh/wazuh/pull/25667))
-- Replaced `eval` calls with `ast.literal_eval`. ([#25705](https://github.com/wazuh/wazuh/pull/25705))
+- Replaced `eval` calls with `ast.literal_eval`. Thanks to @DanielFi. ([#25705](https://github.com/wazuh/wazuh/pull/25705))
 - Fixed the cluster being disabled by default when loading configurations. ([#26277](https://github.com/wazuh/wazuh/pull/26277))
 - Added support ARM packages for wazuh-manager. ([#25945](https://github.com/wazuh/wazuh/pull/25945))
 
