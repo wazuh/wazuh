@@ -107,6 +107,10 @@ int DecodeWinevt(Eventinfo *lf){
     os_calloc(OS_MAXSTR, sizeof(char), msg_from_prov);
     os_calloc(OS_MAXSTR, sizeof(char), join_data);
 
+    // force a clean event
+    lf->program_name = NULL;
+    lf->dec_timestamp = NULL;
+
     const char *jsonErrPtr;
 
     if (received_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !received_event) {
@@ -141,6 +145,7 @@ int DecodeWinevt(Eventinfo *lf){
             } else {
                 mwarn("Could not read XML string: '%s'", event);
             }
+            OS_ClearXML(&xml);
         } else {
             node = OS_GetElementsbyNode(&xml, NULL);
 
@@ -245,7 +250,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0){
                                         filtered_string = replace_win_format(child_attr[p]->content, 0);
-                                        mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
+                                        mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[l]);
                                         *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
