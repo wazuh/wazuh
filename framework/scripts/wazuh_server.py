@@ -425,11 +425,11 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
 
 
 async def check_for_server_state(server_process: psutil.Process, expected_state: dict):
-    """Check the server meets the expected processes requirements.
+    """Check the server meets the expected daemons requirements.
 
     Args:
         server_process (psutil.Process): Main server process to get current daemons status.
-        expected_state (dict): Expected processes names and children number.
+        expected_state (dict): Expected daemons names and children number.
     """
     while True:
         states = {}
@@ -450,8 +450,10 @@ async def check_for_server_state(server_process: psutil.Process, expected_state:
         if all(states.values()):
             return
         else:
-            main_logger.debug(f'Server daemons state: {states}. Sleeping until next checking...')
-        await asyncio.sleep(5)
+            main_logger.warning(
+                f"The Server doesn't meet the expected daemons state: {states}. Sleeping until next checking..."
+            )
+        await asyncio.sleep(10)
 
 
 async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: psutil.Process):

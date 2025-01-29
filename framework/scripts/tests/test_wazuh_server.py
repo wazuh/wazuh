@@ -648,12 +648,69 @@ def test_check_daemon_ko_children_number(clean_pid_files_mock):
     clean_pid_files_mock.assert_not_called()
 
 
+@patch('scripts.wazuh_server.asyncio.sleep', side_effect=(None, StopAsyncIteration))
+async def test_check_for_server_state(sleep_mock):
+    """Check and set the behavior of wazuh_server `check_for_server_state` function."""
+    wazuh_server.main_logger = Mock()
+
+    proc_name = "test_daemon"
+    children_number = 3
+
+    expected_state = {proc_name: children_number}
+    child_proc_mock = Mock(
+        **{
+            "status.return_value": wazuh_server.psutil.STATUS_SLEEPING,
+            "name.return_value": proc_name,
+            "children.return_value": [i for i in range(children_number)]
+        }
+    )
+    main_proc_mock = Mock(**{"children.return_value": [child_proc_mock]})
+
+    await wazuh_server.check_for_server_state(main_proc_mock, expected_state)
+
+    sleep_mock.assert_not_called()
+    wazuh_server.main_logger.warning_assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "daemon_exists,children_number",
+    [
+        (False, 3), (True, 2)
+    ]
+)
+@patch('scripts.wazuh_server.asyncio.sleep', side_effect=(None, StopAsyncIteration))
+async def test_check_for_server_state_ko(sleep_mock, daemon_exists, children_number):
+    """Validate that `check_for_server_state` works as expected when server doesn't have the expected requirements."""
+    wazuh_server.main_logger = Mock()
+
+    proc_name = "test_daemon"
+    expected_children_number = 3
+
+    expected_state = {proc_name: expected_children_number}
+    child_proc_mock = Mock(
+        **{
+            "status.return_value": wazuh_server.psutil.STATUS_SLEEPING,
+            "name.return_value": proc_name,
+            "children.return_value": [i for i in range(children_number)]
+        }
+    )
+    main_proc_mock = Mock(**{"children.return_value": [child_proc_mock] if daemon_exists else []})
+
+    with pytest.raises(StopAsyncIteration):
+        await wazuh_server.check_for_server_state(main_proc_mock, expected_state)
+
+    sleep_mock.assert_any_call(10)
+    wazuh_server.main_logger.warning.assert_any_call(
+        "The Server doesn't meet the expected daemons state: {'test_daemon': False}. Sleeping until next checking...")
+
+
 @pytest.mark.asyncio
 @patch('scripts.wazuh_server.stop_loop', side_effect=RuntimeError)
+@patch('scripts.wazuh_server.check_for_server_state')
 @patch('scripts.wazuh_server.check_daemon', side_effect=(None, None, wazuh_server.WazuhDaemonError(code='Test error.')))
 @patch('scripts.wazuh_server.asyncio.sleep')
 async def test_monitor_server_daemons(
-    sleep_mock, check_daemon_mock, stop_loop_mock
+    sleep_mock, check_daemon_mock, check_for_server_state_mock, stop_loop_mock
 ):
     """Check and set the behavior of wazuh_server `monitor_server_daemons` function."""
     wazuh_server.main_logger = Mock()
@@ -665,6 +722,12 @@ async def test_monitor_server_daemons(
     with patch('scripts.wazuh_server.CentralizedConfig.get_comms_api_config', return_value=comms_api_config_mock):
         with pytest.raises(RuntimeError):
             await wazuh_server.monitor_server_daemons(loop=loop_mock, server_process=process_mock)
+
+    check_for_server_state_mock.assert_called_once_with(process_mock, {
+        wazuh_server.MANAGEMENT_API_DAEMON_NAME[:15]: 3,
+        wazuh_server.COMMS_API_DAEMON_NAME:  8,
+        wazuh_server.ENGINE_DAEMON_NAME:  0
+    })
 
     check_daemon_mock.assert_has_calls(
         [
