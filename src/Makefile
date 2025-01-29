@@ -1368,7 +1368,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 40
+DEPS_VERSION = 40-26714
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -1428,6 +1428,14 @@ endif
 endif
 endif
 
+# Define CPYTHON pre-compile
+CPYTHON_ARCHIVE := cpython_x86_64
+ifeq ($(PRECOMPILED_ARCH),/aarch64)
+	CPYTHON_ARCHIVE := cpython_arm64
+else
+	CPYTHON_ARCHIVE := cpython_x86_64
+endif
+
 ifeq ($(CHECK_CENTOS5),YES)
 PRECOMPILED_OS := el5
 # Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
@@ -1464,8 +1472,8 @@ ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifneq (,$(PRECOMPILED_RES))
 external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
 	test -e $(patsubst %.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
+	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz &&\
+	cd external && $(GUNZIP) $(CPYTHON_ARCHIVE).tar.gz && $(TAR) $(CPYTHON_ARCHIVE).tar && rm $(CPYTHON_ARCHIVE).tar)
 	test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
 
 external-precompiled/$(CPYTHON).tar.gz:
@@ -1473,17 +1481,17 @@ external-precompiled/$(CPYTHON).tar.gz:
 	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
 external/$(CPYTHON).tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz
+	cd external && $(GUNZIP) $(CPYTHON_ARCHIVE).tar.gz
+	cd external && $(TAR) $(CPYTHON_ARCHIVE).tar
+	rm $(CPYTHON_ARCHIVE).tar
 endif
 else
 external/$(CPYTHON).tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz
+	cd external && $(GUNZIP) $(CPYTHON_ARCHIVE).tar.gz
+	cd external && $(TAR) $(CPYTHON_ARCHIVE).tar
+	rm $(CPYTHON_ARCHIVE).tar
 endif
 
 ifeq (${uname_S},HP-UX)
