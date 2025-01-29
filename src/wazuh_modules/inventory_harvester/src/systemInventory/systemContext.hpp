@@ -64,23 +64,23 @@ public:
                 if constexpr (std::is_same_v<T, const SyscollectorDeltas::Delta*>)
                 {
                     m_data = std::forward<decltype(arg)>(arg);
-                    auto delta = std::get<const SyscollectorDeltas::Delta*>(m_data);
                     m_type = VariantType::Delta;
 
-                    buildDeltaContext(delta);
+                    buildDeltaContext(std::get<const SyscollectorDeltas::Delta*>(m_data));
                 }
                 else if constexpr (std::is_same_v<T, const Synchronization::SyncMsg*>)
                 {
                     m_data = std::forward<decltype(arg)>(arg);
-                    auto syncMsg = std::get<const Synchronization::SyncMsg*>(m_data);
                     m_type = VariantType::SyncMsg;
 
-                    buildSyncContext(syncMsg);
+                    buildSyncContext(std::get<const Synchronization::SyncMsg*>(m_data));
                 }
                 else if constexpr (std::is_same_v<T, const nlohmann::json*>)
                 {
                     m_data = std::forward<decltype(arg)>(arg);
                     m_type = VariantType::Json;
+
+                    buildJsonContext(std::get<const nlohmann::json*>(m_data));
                 }
                 else
                 {
@@ -134,10 +134,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/agent_info/agent_name"_json_pointer))
-            {
-                return m_jsonData->at("/agent_info/agent_name"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -160,10 +157,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/agent_info/agent_ip"_json_pointer))
-            {
-                return m_jsonData->at("/agent_info/agent_ip"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -186,10 +180,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/agent_info/agent_version"_json_pointer))
-            {
-                return m_jsonData->at("/agent_info/agent_version"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -213,10 +204,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/name"_json_pointer))
-            {
-                return m_jsonData->at("/data/name"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -240,10 +228,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/version"_json_pointer))
-            {
-                return m_jsonData->at("/data/version"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -267,10 +252,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/vendor"_json_pointer))
-            {
-                return m_jsonData->at("/data/vendor"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -294,10 +276,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/install_time"_json_pointer))
-            {
-                return m_jsonData->at("/data/install_time"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -321,10 +300,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/location"_json_pointer))
-            {
-                return m_jsonData->at("/data/location"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -348,10 +324,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/architecture"_json_pointer))
-            {
-                return m_jsonData->at("/data/architecture"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -375,10 +348,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/groups"_json_pointer))
-            {
-                return m_jsonData->at("/data/groups"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -402,10 +372,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/description"_json_pointer))
-            {
-                return m_jsonData->at("/data/description"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -428,10 +395,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/size"_json_pointer))
-            {
-                return m_jsonData->at("/data/size"_json_pointer).get<uint64_t>();
-            }
+            return 0;
         }
         return 0;
     }
@@ -455,10 +419,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/priority"_json_pointer))
-            {
-                return m_jsonData->at("/data/priority"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -482,10 +443,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/multiarch"_json_pointer))
-            {
-                return m_jsonData->at("/data/multiarch"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -509,10 +467,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/source"_json_pointer))
-            {
-                return m_jsonData->at("/data/source"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -536,10 +491,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/format"_json_pointer))
-            {
-                return m_jsonData->at("/data/format"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -735,10 +687,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/minor_version"_json_pointer))
-            {
-                return m_jsonData->at("/data/minor_version"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -957,10 +906,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/name"_json_pointer))
-            {
-                return m_jsonData->at("/data/name"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -1011,10 +957,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/cmd"_json_pointer))
-            {
-                return m_jsonData->at("/data/cmd"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -1038,10 +981,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/argvs"_json_pointer))
-            {
-                return m_jsonData->at("/data/argvs"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -1065,10 +1005,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/ppid"_json_pointer))
-            {
-                return m_jsonData->at("/data/ppid"_json_pointer).get<uint64_t>();
-            }
+            return 0;
         }
         return 0;
     }
@@ -1092,10 +1029,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/start_time"_json_pointer))
-            {
-                return m_jsonData->at("/data/start_time"_json_pointer).get<uint64_t>();
-            }
+            return 0;
         }
         return 0;
     }
@@ -1162,11 +1096,6 @@ private:
                 m_affectedComponentType = AffectedComponentType::System;
                 m_originTable = OriginTable::Os;
             }
-            // else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_hwinfo)
-            // {
-            //     m_affectedComponentType = AffectedComponentType::System;
-            //     m_originTable = OriginTable::Hw;
-            // }
             else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_processes)
             {
                 m_affectedComponentType = AffectedComponentType::Process;
@@ -1195,13 +1124,6 @@ private:
                 m_affectedComponentType = AffectedComponentType::System;
                 m_originTable = OriginTable::Os;
             }
-            // else if (syncMsg->data_as_state()->attributes_type() ==
-            //          Synchronization::AttributesUnion_syscollector_hwinfo)
-            // {
-            //     m_operation = Operation::Upsert;
-            //     m_affectedComponentType = AffectedComponentType::System;
-            //     m_originTable = OriginTable::Hw;
-            // }
             else if (syncMsg->data_as_state()->attributes_type() ==
                      Synchronization::AttributesUnion_syscollector_packages)
             {
@@ -1239,12 +1161,6 @@ private:
                     m_affectedComponentType = AffectedComponentType::System;
                     m_originTable = OriginTable::Os;
                 }
-                // else if (attributesTypeStr.compare("syscollector_hwinfo") == 0)
-                // {
-                //     m_operation = Operation::DeleteAllEntries;
-                //     m_affectedComponentType = AffectedComponentType::System;
-                //     m_originTable = OriginTable::Hw;
-                // }
                 else if (attributesTypeStr.compare("syscollector_processes") == 0)
                 {
                     m_operation = Operation::DeleteAllEntries;
@@ -1273,12 +1189,6 @@ private:
                     m_affectedComponentType = AffectedComponentType::Package;
                     m_originTable = OriginTable::Packages;
                 }
-                // else if ((attributesTypeStr.compare("syscollector_hwinfo") == 0))
-                // {
-                //     m_operation = Operation::IndexSync;
-                //     m_affectedComponentType = AffectedComponentType::System;
-                //     m_originTable = OriginTable::Os;
-                // }
                 else if (attributesTypeStr.compare("syscollector_osinfo") == 0)
                 {
                     m_operation = Operation::IndexSync;
@@ -1301,6 +1211,32 @@ private:
             {
                 throw std::runtime_error("Attributes type not found in sync message.");
             }
+        }
+    }
+
+    void buildJsonContext(const nlohmann::json* data)
+    {
+        std::string_view action = data->at("/action"_json_pointer).get<std::string_view>();
+
+        if (action.compare("deleteAgent") == 0)
+        {
+            m_operation = Operation::DeleteAgent;
+        }
+        else if (action.compare("deletePackage") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Package;
+            m_originTable = OriginTable::Packages;
+        }
+        else if (action.compare("deleteProcess") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Process;
+            m_originTable = OriginTable::Processes;
+        }
+        else
+        {
+            throw std::runtime_error("Operation not implemented: " + std::string(action));
         }
     }
 };

@@ -16,7 +16,7 @@
 #include <string_view>
 
 template<typename T>
-struct DataHarvester
+struct DataHarvester final
 {
     std::string id;
     std::string_view operation;

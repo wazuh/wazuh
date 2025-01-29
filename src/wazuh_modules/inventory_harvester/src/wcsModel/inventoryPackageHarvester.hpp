@@ -16,7 +16,7 @@
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/package.hpp"
 
-struct InventoryPackageHarvester
+struct InventoryPackageHarvester final
 {
     Agent agent;
     Package package;

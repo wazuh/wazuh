@@ -1,7 +1,7 @@
 /*
  * Wazuh Vulnerability scanner
  * Copyright (C) 2015, Wazuh Inc.
- * May 1, 2023.
+ * January 22, 2025.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

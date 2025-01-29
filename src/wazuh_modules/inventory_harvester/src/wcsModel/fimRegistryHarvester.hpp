@@ -16,7 +16,7 @@
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/registry.hpp"
 
-struct FimRegistryInventoryHarvester
+struct FimRegistryInventoryHarvester final
 {
     Agent agent;
     Registry registry;

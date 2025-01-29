@@ -32,7 +32,7 @@ public:
 
     static DataHarvester<FimRegistryInventoryHarvester> build(TContext* data)
     {
-        std::string path = data->path().data();
+        std::string path(data->path());
         Utils::replaceAll(path, "\\", "/");
         Utils::replaceAll(path, "//", "/");
 
@@ -61,7 +61,7 @@ public:
 
     static NoDataHarvester deleteElement(TContext* data)
     {
-        std::string path = data->path().data();
+        std::string path(data->path());
         Utils::replaceAll(path, "\\", "/");
         Utils::replaceAll(path, "//", "/");
 
