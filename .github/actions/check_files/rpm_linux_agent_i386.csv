@@ -36,7 +36,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-4.*-tmp/rhel/8/sca.files,root,wazuh,640,file,-rw-r-----,27,0.1
 /var/ossec/tmp/sca-4.*-tmp/rhel/8/cis_rhel8_linux.yml,root,wazuh,640,file,-rw-r-----,362214,0.1
 /var/ossec/tmp/sca-4.*-tmp/generic/sca.files,root,wazuh,640,file,-rw-r-----,26,0.1
-/var/ossec/tmp/sca-4.*-tmp/generic/sca_unix_audit.yml,root,wazuh,640,file,-rw-r-----,19044,0.1
+/var/ossec/tmp/sca-4.*-tmp/generic/sca_distro_independent_linux.yml,root,wazuh,640,file,-rw-r-----,334646,0.1
 /var/ossec/tmp/sca-4.*-tmp/amazon/cis_amazon_linux_1.yml,root,wazuh,640,file,-rw-r-----,206200,0.1
 /var/ossec/tmp/sca-4.*-tmp/amazon/cis_amazon_linux_2023.yml,root,wazuh,640,file,-rw-r-----,345881,0.1
 /var/ossec/tmp/sca-4.*-tmp/amazon/cis_amazon_linux_2.yml,root,wazuh,640,file,-rw-r-----,297403,0.1
