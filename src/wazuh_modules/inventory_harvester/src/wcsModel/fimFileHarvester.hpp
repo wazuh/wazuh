@@ -16,7 +16,7 @@
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/file.hpp"
 
-struct FimFileInventoryHarvester
+struct FimFileInventoryHarvester final
 {
     File file;
     Agent agent;

@@ -133,6 +133,8 @@ void InventoryHarvesterFacade::initWazuhDBEventSubscription()
                 const auto& action = messageParsed.at("action").get<std::string_view>();
                 if (action.compare("deleteAgent") == 0)
                 {
+                    // Push to both system and fim events, because the agent is being deleted and we need to remove all
+                    // elements from all indices.
                     pushSystemEvent(message, BufferType::BufferType_JSON);
                     pushFimEvent(message, BufferType::BufferType_JSON);
                 }

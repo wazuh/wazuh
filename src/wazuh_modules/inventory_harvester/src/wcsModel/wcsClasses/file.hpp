@@ -15,7 +15,6 @@
 #include "hash.hpp"
 #include "reflectiveJson.hpp"
 #include <string_view>
-#include <vector>
 
 struct File final
 {

@@ -47,7 +47,7 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
-        m_indexerConnectorInstances.at(data->affectedComponentType())->sync(data->agentId().data());
+        m_indexerConnectorInstances.at(data->affectedComponentType())->sync(std::string(data->agentId()));
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };

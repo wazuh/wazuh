@@ -15,7 +15,7 @@
 #include "reflectiveJson.hpp"
 #include <string_view>
 
-struct Package
+struct Package final
 {
     std::string_view architecture;
     std::string_view description;
