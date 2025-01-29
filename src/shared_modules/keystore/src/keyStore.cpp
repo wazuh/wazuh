@@ -130,3 +130,34 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
         EVPHelper().decryptAES256(encryptedValueVec, value);
     }
 }
+
+/**
+ * Get the key value in the specified column family.
+ *
+ * @param columnFamily The target column family.
+ * @param key The key to be inserted or updated.
+ * @return The corresponding value to be returned.
+ */
+std::string Keystore::get(const std::string& columnFamily, const std::string& key)
+{
+    std::string value;
+    std::string encryptedValue;
+
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+
+    if (!keystoreDB.columnExists(columnFamily))
+    {
+        keystoreDB.createColumn(columnFamily);
+    }
+
+    // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
+    upgrade(keystoreDB, columnFamily);
+
+    // Get the key-value pair using AES decryption.
+    if (keystoreDB.get(key, encryptedValue, columnFamily))
+    {
+        std::vector<char> encryptedValueVec(encryptedValue.begin(), encryptedValue.end());
+        EVPHelper().decryptAES256(encryptedValueVec, value);
+    }
+    return value;
+}

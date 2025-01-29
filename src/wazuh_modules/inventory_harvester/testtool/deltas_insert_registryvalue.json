@@ -1,0 +1,28 @@
+{
+    "agent_info": {
+      "agent_id": "002",
+      "agent_ip": "any",
+      "agent_name": "DESKTOP-5RL9J34",
+      "agent_version": "v4.7.2"
+    },
+    "data_type": "event",
+    "data": {
+      "path": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta",
+      "index": "0d9bf9fec0999856c1163e35b1ddbfcf71d4a727",
+      "version": 3,
+      "mode": "scheduled",
+      "type": "added",
+      "arch": "[x64]",
+      "value_name": "BBBOCTA",
+      "timestamp": 1737934725,
+      "attributes": {
+        "type": "registry_value",
+        "value_type": "REG_SZ",
+        "size": 1,
+        "hash_md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "hash_sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "checksum": "4ca7b88b201728c31afb691707c41d35a984317d"
+      }
+    }
+  }

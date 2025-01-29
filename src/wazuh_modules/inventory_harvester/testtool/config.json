@@ -1,0 +1,19 @@
+{
+    "indexer": {
+      "enabled": "yes",
+      "hosts": [
+          "http://192.168.1.7:9200"
+      ],
+      "username": "admin",
+      "password": "admin",
+      "ssl": {
+            "certificate_authorities": [
+                "/home/dwordcito/Development/wazuh/src/root-ca.pem"
+            ],
+            "certificate": "/home/dwordcito/Development/wazuh/src/node-1.pem",
+            "key": "/home/dwordcito/Development/wazuh/src/node-1-key.pem"
+        }
+    },
+    "clusterName":"cluster01",
+    "clusterEnabled":false
+}

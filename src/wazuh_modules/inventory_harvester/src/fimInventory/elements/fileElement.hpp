@@ -12,7 +12,11 @@
 #ifndef _FILE_ELEMENT_HPP
 #define _FILE_ELEMENT_HPP
 
+#include "../../wcsModel/data.hpp"
 #include "../../wcsModel/fimFileHarvester.hpp"
+#include "../../wcsModel/noData.hpp"
+#include "stringHelper.h"
+#include "timeHelper.h"
 
 template<typename TContext>
 class FileElement final
@@ -26,14 +30,51 @@ public:
     ~FileElement() = default;
     // LCOV_EXCL_STOP
 
-    static FimFileInventoryHarvester build(TContext* data)
+    static DataHarvester<FimFileInventoryHarvester> build(TContext* data)
     {
-        FimFileInventoryHarvester file;
+        std::string path = data->path().data();
+        Utils::replaceAll(path, "\\", "/");
+        Utils::replaceAll(path, "//", "/");
 
-        // TO-DO
-        // Field population based on the context.
+        DataHarvester<FimFileInventoryHarvester> element;
 
-        return file;
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += path;
+        element.operation = "INSERTED";
+
+        element.data.agent.id = data->agentId();
+        element.data.agent.name = data->agentName();
+        element.data.agent.version = data->agentVersion();
+        element.data.agent.ip = data->agentIp();
+
+        element.data.file.hash.sha1 = data->sha1();
+        element.data.file.hash.sha256 = data->sha256();
+        element.data.file.hash.md5 = data->md5();
+        element.data.file.path = path;
+        element.data.file.gid = data->gid();
+        element.data.file.group = data->groupName();
+        element.data.file.uid = data->uid();
+        element.data.file.owner = data->userName();
+        element.data.file.size = data->size();
+
+        element.data.file.mtime = Utils::rawTimestampToISO8601(data->mtime());
+
+        return element;
+    }
+
+    static NoDataHarvester deleteElement(TContext* data)
+    {
+        std::string path = data->path().data();
+        Utils::replaceAll(path, "\\", "/");
+        Utils::replaceAll(path, "//", "/");
+
+        NoDataHarvester element;
+        element.operation = "DELETED";
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += path;
+        return element;
     }
 };
 

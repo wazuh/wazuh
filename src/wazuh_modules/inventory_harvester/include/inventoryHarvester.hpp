@@ -18,7 +18,7 @@
 #define EXPORTED
 #endif
 
-#include "harvesterConfiguration.hpp"
+#include "json.hpp"
 #include "singleton.hpp"
 #include <functional>
 #include <string>
@@ -43,7 +43,7 @@ public:
                                         const std::string&,
                                         const std::string&,
                                         va_list)>& logFunction,
-               const HarvesterConfiguration& configuration) const;
+               const nlohmann::json& configuration) const;
     /**
      * @brief Stops Inventory scanner.
      *

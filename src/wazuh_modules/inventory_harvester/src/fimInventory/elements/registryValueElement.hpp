@@ -12,7 +12,10 @@
 #ifndef _REGISTRY_VALUE_ELEMENT_HPP
 #define _REGISTRY_VALUE_ELEMENT_HPP
 
+#include "../../wcsModel/data.hpp"
 #include "../../wcsModel/fimRegistryHarvester.hpp"
+#include "../../wcsModel/noData.hpp"
+#include "stringHelper.h"
 
 template<typename TContext>
 class RegistryValueElement final
@@ -26,14 +29,60 @@ public:
     ~RegistryValueElement() = default;
     // LCOV_EXCL_STOP
 
-    static FimRegistryInventoryHarvester build(TContext* data)
+    static DataHarvester<FimRegistryInventoryHarvester> build(TContext* data)
     {
-        FimRegistryInventoryHarvester registry;
+        std::string path = data->path().data();
+        Utils::replaceAll(path, "\\", "/");
+        Utils::replaceAll(path, "//", "/");
 
-        // TO-DO
-        // Field population based on the context.
+        std::string valueName = data->valueName().data();
+        Utils::replaceAll(valueName, "\\", "/");
+        Utils::replaceAll(valueName, "//", "/");
 
-        return registry;
+        DataHarvester<FimRegistryInventoryHarvester> element;
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += path;
+        element.id += "/";
+        element.id += valueName;
+        element.operation = "INSERTED";
+
+        element.data.agent.id = data->agentId();
+        element.data.agent.name = data->agentName();
+        element.data.agent.version = data->agentVersion();
+        element.data.agent.ip = data->agentIp();
+
+        element.data.registry.hive = Utils::getHive(path);
+        element.data.registry.key = path;
+        Utils::replaceFirstView(element.data.registry.key, element.data.registry.hive, "");
+        element.data.registry.path = element.data.registry.key;
+        element.data.registry.path += "/";
+        element.data.registry.path += valueName;
+        element.data.registry.value = valueName;
+
+        element.data.registry.data.hash.md5 = data->md5();
+        element.data.registry.data.hash.sha1 = data->sha1();
+        element.data.registry.data.hash.sha256 = data->sha256();
+        element.data.registry.data.type = data->valueType();
+
+        return element;
+    }
+
+    static NoDataHarvester deleteElement(TContext* data)
+    {
+        std::string path = data->path().data();
+        Utils::replaceAll(path, "\\", "/");
+        Utils::replaceAll(path, "//", "/");
+
+        NoDataHarvester element;
+        element.operation = "DELETED";
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += path;
+        element.id += "_";
+        element.id += data->valueName();
+
+        return element;
     }
 };
 

@@ -13,39 +13,14 @@
 #define _BUILD_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
-#include "elements/hwElement.hpp"
 #include "elements/osElement.hpp"
 #include "elements/packageElement.hpp"
 #include "elements/processElement.hpp"
-#include <stdexcept>
+#include "loggerHelper.h"
 
 template<typename TContext>
 class UpsertSystemElement final : public AbstractHandler<std::shared_ptr<TContext>>
 {
-    void build(TContext* data)
-    {
-        if (data->originTable() == TContext::OriginTable::Hw)
-        {
-            data->m_serializedElement = serializeToJSON(HwElement<TContext>::build(data));
-        }
-        else if (data->originTable() == TContext::OriginTable::Os)
-        {
-            data->m_serializedElement = serializeToJSON(OsElement<TContext>::build(data));
-        }
-        else if (data->originTable() == TContext::OriginTable::Packages)
-        {
-            data->m_serializedElement = serializeToJSON(PackageElement<TContext>::build(data));
-        }
-        else if (data->originTable() == TContext::OriginTable::Processes)
-        {
-            data->m_serializedElement = serializeToJSON(ProcessElement<TContext>::build(data));
-        }
-        else
-        {
-            throw std::runtime_error("Unable to build scan context. Unknown type");
-        }
-    }
-
 public:
     // LCOV_EXCL_START
     /**
@@ -63,7 +38,24 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
-        build(data.get());
+        if (data->originTable() == TContext::OriginTable::Os)
+        {
+            data->m_serializedElement = serializeToJSON(OsElement<TContext>::build(data.get()));
+        }
+        else if (data->originTable() == TContext::OriginTable::Packages)
+        {
+            data->m_serializedElement = serializeToJSON(PackageElement<TContext>::build(data.get()));
+        }
+        else if (data->originTable() == TContext::OriginTable::Processes)
+        {
+            data->m_serializedElement = serializeToJSON(ProcessElement<TContext>::build(data.get()));
+        }
+        else
+        {
+            logDebug2(LOGGER_DEFAULT_TAG, "UpsertSystemElement::build: not implemented");
+            return nullptr;
+        }
+        logDebug2(LOGGER_DEFAULT_TAG, "UpsertSystemElement::build: %s", data->m_serializedElement.c_str());
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };

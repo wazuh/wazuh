@@ -18,7 +18,7 @@
 #include "threadEventDispatcher.hpp"
 #include "timeHelper.h"
 #include <functional>
-#include <harvesterConfiguration.hpp>
+#include <json.hpp>
 #include <memory>
 #include <queue>           // Add this line to include the <queue> header file
 #include <rocksdb/slice.h> // Add this line to include the rocksdb namespace
@@ -48,7 +48,7 @@ public:
                                         const std::string&,
                                         const std::string&,
                                         va_list)>& logFunction,
-               const HarvesterConfiguration& configuration);
+               const nlohmann::json& configuration);
 
     /**
      * @brief Stops facade.
@@ -101,9 +101,8 @@ private:
      */
     // void processEvent(ScanOrchestrator& scanOrchestrator, const MessageBuffer* message) const;
     std::unique_ptr<RouterSubscriber> m_inventoryDeltasSubscription;
-    std::unique_ptr<RouterSubscriber> m_inventoryRsyncSubscription;
+    std::unique_ptr<RouterSubscriber> m_harvesterRsyncSubscription;
     std::unique_ptr<RouterSubscriber> m_fimDeltasSubscription;
-    std::unique_ptr<RouterSubscriber> m_fimRsyncSubscription;
     std::unique_ptr<RouterSubscriber> m_wdbAgentEventsSubscription;
     bool m_noWaitToStop {true};
     std::shared_ptr<EventDispatcher> m_eventSystemInventoryDispatcher;

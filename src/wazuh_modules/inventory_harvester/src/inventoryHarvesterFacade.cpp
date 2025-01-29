@@ -11,7 +11,9 @@
 
 #include "inventoryHarvesterFacade.hpp"
 #include "fimInventoryOrchestrator.hpp"
+#include "flatbuffers/include/rsync_generated.h"
 #include "loggerHelper.h"
+#include "policyHarvesterManager.hpp"
 #include "systemInventoryOrchestrator.hpp"
 
 constexpr auto FIM_EVENTS_QUEUE_PATH {"queue/harvester/fim_event"};
@@ -29,7 +31,11 @@ void InventoryHarvesterFacade::initInventoryDeltasSubscription()
         std::make_unique<RouterSubscriber>("deltas-syscollector", "inventory_harvester_deltas");
     m_inventoryDeltasSubscription->subscribe(
         // coverity[copy_constructor_call]
-        [this](const std::vector<char>& message) { pushSystemEvent(message, BufferType::BufferType_DBSync); });
+        [this](const std::vector<char>& message)
+        {
+            logDebug2(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initInventoryDeltasSubscription: pushEvent");
+            pushSystemEvent(message, BufferType::BufferType_DBSync);
+        });
 }
 
 /**
@@ -42,7 +48,11 @@ void InventoryHarvesterFacade::initFimDeltasSubscription()
     m_fimDeltasSubscription = std::make_unique<RouterSubscriber>("deltas-syscheck", "inventory_harvester_deltas");
     m_fimDeltasSubscription->subscribe(
         // coverity[copy_constructor_call]
-        [this](const std::vector<char>& message) { pushFimEvent(message, BufferType::BufferType_DBSync); });
+        [this](const std::vector<char>& message)
+        {
+            logDebug2(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initFimDeltasSubscription: pushEvent");
+            pushFimEvent(message, BufferType::BufferType_DBSync);
+        });
 }
 
 /**
@@ -52,12 +62,61 @@ void InventoryHarvesterFacade::initFimDeltasSubscription()
 void InventoryHarvesterFacade::initInventoryRsyncSubscription()
 {
     // Subscription to syscollector rsync events.
-    m_inventoryRsyncSubscription = std::make_unique<RouterSubscriber>("rsync", "inventory_harvester_rsync");
-    m_inventoryRsyncSubscription->subscribe(
+    m_harvesterRsyncSubscription = std::make_unique<RouterSubscriber>("rsync", "inventory_harvester_rsync");
+    m_harvesterRsyncSubscription->subscribe(
         // coverity[copy_constructor_call]
         [this](const std::vector<char>& message)
         {
-            // pushEvent(message, BufferType::BufferType_RSync);
+            flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(message.data()), message.size());
+            if (Synchronization::VerifySyncMsgBuffer(verifier))
+            {
+                auto data = Synchronization::GetSyncMsg(message.data());
+                if (data->data_type() == Synchronization::DataUnion_state)
+                {
+                    if (data->data_as_state()->attributes_as_fim_file() ||
+                        data->data_as_state()->attributes_as_fim_registry_key() ||
+                        data->data_as_state()->attributes_as_fim_registry_value())
+                    {
+                        pushFimEvent(message, BufferType::BufferType_RSync);
+                    }
+                    else if (data->data_as_state()->attributes_as_syscollector_packages() ||
+                             data->data_as_state()->attributes_as_syscollector_processes() ||
+                             data->data_as_state()->attributes_as_syscollector_osinfo())
+                    {
+                        pushSystemEvent(message, BufferType::BufferType_RSync);
+                    }
+                }
+                else if (data->data_type() == Synchronization::DataUnion_integrity_clear)
+                {
+                    auto attributesType = data->data_as_integrity_clear()->attributes_type()->string_view();
+                    if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
+                        attributesType.compare("fim_registry_value") == 0)
+                    {
+                        pushFimEvent(message, BufferType::BufferType_RSync);
+                    }
+                    else if (attributesType.compare("syscollector_packages") == 0 ||
+                             attributesType.compare("syscollector_processes") == 0 ||
+                             attributesType.compare("syscollector_osinfo") == 0)
+                    {
+                        pushSystemEvent(message, BufferType::BufferType_RSync);
+                    }
+                }
+                else if (data->data_type() == Synchronization::DataUnion_integrity_check_global)
+                {
+                    auto attributesType = data->data_as_integrity_check_global()->attributes_type()->string_view();
+                    if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
+                        attributesType.compare("fim_registry_value") == 0)
+                    {
+                        pushFimEvent(message, BufferType::BufferType_RSync);
+                    }
+                    else if (attributesType.compare("syscollector_packages") == 0 ||
+                             attributesType.compare("syscollector_processes") == 0 ||
+                             attributesType.compare("syscollector_osinfo") == 0)
+                    {
+                        pushSystemEvent(message, BufferType::BufferType_RSync);
+                    }
+                }
+            }
         });
 }
 
@@ -68,9 +127,23 @@ void InventoryHarvesterFacade::initWazuhDBEventSubscription()
     m_wdbAgentEventsSubscription->subscribe(
         [this](const std::vector<char>& message)
         {
-            flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(message.data()), message.size());
-            if (VerifyMessageBufferBuffer(verifier))
+            auto messageParsed = nlohmann::json::parse(message.data(), message.data() + message.size());
+            if (messageParsed.contains("action"))
             {
+                const auto& action = messageParsed.at("action").get<std::string_view>();
+                if (action.compare("deleteAgent") == 0)
+                {
+                    pushSystemEvent(message, BufferType::BufferType_JSON);
+                    pushFimEvent(message, BufferType::BufferType_JSON);
+                }
+                else if (action.compare("deletePackage") == 0 || action.compare("deleteProcess") == 0)
+                {
+                    pushSystemEvent(message, BufferType::BufferType_JSON);
+                }
+                else if (action.compare("deleteFile") == 0 || action.compare("deleteRegistry") == 0)
+                {
+                    pushFimEvent(message, BufferType::BufferType_JSON);
+                }
             }
         });
 }
@@ -83,21 +156,20 @@ void InventoryHarvesterFacade::initSystemEventDispatcher()
 {
     // Init Orchestrator
     auto systemInventoryOrchestrator = std::make_shared<SystemInventoryOrchestrator>();
+    const auto parseEventMessage = [](const rocksdb::PinnableSlice& element)
+    {
+        if (const auto eventMessageBuffer = GetMessageBuffer(element.data()); eventMessageBuffer)
+        {
+            return std::string(eventMessageBuffer->data()->begin(), eventMessageBuffer->data()->end());
+        }
+
+        return std::string("unable to parse");
+    };
 
     m_eventSystemInventoryDispatcher->startWorker(
         // coverity[copy_constructor_call]
-        [systemInventoryOrchestrator](std::queue<rocksdb::PinnableSlice>& dataQueue)
+        [systemInventoryOrchestrator, &parseEventMessage](std::queue<rocksdb::PinnableSlice>& dataQueue)
         {
-            // const auto parseEventMessage = [](const rocksdb::PinnableSlice& element)
-            // {
-            //     if (const auto eventMessageBuffer = GetMessageBuffer(element.data()); eventMessageBuffer)
-            //     {
-            //         return std::string(eventMessageBuffer->data()->begin(), eventMessageBuffer->data()->end());
-            //     }
-
-            //     return std::string("unable to parse");
-            // };
-
             const auto& element = dataQueue.front();
             try
             {
@@ -109,17 +181,17 @@ void InventoryHarvesterFacade::initSystemEventDispatcher()
             }
             catch (const nlohmann::json::exception& e)
             {
-                // logError(WM_VULNSCAN_LOGTAG,
-                //          "VulnerabilityScannerFacade::initEventDispatcher: json exception (%d) - Event message: %s",
-                //          e.id,
-                //          parseEventMessage(element).c_str());
+                logError(LOGGER_DEFAULT_TAG,
+                         "InventoryHarvesterFacade::initSystemEventDispatcher: json exception (%d) - Event message: %s",
+                         e.id,
+                         parseEventMessage(element).c_str());
             }
             catch (const std::exception& e)
             {
-                // logError(WM_VULNSCAN_LOGTAG,
-                //          "VulnerabilityScannerFacade::initEventDispatcher: %s - Event message: %s",
-                //          e.what(),
-                //          parseEventMessage(element).c_str());
+                logError(LOGGER_DEFAULT_TAG,
+                         "InventoryHarvesterFacade::initSystemEventDispatcher: %s - Event message: %s",
+                         e.what(),
+                         parseEventMessage(element).c_str());
             }
         });
 }
@@ -133,20 +205,20 @@ void InventoryHarvesterFacade::initFimEventDispatcher()
     // Init Orchestrator
     auto fimInventoryOrchestrator = std::make_shared<FimInventoryOrchestrator>();
 
+    const auto parseEventMessage = [](const rocksdb::PinnableSlice& element) -> std::string
+    {
+        if (const auto eventMessageBuffer = GetMessageBuffer(element.data()); eventMessageBuffer)
+        {
+            return {eventMessageBuffer->data()->begin(), eventMessageBuffer->data()->end()};
+        }
+
+        return "unable to parse";
+    };
+
     m_eventFimInventoryDispatcher->startWorker(
         // coverity[copy_constructor_call]
-        [fimInventoryOrchestrator](std::queue<rocksdb::PinnableSlice>& dataQueue)
+        [fimInventoryOrchestrator, &parseEventMessage](std::queue<rocksdb::PinnableSlice>& dataQueue)
         {
-            // const auto parseEventMessage = [](const rocksdb::PinnableSlice& element) -> std::string
-            // {
-            //     if (const auto eventMessageBuffer = GetMessageBuffer(element.data()); eventMessageBuffer)
-            //     {
-            //         return {eventMessageBuffer->data()->begin(), eventMessageBuffer->data()->end()};
-            //     }
-
-            //     return "unable to parse";
-            // };
-
             const auto& element = dataQueue.front();
             try
             {
@@ -158,17 +230,17 @@ void InventoryHarvesterFacade::initFimEventDispatcher()
             }
             catch (const nlohmann::json::exception& e)
             {
-                // logError(WM_VULNSCAN_LOGTAG,
-                //          "VulnerabilityScannerFacade::initEventDispatcher: json exception (%d) - Event message: %s",
-                //          e.id,
-                //          parseEventMessage(element).c_str());
+                logError(LOGGER_DEFAULT_TAG,
+                         "InventoryHarvesterFacade::initFimEventDispatcher: json exception (%d) - Event message: %s",
+                         e.id,
+                         parseEventMessage(element).c_str());
             }
             catch (const std::exception& e)
             {
-                // logError(WM_VULNSCAN_LOGTAG,
-                //          "VulnerabilityScannerFacade::initEventDispatcher: %s - Event message: %s",
-                //          e.what(),
-                //          parseEventMessage(element).c_str());
+                logError(LOGGER_DEFAULT_TAG,
+                         "InventoryHarvesterFacade::initFimEventDispatcher: %s - Event message: %s",
+                         e.what(),
+                         parseEventMessage(element).c_str());
             }
         });
 }
@@ -178,12 +250,14 @@ void InventoryHarvesterFacade::start(
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
-    const HarvesterConfiguration& configuration)
+    const nlohmann::json& configuration)
 {
     try
     {
         // Initialize logging
         Log::assignLogFunction(logFunction);
+
+        PolicyHarvesterManager::instance().initialize(configuration);
 
         // Initialize all event dispatchers.
         m_eventFimInventoryDispatcher = std::make_shared<EventDispatcher>(FIM_EVENTS_QUEUE_PATH, EVENTS_BULK_SIZE);
@@ -200,15 +274,11 @@ void InventoryHarvesterFacade::start(
 
         // Socket client initialization to send vulnerability reports.
 
-        // logInfo(WM_VULNSCAN_LOGTAG, "Vulnerability scanner module started.");
+        logInfo(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade module started.");
     }
     catch (const std::exception& e)
     {
-        // logError(WM_VULNSCAN_LOGTAG, "InventoryHarvesterFacade::start: %s.", e.what());
-    }
-    catch (...)
-    {
-        // logError(WM_VULNSCAN_LOGTAG, "InventoryHarvesterFacade::start: Unknown exception.");
+        logError(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::start: %s.", e.what());
     }
 }
 // LCOV_EXCL_STOP
@@ -222,13 +292,14 @@ void InventoryHarvesterFacade::stop()
     }
 
     // Reset shared pointers
-    m_inventoryRsyncSubscription.reset();
+    m_harvesterRsyncSubscription.reset();
     m_inventoryDeltasSubscription.reset();
-    m_fimRsyncSubscription.reset();
     m_fimDeltasSubscription.reset();
     m_wdbAgentEventsSubscription.reset();
 
     // Policy manager teardown
     m_eventSystemInventoryDispatcher.reset();
     m_eventFimInventoryDispatcher.reset();
+
+    logInfo(LOGGER_DEFAULT_TAG, "Inventory harvester module stopped.");
 }

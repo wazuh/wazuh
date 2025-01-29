@@ -196,6 +196,32 @@ namespace Utils
         return output.str();
     }
 
+    static std::string rawTimestampToISO8601(const uint32_t timestamp)
+    {
+        std::time_t time = timestamp;
+        auto itt = std::chrono::system_clock::from_time_t(time);
+
+        std::ostringstream output;
+        struct tm buf;
+        tm* localTime = gmtime_r(&time, &buf);
+
+        if (localTime == nullptr)
+        {
+            return "";
+        }
+
+        output << std::put_time(localTime, "%FT%T");
+
+        // Get milliseconds from the current time
+        auto milliseconds =
+            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+
+        // ISO 8601
+        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+
+        return output.str();
+    }
+
     /**
      * @brief Get seconds from epoch, since 1970-01-01 00:00:00 UTC.
      * @return seconds from epoch.

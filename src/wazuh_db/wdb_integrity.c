@@ -92,6 +92,21 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 cJSON_AddItemToObject(j_data, "location", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 4)));
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 5)));
                 break;
+            case WDB_SYSCOLLECTOR_PROCESSES:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteProcess");
+                cJSON_AddItemToObject(j_data, "pid", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                break;
+            case WDB_FIM:
+            case WDB_FIM_FILE:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteFile");
+                cJSON_AddItemToObject(j_data, "path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                break;
+            case WDB_FIM_REGISTRY:
+            case WDB_FIM_REGISTRY_KEY:
+            case WDB_FIM_REGISTRY_VALUE:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistry");
+                cJSON_AddItemToObject(j_data, "key", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                break;
             default:
                 break;
         }

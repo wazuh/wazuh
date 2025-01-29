@@ -13,6 +13,10 @@
 #define _DELETE_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/osElement.hpp"
+#include "elements/packageElement.hpp"
+#include "elements/processElement.hpp"
+#include "loggerHelper.h"
 
 template<typename TContext>
 class DeleteSystemElement final : public AbstractHandler<std::shared_ptr<TContext>>
@@ -34,6 +38,24 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
+        if (data->originTable() == TContext::OriginTable::Os)
+        {
+            data->m_serializedElement = serializeToJSON(OsElement<TContext>::deleteElement(data.get()));
+        }
+        else if (data->originTable() == TContext::OriginTable::Packages)
+        {
+            data->m_serializedElement = serializeToJSON(PackageElement<TContext>::deleteElement(data.get()));
+        }
+        else if (data->originTable() == TContext::OriginTable::Processes)
+        {
+            data->m_serializedElement = serializeToJSON(ProcessElement<TContext>::deleteElement(data.get()));
+        }
+        else
+        {
+            logDebug2(LOGGER_DEFAULT_TAG, "DeleteSystemElement::build: not implemented");
+            return nullptr;
+        }
+        logDebug2(LOGGER_DEFAULT_TAG, "DeleteSystemElement::build: %s", data->m_serializedElement.c_str());
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };

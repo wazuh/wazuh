@@ -13,6 +13,10 @@
 #define _DELETE_FIM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/fileElement.hpp"
+#include "elements/registryKeyElement.hpp"
+#include "elements/registryValueElement.hpp"
+#include "loggerHelper.h"
 
 template<typename TContext>
 class DeleteFimElement final : public AbstractHandler<std::shared_ptr<TContext>>
@@ -34,6 +38,24 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
+        if (data->originTable() == TContext::OriginTable::File)
+        {
+            data->m_serializedElement = serializeToJSON(FileElement<TContext>::deleteElement(data.get()));
+        }
+        else if (data->originTable() == TContext::OriginTable::RegistryKey)
+        {
+            data->m_serializedElement = serializeToJSON(RegistryKeyElement<TContext>::deleteElement(data.get()));
+        }
+        else if (data->originTable() == TContext::OriginTable::RegistryValue)
+        {
+            data->m_serializedElement = serializeToJSON(RegistryValueElement<TContext>::deleteElement(data.get()));
+        }
+        else
+        {
+            logDebug2(LOGGER_DEFAULT_TAG, "DeleteFimElement::build: not implemented");
+            return nullptr;
+        }
+        logDebug2(LOGGER_DEFAULT_TAG, "DeleteFimElement::build: %s", data->m_serializedElement.c_str());
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };
