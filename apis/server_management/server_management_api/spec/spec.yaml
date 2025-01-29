@@ -1241,7 +1241,7 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-syscheckd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-apid:
+        wazuh-server-management-apid:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-clusterd:
           $ref: '#/components/schemas/DaemonStatus'
@@ -3477,7 +3477,7 @@ paths:
                       wazuh-remoted: running
                       wazuh-reportd: stopped
                       wazuh-syscheckd: running
-                      wazuh-apid: running
+                      wazuh-server-management-apid: running
                       wazuh-clusterd: running
                       wazuh-db: running
                       wazuh-modulesd: running
