@@ -16,7 +16,7 @@
 #include <string_view>
 #include <vector>
 
-struct Process
+struct Process final
 {
     std::vector<std::string_view> args;
     std::uint64_t args_count;

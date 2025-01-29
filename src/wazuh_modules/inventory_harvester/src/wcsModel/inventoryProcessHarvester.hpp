@@ -16,7 +16,7 @@
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/process.hpp"
 
-struct InventoryProcessHarvester
+struct InventoryProcessHarvester final
 {
     Agent agent;
     Process process;

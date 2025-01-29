@@ -32,7 +32,7 @@ public:
 
     static DataHarvester<InventoryProcessHarvester> build(TContext* data)
     {
-        std::string commandLine = data->processCmdline().data();
+        std::string commandLine(data->processCmdline());
         Utils::replaceAll(commandLine, "\\", "/");
         Utils::replaceAll(commandLine, "//", "/");
 
@@ -54,7 +54,7 @@ public:
         }
         element.data.process.command_line = commandLine;
         element.data.process.name = data->processName();
-        element.data.process.pid = std::stoull(data->processId().data());
+        element.data.process.pid = std::stoull(std::string(data->processId()));
         element.data.process.start = Utils::rawTimestampToISO8601(data->processStart());
         element.data.process.ppid = data->processParentID();
 

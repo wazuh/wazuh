@@ -15,7 +15,7 @@
 #include "reflectiveJson.hpp"
 #include <string_view>
 
-struct NoDataHarvester
+struct NoDataHarvester final
 {
     std::string id;
     std::string_view operation;

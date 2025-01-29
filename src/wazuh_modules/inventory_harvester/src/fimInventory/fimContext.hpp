@@ -19,7 +19,7 @@
 
 struct FimContext final
 {
-private:
+public:
     enum class VariantType : std::uint8_t
     {
         Delta,
@@ -27,8 +27,6 @@ private:
         Json,
         Invalid
     };
-
-public:
     enum class Operation : std::uint8_t
     {
         Delete,
@@ -81,6 +79,8 @@ public:
                     m_data = std::forward<decltype(arg)>(arg);
                     m_jsonData = std::get<const nlohmann::json*>(m_data);
                     m_type = VariantType::Json;
+
+                    buildJsonContext(std::get<const nlohmann::json*>(m_data));
                 }
                 else
                 {
@@ -102,6 +102,11 @@ public:
     AffectedComponentType affectedComponentType() const
     {
         return m_affectedComponentType;
+    }
+
+    VariantType type() const
+    {
+        return m_type;
     }
 
     std::string_view agentId()
@@ -148,10 +153,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/agent_info/agent_name"_json_pointer))
-            {
-                return m_jsonData->at("/agent_info/agent_name"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -174,10 +176,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/agent_info/agent_ip"_json_pointer))
-            {
-                return m_jsonData->at("/agent_info/agent_ip"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -200,10 +199,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/agent_info/agent_version"_json_pointer))
-            {
-                return m_jsonData->at("/agent_info/agent_version"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -235,9 +231,9 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/full_path"_json_pointer))
+            if (m_jsonData->contains("/data/path"_json_pointer))
             {
-                return m_jsonData->at("/data/full_path"_json_pointer).get<std::string_view>();
+                return m_jsonData->at("/data/path"_json_pointer).get<std::string_view>();
             }
         }
         return "";
@@ -264,10 +260,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/value_name"_json_pointer))
-            {
-                return m_jsonData->at("/data/value_name"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -293,10 +286,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/arch"_json_pointer))
-            {
-                return m_jsonData->at("/data/arch"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -328,10 +318,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/md5"_json_pointer))
-            {
-                return m_jsonData->at("/data/md5"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -363,10 +350,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/sha1"_json_pointer))
-            {
-                return m_jsonData->at("/data/sha1"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -398,10 +382,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/sha256"_json_pointer))
-            {
-                return m_jsonData->at("/data/sha256"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -431,10 +412,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/size"_json_pointer))
-            {
-                return m_jsonData->at("/data/size"_json_pointer).get<int>();
-            }
+            return 0;
         }
         return 0;
     }
@@ -460,10 +438,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/inode"_json_pointer))
-            {
-                return m_jsonData->at("/data/inode"_json_pointer).get<uint64_t>();
-            }
+            return 0;
         }
         return 0;
     }
@@ -490,10 +465,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/value_type"_json_pointer))
-            {
-                return m_jsonData->at("/data/value_type"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -525,10 +497,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/uname"_json_pointer))
-            {
-                return m_jsonData->at("/data/uname"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -560,10 +529,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/gname"_json_pointer))
-            {
-                return m_jsonData->at("/data/gname"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -595,10 +561,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/uid"_json_pointer))
-            {
-                return m_jsonData->at("/data/uid"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -630,10 +593,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/gid"_json_pointer))
-            {
-                return m_jsonData->at("/data/gid"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -663,10 +623,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/mtime"_json_pointer))
-            {
-                return m_jsonData->at("/data/mtime"_json_pointer).get<uint64_t>();
-            }
+            return 0;
         }
         return 0;
     }
@@ -704,7 +661,7 @@ private:
             }
             else
             {
-                throw std::runtime_error(std::string("Operation not found in delta: ") + operation.data());
+                throw std::runtime_error(std::string("Operation not found in delta: ") + std::string(operation));
             }
         }
         else
@@ -732,7 +689,7 @@ private:
             else
             {
                 throw std::runtime_error(std::string("Attributes type not found in delta: ") +
-                                         m_delta->data()->attributes()->type()->string_view().data());
+                                         std::string(m_delta->data()->attributes()->type()->string_view()));
             }
         }
         else
@@ -817,6 +774,36 @@ private:
             {
                 throw std::runtime_error("Attributes type not found in sync message.");
             }
+        }
+    }
+
+    void buildJsonContext(const nlohmann::json* data)
+    {
+        std::string_view action = data->at("/action"_json_pointer).get<std::string_view>();
+
+        if (action.compare("deleteAgent") == 0)
+        {
+            m_operation = Operation::DeleteAgent;
+        }
+        else if (action.compare("deleteFile") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::File;
+            m_originTable = OriginTable::File;
+        }
+        else if (action.compare("deleteRegistry") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Registry;
+            // Registry key and values share the same index, so we can use RegistryValue or
+            // RegistryKey as the affected component type. The selection of the affected component
+            // type is arbitrary. Apart from that, the key + value are merged in the origin (wazuh-db), it is the same
+            // key/id for the indexer.
+            m_originTable = OriginTable::RegistryKey;
+        }
+        else
+        {
+            throw std::runtime_error("Operation not implemented: " + std::string(action));
         }
     }
 };

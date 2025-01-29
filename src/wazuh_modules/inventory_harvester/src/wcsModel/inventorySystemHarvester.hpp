@@ -16,7 +16,7 @@
 #include "wcsClasses/agent.hpp"
 #include "wcsClasses/host.hpp"
 
-struct InventorySystemHarvester
+struct InventorySystemHarvester final
 {
     Agent agent;
     Host host;
