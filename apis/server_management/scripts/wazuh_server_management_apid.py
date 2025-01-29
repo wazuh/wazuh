@@ -52,10 +52,10 @@ SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
                         'be completely removed in the next major release.'
 
-API_MAIN_PROCESS = 'wazuh-apid'
-API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
-API_AUTHENTICATION_PROCESS = 'wazuh-apid_auth'
-API_SECURITY_EVENTS_PROCESS = 'wazuh-apid_events'
+API_MAIN_PROCESS = 'wazuh-server-management-apid'
+API_LOCAL_REQUEST_PROCESS = 'wazuh-server-management-apid_exec'
+API_AUTHENTICATION_PROCESS = 'wazuh-server-management-apid_auth'
+API_SECURITY_EVENTS_PROCESS = 'wazuh-server-management-apid_events'
 LOGGING_TAG = 'Management API'
 
 logger = None

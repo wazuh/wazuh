@@ -77,7 +77,7 @@ def test_start_daemons(mock_popen, root):
     main_logger_mock.info.assert_has_calls([
         call('Starting wazuh-engined'),
         call('Starting wazuh-comms-apid'),
-        call('Starting wazuh-apid'),
+        call('Starting wazuh-server-management-apid'),
     ])
 
 
@@ -111,7 +111,7 @@ def test_start_daemons_ko(mock_popen):
             wait_mock.side_effect = (0, 1)
             wazuh_server.start_daemons(False)
 
-        with pytest.raises(wazuh_server.WazuhDaemonError, match='Error starting wazuh-apid: return code 1'):
+        with pytest.raises(wazuh_server.WazuhDaemonError, match='Error starting wazuh-server-management-apid: return code 1'):
             wait_mock.side_effect = (0, 0, 1)
             wazuh_server.start_daemons(False)
 
@@ -439,7 +439,7 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
                 main_logger_info_mock.assert_has_calls([
                     call('Generating JWT signing key pair'),
                     call('Shutting down wazuh-engined (pid: 999)'),
-                    call('Shutting down wazuh-apid (pid: 999)'),
+                    call('Shutting down wazuh-server-management-apid (pid: 999)'),
                     call('Shutting down wazuh-comms-apid (pid: 999)'),
                 ])
                 start_daemons_mock.assert_called_once()

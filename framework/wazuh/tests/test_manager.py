@@ -56,7 +56,7 @@ manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', '
  'wazuh-execd': 'running', 'wazuh-integratord': 'running', 'wazuh-logcollector': 'running',
  'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
  'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
- 'wazuh-db': 'running', 'wazuh-apid': 'running', 'wazuh-comms-apid': 'running'}
+ 'wazuh-db': 'running', 'wazuh-server-management-apid': 'running', 'wazuh-comms-apid': 'running'}
 
 
 @patch('wazuh.core.manager.status', return_value=manager_status)

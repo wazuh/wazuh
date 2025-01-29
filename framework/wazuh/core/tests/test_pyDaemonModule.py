@@ -34,10 +34,10 @@ def test_create_pid_ko(mock_chmod):
 @pytest.mark.parametrize('process_name, expected_pid', [
    ('foo', 123),
    ('bar', 456),
-   ('wazuh-apid', 789),
+   ('wazuh-server-management-apid', 789),
    ('wazuh-clusterd', None)
 ])
-@patch('os.listdir', return_value=['foo-123.pid', 'bar-456.pid', 'wazuh-apid-789.pid'])
+@patch('os.listdir', return_value=['foo-123.pid', 'bar-456.pid', 'wazuh-server-management-apid-789.pid'])
 def test_get_parent_pid(os_listdir_mock, expected_pid, process_name):
     """Validates that the get_parent_pid function works as expected."""
     actual_pid = get_parent_pid(process_name)
@@ -76,7 +76,7 @@ def test_get_wazuh_server_pid_ko(path_mock, next_mock):
 @patch('wazuh.core.pyDaemonModule.Path')
 def test_get_running_processes(path_mock):
     """Validate that `get_running_processes` works as expected."""
-    daemons = ['wazuh-server', 'wazuh-apid', 'wazuh-comms-apid', 'wazuh-engine']
+    daemons = ['wazuh-server', 'wazuh-server-management-apid', 'wazuh-comms-apid', 'wazuh-engine']
     path_mock.return_value.glob.return_value = (MagicMock(stem=f'{daemon}-{i}') for i, daemon in enumerate(daemons))
 
     assert get_running_processes() == daemons
@@ -85,15 +85,15 @@ def test_get_running_processes(path_mock):
 @pytest.mark.parametrize(
         'running_processes,expected',
         (
-            (['wazuh-apid', 'wazuh-comms-apid', 'wazuh-engine'], True),
-            (['wazuh-apid', 'wazuh-comms-apid'], True),
+            (['wazuh-server-management-apid', 'wazuh-comms-apid', 'wazuh-engine'], True),
+            (['wazuh-server-management-apid', 'wazuh-comms-apid'], True),
             ([], False),
         )
 )
 @patch('wazuh.core.pyDaemonModule.get_running_processes')
 def test_check_for_daemons_shutdown(get_running_processes_mock, running_processes, expected):
     """Validate that `check_for_daemons_shutdown` works as expected."""
-    daemons = ['wazuh-apid', 'wazuh-comms-apid', 'wazuh-engine']
+    daemons = ['wazuh-server-management-apid', 'wazuh-comms-apid', 'wazuh-engine']
     get_running_processes_mock.return_value = running_processes
 
     assert check_for_daemons_shutdown(daemons) == expected
