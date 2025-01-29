@@ -122,7 +122,7 @@ def test_get_ossec_logs(log_format):
     logs = get_logs(json_log=log_format == LoggingFormat.json).splitlines()
 
     with patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=log_format):
-        with pytest.raises(WazuhInternalError, match=".*1020.*"):
+        with pytest.raises(WazuhInternalError, match=".*1000.*"):
             get_ossec_logs()
 
         with patch('wazuh.core.manager.exists', return_value=True):
