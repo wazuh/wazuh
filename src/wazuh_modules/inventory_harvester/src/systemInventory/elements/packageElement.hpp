@@ -12,7 +12,9 @@
 #ifndef _PACKAGE_ELEMENT_HPP
 #define _PACKAGE_ELEMENT_HPP
 
+#include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryPackageHarvester.hpp"
+#include "../../wcsModel/noData.hpp"
 
 template<typename TContext>
 class PackageElement final
@@ -26,14 +28,39 @@ public:
     ~PackageElement() = default;
     // LCOV_EXCL_STOP
 
-    static InventoryPackageHarvester build(TContext* data)
+    static DataHarvester<InventoryPackageHarvester> build(TContext* data)
     {
-        InventoryPackageHarvester process;
+        DataHarvester<InventoryPackageHarvester> element;
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += data->packageItemId();
+        element.operation = "INSERTED";
+        element.data.agent.id = data->agentId();
+        element.data.agent.name = data->agentName();
+        element.data.agent.version = data->agentVersion();
+        element.data.agent.ip = data->agentIp();
 
-        // TO-DO
-        // Field population based on the context.
+        element.data.package.architecture = data->packageArchitecture();
+        element.data.package.name = data->packageName();
+        element.data.package.version = data->packageVersion();
+        element.data.package.vendor = data->packageVendor();
+        element.data.package.installed = data->packageInstallTime().compare(" ") == 0 ? "" : data->packageInstallTime();
+        element.data.package.size = data->packageSize();
+        element.data.package.type = data->packageFormat();
+        element.data.package.description = data->packageDescription();
+        element.data.package.path = data->packageLocation();
 
-        return process;
+        return element;
+    }
+
+    static NoDataHarvester deleteElement(TContext* data)
+    {
+        NoDataHarvester element;
+        element.operation = "DELETED";
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += data->packageItemId();
+        return element;
     }
 };
 

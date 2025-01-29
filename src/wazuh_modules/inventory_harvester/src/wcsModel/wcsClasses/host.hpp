@@ -22,7 +22,9 @@ struct Host final
     std::string_view hostname;
     OS os;
 
-    REFLECTABLE(MAKE_FIELD("architecture", &OS::architecture, MAKE_FIELD("hostname", &OS::hostname)));
+    REFLECTABLE(MAKE_FIELD("architecture", &Host::architecture),
+                MAKE_FIELD("hostname", &Host::hostname),
+                MAKE_FIELD("os", &Host::os));
 };
 
 #endif // _HOST_WCS_MODEL_HPP

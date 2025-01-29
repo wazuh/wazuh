@@ -19,6 +19,7 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 #define REFLECTABLE(...)                                                                                               \
     static constexpr auto fields()                                                                                     \
@@ -29,7 +30,7 @@
 #define MAKE_FIELD(keyLiteral, memberPtr)                                                                              \
     std::make_tuple(std::string_view {keyLiteral}, std::string_view {"\"" keyLiteral "\":"}, memberPtr)
 
-static std::array<const char*, 256> escapeTable = []
+static std::array<const char*, 256> ESCAPE_TABLE = []
 {
     std::array<const char*, 256> table {};
     for (int i = 0; i < 256; ++i)
@@ -56,11 +57,12 @@ static std::array<const char*, 256> escapeTable = []
     }
     return table;
 }();
+
 bool needEscape(std::string_view input)
 {
     for (auto c : input)
     {
-        if (escapeTable[c])
+        if (ESCAPE_TABLE[c])
         {
             return true;
         }
@@ -72,9 +74,9 @@ inline void escapeJSONString(std::string_view input, std::string& output)
 
     for (auto c : input)
     {
-        if (escapeTable[c])
+        if (ESCAPE_TABLE[c])
         {
-            output.append(escapeTable[c]);
+            output.append(ESCAPE_TABLE[c]);
         }
         else
         {
@@ -84,35 +86,35 @@ inline void escapeJSONString(std::string_view input, std::string& output)
 }
 
 template<typename T>
-struct is_map : std::false_type
+struct IsMap : std::false_type
 {
 };
 
 template<typename K, typename V, typename... Args>
-struct is_map<std::map<K, V, Args...>> : std::true_type
+struct IsMap<std::map<K, V, Args...>> : std::true_type
 {
 };
 
 template<typename K, typename V, typename... Args>
-struct is_map<std::unordered_map<K, V, Args...>> : std::true_type
+struct IsMap<std::unordered_map<K, V, Args...>> : std::true_type
 {
 };
 
 template<typename T>
-constexpr bool is_map_v = is_map<std::decay_t<T>>::value;
+constexpr bool IS_MAP_V = IsMap<std::decay_t<T>>::value;
 
 template<typename T>
-struct is_vector : std::false_type
+struct IsVector : std::false_type
 {
 };
 
 template<typename T, typename... Args>
-struct is_vector<std::vector<T, Args...>> : std::true_type
+struct IsVector<std::vector<T, Args...>> : std::true_type
 {
 };
 
 template<typename T>
-constexpr bool is_vector_v = is_vector<std::decay_t<T>>::value;
+constexpr bool IS_VECTOR_V = IsVector<std::decay_t<T>>::value;
 
 template<typename T, typename = void>
 struct IsReflectable : std::false_type
@@ -130,34 +132,34 @@ std::enable_if_t<!IsReflectable<T>::value, bool> isEmpty(const T&)
     return false;
 }
 
-// Para std::string
 inline bool isEmpty(std::string_view value)
 {
     return value.empty();
 }
 
-// Para std::unordered_map (vacío si está vacío)
+inline bool isEmpty(const std::string& value)
+{
+    return value.empty();
+}
+
 template<typename K, typename V>
 bool isEmpty(const std::unordered_map<K, V>& map)
 {
     return map.empty();
 }
 
-// Para std::unordered_map (vacío si está vacío)
 template<typename K, typename V>
 bool isEmpty(const std::map<K, V>& map)
 {
     return map.empty();
 }
 
-// Para std::unordered_map (vacío si está vacío)
 template<typename V>
 bool isEmpty(const std::vector<V>& vector)
 {
     return vector.empty();
 }
 
-// Para objetos reflejables: vacío si todos sus campos están vacíos
 template<typename T>
 std::enable_if_t<IsReflectable<T>::value, bool> isEmpty(const T& obj)
 {
@@ -166,8 +168,6 @@ std::enable_if_t<IsReflectable<T>::value, bool> isEmpty(const T& obj)
     std::apply([&](auto&&... field) { ((allEmpty = allEmpty && isEmpty(obj.*(std::get<2>(field)))), ...); }, fields);
     return allEmpty;
 }
-
-// === FUNCTIONS TO CONVERT TO JSON ===
 
 template<typename K, typename V>
 std::string jsonFieldToString(const std::unordered_map<K, V>& map)
@@ -241,8 +241,8 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
             ((
                  [&]
                  {
-                     const auto& value = obj.*(std::get<2>(field));
-                     if (!isEmpty(value))
+                     const auto& data = obj.*(std::get<2>(field));
+                     if (!isEmpty(data))
                      {
                          if (count++ > 0)
                          {
@@ -250,27 +250,27 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                          }
                          json.append(std::get<1>(field));
                          //  If is string add quotes
-                         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
-                                       std::is_same_v<std::string_view, std::decay_t<decltype(value)>>)
+                         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(data)>> ||
+                                       std::is_same_v<std::string_view, std::decay_t<decltype(data)>>)
                          {
 
                              json.push_back('"');
-                             if (needEscape(value))
+                             if (needEscape(data))
                              {
-                                 escapeJSONString(value, json);
+                                 escapeJSONString(data, json);
                              }
                              else
                              {
-                                 json.append(value);
+                                 json.append(data);
                              }
                              json.push_back('"');
                          }
-                         else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                             std::is_same_v<double, std::decay_t<decltype(value)>>)&&!std::
-                                                is_same_v<bool, std::decay_t<decltype(value)>>)
+                         else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
+                                             std::is_same_v<double, std::decay_t<decltype(data)>>)&&!std::
+                                                is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
 
-                             auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
+                             auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
                              if (ec == std::errc())
                              {
                                  json.append(buffer);
@@ -280,15 +280,15 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                                  json.append("0");
                              }
                          }
-                         else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
+                         else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
-                             json.append(value ? "true" : "false");
+                             json.append(data ? "true" : "false");
                          }
-                         else if constexpr (is_map_v<std::decay_t<decltype(value)>>)
+                         else if constexpr (IS_MAP_V<std::decay_t<decltype(data)>>)
                          {
                              json.push_back('{');
                              size_t count2 = 0;
-                             for (const auto& [key, value] : value)
+                             for (const auto& [key, value] : data)
                              {
                                  if (count2++ > 0)
                                  {
@@ -337,11 +337,11 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                              }
                              json.push_back('}');
                          }
-                         else if constexpr (is_vector_v<std::decay_t<decltype(value)>>)
+                         else if constexpr (IS_VECTOR_V<std::decay_t<decltype(data)>>)
                          {
                              size_t count2 = 0;
                              json.push_back('[');
-                             for (const auto& v : value)
+                             for (const auto& v : data)
                              {
                                  if (count2++ > 0)
                                  {
@@ -388,7 +388,7 @@ std::enable_if_t<IsReflectable<T>::value, void> serializeToJSON(const T& obj, st
                          }
                          else
                          {
-                             jsonFieldToString(value, json);
+                             jsonFieldToString(data, json);
                          }
                      }
                  }()),
@@ -415,8 +415,8 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
             ((
                  [&]
                  {
-                     const auto& value = obj.*(std::get<2>(field));
-                     if (!isEmpty(value))
+                     const auto& data = obj.*(std::get<2>(field));
+                     if (!isEmpty(data))
                      {
                          if (count++ > 0)
                          {
@@ -424,27 +424,27 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                          }
                          json.append(std::get<1>(field));
                          //  If is string add quotes
-                         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(value)>> ||
-                                       std::is_same_v<std::string_view, std::decay_t<decltype(value)>>)
+                         if constexpr (std::is_same_v<std::string, std::decay_t<decltype(data)>> ||
+                                       std::is_same_v<std::string_view, std::decay_t<decltype(data)>>)
                          {
 
                              json.push_back('"');
-                             if (needEscape(value))
+                             if (needEscape(data))
                              {
-                                 escapeJSONString(value, json);
+                                 escapeJSONString(data, json);
                              }
                              else
                              {
-                                 json.append(value);
+                                 json.append(data);
                              }
                              json.push_back('"');
                          }
-                         else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(value)>> ||
-                                             std::is_same_v<double, std::decay_t<decltype(value)>>)&&!std::
-                                                is_same_v<bool, std::decay_t<decltype(value)>>)
+                         else if constexpr ((std::is_arithmetic_v<std::decay_t<decltype(data)>> ||
+                                             std::is_same_v<double, std::decay_t<decltype(data)>>)&&!std::
+                                                is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
 
-                             auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
+                             auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), data);
                              if (ec == std::errc())
                              {
                                  json.append(buffer);
@@ -454,15 +454,15 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                  json.append("0");
                              }
                          }
-                         else if constexpr (std::is_same_v<bool, std::decay_t<decltype(value)>>)
+                         else if constexpr (std::is_same_v<bool, std::decay_t<decltype(data)>>)
                          {
-                             json.append(value ? "true" : "false");
+                             json.append(data ? "true" : "false");
                          }
-                         else if constexpr (is_map_v<std::decay_t<decltype(value)>>)
+                         else if constexpr (IS_MAP_V<std::decay_t<decltype(data)>>)
                          {
                              size_t count2 = 0;
                              json.push_back('{');
-                             for (const auto& [key, value] : value)
+                             for (const auto& [key, value] : data)
                              {
                                  if (count2++ > 0)
                                  {
@@ -504,7 +504,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                                  {
                                      json.append(value ? "true" : "false");
                                  }
-                                 else if constexpr (is_vector_v<std::decay_t<decltype(value)>>)
+                                 else if constexpr (IS_VECTOR_V<std::decay_t<decltype(value)>>)
                                  {
                                      size_t count3 = 0;
                                      json.push_back('[');
@@ -564,7 +564,7 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                          }
                          else
                          {
-                             jsonFieldToString(value, json);
+                             jsonFieldToString(data, json);
                          }
                      }
                  }()),

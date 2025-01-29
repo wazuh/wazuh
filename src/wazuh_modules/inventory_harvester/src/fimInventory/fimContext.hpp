@@ -20,7 +20,7 @@
 struct FimContext final
 {
 private:
-    enum class VariantType
+    enum class VariantType : std::uint8_t
     {
         Delta,
         SyncMsg,
@@ -29,7 +29,7 @@ private:
     };
 
 public:
-    enum class Operation
+    enum class Operation : std::uint8_t
     {
         Delete,
         Upsert,
@@ -38,14 +38,14 @@ public:
         IndexSync,
         Invalid,
     };
-    enum class AffectedComponentType
+    enum class AffectedComponentType : std::uint8_t
     {
         File,
         Registry,
         Invalid
     };
 
-    enum class OriginTable
+    enum class OriginTable : std::uint8_t
     {
         File,
         RegistryKey,
@@ -130,6 +130,547 @@ public:
         return "";
     }
 
+    std::string_view agentName()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->agent_info() && m_delta->agent_info()->agent_name())
+            {
+                return m_delta->agent_info()->agent_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->agent_info() && m_syncMsg->agent_info()->agent_name())
+            {
+                return m_syncMsg->agent_info()->agent_name()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/agent_info/agent_name"_json_pointer))
+            {
+                return m_jsonData->at("/agent_info/agent_name"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view agentIp()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->agent_info() && m_delta->agent_info()->agent_ip())
+            {
+                return m_delta->agent_info()->agent_ip()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->agent_info() && m_syncMsg->agent_info()->agent_ip())
+            {
+                return m_syncMsg->agent_info()->agent_ip()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/agent_info/agent_ip"_json_pointer))
+            {
+                return m_jsonData->at("/agent_info/agent_ip"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view agentVersion()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->agent_info() && m_delta->agent_info()->agent_version())
+            {
+                return m_delta->agent_info()->agent_version()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->agent_info() && m_syncMsg->agent_info()->agent_version())
+            {
+                return m_syncMsg->agent_info()->agent_version()->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/agent_info/agent_version"_json_pointer))
+            {
+                return m_jsonData->at("/agent_info/agent_version"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view path()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->path())
+            {
+                return m_delta->data()->path()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() && m_syncMsg->data_as_state()->index())
+                {
+                    return m_syncMsg->data_as_state()->index()->string_view();
+                }
+                else if ((m_syncMsg->data_as_state()->attributes_as_fim_registry_key() ||
+                          m_syncMsg->data_as_state()->attributes_as_fim_registry_value()) &&
+                         m_syncMsg->data_as_state()->path())
+                {
+                    return m_syncMsg->data_as_state()->path()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/full_path"_json_pointer))
+            {
+                return m_jsonData->at("/data/full_path"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view valueName()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->value_name())
+            {
+                return m_delta->data()->value_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->value_name())
+                {
+                    return m_syncMsg->data_as_state()->value_name()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/value_name"_json_pointer))
+            {
+                return m_jsonData->at("/data/value_name"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view arch()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->arch())
+            {
+                return m_delta->data()->arch()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->arch())
+                {
+                    return m_syncMsg->data_as_state()->arch()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/arch"_json_pointer))
+            {
+                return m_jsonData->at("/data/arch"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view md5()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->hash_md5())
+            {
+                return m_delta->data()->attributes()->hash_md5()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_file()->hash_md5())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->hash_md5()->string_view();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_value() &&
+                         m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->hash_md5())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->hash_md5()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/md5"_json_pointer))
+            {
+                return m_jsonData->at("/data/md5"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view sha1()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->hash_sha1())
+            {
+                return m_delta->data()->attributes()->hash_sha1()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_file()->hash_sha1())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->hash_sha1()->string_view();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_value() &&
+                         m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->hash_sha1())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->hash_sha1()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/sha1"_json_pointer))
+            {
+                return m_jsonData->at("/data/sha1"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view sha256()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->hash_sha256())
+            {
+                return m_delta->data()->attributes()->hash_sha256()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_file()->hash_sha256())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->hash_sha256()->string_view();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_value() &&
+                         m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->hash_sha256())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->hash_sha256()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/sha256"_json_pointer))
+            {
+                return m_jsonData->at("/data/sha256"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    uint64_t size()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes())
+            {
+                return m_delta->data()->attributes()->size();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->size();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_value())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->size();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/size"_json_pointer))
+            {
+                return m_jsonData->at("/data/size"_json_pointer).get<int>();
+            }
+        }
+        return 0;
+    }
+
+    uint64_t inode()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes())
+            {
+                return m_delta->data()->attributes()->inode();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->inode();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/inode"_json_pointer))
+            {
+                return m_jsonData->at("/data/inode"_json_pointer).get<uint64_t>();
+            }
+        }
+        return 0;
+    }
+
+    std::string_view valueType()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->value_type())
+            {
+                return m_delta->data()->attributes()->value_type()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_registry_value() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->value_type())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_value()->value_type()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/value_type"_json_pointer))
+            {
+                return m_jsonData->at("/data/value_type"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view userName()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->user_name())
+            {
+                return m_delta->data()->attributes()->user_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_file()->user_name())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->user_name()->string_view();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_key() &&
+                         m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->user_name())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->user_name()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/uname"_json_pointer))
+            {
+                return m_jsonData->at("/data/uname"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view groupName()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->group_name())
+            {
+                return m_delta->data()->attributes()->group_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_file()->group_name())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->group_name()->string_view();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_key() &&
+                         m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->group_name())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->group_name()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/gname"_json_pointer))
+            {
+                return m_jsonData->at("/data/gname"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view uid()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->uid())
+            {
+                return m_delta->data()->attributes()->uid()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_file()->uid())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->uid()->string_view();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_key() &&
+                         m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->uid())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->uid()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/uid"_json_pointer))
+            {
+                return m_jsonData->at("/data/uid"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view gid()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->gid())
+            {
+                return m_delta->data()->attributes()->gid()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file() &&
+                    m_syncMsg->data_as_state()->attributes_as_fim_file()->gid())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->gid()->string_view();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_key() &&
+                         m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->gid())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->gid()->string_view();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/gid"_json_pointer))
+            {
+                return m_jsonData->at("/data/gid"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    uint64_t mtime()
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data() && m_delta->data()->attributes())
+            {
+                return m_delta->data()->attributes()->mtime();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_type() == Synchronization::DataUnion_state)
+            {
+                if (m_syncMsg->data_as_state()->attributes_as_fim_file())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_file()->mtime();
+                }
+                else if (m_syncMsg->data_as_state()->attributes_as_fim_registry_key())
+                {
+                    return m_syncMsg->data_as_state()->attributes_as_fim_registry_key()->mtime();
+                }
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/mtime"_json_pointer))
+            {
+                return m_jsonData->at("/data/mtime"_json_pointer).get<uint64_t>();
+            }
+        }
+        return 0;
+    }
+
     std::string m_serializedElement;
 
 private:
@@ -153,22 +694,51 @@ private:
         if (delta->data() && delta->data()->type())
         {
             std::string_view operation = delta->data()->type()->string_view();
-            if ((operation.compare("INSERTED") == 0) || (operation.compare("MODIFIED") == 0))
+            if ((operation.compare("added") == 0) || (operation.compare("modified") == 0))
             {
                 m_operation = Operation::Upsert;
             }
-            else if (operation.compare("DELETED") == 0)
+            else if (operation.compare("deleted") == 0)
             {
                 m_operation = Operation::Delete;
             }
             else
             {
-                throw std::runtime_error("Operation not found in delta.");
+                throw std::runtime_error(std::string("Operation not found in delta: ") + operation.data());
             }
         }
+        else
+        {
+            throw std::runtime_error("Operation not found in delta.");
+        }
 
-        m_affectedComponentType = AffectedComponentType::File;
-        m_originTable = OriginTable::File;
+        if (m_delta->data() && m_delta->data()->attributes() && m_delta->data()->attributes()->type())
+        {
+            if (m_delta->data()->attributes()->type()->string_view().compare("registry_key") == 0)
+            {
+                m_affectedComponentType = AffectedComponentType::Registry;
+                m_originTable = OriginTable::RegistryKey;
+            }
+            else if (m_delta->data()->attributes()->type()->string_view().compare("registry_value") == 0)
+            {
+                m_affectedComponentType = AffectedComponentType::Registry;
+                m_originTable = OriginTable::RegistryValue;
+            }
+            else if (m_delta->data()->attributes()->type()->string_view().compare("file") == 0)
+            {
+                m_affectedComponentType = AffectedComponentType::File;
+                m_originTable = OriginTable::File;
+            }
+            else
+            {
+                throw std::runtime_error(std::string("Attributes type not found in delta: ") +
+                                         m_delta->data()->attributes()->type()->string_view().data());
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Attributes type not found in delta.");
+        }
     }
 
     void buildSyncContext(const Synchronization::SyncMsg* syncMsg)
@@ -200,19 +770,21 @@ private:
         }
         else if (syncMsg->data_type() == Synchronization::DataUnion_integrity_clear)
         {
-            if (syncMsg->data_as_integrity_clear()->attributes_type()->str().compare("fim_file") == 0)
+            if (syncMsg->data_as_integrity_clear()->attributes_type()->string_view().compare("fim_file") == 0)
             {
                 m_affectedComponentType = AffectedComponentType::File;
                 m_operation = Operation::DeleteAllEntries;
                 m_originTable = OriginTable::File;
             }
-            else if (syncMsg->data_as_integrity_clear()->attributes_type()->str().compare("fim_registry_key") == 0)
+            else if (syncMsg->data_as_integrity_clear()->attributes_type()->string_view().compare("fim_registry_key") ==
+                     0)
             {
                 m_affectedComponentType = AffectedComponentType::Registry;
                 m_operation = Operation::DeleteAllEntries;
                 m_originTable = OriginTable::RegistryKey;
             }
-            else if (syncMsg->data_as_integrity_clear()->attributes_type()->str().compare("fim_registry_value") == 0)
+            else if (syncMsg->data_as_integrity_clear()->attributes_type()->string_view().compare(
+                         "fim_registry_value") == 0)
             {
                 m_affectedComponentType = AffectedComponentType::Registry;
                 m_operation = Operation::DeleteAllEntries;
@@ -225,14 +797,14 @@ private:
         }
         else if (syncMsg->data_type() == Synchronization::DataUnion_integrity_check_global)
         {
-            if (syncMsg->data_as_integrity_check_global()->attributes_type()->str().compare("fim_file") == 0)
+            if (syncMsg->data_as_integrity_check_global()->attributes_type()->string_view().compare("fim_file") == 0)
             {
                 m_affectedComponentType = AffectedComponentType::File;
                 m_operation = Operation::IndexSync;
             }
-            else if (syncMsg->data_as_integrity_check_global()->attributes_type()->str().compare("fim_registry_key") ==
-                         0 ||
-                     syncMsg->data_as_integrity_check_global()->attributes_type()->str().compare(
+            else if (syncMsg->data_as_integrity_check_global()->attributes_type()->string_view().compare(
+                         "fim_registry_key") == 0 ||
+                     syncMsg->data_as_integrity_check_global()->attributes_type()->string_view().compare(
                          "fim_registry_value") == 0)
             {
                 // Registry key and values share the same index, so we can use RegistryValue or

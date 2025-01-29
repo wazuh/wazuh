@@ -14,17 +14,14 @@
 
 #include "reflectiveJson.hpp"
 #include "wcsClasses/agent.hpp"
-#include "wcsClasses/file.hpp"
 #include "wcsClasses/registry.hpp"
 
 struct FimRegistryInventoryHarvester
 {
-    File file;
     Agent agent;
     Registry registry;
 
-    REFLECTABLE(MAKE_FIELD("file", &FimRegistryInventoryHarvester::file),
-                MAKE_FIELD("agent", &FimRegistryInventoryHarvester::agent),
+    REFLECTABLE(MAKE_FIELD("agent", &FimRegistryInventoryHarvester::agent),
                 MAKE_FIELD("registry", &FimRegistryInventoryHarvester::registry));
 };
 

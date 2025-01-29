@@ -122,7 +122,8 @@ void RouterFacade::removeProviderRemote(const std::string& name)
     m_remoteProviders.erase(name);
 }
 
-void RouterFacade::addSubscriber(const std::string& name,
+void RouterFacade::
+addSubscriber(const std::string& name,
                                  const std::string& subscriberId,
                                  const std::function<void(const std::vector<char>&)>& callback)
 {

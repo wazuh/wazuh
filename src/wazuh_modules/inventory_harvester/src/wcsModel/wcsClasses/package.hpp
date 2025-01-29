@@ -25,6 +25,7 @@ struct Package
     std::uint32_t size;
     std::string_view type;
     std::string_view version;
+    std::string_view vendor;
 
     REFLECTABLE(MAKE_FIELD("architecture", &Package::architecture),
                 MAKE_FIELD("description", &Package::description),
@@ -33,7 +34,8 @@ struct Package
                 MAKE_FIELD("path", &Package::path),
                 MAKE_FIELD("size", &Package::size),
                 MAKE_FIELD("type", &Package::type),
-                MAKE_FIELD("version", &Package::version));
+                MAKE_FIELD("version", &Package::version),
+                MAKE_FIELD("vendor", &Package::vendor));
 };
 
 #endif // _PACKAGES_WCS_MODEL_HPP

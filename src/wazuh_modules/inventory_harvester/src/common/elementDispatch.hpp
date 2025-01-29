@@ -47,6 +47,7 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
+        m_indexerConnectorInstances.at(data->affectedComponentType())->publish(data->m_serializedElement);
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };

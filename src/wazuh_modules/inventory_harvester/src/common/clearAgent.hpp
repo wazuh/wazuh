@@ -12,7 +12,7 @@
 #ifndef _CLEAR_AGENT_HPP
 #define _CLEAR_AGENT_HPP
 
-#include "../wcsModel/deleteAgent.hpp"
+#include "../wcsModel/noData.hpp"
 #include "chainOfResponsability.hpp"
 #include "indexerConnector.hpp"
 #include <map>
@@ -50,7 +50,7 @@ public:
     {
         for (const auto& [_, indexer] : m_indexerConnectorInstances)
         {
-            DeleteAgentHarvester deleteAgent;
+            NoDataHarvester deleteAgent;
             deleteAgent.operation = "DELETED_BY_QUERY";
             deleteAgent.id = data->agentId();
             indexer->publish(serializeToJSON(deleteAgent));

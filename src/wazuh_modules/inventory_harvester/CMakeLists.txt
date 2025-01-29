@@ -25,7 +25,7 @@ add_library(inventory_harvester SHARED
     ${INVENTORY_HARVESTER_SRC}
     )
 
-#target_link_libraries(inventory_harvester indexer_connector router gcc_s flatbuffers)
+target_link_libraries(inventory_harvester indexer_connector router gcc_s flatbuffers)
 
 set_target_properties(inventory_harvester PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE
@@ -33,3 +33,5 @@ set_target_properties(inventory_harvester PROPERTIES
 )
 
 add_dependencies(inventory_harvester compile_schemas_input)
+
+add_subdirectory(testtool)

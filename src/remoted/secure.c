@@ -918,7 +918,6 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
         }
 
         if (msg_to_send) {
-            minfo("Forwarding message %s", msg_to_send);
             if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
                 mdebug2("Unable to forward message for agent %s", agent_id);
             }

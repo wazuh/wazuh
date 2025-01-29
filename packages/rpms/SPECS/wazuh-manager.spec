@@ -725,6 +725,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/librocksdb.so.8
 %attr(750, root, wazuh) %{_localstatedir}/lib/librouter.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libvulnerability_scanner.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libinventory_harvester.so
 %{_localstatedir}/lib/libpython3.10.so.1.0
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs
 %attr(660, wazuh, wazuh)  %ghost %{_localstatedir}/logs/active-responses.log

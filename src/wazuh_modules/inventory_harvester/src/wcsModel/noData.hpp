@@ -9,18 +9,18 @@
  * Foundation.
  */
 
-#ifndef _DELETE_AGENT_HARVESTER_HPP
-#define _DELETE_AGENT_HARVESTER_HPP
+#ifndef _NO_DATA_HARVESTER_HPP
+#define _NO_DATA_HARVESTER_HPP
 
 #include "reflectiveJson.hpp"
 #include <string_view>
 
-struct DeleteAgentHarvester
+struct NoDataHarvester
 {
-    std::string_view id;
+    std::string id;
     std::string_view operation;
 
-    REFLECTABLE(MAKE_FIELD("id", &DeleteAgentHarvester::id), MAKE_FIELD("operation", &DeleteAgentHarvester::operation));
+    REFLECTABLE(MAKE_FIELD("id", &NoDataHarvester::id), MAKE_FIELD("operation", &NoDataHarvester::operation));
 };
 
-#endif // _DELETE_AGENT_HARVESTER_HPP
+#endif // _NO_DATA_HARVESTER_HPP

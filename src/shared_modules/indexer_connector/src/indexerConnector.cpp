@@ -50,6 +50,8 @@ constexpr auto SYNC_QUEUE_LIMIT = 4096;
 // Abuse control
 constexpr auto MINIMAL_SYNC_TIME {30}; // In minutes
 
+static std::mutex G_CREDENTIAL_MUTEX;
+
 static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
 {
     std::string caRootCertificateContentMerged;
@@ -108,8 +110,6 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
     std::string caRootCertificate;
     std::string sslCertificate;
     std::string sslKey;
-    std::string username;
-    std::string password;
 
     if (config.contains("ssl"))
     {
@@ -140,8 +140,11 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
         }
     }
 
-    Keystore::get(INDEXER_COLUMN, USER_KEY, username);
-    Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
+    // Basically we need to lock a global mutex, because the keystore::get method open the same database connection, and
+    // that action is not thread safe.
+    std::lock_guard lock(G_CREDENTIAL_MUTEX);
+    static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
+    static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
 
     if (username.empty() && password.empty())
     {
@@ -428,7 +431,7 @@ IndexerConnector::IndexerConnector(
 
     if (Utils::haveUpperCaseCharacters(m_indexName))
     {
-        throw std::runtime_error("Index name must be lowercase.");
+        throw std::runtime_error("Index name must be lowercase: " + m_indexName);
     }
 
     m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);

@@ -89,6 +89,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex);
         for (auto observer : observers)
         {
+            std::cout << "Notifying observer: " << observer->observerId() << std::endl;
             observer->update(data);
         }
     }
