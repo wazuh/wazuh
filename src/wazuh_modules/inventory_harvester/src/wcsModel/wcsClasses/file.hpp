@@ -19,13 +19,12 @@
 
 struct File final
 {
-    std::vector<std::string_view> attributes;
     std::string_view name;
-    std::string_view path;
-    std::uint32_t gid;
+    std::string path;
+    std::string_view gid;
     std::string_view group;
     std::string_view inode;
-    std::string_view mtime;
+    std::string mtime;
     std::string_view mode;
     std::uint32_t size;
     std::string_view target_path;
@@ -34,8 +33,7 @@ struct File final
     std::string_view owner;
     Hash hash;
 
-    REFLECTABLE(MAKE_FIELD("attributes", &File::attributes),
-                MAKE_FIELD("name", &File::name),
+    REFLECTABLE(MAKE_FIELD("name", &File::name),
                 MAKE_FIELD("path", &File::path),
                 MAKE_FIELD("gid", &File::gid),
                 MAKE_FIELD("group", &File::group),

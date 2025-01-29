@@ -157,55 +157,38 @@ table syscollector_processes {
 }
 
 table fim_file {
-    path:string;
-    mode:int;
-    last_event:int;
-    scanned:int;
-    options:int;
     checksum:string;
-    dev:int;
-    inode:int;
-    size:int;
-    perm:string;
-    attributes:string;
-    uid:string;
     gid:string;
-    user_name:string;
     group_name:string;
     hash_md5:string;
     hash_sha1:string;
     hash_sha256:string;
-    mtime:int;
+    inode:ulong;
+    mtime:ulong;
+    size:ulong;
+    type:string;
+    uid:string;
+    user_name:string;
 }
 
 table fim_registry_key {
-    path:string;
-    perm:string;
-    uid:string;
-    gid:string;
-    user_name:string;
-    group_name:string;
-    mtime:int;
-    arch:string;
-    scanned:int;
-    last_event:int;
     checksum:string;
-    hash_full_path:string;
+    gid:string;
+    group_name:string;
+    mtime:ulong;
+    uid:string;
+    type:string;
+    user_name:string;
 }
 
 table fim_registry_value {
-    path:string;
-    arch:string;
-    name:string;
-    type:int;
-    size:int;
+    checksum:string;
     hash_md5:string;
     hash_sha1:string;
     hash_sha256:string;
-    scanned:int;
-    last_event:int;
-    checksum:string;
-    hash_full_path:string;
+    size:ulong;
+    type:string;
+    value_type:string;
 }
 
 union AttributesUnion {
@@ -226,7 +209,9 @@ union AttributesUnion {
 table state {
   attributes: AttributesUnion;
   index: string;
-  timestamp: string;
+  path: string;
+  value_name: string;
+  arch: string;
 }
 
 table integrity_check_global {

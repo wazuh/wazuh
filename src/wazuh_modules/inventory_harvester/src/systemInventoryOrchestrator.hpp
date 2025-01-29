@@ -16,6 +16,8 @@
 #include "flatbuffers/include/rsync_generated.h"
 #include "flatbuffers/include/syscollector_deltas_generated.h"
 #include "indexerConnector.hpp"
+#include "loggerHelper.h"
+#include "policyHarvesterManager.hpp"
 #include "systemInventory/systemContext.hpp"
 #include "systemInventory/systemFactoryOrchestrator.hpp"
 #include <memory>
@@ -56,7 +58,8 @@ public:
         }
         else if (message->type() == BufferType::BufferType_JSON)
         {
-            const auto jsonData = nlohmann::json::parse(message->data()->data());
+            const auto jsonData =
+                nlohmann::json::parse(message->data()->data(), message->data()->data() + message->data()->size());
 
             run(&jsonData);
         }
@@ -68,12 +71,20 @@ public:
 
     SystemInventoryOrchestrator()
     {
+        logDebug2(LOGGER_DEFAULT_TAG, "SystemInventoryOrchestrator constructor");
+
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Package] =
-            std::make_unique<IndexerConnector>("packages", "template");
+            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("packages"),
+                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath("packages"),
+                                               Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::System] =
-            std::make_unique<IndexerConnector>("system", "template");
+            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("system"),
+                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath("system"),
+                                               Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::Process] =
-            std::make_unique<IndexerConnector>("processes", "template");
+            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("processes"),
+                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes"),
+                                               Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);
@@ -89,6 +100,7 @@ public:
 
         m_orchestrations[SystemContext::Operation::IndexSync] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::IndexSync, m_indexerConnectorInstances);
+        logDebug2(LOGGER_DEFAULT_TAG, "SystemInventoryOrchestrator finished");
     }
 };
 

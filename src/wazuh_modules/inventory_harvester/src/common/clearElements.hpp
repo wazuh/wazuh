@@ -12,7 +12,7 @@
 #ifndef _CLEAR_ELEMENTS_HPP
 #define _CLEAR_ELEMENTS_HPP
 
-#include "../wcsModel/deleteAgent.hpp"
+#include "../wcsModel/noData.hpp"
 #include "chainOfResponsability.hpp"
 #include "indexerConnector.hpp"
 #include <map>
@@ -48,7 +48,7 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
-        DeleteAgentHarvester deleteAgent;
+        NoDataHarvester deleteAgent;
         deleteAgent.operation = "DELETED_BY_QUERY";
         deleteAgent.id = data->agentId();
         m_indexerConnectorInstances.at(data->affectedComponentType())->publish(serializeToJSON(deleteAgent));

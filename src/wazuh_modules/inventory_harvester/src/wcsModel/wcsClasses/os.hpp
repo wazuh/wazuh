@@ -24,13 +24,12 @@ struct OS final
     std::string_view version;
     std::string_view type;
 
-    REFLECTABLE(MAKE_FIELD("kernel",
-                           &OS::kernel,
-                           MAKE_FIELD("full", &OS::full),
-                           MAKE_FIELD("name", &OS::name),
-                           MAKE_FIELD("platform", &OS::platform),
-                           MAKE_FIELD("version", &OS::version),
-                           MAKE_FIELD("type", &OS::type)));
+    REFLECTABLE(MAKE_FIELD("kernel", &OS::kernel),
+                MAKE_FIELD("full", &OS::full),
+                MAKE_FIELD("name", &OS::name),
+                MAKE_FIELD("platform", &OS::platform),
+                MAKE_FIELD("version", &OS::version),
+                MAKE_FIELD("type", &OS::type));
 };
 
 #endif // _OS_WCS_MODEL_HPP

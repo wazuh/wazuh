@@ -12,7 +12,11 @@
 #ifndef _REGISTRY_KEY_ELEMENT_HPP
 #define _REGISTRY_KEY_ELEMENT_HPP
 
+#include "../../wcsModel/data.hpp"
 #include "../../wcsModel/fimRegistryHarvester.hpp"
+#include "../../wcsModel/noData.hpp"
+#include "stringHelper.h"
+#include "timeHelper.h"
 
 template<typename TContext>
 class RegistryKeyElement final
@@ -26,14 +30,47 @@ public:
     ~RegistryKeyElement() = default;
     // LCOV_EXCL_STOP
 
-    static FimRegistryInventoryHarvester build(TContext* data)
+    static DataHarvester<FimRegistryInventoryHarvester> build(TContext* data)
     {
-        FimRegistryInventoryHarvester registry;
+        std::string path = data->path().data();
+        Utils::replaceAll(path, "\\", "/");
+        Utils::replaceAll(path, "//", "/");
 
-        // TO-DO
-        // Field population based on the context.
+        DataHarvester<FimRegistryInventoryHarvester> element;
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += path;
+        element.operation = "INSERTED";
 
-        return registry;
+        element.data.agent.id = data->agentId();
+        element.data.agent.name = data->agentName();
+        element.data.agent.version = data->agentVersion();
+        element.data.agent.ip = data->agentIp();
+
+        element.data.registry.hive = Utils::getHive(data->path());
+        element.data.registry.key = path;
+        Utils::replaceFirstView(element.data.registry.key, element.data.registry.hive, "");
+        element.data.registry.uid = data->uid();
+        element.data.registry.owner = data->userName();
+        element.data.registry.gid = data->gid();
+        element.data.registry.group = data->groupName();
+        element.data.registry.arch = data->arch();
+        element.data.registry.mtime = Utils::rawTimestampToISO8601(data->mtime());
+        return element;
+    }
+
+    static NoDataHarvester deleteElement(TContext* data)
+    {
+        std::string path = data->path().data();
+        Utils::replaceAll(path, "\\", "/");
+        Utils::replaceAll(path, "//", "/");
+
+        NoDataHarvester element;
+        element.operation = "DELETED";
+        element.id = data->agentId();
+        element.id += "_";
+        element.id += path;
+        return element;
     }
 };
 

@@ -12,6 +12,7 @@
 #include "agent_messages_adapter.h"
 #include "cJSON.h"
 #include "defs.h"
+#include <string.h>
 #include <stdbool.h>
 
 void *agent_data_hash_duplicator(void* data) {
@@ -31,6 +32,20 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
     } else {
         // Legacy agents prior to 4.2 used a different message format that isn't supported
         if (cJSON_GetObjectItem(j_msg, "ID") && cJSON_GetObjectItem(j_msg, "timestamp")) {
+            cJSON_Delete(j_msg);
+            return NULL;
+        }
+    }
+
+    // If type is scan_start or scan_end, the message is not sent to the manager
+    if (!cJSON_IsString(cJSON_GetObjectItem(j_msg, "type"))) {
+        cJSON_Delete(j_msg);
+        return NULL;
+    }
+    else
+    {
+        const char* type = cJSON_GetObjectItem(j_msg, "type")->valuestring;
+        if (strcmp(type, "scan_start") == 0 || strcmp(type, "scan_end") == 0) {
             cJSON_Delete(j_msg);
             return NULL;
         }

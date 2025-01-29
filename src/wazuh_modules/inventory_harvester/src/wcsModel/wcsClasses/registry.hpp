@@ -12,15 +12,43 @@
 #ifndef _REGISTRY_WCS_MODEL_HPP
 #define _REGISTRY_WCS_MODEL_HPP
 
+#include "hash.hpp"
 #include "reflectiveJson.hpp"
 #include <string_view>
 
 struct Registry final
 {
-    std::string_view key;
-    std::string_view value;
+    struct Data final
+    {
+        Hash hash;
+        std::string type;
 
-    REFLECTABLE(MAKE_FIELD("key", &Registry::key), MAKE_FIELD("value", &Registry::value));
+        REFLECTABLE(MAKE_FIELD("hash", &Data::hash), MAKE_FIELD("type", &Data::type));
+    };
+
+    std::string key;
+    std::string value;
+    std::string hive;
+    std::string path;
+    Data data;
+    std::string_view gid;
+    std::string_view group;
+    std::string_view uid;
+    std::string_view owner;
+    std::string_view arch;
+    std::string mtime;
+
+    REFLECTABLE(MAKE_FIELD("key", &Registry::key),
+                MAKE_FIELD("value", &Registry::value),
+                MAKE_FIELD("hive", &Registry::hive),
+                MAKE_FIELD("path", &Registry::path),
+                MAKE_FIELD("data", &Registry::data),
+                MAKE_FIELD("gid", &Registry::gid),
+                MAKE_FIELD("group", &Registry::group),
+                MAKE_FIELD("uid", &Registry::uid),
+                MAKE_FIELD("owner", &Registry::owner),
+                MAKE_FIELD("arch", &Registry::arch),
+                MAKE_FIELD("mtime", &Registry::mtime));
 };
 
 #endif // _REGISTRY_WCS_MODEL_HPP

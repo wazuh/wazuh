@@ -19,6 +19,8 @@
 #include "flatbuffers/include/rsync_generated.h"
 #include "flatbuffers/include/syscheck_deltas_generated.h"
 #include "indexerConnector.hpp"
+#include "loggerHelper.h"
+#include "policyHarvesterManager.hpp"
 #include <memory>
 #include <variant>
 
@@ -33,10 +35,11 @@ class FimInventoryOrchestrator final
     std::map<FimContext::Operation, std::shared_ptr<AbstractHandler<std::shared_ptr<FimContext>>>> m_orchestrations;
 
     void
-    run(const std::variant<const SyscheckDeltas::Delta*, const Synchronization::SyncMsg*, const nlohmann::json*>& data,
-        const rocksdb::PinnableSlice& input)
+    run(const std::variant<const SyscheckDeltas::Delta*, const Synchronization::SyncMsg*, const nlohmann::json*>& data)
     {
+        logDebug2(LOGGER_DEFAULT_TAG, "FimInventoryOrchestrator::run");
         auto context = std::make_shared<FimContext>(data);
+        m_orchestrations[context->operation()]->handleRequest(context);
     }
 
 public:
@@ -46,16 +49,17 @@ public:
 
         if (message->type() == BufferType::BufferType_RSync)
         {
-            run(Synchronization::GetSyncMsg(message->data()->data()), input);
+            run(Synchronization::GetSyncMsg(message->data()->data()));
         }
         else if (message->type() == BufferType::BufferType_DBSync)
         {
-            run(SyscheckDeltas::GetDelta(message->data()->data()), input);
+            run(SyscheckDeltas::GetDelta(message->data()->data()));
         }
         else if (message->type() == BufferType::BufferType_JSON)
         {
-            const auto jsonData = nlohmann::json::parse(message->data()->data());
-            run(&jsonData, input);
+            const auto jsonData =
+                nlohmann::json::parse(message->data()->data(), message->data()->data() + message->data()->size());
+            run(&jsonData);
         }
         else
         {
@@ -65,10 +69,15 @@ public:
 
     FimInventoryOrchestrator()
     {
+        logDebug2(LOGGER_DEFAULT_TAG, "FimInventoryOrchestrator constructor");
         m_indexerConnectorInstances[FimContext::AffectedComponentType::File] =
-            std::make_unique<IndexerConnector>("file", "template");
-        m_indexerConnectorInstances[FimContext::AffectedComponentType::Registry] =
-            std::make_unique<IndexerConnector>("registry", "template");
+            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("files"),
+                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath("files"),
+                                               Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[FimContext::AffectedComponentType::Registry] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("registries"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("registries"),
+            Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[FimContext::Operation::Upsert] =
             FimFactoryOrchestrator::create(FimContext::Operation::Upsert, m_indexerConnectorInstances);
@@ -84,6 +93,8 @@ public:
 
         m_orchestrations[FimContext::Operation::IndexSync] =
             FimFactoryOrchestrator::create(FimContext::Operation::IndexSync, m_indexerConnectorInstances);
+
+        logDebug2(LOGGER_DEFAULT_TAG, "FimInventoryOrchestrator constructor finished");
     }
 };
 

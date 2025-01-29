@@ -1,0 +1,42 @@
+{
+    "agent_info": {
+      "agent_id": "002",
+      "agent_ip": "any",
+      "agent_name": "DESKTOP-5RL9J34",
+      "agent_version": "v4.7.2"
+    },
+    "data_type": "event",
+    "data": {
+      "path": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\aaaocta",
+      "index": "0d9bf9fec0999856c1163e35b1ddbfcf71d4a727",
+      "version": 3,
+      "mode": "scheduled",
+      "type": "modified",
+      "arch": "[x64]",
+      "value_name": "BBBOCTA",
+      "timestamp": 1737936546,
+      "attributes": {
+        "type": "registry_value",
+        "value_type": "REG_SZ",
+        "size": 8,
+        "hash_md5": "63f5c08f5bdddee99aa30dcc47f662a6",
+        "hash_sha1": "65ffcd97bc8cf930373ba9f47ab8a0d90153a38b",
+        "hash_sha256": "302e4b78f8270848b8934aa957c29aba6c1065523055db77d4b70ce6107e4609",
+        "checksum": "8a19e926f6a84d1d87016243429e5a492dc05067"
+      },
+      "old_attributes": {
+        "type": "registry_value",
+        "size": 4,
+        "value_type": "REG_SZ",
+        "hash_md5": "47bce5c74f589f4867dbd57e9ca9f808",
+        "hash_sha1": "7e240de74fb1ed08fa08d38063f6a6a91462a815",
+        "hash_sha256": "9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0"
+      },
+      "changed_attributes": [
+        "size",
+        "md5",
+        "sha1",
+        "sha256"
+      ]
+    }
+  }
