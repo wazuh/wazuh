@@ -398,6 +398,43 @@ def start():
         shutdown_server(server_pid)
 
 
+def _get_child_process(processes: List[psutil.Process], proc_name: str) -> psutil.Process:
+    """Search for proc_name whithin the list of processes.
+
+    Parameters
+    ----------
+    processes : List[psutil.Process]
+        List of processes to search within.
+    proc_name : str
+        Name of the process to search.
+
+    Returns
+    -------
+    psutil.Process
+        The found process.
+    """
+    return [i for i in processes if proc_name[:-1] in i.name()][0]
+
+
+def _check_children_number(process: psutil.Process, expected_children_number: int) -> bool:
+    """Check the process had the expected number of children number.
+
+    Parameters
+    ----------
+    process : psutil.Process
+        Process to get the current number of childre.
+    expected_children_number : int
+        Expected value to check.
+
+    Returns
+    -------
+    bool
+        True if the process had the expected number of children else False.
+    """
+
+    return len(process.children()) == expected_children_number
+
+
 def check_daemon(processes: list, proc_name: str, children_number: int):
     """Check if the daemon is in the list of processes and has the correct number of children.
 
@@ -415,21 +452,24 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
     WazuhDaemonError
         When the process does not have the correct number of children process.
     """
-    child: psutil.Process = [i for i in processes if proc_name[:-1] in i.name()][0]
+    child: psutil.Process = _get_child_process(processes, proc_name)
     if child.status() == psutil.STATUS_ZOMBIE:
         main_logger.error(f"Daemon `{proc_name}` is not running, stopping the whole server.")
         clean_pid_files(proc_name)
         return
-    if len(child.children()) != children_number:
+    if not _check_children_number(child, children_number):
         raise WazuhDaemonError(f'Daemon `{proc_name}` does not have the correct number of children process.')
 
 
-async def check_for_server_state(server_process: psutil.Process, expected_state: dict):
-    """Check the server meets the expected daemons requirements.
+async def check_for_server_readiness(server_process: psutil.Process, expected_state: dict):
+    """Check the server meets the expected daemons requirements at the startup.
 
-    Args:
-        server_process (psutil.Process): Main server process to get current daemons status.
-        expected_state (dict): Expected daemons names and children number.
+    Parameters
+    ----------
+    server_process : psutil.Process
+        Main server process to get current daemons status.
+    expected_state : dict
+        Expected daemons names and children number.
     """
     while True:
         states = {}
@@ -437,12 +477,12 @@ async def check_for_server_state(server_process: psutil.Process, expected_state:
 
         for proc_name, children in expected_state.items():
             try:
-                child: psutil.Process = [i for i in processes if proc_name[:-1] in i.name()][0]
+                child: psutil.Process = _get_child_process(processes, proc_name)
             except IndexError:
                 states.update({proc_name: False})
                 continue
 
-            if len(child.children()) == children:
+            if _check_children_number(child, children):
                 states.update({proc_name: True})
             else:
                 states.update({proc_name: False})
@@ -472,7 +512,8 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
         COMMS_API_DAEMON_NAME:  comms_api_config.workers + 4,
         ENGINE_DAEMON_NAME:  0
     }
-    await check_for_server_state(server_process, process_children)
+
+    await check_for_server_readiness(server_process, process_children)
 
     while True:
         await asyncio.sleep(10)

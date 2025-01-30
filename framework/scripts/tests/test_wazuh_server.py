@@ -649,8 +649,8 @@ def test_check_daemon_ko_children_number(clean_pid_files_mock):
 
 
 @patch('scripts.wazuh_server.asyncio.sleep', side_effect=(None, StopAsyncIteration))
-async def test_check_for_server_state(sleep_mock):
-    """Check and set the behavior of wazuh_server `check_for_server_state` function."""
+async def test_check_for_server_readiness(sleep_mock):
+    """Check and set the behavior of wazuh_server `check_for_server_readiness` function."""
     wazuh_server.main_logger = Mock()
 
     proc_name = "test_daemon"
@@ -666,7 +666,7 @@ async def test_check_for_server_state(sleep_mock):
     )
     main_proc_mock = Mock(**{"children.return_value": [child_proc_mock]})
 
-    await wazuh_server.check_for_server_state(main_proc_mock, expected_state)
+    await wazuh_server.check_for_server_readiness(main_proc_mock, expected_state)
 
     sleep_mock.assert_not_called()
     wazuh_server.main_logger.warning_assert_not_called()
@@ -679,8 +679,8 @@ async def test_check_for_server_state(sleep_mock):
     ]
 )
 @patch('scripts.wazuh_server.asyncio.sleep', side_effect=(None, StopAsyncIteration))
-async def test_check_for_server_state_ko(sleep_mock, daemon_exists, children_number):
-    """Validate that `check_for_server_state` works as expected when server doesn't have the expected requirements."""
+async def test_check_for_server_readiness_ko(sleep_mock, daemon_exists, children_number):
+    """Validate that `check_for_server_readiness` works as expected when server doesn't have the expected requirements."""
     wazuh_server.main_logger = Mock()
 
     proc_name = "test_daemon"
@@ -697,7 +697,7 @@ async def test_check_for_server_state_ko(sleep_mock, daemon_exists, children_num
     main_proc_mock = Mock(**{"children.return_value": [child_proc_mock] if daemon_exists else []})
 
     with pytest.raises(StopAsyncIteration):
-        await wazuh_server.check_for_server_state(main_proc_mock, expected_state)
+        await wazuh_server.check_for_server_readiness(main_proc_mock, expected_state)
 
     sleep_mock.assert_any_call(10)
     wazuh_server.main_logger.warning.assert_any_call(
