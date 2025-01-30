@@ -24,6 +24,7 @@ include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
+include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
@@ -62,7 +63,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_FLAGS
-    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
+    "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++17 -pthread"
 )
 
 if(APPLE)
@@ -72,6 +73,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(APPLE)
 
 add_subdirectory("src/db")
+add_subdirectory("src/ebpf")
 
 file(GLOB SYSCHECKD_SRC
      "${CMAKE_SOURCE_DIR}/src/*.c"
@@ -87,7 +89,7 @@ else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck)
+target_link_libraries(wazuh-syscheckd fimdb fimebpf wazuhext pthread wazuh rootcheck)
 
 if (UNIX)
     target_link_libraries(wazuh-syscheckd dl)
