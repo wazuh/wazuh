@@ -48,7 +48,7 @@ jobs:
           echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
       - name: Uploading coverage report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage_report ${{ env.ARTIFACT_NAME }} ${{ matrix.target }}
           path: ./**/coverage_report/**
