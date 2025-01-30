@@ -12,6 +12,8 @@ RUN echo "deb http://archive.debian.org/debian/ wheezy contrib main non-free" > 
     cdbs devscripts equivs automake autoconf libtool libaudit-dev selinux-basics \
     libdb5.1=5.1.29-5 libdb5.1-dev libssl1.0.0=1.0.1e-2+deb7u20 procps gawk libsigsegv2
 
+RUN apt-get install -y --force-yes libtbb-dev clang libelf-dev dwarves automake llvm libtool
+
 RUN apt-get update && apt-get build-dep python3.2 -y --force-yes
 
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \

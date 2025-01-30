@@ -83,6 +83,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_library(wazuh-syscheckd-event STATIC ${SYSCHECKD_SRC})
     target_compile_definitions(wazuh-syscheckd PUBLIC -D_WIN32_WINNT=0x600)
     target_compile_definitions(wazuh-syscheckd-event PUBLIC -D_WIN32_WINNT=0x600 -DEVENTCHANNEL_SUPPORT)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    option(USE_BUNDLED_FALCOSECURITY_LIBS
+      "Enable building of the bundled falcosecurity libraries"
+      ON)
+
+    list(APPEND CMAKE_MODULE_PATH
+      "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+
+    include(falcosecurity-libs)
+
+    if(USE_BUNDLED_FALCOSECURITY_LIBS)
+        set(SINSP_LIB sinsp)
+    else()
+        set(SINSP_LIB PkgConfig::LIBSINSP)
+    endif()
+
+    add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
+    target_link_libraries(wazuh-syscheckd "${SINSP_LIB}")
 else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
