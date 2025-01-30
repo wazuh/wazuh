@@ -77,7 +77,7 @@ class AgentsIndex(BaseIndex):
                 id=id,
                 body={AGENT_KEY: agent.to_dict()},
                 op_type='create',
-                refresh='wait_for'
+                refresh='true'
             )
         except exceptions.ConflictError:
             raise WazuhError(1708, extra_message=id)
