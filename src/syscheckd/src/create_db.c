@@ -603,6 +603,7 @@ time_t fim_scan() {
 
     if (_base_line == 0) {
         _base_line = 1;
+        ebpf_whodata("/path/probe.o", "/test");
     } else {
         // In the first scan, the fim initialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
