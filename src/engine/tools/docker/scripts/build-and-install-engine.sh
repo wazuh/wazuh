@@ -57,6 +57,3 @@ engine-clear -f # Run it twice to make sure it's empty (BUG in the engine-clear 
 
 echo "Stopping the engine"
 kill -SIGTERM $(cat /tmp/engine.pid)
-
-# TODO Remove after change the `output/file-output-wazuh-core/0` in ruleset
-mkdir -p "/var/ossec/logs/alerts/"
