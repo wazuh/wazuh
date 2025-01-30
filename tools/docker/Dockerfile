@@ -33,12 +33,19 @@ RUN apt-get update && apt-get install -y \
     git \
     openssh-server \
     software-properties-common \
+    python3-apt \
     curl \
     zip \
     lzip \
     unzip \
     tar
 ENV DEBIAN_FRONTEND=dialog
+
+# Update GCC to 11
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y
+RUN apt-get update && apt-get install -y gcc-11 g++-11
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 1
+RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 1
 
 # Update python
 RUN add-apt-repository ppa:deadsnakes/ppa -y
