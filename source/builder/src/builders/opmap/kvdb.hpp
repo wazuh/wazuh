@@ -27,7 +27,8 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 
                     const std::vector<OpArg>& opArgs,
                     const std::shared_ptr<const IBuildCtx>& buildCtx,
-                    bool merge);
+                    bool merge,
+                    bool isRecursive = false);
 
 /**
  * @brief Builder for KVDB set operation
@@ -76,6 +77,15 @@ TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager, 
  * @return Builder
  */
 TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+
+/**
+ * @brief Builds KVDB extract and merge recursive function helper
+ *
+ * @param kvdbScope KVDB Scope
+ * @return Builder
+ */
+TransformBuilder getOpBuilderKVDBGetMergeRecursive(std::shared_ptr<IKVDBManager> kvdbManager,
+                                                   const std::string& kvdbScopeName);
 
 /**
  * @brief get the KVDB match function helper builder
