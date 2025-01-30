@@ -38,7 +38,7 @@ class TestAgentIndex:
             id=self.create_id,
             body={AGENT_KEY: new_agent.to_dict()},
             op_type='create',
-            refresh='wait_for'
+            refresh='true'
         )
 
     async def test_create_ko(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
