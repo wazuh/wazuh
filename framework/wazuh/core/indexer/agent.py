@@ -6,7 +6,7 @@ from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
 from opensearchpy._async.helpers.search import AsyncSearch
 
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.agent import Agent, Host
+from wazuh.core.indexer.models.agent import Agent, Host, Status
 from wazuh.core.indexer.utils import get_source_items
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
@@ -67,6 +67,7 @@ class AgentsIndex(BaseIndex):
             id=id,
             name=name,
             raw_key=key,
+            status=Status.NEVER_CONNECTED,
             type=type,
             version=version,
             host=host if host else None

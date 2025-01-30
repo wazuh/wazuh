@@ -7,7 +7,7 @@ from opensearchpy.helpers.response import Hit
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.agent import AgentsIndex, AGENT_KEY
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.models.agent import Agent, Status
 
 
 class TestAgentIndex:
@@ -31,8 +31,9 @@ class TestAgentIndex:
     async def test_create(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `create` method."""
         new_agent = await index_instance.create(id=self.create_id, **self.create_params)
-
         assert isinstance(new_agent, Agent)
+        new_agent.status = Status.NEVER_CONNECTED
+
         client_mock.index.assert_called_once_with(
             index=index_instance.INDEX,
             id=self.create_id,
