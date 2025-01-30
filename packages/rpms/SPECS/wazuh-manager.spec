@@ -736,7 +736,17 @@ rm -fr %{buildroot}
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(440, root, wazuh) %{_localstatedir}/templates
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/files_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/registries_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/packages_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/processes_states_template.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/system_states_template.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/files_states_update_mappings.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/registries_states_update_mappings.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/packages_states_update_mappings.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/processes_states_update_mappings.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/system__states_update_mappings.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts
