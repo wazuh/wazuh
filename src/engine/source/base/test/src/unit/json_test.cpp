@@ -1828,37 +1828,102 @@ TEST_F(JsonSettersTest, Erase)
     ASSERT_THROW(jObj.erase("object/key"), std::runtime_error);
 }
 
-TEST_F(JsonSettersTest, MergeObjRoot)
+TEST_F(JsonSettersTest, MergeObjRootRecursive)
 {
     Json jObjSrc {R"({
-        "key1": "newValue1",
-        "key3": "newValue3",
-        "key4": {
-            "key5": "newValue5"
+        "event": {
+            "category": ["network", "other_type"],
+            "kind": "alert"
         }
     })"};
 
     Json jObjDst {R"({
-        "key1": "value1",
-        "key2": "value2",
-        "key6": {
-            "key7": "value7"
+        "event": {
+            "category": ["networkOne"],
+            "end": "yesteday",
+            "kind": "event",
+            "module": "suricata",
+            "severity": "low",
+            "start": "yesteday"
         }
     })"};
 
     Json jObjExpected {R"({
-        "key1": "newValue1",
-        "key2": "value2",
-        "key3": "newValue3",
-        "key4": {
-            "key5": "newValue5"
-        },
-        "key6": {
-            "key7": "value7"
+        "event": {
+            "category": ["networkOne", "network", "other_type"],
+            "end": "yesteday",
+            "kind": "alert",
+            "module": "suricata",
+            "severity": "low",
+            "start": "yesteday"
+        }
+    })"};
+
+    ASSERT_NO_THROW(jObjDst.merge(json::RECURSIVE, jObjSrc));
+    ASSERT_EQ(jObjDst, jObjExpected);
+}
+
+TEST_F(JsonSettersTest, MergeObjRootWithoutRecursive)
+{
+    Json jObjSrc {R"({
+        "event": {
+            "category": ["network", "other_type"],
+            "kind": "alert"
+        }
+    })"};
+
+    Json jObjDst {R"({
+        "event": {
+            "category": ["networkOne"],
+            "end": "yesteday",
+            "kind": "event",
+            "module": "suricata",
+            "severity": "low",
+            "start": "yesteday"
+        }
+    })"};
+
+    Json jObjExpected {R"({
+        "event": {
+            "category": ["network", "other_type"],
+            "kind": "alert"
         }
     })"};
 
     ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc));
+    ASSERT_EQ(jObjDst, jObjExpected);
+}
+
+TEST_F(JsonSettersTest, MergeObjEventRef)
+{
+    Json jObjSrc {R"({
+        "category": ["network", "other_type"],
+        "kind": "alert"
+    })"};
+
+    Json jObjDst {R"({
+        "event": {
+            "category": ["networkOne"],
+            "end": "yesteday",
+            "kind": "event",
+            "module": "suricata",
+            "severity": "low",
+            "start": "yesteday"
+        }
+    })"};
+
+    Json jObjExpected {R"({
+        "event": {
+            "category": ["network", "other_type"],
+            "end": "yesteday",
+            "kind": "alert",
+            "module": "suricata",
+            "severity": "low",
+            "start": "yesteday"
+        }
+    })"};
+
+    ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, jObjSrc, "/event"));
     ASSERT_EQ(jObjDst, jObjExpected);
 }
 

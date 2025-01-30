@@ -52,7 +52,7 @@ inline void assertRef(const std::vector<OpArg>& args, Idx... idx)
         {
             if (!args[i]->isReference())
             {
-                throw std::runtime_error(fmt::format("Expected argument {} to be a reference", i));
+                throw std::runtime_error(fmt::format("Expected argument {} to be a reference", i + 1));
             }
         }
     }
@@ -63,7 +63,7 @@ inline void assertRef(const std::vector<OpArg>& args, Idx... idx)
             {
                 if (!args[i]->isReference())
                 {
-                    throw std::runtime_error(fmt::format("Expected argument {} to be a reference", i));
+                    throw std::runtime_error(fmt::format("Expected argument {} to be a reference", i + 1));
                 }
             }(args, idx),
             ...);
@@ -79,7 +79,7 @@ inline void assertValue(const std::vector<OpArg>& args, Idx... idx)
         {
             if (!args[i]->isValue())
             {
-                throw std::runtime_error(fmt::format("Expected argument {} to be a value", i));
+                throw std::runtime_error(fmt::format("Expected argument {} to be a value", i + 1));
             }
         }
     }
@@ -90,7 +90,7 @@ inline void assertValue(const std::vector<OpArg>& args, Idx... idx)
             {
                 if (!args[i]->isValue())
                 {
-                    throw std::runtime_error(fmt::format("Expected argument {} to be a value", i));
+                    throw std::runtime_error(fmt::format("Expected argument {} to be a value", i + 1));
                 }
             }(args, idx),
             ...);

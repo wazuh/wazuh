@@ -231,6 +231,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "get_key_in", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
     registry->template add<builders::OpBuilderEntry>(
         "merge_key_in", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeValue});
+    registry->template add<builders::OpBuilderEntry>(
+        "merge_recursive_key_in",
+        {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeRecursiveValue});
     // Transform helpers: MMDB functions
     registry->template add<builders::OpBuilderEntry>(
         "geoip",
@@ -293,7 +296,12 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_merge",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetMerge(deps.kvdbManager, deps.kvdbScopeName)});
+        {schemf::STypeToken::create(schemf::Type::OBJECT),
+         builders::getOpBuilderKVDBGetMerge(deps.kvdbManager, deps.kvdbScopeName)});
+    registry->template add<builders::OpBuilderEntry>(
+        "kvdb_get_merge_recursive",
+        {schemf::STypeToken::create(schemf::Type::OBJECT),
+         builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_match",
         {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager, deps.kvdbScopeName)});

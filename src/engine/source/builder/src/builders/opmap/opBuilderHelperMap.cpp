@@ -1877,7 +1877,8 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                           bool isMerge)
+                                           bool isMerge,
+                                           bool isRecursive)
 {
     // TODO: add runtime validation
     // Assert expected number of parameters
@@ -2033,7 +2034,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         {
             try
             {
-                event->merge(json::NOT_RECURSIVE, resolvedValue.value(), targetField);
+                event->merge(isRecursive ? json::RECURSIVE : json::NOT_RECURSIVE, resolvedValue.value(), targetField);
             }
             catch (std::runtime_error& e)
             {
@@ -2059,6 +2060,14 @@ TransformOp opBuilderHelperMergeValue(const Reference& targetField,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     return opBuilderHelperGetValueGeneric(targetField, opArgs, buildCtx, true);
+}
+
+// <field>: +merge_recursive_key_in/$<definition_object>|$<object_reference>/$<key>
+TransformOp opBuilderHelperMergeRecursiveValue(const Reference& targetField,
+                                               const std::vector<OpArg>& opArgs,
+                                               const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return opBuilderHelperGetValueGeneric(targetField, opArgs, buildCtx, true, true);
 }
 
 } // namespace builder::builders
