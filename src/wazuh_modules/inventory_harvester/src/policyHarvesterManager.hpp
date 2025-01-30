@@ -291,6 +291,18 @@ public:
             return m_configuration.at("indexer").at("template_path").get_ref<const std::string&>();
         }
     }
+
+    std::string buildIndexerUpdateTemplatePath(const std::string& name) const
+    {
+        if (!m_configuration.at("indexer").contains("update_template_path"))
+        {
+            return "templates/" + name + "_states_update_mappings.json";
+        }
+        else
+        {
+            return m_configuration.at("indexer").at("update_template_path").get_ref<const std::string&>();
+        }
+    }
 };
 
 #endif //_POLICY_HARVESTER_MANAGER_HPP

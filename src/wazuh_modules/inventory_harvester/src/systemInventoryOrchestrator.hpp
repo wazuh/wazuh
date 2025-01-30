@@ -73,18 +73,21 @@ public:
     {
         logDebug2(LOGGER_DEFAULT_TAG, "SystemInventoryOrchestrator constructor");
 
-        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Package] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("packages"),
-                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath("packages"),
-                                               Log::GLOBAL_LOG_FUNCTION);
-        m_indexerConnectorInstances[SystemContext::AffectedComponentType::System] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("system"),
-                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath("system"),
-                                               Log::GLOBAL_LOG_FUNCTION);
-        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Process] =
-            std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig("processes"),
-                                               PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes"),
-                                               Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Package] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("packages"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("packages"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("packages"),
+            Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::System] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("system"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("system"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("system"),
+            Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Process] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("processes"),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("processes"),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("processes"),
+            Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);
