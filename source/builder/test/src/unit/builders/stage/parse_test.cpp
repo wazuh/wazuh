@@ -10,8 +10,8 @@ namespace
 {
 auto getBuilder()
 {
-    std::shared_ptr<hlp::logpar::Logpar> logpar =
-        std::make_shared<hlp::logpar::Logpar>(json::Json {R"({"fields": {}})"}, schemf::mocks::EmptySchema::create());
+    std::shared_ptr<hlp::logpar::Logpar> logpar = std::make_shared<hlp::logpar::Logpar>(
+        json::Json {R"({"name": "name", "fields": {}})"}, schemf::mocks::EmptySchema::create());
     size_t debugLvl = 0;
     hlp::registerParsers(logpar);
 
