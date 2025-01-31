@@ -793,6 +793,9 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     free(lf->full_log);
     os_strdup(localsdb->comment, lf->full_log);
     lf->log = lf->full_log;
+    // Force clean event
+    lf->program_name = NULL;
+    lf->dec_timestamp = NULL;
 
     return (0);
 }
