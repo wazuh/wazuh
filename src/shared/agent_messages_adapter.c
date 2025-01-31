@@ -119,13 +119,6 @@ char* adapt_sync_message(const char* data, const char* name, const char* id, con
         j_data = cJSON_CreateObject();
         cJSON_AddItemToObject(j_data, "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
         for (cJSON* j_item = j_data_msg->child; j_item; j_item = j_item->next) {
-            cJSON* j_size_obj = cJSON_GetObjectItem(j_item, "size");
-            if (cJSON_IsNumber(j_size_obj)) {
-                const long size = j_size_obj->valuedouble;
-                if (size < 0) {
-                    cJSON_ReplaceItemInObject(j_item, "size", cJSON_CreateNumber(0));
-                }
-            }
             cJSON_AddItemToObject(j_data, j_item->string, cJSON_Duplicate(cJSON_GetObjectItem(j_data_msg, j_item->string), true));
         }
         cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
