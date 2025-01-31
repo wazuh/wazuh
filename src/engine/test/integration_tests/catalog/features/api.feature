@@ -356,7 +356,7 @@ Feature: Catalog API Management
         parse|message:
           - <user> <ip> <address>
       """
-    Then I should receive a failed response indicating "An error occurred while parsing a log: Field 'user' not found in schema"
+    Then I should receive a failed response indicating "An error occurred while parsing a log: Parser for ECS type 'object' not supported, needed for field 'user'"
 
 
   Scenario: Try to validate the resource that has a duplicate stage parse
