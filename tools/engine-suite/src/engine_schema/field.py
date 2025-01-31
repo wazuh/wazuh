@@ -311,32 +311,6 @@ class FieldTree:
                 self._get_jmapping_rec(
                     properties[name]['properties'], child_node, child_name)
 
-    def _get_jlogpar_rec(self, jlogpar: dict, current: dict, full_name: str):
-        if self._field_tag in current:
-            field = current[self._field_tag]
-
-            # Not supported logpar parsers by default, we should explictly define an override for the following cases
-            arrays = field.array
-            objects = IndexerType.OBJECT == field.indexer_type
-            nested = IndexerType.NESTED == field.indexer_type
-
-            if not (arrays or objects or nested):
-                jlogpar[full_name] = str(field.indexer_type)
-
-                # Inspect childs only if object and not array
-                if objects and not arrays:
-                    if self._children_tag in current:
-                        for child_name, child_node in current[self._children_tag].items():
-                            self._get_jlogpar_rec(
-                                jlogpar, child_node, full_name + '.' + child_name)
-
-        else:
-            # Current is parent default object, inspect childs
-            if self._children_tag in current:
-                for child_name, child_node in current[self._children_tag].items():
-                    self._get_jlogpar_rec(
-                        jlogpar, child_node, full_name + '.' + child_name)
-
     def get_jschema(self) -> dict:
         jschema = dict()
 
@@ -362,16 +336,7 @@ class FieldTree:
         self._logpar_overrides = logpar_overrides
 
     def get_jlogpar(self) -> dict:
-        jlogpar = dict()
-
-        for name, node in self._root[self._children_tag].items():
-            self._get_jlogpar_rec(jlogpar, node, name)
-
-        if self._logpar_overrides:
-            for k, v in self._logpar_overrides.items():
-                jlogpar[k] = v
-
-        return jlogpar
+        return self._logpar_overrides
 
     def _merge_dicts(self, dict1, dict2):
         for key, value in dict2.items():

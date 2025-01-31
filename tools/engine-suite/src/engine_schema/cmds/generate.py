@@ -31,7 +31,7 @@ ECS field modules and apply changes on an engine instance through the API socket
     resource_handler.save_file(
         output_dir, 'wazuh-template', jmappings, rs.Format.JSON)
     resource_handler.save_file(
-        output_dir, 'wazuh-logpar-types', jlogpar, rs.Format.JSON)
+        output_dir, 'wazuh-logpar-overrides', jlogpar, rs.Format.JSON)
     resource_handler.save_file(
         output_dir, 'engine-schema', jengine, rs.Format.JSON)
     print('Success.')
