@@ -1,7 +1,4 @@
 {
-    "name": "schema/wazuh-logpar-types/0",
-    "fields": {
-        "url": "url",
-        "user_agent": "useragent"
-    }
+    "name": "schema/wazuh-logpar-overrides/0",
+    "fields": {}
 }
