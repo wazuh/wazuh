@@ -142,7 +142,7 @@ table dbsync_packages {
     architecture:string;
     groups:string;
     description:string;
-    size:long;
+    size:ulong;
     priority:string;
     multiarch:string;
     source:string;
