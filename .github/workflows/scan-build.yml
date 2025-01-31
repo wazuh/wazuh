@@ -30,7 +30,7 @@ jobs:
           scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.target }}-scan-build-report
           path: src/scan-build-report/
@@ -59,7 +59,7 @@ jobs:
           scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=winagent DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-agent-scan-build-report
           path: src/scan-build-report/
@@ -85,7 +85,7 @@ jobs:
           /opt/homebrew/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j3
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-agent-scan-build-report
           path: src/scan-build-report/
