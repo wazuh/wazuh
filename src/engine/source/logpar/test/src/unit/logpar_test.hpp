@@ -16,12 +16,19 @@ using namespace schemf::mocks;
 namespace logpar_test
 {
 
+const std::string LONG_FIELD_OVERRIDE = "long.override";
+const std::string LONG_FIELD_OVERRIDE_PATH = "/fields/long.override";
+const std::string TEXT_FIELD_OVERRIDE = "text.override";
+const std::string TEXT_FIELD_OVERRIDE_PATH = "/fields/text.override";
+
 json::Json getConfig()
 {
     json::Json config {};
     config.setObject();
-    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::LONG), "/fields/long");
-    config.setString(hlp::schemaTypeToStr(hlp::SchemaType::TEXT), "/fields/text");
+    config.setString("schema/wazuh-logpar-overrides/0", "/name");
+    config.setObject("/fields");
+    config.setString(hlp::parserTypeToStr(hlp::ParserType::P_LONG), LONG_FIELD_OVERRIDE_PATH);
+    config.setString(hlp::parserTypeToStr(hlp::ParserType::P_TEXT), TEXT_FIELD_OVERRIDE_PATH);
     return config;
 }
 
@@ -37,8 +44,34 @@ protected:
 
         schema = std::make_shared<MockSchema>();
         ON_CALL(*schema, hasField(::testing::_))
-            .WillByDefault(::testing::Invoke([](const auto& param)
-                                             { return param == "text" || param == "long" || param == "literal"; }));
+            .WillByDefault(::testing::Invoke(
+                [](const auto& param)
+                {
+                    return param == "text" || param == "long" || param == "literal" || param == TEXT_FIELD_OVERRIDE
+                           || param == LONG_FIELD_OVERRIDE || param == "array";
+                }));
+
+        ON_CALL(*schema, isArray(::testing::_))
+            .WillByDefault(::testing::Invoke([](const auto& param) { return param == "array"; }));
+
+        ON_CALL(*schema, getType(::testing::_))
+            .WillByDefault(::testing::Invoke(
+                [](const auto& param)
+                {
+                    if (param == "text")
+                        return schemf::Type::TEXT;
+                    if (param == "long")
+                        return schemf::Type::LONG;
+                    if (param == "literal")
+                        return schemf::Type::KEYWORD;
+                    if (param == TEXT_FIELD_OVERRIDE)
+                        return schemf::Type::TEXT;
+                    if (param == LONG_FIELD_OVERRIDE)
+                        return schemf::Type::LONG;
+                    if (param == "array")
+                        return schemf::Type::TEXT;
+                    return schemf::Type::ERROR;
+                }));
 
         logpar = std::make_shared<hlp::logpar::Logpar>(config, schema);
         logpar->registerBuilder(hlp::ParserType::P_TEXT, hlp::parsers::getTextParser);
