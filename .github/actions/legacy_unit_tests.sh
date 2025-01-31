@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clean() {
-    echo "Cleaning build and dependencies..."
+    echo "Cleaning build agent and dependencies..."
     cd "$GITHUB_WORKSPACE"
     make clean-deps -C src
     rm -rf src/external/*
@@ -19,12 +19,10 @@ build_wazuh_test_flags() {
 
 build_wazuh_unit_tests() {
     local target=$1
-    echo "Building Wazuh Unit Tests for target: $target"
+    echo "Building Wazuh Agent Unit Tests for target: $target"
     mkdir -p "$GITHUB_WORKSPACE/src/unit_tests/build"
     cd "$GITHUB_WORKSPACE/src/unit_tests/build"
     if [[ $target == "agent" ]]; then
-        cmake -DTARGET=${target} ..
-    elif [[ $target == "server" ]]; then
         cmake -DTARGET=${target} ..
     elif [[ $target == "winagent" ]]; then
         cmake -DTARGET=${target} -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake ..
@@ -34,12 +32,9 @@ build_wazuh_unit_tests() {
 
 run_wazuh_unit_tests() {
     local target=$1
-    echo "Running Wazuh Unit Tests for target: $target"
+    echo "Running Wazuh Agent Unit Tests for target: $target"
     cd "$GITHUB_WORKSPACE/src/unit_tests/build"
     if [[ $target == "agent" ]]; then
-        ctest --output-on-failure  > "test_results.txt" || true
-        make coverage > "coverage_results.txt" || true
-    elif [[ $target == "server" ]]; then
         ctest --output-on-failure  > "test_results.txt" || true
         make coverage > "coverage_results.txt" || true
     elif [[ $target == "winagent" ]]; then
@@ -60,7 +55,7 @@ format_display_test_results() {
 
 
 format_display_test_coverage() {
-    if [[ $1 != "winagent" ]]; then
+    if [[ $1 == "agent" ]]; then
         echo "Formatting and displaying test coverage"
         cd "$GITHUB_WORKSPACE/src/unit_tests/build"
         if grep "Summary coverage rate:" coverage_results.txt > /dev/null; then
@@ -79,8 +74,8 @@ main() {
         exit 1
     fi
 
-    if [[ $target != "agent" && $target != "winagent" && $target != "server" ]]; then
-        echo "Error: Invalid target '$target'. Expected 'agent', 'winagent' or 'server'."
+    if [[ $target != "agent" && $target != "winagent" ]]; then
+        echo "Error: Invalid target '$target'. Expected 'agent' or 'winagent'."
         exit 1
     fi
 

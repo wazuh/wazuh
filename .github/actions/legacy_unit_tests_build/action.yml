@@ -1,5 +1,5 @@
-name: "Legacy unit tests build for Wazuh"
-description: "This action builds legacy Unit Tests for Wazuh on Ubuntu Linux/Windows"
+name: "Legacy unit tests build for Wazuh agent"
+description: "This action builds legacy Unit Tests for Wazuh agent on Ubuntu Linux/Windows"
 inputs:
    target:
      required: true
@@ -11,7 +11,7 @@ runs:
       shell: bash
       run: |
         chmod +x .github/actions/legacy_unit_tests.sh
-    - name: Build Wazuh Unit Tests
+    - name: Build Wazuh Agent Unit Tests
       shell: bash
       run: |
         source .github/actions/legacy_unit_tests.sh
