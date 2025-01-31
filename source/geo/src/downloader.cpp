@@ -1,12 +1,13 @@
 #include "downloader.hpp"
 
 #include <algorithm>
-#include <curl/curl.h>
 #include <iomanip>
 #include <openssl/evp.h>
 #include <sstream>
 
 #include <fmt/format.h>
+
+#include <HTTPRequest.hpp>
 
 namespace
 {
@@ -28,48 +29,21 @@ bool isMD5Hash(const std::string& str)
 namespace geo
 {
 // Function to download content of the URL into a std::string in memory
-// TODO: Should use http-request library instead of libcurl
 base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url) const
 {
-    CURL* curl;
-    CURLcode res;
-    std::string readBuffer;
+    base::RespOrError<std::string> readBuffer;
 
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    HTTPRequest::instance().get(
+        RequestParameters {.url = HttpURL(url)},
+        PostRequestParameters {
+            .onSuccess = [&readBuffer](const std::string& response) { readBuffer = response; },
+            .onError =
+                [&readBuffer, url](const std::string& error, const long statusCode)
+            {
+                readBuffer = base::Error {fmt::format(
+                    "Failed to download file from '{}', error: {}, status code: {}.", url, error.c_str(), statusCode)};
+            }});
 
-    curl = curl_easy_init();
-    if (curl)
-    {
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-
-        // Enable SSL certificate verification
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
-
-        // Set option to follow redirects
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-
-        // Specify the write callback function
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-
-        // Set pointer to pass to our write function
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-        // Perform the request, res will get the return code
-        res = curl_easy_perform(curl);
-
-        // Check for errors
-        if (res != CURLE_OK)
-        {
-            return base::Error {
-                fmt::format("Failed to download file from '{}', error: {}", url, curl_easy_strerror(res))};
-        }
-
-        // Always cleanup
-        curl_easy_cleanup(curl);
-    }
-
-    curl_global_cleanup();
     return readBuffer;
 }
 
