@@ -25,19 +25,19 @@ async def get_orders(logger: WazuhLogger):
         await asyncio.sleep(PULL_INTERVAL)
         logger.info('Getting orders from indexer')
 
-        async with get_indexer_client() as indexer_client:
-            pending_commands = await indexer_client.commands_manager.get_commands(Status.PENDING)
+        try:
+            async with get_indexer_client() as indexer_client:
+                pending_commands = await indexer_client.commands_manager.get_commands(Status.PENDING)
 
-            pending_commands = {
-                COMMANDS_KEY: [asdict(command, dict_factory=convert_enums) for command in pending_commands]
-            }
-            if not pending_commands[COMMANDS_KEY]:
-                logger.debug('No pending commands found')
-                continue
+                pending_commands = {
+                    COMMANDS_KEY: [asdict(command, dict_factory=convert_enums) for command in pending_commands]
+                }
+                if not pending_commands[COMMANDS_KEY]:
+                    logger.debug('No pending commands found')
+                    continue
 
-            logger.debug(f'Commands index response: {pending_commands}')
+                logger.debug(f'Commands index response: {pending_commands}')
 
-            try:
                 response = await client.post(
                     url='http://localhost/api/v1/commands',
                     json=pending_commands,
@@ -66,5 +66,5 @@ async def get_orders(logger: WazuhLogger):
                         status=Status.SENT.value
                     )
 
-            except (httpx.ConnectError, httpx.TimeoutException, WazuhIndexerError) as e:
-                logger.error(f'Failed sending the orders to the Communications API: {str(e)}')
+        except (httpx.ConnectError, httpx.TimeoutException, WazuhIndexerError) as e:
+            logger.error(f'Failed sending the orders to the Communications API: {str(e)}')
