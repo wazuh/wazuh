@@ -709,15 +709,21 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
         if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
             changes = 1;
             wm_strcat(&lf->fields[FIM_CHFIELDS].value, "mtime", ',');
-            char *old_ctime = strdup(ctime_r(&oldsum->mtime, buf_ptr));
-            char *new_ctime = strdup(ctime_r(&newsum->mtime, buf_ptr));
-            old_ctime[strlen(old_ctime) - 1] = '\0';
-            new_ctime[strlen(new_ctime) - 1] = '\0';
-
-            snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
             lf->fields[FIM_MTIME_BEFORE].value = w_long_str(oldsum->mtime);
-            os_free(old_ctime);
-            os_free(new_ctime);
+
+            char ctime_old_buffer[sizeof("Wed Jun 30 21:49:08 1993\n")] = {0};
+            char ctime_new_buffer[sizeof("Wed Jun 30 21:49:08 1993\n")] = {0};
+            char* old_ctime = ctime_r(&oldsum->mtime, ctime_old_buffer);
+            char* new_ctime = ctime_r(&newsum->mtime, ctime_new_buffer);
+            if (old_ctime == NULL || new_ctime == NULL) {
+                mdebug1("Error converting modification time '%ld' - '%ld'", oldsum->mtime, newsum->mtime);
+                old_ctime = new_ctime = "Unknown";
+            } else {
+                old_ctime[strlen(old_ctime) - 1] = '\0';
+                new_ctime[strlen(new_ctime) - 1] = '\0';
+            }
+            snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n",
+                     old_ctime, new_ctime);
         } else {
             localsdb->mtime[0] = '\0';
         }
@@ -1609,6 +1615,11 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
             snprintf(path_buffer, 757, "%s %s", lf->fields[FIM_REGISTRY_ARCH].value, lf->fields[FIM_FILE].value);
         }
     } else if (strcmp("registry_value", lf->fields[FIM_ENTRY_TYPE].value) == 0) {
+
+        if (lf->fields[FIM_REGISTRY_VALUE_NAME].value == NULL) {
+            w_strdup("Unknown key:Unknown Value", lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+        }
+
         int value_len = strlen(lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         entry_type = ENTRY_TYPE_REGISTRY_VALUE;
 
@@ -1698,9 +1709,6 @@ int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf) {
 
 int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     cJSON *attr_it;
-    long aux_time;
-    char *time_string = NULL;
-    char buf_ptr[26];
 
     assert(lf != NULL);
     assert(lf->fields != NULL);
@@ -1726,9 +1734,6 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
                     lf->fields[FIM_INODE_BEFORE].value = w_long_str((long) attr_it->valuedouble);;
                 }
             } else if (strcmp(attr_it->string, "mtime") == 0) {
-                aux_time = (long) attr_it->valuedouble;
-                time_string = ctime_r(&aux_time, buf_ptr);
-                time_string[strlen(time_string) - 1] = '\0';
                 if (new_state) {
                     lf->fields[FIM_MTIME].value = w_long_str((long) attr_it->valuedouble);
                 } else {
