@@ -14,7 +14,7 @@ set(SRCS
     ${SRC_DIR}/locator.cpp
 )
 set(PRIVATE_LINKS
-    CURL::libcurl
+    urlrequest
     maxminddb::maxminddb
 )
 set(PUBLIC_LINKS
@@ -23,7 +23,7 @@ set(PUBLIC_LINKS
 )
 
 # Patch the maxminddb target
-set_target_properties(maxminddb::maxminddb 
+set_target_properties(maxminddb::maxminddb
   PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES ""
 )
