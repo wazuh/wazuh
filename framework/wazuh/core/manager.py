@@ -132,7 +132,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
     elif log_format == LoggingFormat.json and exists(common.WAZUH_LOG_JSON):
         wazuh_log_content = tail(common.WAZUH_LOG_JSON, limit)
     else:
-        raise WazuhInternalError(1020)
+        raise WazuhInternalError(1000)
 
     for line in wazuh_log_content:
         log_fields = get_ossec_log_fields(line, log_format=log_format)

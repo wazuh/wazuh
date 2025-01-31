@@ -26,8 +26,7 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error',
-               'remediation': 'Please, check `/var/log/wazuh-server/cluster.log` and '
-                              '`/var/log/wazuh-server/logs/api.log` to get more information about the error'},
+       '       remediation': 'Please, check the server logs for more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1005: {'message': 'Error reading file',
@@ -44,8 +43,6 @@ class WazuhException(Exception):
                'remediation': 'Please, restart Wazuh to restore sockets'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
-        1020: {'message': 'Could not find any Wazuh log file',
-               'remediation': 'Please check `WAZUH_HOME/logs`'},
 
         # Configuration: 1100 - 1199
         1101: {'message': 'Requested component does not exist',
@@ -289,8 +286,7 @@ class WazuhException(Exception):
         3022: {'message': 'Unknown node ID',
                'remediation': 'Check the name of the node'},
         3023: {'message': 'Worker node is not connected to master',
-               'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
-                              'connection errors. Restart the `wazuh-manager` service.'},
+               'remediation': 'Check the server logs to identify potential connection errors.'},
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
@@ -433,7 +429,7 @@ class WazuhException(Exception):
             If it is a custom error code (i.e. ossec commands), the error description will be the message.
         dapi_errors : dict
             Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
-            'logfile': WAZUH_HOME/logs/api.log}}
+            'logfile': 'Refer to the server logs for more details.'}}
         title : str
             Name of the exception to be shown.
         type : str
@@ -572,7 +568,7 @@ class WazuhInternalError(WazuhException):
             If it is a custom error code (i.e. ossec commands), the error description will be the message.
         dapi_errors : dict
             Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
-            'logfile': WAZUH_HOME/logs/api.log}}
+            'logfile': 'Refer to the server logs for more details.'}}
         title : str
             Name of the exception to be shown.
         type : str
@@ -663,7 +659,7 @@ class WazuhError(WazuhException):
             If it is a custom error code (i.e. ossec commands), the error description will be the message.
         dapi_errors : dict
             Dictionary with details about node and logfile. I.e.: {'master-node': {'error': 'Wazuh Internal error',
-            'logfile': WAZUH_HOME/logs/api.log}}
+            'logfile': 'Refer to the server logs for more details.'}}
         title : str
             Name of the exception to be shown.
         type : str
