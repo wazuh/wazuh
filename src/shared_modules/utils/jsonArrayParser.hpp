@@ -430,8 +430,10 @@ namespace JsonArray
      * @param processBodyCallback Callback invoked at the end of the parsing with the body of the JSON object. The body
      * of the JSON object is the original JSON with the array items removed. If the \p processItemCallback stops the
      * parsing, the \p processBodyCallback will not be called.
+     *
+     * This function has [[maybe_unused]] attribute to avoid warnings when the function is not used.
      */
-    static void parse(
+    [[maybe_unused]] static void parse(
         const std::filesystem::path& filepath,
         std::function<bool(nlohmann::json&&, const size_t)> processItemCallback,
         const nlohmann::json::json_pointer& arrayPointer = nlohmann::json::json_pointer(),
