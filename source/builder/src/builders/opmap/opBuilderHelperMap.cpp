@@ -76,6 +76,30 @@ NumberOperator strToOp(const std::string& op)
 }
 
 /**
+ * @brief Operators supported by the int helpers.
+ *
+ */
+enum class NumCastOperator
+{
+    TRUNCATE,
+    ROUND
+};
+
+NumCastOperator strToNumCastOp(const std::string& op)
+{
+    if ("truncate" == op)
+    {
+        return NumCastOperator::TRUNCATE;
+    }
+    else if ("round" == op)
+    {
+        return NumCastOperator::ROUND;
+    }
+
+    throw std::runtime_error(fmt::format("Operation '{}' not supported", op));
+}
+
+/**
  * @brief Tranform the string in `field` path in the base::Event `e` according to the
  * `op` definition and the `value` or the `refValue`
  *
@@ -707,6 +731,85 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
         event->setString(strToTrim, targetField);
 
         RETURN_SUCCESS(runState, event, successTrace);
+    };
+}
+
+// field: +to_int/number/option
+MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 1, 2);
+
+    // Parameter type check
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    // default operation
+    auto op = NumCastOperator::TRUNCATE;
+
+    if (opArgs.size() > 1)
+    {
+        builder::builders::utils::assertValue(opArgs, 1);
+
+        if (!std::static_pointer_cast<Value>(opArgs[1])->value().isString())
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+        }
+
+        op = strToNumCastOp(std::static_pointer_cast<Value>(opArgs[1])->value().getString().value());
+    }
+
+    const auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->validator().hasField(ref->dotPath()))
+    {
+        auto sType = buildCtx->validator().getType(ref->dotPath());
+        if (typeToJType(sType) != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected number reference but got reference '{}' of type '{}'",
+                                                 ref->dotPath(),
+                                                 schemf::typeToStr(sType)));
+        }
+    }
+
+    // Format name for the tracer
+    const auto name = buildCtx->context().opName;
+
+    // Tracing messages
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
+    const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+
+    return [failureTrace1, failureTrace2, successTrace, op, ref, runState = buildCtx->runState()](
+               base::ConstEvent event) -> MapResult
+    {
+        auto object = event->getJson(ref->jsonPath());
+        if (!object.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+        }
+
+        if (!object.value().isNumber())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+        }
+
+        int64_t res;
+        if (const auto val = object->getIntAsInt64(); val.has_value())
+        {
+            res = val.value();
+        }
+        else if (op == NumCastOperator::TRUNCATE)
+        {
+            res = static_cast<int64_t>(object->getFloat().value_or(object->getDouble().value()));
+        }
+        else
+        {
+            res = static_cast<int64_t>(std::round(object->getFloat().value_or(object->getDouble().value())));
+        }
+
+        json::Json result;
+        result.setInt64(res);
+        RETURN_SUCCESS(runState, result, successTrace);
     };
 }
 
