@@ -2436,7 +2436,7 @@ void test_router_message_forward_sync_package_negative_size_json_message(void **
                                 ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
                                                 ",\"description\":\"library for GIF images (library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-                                                ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":0,\"source\":\"giflib\""
+                                                ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":-1,\"source\":\"giflib\""
                                                 ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
 
     router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
