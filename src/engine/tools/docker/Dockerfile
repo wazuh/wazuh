@@ -15,7 +15,7 @@ ENV ENGINE_BUILD=$ENGINE_SRC/build
 # Force use the specific commit of master to aviod breaking changes like:
 # - Python packages
 # - Engine configuration and CLI
-ENV ENGINE_COMMIT_ID=5ca2998e1d97a7056611da6288a13a88cfd3ccf9
+ENV ENGINE_COMMIT_ID=3e82b9d7ec6fcd2e846008a6f5ada902f1a58ee2
 ENV ENGINE_PRESET=release
 ENV ENGINE_ON_BACKGROUND=1
 ENV MM_LICENCE_KEY=
@@ -33,12 +33,19 @@ RUN apt-get update && apt-get install -y \
     git \
     openssh-server \
     software-properties-common \
+    python3-apt \
     curl \
     zip \
     lzip \
     unzip \
     tar
 ENV DEBIAN_FRONTEND=dialog
+
+# Update GCC to 11
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y
+RUN apt-get update && apt-get install -y gcc-11 g++-11
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 1
+RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 1
 
 # Update python
 RUN add-apt-repository ppa:deadsnakes/ppa -y
