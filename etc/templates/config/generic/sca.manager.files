@@ -1,4 +1,4 @@
-generic/sca_unix_audit.yml
+generic/sca_distro_independent_linux.yml
 almalinux/cis_alma_linux_8.yml
 almalinux/cis_alma_linux_9.yml
 amazon/cis_amazon_linux_1.yml
