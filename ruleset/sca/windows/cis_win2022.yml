@@ -686,9 +686,7 @@ checks:
       - cis: ["2.3.7.4"]
     condition: all
     rules:
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext-> r:\w+'
+      - 'c:reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v legalnoticetext -> r:legalnoticetext\s*\t*reg_sz\s*\t*\w+'
 
   # 2.3.7.5 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 27032
@@ -701,9 +699,7 @@ checks:
       - cis: ["2.3.7.5"]
     condition: all
     rules:
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticecaption'
-      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticecaption -> r:\w+'
+      - 'c:reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v legalnoticecaption -> r:legalnoticecaption\s*\t*reg_sz\s*\t*\w+'
 
   # 2.3.7.6 (L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only) (Automated)
   - id: 27033
@@ -924,7 +920,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> r:^1$|^2$'
 
   # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated)
   - id: 27045
@@ -1012,9 +1008,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:LSARPC'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:NETLOGON'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:SAMR'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> !r:LSARPC|NETLOGON|SAMR|BROWSER'
 
   # 2.3.10.7 (L1) Configure 'Network access: Named Pipes that can be accessed anonymously' (MS only). (Automated)
   - id: 27051
