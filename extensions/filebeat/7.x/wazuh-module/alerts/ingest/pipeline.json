@@ -24,7 +24,16 @@
       "geoip": {
         "field": "data.srcip",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.parameters.alert.data.srcip",
+        "target_field": "GeoLocation",
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
@@ -33,7 +42,7 @@
       "geoip": {
         "field": "data.win.eventdata.ipAddress",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
@@ -42,7 +51,7 @@
       "geoip": {
         "field": "data.aws.sourceIPAddress",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
@@ -51,7 +60,7 @@
       "geoip": {
         "field": "data.aws.client_ip",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
@@ -60,7 +69,7 @@
       "geoip": {
         "field": "data.aws.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
@@ -69,7 +78,7 @@
       "geoip": {
         "field": "data.aws.httpRequest.clientIp",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
@@ -78,7 +87,7 @@
       "geoip": {
         "field": "data.gcp.jsonPayload.sourceIP",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
@@ -87,7 +96,7 @@
       "geoip": {
         "field": "data.office365.ClientIP",
         "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
       }
