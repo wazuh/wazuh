@@ -4,14 +4,15 @@ from dataclasses import asdict
 import httpx
 
 from wazuh.core import common
-from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.engine.base import APPLICATION_JSON
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.commands import Status
 from wazuh.core.indexer.utils import convert_enums
+from wazuh.core.wlogging import WazuhLogger
 
 COMMANDS_KEY = 'commands'
-WAIT_UNTIL_NEXT_PULL = 10
+PULL_INTERVAL = 10
 
 
 async def get_orders(logger: WazuhLogger):
@@ -21,18 +22,20 @@ async def get_orders(logger: WazuhLogger):
     client = httpx.AsyncClient(transport=transport, timeout=httpx.Timeout(10))
 
     while True:
-        await asyncio.sleep(WAIT_UNTIL_NEXT_PULL)
+        await asyncio.sleep(PULL_INTERVAL)
         logger.info('Getting orders from indexer')
 
         async with get_indexer_client() as indexer_client:
             pending_commands = await indexer_client.commands_manager.get_commands(Status.PENDING)
-            logger.debug(f'Commands index response: {pending_commands}')
+
             pending_commands = {
                 COMMANDS_KEY: [asdict(command, dict_factory=convert_enums) for command in pending_commands]
             }
-
             if not pending_commands[COMMANDS_KEY]:
+                logger.debug('No pending commands found')
                 continue
+
+            logger.debug(f'Commands index response: {pending_commands}')
 
             try:
                 response = await client.post(
@@ -44,13 +47,15 @@ async def get_orders(logger: WazuhLogger):
                     }
                 )
 
-                logger.debug(f'Post orders response: {response.status_code} - {response.json()}')
+                response_body = response.json()
+
+                logger.debug(f'Post orders response: {response.status_code} - {response_body}')
 
                 if response.status_code != 200:
-                    logger.error(f'Post orders failed: {response.status_code} - {response.json()}')
+                    logger.error(f'Post orders failed: {response.status_code} - {response_body}')
                     continue
 
-                processed_commands = response.json()[COMMANDS_KEY]
+                processed_commands = response_body[COMMANDS_KEY]
 
                 if processed_commands:
                     processed_commands_ids = [item['order_id'] for item in processed_commands]
@@ -61,5 +66,5 @@ async def get_orders(logger: WazuhLogger):
                         status=Status.SENT.value
                     )
 
-            except (httpx.ConnectError, httpx.TimeoutException) as e:
-                logger.error(f'An error occurs sending the orders to the Communications API :', str(e))
+            except (httpx.ConnectError, httpx.TimeoutException, WazuhIndexerError) as e:
+                logger.error(f'Failed sending the orders to the Communications API: {str(e)}')
