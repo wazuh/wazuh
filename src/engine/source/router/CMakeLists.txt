@@ -87,11 +87,11 @@ if(ENGINE_BUILD_TEST)
         GTest::gtest_main
         base
         router::router
-        # router::mocks # Todo delete
         builder::mocks
         store::mocks
         bk::mocks
         bk::rx
+        queue::mocks
     )
     gtest_discover_tests(router_utest router_ctest)
 endif(ENGINE_BUILD_TEST)

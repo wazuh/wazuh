@@ -1,6 +1,0 @@
-[
-    "No match due to default status for Package: python3.10, Version: 3.10.12-1~22.04.4 while scanning for Vulnerability: CVE-2022-42919",
-    "No match due to default status for Package: python3.10, Version: 3.10.12-1~22.04.4 while scanning for Vulnerability: CVE-2022-45061",
-    "No match due to default status for Package: python3.10, Version: 3.10.12-1~22.04.4 while scanning for Vulnerability: CVE-2023-24329",
-    "No match due to default status for Package: python3.10, Version: 3.10.12-1~22.04.4 while scanning for Vulnerability: CVE-2023-41105"
-]

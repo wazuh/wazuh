@@ -1,0 +1,583 @@
+---
+test_name: PUT /agents/group
+
+stages:
+
+  # PUT /agents/group?group_id=wrong_group
+  - name: Try to assign all agents to a non existing group
+    request: &put_agents_group
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: wrong_group
+    response: &resource_not_found_group
+      status_code: 404
+      json:
+        error: 1710
+
+    # PUT /agents/group?group_id=wrong_group&agents_list=wrong_agent
+  - name: Try to assign an invalid agent_id to a non existing group
+    request:
+      verify: False
+      <<: *put_agents_group
+      params:
+        agents_list: "wrong_agent"
+        group_id: "wrong_group"
+    response:
+      status_code: 400
+      json: &error_spec
+        detail: !anystr
+        title: !anystr
+
+        # PUT /agents/group?group_id=wrong_%_group
+  - name: Try to assign all agents to an invalid group id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'wrong_%_group'
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Try to assign an agent to a forbidden group id (it must count as non existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+        group_id: 'ar.conf'
+    response:
+      <<: *resource_not_found_group
+
+    # PUT /agents/group?group_id=default&agents_list=998,999
+  - name: Try to assign non existing agents to group default
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "998,999"
+        group_id: default
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "998"
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 2
+
+    # PUT /agents/group?group_id=default&agents_list=001,002
+  - name: Try to assign agents 001 and 002 to group default where they already belong
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001,002"
+        group_id: default
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1751
+              id:
+                - "001"
+                - "002"
+          total_affected_items: 0
+          total_failed_items: 2
+
+    # PUT /agents/group?group_id=group1&agents_list=003,004,005
+  - name: Assign agents 003, 004 and 005 to group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "003,004,005"
+        group_id: group1
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["003", "004"]
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "003"
+            - "004"
+          failed_items:
+            - error:
+                code: 1751
+              id:
+                - "005"
+          total_affected_items: 2
+          total_failed_items: 1
+
+    # PUT /agents/group?group_id=group2
+  - name: Assign all agents to group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "003", "004", "007"]  # 009 is not restarted as it is disconnected
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+            - "003"
+            - "004"
+            - "007"
+            - "009"
+            - "011"
+            - "012"
+          total_affected_items: 7
+
+    # PUT /agents/group?group_id=group2&force_single_group=true
+  - name: Assign all agents to group2 with force_single_group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_single_group: True
+        group_id: group2
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
+                                                                                 # they are disconnected
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+            - "009"
+            - "010"
+            - "011"
+            - "012"
+          total_affected_items: 12
+
+---
+test_name: PUT /groups/{group_id}/configuration
+
+stages:
+
+  # PUT /groups/group2/configuration
+  - name: Update group2 configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group2/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]  # 009 and 010 are not restarted as
+                                                                                 # they are disconnected
+      status_code: 200
+
+    # PUT /groups/wrong_group/configuration
+  - name: Try to update configuration of a non existing group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+    response:
+      <<: *resource_not_found_group
+
+    # PUT /groups/group1/configuration
+  - name: Try to update configuration using an empty file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      status_code: 400
+      json:
+        error: 1912
+
+    # PUT /groups/group1/configuration
+  - name: Try to update configuration using an invalid configuration file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+    response:
+      status_code: 400
+      json:
+        error: 1113
+
+    # PUT /groups/group1/configuration
+  - name: Try to update configuration using a wrong configuration file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+    response:
+      status_code: 400
+      json:
+        error: 1114
+
+  - name: Try to update configuration using a complex configuration file (no agents in group1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        '{query_list_xml:s}'
+    response:
+      status_code: 200
+
+  - name: Ensure the config now has the expected value
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_group_configuration
+        extra_kwargs:
+          expected_field: "query"
+          expected_value: ' <QueryList> <Query Id="0" Path="System"> <Select Path="System">*[System[(Level&lt;=3)]]</Select> </Query> </QueryList> '
+      json:
+        error: 0
+        data:
+          affected_items:
+            - filters: !anything
+              config: !anything
+          total_affected_items: !anyint
+
+---
+test_name: PUT /agents/reconnect
+
+stages:
+
+  # PUT /agents/reconnect?agents_list=wrong_id
+  - name: Try to reconnect agent with wrong_id
+    request: &agent_reconnect_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  # PUT /agents/reconnect?agents_list=998,999
+  - name: Try to reconnect non existing agents
+    request:
+      verify: False
+      <<: *agent_reconnect_request
+      params:
+        agents_list: "998,999"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id: !anything
+          total_affected_items: 0
+          total_failed_items: 2
+
+  # PUT /agents/reconnect?agents_list=001,002,999
+  - name: Try to reconnect agents 001,002 and 999
+    request:
+      verify: False
+      <<: *agent_reconnect_request
+      params:
+        agents_list: "001,002,999"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "001"
+            - "002"
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 2
+          total_failed_items: 1
+    delay_after: !float "{reconnect_delay}"
+
+  # PUT /agents/reconnect
+  - name: Try to reconnect all agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+          failed_items: !anything
+          total_affected_items: 8
+          total_failed_items: 0
+    delay_after: !float "{reconnect_delay}"
+
+---
+test_name: PUT /agents/restart
+
+marks:
+  - xfail
+
+stages:
+
+  # PUT /agents/restart?agents_list=wrong_id
+  - name: Try to restart agent with wrong_id
+    request: &agent_restart_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/restart?agents_list=998,999
+  - name: Try to restart non existing agents
+    request:
+      verify: False
+      <<: *agent_restart_request
+      params:
+        agents_list: "998,999"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id: !anything
+          total_affected_items: 0
+          total_failed_items: 2
+
+    # PUT /agents/restart?agents_list=001,002,999
+  - name: Try to restart agents 001,002 and 999
+    request:
+      verify: False
+      <<: *agent_restart_request
+      params:
+        agents_list: "001,002,999"
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002"]
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "001"
+            - "002"
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 2
+          total_failed_items: 1
+
+    # PUT /agents/restart
+  - name: Try to restart all agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+          failed_items: !anything
+          total_affected_items: 8
+          total_failed_items: 0
+
+---
+test_name: PUT /agents/{agent_id}/restart
+
+marks:
+  - xfail
+
+stages:
+
+    # PUT /agents/999/restart
+  - name: Try to restart a not existing agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 1
+
+    # PUT /agents/wrong_id/restart
+  - name: Try to restart an agent with an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_id/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # PUT /agents/003/restart
+  - name: Restart an agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/003/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["003"]
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "003"
+          total_affected_items: 1

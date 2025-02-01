@@ -16,7 +16,7 @@ jobs:
       matrix:
         python-version: ['3.10']
     env:
-      PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework:/home/runner/work/wazuh/wazuh/apis/comms_api
+      PYTHONPATH: /home/runner/work/wazuh/wazuh/apis/server_management:/home/runner/work/wazuh/wazuh/apis/communications:/home/runner/work/wazuh/wazuh/framework
     steps:
       - uses: actions/checkout@v4
 
@@ -33,4 +33,4 @@ jobs:
           pip install -r framework/requirements-dev.txt --no-build-isolation
 
       - name: Run API tests
-        run: python -m pytest apis/comms_api --cov
+        run: python -m pytest apis/communications/comms_api --cov

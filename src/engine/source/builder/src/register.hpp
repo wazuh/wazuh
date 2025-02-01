@@ -141,6 +141,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "starts_with",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperStringStarts});
     registry->template add<builders::OpBuilderEntry>(
+        "ends_with",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperEndsWith});
+    registry->template add<builders::OpBuilderEntry>(
         "contains",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperStringContains});
     registry->template add<builders::OpBuilderEntry>(
@@ -155,7 +158,11 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "to_string", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperNumberToString});
     registry->template add<builders::OpBuilderEntry>(
-        "int_calculate", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opBuilderHelperIntCalc});
+        "int_calculate",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::getOpBuilderHelperCalc(true)});
+    registry->template add<builders::OpBuilderEntry>(
+        "float_calculate",
+        {schemf::JTypeToken::create(json::Json::Type::Number), builders::getOpBuilderHelperCalc(false)});
     registry->template add<builders::OpBuilderEntry>(
         "regex_extract", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperRegexExtract});
     // Map helpers: Hash functions
@@ -182,6 +189,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "date_from_epoch",
         {schemf::STypeToken::create(schemf::Type::DATE), builders::opBuilderHelperDateFromEpochTime});
+    registry->template add<builders::OpBuilderEntry>(
+        "get_date", {schemf::STypeToken::create(schemf::Type::DATE), builders::opBuilderHelperGetDate});
 
     // Transform builders
     registry->template add<builders::OpBuilderEntry>(
@@ -217,11 +226,16 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "replace", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringReplace});
     registry->template add<builders::OpBuilderEntry>(
         "trim", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringTrim});
+    registry->template add<builders::OpBuilderEntry>(
+        "to_int", {schemf::JTypeToken::create(json::Json::Type::Number), builders::opBuilderHelperToInt});
     // Transform helpers: Definition functions
     registry->template add<builders::OpBuilderEntry>(
         "get_key_in", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
     registry->template add<builders::OpBuilderEntry>(
         "merge_key_in", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeValue});
+    registry->template add<builders::OpBuilderEntry>(
+        "merge_recursive_key_in",
+        {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeRecursiveValue});
     // Transform helpers: MMDB functions
     registry->template add<builders::OpBuilderEntry>(
         "geoip",
@@ -284,7 +298,12 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "kvdb_get", {schemf::runtimeValidation(), builders::getOpBuilderKVDBGet(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_get_merge",
-        {schemf::runtimeValidation(), builders::getOpBuilderKVDBGetMerge(deps.kvdbManager, deps.kvdbScopeName)});
+        {schemf::STypeToken::create(schemf::Type::OBJECT),
+         builders::getOpBuilderKVDBGetMerge(deps.kvdbManager, deps.kvdbScopeName)});
+    registry->template add<builders::OpBuilderEntry>(
+        "kvdb_get_merge_recursive",
+        {schemf::STypeToken::create(schemf::Type::OBJECT),
+         builders::getOpBuilderKVDBGetMergeRecursive(deps.kvdbManager, deps.kvdbScopeName)});
     registry->template add<builders::OpBuilderEntry>(
         "kvdb_match",
         {schemf::runtimeValidation(), builders::getOpBuilderKVDBMatch(deps.kvdbManager, deps.kvdbScopeName)});

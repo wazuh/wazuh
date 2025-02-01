@@ -689,7 +689,7 @@ void updatePolicyInfo(const DecodeCxt& ctx, const std::string& policyId)
             }
             else
             {
-                LOG_DEBUG("Engine SCA decoder builder: Hash file is the same for policy '%s'.", policyId);
+                LOG_DEBUG("Engine SCA decoder builder: Hash file is the same for policy '{}'.", policyId);
             }
             break;
         }
@@ -718,8 +718,8 @@ void checkResultsAndDump(const DecodeCxt& ctx,
             if (oldEventHash != eventHash)
             {
                 doPushDumpRequest = true;
-                LOG_DEBUG("Engine SCA decoder builder: Scan result integrity failed for policy '%s'. Hash from DB: "
-                          "'%s', hash from summary: '%s'. Requesting DB dump.",
+                LOG_DEBUG("Engine SCA decoder builder: Scan result integrity failed for policy '{}'. Hash from DB: "
+                          "'{}', hash from summary: '{}'. Requesting DB dump.",
                           policyId,
                           oldEventHash,
                           eventHash);
@@ -729,7 +729,7 @@ void checkResultsAndDump(const DecodeCxt& ctx,
         case SearchResult::NOT_FOUND:
             /* Empty DB */
             doPushDumpRequest = true;
-            LOG_DEBUG("Engine SCA decoder builder: Check results DB empty for policy '%s'. Requesting DB dump.",
+            LOG_DEBUG("Engine SCA decoder builder: Check results DB empty for policy '{}'. Requesting DB dump.",
                       policyId);
             break;
         default:

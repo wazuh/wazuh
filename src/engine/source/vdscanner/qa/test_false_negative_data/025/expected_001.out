@@ -1,6 +1,0 @@
-[
-    "Translation for package 'mRemoteNG' on platform 'windows' found in Level 2 cache.",
-    "Initiating a vulnerability scan for package 'mremoteng' (win) (mremoteng) with CVE Numbering Authorities (CNA) 'nvd' on Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'mremoteng', is vulnerable to 'CVE-2020-24307'. Current version: '1.76.20' is equal to '1.76.20'. - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'mremoteng', is vulnerable to 'CVE-2023-30367'. Current version: '1.76.20' (less than '' or equal to '1.76.20'). - Agent '' (ID: '001', Version: '')."
-]

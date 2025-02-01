@@ -23,6 +23,7 @@ enum class Type
     DOUBLE,
     KEYWORD,
     TEXT,
+    WILDCARD,
     DATE,
     DATE_NANOS,
     IP,
@@ -57,6 +58,7 @@ inline constexpr auto typeToStr(Type type)
         case Type::DOUBLE: return "double";
         case Type::KEYWORD: return "keyword";
         case Type::TEXT: return "text";
+        case Type::WILDCARD: return "wildcard";
         case Type::DATE: return "date";
         case Type::DATE_NANOS: return "date_nanos";
         case Type::IP: return "ip";
@@ -92,6 +94,8 @@ inline constexpr auto strToType(std::string_view strType)
         return Type::KEYWORD;
     if (typeToStr(Type::TEXT) == strType)
         return Type::TEXT;
+    if (typeToStr(Type::WILDCARD) == strType)
+        return Type::WILDCARD;
     if (typeToStr(Type::DATE) == strType)
         return Type::DATE;
     if (typeToStr(Type::DATE_NANOS) == strType)
@@ -124,6 +128,7 @@ inline constexpr auto typeToJType(Type type)
         case Type::DOUBLE: return json::Json::Type::Number;
         case Type::KEYWORD: return json::Json::Type::String;
         case Type::TEXT: return json::Json::Type::String;
+        case Type::WILDCARD: return json::Json::Type::String;
         case Type::DATE: return json::Json::Type::String;
         case Type::DATE_NANOS: return json::Json::Type::String;
         case Type::IP: return json::Json::Type::String;

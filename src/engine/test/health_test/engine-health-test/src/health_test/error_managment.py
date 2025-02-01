@@ -1,9 +1,11 @@
 import sys
 from pathlib import Path
 
+
 class ErrorReporter:
-    def __init__(self):
+    def __init__(self, target):
         self.errors = {}
+        self.target = target
 
     def add_error(self, integration, asset, field):
         """
@@ -37,7 +39,7 @@ class ErrorReporter:
         base_path = Path(base_path).resolve()
 
         for integration, assets in self.errors.items():
-            report += f"\nIntegration: {integration}\n"
+            report += f"\n{self.target}: {integration}\n"
             for asset, missing_fields in assets.items():
                 relative_path = Path(asset).relative_to(base_path)
                 report += f"  File: {relative_path}\n"

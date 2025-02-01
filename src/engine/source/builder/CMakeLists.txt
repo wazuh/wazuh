@@ -117,6 +117,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opfilter/filter_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/exists_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/startsWith_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/endsWith_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/intCmp_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/strCmp_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/regex_test.cpp
@@ -128,7 +129,9 @@ add_executable(builder_utest
     # Map Builders
     ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/strTransform_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/floatCalc_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/intCalc_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/toInt_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/regex_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/ip_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/time_test.cpp

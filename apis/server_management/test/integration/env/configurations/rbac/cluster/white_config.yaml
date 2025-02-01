@@ -1,0 +1,26 @@
+---
+- actions:
+  - cluster:read
+  resources:
+  - node:id:master-node
+  - node:id:worker2
+  effect: allow
+
+- actions:
+  - cluster:restart
+  resources:
+  - node:id:worker2
+  effect: allow
+
+- actions:
+  - cluster:status
+  resources:
+  - "*:*:*"
+  effect: allow
+
+- actions:
+  - cluster:update_config
+  resources:
+  - node:id:master-node
+  - node:id:worker2
+  effect: allow

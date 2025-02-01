@@ -4,17 +4,21 @@ from typing import Any, Dict, List, Tuple
 
 from opensearchpy import AsyncOpenSearch
 
+POST_METHOD = 'POST'
+
 
 class IndexerKey(str, Enum):
     """Opensearch API request fields keys."""
     _INDEX = '_index'
     _ID = '_id'
     _SOURCE = '_source'
+    _DOCUMENTS = '_documents'
     ID = 'id'
     DOC = 'doc'
     MATCH = 'match'
     MATCH_ALL = 'match_all'
     QUERY = 'query'
+    QUERY_STRING = 'query_string'
     CREATE = 'create'
     DELETE = 'delete'
     INDEX = 'index'
@@ -37,6 +41,10 @@ class IndexerKey(str, Enum):
     LTE = 'lte'
     NOW = 'now'
     FILTER = 'filter'
+    RESULT = 'result'
+    STATUS = 'status'
+    ERROR = 'error'
+    REASON = 'reason'
 
 
 class BaseIndex:

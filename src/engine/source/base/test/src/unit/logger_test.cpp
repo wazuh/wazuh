@@ -119,7 +119,7 @@ public:
     }
 };
 
-TEST_P(LoggerTestLevels, LogChangeLevelInRuntime)
+TEST_P(LoggerTestLevels, LogChangeLevel)
 {
     auto level = GetParam();
 
@@ -165,6 +165,73 @@ INSTANTIATE_TEST_CASE_P(Levels,
                                           logging::Level::Warn,
                                           logging::Level::Err,
                                           logging::Level::Critical));
+
+TEST(LoggerTestLevels, ChengeInRuntime)
+{
+    // Generate temporary log file name
+    char tempFileName[] = "/tmp/temp_log_XXXXXX";
+    auto tempFileDescriptor = mkstemp(tempFileName);
+    ASSERT_NE(tempFileDescriptor, -1);
+    std::string tmpPath = tempFileName;
+
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = tmpPath, .level = logging::Level::Off}));
+
+    auto l = [functionName = logging::getLambdaName(__FUNCTION__, "lambdaName")]()
+    {
+        return functionName;
+    };
+
+    LOG_TRACE("TRACE message");
+    LOG_TRACE_L(l().c_str(), "L_TRACE message");
+    LOG_DEBUG("DEBUG message");
+    LOG_DEBUG_L(l().c_str(), "L_DEBUG message");
+    LOG_INFO("INFO message");
+    LOG_INFO_L(l().c_str(), "L_INFO message");
+    LOG_WARNING("WARNING message");
+    LOG_WARNING_L(l().c_str(), "L_WARNING message");
+    LOG_ERROR("ERROR message");
+    LOG_ERROR_L(l().c_str(), "L_ERROR message");
+    LOG_CRITICAL("CRITICAL message");
+    LOG_CRITICAL_L(l().c_str(), "L_CRITICAL message");
+
+    std::string fileContent = readFileContents(tmpPath);
+    EXPECT_EQ(fileContent.size(), 0);
+
+    ASSERT_NO_THROW(logging::setLevel(logging::Level::Info));
+    ASSERT_EQ(logging::getLevel(), logging::Level::Info);
+
+    LOG_TRACE("TRACE message");
+    LOG_TRACE_L(l().c_str(), "L_TRACE message");
+    LOG_DEBUG("DEBUG message");
+    LOG_DEBUG_L(l().c_str(), "L_DEBUG message");
+    LOG_INFO("INFO message");
+    LOG_INFO_L(l().c_str(), "L_INFO message");
+    LOG_WARNING("WARNING message");
+    LOG_WARNING_L(l().c_str(), "L_WARNING message");
+    LOG_ERROR("ERROR message");
+    LOG_ERROR_L(l().c_str(), "L_ERROR message");
+    LOG_CRITICAL("CRITICAL message");
+    LOG_CRITICAL_L(l().c_str(), "L_CRITICAL message");
+
+    fileContent = readFileContents(tmpPath);
+    EXPECT_NE(fileContent.find("INFO message"), std::string::npos);
+    EXPECT_NE(fileContent.find("L_INFO message"), std::string::npos);
+    EXPECT_NE(fileContent.find("WARNING message"), std::string::npos);
+    EXPECT_NE(fileContent.find("L_WARNING message"), std::string::npos);
+    EXPECT_NE(fileContent.find("ERROR message"), std::string::npos);
+    EXPECT_NE(fileContent.find("L_ERROR message"), std::string::npos);
+    EXPECT_NE(fileContent.find("CRITICAL message"), std::string::npos);
+    EXPECT_NE(fileContent.find("L_CRITICAL message"), std::string::npos);
+
+    EXPECT_EQ(fileContent.find("TRACE message"), std::string::npos);
+    EXPECT_EQ(fileContent.find("L_TRACE message"), std::string::npos);
+    EXPECT_EQ(fileContent.find("DEBUG message"), std::string::npos);
+    EXPECT_EQ(fileContent.find("L_DEBUG message"), std::string::npos);
+
+    ASSERT_NO_THROW(logging::stop());
+
+    std::filesystem::remove(tmpPath); // Remove temporary log file
+}
 
 class LoggerTestExtraInfo : public ::testing::TestWithParam<std::tuple<logging::Level, std::regex>>
 {

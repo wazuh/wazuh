@@ -1,211 +1,131 @@
-from dataclasses import dataclass
-from datetime import datetime
-from typing import List, Union
+from enum import Enum
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-FIM_INDEX = 'stateful-fim'
-INVENTORY_INDEX = 'stateful-inventory'
-SCA_INDEX = 'stateful-sca'
-VULNERABILITY_INDEX = 'stateful-vulnerability'
+from wazuh.core.exception import WazuhError
+from wazuh.core.indexer.bulk import Operation
+from wazuh.core.indexer.commands import CommandsManager
+from wazuh.core.indexer.models.agent import Host as AgentHost
+
+FIM_INDEX = 'wazuh-states-fim'
+INVENTORY_HARDWARE_INDEX = 'wazuh-states-inventory-hardware'
+INVENTORY_HOTFIXES_INDEX = 'wazuh-states-inventory-hotfixes'
+INVENTORY_NETWORKS_INDEX = 'wazuh-states-inventory-networks'
+INVENTORY_PACKAGES_INDEX = 'wazuh-states-inventory-packages'
+INVENTORY_PORTS_INDEX = 'wazuh-states-inventory-ports'
+INVENTORY_PROCESSES_INDEX = 'wazuh-states-inventory-processes'
+INVENTORY_SYSTEM_INDEX = 'wazuh-states-inventory-system'
+SCA_INDEX = 'wazuh-states-sca'
+VULNERABILITY_INDEX = 'wazuh-states-vulnerabilities'
 
 
-@dataclass
-class Hash:
-    """Hash data model."""
-    md5: str
-    sha1: str
-    sha256: str
-
-
-@dataclass
-class File:
-    """File data model."""
-    attributes: List[str]
-    name: str
-    path: str
-    gid: int
-    group: str
-    inode: str
-    mtime: datetime
-    mode: str
-    size: float
-    target_path: str
-    type: str
-    uid: int
-    owner: str
-    hash: Hash
-
-
-@dataclass
-class Registry:
-    """Registry data model."""
-    key: str
-    value: str
-
-
-@dataclass
-class FIMEvent(BaseModel):
-    """FIM events data model."""
-    file: File
-    registry: Registry
-
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return FIM_INDEX
-
-
-@dataclass
-class OS:
-    """OS data model."""
-    kernel: str
-    full: str
-    name: str
-    platform: str
-    version: str
-    type: str
-    family: str
-
-
-@dataclass
-class Host:
-    """Host data model."""
-    architecture: str
-    hostname: str
-    os: OS
-
-
-@dataclass
-class ProcessHash:
-    md5: str
-
-
-@dataclass
-class Process:
-    """Process data model."""
-    hash: ProcessHash
-
-
-@dataclass
-class InventoryEvent(BaseModel):
-    """Inventory events data model."""
-    host: Host
-    process: Process
-
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return INVENTORY_INDEX
-
-
-@dataclass
-class SCAEvent(BaseModel):
-    """SCA events data model."""
-    # TODO(25121): Update SCA event fields
-
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
-        
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return SCA_INDEX
-
-
-@dataclass
-class BuildInfo:
-    """Agent build information data model."""
-    original: str
-
-
-@dataclass
-class EventAgent:
-    """Agent data model in relation to events."""
-    build: BuildInfo
-    ephemeral_id: str
+class Agent(BaseModel):
+    """Agent model in the context of events."""
     id: str
     name: str
+    groups: List[str]
     type: str
     version: str
+    host: AgentHost
 
 
-@dataclass
-class Package:
-    """Package data model."""
-    architecture: str
-    build_version: str
-    checksum: str
-    description: str
-    install_scope: str
-    installed: datetime
-    license: str
-    name: str
-    path: str
-    reference: str
-    size: float
-    type: str
-    version: str
+class AgentMetadata(BaseModel):
+    """Agent metadata."""
+    agent: Agent
 
 
-@dataclass
-class Cluster:
-    """Wazuh cluster data model."""
-    name: str
-    node: str
+class TaskResult(BaseModel):
+    """Stateful event bulk task result data model."""
+    index: str
+    id: str
+    result: str
+    status: int
 
 
-@dataclass
-class Manager:
-    """Wazuh manager data model."""
-    name: str
+class Module(str, Enum):
+    """Stateful event module name."""
+    FIM = 'fim'
+    INVENTORY = 'inventory'
+    SCA = 'sca'
+    VULNERABILITY = 'vulnerability'
+    COMMAND = 'command'
 
 
-@dataclass
-class Schema:
-    """Wazuh schema data model."""
-    version: str
+class Header(BaseModel):
+    """Stateful event header."""
+    id: Optional[str] = None
+    module: Module
+    collector: Optional[str] = None
+    operation: Operation = None
 
 
-@dataclass
-class Wazuh:
-    """Wazuh instance information data model."""
-    cluster: Cluster
-    manager: Manager
-    schema: Schema
+class Collector(str, Enum):
+    """Stateful events inventory collector."""
+    HARDWARE = 'hardware'
+    HOTFIXES = 'hotfixes'
+    PACKAGES = 'packages'
+    NETWORKS = 'networks'
+    SYSTEM = 'system'
+    PORTS = 'ports'
+    PROCESSES = 'processes'
 
 
-@dataclass
-class VulnerabilityEvent(BaseModel):
-    """Vulnerability events data model."""
-    agent: EventAgent
-    host: Host
-    message: str
-    package: Package
-    tags: List[str]
+STATEFUL_EVENTS_INDICES: Dict[Module, str] = {
+    Module.FIM: FIM_INDEX,
+    Module.SCA: SCA_INDEX,
+    Module.VULNERABILITY: VULNERABILITY_INDEX,
+    Module.COMMAND: CommandsManager.INDEX
+}
 
-    def get_index_name(self) -> str:
-        """Get the index name for the event type.
+INVENTORY_EVENTS: Dict[Collector, str] = {
+    Collector.HARDWARE: INVENTORY_HARDWARE_INDEX,
+    Collector.HOTFIXES: INVENTORY_HOTFIXES_INDEX,
+    Collector.PACKAGES: INVENTORY_PACKAGES_INDEX,
+    Collector.NETWORKS: INVENTORY_NETWORKS_INDEX,
+    Collector.SYSTEM: INVENTORY_SYSTEM_INDEX,
+    Collector.PORTS: INVENTORY_PORTS_INDEX,
+    Collector.PROCESSES: INVENTORY_PROCESSES_INDEX
+}
+
+
+def get_module_index_name(module: Module, collector: Optional[str] = None) -> str:
+    """Get the index name corresponding to the specified module and type.
+
+    Parameters
+    ----------
+    module : Module
+        Event module.
+    collector : Optional[str]
+        Event module collector.
+    
+    Raises
+    ------
+    WazuhError(1763)
+        Invalid inventory module type error.
+    WazuhError(1765)
+        Invalid module name.
+    
+    Returns
+    -------
+    str
+        Index name.
+    """
+    if module == Module.INVENTORY:
+        collectors = list(INVENTORY_EVENTS.keys())
+        if collector not in collectors:
+            extra_info = {
+                'collectors': ', '.join(collectors[:-1]) + ' or ' + collectors[-1]
+            }
+            raise WazuhError(1763, extra_message=extra_info)
         
-        Returns
-        -------
-        str
-            Index name.
-        """
-        return VULNERABILITY_INDEX
+        return INVENTORY_EVENTS[collector]
 
-
-# Stateful event type
-StatefulEvent = Union[FIMEvent, InventoryEvent, SCAEvent, VulnerabilityEvent]
+    try:
+        return STATEFUL_EVENTS_INDICES[module]
+    except KeyError:
+        modules = list(STATEFUL_EVENTS_INDICES.keys())
+        extra_info = {
+            'modules': ', '.join(modules[:-1]) + ' or ' + modules[-1]
+        }
+        raise WazuhError(1765, extra_message=extra_info)

@@ -137,6 +137,119 @@ const auto OS_001_MSG =
             "kernel_release":"osdata_kernelRelease"
     })"_json;
 
+const auto FEED_GLOBAL_MOCK =
+    R"(
+  {
+    "prefix": [
+      {"Canonical": {"cna":"canonical", "platforms":["ubuntu","linuxmint","pop"]}},
+      {"Ubuntu":  {"cna":"canonical", "platforms":["ubuntu","linuxmint","pop"]}},
+      {"Debian": {"cna":"debian", "platforms":["debian","linuxmint","pop"]}},
+      {"Red Hat, Inc.": {"cna":"redhat", "platforms":["rhel","centos"]}},
+      {"CentOS": {"cna":"redhat", "platforms":["centos","rhel"]}},
+      {"Amazon Linux": {"cna":"alas", "platforms":["amzn"]}},
+      {"Amazon.com": {"cna":"alas", "platforms":["amzn"]}},
+      {"Amazon AWS": {"cna":"alas", "platforms":["amzn"]}},
+      {"Arch Linux": {"cna":"arch", "platforms":["arch"]}},
+      {"suse": {"cna":"suse", "platforms":["sles","sled"]}},
+      {"SUSE": {"cna":"suse", "platforms":["sles","sled"]}},
+      {"openSUSE": {"cna":"opensuse", "platforms":["opensuse-leap","opensuse-tumbleweed"]}},
+      {"AlmaLinux": {"cna":"alma", "platforms":["almalinux"]}},
+      {"CloudLinux": {"cna":"alma", "platforms":["almalinux"]}},
+      {"Rocky": {"cna": "rocky","platforms": ["rocky"]}}
+    ],
+    "contains": [
+      {"@ubuntu.com":  {"cna":"canonical", "platforms":["ubuntu","linuxmint","pop"]}},
+      {"@canonical.com":  {"cna":"canonical", "platforms":["ubuntu","linuxmint","pop"]}},
+      {"debian.org": {"cna":"debian", "platforms":["debian","linuxmint","pop"]}},
+      {"debian.net": {"cna":"debian", "platforms":["debian","linuxmint","pop"]}}
+    ],
+    "format": [
+      {"pypi": "pypi"},
+      {"npm": "npm"},
+      {"snap": "nvd"}
+    ],
+    "source": [
+      {"homebrew": "homebrew"}
+    ],
+    "adp_descriptions": {
+      "alas": {
+        "adp": "Amazon Linux Security Center",
+        "description": "cisa",
+        "cvss": "alas"
+      },
+      "alma": {
+        "adp": "Alma Linux Security Oval",
+        "description": "alma",
+        "cvss": "alma"
+      },
+      "arch": {
+        "adp": "Arch Linux Security Tracker",
+        "description": "cisa",
+        "cvss": "cisa"
+      },
+      "debian": {
+        "adp": "Debian Security Tracker",
+        "description": "debian",
+        "cvss": "cisa"
+      },
+      "oracle": {
+        "adp": "Oracle Linux Security",
+        "description": "cisa",
+        "cvss": "oracle"
+      },
+      "npm": {
+        "adp": "Open Source Vulnerabilities",
+        "description": "npm",
+        "cvss": "npm"
+      },
+      "nvd": {
+        "adp": "National Vulnerability Database",
+        "description": "nvd",
+        "cvss": "nvd"
+      },
+      "pypi": {
+        "adp": "Open Source Vulnerabilities",
+        "description": "pypi",
+        "cvss": "pypi"
+      },
+      "redhat": {
+        "adp": "Red Hat CVE Database",
+        "description": "redhat",
+        "cvss": "redhat"
+      },
+      "rocky": {
+        "adp": "Rocky Enterprise Product Errata",
+        "description": "rocky",
+        "cvss": "rocky"
+      },
+      "suse": {
+        "adp": "SUSE CVE Database",
+        "description": "suse",
+        "cvss": "suse"
+      },
+      "opensuse": {
+        "adp": "SUSE CVE Database",
+        "description": "suse",
+        "cvss": "suse"
+      },
+      "canonical": {
+        "adp": "Canonical Security Tracker",
+        "description": "canonical",
+        "cvss": "canonical"
+      },
+      "homebrew": {
+        "adp": "Homebrew Security Audit",
+        "description": "homebrew",
+        "cvss": "nvd"
+      },
+      "cisa": {
+          "adp": "Cybersecurity and Infrastructure Security Agency",
+          "description": "cisa",
+          "cvss": "cisa"
+      }
+    }
+  })"_json;
+
 const std::string CVEID {"CVE-2024-1234"};
 } // namespace NSresponseBuilderTest
 
@@ -178,18 +291,22 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS2)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+    auto mockgetVulnerabilityDescriptiveInformation =
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
     auto scanContext = std::make_shared<ScanContext>(
@@ -234,6 +351,14 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS2)
         elementData.at("published_at").get_ref<const std::string&>().c_str(),
         NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->datePublished()->c_str());
     EXPECT_TRUE(elementData.at("detected_at").get_ref<const std::string&>() <= base::utils::time::getCurrentISO8601());
+    EXPECT_STREQ(elementData.at("source").get_ref<const std::string&>().c_str(),
+                 spDatabaseFeedManagerMock->vendorsMap()
+                     .at("adp_descriptions")
+                     .at(scanContext->m_vulnerabilitySource.first)
+                     .at("adp")
+                     .get_ref<const std::string&>()
+                     .c_str());
+    EXPECT_FALSE(elementData.at("under_evaluation").get_ref<const bool&>());
 }
 
 TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS3)
@@ -262,18 +387,22 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS3)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+    auto mockgetVulnerabilityDescriptiveInformation =
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
     auto scanContext = std::make_shared<ScanContext>(
@@ -281,6 +410,7 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS3)
     // Mock one vulnerability
     scanContext->m_elements[CVEID] = R"({})"_json;
     scanContext->m_matchConditions[CVEID] = {"1.0.0", MatchRuleCondition::Equal};
+    scanContext->m_vulnerabilitySource = {"nvd", "nvd"};
 
     TResponseBuilder<MockDatabaseFeedManager, ScanContext> responseBuilder(spDatabaseFeedManagerMock);
 
@@ -318,6 +448,14 @@ TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseCVSS3)
         elementData.at("published_at").get_ref<const std::string&>().c_str(),
         NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->datePublished()->c_str());
     EXPECT_TRUE(elementData.at("detected_at").get_ref<const std::string&>() <= base::utils::time::getCurrentISO8601());
+    EXPECT_STREQ(elementData.at("source").get_ref<const std::string&>().c_str(),
+                 spDatabaseFeedManagerMock->vendorsMap()
+                     .at("adp_descriptions")
+                     .at(scanContext->m_vulnerabilitySource.first)
+                     .at("adp")
+                     .get_ref<const std::string&>()
+                     .c_str());
+    EXPECT_FALSE(elementData.at("under_evaluation").get_ref<const bool&>());
 }
 
 TEST_F(ResponseBuilderTest, TestEmptyResponse)
@@ -384,18 +522,22 @@ TEST_F(ResponseBuilderTest, TestSuccessfulOSResponseCVSS3)
                                                                      "userInteraction_test_string");
     fbBuilder.Finish(vulnerabilityDescriptionData);
 
-    auto mockGetVulnerabiltyDescriptiveInformation =
-        [&](const std::string_view /*cveId*/,
-            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+    auto mockgetVulnerabilityDescriptiveInformation =
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
     {
         rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
         resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
             NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
     };
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabiltyDescriptiveInformation(_, _))
-        .WillRepeatedly(testing::Invoke(mockGetVulnerabiltyDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
 
     nlohmann::json response;
     auto scanContext =
@@ -440,4 +582,289 @@ TEST_F(ResponseBuilderTest, TestSuccessfulOSResponseCVSS3)
         elementData.at("published_at").get_ref<const std::string&>().c_str(),
         NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->datePublished()->c_str());
     EXPECT_TRUE(elementData.at("detected_at").get_ref<const std::string&>() <= base::utils::time::getCurrentISO8601());
+    EXPECT_STREQ(elementData.at("source").get_ref<const std::string&>().c_str(),
+                 spDatabaseFeedManagerMock->vendorsMap()
+                     .at("adp_descriptions")
+                     .at(scanContext->m_vulnerabilitySource.first)
+                     .at("adp")
+                     .get_ref<const std::string&>()
+                     .c_str());
+    EXPECT_FALSE(elementData.at("under_evaluation").get_ref<const bool&>());
+}
+
+TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseNonDefaultCna)
+{
+    flatbuffers::FlatBufferBuilder fbBuilder;
+    auto vulnerabilityDescriptionData =
+        NSVulnerabilityScanner::CreateVulnerabilityDescriptionDirect(fbBuilder,
+                                                                     "accessComplexity_test_string",
+                                                                     "assignerShortName_test_string",
+                                                                     "attackVector_test_string",
+                                                                     "authentication_test_string",
+                                                                     "availabilityImpact_test_string",
+                                                                     "classification_test_string",
+                                                                     "confidentialityImpact_test_string",
+                                                                     "cweId_test_string",
+                                                                     "datePublished_test_string",
+                                                                     "dateUpdated_test_string",
+                                                                     "description_test_string",
+                                                                     "integrityImpact_test_string",
+                                                                     "privilegesRequired_test_string",
+                                                                     "reference_test_string",
+                                                                     "scope_test_string",
+                                                                     8.3,
+                                                                     "3",
+                                                                     "severity_test_string",
+                                                                     "userInteraction_test_string");
+    fbBuilder.Finish(vulnerabilityDescriptionData);
+
+    auto mockgetVulnerabilityDescriptiveInformation =
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
+    {
+        rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
+        resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
+            NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
+    };
+
+    auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
+
+    nlohmann::json response;
+    auto scanContext = std::make_shared<ScanContext>(
+        ScannerType::Package, AGENT_001_MSG, OS_001_MSG, PACKAGES_001_MSG, "{}"_json, response);
+    // Mock one vulnerability
+    scanContext->m_elements[CVEID] = R"({})"_json;
+    scanContext->m_matchConditions[CVEID] = {"1.0.0", MatchRuleCondition::Equal};
+    scanContext->m_vulnerabilitySource = {"redhat", "redhat"};
+
+    TResponseBuilder<MockDatabaseFeedManager, ScanContext> responseBuilder(spDatabaseFeedManagerMock);
+
+    EXPECT_NO_THROW(responseBuilder.handleRequest(scanContext));
+
+    EXPECT_EQ(response.size(), 1);
+
+    auto& elementData = *response.begin();
+
+    EXPECT_STREQ(elementData.at("category").get_ref<const std::string&>().c_str(), "Packages");
+    EXPECT_STREQ(
+        elementData.at("classification").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->classification()->c_str());
+    EXPECT_STREQ(
+        elementData.at("description").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->description()->c_str());
+    EXPECT_STREQ(elementData.at("enumeration").get_ref<const std::string&>().c_str(), "CVE");
+    EXPECT_STREQ(elementData.at("id").get_ref<const std::string&>().c_str(), CVEID.c_str());
+    EXPECT_STREQ(
+        elementData.at("reference").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->reference()->c_str());
+    EXPECT_DOUBLE_EQ(
+        elementData.at("score").at("base").get_ref<const double&>(),
+        base::utils::numeric::floatToDoubleRound(
+            NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->scoreBase(), 2));
+    EXPECT_STREQ(
+        elementData.at("score").at("version").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->scoreVersion()->c_str());
+    EXPECT_STREQ(
+        elementData.at("severity").get_ref<const std::string&>().c_str(),
+        base::utils::string::toSentenceCase(
+            NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->severity()->str())
+            .c_str());
+    EXPECT_STREQ(
+        elementData.at("published_at").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->datePublished()->c_str());
+    EXPECT_TRUE(elementData.at("detected_at").get_ref<const std::string&>() <= base::utils::time::getCurrentISO8601());
+    EXPECT_STREQ(elementData.at("source").get_ref<const std::string&>().c_str(),
+                 spDatabaseFeedManagerMock->vendorsMap()
+                     .at("adp_descriptions")
+                     .at(scanContext->m_vulnerabilitySource.first)
+                     .at("adp")
+                     .get_ref<const std::string&>()
+                     .c_str());
+    EXPECT_FALSE(elementData.at("under_evaluation").get_ref<const bool&>());
+}
+
+TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseUnderEvaluation)
+{
+    flatbuffers::FlatBufferBuilder fbBuilder;
+    auto vulnerabilityDescriptionData =
+        NSVulnerabilityScanner::CreateVulnerabilityDescriptionDirect(fbBuilder,
+                                                                     "accessComplexity_test_string",
+                                                                     "assignerShortName_test_string",
+                                                                     "attackVector_test_string",
+                                                                     "authentication_test_string",
+                                                                     "availabilityImpact_test_string",
+                                                                     "classification_test_string",
+                                                                     "confidentialityImpact_test_string",
+                                                                     "cweId_test_string",
+                                                                     "datePublished_test_string",
+                                                                     "dateUpdated_test_string",
+                                                                     "description_test_string",
+                                                                     "integrityImpact_test_string",
+                                                                     "privilegesRequired_test_string",
+                                                                     "reference_test_string",
+                                                                     "scope_test_string",
+                                                                     0,
+                                                                     "3",
+                                                                     "severity_test_string",
+                                                                     "userInteraction_test_string");
+    fbBuilder.Finish(vulnerabilityDescriptionData);
+
+    auto mockgetVulnerabilityDescriptiveInformation =
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
+    {
+        rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
+        resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
+            NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
+    };
+
+    auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
+
+    nlohmann::json response;
+    auto scanContext = std::make_shared<ScanContext>(
+        ScannerType::Package, AGENT_001_MSG, OS_001_MSG, PACKAGES_001_MSG, "{}"_json, response);
+    // Mock one vulnerability
+    scanContext->m_elements[CVEID] = R"({})"_json;
+    scanContext->m_matchConditions[CVEID] = {"1.0.0", MatchRuleCondition::Equal};
+    scanContext->m_vulnerabilitySource = {"redhat", "redhat"};
+
+    TResponseBuilder<MockDatabaseFeedManager, ScanContext> responseBuilder(spDatabaseFeedManagerMock);
+
+    EXPECT_NO_THROW(responseBuilder.handleRequest(scanContext));
+
+    EXPECT_EQ(response.size(), 1);
+
+    auto& elementData = *response.begin();
+
+    EXPECT_STREQ(elementData.at("category").get_ref<const std::string&>().c_str(), "Packages");
+    EXPECT_STREQ(
+        elementData.at("classification").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->classification()->c_str());
+    EXPECT_STREQ(
+        elementData.at("description").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->description()->c_str());
+    EXPECT_STREQ(elementData.at("enumeration").get_ref<const std::string&>().c_str(), "CVE");
+    EXPECT_STREQ(elementData.at("id").get_ref<const std::string&>().c_str(), CVEID.c_str());
+    EXPECT_STREQ(
+        elementData.at("reference").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->reference()->c_str());
+    EXPECT_DOUBLE_EQ(elementData.at("score").at("base").get_ref<const double&>(), -1);
+    EXPECT_STREQ(
+        elementData.at("score").at("version").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->scoreVersion()->c_str());
+    EXPECT_STREQ(
+        elementData.at("severity").get_ref<const std::string&>().c_str(),
+        base::utils::string::toSentenceCase(
+            NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->severity()->str())
+            .c_str());
+    EXPECT_STREQ(
+        elementData.at("published_at").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->datePublished()->c_str());
+    EXPECT_TRUE(elementData.at("detected_at").get_ref<const std::string&>() <= base::utils::time::getCurrentISO8601());
+    EXPECT_STREQ(elementData.at("source").get_ref<const std::string&>().c_str(),
+                 spDatabaseFeedManagerMock->vendorsMap()
+                     .at("adp_descriptions")
+                     .at(scanContext->m_vulnerabilitySource.first)
+                     .at("adp")
+                     .get_ref<const std::string&>()
+                     .c_str());
+    EXPECT_TRUE(elementData.at("under_evaluation").get_ref<const bool&>());
+}
+
+TEST_F(ResponseBuilderTest, TestSuccessfulPackageResponseDefaultValues)
+{
+    flatbuffers::FlatBufferBuilder fbBuilder;
+    auto vulnerabilityDescriptionData =
+        NSVulnerabilityScanner::CreateVulnerabilityDescriptionDirect(fbBuilder,
+                                                                     "accessComplexity_test_string",
+                                                                     "assignerShortName_test_string",
+                                                                     "attackVector_test_string",
+                                                                     "authentication_test_string",
+                                                                     "availabilityImpact_test_string",
+                                                                     "",
+                                                                     "confidentialityImpact_test_string",
+                                                                     "cweId_test_string",
+                                                                     "datePublished_test_string",
+                                                                     "dateUpdated_test_string",
+                                                                     "description_test_string",
+                                                                     "integrityImpact_test_string",
+                                                                     "privilegesRequired_test_string",
+                                                                     "reference_test_string",
+                                                                     "scope_test_string",
+                                                                     0,
+                                                                     "",
+                                                                     "",
+                                                                     "userInteraction_test_string");
+    fbBuilder.Finish(vulnerabilityDescriptionData);
+
+    auto mockgetVulnerabilityDescriptiveInformation =
+        [&](const std::string& cveId,
+            const std::string& subShortName,
+            FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer) -> bool
+    {
+        rocksdb::Slice value(reinterpret_cast<const char*>(fbBuilder.GetBufferPointer()), fbBuilder.GetSize());
+        resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
+            NSVulnerabilityScanner::GetVulnerabilityDescription(value.data()));
+
+        return true;
+    };
+
+    auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilityDescriptiveInformation(_, _, _))
+        .WillRepeatedly(testing::Invoke(mockgetVulnerabilityDescriptiveInformation));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, vendorsMap()).WillRepeatedly(testing::ReturnRef(FEED_GLOBAL_MOCK));
+
+    nlohmann::json response;
+    auto scanContext = std::make_shared<ScanContext>(
+        ScannerType::Package, AGENT_001_MSG, OS_001_MSG, PACKAGES_001_MSG, "{}"_json, response);
+    // Mock one vulnerability
+    scanContext->m_elements[CVEID] = R"({})"_json;
+    scanContext->m_matchConditions[CVEID] = {"1.0.0", MatchRuleCondition::Equal};
+    scanContext->m_vulnerabilitySource = {"redhat", "redhat"};
+
+    TResponseBuilder<MockDatabaseFeedManager, ScanContext> responseBuilder(spDatabaseFeedManagerMock);
+
+    EXPECT_NO_THROW(responseBuilder.handleRequest(scanContext));
+
+    EXPECT_EQ(response.size(), 1);
+
+    auto& elementData = *response.begin();
+
+    EXPECT_STREQ(elementData.at("category").get_ref<const std::string&>().c_str(), "Packages");
+    EXPECT_STREQ(elementData.at("classification").get_ref<const std::string&>().c_str(), "-");
+    EXPECT_STREQ(
+        elementData.at("description").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->description()->c_str());
+    EXPECT_STREQ(elementData.at("enumeration").get_ref<const std::string&>().c_str(), "CVE");
+    EXPECT_STREQ(elementData.at("id").get_ref<const std::string&>().c_str(), CVEID.c_str());
+    EXPECT_STREQ(
+        elementData.at("reference").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->reference()->c_str());
+    EXPECT_DOUBLE_EQ(elementData.at("score").at("base").get_ref<const double&>(), -1);
+    EXPECT_STREQ(elementData.at("score").at("version").get_ref<const std::string&>().c_str(), "-");
+    EXPECT_STREQ(elementData.at("severity").get_ref<const std::string&>().c_str(), "-");
+    EXPECT_STREQ(
+        elementData.at("published_at").get_ref<const std::string&>().c_str(),
+        NSVulnerabilityScanner::GetVulnerabilityDescription(fbBuilder.GetBufferPointer())->datePublished()->c_str());
+    EXPECT_TRUE(elementData.at("detected_at").get_ref<const std::string&>() <= base::utils::time::getCurrentISO8601());
+    EXPECT_STREQ(elementData.at("source").get_ref<const std::string&>().c_str(),
+                 spDatabaseFeedManagerMock->vendorsMap()
+                     .at("adp_descriptions")
+                     .at(scanContext->m_vulnerabilitySource.first)
+                     .at("adp")
+                     .get_ref<const std::string&>()
+                     .c_str());
+    EXPECT_TRUE(elementData.at("under_evaluation").get_ref<const bool&>());
 }

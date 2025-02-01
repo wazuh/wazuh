@@ -1,7 +1,6 @@
 {
   "dependencies": [
     "benchmark",
-    "cli11",
     "concurrentqueue",
     "curl",
     "date",
@@ -22,7 +21,10 @@
     "taskflow",
     "uvw",
     "yaml-cpp",
-    "cpp-httplib"
+    "cpp-httplib",
+    "liblzma",
+    "libarchive",
+    "openssl"
   ],
   "overrides": [
     {
@@ -30,16 +32,12 @@
       "version": "1.8.5#0"
     },
     {
-      "name": "cli11",
-      "version": "2.2.0#0"
-    },
-    {
       "name": "concurrentqueue",
       "version": "1.0.4#0"
     },
     {
       "name": "curl",
-      "version": "8.9.1#0"
+      "version": "8.11.1#0"
     },
     {
       "name": "date",
@@ -116,6 +114,18 @@
     {
       "name": "cpp-httplib",
       "version": "0.16.2#0"
+    },
+    {
+      "name": "liblzma",
+      "version": "5.6.3#0"
+    },
+    {
+      "name": "libarchive",
+      "version": "3.7.7#0"
+    },
+    {
+      "name": "openssl",
+      "version": "3.4.0#0"
     }
   ]
 }

@@ -1,0 +1,609 @@
+---
+test_name: DELETE /agents/group
+
+stages:
+
+    # DELETE /agents/group?group_id=wrong_group&agents_list=001,002
+  - name: Try to remove agents from non existing group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 001,002
+        group_id: wrong_group
+    response:
+      status_code: 404
+      json:
+        error: 1710
+
+    # DELETE /agents/group?group_id=group1&agents_list=002,003
+  - name: Try to remove agents 002 and 003 (not assigned to group1) from group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 002,003
+        group_id: group1
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1734
+              id:
+                - "002"
+                - "003"
+          total_affected_items: 0
+          total_failed_items: 2
+
+
+    # DELETE /agents/group?group1&agents_list=998,999
+  - name: Try to remove agents 998 and 999 from group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 998,999
+        group_id: group1
+    response:
+      strict: False
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "998"
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 2
+
+    # DELETE /agents/group?group2&agents_list=006,010
+  - name: Remove agents 006 and 010 from group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 006,010
+        group_id: group2
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '006'
+            - '010'
+          total_affected_items: 2
+    delay_after: !float "{global_db_delay}"
+
+    # DELETE /agents/group?group_id=group2
+  - name: Remove all agents from group2 (008)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+        agents_list: all
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '008'
+          total_affected_items: 1
+
+  # DELETE /agents/group?group_id=group2
+  - name: Remove all agents from group2 (invalid agents_list)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+        agents_list: none
+    response:
+      status_code: 400
+
+  # DELETE /agents/group?group_id=group2
+  - name: Remove all agents from group2 (invalid agents_list)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+    response:
+      status_code: 400
+
+---
+test_name: DELETE /groups (only one group)
+
+stages:
+
+    # DELETE /groups?groups_list=wrong_group
+  - name: Try to delete non existing group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: wrong_group
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1710
+              id:
+                - 'wrong_group'
+          total_affected_items: 0
+          total_failed_items: 1
+
+    # DELETE /groups?groups_list=default
+  - name: Try to delete default group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: default
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1712
+              id:
+                - 'default'
+          total_affected_items: 0
+          total_failed_items: 1
+
+    # DELETE /groups?groups_list=group3
+  - name: Delete group3
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: group3
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - group3
+          total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
+
+  # DELETE /groups?groups_list=group3 (already deleted group)
+  - name: Delete group3
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: group3
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1710
+              id:
+                - 'group3'
+          total_failed_items: 1
+
+  # DELETE /groups (invalid groups_list)
+  - name: Delete groups with no groups_list
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+---
+test_name: DELETE /groups (several groups)
+
+stages:
+
+    # DELETE /groups?groups_list=wrong1,wrong2
+  - name: Try to delete non existing groups
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: 'wrong1,wrong2'
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1710
+              id:
+                - 'wrong1'
+                - 'wrong2'
+          total_affected_items: 0
+          total_failed_items: 2
+
+    # DELETE /groups?groups_list=group1,default
+  - name: Delete groups group1 and default
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: 'group1,default'
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - group1
+          failed_items:
+            - error:
+                code: 1712
+              id:
+                - 'default'
+          total_affected_items: 1
+          total_failed_items: 1
+    delay_after: !float "{global_db_delay}"
+
+    # DELETE /groups
+  - name: Delete all groups (group2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: all
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - group2
+          total_affected_items: 1
+
+---
+test_name: DELETE /agents
+
+marks:
+  - xfail
+
+stages:
+
+    # DELETE /agents?agents_list=wrong
+  - name: Try to delete agent with a wrong agents_list
+    request: &delete_agents
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 'wrong'
+        status: 'all'
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # DELETE /agents?agents_list=998,999
+  - name: Try to delete non existing agents
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '998,999'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '998'
+                - '999'
+          total_affected_items: 0
+          total_failed_items: 2
+
+    # DELETE /agents?agents_list=004&status=wrong
+  - name: Try to delete agent with a wrong status
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '004'
+        status: 'wrong'
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # DELETE /agents?agents_list=004&status=disconnected
+  - name: Try to delete agent with a different status
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '004'
+        status: 'disconnected'
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1731
+              id:
+                - '004'
+          total_affected_items: 0
+          total_failed_items: 1
+
+    # DELETE /agents?agents_list=004&status=active&older_than=0s
+  - name: Delete agent with a proper status
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '004'
+        status: 'active'
+        older_than: '0s'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '004'
+          total_affected_items: 1
+
+    # DELETE /agents?agents_list=007&older_than=wrong
+  - name: Try to delete agent with a wrong older_than param
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '007'
+        older_than: 'wrong'
+        status: 'all'
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+    # DELETE /agents?agents_list=007&older_than=10d
+  - name: Try to delete agent with older_than param older than agent life
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '007'
+        older_than: '10d'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1731
+              id:
+                - '007'
+          total_affected_items: 0
+          total_failed_items: 1
+
+    # DELETE /agents?agents_list=009&older_than=0s
+  - name: Delete agent older_than 0s
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '009'
+        older_than: '0s'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '009'
+          total_affected_items: 1
+
+    # DELETE /agents?agents_list=001,011&older_than=0s
+  - name: Delete several agents
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '001,011'
+        older_than: '0s'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+            - "011"
+          total_affected_items: 2
+
+    # DELETE /agents?agents_list=005&older_than=0s&purge=True
+  - name: Delete agent older_than 0s with purge
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        agents_list: '005'
+        older_than: '0s'
+        purge: True
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '005'
+          total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
+
+  # DELETE /agents
+  - name: Delete agents ip=any and q=id<11
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        older_than: '0s'
+        agents_list: 'all'
+        status: 'all'
+        ip: 'any'
+        q: 'id<11'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "010"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # DELETE /agents
+  - name: Delete agents node_name=unknown
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        older_than: '0s'
+        agents_list: 'all'
+        status: 'all'
+        node_name: 'unknown'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "012"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # DELETE /agents
+  - name: Delete agents group=default and q=id<4
+    request:
+      verify: False
+      <<: *delete_agents
+      params:
+        older_than: '0s'
+        agents_list: 'all'
+        status: 'all'
+        group: 'default'
+        q: 'id<4'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "002"
+            - "003"
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
+
+    # DELETE /agents
+  - name: Delete all agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        older_than: '0s'
+        agents_list: 'all'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint

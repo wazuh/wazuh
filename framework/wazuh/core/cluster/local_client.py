@@ -10,9 +10,9 @@ from typing import Tuple
 
 import uvloop
 
-import wazuh.core.cluster.utils
 from wazuh.core import common, exception
 from wazuh.core.cluster import client
+from wazuh.core.config.client import CentralizedConfig
 
 
 class LocalClientHandler(client.AbstractClient):
@@ -76,12 +76,6 @@ class LocalClientHandler(client.AbstractClient):
             # Remove the string after using it
             self.in_str.pop(data, None)
             return b'ok', b'Distributed api response received'
-        elif command == b'ok':
-            if data.startswith(b'Error'):
-                return b'err', self.process_error_from_peer(data)
-            self.response = data
-            self.response_available.set()
-            return b'ok', b'Sendsync response received'
         elif command == b'control_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
@@ -127,13 +121,13 @@ class LocalClient(client.AbstractClientManager):
     """
     Initialize variables, connect to the server, send a request, wait for a response and disconnect.
     """
-    ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file', b'sendasync']
+    ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file']
 
     def __init__(self):
         """Class constructor"""
-        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), enable_ssl=False, performance_test=0,
-                         concurrency_test=0, file='', string=0, logger=logging.getLogger(), tag="Local Client",
-                         cluster_items=wazuh.core.cluster.utils.get_cluster_items())
+        super().__init__(performance_test=0, concurrency_test=0,
+                         file='', string=0, logger=logging.getLogger(), tag="Local Client",
+                         server_config=CentralizedConfig.get_server_config())
         self.request_result = None
         self.protocol = None
         self.transport = None
@@ -146,11 +140,12 @@ class LocalClient(client.AbstractClientManager):
         on_con_lost = loop.create_future()
         try:
             self.transport, self.protocol = await loop.create_unix_connection(
-                                             protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
-                                                                                         name=self.name, logger=self.logger,
-                                                                                         fernet_key='', manager=self,
-                                                                                         cluster_items=self.cluster_items),
-                                             path=os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
+                                                protocol_factory=lambda: LocalClientHandler(
+                                                    loop=loop, on_con_lost=on_con_lost, name=self.name, 
+                                                    logger=self.logger, manager=self, server_config=self.server_config
+                                                    ),
+                                                path=common.LOCAL_SERVER_SOCKET_PATH
+                                            )
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)
         except MemoryError:
@@ -178,12 +173,12 @@ class LocalClient(client.AbstractClientManager):
 
         while True:
             elapsed_time = time.perf_counter() - start_time
-            min_timeout = min(max(timeout - elapsed_time, 0), self.cluster_items['intervals']['worker']['keep_alive'])
+            min_timeout = min(max(timeout - elapsed_time, 0), self.server_config.worker.intervals.keep_alive)
             try:
                 await asyncio.wait_for(self.protocol.response_available.wait(), timeout=min_timeout)
                 return self.protocol.response.decode()
             except asyncio.TimeoutError:
-                if min_timeout < self.cluster_items['intervals']['worker']['keep_alive']:
+                if min_timeout < self.server_config.worker.intervals.keep_alive:
                     raise exception.WazuhInternalError(3020)
                 else:
                     try:
@@ -223,7 +218,7 @@ class LocalClient(client.AbstractClientManager):
             request_result = {}
         elif command in self.ASYNC_COMMANDS or result == 'Sent request to master node':
             request_result = await self.wait_for_response(
-                self.cluster_items['intervals']['communication']['timeout_dapi_request']
+                self.server_config.communications.timeouts.dapi_request
             )
         # If no more data is expected, immediately return send_request's output.
         else:

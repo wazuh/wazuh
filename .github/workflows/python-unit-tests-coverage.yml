@@ -16,7 +16,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-      PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
+      PYTHONPATH: /home/runner/work/wazuh/wazuh/apis/server_management:/home/runner/work/wazuh/wazuh/apis/communications:/home/runner/work/wazuh/wazuh/framework
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -43,78 +43,160 @@ This tool validates that the metadata field contains all the required informatio
 - Author: name and email address
 - References from a URL, a site, or any documentation where those logs are defined and established.
 ```bash
-usage: engine-health-test metadata_validate [-h] -r RULESET [--integration INTEGRATION] [--asset ASSET]
+usage: engine-health-test static metadata_validate [-h] [--integration INTEGRATION] [--decoder DECODER] [--rule_folder RULE_FOLDER]
 
 options:
   -h, --help            show this help message and exit
-  -r RULESET, --ruleset RULESET
-                        Specify the path to the ruleset directory
   --integration INTEGRATION
                         Specify integration name
-  --asset ASSET         Specify asset name
+  --decoder DECODER     Specify decoder name
+  --rule_folder RULE_FOLDER
+                        Specify rule folder name
 ```
 
 #### Use
 To evaluate the metadata in a particular integration
 ```bash
-engine-health-test metadata_validate -r ruleset_dir --integration windows
+engine-health-test static -r ruleset_dir metadata_validate --integration windows
 ```
-To evaluate the metadata in a particular asset
+To evaluate the metadata in a particular decoder
 ```bash
-engine-health-test metadata_validate -r ruleset_dir --integration windows --asset rule/execution-python-script-in-cmdline/0
+engine-health-test static -r ruleset_dir metadata_validate --decoder rule/execution-python-script-in-cmdline/0
 ```
-To evaluate the metadata in all integrations
+To evaluate the metadata in a particular rule folder
 ```bash
-engine-health-test metadata_validate -r ruleset_dir
+engine-health-test static -r ruleset_dir metadata_validate --rule_folder windows
+```
+To evaluate the metadata in all rules and decoders
+```bash
+engine-health-test static -r ruleset_dir metadata_validate
 ```
 
 ### Schema validate
 This tool validates that the fields present in the output event exist in the wazuh schema. If not, they should be defined in the custom_fields.yml file within the test folder of each integration. Otherwise the test will fail.
 
 ```bash
-usage: engine-health-test schema_validate [-h] -r RULESET [--integration INTEGRATION]
+usage: engine-health-test schema_validate [-h] -r RULESET [--integration INTEGRATION] [--rule_folder rule_folder]
 
 options:
   -h, --help            show this help message and exit
-  -r RULESET, --ruleset RULESET
-                        Specify the path to the ruleset directory
   --integration INTEGRATION
                         Specify integration name
+  --rule_folder rule_folder
+                        Specify rule folder name
 ```
 
 #### Use
 To evaluate the schema in a particular integration
 ```bash
-engine-health-test schema_validate -r ruleset_dir --integration windows
+engine-health-test static -r ruleset_dir schema_validate --integration windows
 ```
-To evaluate the schema in all integrations
+To evaluate the schema in a particular rule folder
 ```bash
-engine-health-test schema_validate -r ruleset_dir
+engine-health-test static -r ruleset_dir schema_validate --rule_folder windows
+```
+To evaluate the schema in all decoders and rules
+```bash
+engine-health-test static -r ruleset_dir schema_validate
 ```
 
-### Mapping validate
+### Mandatory mapping validate
 This tool validates that certain fields that are required are mapped in the output event.
 Such as 'wazuh.decoders'. This list can be expanded and is located within base-rules
 
 ```bash
-usage: engine-health-test mapping_validate [-h] -r RULESET [--integration INTEGRATION]
+usage: engine-health-test mandatory_mapping_validate [-h] -r RULESET [--integration INTEGRATION] [--rule_folder rule_folder]
 
 options:
   -h, --help            show this help message and exit
-  -r RULESET, --ruleset RULESET
-                        Specify the path to the ruleset directory
   --integration INTEGRATION
                         Specify integration name
+  --rule_folder rule_folder
+                        Specify rule folder name
 ```
 
 #### Use
 To evaluate the mapping in a particular integration
 ```bash
-engine-health-test mapping_validate -r ruleset_dir --integration windows
+engine-health-test static -r ruleset_dir mapping_validate --integration windows
 ```
-To evaluate the mapping in all integrations
+To evaluate the mapping in a particular rule folder
 ```bash
-engine-health-test mapping_validate -r ruleset_dir
+engine-health-test static -r ruleset_dir mapping_validate --rule_folder windows
+```
+To evaluate the mapping in all decoders and rules
+```bash
+engine-health-test static -r ruleset_dir mapping_validate
+```
+
+### Custom field documentation validate
+This tool validates that the fields defined in the custom_fields.yml file of each integration are correctly documented. It verifies that it is not empty, that it is not too short, that it does not have repeated words or letters and words usually used to fill fields.
+
+```bash
+usage: engine-health-test custom_field_documentation_validate [-h] -r RULESET [--integration INTEGRATION] [--rule_folder rule_folder]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify integration name
+  --rule_folder rule_folder
+                        Specify rule folder name
+```
+
+#### Use
+To evaluate a particular integration
+```bash
+engine-health-test static -r ruleset_dir custom_field_documentation_validate --integration windows
+```
+To evaluate  particular rule folder
+```bash
+engine-health-test static -r ruleset_dir custom_field_documentation_validate --rule_folder windows
+```
+To evaluate all decoders and rules
+```bash
+engine-health-test static -r ruleset_dir custom_field_documentation_validate
+```
+
+### Event processing
+This tool validates that each asset in the ruleset has processed at least one event
+
+```bash
+usage: engine-health-test event_processing_validate [-h] -r RULESET
+
+options:
+  -h, --help            show this help message and exit
+```
+
+#### Use
+```bash
+engine-health-test static -r ruleset_dir event_processing_validate
+```
+
+### Non modifiables fields validate
+Validates non modifiables fields in integrations, decoders or rules If you do not specify a specific target,
+all assets will be validated. However, if you specify the target, only one is accepted
+
+```bash
+usage: engine-health-test ststic non_modifiable_fields_validate [-h] [--integration INTEGRATION] [--rule_folder RULE_FOLDER]
+                                                                  [--target TARGET] [--skip SKIP]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify integration name
+  --rule_folder RULE_FOLDER
+                        Specify the name of the rule folder to test
+
+```
+
+#### Usage
+```bash
+# To run a specific integration
+engine-health-test static -r ruleset_dir non_modifiable_fields_validate --integration windows
+# To run a specific rule folder
+engine-health-test static -r ruleset_dir non_modifiable_fields_validate --rule_folder windows
+# To run all tests in assets
+engine-health-test static -r ruleset_dir non_modifiable_fields_validate
 ```
 
 ## Running Dynamic Tests
@@ -134,13 +216,12 @@ First, set up an isolated environment to run the tests using the `setupEnvironme
 Load all necessary configurations and geo-as databases.
 
 ```bash
-engine-health-test -e health_test/environment init -b build/main -r engine/ruleset -t test/health_test/
+engine-health-test dynamic -e health_test/environment init -b build/main -r engine/ruleset -t test/health_test/
 ```
 
 All parameters available:
 ```bash
-$ engine-health-test init -h
-usage: engine-health-test init [-h] -b BINARY -r RULESET -t TEST_DIR
+usage: engine-health-test dynamic -e health_test/environment init [-h] -b BINARY -r RULESET -t TEST_DIR
 
 options:
   -h, --help            show this help message and exit
@@ -152,70 +233,247 @@ options:
                         Specify the path to the test directory
 ```
 
-### Integration validate
-This tool validates an entire integration or a particular asset using the catalog API
+### Assets validate
+This tool validates an entire integration, particular asset or rule folder using the catalog API
 
 ```bash
-usage: engine-health-test integration_validate [-h] [--integration INTEGRATION] [--asset ASSET]
+usage: engine-health-test dynamic -e health_test/environment assets_validate [-h] [--integration INTEGRATION] [--decoder DECODER] [--rule_folder rule_folder]
 
 options:
   -h, --help            show this help message and exit
   --integration INTEGRATION
                         Specify integration name
-  --asset ASSET         Specify asset name
+  --decoder DECODER         Specify decoder name
+  --rule_folder rule_folder
+                        Specify the name of the rule folder to test
 ```
 
 #### Use
 To validate a particular integration
 ```bash
-engine-health-test -e health_test/environment integration_validate --integration windows
+engine-health-test dynamic -e health_test/environment assets_validate --integration windows
 ```
-To validate a particular asset
+To validate a particular decoder
 ```bash
-engine-health-test -e health_test/environment integration_validate --integration windows --asset rule/execution-python-script-in-cmdline/0
+engine-health-test dynamic -e health_test/environment assets_validate --decoder decoder/windows-security/0
 ```
-To validate all integrations
+To validate a particular rule folder
 ```bash
-engine-health-test -e health_test/environment integration_validate
+engine-health-test dynamic -e health_test/environment assets_validate --rule_folder windows
+```
+To validate all decoders and rules
+```bash
+engine-health-test dynamic -e health_test/environment assets_validate
 ```
 
-### Load ruleset
-This tool create the filters, load the integrations and add the assets to the policy
+### Load decoders
+This tool create the filters, load the integrations and add the decoders to the policy.
+It is necessary to run this tool to correctly perform the tests with decoders, otherwise they will fail.
 
 ```bash
-usage: engine-health-test load_ruleset [-h]
+usage: engine-health-test dynamic -e health_test/environment load_ruleset [-h]
 
 options:
   -h, --help  show this help message and exit
 ```
 
 #### Use
-To validate a particular integration
 ```bash
-engine-health-test -e health_test/environment load_ruleset
+engine-health-test dynamic -e health_test/environment load_decoders
+```
+
+### Validate decoder mapping
+Verifies that only certain fields are mapped in the decoders.
+```bash
+usage: engine-health-test dynamic validate_decoder_mapping [-h] [--integration INTEGRATION] [--skip SKIP]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify the name of the integration to test, if not specified all integration will be tested
+  --skip SKIP           Skip the tests with the specified name
+```
+
+#### Use
+```bash
+# Validate specific integration
+engine-health-test dynamic -e health_test/environment validate_decoder_mapping --integration suricata
+# Validate all decoders
+engine-health-test dynamic -e health_test/environment validate_decoder_mapping
+```
+
+### Load rules
+This tool load and add the rules to the policy.
+It is necessary to run this tool to correctly perform the tests with rules, otherwise they will fail.
+Never run this until you are done running tests with the decoders as it will affect the expected traces and mappings.
+
+```bash
+usage: engine-health-test dynamic -e health_test/environment load_rules [-h]
+
+options:
+  -h, --help  show this help message and exit
+```
+
+#### Use
+```bash
+engine-health-test dynamic -e health_test/environment load_rules
+```
+
+### Validate successful assets
+Verifies in the trace that the decoders that were successful are added to wazuh.decoders and that the successful rules are added to wazuh.rules.
+```bash
+usage: engine-health-test dynamic -e health_test/environment validate_successful_assets [-h] [-i INTEGRATION] [--rule_folder rule_folder] --target TARGET [--skip SKIP]
+
+options:
+  -h, --help            show this help message and exit
+  -i INTEGRATION, --integration INTEGRATION
+                        Specify the name of the integration to test
+  --rule_folder rule_folder
+                        Specify the name of the rule folder to test
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.
+  --skip SKIP           Skip the tests with the specified name
+```
+#### Usage
+```bash
+# Validate specific integration
+engine-health-test dynamic -e health_test/environment validate_successful_assets --integration windows
+# Validate specific rule folder
+engine-health-test dynamic -e health_test/environment validate_successful_assets --rule_folder windows
+# Validate all rules
+engine-health-test dynamic -e health_test/environment validate_successful_assets --target rule
+# Validate all decoders
+engine-health-test dynamic -e health_test/environment validate_successful_assets --target decoder
+```
+
+### Validate rule mapping
+Verifies that only certain fields are meped in the rules.
+```bash
+usage: engine-health-test dynamic -e health_test/environment validate_rule_mapping [-h] [--rule_folder rule_folder] [--skip SKIP]
+
+options:
+  -h, --help            show this help message and exit
+  --rule_folder rule_folder
+                        Specify the name of the rule folder to test, if not specified all rules folder will be tested
+  --skip SKIP           Skip the tests with the specified name
+```
+#### Usage
+```bash
+# Validate specific rule folder
+engine-health-test dynamic -e health_test/environment validate_rule_mapping --rule_folder windows
+# Validate all rules
+engine-health-test dynamic -e health_test/environment validate_rule_mapping
+```
+
+### Validate event indexing
+Creates an opensearch instance along with an index. Ingests different events to the engine and compares the output with the document searched by hash in the index an expected one.
+```bash
+usage: engine-health-test dynamic validate_event_indexing [-h] [--integration INTEGRATION] [--rule_folder RULE_FOLDER] [--skip SKIP]
+                                                          [--target TARGET]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify the name of the integration to test.
+  --rule_folder RULE_FOLDER
+                        Specify the name of the rule folder to test
+  --skip SKIP           Skip the tests with the specified name
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the
+                        rules.
+```
+
+#### Usage
+```bash
+# To run a specific integration
+engine-health-test dynamic -e health_test/environment validate_event_indexing --integration windows
+# To run a specific rule folder
+engine-health-test dynamic -e health_test/environment validate_event_indexing --rule_folder windows
+# To run all tests in decoders
+engine-health-test dynamic -e health_test/environment validate_event_indexing --target decoder
+# To run all tests in rules
+engine-health-test dynamic -e health_test/environment validate_event_indexing --target rules
+# To skip specific tests in decoders
+engine-health-test dynamic -e health_test/environment validate_event_indexing --target decoder --skip windows,wazuh-core
+```
+
+### Validate custom field indexing
+Creates an opensearch instance along with an index. It ingests different events to the engine and extracts all the custom fields.
+It then verifies that each of the custom fields are present in the opensearch index.
+If you do not specify a specific argument, an error will be raised.
+However, if you specify the argument, only one is accepted.
+
+```bash
+usage: engine-health-test dynamic validate_custom_field_indexing [-h] [--integration INTEGRATION] [--rule_folder RULE_FOLDER] [--skip SKIP]
+                                                          [--target TARGET]
+
+options:
+  -h, --help            show this help message and exit
+  --integration INTEGRATION
+                        Specify the name of the integration to test.
+  --rule_folder RULE_FOLDER
+                        Specify the name of the rule folder to test
+  --skip SKIP           Skip the tests with the specified name
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the
+                        rules.
+```
+
+#### Usage
+```bash
+# To run a specific integration
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --integration windows
+# To run a specific rule folder
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --rule_folder windows
+# To run all tests in decoders
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --target decoder
+# To run all tests in rules
+engine-health-test dynamic -e health_test/environment vvalidate_custom_field_indexing --target rules
+# To skip specific tests in decoders
+engine-health-test dynamic -e health_test/environment validate_custom_field_indexing --target decoder --skip windows,wazuh-core
 ```
 
 
 ### Run
 This tool injects events into the engine and evaluates the output events with an expected event
 ```bash
-$ engine-health-test -e ____test/integration/ run -h
-usage: engine-health-test run [-h] [-i INTEGRATION] [--skip SKIP]
+usage: engine-health-test dynamic -e health_test/environment run [-h] [-i INTEGRATION] [--rule_folder rule_folder] [--skip SKIP] --target TARGET
 
 options:
   -h, --help            show this help message and exit
   -i INTEGRATION, --integration INTEGRATION
-                        Specify the name of the integration to test, if not specified all integrations will be tested
+                        Specify the name of the integration to test
+  --rule_folder rule_folder
+                        Specify the name of the rule folder to test
   --skip SKIP           Skip the tests with the specified name
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.
 ```
 
 #### Usage
 ```bash
-engine-health-test -e health_test/environment run
-# To run a specific test
-engine-health-test -e health_test/environment run -i windows
-# To skip specific tests
-engine-health-test -e health_test/environment run --skip windows,syslog
+# To run a specific integration
+engine-health-test dynamic -e health_test/environment run --integration windows
+# To run a specific rule folder
+engine-health-test dynamic -e health_test/environment run --rule_folder windows
+# To run all tests in decoders
+engine-health-test dynamic -e health_test/environment run --target decoder
+# To run all tests in rules
+engine-health-test dynamic -e health_test/environment run --target rules
+# To skip specific tests in decoders
+engine-health-test dynamic -e health_test/environment run --target decoder --skip windows,wazuh-core
+```
+
+### Coverage report
+A tool that measures the percentage of coverage of an asset.
+with a detailed report on the successful and failed traces for each stage of the asset.
+```bash
+usage: engine-health-test dynamic -e health_test/environment coverage_validate [-h] [-i INTEGRATION] [--rule_folder rule_folder] [--skip SKIP] --target TARGET
+
+options:
+  -h, --help            show this help message and exit
+  -i INTEGRATION, --integration INTEGRATION
+                        Specify the name of the integration to test
+  --rule_folder rule_folder
+                        Specify the name of the rule folder to test
+  --skip SKIP           Skip the tests with the specified name
+  --target TARGET       Specify the asset type (decoder or rule). If it is a decoder, the tests are carried out for all decoders. The same for the rules.
 ```
 
 ## Error Handling and Reports

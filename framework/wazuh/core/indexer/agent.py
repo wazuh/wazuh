@@ -6,64 +6,79 @@ from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
 from opensearchpy._async.helpers.search import AsyncSearch
 
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
-from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.models.agent import Agent, Host, Status
 from wazuh.core.indexer.utils import get_source_items
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+
+DEFAULT_GROUP = 'default'
+AGENT_KEY = 'agent'
+
 
 class AgentsIndex(BaseIndex):
     """Set of methods to interact with the `agents` index."""
 
-    INDEX = 'agents'
+    INDEX = 'wazuh-agents'
     SECONDARY_INDEXES = []
     REMOVE_GROUP_SCRIPT = """
-    def groups = ctx._source.groups.splitOnToken(",");
-    def groups_str = "";
-
-    for (int i=0; i < groups.length; i++) {
-      if (groups[i] != params.group) {
-        if (i != 0) {
-          groups_str += ",";
+    for (int i=ctx._source.agent.groups.length-1; i>=0; i--) {
+        if (ctx._source.agent.groups[i] == params.group) {
+            ctx._source.agent.groups.remove(i);
         }
-
-        groups_str += groups[i];
-      }
     }
-
-    ctx._source.groups = groups_str;
     """
 
-    async def create(self, id: str, key: str, name: str, groups: str = None) -> Agent:
+    async def create(
+        self,
+        id: str,
+        name: str,
+        key: str,
+        type: str,
+        version: str,
+        host: Host = None,
+    ) -> Agent:
         """Create a new agent.
 
         Parameters
         ----------
         id : str
-            New agent ID.
+            Agent ID.
         name : str
-            New agent name.
+            Agent name.
         key : str
-            New agent key.
-        groups : str
-            New agent groups.
+            Agent key.
+        type : str
+            Agent type.
+        version : str
+            Agent version.
+        host : Host
+            Agent host information.
 
         Raises
         ------
         WazuhError(1708)
-            When already exists an agent with the provided id.
+            If an agent with the provided ID already exists.
 
         Returns
         -------
         Agent : dict
             The created agent instance.
         """
-        agent = Agent(id=id, raw_key=key, name=name, groups='default' + f',{groups}' if groups else None)
+        agent = Agent(
+            id=id,
+            name=name,
+            raw_key=key,
+            status=Status.NEVER_CONNECTED,
+            type=type,
+            version=version,
+            host=host if host else None
+        )
         try:
             await self._client.index(
                 index=self.INDEX,
                 id=id,
-                body=agent.to_dict(),
+                body={AGENT_KEY: agent.to_dict()},
                 op_type='create',
-                refresh='wait_for'
+                refresh='true'
             )
         except exceptions.ConflictError:
             raise WazuhError(1708, extra_message=id)
@@ -126,7 +141,7 @@ class AgentsIndex(BaseIndex):
         results = await self._client.search(
             **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
         )
-        return [Agent(**item) for item in get_source_items(results)]
+        return [Agent(**item[AGENT_KEY]) for item in get_source_items(results)]
 
     async def get(self, uuid: str) -> Agent:
         """Retrieve an agent information.
@@ -151,7 +166,7 @@ class AgentsIndex(BaseIndex):
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
 
-        return Agent(**data[IndexerKey._SOURCE])
+        return Agent(**data[IndexerKey._SOURCE][AGENT_KEY])
 
     async def update(self, uuid: str, agent: Agent) -> None:
         """Update an agent.
@@ -169,7 +184,7 @@ class AgentsIndex(BaseIndex):
             If no agents exist with the uuid provided.
         """
         try:
-            body = {IndexerKey.DOC: agent.to_dict()}
+            body = {IndexerKey.DOC: {AGENT_KEY: agent.to_dict()}}
             await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
@@ -185,7 +200,11 @@ class AgentsIndex(BaseIndex):
             Group to delete.
         """
         query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
-            .filter(IndexerKey.TERM, groups=group_name) \
+            .filter({
+                IndexerKey.TERM: {
+                    'agent.groups': group_name
+                }
+            }) \
             .script(
                 source=self.REMOVE_GROUP_SCRIPT,
                 lang=IndexerKey.PAINLESS,
@@ -206,12 +225,16 @@ class AgentsIndex(BaseIndex):
         agents : List[Agent]
             Agents list.
         """
-        query = AsyncSearch(using=self._client, index=self.INDEX).filter(IndexerKey.TERM, groups=group_name)
+        query = AsyncSearch(using=self._client, index=self.INDEX).filter({
+            IndexerKey.TERM: {
+                'agent.groups': group_name
+            }
+        })
         response = await query.execute()
 
         agents = []
         for hit in response:
-            agents.append(Agent(**hit.to_dict()))
+            agents.append(Agent(**hit.to_dict()[AGENT_KEY]))
 
         return agents
 
@@ -259,13 +282,13 @@ class AgentsIndex(BaseIndex):
             source = self.REMOVE_GROUP_SCRIPT
         else:
             if override:
-                source = 'ctx._source.groups = params.group'
+                source = 'ctx._source.agent.groups = new String[] {params.group};'
             else:
                 source = """
-                if (ctx._source.groups == null) {
-                    ctx._source.groups = params.group;
+                if (ctx._source.agent.groups == null) {
+                    ctx._source.agent.groups = new String[] {params.group};
                 } else {
-                    ctx._source.groups += ","+params.group;
+                    ctx._source.agent.groups.add(params.group);
                 }
                 """
 

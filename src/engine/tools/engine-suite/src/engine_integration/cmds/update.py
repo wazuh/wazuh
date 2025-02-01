@@ -2,10 +2,7 @@ import shared.resource_handler as rs
 from pathlib import Path
 import json
 import shared.executor as exec
-
-DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
-DEFAULT_NAMESPACE = 'user'
-
+from shared.default_settings import Constants as DefaultSettings
 
 def run(args, resource_handler: rs.ResourceHandler):
     api_socket = args['api_sock']
@@ -115,8 +112,8 @@ def run(args, resource_handler: rs.ResourceHandler):
 def configure(subparsers):
     parser_update = subparsers.add_parser(
         'update', help=f'Updates all available intgration components, deletes if no longer present, adds when new.')
-    parser_update.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
-                               help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
+    parser_update.add_argument('-a', '--api-sock', type=str, default=DefaultSettings.SOCKET_PATH, dest='api_sock',
+                               help=f'[default="{DefaultSettings.SOCKET_PATH}"] Engine instance API socket path')
 
     parser_update.add_argument('-p', '--integration-path', type=str, dest='integration-path',
                                help=f'[default=current directory] Integration directory path')
@@ -124,7 +121,7 @@ def configure(subparsers):
     parser_update.add_argument('--dry-run', dest='dry-run', action='store_true',
                                help=f'When set it will print all the steps to apply but wont affect the store')
 
-    parser_update.add_argument('-n', '--namespace', type=str, dest='namespace', default=DEFAULT_NAMESPACE,
+    parser_update.add_argument('-n', '--namespace', type=str, dest='namespace', default=DefaultSettings.DEFAULT_NS,
                                help=f'Namespace to add the integration to')
 
     parser_update.set_defaults(func=run)

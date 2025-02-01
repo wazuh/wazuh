@@ -23,6 +23,11 @@ wazuh.decoders:
   type: keyword
   array: true
 
+wazuh.rules:
+  description: Trace of the rules used to rule the event in order
+  type: keyword
+  array: true
+
 wazuh.source:
   description: Source that ingested the event
   type: keyword

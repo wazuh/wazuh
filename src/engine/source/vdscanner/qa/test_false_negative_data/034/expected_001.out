@@ -1,5 +1,0 @@
-[
-    "Translation for package 'grafana' on platform 'ubuntu' found in Level 2 cache.",
-    "Match found, the package 'grafana', is vulnerable to 'CVE-2022-39324'. Current version: '8.5.0' (less than '8.5.16' or equal to ''). - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'grafana', is vulnerable to 'CVE-2022-39307'. Current version: '8.5.0' (less than '8.5.15' or equal to ''). - Agent '' (ID: '001', Version: '')."
-]

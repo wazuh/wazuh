@@ -9,18 +9,85 @@
  * Foundation.
  */
 
+#include <filesystem>
+
+#include <base/logging.hpp>
+#include <fs/archiveHelper.hpp>
+#include <fs/xzHelper.hpp>
+
 #include "databaseFeedManager.hpp"
-#include "base/logging.hpp"
 #include "eventDecoder.hpp"
 #include "storeModel.hpp"
+
+const std::string CONTENT_NAME {"vd_1.0.0_vd_4.10.0"};                    // Content name.
+const std::filesystem::path WAZUH_LIB_PATH {"/var/lib/wazuh-server/"};    //< Path to the lib server files.
+const std::filesystem::path WAZUH_LIB_TMP_PATH {WAZUH_LIB_PATH / "tmp/"}; //< Path to the lib server tmp files.
+const std::filesystem::path XZ_FILE_PATH {WAZUH_LIB_TMP_PATH
+                                          / (CONTENT_NAME + ".tar.xz")};                  //< Path of the compressed db
+const std::filesystem::path TAR_FILE_PATH {WAZUH_LIB_TMP_PATH / (CONTENT_NAME + ".tar")}; //< Path to the tar db.
+const std::filesystem::path LEGACY_DB_PATH {WAZUH_LIB_TMP_PATH / "queue/"};           //< Path to the legacy database.
+const std::filesystem::path VD_FEED_DB_BASE_PATH {WAZUH_LIB_PATH / "vd/"};            //< Path to the current database.
+const std::filesystem::path VD_UPDATER_DB_BASE_PATH {WAZUH_LIB_PATH / "vd_updater/"}; //< Path to the updater database.
+
+constexpr auto OFFSET_TRANSACTION_SIZE {1000};
+constexpr auto EMPTY_KEY {""};
+constexpr auto TRANSLATIONS_COLUMN {"translation"};
+constexpr auto VENDOR_MAP_COLUMN {"vendor_map"};
+constexpr auto OS_CPE_RULES_COLUMN {"oscpe_rules"};
+constexpr auto CNA_MAPPING_COLUMN {"cna_mapping"};
 
 DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
     : m_mutex(mutex)
 {
     try
     {
-        LOG_INFO("Starting database file decompression.");
-        m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(DATABASE_PATH, false);
+        if (std::filesystem::exists(XZ_FILE_PATH))
+        {
+            LOG_INFO("Starting database file decompression.");
+
+            if (std::filesystem::remove(TAR_FILE_PATH))
+            {
+                LOG_DEBUG("Removing {} file before decompression.", TAR_FILE_PATH.c_str());
+            }
+            if (std::filesystem::remove_all(LEGACY_DB_PATH))
+            {
+                LOG_DEBUG("Removing existent {} folder.", LEGACY_DB_PATH.c_str());
+            }
+            if (std::filesystem::remove_all(VD_FEED_DB_BASE_PATH))
+            {
+                LOG_DEBUG("Removing existent {} folder.", VD_FEED_DB_BASE_PATH.c_str());
+            }
+            if (std::filesystem::remove_all(VD_UPDATER_DB_BASE_PATH))
+            {
+                LOG_DEBUG("Removing existent {} folder.", VD_UPDATER_DB_BASE_PATH.c_str());
+            }
+
+            LOG_DEBUG("Starting XZ file decompression");
+            fs::XzHelper(std::filesystem::path(XZ_FILE_PATH), std::filesystem::path(TAR_FILE_PATH)).decompress();
+
+            LOG_DEBUG("Finishing XZ file decompression. Removing {}.", XZ_FILE_PATH.c_str());
+            std::filesystem::remove(XZ_FILE_PATH);
+
+            // Define folders to extract
+            std::vector<std::string> extractOnly;
+            extractOnly.emplace_back(LEGACY_DB_PATH / "vd");
+            extractOnly.emplace_back(LEGACY_DB_PATH / "vd_updater");
+
+            LOG_DEBUG("Starting TAR file decompression.");
+            fs::ArchiveHelper::decompress(TAR_FILE_PATH, WAZUH_LIB_TMP_PATH, extractOnly);
+
+            LOG_DEBUG("Finishing TAR file decompression. Removing {}.", TAR_FILE_PATH.c_str());
+            std::filesystem::remove(TAR_FILE_PATH);
+
+            // Move the extracted folder to the current database path
+            std::filesystem::rename(LEGACY_DB_PATH / "vd", WAZUH_LIB_PATH / "vd");
+            std::filesystem::rename(LEGACY_DB_PATH / "vd_updater", WAZUH_LIB_PATH / "vd_updater");
+
+            // Remove temporary folder
+            std::filesystem::remove_all(LEGACY_DB_PATH);
+        }
+
+        m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(VD_FEED_DB_BASE_PATH / "feed", false);
 
         // Try to load global maps from the database, if it fails we throw an exception to force the download of
         // the complete feed.
@@ -31,8 +98,9 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
         // Create the database if it doesn't exist. We must remove any existing directory, as it may be corrupted.
         if (!m_feedDatabase)
         {
-            std::filesystem::remove_all(DATABASE_PATH);
-            m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(DATABASE_PATH, false);
+            std::filesystem::remove_all(VD_FEED_DB_BASE_PATH);
+            std::filesystem::remove_all(VD_UPDATER_DB_BASE_PATH);
+            m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(VD_FEED_DB_BASE_PATH / "feed", false);
         }
 
         LOG_ERROR("Error opening the database: {}, trying to re-download the feed.", ex.what());
@@ -335,26 +403,23 @@ utils::rocksdb::RocksDBWrapper& DatabaseFeedManager::getCVEDatabase()
 
 // LCOV_EXCL_STOP
 
-void DatabaseFeedManager::getVulnerabiltyDescriptiveInformation(
-    const std::string_view cveId, FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
+bool DatabaseFeedManager::getVulnerabilityDescriptiveInformation(
+    const std::string& cveId,
+    const std::string& subShortName,
+    FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer)
 {
-    if (m_feedDatabase->get(std::string(cveId), resultContainer.slice, DESCRIPTIONS_COLUMN) == false)
+    if (const auto descriptionColumn = std::string(DESCRIPTIONS_COLUMN) + "_" + subShortName;
+        m_feedDatabase->get(cveId, resultContainer.slice, descriptionColumn) == false)
     {
-        throw std::runtime_error(
-            "Error getting VulnerabilityDescription object from rocksdb. Object not found for cveId: "
-            + std::string(cveId));
-    }
-
-    if (flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(resultContainer.slice.data()),
-                                       resultContainer.slice.size());
-        NSVulnerabilityScanner::VerifyVulnerabilityDescriptionBuffer(verifier) == false)
-    {
-        throw std::runtime_error(
-            "Error getting VulnerabilityDescription object from rocksdb. FlatBuffers verifier failed");
+        LOG_DEBUG("Vulnerability description not found for {} in {}.", cveId.c_str(), descriptionColumn.c_str());
+        resultContainer.data = nullptr;
+        return false;
     }
 
     resultContainer.data = const_cast<NSVulnerabilityScanner::VulnerabilityDescription*>(
         NSVulnerabilityScanner::GetVulnerabilityDescription(resultContainer.slice.data()));
+
+    return true;
 }
 
 std::string DatabaseFeedManager::getCnaNameBySource(std::string_view source) const

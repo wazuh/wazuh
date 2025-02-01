@@ -2,7 +2,8 @@
 
 #include <queue/concurrentQueue.hpp>
 
-#include "fakeMetric.hpp" // TODO Remove after implementing metrics mocks
+#include <base/mockSingletonManager.hpp>
+#include <metrics/noOpManager.hpp>
 
 using namespace base::queue;
 
@@ -23,13 +24,31 @@ public:
 class ConcurrentQueueTest : public ::testing::Test
 {
 protected:
+    std::string m_metricModuleName;
+
     ConcurrentQueueTest() {}
 
     ~ConcurrentQueueTest() {}
 
-    void SetUp() override { logging::testInit(); }
+    void SetUp() override
+    {
+        logging::testInit();
+        m_metricModuleName = "testConcurrentQueue";
+    }
 
     void TearDown() override {}
+
+    static void SetUpTestSuite()
+    {
+        static metrics::mocks::NoOpManager mockManager;
+        SingletonLocator::registerManager<metrics::IManager, base::test::MockSingletonManager<metrics::IManager>>();
+        auto& mockStrategy = dynamic_cast<base::test::MockSingletonManager<metrics::IManager>&>(
+            SingletonLocator::manager<metrics::IManager>());
+        ON_CALL(mockStrategy, instance()).WillByDefault(testing::ReturnRef(mockManager));
+        EXPECT_CALL(mockStrategy, instance()).Times(testing::AnyNumber());
+    }
+
+    static void TearDownTestSuite() { SingletonLocator::unregisterManager<metrics::IManager>(); }
 };
 TEST(FloodingFileTest, CanOpenAndWriteToFile)
 {
@@ -57,27 +76,21 @@ TEST(FloodingFileTest, CannotOpenFile)
 
 TEST_F(ConcurrentQueueTest, CanConstruct)
 {
-    auto metricManager = std::make_shared<FakeMetricManager>();
-
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
-        2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2, m_metricModuleName);
     ASSERT_TRUE(cq.empty());
     ASSERT_EQ(cq.size(), 0);
 }
 
 TEST_F(ConcurrentQueueTest, errorConstructor)
 {
-    ASSERT_THROW(ConcurrentQueue<std::shared_ptr<Dummy>> cq(1,
-                                                            std::make_shared<FakeMetricScope>(),
-                                                            std::make_shared<FakeMetricScope>(),
-                                                            "/nonexistent_dir/nonexistent_file.txt"),
-                 std::runtime_error);
+    ASSERT_THROW(
+        ConcurrentQueue<std::shared_ptr<Dummy>> cq(1, m_metricModuleName, "/nonexistent_dir/nonexistent_file.txt"),
+        std::runtime_error);
 }
 
 TEST_F(ConcurrentQueueTest, CanPushAndPop)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
-        2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2, m_metricModuleName);
     ASSERT_TRUE(cq.empty());
     cq.push(std::make_shared<Dummy>(1));
     ASSERT_FALSE(cq.empty());
@@ -94,8 +107,7 @@ TEST_F(ConcurrentQueueTest, FloodsWhenFull)
     std::string flood_file = "floodfile.txt";
     // 32 is the size of one block in the queue, for 1 producer and 1 consumer thread
     // the queue has 1 block, so it will flood after 32 pushes
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
-        32, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>(), flood_file, 3, 500);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(32, m_metricModuleName, flood_file, 3, 500);
 
     for (int i = 0; i < 35; i++)
     {
@@ -120,8 +132,7 @@ TEST_F(ConcurrentQueueTest, FloodsWhenFull)
 
 TEST_F(ConcurrentQueueTest, Timeout)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
-        2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2, m_metricModuleName);
     auto d = std::make_shared<Dummy>(0);
     ASSERT_FALSE(cq.waitPop(d, 0));
     ASSERT_EQ(d->value, 0);

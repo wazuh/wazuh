@@ -10,7 +10,7 @@ description = "Tests expected behavior of the Wazuh Engine ruleset"
 requires-python = ">=3.8"
 classifiers = ["Programming Language :: Python :: 3"]
 
-dependencies = ["api-communication", "engine-test-utils", "engine-suite"]
+dependencies = ["api-communication", "engine-test-utils", "engine-suite", "requests", "docker"]
 
 [project.urls]
 Homepage = "https://github.com/wazuh/wazuh/src/engine/test/health_test/engine-health-test"

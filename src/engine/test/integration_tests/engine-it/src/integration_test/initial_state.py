@@ -9,23 +9,19 @@ PLACEHOLDER = "ENV_PATH_PLACEHOLDER"
 
 
 def cpy_conf(env_path: Path, it_path: Path) -> Path:
-    serv_conf_file = it_path / 'configuration_files' / 'general.conf'
-    dest_conf_file = env_path / 'engine' / 'general.conf'
-    backup_dest_conf_file = env_path / 'engine' / 'general-bk.conf'
+    serv_conf_file = it_path / 'configuration_files' / 'config.env'
+    dest_conf_file = env_path / 'config.env'
+    backup_dest_conf_file = env_path / 'config.env.bak'
+
+    if not serv_conf_file.is_file():
+        raise FileNotFoundError(f"File {serv_conf_file} does not exist")
+    if dest_conf_file.is_file():
+        dest_conf_file.rename(backup_dest_conf_file)
 
     conf_str = serv_conf_file.read_text().replace(PLACEHOLDER, env_path.as_posix())
     dest_conf_file.write_text(conf_str)
-    backup_dest_conf_file.write_text(conf_str)
 
     return dest_conf_file
-
-
-def cpy_bin(env_path: Path, bin_path: Path) -> Path:
-    dest_bin_path = env_path / 'bin/wazuh-engine'
-    dest_bin_path.parent.mkdir(parents=True, exist_ok=True)
-
-    return copy(bin_path, dest_bin_path)
-
 
 def create_dummy_integration(env_path: Path):
     wazuh_core_test = env_path / 'engine' / 'wazuh-core-test'
@@ -35,7 +31,7 @@ def create_dummy_integration(env_path: Path):
 
     (wazuh_core_test / 'decoders' / 'test-message.yml').write_text("""\
 name: decoder/test-message/0
-check: $wazuh.queue == 49 # "1"
+check: $agent.id == AA11
 """)
 
     (wazuh_core_test / 'filters' /
@@ -53,7 +49,7 @@ def create_other_dummy_integration(env_path: Path):
 
     (other_wazuh_core_test / 'decoders' / 'other-test-message.yml').write_text("""\
 name: decoder/other-test-message/0
-check: $wazuh.queue == 50 # "2"
+check: $agent.id == BB22
 """)
 
     (other_wazuh_core_test / 'manifest.yml').write_text(
@@ -68,7 +64,7 @@ def create_dummy_integration_with_parents(env_path: Path):
 
     (parent_wazuh_core_test / 'decoders' / 'parent-message.yml').write_text("""\
 name: decoder/parent-message/0
-check: $wazuh.queue == 49 # "1"
+check: $agent.id == AA11
 """)
 
     (parent_wazuh_core_test / 'decoders' / 'test-message.yml').write_text("""\
@@ -81,7 +77,7 @@ parents:
         "name: integration/parent-wazuh-core-test/0\ndecoders:\n- decoder/parent-message/0\n")
 
 
-def init(env_path: Path, bin_path: Path, test_path: Path):
+def init(env_path: Path, test_path: Path):
     engine_handler: Optional[EngineHandler] = None
 
     try:
@@ -89,9 +85,8 @@ def init(env_path: Path, bin_path: Path, test_path: Path):
         config_path = cpy_conf(env_path, test_path)
         print("Configuration file copied.")
 
-        print(f"Copying binary to {env_path}...")
-        bin_path = cpy_bin(env_path, bin_path)
-        print("Binary copied.")
+        # Binary path
+        bin_path = env_path / 'wazuh-engine'
 
         print("Starting the Engine...")
         engine_handler = EngineHandler(
@@ -123,7 +118,6 @@ def init(env_path: Path, bin_path: Path, test_path: Path):
 
 def run(args):
     env_path = Path(args['environment']).resolve()
-    bin_path = Path(args['binary']).resolve()
     test_path = Path(args['test_dir']).resolve()
 
-    init(env_path, bin_path, test_path)
+    init(env_path, test_path)

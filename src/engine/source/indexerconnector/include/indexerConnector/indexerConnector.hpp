@@ -18,8 +18,6 @@
 #include <mutex>
 #include <queue>
 
-#include <nlohmann/json.hpp>
-
 #include <base/utils/threadEventDispatcher.hpp>
 
 #include <indexerConnector/iindexerconnector.hpp>
@@ -30,7 +28,29 @@
 #define EXPORTED
 #endif
 
-static constexpr auto DEFAULT_INTERVAL = 60000u;
+/**
+ * @brief Configuration options for the Indexer Connector.
+ *
+ */
+struct IndexerConnectorOptions
+{
+    std::string name;               ///< The name of the index to push the data.
+    std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
+    std::string username;           ///< The username to authenticate with OpenSearch.
+    std::string password;           ///< The password to authenticate with OpenSearch.
+
+    struct
+    {
+        std::vector<std::string> cacert; ///< The list of CA certificates to trust.
+        std::string cert;                ///< The certificate to connect to OpenSearch.
+        std::string key;                 ///< The key to connect to OpenSearch.
+        bool skipVerifyPeer;             ///< Skip peer verification. (insecure mode)
+    } sslOptions;                        ///< The SSL options to connect to OpenSearch.
+
+    uint32_t timeout = 60000u;  ///< The timeout in milliseconds to connect to OpenSearch.
+    uint8_t workingThreads = 1; ///< The number of threads to dequeue and send the data.
+    std::string databasePath;   ///< The path to the database file.
+};
 
 template<typename TMonitoring = void>
 class TServerSelector;
@@ -65,28 +85,13 @@ public:
      * 3. Sets up the dispatcher to process messages asynchronously using a persistent queue. Messages are dispatched in
      * bulk either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages and the
      * interval is 5 seconds.
+     * 4. In each bulk query, the index name "$(date)" placeholder will be replaced by the current date.
      *
-     * @param config Indexer configuration, including the index name, server list, ssl configuration and user and
-     * password.
-     * @param timeout Interval for monitoring the server health.
-     * @param workingThreads Number of working threads used by the dispatcher. More than one results in an unordered
-     * processing.
-     * @note Example of the configuration:
-     *  {
-     *      "name": "wazuh-alerts-5.x",
-     *      "host": ["localhost:9200"],
-     *      "user": "admin",
-     *      "password": "admin",
-     *      "ssl": {
-     *          "certificate_authorities": "/etc/ssl/certs/ca.pem",
-     *          "certificate": "/etc/ssl/certs/cert.pem",
-     *          "key": "/etc/ssl/certs/key.pem"
-     *      }
-     *  }
+     * @param config Indexer connector configuration
+    unordered
+     * processing).
      */
-    explicit IndexerConnector(const nlohmann::json& config,
-                              const uint32_t& timeout = DEFAULT_INTERVAL,
-                              uint8_t workingThreads = 1);
+    explicit IndexerConnector(const IndexerConnectorOptions& config);
 
     /**
      * @brief Class destructor.

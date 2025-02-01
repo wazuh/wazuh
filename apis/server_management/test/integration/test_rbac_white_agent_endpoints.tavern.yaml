@@ -1,0 +1,1052 @@
+---
+test_name: GET /agents
+
+stages:
+
+  - name: Get all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '002'
+            - id: '004'
+            - id: '006'
+            - id: '008'
+            - id: '010'
+            - id: '012'
+          failed_items: []
+          total_affected_items: 6
+          total_failed_items: 0
+
+  - name: Get a list of agents (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,003'
+    response: &permission_denied
+      status_code: 403
+      json:
+        error: 4000
+        dapi_errors:
+          unknown-node: # No permission to see node
+            error: !anystr
+
+  - name: Get a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,003,004,005,006'
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - id: '004'
+            - id: '006'
+          failed_items:
+            - error:
+                code: 4000
+              id:
+                - '001'
+                - '003'
+                - '005'
+          total_affected_items: 2
+          total_failed_items: 3
+
+  - name: Get a list of agents (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '002,006,010,012'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '002'
+            - id: '006'
+            - id: '010'
+            - id: '012'
+          total_affected_items: 4
+          total_failed_items: 0
+
+---
+test_name: GET /agents?agents_list=agent_id
+
+stages:
+
+  - name: Try to get agent 009 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '009'
+    response:
+      <<: *permission_denied
+
+  - name: Get agent 010 (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '010'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '010'
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: GET /groups
+
+stages:
+
+ - name: Get all groups (Partially allowed, user agnostic)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         affected_items:
+           - name: 'default'
+           - name: 'group1'
+           - name: 'group2'
+         failed_items: []
+         total_affected_items: 3
+         total_failed_items: 0
+
+ - name: Try to read group3 (Denied)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+     params:
+       groups_list: 'group3'
+   response:
+      <<: *permission_denied
+
+ - name: Get a list of groups (Partially allowed, user aware)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+     params:
+       groups_list: 'default,group2,group3'
+   response:
+     status_code: 200
+     json:
+       error: 2
+       data:
+         affected_items:
+           - name: 'default'
+           - name: 'group2'
+         failed_items:
+           - error:
+               code: 4000
+             id:
+               - 'group3'
+         total_affected_items: 2
+         total_failed_items: 1
+
+ - name: Get a list of groups (Allowed)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+     params:
+       groups_list: 'group1,group2'
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         affected_items:
+           - name: 'group1'
+           - name: 'group2'
+         failed_items: []
+         total_affected_items: 2
+         total_failed_items: 0
+
+---
+test_name: GET /groups/{group_id}/agents
+
+stages:
+
+ - name: Try get all agents in one group (Partially allowed, user agnostic)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/agents"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         affected_items:
+           - id: '002'
+           - id: '006'
+           - id: '008'
+           - id: '010'
+         failed_items: []
+         total_affected_items: 4
+         total_failed_items: 0
+
+---
+test_name: GET /groups/{group_id}/configuration
+
+stages:
+
+ - name: Try to get the configuration of a group (Denied)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/configuration"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+      <<: *permission_denied
+
+ - name: Try get the configuration of a group (Allowed)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+
+---
+test_name: GET /agents?name=agent_name
+
+stages:
+
+ - name: Basic response agents name (Denied)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+     params:
+       name: 'wazuh-agent1'
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         total_affected_items: 0
+
+ - name: Basic response agents name (Allowed)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+     params:
+       name: 'wazuh-agent2'
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         affected_items:
+           - id: '002'
+             name: 'wazuh-agent2'
+         failed_items: []
+         total_affected_items: 1
+         total_failed_items: 0
+
+---
+test_name: DELETE /agents/group?group_id={group_id}
+
+stages:
+
+  - name: Try to remove all agents from a non existing group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'wrong_group'
+        agents_list: 'all'
+    response: &resource_not_found_group
+      status_code: 404
+      json:
+        error: 1710
+
+  - name: Try to remove all agents from group1 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group1'
+        agents_list: 'all'
+    response:
+      <<: *permission_denied
+
+  - name: Remove all agents from group2 (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group2'
+        agents_list: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '008'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Remove a list of agents from group3 (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '004,007,008,998,999'
+        group_id: 'group3'
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '008'
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '999'
+            - error:
+                code: 1734
+              id:
+                - '007'
+            - error:
+                code: 4000
+              id:
+                - '004'
+                - '998'
+          total_affected_items: 1
+          total_failed_items: 4
+
+  - name: Remove a list of agents from group default (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,008'
+        group_id: 'default'
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["001", "008"]
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '001'
+            - '008'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+---
+test_name: DELETE /groups?groups_list={group_id}
+
+stages:
+
+  - name: Try to delete group2 (Group denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: 'group2'
+    response:
+      <<: *permission_denied
+
+  - name: Delete group3
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: 'group3'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - group3
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
+
+---
+test_name: DELETE /groups
+
+stages:
+
+  - name: Try to delete all groups (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - group1
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Try to delete a list of groups (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        groups_list: 'default,group1,group2,pepito,antonio'
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1710
+              id:
+                - group1
+                - pepito
+            - error:
+                code: 1712
+              id:
+                - default
+            - error:
+                code: 4000
+              id:
+                - antonio
+                - group2
+          total_affected_items: 0
+          total_failed_items: 5
+
+---
+test_name: DELETE /agents?agents_list=agent_id&status=all
+
+stages:
+
+  - name: Try to delete agent 002 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '002'
+        status: 'all'
+    response:
+      <<: *permission_denied
+
+  - name: Delete agent 001 (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001'
+        older_than: '0s'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '001'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
+
+---
+test_name: DELETE /agents
+
+stages:
+
+  - name: Try to delete a list of agents (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '004,010'
+        status: 'all'
+    response:
+      <<: *permission_denied
+
+  - name: Try to delete a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '007,999'
+        older_than: '0s'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '007'
+          failed_items:
+            - error:
+                code: 4000
+              id:
+                - '999'
+          total_affected_items: 1
+          total_failed_items: 1
+    delay_after: !float "{global_db_delay}"
+
+  - name: Try to delete all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        older_than: '0s'
+        agents_list: 'all'
+        status: 'all'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '003'
+            - '005'
+            - '009'
+            - '011'
+          total_affected_items: 4
+          total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
+
+---
+test_name: POST /agents
+
+stages:
+
+  - name: Try to create a new agent (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /groups
+
+stages:
+
+  - name: Try to create a group called group4 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        group_id: "group4"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /agents/group
+
+stages:
+
+  - name: Try to assign all agents to a non existing group (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'wrong_group'
+    response:
+      <<: *resource_not_found_group
+
+  - name: Try to assign all agents to group1 (Group denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group1'
+    response:
+      <<: *permission_denied
+
+  - name: Try to assign a list of agents to group2 (Agents denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '004,009,010'
+        group_id: 'group2'
+    response:
+      <<: *permission_denied
+
+  - name: Try to assign a list of agents to group2 (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002,005'
+        group_id: 'group2'
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["002"]
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '002'
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '001'
+                - '005'
+          total_affected_items: 1
+          total_failed_items: 2
+
+  - name: Try to assign all agents to group2 (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: 'group2'
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["006", "008"]
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '006'
+            - '008'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+---
+test_name: PUT /groups/{group_id}/configuration
+
+stages:
+
+  - name: Update group2 configuration (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group2/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["002", "006", "008"]
+      status_code: 200
+
+  - name: Try to update group1 configuration (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /agents/reconnect
+
+stages:
+
+  - name: Try to reconnect non existing agent (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "997"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '997'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to reconnect agent 010 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "010"
+    response:
+      <<: *permission_denied
+
+  - name: Try to reconnect a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001,002,004"
+        wait_for_complete: true  # Prevent error code 500
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '004'
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '001'
+            - error:
+                code: 4000
+              id:
+                - '002'
+          total_affected_items: 1
+          total_failed_items: 2
+    delay_after: !float "{reconnect_delay}"
+
+  - name: Try to reconnect all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '004'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{reconnect_delay}"
+
+---
+test_name: PUT /agents/restart
+
+stages:
+
+  - name: Try to restart non existing agent (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "997"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '997'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to restart agent 010 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "010"
+    response:
+      <<: *permission_denied
+
+  - name: Try to restart a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001,002,004"
+        wait_for_complete: true  # Prevent error code 500
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["004"]
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '004'
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '001'
+            - error:
+                code: 4000
+              id:
+                - '002'
+          total_affected_items: 1
+          total_failed_items: 2
+
+  - name: Try to restart all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["004"]
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '004'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: PUT /agents/{agent_id}/restart
+
+stages:
+
+  - name: Try to restart agent 001 (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '001'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to restart agent 010 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/010/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Restart agent 004 (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/004/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["004"]
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '004'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: GET /agents (deny cluster:read)
+
+stages:
+
+  - name: Get unknown-node on failed response
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001'
+    response:
+      <<: *permission_denied

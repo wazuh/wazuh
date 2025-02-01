@@ -51,6 +51,10 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({}, opBuilderHelperEpochTimeFromSystem, SUCCESS()),
         MapT({makeValue(R"("value")")}, opBuilderHelperEpochTimeFromSystem, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperEpochTimeFromSystem, FAILURE()),
+        /*** Get Date ***/
+        MapT({}, opBuilderHelperGetDate, SUCCESS()),
+        MapT({makeValue(R"("value")")}, opBuilderHelperGetDate, FAILURE()),
+        MapT({makeRef("ref")}, opBuilderHelperGetDate, FAILURE()),
         /*** Date From Epoch ***/
         MapT({}, opBuilderHelperDateFromEpochTime, FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperDateFromEpochTime, FAILURE()),
@@ -74,15 +78,21 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         /*** Epoch From System ***/
         MapT("{}", opBuilderHelperEpochTimeFromSystem, {}, SUCCESS(IGNORE_MAP_RESULT)),
+        /*** Get date ***/
+        MapT("{}", opBuilderHelperGetDate, {}, SUCCESS(IGNORE_MAP_RESULT)),
         /*** Date From Epoch ***/
         MapT(R"({"ref": 1706172785})",
              opBuilderHelperDateFromEpochTime,
              {makeRef("ref")},
-             SUCCESS(customRefExpected(json::Json(R"("2024-01-25T08:53:05Z")")))),
+             SUCCESS(customRefExpected(json::Json(R"("2024-01-25T08:53:05.000000Z")")))),
         MapT(R"({"ref": -1706172785})",
              opBuilderHelperDateFromEpochTime,
              {makeRef("ref")},
-             SUCCESS(customRefExpected(json::Json(R"("1915-12-08T15:06:55Z")")))),
+             SUCCESS(customRefExpected(json::Json(R"("1915-12-08T15:06:55.000000Z")")))),
+        MapT(R"({"ref": 1727218980.597629})",
+             opBuilderHelperDateFromEpochTime,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(json::Json(R"("2024-09-24T23:03:00.597629Z")")))),
         MapT(R"({"ref": 17061727859999999999999})",
              opBuilderHelperDateFromEpochTime,
              {makeRef("ref")},
@@ -98,7 +108,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(R"({"ref": 1706172785.0})",
              opBuilderHelperDateFromEpochTime,
              {makeRef("ref")},
-             FAILURE(customRefExpected())),
+             SUCCESS(customRefExpected(json::Json(R"("2024-01-25T08:53:05.000000Z")")))),
         MapT(R"({"ref": []})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": {}})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": true})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),

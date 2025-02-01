@@ -311,7 +311,9 @@ TEST_F(OrchestratorTesterTest, IngestTest)
     EXPECT_CALL(*m_mockQueueRouter, empty()).WillOnce(testing::Return(true));
     EXPECT_CALL(*m_mockQueueRouter, push(testing::_)).Times(1);
 
-    auto resultFuture = m_orchestrator->ingestTest("1:any:message", opt);
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
+
+    auto resultFuture = m_orchestrator->ingestTest(std::move(event), opt);
 
     m_orchestrator->stop();
 }

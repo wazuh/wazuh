@@ -79,7 +79,7 @@ base::OptError Manager::upsertStoreEntry(const std::string& path)
     file.close();
 
     // Create and upsert the internal document
-    auto internalName = base::Name({INTERNAL_NAME, dbPath.filename().string()});
+    auto internalName = base::Name(std::vector<std::string>({INTERNAL_NAME, dbPath.filename().string()}));
     auto doc = store::Doc();
     doc.setString(path, PATH_PATH);
     doc.setString(hash, HASH_PATH);
@@ -238,7 +238,11 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
     // If the type has a different database, fail
     if (m_dbTypes.find(type) != m_dbTypes.end() && m_dbTypes.at(type) != name)
     {
-        return base::Error {fmt::format("Type '{}' already has the database '{}'", typeName(type), m_dbTypes.at(type))};
+        return base::Error {fmt::format(
+            "The name '{}' does not correspond to any database for type '{}'. "
+            "If you want it to correspond, please delete the existing database and recreate it with this name.",
+            name,
+            typeName(type))};
     }
 
     // Download the database hash

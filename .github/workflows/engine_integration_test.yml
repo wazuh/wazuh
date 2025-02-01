@@ -31,6 +31,7 @@ env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
 
 
+
 jobs:
   build:
     name: Engine Integration Test
@@ -43,7 +44,7 @@ jobs:
     steps:
 
     - name: Install dependencies lzip
-      run: sudo apt-get install lzip  
+      run: sudo apt-get install lzip
 
     - name: Check out repository
       uses: actions/checkout@v4
@@ -59,7 +60,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.12
 
     - name: Install dependencies
       # Install behave
@@ -78,6 +79,18 @@ jobs:
     - name: Configure CMake
       run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
 
+    - name: Create install directory
+      run: |
+        export WHOAMI=$(whoami)
+        sudo install -d -m 0750 -o ${WHOAMI} /var/lib/wazuh-server/
+        sudo install -d -m 0750 -o ${WHOAMI} /run/wazuh-server/
+        sudo install -d -m 0750 -o ${WHOAMI} /etc/wazuh-server
+        curl -LO http://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.10.0.tar.xz
+        tar -xvf vd_1.0.0_vd_4.10.0.tar.xz
+        mv queue/vd /var/lib/wazuh-server/
+        mv queue/vd_updater /var/lib/wazuh-server/
+        rm -rf queue vd_1.0.0_vd_4.10.0.tar.xz
+
     - name: Build
       run: cmake --build ${{env.ENGINE_DIR}}/build --target main -j$(nproc)
 
@@ -85,7 +98,7 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init -b ${{env.ENGINE_DIR}}/build/main
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init
 
     - name: Integration Test
       run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run

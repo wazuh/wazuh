@@ -1,3 +1,11 @@
+#include <list>
+#include <memory>
+#include <string_view>
+#include <vector>
+
+#include <base/json.hpp>
+#include <base/logging.hpp>
+
 #include <router/orchestrator.hpp>
 
 #include "entryConverter.hpp"
@@ -23,6 +31,81 @@ void validatePointer(const T& ptr, const std::string& name)
     else if (!ptr)
         throw std::runtime_error {"Configuration error: " + name + " cannot be empty"};
 }
+
+/**
+ * @brief create the base::Event list from batch of raw json
+ *
+ * @param std::list<std::string_view> list of json (ndjson)
+ * @param std::size_t maxEvents maximum number of events to create
+ * @return std::vector<base::Event> list of base::Event created from the batch
+ * @throw std::runtime_error if any event is invalid
+ */
+inline std::vector<base::Event> createEventsFromBatch(const std::list<std::string_view>& batch,
+                                                      const std::size_t maxEvents)
+{
+    const std::size_t headerSize = 2; // Header and subheader
+    const auto isSubHeader = [](const base::Event& event) -> bool
+    {
+        return event->isString("/module") && event->isString("/collector");
+    }; // '/module' and '/collector' are mandatory fields and not present in wazuh common schema
+
+    // Extract the header for futher merge with the events.
+    json::Json agentInfo {};
+    try
+    {
+        agentInfo = std::move(json::Json(batch.front().data()));
+    }
+    catch (const std::exception& e)
+    {
+        LOG_DEBUG("Error parsing agent info: '{}'", e.what());
+        throw std::runtime_error {"Error parsing agent info, invalid header, discarting ndjson"};
+    }
+
+    // Extract the subheader for futher merge with the events.
+    base::Event subHeader;
+    try
+    {
+        subHeader = std::make_shared<json::Json>(std::next(batch.begin(), 1)->data());
+    }
+    catch (const std::exception& e)
+    {
+        LOG_DEBUG("Error parsing subheader: '{}'", e.what());
+        throw std::runtime_error {"Error parsing subheader, invalid subheader, discarting ndjson"};
+    }
+
+    if (!isSubHeader(subHeader))
+    {
+        LOG_DEBUG("Invalid subheader, discarting ndjson");
+        throw std::runtime_error {"Invalid subheader, discarting ndjson"};
+    }
+
+    std::vector<base::Event> events {};
+    events.reserve(maxEvents);
+    for (auto it = std::next(batch.begin(), headerSize); it != batch.end() && events.size() < maxEvents; ++it)
+    {
+        try
+        {
+            auto event = std::make_shared<json::Json>(it->data());
+            if (isSubHeader(event))
+            {
+                subHeader = event;
+                continue;
+            }
+
+            event->merge(true, agentInfo);
+            event->set("/event/module", subHeader->getJson("/module").value());
+            event->set("/event/collector", subHeader->getJson("/collector").value());
+            events.emplace_back(event);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_DEBUG("Error parsing event '{}': '{}', ignore event", *it, e.what());
+        }
+    }
+
+    return events;
+}
+
 } // namespace
 
 // Private
@@ -405,29 +488,64 @@ std::list<prod::Entry> Orchestrator::getEntries() const
     return m_workers.front()->getRouter()->getEntries();
 }
 
-base::OptError Orchestrator::postStrEvent(std::string_view event)
+void Orchestrator::postRawNdjson(std::string&& batch)
 {
-    if (event.empty())
+    const std::size_t min_header_size = 2; // Header + subheader
+    const std::size_t min_size = 3;        // min_header_size + 1 event
+
+    if (batch.empty())
     {
-        return base::Error {"Event cannot be empty"};
+        LOG_TRACE("Router: Received empty ndjson");
+        throw std::runtime_error {"ndjson is empty"};
     }
 
-    base::OptError err = std::nullopt;
-    try
+    // Extract each json raw from ndjson
+    std::list<std::string_view> rawJson {};
     {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        this->postEvent(std::move(ev));
-    }
-    catch (const std::exception& e)
-    {
-        err = base::Error {e.what()};
+        std::replace(batch.begin(), batch.end(), '\n', '\0'); // Use string as buffer
+        const char* start = batch.data();
+        const char* end = start + batch.size();
+        while (start < end)
+        {
+            const char* next = std::find(start, end, '\0');
+            if (start != next)
+            {
+                rawJson.emplace_back(start, next - start);
+            }
+            start = next + 1;
+        }
     }
 
-    if (err)
+    // Validate the batch
+    if (rawJson.size() < min_size)
     {
-        return err;
+        LOG_DEBUG("Router: Received ndjson with less than '{}' lines", min_size);
+        throw std::runtime_error {"ndjson is too small"};
     }
-    return std::nullopt;
+
+    // Check if the event queue has enough space
+    const std::size_t eventToSend = rawJson.size() - min_header_size; // Apox, because the subheader is ignored
+    const std::size_t freeSlots = m_eventQueue->aproxFreeSlots();     // On high load, can not be accurate
+    const std::size_t discardedEvents = freeSlots < eventToSend ? eventToSend - freeSlots : 0;
+
+    if (discardedEvents > 0)
+    {
+        LOG_DEBUG(
+            "Router: {} events discarded, not enough space in the queue ({} free slots)", discardedEvents, freeSlots);
+        if (freeSlots == 0)
+        {
+            return;
+        }
+    }
+
+    std::vector<base::Event> events = createEventsFromBatch(rawJson, freeSlots);
+    for (const auto& event : events)
+    {
+        if (!m_eventQueue->tryPush(event))
+        {
+            LOG_DEBUG("Router: Event queue is full, discarding event");
+        }
+    }
 }
 
 base::OptError Orchestrator::changeEpsSettings(uint eps, uint refreshInterval)
@@ -589,25 +707,15 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
     return future;
 }
 
-std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(std::string_view event, const test::Options& opt)
-{
-
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        return this->ingestTest(std::move(ev), opt);
-    }
-    catch (const std::exception& e)
-    {
-        return std::async(std::launch::deferred,
-                          [err = base::Error {e.what()}]() -> base::RespOrError<test::Output> { return err; });
-    }
-}
-
 base::OptError Orchestrator::ingestTest(base::Event&& event,
                                         const test::Options& opt,
                                         std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
 {
+    if (event == nullptr)
+    {
+        return base::Error {"Event cannot be empty"};
+    }
+
     if (auto error = opt.validate(); error)
     {
         return error;
@@ -626,23 +734,6 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
     {
         std::shared_lock lock {m_syncMutex};
         m_workers.front()->getTester()->updateLastUsed(opt.environmentName());
-    }
-
-    return std::nullopt;
-}
-
-base::OptError Orchestrator::ingestTest(std::string_view event,
-                                        const test::Options& opt,
-                                        std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
-{
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        this->ingestTest(std::move(ev), opt, callbackFn);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
     }
 
     return std::nullopt;

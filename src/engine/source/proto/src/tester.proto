@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 import "engine.proto";
-import "google/protobuf/struct.proto"; // For Value
 
 package com.wazuh.api.engine.tester;
 
@@ -51,7 +50,7 @@ message Result
         bool success = 2;           // If the asset was successfully decoded
         repeated string traces = 3; // Traces of the asset
     }
-    google.protobuf.Value output = 1;     // test output
+    string output = 1;                    // JSON output of the event
     repeated AssetTrace asset_traces = 2; // Asset traces
 }
 
@@ -131,15 +130,16 @@ message TableGet_Response
 /***************************************************
  * Run a test
  *
+ * Currently, the only test available is the test of a single event with a format in NDJSON:
+ *  - First line: header
+ *  - Next line: event (Only support one event)
  * command: tester.run/post
  **************************************************/
 message RunPost_Request
 {
     string name = 1; // Name of the session.
     // Event to test
-    string message = 2;  // Message to test
-    string location = 3; // Full Location of the event
-    string queue = 4;    // Queue of the event
+    string ndjson_event = 2; // Event to test in NDJSON format
     // Configuration of test
     TraceLevel trace_level = 5;      // Level of traces
     repeated string asset_trace = 6; // Asset of which you only want to have details

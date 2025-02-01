@@ -30,7 +30,14 @@ public:
 
     // Production: Ingest
     virtual void postEvent(base::Event&& event) = 0;
-    virtual base::OptError postStrEvent(std::string_view event) = 0;
+
+    /**
+     * @brief Post a batch of raw events
+     *
+     * Post a batch of raw events to the router according to https://github.com/wazuh/wazuh/issues/26719
+     * @param batch Batch of raw events
+     */
+    virtual void postRawNdjson(std::string&& batch) = 0;
 
     // Orchestrator: Change EPS settings
     virtual base::OptError changeEpsSettings(uint eps, uint refreshInterval) = 0;
@@ -57,14 +64,9 @@ public:
 
     // Testing: Ingest Synchronous
     virtual std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) = 0;
-    virtual std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event,
-                                                                    const test::Options& opt) = 0;
 
     // Testing: Ingest Asynchronous
     virtual base::OptError ingestTest(base::Event&& event,
-                                      const test::Options& opt,
-                                      std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
-    virtual base::OptError ingestTest(std::string_view event,
                                       const test::Options& opt,
                                       std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
 

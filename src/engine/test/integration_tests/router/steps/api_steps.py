@@ -12,7 +12,7 @@ from api_communication.proto import kvdb_pb2 as api_kvdb
 from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import engine_pb2 as api_engine
 from api_utils.commands import engine_clear
-
+import time
 
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
@@ -122,6 +122,14 @@ def create_filter(filter_name: str):
     assert error is None, f"{error}"
 
 
+def delete_filter(filter_name: str):
+    request = api_catalog.ResourceDelete_Request()
+    request.name = filter_name
+    request.namespaceid = "system"
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
+
+
 def create_route(route_name: str, policy_name: str, filter_name: str, priority: int) -> api_engine.GenericStatus_Response:
     request = api_router.RoutePost_Request()
     request.route.name = route_name
@@ -196,6 +204,7 @@ def step_impl(context, route_name: str):
 def step_impl(context, route_name: str):
     request = api_router.RouteGet_Request()
     request.name = route_name
+    time.sleep(1) # need for uptime
     error, context.result = send_recv(request, api_router.RouteGet_Response())
     assert error is None, f"{error}"
 
@@ -219,12 +228,19 @@ def step_impl(context, policy_name: str):
     delete_policy(policy_name)
 
 
-@when('I send a request to send event "{event}" to the route "{route_name}"')
-def step_impl(context, event: str, route_name: str):
-    request = api_router.QueuePost_Request()
-    request.wazuh_event = event
-    error, context.result = send_recv(
-        request, api_engine.GenericStatus_Response())
+@when('I send a request to {request} the filter "{filter_name}"')
+def step_impl(context, request: str, filter_name: str):
+    if request == 'create':
+        create_filter(filter_name)
+    elif request == 'delete':
+        delete_filter(filter_name)
+    else:
+        assert f"The request {request} is not allowed."
+
+@then('I send a restart to server')
+def step_impl(context):
+    context.shared_data['engine_instance'].stop()
+    context.shared_data['engine_instance'].start()
 
 
 @then('I should receive an {status} response indicating "{response}"')
@@ -307,6 +323,15 @@ def step_impl(context, state: str):
     assert state_to_string[
         context.result.route.entry_status] == state, f"{context.result.route}"
 
+
+@then('I should receive a route with last update {request} to {last_update}')
+def step_impl(context, request: str, last_update: str):
+    if request == 'equal':
+        assert context.result.route.uptime == int(last_update), f"{context.result.route}"
+    elif request == 'different':
+        assert context.result.route.uptime != int(last_update), f"{context.result.route}"
+    else:
+        assert f"The request {request} is not allowed."
 
 @then('I send a request to the router to reload the "{route_name}"')
 def step_impl(context, route_name: str):

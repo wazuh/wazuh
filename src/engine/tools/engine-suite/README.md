@@ -6,6 +6,8 @@
     1. [Engine decoder](#engine-decoder)
     1. [Engine diff](#engine-diff)
     1. [Engine integration](#engine-integration)
+    1. [Engine policy](#engine-policy)
+    1. [Engine router](#engine-router)
     1. [Engine test](#engine-test)
 3. [Installation](#installation)
 
@@ -18,9 +20,12 @@ The `engine-suite` python package contains various scripts to help developing co
 ├── engine-suite/
 │   └── src
 │       └── engine_clear
+│       └── engine_catalog
 │       └── engine_decoder
 │       └── engine_diff
 │       └── engine_integration
+│       └── engine_policy
+│       └── engine_router
 │       └── engine_schema
 │       └── engine_test
 │       └── shared
@@ -38,6 +43,12 @@ The `engine-suite` python package contains various scripts to help developing co
 - **Deletion of Policies and Assets**:
     In addition to kvdbs, can handle the removal of policies and other assets within the Wazuh environment, ensuring that all elements related to rules and configurations are aligned with the desired changes.
 
+## Engine catalog
+- **Catalog Management**:
+    - **List and Get assets**: Provides the ability to list and get details of assets such as decoders, rules, integrations, etc.
+    - **Creation of Assets**: Allows you to create new assets, such as decoders, rules, integrations, etc.
+    - **Deletion and Update**: Provides the ability to delete or update existing assets, providing flexibility in configuration management.
+    - **Validation**: Validates the syntax of the asset files, ensuring that they are correctly formatted and can be used by the engine.
 
 ## Engine decoder
 
@@ -63,6 +74,22 @@ The `engine-suite` python package contains various scripts to help developing co
 - **Integrations Management**: Allows you to create, add, update and delete integrations centrally.
 
 - **Generation of Documentation and Resources**: Generates documentation, graphics and manifests for integrations, facilitating administration and monitoring.
+
+## Engine policy
+- **Policy Management**:
+    - **List and Get Policies**: Provides the ability to list and get details of policies.
+    - **Creation of Policies**: Allows you to create new policies, specifying assets such as decoders, rules, integrations, etc.
+    - **Deletion and Update**: Provides the ability to delete or update existing policies, providing flexibility in configuration management.
+
+## Engine router
+- **Route management**:
+    - **List and Get Routes**: Provides the ability to list and get details of routes.
+    - **Creation of Routes**: Allows you to create new routes, specifying assets such as decoders, rules, integrations, etc.
+    - **Deletion and Update**: Provides the ability to delete or update existing routes, providing flexibility in configuration management.
+- **EPS management**:
+    - **Set EPS Limit**: Allows you to set the EPS limit for routes, ensuring that the system does not exceed the specified limit.
+    - **Get EPS Limit**: Provides the ability to get the EPS limit for routes.
+    - **Enable/Disable EPS Limit**: Allows you to enable or disable the EPS limit for routes.
 
 ## Engine test
 
@@ -95,19 +122,26 @@ The `engine-suite` python package contains various scripts to help developing co
     - Facilitates the analysis of how an event is processed by the engine, helping in the debugging.
 
 # Installation
-Requires `python 3.8`, to install navigate where the Wazuh repository folder is located and run:
+
+Requires:
+- `python 3.8`
+- `pip3`
+-`tools/engine-suite` package.
+
+To install navigate where the Wazuh repository folder is located and run:
 ```
-pip install wazuh/src/engine/tools/engine-suite
+pip3 install tools/engine-suite
 ```
 If we want to install for developing and modifying the scripts, install in editable mode and the additional dev packages:
 ```
-pip install -e wazuh/src/engine/tools/engine-suite[dev]
+pip3 install -e tools/engine-suite[dev]
 ```
 **For developing we recommend to install it under a virtual environment.**
 
 Once installed the following scripts are available in the path:
 - [engine-schema](src/engine_schema/README.md)
 - [engine-decoder](src/engine_decoder/README.md)
+- [engine-catalog](src/engine_catalog/README.md)
 - [engine-integration](src/engine_integration/README.md)
 - [engine-diff](src/engine_diff/README.md)
 - [engine-clear](src/engine_clear/README.md)

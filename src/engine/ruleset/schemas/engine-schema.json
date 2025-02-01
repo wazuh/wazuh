@@ -842,7 +842,7 @@
       "array": false
     },
     "email.message_id": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "email.origination_timestamp": {
@@ -882,7 +882,7 @@
       "array": false
     },
     "error.stack_trace": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "error.type": {
@@ -902,6 +902,10 @@
       "array": true
     },
     "event.code": {
+      "type": "keyword",
+      "array": false
+    },
+    "event.collector": {
       "type": "keyword",
       "array": false
     },
@@ -1762,7 +1766,7 @@
       "array": false
     },
     "http.request.body.content": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "http.request.bytes": {
@@ -1790,7 +1794,7 @@
       "array": false
     },
     "http.response.body.content": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "http.response.bytes": {
@@ -2282,7 +2286,7 @@
       "array": false
     },
     "process.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.elf.architecture": {
@@ -2466,7 +2470,7 @@
       "array": false
     },
     "process.entry_leader.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.entry_leader.entity_id": {
@@ -2634,7 +2638,7 @@
       "array": false
     },
     "process.group_leader.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.group_leader.entity_id": {
@@ -2794,7 +2798,7 @@
       "array": false
     },
     "process.io.text": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.io.total_bytes_captured": {
@@ -2922,7 +2926,7 @@
       "array": false
     },
     "process.parent.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.parent.elf.architecture": {
@@ -3566,7 +3570,7 @@
       "array": false
     },
     "process.session_leader.command_line": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "process.session_leader.entity_id": {
@@ -3782,7 +3786,7 @@
       "array": false
     },
     "registry.data.strings": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": true
     },
     "registry.data.type": {
@@ -4890,7 +4894,7 @@
       "array": false
     },
     "threat.enrichments.indicator.registry.data.strings": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": true
     },
     "threat.enrichments.indicator.registry.data.type": {
@@ -4938,11 +4942,11 @@
       "array": false
     },
     "threat.enrichments.indicator.url.full": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.enrichments.indicator.url.original": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.enrichments.indicator.url.password": {
@@ -4950,7 +4954,7 @@
       "array": false
     },
     "threat.enrichments.indicator.url.path": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.enrichments.indicator.url.port": {
@@ -5738,7 +5742,7 @@
       "array": false
     },
     "threat.indicator.registry.data.strings": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": true
     },
     "threat.indicator.registry.data.type": {
@@ -5786,11 +5790,11 @@
       "array": false
     },
     "threat.indicator.url.full": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.indicator.url.original": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.indicator.url.password": {
@@ -5798,7 +5802,7 @@
       "array": false
     },
     "threat.indicator.url.path": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "threat.indicator.url.port": {
@@ -6314,11 +6318,11 @@
       "array": false
     },
     "url.full": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "url.original": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "url.password": {
@@ -6326,7 +6330,7 @@
       "array": false
     },
     "url.path": {
-      "type": "keyword",
+      "type": "wildcard",
       "array": false
     },
     "url.port": {
@@ -6637,137 +6641,37 @@
       "type": "keyword",
       "array": false
     },
-    "wazuh.queue": {
-      "type": "long",
-      "array": false
+    "agent.groups": {
+      "type": "keyword",
+      "array": true
     },
-    "wazuh.location": {
-      "type": "text",
-      "array": false
-    },
-    "wazuh.message": {
-      "type": "text",
-      "array": false
-    },
-    "wazuh.origin": {
+    "agent.host.hostname": {
       "type": "keyword",
       "array": false
     },
-    "wazuh.registered_ip": {
+    "agent.host.os.platform": {
       "type": "keyword",
       "array": false
+    },
+    "agent.host.os.name": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.architecture": {
+      "type": "keyword",
+      "array": false
+    },
+    "agent.host.ip": {
+      "type": "ip",
+      "array": true
     },
     "wazuh.decoders": {
       "type": "keyword",
       "array": true
     },
-    "wazuh.source": {
+    "wazuh.rules": {
       "type": "keyword",
-      "array": false
-    },
-    "wazuh.syscollector.hardware": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.hotfix": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.netinfo.addr": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.netinfo.iface": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.netinfo.proto": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.os": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.port": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.process": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.syscollector.program": {
-      "type": "object",
-      "array": false
-    },
-    "wazuh.rootcheck.file": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.rootcheck.update": {
-      "type": "boolean",
-      "array": false
-    },
-    "wazuh.rootcheck.fts": {
-      "type": "boolean",
-      "array": false
-    },
-    "wazuh.rootcheck.title": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.type": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.scan_id": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.timestamp": {
-      "type": "date",
-      "array": false
-    },
-    "wazuh.ciscat.cis.benchmark": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.cis.profile": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.ciscat.cis.pass": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.fail": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.error": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.notchecked": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.unknown": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.score": {
-      "type": "long",
-      "array": false
-    },
-    "wazuh.ciscat.cis.hostname": {
-      "type": "keyword",
-      "array": false
-    },
-    "wazuh.noIndexing": {
-      "type": "boolean",
-      "array": false
+      "array": true
     }
   }
 }

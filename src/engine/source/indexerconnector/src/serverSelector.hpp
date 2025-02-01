@@ -38,7 +38,7 @@ public:
      * @param secureCommunication Object that provides secure communication.
      */
     explicit TServerSelector(const std::vector<std::string>& values,
-                             const uint32_t timeout = INTERVAL,
+                             const uint32_t timeout = HEALTH_CHECK_TIMEOUT_MS,
                              const SecureCommunication& secureCommunication = {})
         : RoundRobinSelector<std::string>(values)
         , monitoring(std::make_shared<TMonitoring>(values, timeout, secureCommunication))

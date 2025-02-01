@@ -38,12 +38,11 @@ def test_revoke_tokens(db_setup):
     db_setup: callable
         This function creates the rbac.db file.
     """
-    with patch('wazuh.core.security.change_keypair', side_effect=None):
-        security, WazuhResult, _ = db_setup
-        mock_current_user = ContextVar('current_user', default='wazuh')
-        with patch("wazuh.sca.common.current_user", new=mock_current_user):
-            result = security.revoke_current_user_tokens()
-            assert isinstance(result, WazuhResult)
+    security, WazuhResult, _ = db_setup
+    mock_current_user = ContextVar('current_user', default='wazuh')
+    with patch("wazuh.core.common.current_user", new=mock_current_user):
+        result = security.revoke_current_user_tokens()
+        assert isinstance(result, WazuhResult)
 
 
 @pytest.mark.parametrize('role_list, expected_roles', [
@@ -136,6 +135,6 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
     """Check that the RBAC database factory reset is correct."""
     _, _, core_security = db_setup
     assert core_security.rbac_db_factory_reset() == {'reset': True}
-    assert remove_mock.call_args[0][0].endswith("rbac.db")
+    assert remove_mock.call_args[0][0].name == "rbac.db"
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()

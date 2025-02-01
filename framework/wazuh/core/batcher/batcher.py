@@ -8,101 +8,117 @@ import logging
 from typing import List, Optional
 from multiprocessing import Process
 
+from opensearchpy.exceptions import RequestError
+
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.bulk import BulkDoc, BulkAction
+from wazuh.core.indexer.bulk import BulkDoc, Operation
+from wazuh.core.indexer.models.events import Operation
 
 from wazuh.core.batcher.buffer import Buffer
 from wazuh.core.batcher.timer import TimerManager
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message
-from wazuh.core.batcher.config import BatcherConfig
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, Packet
+
+from wazuh.core.config.models.comms_api import BatcherConfig
 
 logger = logging.getLogger('wazuh-comms-api')
 
-WAIT_TIME_BETWEEN_QUEUE_READ = 0.01
+QUEUE_READ_INTERVAL = 0.01
 
 
 class Batcher:
-    """Manage the batching of messages from a MuxDemuxQueue and send them in bulk to an indexer.
+    """Manage the batching of items from a MuxDemuxQueue and send them in bulk to an indexer.
 
     Parameters
     ----------
     mux_demux_queue : MuxDemuxQueue
-        MuxDemuxQueue instance for message multiplexing and demultiplexing.
+        MuxDemuxQueue instance for item multiplexing and demultiplexing.
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
     def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
-        self.q: MuxDemuxQueue = mux_demux_queue
+        self.queue: MuxDemuxQueue = mux_demux_queue
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
-        self._timer: TimerManager = TimerManager(max_time_seconds=config.max_time_seconds)
+        self._timer: TimerManager = TimerManager(max_time_seconds=config.wait_time)
         self._shutdown_event: Optional[asyncio.Event] = None
 
-    async def _get_from_queue(self) -> Message:
-        """Retrieve a message from the mux queue. If the queue is empty, waits and retries until a message is received
+    async def _get_from_queue(self) -> Packet:
+        """Retrieve a packet from the mux queue. If the queue is empty, waits and retries until a packet is received
         or the task is cancelled.
 
         Returns
         -------
-        Message
-            Message retrieved from the mux queue.
+        Packet
+            Packet retrieved from the mux queue.
 
         Raises
         ------
         asyncio.CancelledError
             If the task is cancelled during the operation.
         """
-        message = None
+        packet = None
         while True:
             try:
-                message = self.q.receive_from_mux(block=False)
-                return message
+                packet = self.queue.receive_from_mux(block=False)
+                return packet
             except queue.Empty:
-                await asyncio.sleep(WAIT_TIME_BETWEEN_QUEUE_READ)
+                await asyncio.sleep(QUEUE_READ_INTERVAL)
             except asyncio.CancelledError:
-                if message is not None:
-                    self.q.send_to_mux(uid=message.uid, msg=message.msg)
+                if packet is not None:
+                    self.queue.send_to_mux(packet)
                 break
 
-    async def _send_buffer(self, events: List[Message]):
-        """Send a batch of messages to the indexer in bulk and update the demux queue with the response messages.
+    async def _send_buffer(self, input_packets: List[Packet]):
+        """Send a batch of packets to the indexer in bulk and update the demux queue with the response packets.
 
         Parameters
         ----------
-        events : List[Message]
-            List of messages to be sent.
+        input_packets : List[Packet]
+            List of packets to be sent.
 
         Raises
         ------
         Exception
             If an error occurs during the sending of the buffer.
         """
+        output_packets = [Packet(id=packet.id) for packet in input_packets]
+        items: List[Item] = []
+        for packet in input_packets:
+            items.extend(packet.items)
+
         try:
             async with get_indexer_client() as indexer_client:
-                event_ids: List[uuid.UUID] = [event.uid for event in events]
-                bulk_list: List[BulkDoc] = [
-                    BulkDoc.create(index=indexer_client.events.INDEX, doc_id=None, doc=event.msg) for event in events
-                ]
+                bulk_list = create_bulk_list(items=items)
+                response = await indexer_client.bulk(data=bulk_list)
 
-                response = await indexer_client.events.bulk(data=bulk_list)
-
-                for response_item, uid in zip(response["items"], event_ids):
+                item_ids: List[uuid.UUID] = [item.id for item in items]
+                for response_item, item_id in zip(response['items'], item_ids):
                     action_found = False
 
-                    for action in BulkAction:
-                        if action.value in response_item:
+                    for operation in Operation:
+                        if operation.value in response_item:
                             action_found = True
-                            response_item_msg = response_item[action.value]
-                            response_msg = Message(uid=uid, msg=response_item_msg)
-                            self.q.send_to_demux(response_msg)
+                            item = Item(id=item_id, content=response_item[operation.value], operation=operation)
+
+                            # Adds it to the respective packet
+                            for input_packet in input_packets:
+                                for output_packet in output_packets:
+                                    if input_packet.id == output_packet.id and input_packet.has_item(item.id):
+                                        output_packet.add_item(item)
 
                     if not action_found:
                         logger.error(f"Error processing batcher response, no known action in: {response_item}")
+
+            for packet in output_packets:
+                self.queue.send_to_demux(packet)
+
+        except RequestError as exc:
+            logger.error(f'Error sending opensearch request: {exc}')
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
-            logger.error(f"Error sending message to buffer: {''.join(tb_str)}")
+            logger.error(f"Error sending item to buffer: {''.join(tb_str)}")
 
-    def create_flush_buffer_task(self):
-        """Create a task to flush the current buffer and reset it. This task sends the buffered messages to the indexer
+    def flush_buffer(self):
+        """Create a task to flush the current buffer and reset it. This task sends the buffered items to the indexer
         and clears the buffer.
         """
         buffer_copy = self._buffer.copy()
@@ -111,11 +127,11 @@ class Batcher:
         self._timer.reset_timer()
 
     async def run(self):
-        """Continuously retrieve messages from the queue and batch them based on the configuration. Handle signals
+        """Continuously retrieve items from the queue and batch them based on the configuration. Handle signals
         for shutdown and manage the batching logic.
 
         Handles:
-        - Retrieving messages from the queue.
+        - Retrieving items from the queue.
         - Checking buffer limits.
         - Creating and managing flush tasks.
         - Handling shutdown signals.
@@ -123,7 +139,6 @@ class Batcher:
         # Register signal handlers
         self._shutdown_event = asyncio.Event()
         loop = asyncio.get_running_loop()
-        loop.add_signal_handler(signal.SIGINT, self._handle_signal, signal.SIGINT)
         loop.add_signal_handler(signal.SIGTERM, self._handle_signal, signal.SIGTERM)
 
         try:
@@ -135,22 +150,22 @@ class Batcher:
 
                 # Process completed tasks
                 for task in done:
-                    if isinstance(task.result(), Message):
-                        message = task.result()
+                    if isinstance(task.result(), Packet):
+                        packet = task.result()
 
                         if self._buffer.get_length() == 0:
-                            self._timer.create_timer_task()
+                            self._timer.start_timer()
 
-                        self._buffer.add_message(message)
+                        self._buffer.add_packet(packet)
 
                         if self._buffer.check_count_limit() or self._buffer.check_size_limit():
-                            self.create_flush_buffer_task()
+                            self.flush_buffer()
                     else:
                         # Cancel the reading task if it is still pending
                         for p_task in pending:
                             p_task.cancel()
 
-                        self.create_flush_buffer_task()
+                        self.flush_buffer()
 
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
@@ -170,7 +185,8 @@ class Batcher:
         signal_number : int
             Signal number indicating the type of signal received (e.g., SIGINT, SIGTERM).
         """
-        logger.info(f'Batcher pid {os.getpid()}- Received signal {signal_number}, initiating shutdown.')
+        signal_name = signal.Signals(signal_number).name
+        logger.info(f'Batcher (pid: {os.getpid()}) - Received signal {signal_name}, shutting down')
         self._shutdown_event.set()
 
 
@@ -180,7 +196,7 @@ class BatcherProcess(Process):
     Parameters
     ----------
     mux_demux_queue : MuxDemuxQueue
-        MuxDemuxQueue instance for message multiplexing and demultiplexing.
+        MuxDemuxQueue instance for item multiplexing and demultiplexing.
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
@@ -195,3 +211,17 @@ class BatcherProcess(Process):
         """
         batcher = Batcher(mux_demux_queue=self.queue, config=self.config)
         asyncio.run(batcher.run())
+
+
+def create_bulk_list(items: List[Item]) -> List[BulkDoc]:
+    """Create a bulk list with documents depending on the operation performed."""
+    docs: List[BulkDoc] = []
+    for item in items:
+        if item.operation == Operation.CREATE.value:
+            docs.append(BulkDoc.create(index=item.index_name, doc_id=item.id, doc=item.content))
+        elif item.operation == Operation.DELETE.value:
+            docs.append(BulkDoc.delete(index=item.index_name, doc_id=item.id))
+        elif item.operation == Operation.UPDATE.value:
+            docs.append(BulkDoc.update(index=item.index_name, doc_id=item.id, doc=item.content))
+
+    return docs

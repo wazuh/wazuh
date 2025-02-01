@@ -1,9 +1,0 @@
----
-- actions:
-  - sca:read
-  resources:
-  - agent:id:001
-  - agent:id:005
-  - agent:id:009
-  - agent:group:group3
-  effect: deny

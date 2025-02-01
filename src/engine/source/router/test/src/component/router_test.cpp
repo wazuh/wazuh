@@ -311,28 +311,6 @@ TEST_F(OrchestratorRouterTest, ChangePriorityBusy)
     m_orchestrator->stop();
 }
 
-TEST_F(OrchestratorRouterTest, PostStrEvent)
-{
-    router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
-
-    EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
-    m_orchestrator->postEntry(entry);
-
-    EXPECT_CALL(*m_mockController, stop()).Times(1);
-
-    auto times {10};
-    EXPECT_CALL(*m_mockQueueRouter, push(testing::_)).Times(times);
-
-    for (auto i = 0; i < times; i++)
-    {
-        EXPECT_FALSE(m_orchestrator->postStrEvent("1:any:message").has_value());
-    }
-
-    m_orchestrator->stop();
-}
-
 TEST_F(OrchestratorRouterTest, GetEPS)
 {
     auto res = m_orchestrator->getEpsSettings();

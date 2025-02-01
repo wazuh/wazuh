@@ -23,7 +23,7 @@ loop = new_event_loop()
 def test_localclienthandler_initialization():
     """Check the correct initialization of the LocalClientHandler object."""
     lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+                            logger=None, manager=None, cluster_items=None)
     """Check the correct initialization of the LocalClientHandler object."""
     assert isinstance(lc.response_available, Event)
     assert lc.response == b""
@@ -32,7 +32,7 @@ def test_localclienthandler_initialization():
 def test_localclienthandler_connection_made():
     """Check that the connection_made function sets the transport parameter correctly."""
     lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+                            logger=None, manager=None, cluster_items=None)
 
     assert lc.transport is None
     lc.connection_made(Transport())
@@ -42,7 +42,7 @@ def test_localclienthandler_connection_made():
 def test_localclienthandler_cancel_all_tasks():
     """Check the proper functionality of the _cancel_all_tasks function."""
     lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+                            logger=None, manager=None, cluster_items=None)
     assert lc._cancel_all_tasks() is None
 
 
@@ -50,7 +50,7 @@ def test_localclienthandler_cancel_all_tasks():
 def test_localclienthandler_process_request(mock_set):
     """Check each of the possible behaviors inside the _process_request function."""
     lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+                            logger=None, manager=None, cluster_items=None)
     command = b"dapi_res"
     assert lc.process_request(command=command, data=b"Error") == (b"err", b"Error")
     assert lc.process_request(command=command, data=b"Testing") == \
@@ -61,16 +61,6 @@ def test_localclienthandler_process_request(mock_set):
     mock_set.reset_mock()
     assert lc.process_request(command=command, data=b"test") == (b"ok", b"Distributed api response received")
     assert lc.in_str == {b"testing": data_example}
-    mock_set.assert_called_once()
-
-    mock_set.reset_mock()
-    assert lc.process_request(command=b"ok", data=b"Error") == (b"err", b"Error")
-    assert lc.in_str == {b"testing": data_example}
-    mock_set.assert_called_once()
-
-    mock_set.reset_mock()
-    assert lc.process_request(command=b"ok", data=b"test") == (b"ok", b"Sendsync response received")
-    assert lc.response == b"test"
     mock_set.assert_called_once()
 
     mock_set.reset_mock()
@@ -100,7 +90,7 @@ def test_localclienthandler_process_request(mock_set):
 def test_localclienthandler_process_error_from_peer(mock_set):
     """Run the _process_error_from_peer function and check the correct value assignment for the response attribute."""
     lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+                            logger=None, manager=None, cluster_items=None)
     assert lc.process_error_from_peer(data=b"None") == b"None"
     assert lc.response == b"None"
     mock_set.assert_called_once()
@@ -109,14 +99,16 @@ def test_localclienthandler_process_error_from_peer(mock_set):
 def test_localclienthandler_connection_lost():
     """Check that the set_result method of the on_con_lost object is called once with the defined parameters."""
     lc = LocalClientHandler(loop=None, on_con_lost=asyncio.Future(loop=loop), name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+                            logger=None, manager=None, cluster_items=None)
     with patch.object(lc.on_con_lost, "set_result") as mock_set_result:
         lc.connection_lost(Exception())
         mock_set_result.assert_called_once_with(True)
 
 
+@patch('wazuh.core.cluster.utils.get_cluster_items')
+@patch('wazuh.core.cluster.utils.read_config')
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
-def test_localclient_initialization(mock_get_running_loop):
+def test_localclient_initialization(mock_get_running_loop, read_config_mock, get_cluster_items_mock):
     """Check the correct initialization of the LocalClient object."""
     lc = LocalClient()
     assert lc.request_result is None
@@ -125,7 +117,8 @@ def test_localclient_initialization(mock_get_running_loop):
 
 
 @pytest.mark.asyncio
-async def test_localclient_start():
+@patch('wazuh.core.config.client.CentralizedConfig.get_server_config')
+async def test_localclient_start(mock_get_server_config):
     """Check that the start method works correctly. Exceptions are not tested."""
 
     async def create_unix_connection(protocol_factory=None, path=None):
@@ -133,38 +126,41 @@ async def test_localclient_start():
 
     with patch("uvloop.Loop.create_unix_connection", side_effect=create_unix_connection) as mock_create_unix_connection:
         mocked_loop = new_event_loop()
-        with patch("os.path.join", return_value="path/test"):
-            with patch("wazuh.core.cluster.client.asyncio.get_running_loop", return_value=mocked_loop):
-                lc = LocalClient()
-                await lc.start()
-                assert mock_create_unix_connection.call_count == 1
-                assert mock_create_unix_connection.call_args[1]["path"] == "path/test"
-                assert isinstance(mock_create_unix_connection.call_args[1]["protocol_factory"], Callable)
-                assert lc.protocol == "protocol"
-                assert lc.transport == "transport"
+        with patch("wazuh.core.cluster.client.asyncio.get_running_loop", return_value=mocked_loop):
+            lc = LocalClient()
+            await lc.start()
+            assert mock_create_unix_connection.call_count == 1
+            assert mock_create_unix_connection.call_args[1]["path"] == common.LOCAL_SERVER_SOCKET_PATH
+            assert isinstance(mock_create_unix_connection.call_args[1]["protocol_factory"], Callable)
+            assert lc.protocol == "protocol"
+            assert lc.transport == "transport"
 
 
 @pytest.mark.asyncio
+@patch('wazuh.core.config.client.CentralizedConfig.get_server_config')
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
-async def test_localclient_start_ko(mock_get_running_loop):
+async def test_localclient_start_ko(mock_get_running_loop, mock_get_server_config):
     """Check the behavior of the start function for the different types of exceptions that may occur."""
     with pytest.raises(WazuhInternalError, match=r'.* 3009 .*'):
         await LocalClient().start()
 
-    with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=MemoryError):
+    with patch("asyncio.get_running_loop.return_value.create_unix_connection", side_effect=MemoryError):
         with pytest.raises(WazuhInternalError, match=r'.* 1119 .*'):
             await LocalClient().start()
 
-    with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=FileNotFoundError):
+    with patch("asyncio.get_running_loop.return_value.create_unix_connection", side_effect=FileNotFoundError):
         with pytest.raises(WazuhInternalError, match=r'.* 3012 .*'):
             await LocalClient().start()
 
-    with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=ConnectionRefusedError):
+    with patch("asyncio.get_running_loop.return_value.create_unix_connection", side_effect=ConnectionRefusedError):
         with pytest.raises(WazuhInternalError, match=r'.* 3012 .*'):
             await LocalClient().start()
+
 
 @pytest.mark.asyncio
-async def test_wait_for_response():
+@patch('wazuh.core.cluster.utils.get_cluster_items')
+@patch('wazuh.core.cluster.utils.read_config')
+async def test_wait_for_response(read_config_mock, get_cluster_items_mock):
     """Verify whether keepalive messages are sent while waiting for response."""
 
     class Protocol:
@@ -172,7 +168,7 @@ async def test_wait_for_response():
 
         def __init__(self):
             self.response_available = asyncio.Event()
-
+    get_cluster_items_mock.return_value = {'intervals': {'worker': {'keep_alive': 1}}}
     lc = LocalClient()
     lc.protocol = Protocol()
     lc.protocol.send_request = AsyncMock()
@@ -185,8 +181,10 @@ async def test_wait_for_response():
 
 
 @pytest.mark.asyncio
+@patch('wazuh.core.cluster.utils.get_cluster_items')
+@patch('wazuh.core.cluster.utils.read_config')
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
-async def test_localclient_send_api_request(mock_get_running_loop):
+async def test_localclient_send_api_request(mock_get_running_loop, read_config_mock, get_cluster_items_mock):
     """Check the correct operation of the send_api_request function by mocking the protocol attribute.
     Exceptions are not tested."""
 
@@ -197,7 +195,12 @@ async def test_localclient_send_api_request(mock_get_running_loop):
 
         async def send_request(command, data):
             return data
-
+    get_cluster_items_mock.return_value = {
+        'intervals': {
+            'worker': {'keep_alive': 1},
+            'communication': {'timeout_dapi_request': 1}
+        }
+    }
     lc = LocalClient()
     lc.protocol = Protocol()
 
@@ -214,14 +217,24 @@ async def test_localclient_send_api_request(mock_get_running_loop):
         result = b'Sent request to master node'
         assert await lc.send_api_request(command=b"dapi", data=result) == lc.protocol.response.decode()
 
+
 @pytest.mark.asyncio
+@patch('wazuh.core.cluster.utils.get_cluster_items')
+@patch('wazuh.core.cluster.utils.read_config')
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
-async def test_localclient_send_api_request_ko(mock_get_running_loop):
+async def test_localclient_send_api_request_ko(mock_get_running_loop, read_config_mock, get_cluster_items_mock):
     """Check the behavior of the send_api_request function for the different types of exceptions that may occur."""
 
     class Protocol:
         def __init__(self):
             self.response_available = asyncio.Event()
+
+    get_cluster_items_mock.return_value = {
+        'intervals': {
+            'worker': {'keep_alive': 1},
+            'communication': {'timeout_dapi_request': 2}
+        }
+    }
 
     lc = LocalClient()
     lc.protocol = Protocol()
@@ -234,7 +247,9 @@ async def test_localclient_send_api_request_ko(mock_get_running_loop):
 
 
 @pytest.mark.asyncio
-async def test_localclient_execute():
+@patch('wazuh.core.cluster.utils.get_cluster_items')
+@patch('wazuh.core.cluster.utils.read_config')
+async def test_localclient_execute(read_config_mock, get_cluster_items_mock):
     """Check that the execute function returns the expected value."""
 
     class Protocol:
@@ -255,7 +270,9 @@ async def test_localclient_execute():
 
 
 @pytest.mark.asyncio
-async def test_localclient_send_file():
+@patch('wazuh.core.cluster.utils.get_cluster_items')
+@patch('wazuh.core.cluster.utils.read_config')
+async def test_localclient_send_file(read_config_mock, get_cluster_items_mock):
     """Check that the function send_file returns the value returned by the
     function send_api_request called with the command 'send_file'."""
     with patch("wazuh.core.cluster.local_client.LocalClient.start"):

@@ -1,0 +1,1278 @@
+---
+test_name: GET /cluster/healthcheck
+
+marks:
+  - cluster
+
+stages:
+
+  - name: Get cluster healtcheck
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker1,worker2'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+            - info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Get cluster healtcheck
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - info:
+                name: 'master-node'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+            - info:
+                name: 'worker1'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+            - info:
+                name: 'worker2'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+---
+test_name: GET /cluster/nodes
+
+marks:
+  - cluster
+
+stages:
+
+  - name: Get cluster nodes
+    request: &get_cluster_nodes
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: &cluster_nodes_response
+            - name: !anystr
+              type: !anystr
+              version: !anystr
+              ip: !anything
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+  - name: Get cluster nodes
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        limit: 500
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+            - <<: *cluster_nodes_response
+            - <<: *cluster_nodes_response
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+  - name: Filter nodes by query
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version>3;type=worker
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+            - <<: *cluster_nodes_response
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Filter nodes by query with non-existent values
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        q: version<3
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
+  - name: Retrieve all elements with limit=0
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        limit: 0
+    response: &connexion_error
+      status_code: 400
+      json:
+        detail: !anystr
+        title: !anystr
+
+  - name: Sort nodes by name in ascending order
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        sort: name
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+      status_code: 200
+
+  - name: Sort nodes by name in descending order
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        sort: -name
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+            reverse: true
+      status_code: 200
+
+  - name: Search master
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        search: master
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+              type: master
+              name: master-node
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Search worker1
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        search: worker1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+              name: worker1
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filters (type) -> master
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        type: master
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+              type: master
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filters (type) -> worker
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        limit: 1
+        type: worker
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_nodes_response
+              type: worker
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+
+  - name: Filters -> invalid type
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        type: wrong_type
+    response:
+      <<: *connexion_error
+
+  - name: Select name and version
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        select: name,version
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "name,version"
+      json:
+        error: 0
+        data:
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+  - name: Select type
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        select: type
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "type"
+      json:
+        error: 0
+        data:
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+  - name: Select wrong_field
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        select: wrong_field
+    response:
+      <<: *connexion_error
+
+  - name: Get distinct cluster nodes
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+---
+test_name: GET /cluster/nodes
+
+marks:
+  - cluster
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  - name: Get cluster {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "{node_id:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - ip: !anystr
+              name: !anystr
+              type: !anystr
+              version: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: GET /cluster/nodes select
+
+marks:
+  - cluster
+  - parametrize:
+      key: field
+      vals:
+        - ip
+        - name
+        - type
+        - version
+
+stages:
+
+  - name: Get cluster nodes with select
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node"
+        select: "{field}"
+    response:
+      status_code: 200
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field:s}"
+
+---
+test_name: GET /cluster/status
+
+marks:
+  - cluster
+
+stages:
+
+  - name: Get cluster status
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          enabled: "yes"
+          running: "yes"
+
+---
+test_name: GET /cluster/{node_id}/configuration
+
+marks:
+  - cluster
+
+stages:
+
+  - name: Request (master-node)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - alerts: !anything
+              auth: !anything
+              cis-cat: !anything
+              cluster: !anything
+              command: !anything
+              global: !anything
+              localfile: !anything
+              osquery: !anything
+              remote: !anything
+              rootcheck: !anything
+              ruleset: !anything
+              sca: !anything
+              syscheck: !anything
+              syscollector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Request (worker)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - alerts: !anything
+              auth: !anything
+              cis-cat: !anything
+              cluster: !anything
+              command: !anything
+              global: !anything
+              localfile: !anything
+              osquery: !anything
+              remote: !anything
+              rootcheck: !anything
+              ruleset: !anything
+              sca: !anything
+              syscheck: !anything
+              syscollector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filters -> section=alerts (master-node)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: alerts
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - alerts:
+                email_alert_level: !anystr
+                log_alert_level: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+
+  - name: Filters -> section=syscheck (master)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - syscheck:
+                alert_new_files: !anystr
+                auto_ignore: !anything
+                directories: !anything
+                disabled: !anystr
+                frequency: !anystr
+                ignore: !anything
+                nodiff: !anything
+                scan_on_start: !anystr
+                skip_nfs: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filters -> section=syscollector (master)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscollector
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - syscollector:
+                disabled: !anystr
+                hardware: !anystr
+                interval: !anystr
+                network: !anystr
+                os: !anystr
+                packages: !anystr
+                ports : !anything
+                processes: !anystr
+                scan_on_start: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filters -> section=alerts (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: alerts
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - alerts:
+                email_alert_level: !anystr
+                log_alert_level: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filters -> section=syscheck (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - syscheck:
+                alert_new_files: !anystr
+                auto_ignore: !anything
+                directories: !anything
+                disabled: !anystr
+                frequency: !anystr
+                ignore: !anything
+                nodiff: !anything
+                scan_on_start: !anystr
+                skip_nfs: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filters -> section=syscollector (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscollector
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - syscollector:
+                disabled: !anystr
+                hardware: !anystr
+                interval: !anystr
+                network: !anystr
+                os: !anystr
+                packages: !anystr
+                ports : !anything
+                processes: !anystr
+                scan_on_start: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: GET /cluster/configuration/validation
+
+marks:
+  - cluster
+
+stages:
+
+  - name: Request cluster validation
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: master-node
+              status: 'OK'
+            - name: worker1
+              status: 'OK'
+            - name: worker2
+              status: 'OK'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+---
+test_name: GET /cluster/{node_id}/info
+
+marks:
+  - cluster
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  - name: Read info {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/info"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - path: !anystr
+              version: !anystr
+              type: !anystr
+              max_agents: !anystr
+              openssl_support: !anystr
+              tz_offset: !anystr
+              tz_name: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: GET /cluster/{node_id}/logs
+
+marks:
+  - cluster
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  - name: Read logs {node_id}
+    request: &get_cluster_logs
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters -> limit=3 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        limit: 3
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - &cluster_log
+              description: !anystr
+              level: !anystr
+              tag: !anystr
+              timestamp: !anystr
+            - <<: *cluster_log
+            - <<: *cluster_log
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters -> limit=4 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        limit: 4
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters -> limit=2, sort=tag {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        limit: 2
+        sort: tag
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "tag"
+      status_code: 200
+
+  - name: Read logs with filters -> limit=1, sort=-level {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        limit: 1
+        sort: -level
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "level"
+            reverse: true
+      status_code: 200
+
+  - name: Read logs with filters -> offset=2, limit=3 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        limit: 3
+        offset: 2
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters -> offset=5, limit=2 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        limit: 2
+        offset: 5
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters -> tag=wazuh-analysisd, limit=1 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        tag: wazuh-analysisd
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_log
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters -> tag=wazuh-syscheckd, limit=2 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        tag: wazuh-syscheckd
+        limit: 2
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_log
+              tag: wazuh-syscheckd
+            - <<: *cluster_log
+              tag: wazuh-syscheckd
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters -> tag=wazuh-unknown-daemon {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        tag: wazuh-unknown-daemon
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Read logs with filters -> level=info, limit=1 {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        level: info
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *cluster_log
+              level: info
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Read logs with filters by query (tag=wazuh-syscheckd, level=info) {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        q: tag=wazuh-syscheckd;level=info
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "wazuh-syscheckd"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "level"
+            expected_values: "info"
+
+  - name: Read logs using valid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'timestamp,tag'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'timestamp,tag'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to read logs using invalid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
+  - name: Get distinct cluster node logs
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+---
+test_name: GET /cluster/{node_id}/logs/summary
+
+marks:
+  - cluster
+  - parametrize:
+      key: node_id
+      vals:
+        - worker1
+        - worker2
+
+stages:
+
+  - name: Read logs summary {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/logs/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+        message: !anystr
+
+---
+test_name: GET /cluster/{node_id}/status
+
+marks:
+  - cluster
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  - name: Read status {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+---
+test_name: PUT /cluster/restart
+
+marks:
+  - cluster
+
+stages:
+
+  - name: Restart cluster (worker1, worker2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker1,worker2'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+    delay_after: !float "{restart_delay_cluster}"
+
+  - name: Restart cluster all nodes
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - 'master-node'
+            - 'worker1'
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+    delay_after: !float "{restart_delay_cluster}"
+
+---
+test_name: PUT /cluster/{node_id}/configuration
+
+marks:
+  - cluster
+
+stages:
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Upload a valid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'worker1'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  # GET /cluster/{node_id}/configuration
+  - name: Ensure the new config has been applied by checking a field
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an invalid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an invalid xml
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_xml:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: [ ]
+          failed_items:
+            - error:
+                code: 1908
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an empty configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # GET /cluster/{node_id}/configuration
+  - name: Ensure the config didn't change
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0

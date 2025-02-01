@@ -126,7 +126,15 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry,
     eEntry.set_entry_status(state);
 
     // Calculate the uptime
-    eEntry.set_uptime(static_cast<uint32_t>(currentTime() - entry.lastUpdate()));
+    if (state == eRouter::State::DISABLED)
+    {
+        eEntry.set_uptime(entry.lastUpdate());
+    }
+    else
+    {
+        eEntry.set_uptime(static_cast<uint32_t>(currentTime() - entry.lastUpdate()));
+    }
+
     return eEntry;
 }
 } // namespace
@@ -342,31 +350,6 @@ api::HandlerSync tableGet(const std::weak_ptr<::router::IRouterAPI>& router,
     };
 }
 
-api::HandlerSync queuePost(const std::weak_ptr<::router::IRouterAPI>& router)
-{
-    return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
-    {
-        using RequestType = eRouter::QueuePost_Request;
-        using ResponseType = eEngine::GenericStatus_Response;
-        auto res = getRequest<RequestType, ResponseType>(wRequest, wRouter);
-
-        // If the request is not valid, return the error
-        if (std::holds_alternative<api::wpResponse>(res))
-        {
-            return std::move(std::get<api::wpResponse>(res));
-        }
-
-        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
-        const auto postRes = router->postStrEvent(eRequest.wazuh_event());
-
-        if (postRes.has_value())
-        {
-            return genericError<ResponseType>(postRes.value().message);
-        }
-        return genericSuccess<ResponseType>();
-    };
-}
-
 api::HandlerSync changeEpsSettings(const std::weak_ptr<::router::IRouterAPI>& router)
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
@@ -489,8 +472,6 @@ void registerHandlers(const std::weak_ptr<::router::IRouterAPI>& router,
         && api->registerHandler("router.route/patchPriority", Api::convertToHandlerAsync(routePatchPriority(router)))
         // Commands to manage the routes table
         && api->registerHandler("router.table/get", Api::convertToHandlerAsync(tableGet(router, policy)))
-        // Commands to manage the queue of events
-        && api->registerHandler("router.queue/post", Api::convertToHandlerAsync(queuePost(router)))
         // Commands to manage the EPS limiter
         && api->registerHandler("router.eps/update", Api::convertToHandlerAsync(changeEpsSettings(router)))
         && api->registerHandler("router.eps/get", Api::convertToHandlerAsync(getEpsSettings(router)))

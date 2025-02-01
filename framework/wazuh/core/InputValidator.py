@@ -6,7 +6,7 @@ import operator
 import re
 from functools import reduce
 
-from api.validator import _group_names
+from server_management_api.validator import _group_names
 
 
 class InputValidator:

@@ -22,8 +22,6 @@ def parse_args() -> argparse.Namespace:
         description='Sets the initial state for the Engine health test')
     parser.add_argument('-e', '--environment',
                         help='Specify environment directory', required=True)
-    parser.add_argument(
-        '-b', '--binary', help='Specify the path to the engine binary', required=True)
     parser.add_argument('-r', '--ruleset',
                         help='Specify the path to the ruleset directory', required=True)
     parser.add_argument(
@@ -33,8 +31,15 @@ def parse_args() -> argparse.Namespace:
 
 
 def cpy_conf(env_path: Path, health_test_path: Path) -> Path:
-    serv_conf_file = health_test_path / 'configuration_files' / 'general.conf'
-    dest_conf_file = env_path / 'engine' / 'general.conf'
+    serv_conf_file = health_test_path / 'configuration_files' / 'config.env'
+    dest_conf_file = env_path / 'config.env'
+
+    if dest_conf_file.is_file():
+        dest_conf_file.rename(dest_conf_file.with_suffix('.bak'))
+
+    if not serv_conf_file.is_file():
+        raise FileNotFoundError(
+            f"Copy configuration file failed: File {serv_conf_file} does not exist")
 
     conf_str = serv_conf_file.read_text().replace(PLACEHOLDER, env_path.as_posix())
     dest_conf_file.write_text(conf_str)
@@ -44,9 +49,18 @@ def cpy_conf(env_path: Path, health_test_path: Path) -> Path:
 
 def cpy_mmdb(env_path: Path, health_test_path: Path) -> Tuple[Path, Path]:
     mmdb_asn_path = health_test_path / 'testdb-asn.mmdb'
-    dest_mmdb_asn_path = env_path / 'engine' / 'etc' / 'testdb-asn.mmdb'
+    dest_mmdb_asn_path = env_path / 'mmdb' / 'testdb-asn.mmdb'
     mmdb_city_path = health_test_path / 'testdb-city.mmdb'
-    dest_mmdb_city_path = env_path / 'engine' / 'etc' / 'testdb-city.mmdb'
+    dest_mmdb_city_path = env_path / 'mmdb' / 'testdb-city.mmdb'
+
+    if not mmdb_asn_path.is_file():
+        raise FileNotFoundError(
+            f"Copy mmdb failed: File {mmdb_asn_path} does not exist")
+    if not mmdb_city_path.is_file():
+        raise FileNotFoundError(
+            f"Copy mmdb failed: File {mmdb_city_path} does not exist")
+
+    dest_mmdb_asn_path.parent.mkdir(parents=True, exist_ok=True)
 
     dest_mmdb_asn_path.write_bytes(mmdb_asn_path.read_bytes())
     dest_mmdb_city_path.write_bytes(mmdb_city_path.read_bytes())
@@ -69,13 +83,6 @@ def cpy_ruleset(env_path: Path, ruleset_path: Path) -> Path:
     return dest_ruleset_path
 
 
-def cpy_bin(env_path: Path, bin_path: Path) -> Path:
-    dest_bin_path = env_path / 'bin/wazuh-engine'
-    dest_bin_path.parent.mkdir(parents=True, exist_ok=True)
-
-    return copy(bin_path, dest_bin_path)
-
-
 def load_mmdb(engine_handler: EngineHandler, mmdb_path: Path, mmdb_type: str) -> None:
     request = api_geo.DbPost_Request()
     request.path = mmdb_path.as_posix()
@@ -91,7 +98,7 @@ def load_mmdb(engine_handler: EngineHandler, mmdb_path: Path, mmdb_type: str) ->
     print(f"MMDB file loaded.")
 
 
-def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: Path, stop_on_warn: bool) -> None:
+def init(env_path: Path, ruleset_path: Path, health_test_path: Path, stop_on_warn: bool) -> None:
     engine_handler: Optional[EngineHandler] = None
 
     try:
@@ -108,9 +115,7 @@ def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: P
         ruleset_path = cpy_ruleset(env_path, ruleset_path)
         print("Ruleset files copied.")
 
-        print("Copying engine binary...")
-        bin_path = cpy_bin(env_path, bin_path)
-        print("Engine binary copied.")
+        bin_path = env_path / 'wazuh-engine'
 
         print("Starting the engine...")
         engine_handler = EngineHandler(
@@ -139,12 +144,9 @@ def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: P
 
 
 def run(args):
-    if 'environment' not in args:
-        sys.exit("It is mandatory to indicate the '-e' environment path")
     env_path = Path(args['environment']).resolve()
-    bin_path = Path(args['binary']).resolve()
     ruleset_path = Path(args['ruleset']).resolve()
     health_test_path = Path(args['test_dir']).resolve()
     stop_on_warning = args.get('stop_on_warning', False)
 
-    init(env_path, bin_path, ruleset_path, health_test_path, stop_on_warning)
+    init(env_path, ruleset_path, health_test_path, stop_on_warning)

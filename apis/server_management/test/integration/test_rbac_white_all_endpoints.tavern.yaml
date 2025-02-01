@@ -1,0 +1,1050 @@
+# Excluded endpoints (no permissions required):
+# - GET /
+# - DELETE /security/user/authenticate
+# - POST /security/user/authenticate
+# - GET /security/users/me
+# - POST /security/user/authenticate/run_as
+# - GET /security/users/me/policies
+# - GET /security/actions
+# - GET /security/resources
+
+---
+test_name: DELETE /agents
+
+stages:
+  - name: Try to remove all agents (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      params:
+        agents_list: all
+        status: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to remove one agent (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      params:
+        agents_list: '001'
+        status: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /agents
+
+stages:
+  - name: Try to get all agents (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to get one agent (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /agents
+
+stages:
+  - name: Try to create a new agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /agents/{agent_id}/restart
+
+stages:
+  - name: Try to restart agent 001
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /agents/group
+
+stages:
+  - name: Try to remove agents 006 and 010 from group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 006,010
+        group_id: group2
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /agents/group
+
+stages:
+  - name: Try to assign all agents to group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        group_id: group2
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /agents/reconnect
+
+stages:
+  - name: Try to reconnect all agents (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to reconnect agent 001 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /agents/restart
+
+stages:
+  - name: Try to restart all agents (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to restart agent 001 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/nodes
+
+stages:
+  - name: Try to get cluster nodes
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+---
+test_name: GET /cluster/healthcheck
+
+stages:
+  - name: Try to get cluster healtcheck
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+---
+test_name: GET /cluster/status
+
+stages:
+  - name: Try to get cluster status
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/{node_id}/status
+
+stages:
+  - name: Try to get status (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/{node_id}/info
+
+stages:
+  - name: Try to get info (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/info"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/{node_id}/configuration
+
+stages:
+  - name: Try to get configuration (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /cluster/{node_id}/configuration
+
+stages:
+  - name: Try to update configuration (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/{node_id}/logs
+
+stages:
+  - name: Try to get logs (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/{node_id}/logs/summary
+
+stages:
+  - name: Try to get summary logs (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /cluster/restart
+
+stages:
+  - name: Try to restart all nodes (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to restart master-node node (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      params:
+        nodes_list: master-node
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /cluster/configuration/validation
+
+stages:
+  - name: Try to request cluster validation (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to request master-node validation (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      method: GET
+      params:
+        nodes_list: master-node
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /groups
+
+stages:
+  - name: Try to delete all groups (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      params:
+        groups_list: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete group3 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      params:
+        groups_list: group3
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /groups
+
+stages:
+  - name: Try to get all groups (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to get group1 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: GET
+      params:
+        groups_list: group1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /groups
+
+stages:
+  - name: Try to create new group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      json:
+        group_id: "group5"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /groups/{group_id}/agents
+
+stages:
+  - name: Try to get agents in group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /groups/{group_id}/configuration
+
+stages:
+  - name: Try to get group1 configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /groups/{group_id}/configuration
+
+stages:
+  - name: Try to update group1 configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      method: PUT
+      data:
+        "{file_xml:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /security/user/revoke
+
+stages:
+  - name: Try to revoke all JWT tokens
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/users
+
+stages:
+  - name: Try to get API users (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to get API user (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: 1
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /security/users
+
+stages:
+  - name: Try to add API user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      method: POST
+      json:
+        username: newUser
+        password: stringA1!
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /security/users/{user_id}/run_as
+
+stages:
+  - name: Try to change the allow_run_as field of a user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/1/run_as"
+      method: PUT
+      params:
+        allow_run_as: false
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/users
+
+stages:
+  - name: Try to delete API users (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      method: DELETE
+      params:
+        user_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete API user (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      method: DELETE
+      params:
+        user_ids: 002
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /security/users/{user_id}
+
+stages:
+  - name: Try to update API user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/1"
+      method: PUT
+      json:
+        password: stringB1!
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/roles
+
+stages:
+  - name: Try to get API roles (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to get API role (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: GET
+      params:
+        role_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /security/roles
+
+stages:
+  - name: Try to add API role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: POST
+      json:
+        name: test_role
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/roles
+
+stages:
+  - name: Try to delete API roles (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: DELETE
+      params:
+        role_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+
+  - name: Try to delete API role (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: DELETE
+      params:
+        role_ids: 8
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /security/roles/{role_id}
+
+stages:
+  - name: Try to update API role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/8"
+      method: PUT
+      json:
+        name: new_name
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/rules
+
+stages:
+  - name: Try to get API rules (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to get API rule (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: GET
+      params:
+        rule_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /security/rules
+
+stages:
+  - name: Try to add API rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: POST
+      json:
+        name: new_rule
+        rule:
+          FIND$:
+            definition: "normal_rule"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /security/rules/{rule_id}
+
+stages:
+  - name: Try to update API rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules/1"
+      method: PUT
+      json:
+        name: changed_name
+        rule:
+          MATCH$:
+            definition: "normal_rule"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/rules
+
+stages:
+  - name: Try to delete API rules (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: DELETE
+      params:
+        rule_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete API rule (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: DELETE
+      params:
+        rule_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/policies
+
+stages:
+  - name: Try to get API policies (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to get API policy (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      method: GET
+      params:
+        policy_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/policies
+
+stages:
+  - name: Try to delete API policy (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      method: DELETE
+      params:
+        policy_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete API policy (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      method: DELETE
+      params:
+        policy_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /security/policies
+
+stages:
+  - name: Try to add API policy
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      method: POST
+      json:
+        name: "test_i2"
+        policy:
+          actions:
+            - "agent:read"
+          resources:
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
+          effect: "deny"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /security/policies/{policy_id}
+
+stages:
+  - name: Try to update API policy
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/1"
+      method: PUT
+      json:
+        name: "test_i3"
+        policy:
+          actions:
+            - "agent:read"
+          resources:
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
+          effect: "allow"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /security/users/{user_id}/roles
+
+stages:
+  - name: Try to add roles to user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
+      method: POST
+      params:
+        role_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/users/{user_id}/roles
+
+stages:
+  - name: Try to remove roles from user (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
+      method: DELETE
+      params:
+        role_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to remove role from user (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
+      method: DELETE
+      params:
+        role_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /security/roles/{role_id}/policies
+
+stages:
+  - name: Try to add policies to role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
+      method: POST
+      params:
+        policy_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: POST /security/roles/{role_id}/rules
+
+stages:
+  - name: Try to add rules to role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
+      method: POST
+      params:
+        rule_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/roles/{role_id}/policies
+
+stages:
+  - name: Try to remove policies from role (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
+      method: DELETE
+      params:
+        policy_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to remove policy from role (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
+      method: DELETE
+      params:
+        policy_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/roles/{role_id}/rules
+
+stages:
+  - name: Try to remove rules from role (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
+      method: DELETE
+      params:
+        rule_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to remove rule from role (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
+      method: DELETE
+      params:
+        rule_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /security/config
+
+stages:
+  - name: Try to get API security config
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /security/config
+
+stages:
+  - name: Try to update API security config
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
+      method: PUT
+      json:
+        auth_token_exp_timeout: 700
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /security/config
+
+stages:
+  - name: Try to restore default API security config
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied

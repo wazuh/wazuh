@@ -1,6 +1,7 @@
 import pytest
 from wazuh.core.indexer import utils
 from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.models.commands import Source
 
 
 @pytest.fixture
@@ -35,3 +36,12 @@ def test_get_document_ids(search_result: dict):
     output = utils.get_document_ids(search_result)
 
     assert output == [1, 2, 3]
+
+
+def test_convert_enums():
+    """Check the correct behavior of the `convert_enums` function."""
+    d = {'key': None, 'key2': Source.ENGINE}
+    expected = {'key2': Source.ENGINE.value}
+    result = utils.convert_enums(d.items())
+   
+    assert result == expected

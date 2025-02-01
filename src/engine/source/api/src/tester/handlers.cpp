@@ -169,13 +169,7 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     eTester::Result result {};
 
     // Set event
-    auto resProtoEvent = eMessage::eMessageFromJson<google::protobuf::Value>(output.event()->str());
-    if (std::holds_alternative<base::Error>(resProtoEvent))
-    {
-        throw std::runtime_error {std::get<base::Error>(resProtoEvent).message}; // Should never happen
-    }
-    auto& protoEvent = std::get<google::protobuf::Value>(resProtoEvent);
-    result.mutable_output()->CopyFrom(protoEvent);
+    result.mutable_output()->assign(output.event()->str());
 
     // Set traces
     for (const auto& [assetName, assetTrace] : output.traceList())
@@ -411,24 +405,26 @@ api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
             }
         }
 
-        // Create The event to test
-        std::string eventStr {};
+        // Create the event
+        std::shared_ptr<json::Json> event {};
         {
-            std::stringstream streamLocation;
-            // Escape the ':' character in the location (Wazuh protocol)
-            for (const auto& c : eRequest.location())
+            const auto eventStr = base::utils::string::split(eRequest.ndjson_event(), '\n');
+            if (eventStr.size() != 2)
             {
-                if (c == ':')
-                {
-                    streamLocation << "|:";
-                }
-                else
-                {
-                    streamLocation << c;
-                }
+                callbackFn(genericError<ResponseType>("Invalid event format, 2 json objects expected"));
+                return;
             }
-
-            eventStr = eRequest.queue() + ":" + streamLocation.str() + ":" + eRequest.message();
+            try
+            {
+                auto agentInfo = json::Json(eventStr[0].data());
+                event = std::make_shared<json::Json>(eventStr[1].data());
+                event->merge(true, agentInfo);
+            }
+            catch (const std::exception& e)
+            {
+                callbackFn(genericError<ResponseType>(fmt::format("Error parsing event: {}", e.what())));
+                return;
+            }
         }
 
         // Run the test
@@ -449,7 +445,7 @@ api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
             callbackFn(::api::adapter::toWazuhResponse<ResponseType>(eResponse));
         };
 
-        auto error = tester->ingestTest(eventStr, opt, responseCallback);
+        auto error = tester->ingestTest(std::move(event), opt, responseCallback);
         if (error)
         {
             callbackFn(genericError<ResponseType>(error.value().message));

@@ -1,7 +1,0 @@
----
-- actions:
-  - sca:read
-  resources:
-  - agent:id:000
-  - agent:group:group2
-  effect: allow

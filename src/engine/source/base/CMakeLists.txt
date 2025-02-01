@@ -11,7 +11,6 @@ add_library(base STATIC
     ${SRC_DIR}/utils/stringUtils.cpp
     ${SRC_DIR}/utils/timeUtils.cpp
     ${SRC_DIR}/expression.cpp
-    ${SRC_DIR}/parseEvent.cpp
     ${SRC_DIR}/json.cpp
     ${SRC_DIR}/logging.cpp
 )
@@ -39,6 +38,7 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 
 add_library(base_test INTERFACE)
 target_include_directories(base_test INTERFACE ${TEST_DIR}/include)
+target_link_libraries(base_test INTERFACE base GTest::gmock)
 add_library(base::test ALIAS base_test)
 
 add_executable(base_utest
@@ -49,13 +49,20 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/name_test.cpp
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhRequest_test.cpp
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhResponse_test.cpp
+    ${UNIT_SRC_DIR}/utils/rocksDBSafeQueuePrefix_test.cpp
+    ${UNIT_SRC_DIR}/utils/rocksDBSafeQueue_test.cpp
+    ${UNIT_SRC_DIR}/utils/rocksDBWrapper_test.cpp
+    ${UNIT_SRC_DIR}/utils/threadEventDispatcher_test.cpp
+    ${UNIT_SRC_DIR}/utils/threadSafeQueue_test.cpp
     ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
-    ${UNIT_SRC_DIR}/parseEvent_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
     ${UNIT_SRC_DIR}/json_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp
+    ${UNIT_SRC_DIR}/utils/singletonLocator_test.cpp
+    ${UNIT_SRC_DIR}/utils/keyValue_test.cpp
+    ${UNIT_SRC_DIR}/utils/evpHelper_test.cpp
 )
 target_include_directories(base_utest
     PRIVATE
@@ -70,6 +77,9 @@ target_link_libraries(base_utest
     PRIVATE
     base
     GTest::gtest_main
+    RocksDB::rocksdb
+    OpenSSL::Crypto
+    OpenSSL::SSL
 )
 gtest_discover_tests(base_utest)
 

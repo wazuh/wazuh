@@ -11,13 +11,12 @@ from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 
-def _expand_resource(resource: str) -> set:
+async def _expand_resource(resource: str) -> set:
     """Expand a specified resource depending on its type.
     
     Parameters
@@ -35,12 +34,12 @@ def _expand_resource(resource: str) -> set:
 
     # This is the special case, expand_group can receive * or the name of the group. That's why it' s always called
     if resource_type == 'agent:group':
-        return expand_group(value)
+        return await expand_group(value)
 
     # We need to transform the wildcard * to the resource of the system
     if value == '*':
         if resource_type == 'agent:id':
-            return get_agents_info()
+            return await get_agents_info()
         elif resource_type == 'group:id':
             return get_groups()
         elif resource_type == 'role:id':
@@ -62,12 +61,6 @@ def _expand_resource(resource: str) -> set:
             with RulesManager() as rum:
                 rules = rum.get_rules()
             return {str(rule_id.id) for rule_id in rules}
-        elif resource_type == 'rule:file':
-            return expand_rules()
-        elif resource_type == 'decoder:file':
-            return expand_decoders()
-        elif resource_type == 'list:file':
-            return expand_lists()
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless
@@ -141,7 +134,7 @@ def _optimize_resources(req_resources: list) -> defaultdict:
     return resources_value_odict
 
 
-def _black_expansion(req_resources: list, final_user_permissions: dict):
+async def _black_expansion(req_resources: list, final_user_permissions: dict):
     """If RBAC policies is empty and the RBAC's mode is black, we have the permission over the required resource,
     or if we can't expand the resource, the action is resourceless.
 
@@ -162,7 +155,7 @@ def _black_expansion(req_resources: list, final_user_permissions: dict):
             if identifier == '*:*':
                 final_user_permissions['*:*'] = {'*'}
             else:
-                expanded_resource = _expand_resource(chunk)
+                expanded_resource = await _expand_resource(chunk)
                 final_user_permissions[identifier].update(expanded_resource)
 
 
@@ -194,7 +187,7 @@ def _process_effect(effect: str, identifier: str, value: str, final_user_permiss
             final_user_permissions[identifier].difference_update(expanded_resource.intersection({value}))
 
 
-def _single_processor(req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict):
+async def _single_processor(req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict):
     """This function processes the individual resources.
 
     Parameters
@@ -216,15 +209,15 @@ def _single_processor(req_resources: list, user_permissions_for_resource: dict, 
         if user_resource_identifier == 'agent:group':
             user_resource_identifier = 'agent:id'
         wildcard_expansion = user_resource.split(':')[-1] == '*'
-        expanded_resource = _expand_resource(user_resource)
+        expanded_resource = await _expand_resource(user_resource)
         for value in req_resources.get(user_resource_identifier, list()):
             if wildcard_expansion and value != '*':
-                expanded_resource |= _expand_resource(user_resource_identifier + ':' + value)
+                expanded_resource |= await _expand_resource(user_resource_identifier + ':' + value)
             _process_effect(user_resource_effect, user_resource_identifier,
                             value, final_user_permissions, expanded_resource)
 
 
-def _combination_processor(req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict):
+async def _combination_processor(req_resources: list, user_permissions_for_resource: dict, final_user_permissions: dict):
     """This function processes the combinations of resources.
     Checks how the API is currently running and depending on the API and the resources defined for the user, will return
     a dictionary with the final permissions.
@@ -247,14 +240,14 @@ def _combination_processor(req_resources: list, user_permissions_for_resource: d
                     split_chunk_resource = split_req_resource.split(':')
                     identifier = ':'.join(split_chunk_resource[:-1])
                     value = split_chunk_resource[-1]
-                    expanded_resource = _expand_resource(r)
+                    expanded_resource = await _expand_resource(r)
                     if r.split(':')[-1] == '*':
-                        expanded_resource |= _expand_resource(identifier + ':' + value)
+                        expanded_resource |= await _expand_resource(identifier + ':' + value)
                     _process_effect(user_resource_effect, identifier,
                                     value, final_user_permissions, expanded_resource)
 
 
-def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white') -> dict:
+async def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white') -> dict:
     """Try to match function required permissions against user permissions to allow or deny execution.
 
     Parameters
@@ -272,11 +265,11 @@ def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white') -
     allow_match = defaultdict(set)
     for req_action, req_resources in req_permissions.items():
         is_combination = any('&' in req_resource for req_resource in req_resources)
-        rbac_mode == 'black' and _black_expansion(req_resources, allow_match)
+        rbac_mode == 'black' and await _black_expansion(req_resources, allow_match)
         if not is_combination or len(req_resources) == 0:
-            _single_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
+            await _single_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
         else:
-            _combination_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
+            await _combination_processor(req_resources, rbac.get().get(req_action, dict()), allow_match)
     return allow_match
 
 
@@ -450,11 +443,11 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
 
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs):
             original_kwargs = dict(kwargs)
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
-            allow = _match_permissions(req_permissions=req_permissions, rbac_mode=rbac.get()['rbac_mode'])
+            allow = await _match_permissions(req_permissions=req_permissions, rbac_mode=rbac.get()['rbac_mode'])
             skip_execution = False
 
             for res_id, target_param in target_params.items():
@@ -491,7 +484,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
 
             # If func is still decorated by expose_resources, do not remove 'call_func'
             if hasattr(func, '__wrapped__') or kwargs.pop('call_func', True):
-                result = func(*args, **kwargs) if not skip_execution else None
+                result = await func(*args, **kwargs) if not skip_execution else None
             else:
                 result = AffectedItemsWazuhResult()
 

@@ -1,8 +1,0 @@
-[
-    "Match found, the package 'systemd' is vulnerable to 'CVE-2013-4392' due to default status. - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'systemd' is vulnerable to 'CVE-2020-13529' due to default status. - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'systemd', is vulnerable to 'CVE-2022-45873'. Current version: '247.3-7+deb11u4' (less than '252-1' or equal to ''). - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'systemd' is vulnerable to 'CVE-2023-31437' due to default status. - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'systemd' is vulnerable to 'CVE-2023-31438' due to default status. - Agent '' (ID: '001', Version: '').",
-    "Match found, the package 'systemd' is vulnerable to 'CVE-2023-31439' due to default status. - Agent '' (ID: '001', Version: '')."
-]

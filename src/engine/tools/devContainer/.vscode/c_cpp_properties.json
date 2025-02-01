@@ -3,6 +3,9 @@
         {
             "name": "Clang-11-C++17",
             "includePath": [
+                "${workspaceFolder}/wazuh/src/engine/source/**",
+                "${workspaceFolder}/wazuh/src/engine/build/**"
+
             ],
             "defines": [],
             "cStandard": "c17",

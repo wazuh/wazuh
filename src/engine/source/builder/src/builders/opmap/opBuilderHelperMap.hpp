@@ -50,6 +50,17 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Helper function to build a MapOp that converts a float or double to an integer allowing truncation or rounding
+ * during processing
+ *
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return base::Expression
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Helper function to build a MapOp that concatenates strings from OpArgs.
  *
  * This function constructs a MapOp that concatenates strings from OpArgs, either directly
@@ -141,15 +152,16 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
 MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Transforms an integer. Stores the result of a mathematical operation
+ * @brief Transforms an number. Stores the result of a mathematical operation
  * of a single or a set of values or references into the target field.
  *
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @param intCalc If true, only integers are used; if false, integers and floats.
  * @return base::Expression The lifter with the `mathematical operation` transformation.
- * @throw std::runtime_error if the parameter is not a integer.
+ * @throw If parameter is not an integer when intCalc is true or if parameter is not a number when intCalc is false.
  */
-MapOp opBuilderHelperIntCalc(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+MapBuilder getOpBuilderHelperCalc(bool intCalc);
 
 //*************************************************
 //*             JSON tranform                     *
@@ -298,6 +310,19 @@ MapOp opBuilderHelperEpochTimeFromSystem(const std::vector<OpArg>& opArgs,
 MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Builds an operation to generate the current date in ISO 8601 format.
+ *
+ * This function returns a callable operation that produces the current date
+ * in the format "%Y-%m-%dT%H:%M:%SZ". The date is generated in UTC time zone.
+ *
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @throw std::runtime when type of number of paramter missmatch
+ * @return base::Expression
+ */
+MapOp opBuilderHelperGetDate(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
 //*************************************************
 //*              Checksum and hash                *
 //*************************************************
@@ -330,7 +355,8 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                           bool isMerge = false);
+                                           bool isMerge = false,
+                                           bool isRecurive = false);
 
 /**
  * @brief Get the 'get_key_in' function helper builder
@@ -357,6 +383,18 @@ TransformOp opBuilderHelperMergeValue(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Get the 'merge_recursive_key_in' function helper builder
+ *
+ * <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return builder
+ */
+TransformOp opBuilderHelperMergeRecursiveValue(const Reference& targetField,
+                                               const std::vector<OpArg>& opArgs,
+                                               const std::shared_ptr<const IBuildCtx>& buildCtx);
 } // namespace builder::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H

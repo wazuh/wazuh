@@ -77,6 +77,22 @@ Feature: Router Routes API Management
     And I send a request to get the list of routes
     Then I should receive a list with size equal to "3"
 
+  Scenario: Check that last update is zero when state is disabled
+    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
+    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
+    When I send a request to get the route "default"
+    Then I should receive a route with state "ENABLED"
+    AND I should receive a route with last update different to 0
+    When I send a request to delete the filter "filter/allow-all/0"
+    Then I send a restart to server
+    When I send a request to get the route "default"
+    Then I should receive a route with state "DISABLED"
+    AND I should receive a route with last update equal to 0
+    When I send a request to create the filter "filter/allow-all/0"
+    Then I send a restart to server
+    When I send a request to get the route "default"
+    Then I should receive a route with state "ENABLED"
+
   Scenario: Change sync of specific route via API
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
     And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
@@ -93,21 +109,3 @@ Feature: Router Routes API Management
     Then I should receive a route with sync "ERROR"
     And I send a request to the router to reload the "default"
     And I should receive an error response
-
-  Scenario: Send an event without colon to the router via API
-    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
-    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
-    When I send a request to send event "hi! i am an event" to the route "default"
-    Then I should receive an error response indicating "Invalid event format, a colon was expected to be right after the first character"
-
-  Scenario: Send a short event to the router via API
-    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
-    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
-    When I send a request to send event "1:e" to the route "default"
-    Then I should receive an error response indicating "Invalid event format, event is too short (3)"
-
-  Scenario: Send a success event to the router via API
-    Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
-    And I create a "default" route with priority "255" that uses the filter "filter/allow-all/0" and points to policy "policy/wazuh/0"
-    When I send a request to send event "1:hi! i am an event!:any" to the route "default"
-    Then I should receive a success response

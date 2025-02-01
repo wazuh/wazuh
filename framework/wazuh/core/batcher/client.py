@@ -1,7 +1,6 @@
 import asyncio
-from typing import Optional
 
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Packet
 
 
 class BatcherClient:
@@ -10,39 +9,31 @@ class BatcherClient:
     Parameters
     ----------
     queue : MuxDemuxQueue
-        MuxDemuxQueue instance used to route messages.
+        MuxDemuxQueue instance used to route items.
     wait_frequency: float
         The frequency, in seconds, at which the client checks for responses in the queue.
         Defaults to 0.1 seconds.
-
     """
-    def __init__(self, queue: MuxDemuxQueue, wait_frequency: float = 0.1):
+    def __init__(self, queue: MuxDemuxQueue, wait_frequency: float = 0.05):
         self.queue = queue
         self.wait_frequency = wait_frequency
 
-    def send_event(self, event) -> int:
+    def send_event(self, packet: Packet):
         """Send an event through the RouterQueue.
 
         Parameters
         ----------
-        event : any
-            Event to send.
-
-        Returns
-        -------
-        int
-            Unique identifier assigned to the event.
+        packet: Packet
+            Packet to send to the Batcher.
         """
-        assigned_uid = id(event)
-        self.queue.send_to_mux(assigned_uid, event)
-        return assigned_uid
+        self.queue.send_to_mux(packet)
 
-    async def get_response(self, uid: int) -> Optional[dict]:
+    async def get_response(self, packet_id: int) -> Packet:
         """Asynchronously wait for a response to become available and retrieve it.
 
         Parameters
         ----------
-        uid : int
+        packet_id : int
             Unique identifier for the response.
 
         Returns
@@ -50,9 +41,4 @@ class BatcherClient:
         Optional[dict]
             Indexer response if available, None otherwise.
         """
-        while True:
-            if not self.queue.is_response_pending(uid):
-                result = self.queue.receive_from_demux(uid)
-                return result
-            else:
-                await asyncio.sleep(self.wait_frequency)
+        return await asyncio.to_thread(self.queue.receive_from_demux, packet_id)

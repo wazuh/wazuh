@@ -140,7 +140,7 @@ then
     ./main server --event_queue_tasks 0                                    \
                   --event_socket "/var/ossec/queue/sockets/queue"          \
                   --api_queue_tasks 0                                      \
-                  --api_socket "/var/ossec/queue/sockets/engine-api"       \
+                  --api_socket "/run/wazuh-server/engine-api.socket"       \
                   --server_threads 1                                       \
                   --router_threads ${ENGINE_N_THREADS}                     \
                   --queue_flood_file ""                                    \

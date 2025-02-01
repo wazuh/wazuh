@@ -17,14 +17,14 @@ from typing import Dict, Optional, Union
 import certifi
 import httpx
 import wazuh
-from api import configuration
+from server_management_api import configuration
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
-
+from wazuh.core.config.client import CentralizedConfig
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
@@ -35,6 +35,8 @@ ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
 USER_AGENT_KEY = 'user-agent'
+DEFAULT_TIMEOUT = 10.0
+
 
 class LoggingFormat(Enum):
     plain = "plain"
@@ -130,7 +132,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
     elif log_format == LoggingFormat.json and exists(common.WAZUH_LOG_JSON):
         wazuh_log_content = tail(common.WAZUH_LOG_JSON, limit)
     else:
-        raise WazuhInternalError(1020)
+        raise WazuhInternalError(1000)
 
     for line in wazuh_log_content:
         log_fields = get_ossec_log_fields(line, log_format=log_format)
@@ -257,17 +259,6 @@ def parse_execd_output(output: str) -> Dict:
     return response
 
 
-def get_api_conf() -> dict:
-    """Return current API configuration.
-
-    Returns
-    -------
-    dict
-        API configuration.
-    """
-    return copy.deepcopy(configuration.api_conf)
-
-
 def _get_ssl_context() -> ssl.SSLContext:
     """Return a default ssl context."""
     return ssl.create_default_context(cafile=certifi.where())
@@ -335,7 +326,7 @@ async def query_update_check_service(installation_uid: str) -> dict:
         last_check_date=get_utc_now()
     )
 
-    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
+    async with httpx.AsyncClient(verify=_get_ssl_context(), timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
         try:
             response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
             response_data = response.json()

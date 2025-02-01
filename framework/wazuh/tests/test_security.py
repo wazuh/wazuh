@@ -70,30 +70,34 @@ def reload_default_rbac_resources():
 
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
+    with (
+        patch('wazuh.core.common.wazuh_uid'),
+        patch('wazuh.core.common.wazuh_gid'),
+        # TODO: Fix in #26725
+        patch('wazuh.core.utils.load_wazuh_xml')
+    ):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
-                with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    import wazuh.rbac.orm as orm
-                    # Clear mappers
-                    sqlalchemy_orm.clear_mappers()
-                    # Invalidate in-memory database
-                    orm.db_manager.close_sessions()
-                    orm.db_manager.connect(orm.DB_FILE)
-                    orm.db_manager.sessions[orm.DB_FILE].close()
-                    orm.db_manager.engines[orm.DB_FILE].dispose()
+                import wazuh.rbac.orm as orm
+                # Clear mappers
+                sqlalchemy_orm.clear_mappers()
+                # Invalidate in-memory database
+                orm.db_manager.close_sessions()
+                orm.db_manager.connect(orm.DB_FILE)
+                orm.db_manager.sessions[orm.DB_FILE].close()
+                orm.db_manager.engines[orm.DB_FILE].dispose()
 
-                    reload(orm)
-                    orm.db_manager.connect(orm.DB_FILE)
-                    orm.db_manager.create_database(orm.DB_FILE)
-                    orm.db_manager.insert_default_resources(orm.DB_FILE)
-                    import wazuh.rbac.decorators as decorators
-                    from wazuh.tests.util import RBAC_bypasser
+                reload(orm)
+                orm.db_manager.connect(orm.DB_FILE)
+                orm.db_manager.create_database(orm.DB_FILE)
+                orm.db_manager.insert_default_resources(orm.DB_FILE)
+                import wazuh.rbac.decorators as decorators
+                from wazuh.tests.util import RBAC_bypasser
 
-                    decorators.expose_resources = RBAC_bypasser
-                    from wazuh import security
-                    from wazuh.core.results import WazuhResult
-                    from wazuh.core import security as core_security
+                decorators.expose_resources = RBAC_bypasser
+                from wazuh import security
+                from wazuh.core.results import WazuhResult
+                from wazuh.core import security as core_security
     try:
         create_memory_db('schema_security_test.sql', orm.db_manager.sessions[orm.DB_FILE])
     except OperationalError:
@@ -138,7 +142,7 @@ def failed_are_equal(target_dict, expected_dict):
 
 
 @pytest.mark.parametrize('security_function, params, expected_result', security_cases)
-def test_security(db_setup, security_function, params, expected_result):
+async def test_security(db_setup, security_function, params, expected_result):
     """Verify the entire security module.
 
     Parameters
@@ -154,9 +158,10 @@ def test_security(db_setup, security_function, params, expected_result):
     """
     try:
         security, _, _ = db_setup
-        result = getattr(security, security_function)(**params).to_dict()
-        assert affected_are_equal(result, expected_result)
-        assert failed_are_equal(result, expected_result)
+        result = await getattr(security, security_function)(**params)
+        result_dict = result.to_dict()
+        assert affected_are_equal(result_dict, expected_result)
+        assert failed_are_equal(result_dict, expected_result)
     except WazuhError as e:
         assert str(e.code) == list(expected_result['failed_items'].keys())[0]
 

@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <base/logging.hpp>
+#include <queue/mockQueue.hpp>
 #include <store/mockStore.hpp>
 
 #include <router/orchestrator.hpp>
@@ -10,11 +12,34 @@
 
 using namespace router;
 
+namespace
+{
+const std::string G_NDJ_AGENT_HEADER {
+    R"({"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.2"],"architecture":"x86_64"}}})"};
+const std::string G_NDJ_MODULE_SUBHEADER_1 {R"({"module": "logcollector", "collector": "file"})"};
+const std::string G_NDJ_EVENT_1 {
+    R"({"log": {"file": {"path": "/var/log/apache2/access.log"}}, "base": {"tags": ["production-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z"}})"};
+const std::string G_NDJ_EVENT_2 {
+    R"({"log": {"file": {"path": "/var/log/apache2/error.log"}}, "base": {"tags": ["testing-server"]}, "event": {"original": "::1 - - [26/Jun/2020:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209", "ingested": "2023-12-26T09:22:14.000Z"}})"};
+const std::string G_NDJ_EVENT_3 {
+    R"({"log": {"file": {"path": "/tmp/syslog.log"}}, "event": {"original": "SYSLOG EXAMPLE", "ingested": "2023-12-26T09:22:14.000Z"}})"};
+
+// Avoid string comparison issues with json
+MATCHER_P(isEqualsEvent, expectedJson, "is not equal to expected JSON")
+{
+    const auto recv = json::Json(*arg);
+    const auto expected = *(static_cast<std::shared_ptr<json::Json>>(expectedJson));
+
+    return recv == expected;
+}
+
+} // namespace
 /// @brief Orchestrator to test, helper class
 class OrchestratorToTest : public router::Orchestrator
 {
 public:
     std::shared_ptr<store::mocks::MockStore> m_mockstore;
+    std::shared_ptr<queue::mocks::MockQueue<base::Event>> m_mockEventQueue;
     std::list<std::shared_ptr<MockWorker>> m_mocks;
 
     OrchestratorToTest()
@@ -23,6 +48,8 @@ public:
         m_testTimeout = 1000;
         m_mockstore = std::make_shared<store::mocks::MockStore>();
         m_wStore = m_mockstore;
+        m_mockEventQueue = std::make_shared<queue::mocks::MockQueue<base::Event>>();
+        m_eventQueue = m_mockEventQueue;
     };
 
     auto forEachWorkerMock(std::function<void(std::shared_ptr<MockWorker>)> func)
@@ -569,6 +596,18 @@ protected:
         {
             m_orchestrator->addMockWorker();
         }
+
+        logging::testInit();
+    }
+
+    void TearDown() override
+    {
+        // Test if any call is pending
+        testing::Mock::VerifyAndClearExpectations(m_orchestrator->m_mockstore.get());
+        testing::Mock::VerifyAndClearExpectations(m_orchestrator->m_mockEventQueue.get());
+
+        // Reset orchestrator
+        m_orchestrator.reset();
     }
 };
 
@@ -712,7 +751,9 @@ TEST_F(OrchestratorTest, ingestTraceLevelNoneAssetNotEmptyFailture)
     m_orchestrator->expectGetAssetsSuccess();
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {"anyAsset"}, "test");
 
-    auto resultFuture = m_orchestrator->ingestTest("1:any:message", opt);
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
+
+    auto resultFuture = m_orchestrator->ingestTest(std::move(event), opt);
     resultFuture.wait();
     auto result = resultFuture.get();
 
@@ -724,19 +765,8 @@ TEST_F(OrchestratorTest, ingestNameEmptyFailture)
     m_orchestrator->expectGetAssetsSuccess();
     test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "");
 
-    auto resultFuture = m_orchestrator->ingestTest("1:any:message", opt);
-    resultFuture.wait();
-    auto result = resultFuture.get();
-
-    EXPECT_TRUE(base::isError(result));
-}
-
-TEST_F(OrchestratorTest, ingestEventFailture)
-{
-    m_orchestrator->expectGetAssetsSuccess();
-    test::Options opt(test::Options::TraceLevel::NONE, std::unordered_set<std::string> {}, "test");
-
-    auto resultFuture = m_orchestrator->ingestTest("message:any", opt);
+    auto event = std::make_shared<json::Json>(R"({"message":"test"})");
+    auto resultFuture = m_orchestrator->ingestTest(std::move(event), opt);
     resultFuture.wait();
     auto result = resultFuture.get();
 
@@ -853,12 +883,204 @@ TEST_F(OrchestratorTest, entriesGetSuccessRouter)
     EXPECT_FALSE(m_orchestrator->getEntries().empty());
 }
 
-TEST_F(OrchestratorTest, postStrEventEmptyFailture)
+TEST_F(OrchestratorTest, postRawNdjsonsmallNDJsonsFailture)
 {
-    EXPECT_TRUE(base::isError(m_orchestrator->postStrEvent("")));
+    std::list<std::string> ndjsons = {"", "{}", "{}\n{}", "{}\n{}\n", "{}\n\n\n\n{}\n\n\n"};
+
+    for (const auto& ndjson : ndjsons)
+    {
+        EXPECT_THROW(m_orchestrator->postRawNdjson(std::string(ndjson)), std::runtime_error)
+            << "Failed for: " << ndjson;
+    }
 }
 
-TEST_F(OrchestratorTest, postStrEventFailtureInProtocol)
+TEST_F(OrchestratorTest, postRawNdjsonNoCapacityFailture)
 {
-    EXPECT_TRUE(base::isError(m_orchestrator->postStrEvent("message:1:any")));
+
+    auto ndjson = G_NDJ_AGENT_HEADER + "\n" + G_NDJ_MODULE_SUBHEADER_1 + "\n" + G_NDJ_EVENT_1;
+    const auto event = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
+    auto finalEvent = std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str());
+    finalEvent->merge(true, *event);
+
+    // no free slots
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), aproxFreeSlots()).Times(1).WillOnce(testing::Return(0));
+
+    EXPECT_NO_THROW(m_orchestrator->postRawNdjson(std::move(ndjson)));
+}
+
+TEST_F(OrchestratorTest, postRawNdjsonSuccess_oneEvent)
+{
+    auto ndjson = G_NDJ_AGENT_HEADER + "\n" + G_NDJ_MODULE_SUBHEADER_1 + "\n" + G_NDJ_EVENT_1;
+    const auto event = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
+    const auto subheader = std::make_shared<json::Json>(G_NDJ_MODULE_SUBHEADER_1.c_str());
+    auto finalEvent = std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str());
+    finalEvent->merge(true, *event);
+    finalEvent->set("/event/module", subheader->getJson("/module").value());
+    finalEvent->set("/event/collector", subheader->getJson("/collector").value());
+    // 1 event 1 free slot
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), aproxFreeSlots()).Times(1).WillOnce(testing::Return(1));
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(finalEvent)))
+        .WillOnce(testing::Return(true));
+    EXPECT_NO_THROW(m_orchestrator->postRawNdjson(std::move(ndjson)));
+}
+
+TEST_F(OrchestratorTest, postRawNdjsonSuccess_multiEvent)
+{
+    auto ndjson = G_NDJ_AGENT_HEADER + "\n" + G_NDJ_MODULE_SUBHEADER_1 + "\n";
+    ndjson += G_NDJ_EVENT_1 + "\n";
+    ndjson += G_NDJ_EVENT_2 + "\n\n";
+    ndjson += G_NDJ_EVENT_3;
+    auto subheader = std::make_shared<json::Json>(G_NDJ_MODULE_SUBHEADER_1.c_str());
+
+    std::vector<base::Event> events {};
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    {
+        const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
+        const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_2.c_str());
+        const auto event3 = std::make_shared<json::Json>(G_NDJ_EVENT_3.c_str());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
+        events[0]->merge(true, *event1);
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
+        events[1]->merge(true, *event2);
+        events[2]->set("/event/module", subheader->getJson("/module").value());
+        events[2]->set("/event/collector", subheader->getJson("/collector").value());
+        events[2]->merge(true, *event3);
+    }
+
+    // 3 event 3 free slot, in order
+    testing::Sequence seq;
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), aproxFreeSlots()).WillOnce(testing::Return(3));
+
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[0])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[1])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[2])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+
+    EXPECT_NO_THROW(m_orchestrator->postRawNdjson(std::move(ndjson)));
+}
+
+TEST_F(OrchestratorTest, postRawNdjsonSuccess_multiEvent_freeSlot)
+{
+    auto ndjson = G_NDJ_AGENT_HEADER + "\n" + G_NDJ_MODULE_SUBHEADER_1 + "\n";
+    ndjson += G_NDJ_EVENT_1 + "\n";
+    ndjson += G_NDJ_EVENT_2 + "\n\n";
+    ndjson += G_NDJ_EVENT_3;
+    auto subheader = std::make_shared<json::Json>(G_NDJ_MODULE_SUBHEADER_1.c_str());
+
+    std::vector<base::Event> events {};
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    {
+        const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
+        const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_2.c_str());
+        const auto event3 = std::make_shared<json::Json>(G_NDJ_EVENT_3.c_str());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
+        events[0]->merge(true, *event1);
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
+        events[1]->merge(true, *event2);
+        events[2]->set("/event/module", subheader->getJson("/module").value());
+        events[2]->set("/event/collector", subheader->getJson("/collector").value());
+        events[2]->merge(true, *event3);
+    }
+
+    // 3 event 3 free slot, in order
+    testing::Sequence seq;
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), aproxFreeSlots()).WillOnce(testing::Return(30));
+
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[0])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[1])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[2])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+
+    EXPECT_NO_THROW(m_orchestrator->postRawNdjson(std::move(ndjson)));
+}
+
+TEST_F(OrchestratorTest, postRawNdjsonSuccess_3Events_2freeSlot)
+{
+    auto ndjson = G_NDJ_AGENT_HEADER + "\n" + G_NDJ_MODULE_SUBHEADER_1 + "\n";
+    ndjson += G_NDJ_EVENT_1 + "\n";
+    ndjson += G_NDJ_EVENT_2 + "\n\n";
+    ndjson += G_NDJ_EVENT_3;
+    auto subheader = std::make_shared<json::Json>(G_NDJ_MODULE_SUBHEADER_1.c_str());
+
+    std::vector<base::Event> events {};
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    {
+        const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
+        const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_2.c_str());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
+        events[0]->merge(true, *event1);
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
+        events[1]->merge(true, *event2);
+    }
+
+    // 3 event 3 free slot, in order
+    testing::Sequence seq;
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), aproxFreeSlots()).WillOnce(testing::Return(2));
+
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[0])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[1])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+
+    EXPECT_NO_THROW(m_orchestrator->postRawNdjson(std::move(ndjson)));
+}
+
+TEST_F(OrchestratorTest, postRawNdjsonSuccess_multiEvent_discartMalformed)
+{
+    auto ndjson = G_NDJ_AGENT_HEADER + "\n" + G_NDJ_MODULE_SUBHEADER_1 + "\n";
+    ndjson += G_NDJ_EVENT_1 + "\n";
+    ndjson += std::string("hi! invalid event") + "\n\n";
+    ndjson += G_NDJ_EVENT_3;
+    auto subheader = std::make_shared<json::Json>(G_NDJ_MODULE_SUBHEADER_1.c_str());
+
+    std::vector<base::Event> events {};
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    events.push_back(std::make_shared<json::Json>(G_NDJ_AGENT_HEADER.c_str()));
+    {
+        const auto event1 = std::make_shared<json::Json>(G_NDJ_EVENT_1.c_str());
+        const auto event2 = std::make_shared<json::Json>(G_NDJ_EVENT_3.c_str());
+        events[0]->set("/event/module", subheader->getJson("/module").value());
+        events[0]->set("/event/collector", subheader->getJson("/collector").value());
+        events[0]->merge(true, *event1);
+        events[1]->set("/event/module", subheader->getJson("/module").value());
+        events[1]->set("/event/collector", subheader->getJson("/collector").value());
+        events[1]->merge(true, *event2);
+    }
+
+    // 3 event 3 free slot, in order
+    testing::Sequence seq;
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), aproxFreeSlots()).WillOnce(testing::Return(30));
+
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[0])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+    EXPECT_CALL(*(m_orchestrator->m_mockEventQueue), tryPush(isEqualsEvent(events[1])))
+        .InSequence(seq)
+        .WillOnce(testing::Return(true));
+
+    EXPECT_NO_THROW(m_orchestrator->postRawNdjson(std::move(ndjson)));
 }

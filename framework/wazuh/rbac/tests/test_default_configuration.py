@@ -20,10 +20,9 @@ def db_setup():
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
-                with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    import wazuh.rbac.orm as rbac
-                    import wazuh.rbac.decorators
-                    wazuh.rbac.decorators.rbac.set({'rbac_mode': 'white'})
+                import wazuh.rbac.orm as rbac
+                import wazuh.rbac.decorators
+                wazuh.rbac.decorators.rbac.set({'rbac_mode': 'white'})
     init_db('schema_security_test.sql', test_data_path)
 
     yield rbac

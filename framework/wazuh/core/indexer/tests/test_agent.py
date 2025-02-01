@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from unittest import mock
 
 import pytest
@@ -6,9 +5,9 @@ from opensearchpy import exceptions
 from opensearchpy.helpers.response import Hit
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.agent import AgentsIndex
-from wazuh.core.indexer.base import IndexerKey, remove_empty_values
-from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.agent import AgentsIndex, AGENT_KEY
+from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.models.agent import Agent, Status
 
 
 class TestAgentIndex:
@@ -17,7 +16,8 @@ class TestAgentIndex:
     create_params = {
         'name': 'test',
         'key': '015fb915771223a3fdd7c0c0a5adcab8',
-        'groups': 'group1'
+        'type': 'endpoint',
+        'version': '5.0.0',
     }
 
     @pytest.fixture
@@ -31,14 +31,15 @@ class TestAgentIndex:
     async def test_create(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `create` method."""
         new_agent = await index_instance.create(id=self.create_id, **self.create_params)
-
         assert isinstance(new_agent, Agent)
+        new_agent.status = Status.NEVER_CONNECTED
+
         client_mock.index.assert_called_once_with(
             index=index_instance.INDEX,
             id=self.create_id,
-            body=new_agent.to_dict(),
+            body={AGENT_KEY: new_agent.to_dict()},
             op_type='create',
-            refresh='wait_for'
+            refresh='true'
         )
 
     async def test_create_ko(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
@@ -69,7 +70,7 @@ class TestAgentIndex:
         limit = 10
         offset = 1
         sort = 'name'
-        search_result = [{'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}]
+        search_result = [{AGENT_KEY: {'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}}]
         client_mock.search.return_value = search_result
 
         with mock.patch('wazuh.core.indexer.agent.get_source_items', return_value=search_result):
@@ -77,7 +78,7 @@ class TestAgentIndex:
                 query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
             )
 
-        assert result == [Agent(**item) for item in search_result]
+        assert result == [Agent(**item[AGENT_KEY]) for item in search_result]
         client_mock.search.assert_called_once_with(
             index=index_instance.INDEX,
             body=query,
@@ -95,7 +96,7 @@ class TestAgentIndex:
 
         await index_instance.update(uuid=uuid, agent=Agent(name=new_name))
 
-        query = {IndexerKey.DOC: {'name': new_name}}
+        query = {IndexerKey.DOC: {AGENT_KEY: {'name': new_name}}}
         client_mock.update.assert_called_once_with(index=index_instance.INDEX, id=uuid, body=query)
 
     async def test_delete_group(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
@@ -108,7 +109,7 @@ class TestAgentIndex:
                 IndexerKey.BOOL: {
                     IndexerKey.FILTER: [{
                         IndexerKey.TERM: {
-                            'groups': group_name
+                            'agent.groups': group_name
                         }
                     }]
                 }
@@ -127,7 +128,7 @@ class TestAgentIndex:
         """Check the correct function of `get_group_agents` method."""
         group_name = 'foo'
         agent_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
-        search_result = {'_hits': [Hit({IndexerKey._SOURCE: {'id': agent_id}})]}
+        search_result = {'_hits': [Hit({IndexerKey._SOURCE: {AGENT_KEY: {'id': agent_id}}})]}
         client_mock.search.return_value = search_result
         expected_result = [Agent(id=agent_id)]
 
@@ -138,7 +139,7 @@ class TestAgentIndex:
                 IndexerKey.BOOL: {
                     IndexerKey.FILTER: [{
                         IndexerKey.TERM: {
-                            'groups': group_name
+                            'agent.groups': group_name
                         }
                     }]
                 }
@@ -177,13 +178,14 @@ class TestAgentIndex:
         await index_instance._update_groups(group_name=group_name, agent_ids=agent_ids, override=override)
 
         if override:
-            source = 'ctx._source.groups = params.group'
+            source = 'ctx._source.agent.groups = new String[] {params.group};'
         else:
+            # Changing the indentation makes the test fail
             source = """
-                if (ctx._source.groups == null) {
-                    ctx._source.groups = params.group;
+                if (ctx._source.agent.groups == null) {
+                    ctx._source.agent.groups = new String[] {params.group};
                 } else {
-                    ctx._source.groups += ","+params.group;
+                    ctx._source.agent.groups.add(params.group);
                 }
                 """
 

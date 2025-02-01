@@ -1,0 +1,191 @@
+run-name: Build ${{ inputs.system }} filebeat on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.id }}
+name: Build Filebeat
+
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: |
+          Architecture of the package [amd64, arm64]
+        required: false
+        default: amd64
+        type: choice
+        options:
+          - amd64
+          - arm64
+      system:
+        description: |
+          Package format [deb, rpm]
+        required: false
+        default: deb
+        type: choice
+        options:
+          - deb
+          - rpm
+      revision:
+        description: |
+          Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        description: |
+          Build package with release format.
+          By default: false
+        type: boolean
+        required: false
+      checksum:
+        description: Generate package checksum.
+        type: boolean
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      architecture:
+        type: string
+        required: false
+      system:
+        type: string
+        required: false
+      revision:
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+
+    env:
+      FILEBEAT_VERSION: 7.10.2
+      S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/packages/
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: "elastic/beats"
+          ref: "v${{ env.FILEBEAT_VERSION }}"
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y gcc make golang-go python3-pip python3-venv
+          sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt update -y
+          sudo apt install -y docker-ce
+          export PATH=$PATH:/usr/local/go/bin
+          go get -u github.com/magefile/mage
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Apply patch for Ubuntu build
+        run: |
+          sed -i 's/apt-get install -y --no-install-recommends/DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends/' filebeat/Dockerfile
+
+          sed -i "s/from: 'centos:7'/from: 'ubuntu:20.04'/g" dev-tools/packaging/packages.yml
+          sed -i "s/buildFrom: 'centos:7'/buildFrom: 'ubuntu:20.04'/g" dev-tools/packaging/packages.yml
+
+          sed -i "s/microdnf install -y shadow-utils/microdnf install -y findutils shadow-utils/g" dev-tools/packaging/templates/docker/Dockerfile.elastic-agent.tmpl
+          sed -i '/RUN yum -y --setopt=tsflags=nodocs update && \\/, /yum clean all/c\
+          RUN apt-get update -y && \\\n    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --yes ca-certificates curl libcap2-bin xz-utils && \\\n    apt-get clean && \\\n    exit_code=$? && \\\n    [ $exit_code -eq 0 ] || exit $exit_code' dev-tools/packaging/templates/docker/Dockerfile.elastic-agent.tmpl
+
+          sed -i 's/microdnf install shadow-utils/microdnf install findutils shadow-utils/' dev-tools/packaging/templates/docker/Dockerfile.tmpl
+          sed -i '/RUN yum -y --setopt=tsflags=nodocs update && yum clean all/c\
+          RUN apt-get update -y && \\\n    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --yes ca-certificates curl libcap2-bin xz-utils && \\\n    apt-get clean && \\\n    exit_code=$? && \\\n    [ $exit_code -eq 0 ] || exit $exit_code' dev-tools/packaging/templates/docker/Dockerfile.tmpl
+
+          sed -i '/func TestDocker(t \*testing\.T) {/,/^}$/d' dev-tools/packaging/package_test.go
+
+      - name: Package Filebeat
+        working-directory: filebeat
+        run: |
+          PLATFORMS=linux/${{ inputs.architecture }} PACKAGES=${{ inputs.system }} mage package
+
+      - name: Upload Filebeat package to S3
+        working-directory: filebeat/build/distributions
+        run: |
+          if [ "${{ inputs.system }}" = "rpm" ]; then
+            if [ "${{ inputs.architecture }}" = "amd64" ]; then
+              arch="x86_64"
+            elif [ "${{ inputs.architecture }}" = "arm64" ]; then
+              arch="aarch64"
+            fi
+            revision="-${{ inputs.revision }}."
+          else
+            arch="${{ inputs.architecture }}"
+            revision="-${{ inputs.revision }}_"
+          fi
+
+          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}"
+          if [ "${{ inputs.is_stage }}" = "false" ]; then
+            git_hash=$(git rev-parse --short "$GITHUB_SHA")
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}_${git_hash}.${{ inputs.system }}"
+          else
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}.${{ inputs.system }}"
+          fi
+
+          mv "$original_file" "$renamed_file"
+          aws s3 cp "$renamed_file" "${{ env.S3_BUCKET_PATH }}"
+          s3uri="${{ env.S3_BUCKET_PATH }}$renamed_file"
+          echo "S3 URI: ${s3uri}"
+
+      - name: Upload Filebeat module SHA512 to S3
+        if: ${{ inputs.checksum }}
+        working-directory: filebeat/build/distributions
+        run: |
+          if [ "${{ inputs.system }}" = "rpm" ]; then
+            if [ "${{ inputs.architecture }}" = "amd64" ]; then
+              arch="x86_64"
+            elif [ "${{ inputs.architecture }}" = "arm64" ]; then
+              arch="aarch64"
+            fi
+            revision="-${{ inputs.revision }}."
+          else
+            arch="${{ inputs.architecture }}"
+            revision="-${{ inputs.revision }}_"
+          fi
+
+          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${arch}.${{ inputs.system }}.sha512"
+          if [ "${{ inputs.is_stage }}" = "false" ]; then
+            git_hash=$(git rev-parse --short "$GITHUB_SHA")
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}_${git_hash}.${{ inputs.system }}.sha512"
+          else
+            renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}${revision}${arch}.${{ inputs.system }}.sha512"
+          fi
+
+          mv "$original_file" "$renamed_file"
+          aws s3 cp "$renamed_file" "${{ env.S3_BUCKET_PATH }}"
+          s3uri="${{ env.S3_BUCKET_PATH }}$renamed_file"
+          echo "S3 sha512 URI: ${s3uri}"

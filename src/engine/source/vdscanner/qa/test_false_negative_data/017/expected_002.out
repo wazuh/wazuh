@@ -1,4 +1,0 @@
-[
-    "No match due to default status for Package: xz, Version: 5.4.6-1 while scanning for Vulnerability: CVE-2024-3094",
-    "Match found, the package 'xz', is vulnerable to 'CVE-2024-3094'. Current version: '5.6.0-1' (less than '5.6.1-2' or equal to ''). - Agent '' (ID: '001', Version: '')." 
-]

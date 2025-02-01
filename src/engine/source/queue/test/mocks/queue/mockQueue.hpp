@@ -18,6 +18,7 @@ public:
     MOCK_METHOD(bool, tryPop, (T & element), (override));
     MOCK_METHOD(bool, empty, (), (const, override));
     MOCK_METHOD(size_t, size, (), (const, override));
+    MOCK_METHOD(size_t, aproxFreeSlots, (), (const, override));
 };
 
 } // namespace queue::mocks
