@@ -26,7 +26,7 @@ namespace PackageLinuxHelper
         {'P', {typeid(std::string), "name"}},
         {'V', {typeid(std::string), "version"}},
         {'A', {typeid(std::string), "architecture"}},
-        {'I', {typeid(int32_t), "size"}},
+        {'I', {typeid(int64_t), "size"}},
         {'T', {typeid(std::string), "description"}},
     };
 
@@ -55,11 +55,11 @@ namespace PackageLinuxHelper
                 {
                     packageInfo[key.second] = value;
                 }
-                else if (key.first == typeid(int32_t))
+                else if (key.first == typeid(int64_t))
                 {
                     try
                     {
-                        packageInfo[key.second] = std::stol(value);
+                        packageInfo[key.second] = std::stoll(value);
                     }
                     catch (const std::exception&)
                     {

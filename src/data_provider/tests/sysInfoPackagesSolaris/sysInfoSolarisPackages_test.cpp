@@ -35,7 +35,7 @@ class SysInfoSolarisPackagesWrapperMock: public IPackageWrapper
         MOCK_METHOD(std::string, source, (), (const override));
         MOCK_METHOD(std::string, location, (), (const override));
         MOCK_METHOD(std::string, priority, (), (const override));
-        MOCK_METHOD(int, size, (), (const override));
+        MOCK_METHOD(int64_t, size, (), (const override));
         MOCK_METHOD(std::string, vendor, (), (const override));
         MOCK_METHOD(std::string, install_time, (), (const override));
         MOCK_METHOD(std::string, multiarch, (), (const override));
