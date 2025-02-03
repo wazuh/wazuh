@@ -73,12 +73,15 @@ public:
      * @brief Get the Controller object for a given policy.
      *
      * @param policyName The name of the policy.
-     * @param builder The builder used to construct the policy.
+     * @param trace Indicates whether to enable or disable the trace
+     * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
+     * production environment.
      * @return std::shared_ptr<bk::IController> The constructed controller.
      * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to
      * base::Error
      */
-    auto makeController(const base::Name& policyName) -> std::pair<std::shared_ptr<bk::IController>, std::string>
+    auto makeController(const base::Name& policyName, const bool trace = true, const bool sandbox = true)
+        -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {
         if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
         {
@@ -91,7 +94,7 @@ public:
             throw std::runtime_error {"The builder is not available"};
         }
 
-        auto policy = builder->buildPolicy(policyName);
+        auto policy = builder->buildPolicy(policyName, trace, sandbox);
         if (policy->assets().empty())
         {
             throw std::runtime_error {fmt::format("Policy '{}' has no assets", policyName)};
@@ -121,7 +124,9 @@ public:
         try
         {
             std::string hash {};
-            std::tie(controller, hash) = makeController(policyName);
+            auto trace {false};
+            auto sandbox {false};
+            std::tie(controller, hash) = makeController(policyName, trace, sandbox);
             auto expression = getExpression(filterName);
             return std::make_unique<Environment>(std::move(expression), std::move(controller), std::move(hash));
         }
