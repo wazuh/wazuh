@@ -23,15 +23,16 @@ inline ProtocolHandler getNDJsonParser(bool prodMode = true)
             lambdaName = logging::getLambdaName(__FUNCTION__, fmt::format("getNDJsonParser(prodMode={})", prodMode))](
                std::string&& batch) -> std::queue<base::Event>
     {
-        const std::size_t headerSize = [&]() -> std::size_t
-        {
-            if (prodMode)
-            {
-                return 2;
-            }
-            return 1;
-        }();
+        const std::size_t headerSize = 2;
         const std::size_t min_size = headerSize + 1;
+
+        const auto isSubHeader = [](const base::Event& event) -> bool
+        {
+            return event->isString("/module") && event->isString("/collector");
+        }; // '/module' and '/collector' are mandatory fields and not present in wazuh common schema
+
+        const auto invalidSubHeaderError =
+            "NDJson parser error, invalid subheader, json must contain '/module' and '/collector' fields only";
 
         if (batch.empty())
         {
@@ -75,28 +76,29 @@ inline ProtocolHandler getNDJsonParser(bool prodMode = true)
         }
         catch (const std::exception& e)
         {
-            LOG_DEBUG_L(lambdaName.c_str(), "Ignored event batch: {}, reason: invalid header {}", batch, e.what());
-            throw std::runtime_error {fmt::format("NDJson parser error, invalid header: {}", e.what())};
+            LOG_DEBUG_L(lambdaName.c_str(), "Error parsing agent info: '{}'", e.what());
+            throw std::runtime_error {"NDJson parser error, invalid header, discarting ndjson"};
         }
 
-        // Extract first subheader
-        json::Json subheader {};
-        if (prodMode)
+        // Extract the subheader for futher merge with the events.
+        base::Event subHeader;
+        try
         {
-            try
-            {
-                subheader = std::move(json::Json(std::next(rawJson.begin())->data()));
-            }
-            catch (const std::exception& e)
-            {
-                LOG_DEBUG_L(lambdaName.c_str(),
-                            "Ignored subheader: {}, reason: {}",
-                            std::next(rawJson.begin())->data(),
-                            e.what());
-            }
+            subHeader = std::make_shared<json::Json>(std::next(rawJson.begin(), 1)->data());
+        }
+        catch (const std::exception& e)
+        {
+            LOG_DEBUG_L(lambdaName.c_str(), "Error parsing subheader: '{}'", e.what());
+            throw std::runtime_error {"NDJson parser error, invalid subheader, discarting ndjson"};
         }
 
-        // Merge the header with the events
+        if (!isSubHeader(subHeader))
+        {
+            LOG_DEBUG_L(lambdaName.c_str(), invalidSubHeaderError);
+            throw std::runtime_error {"Invalid subheader, discarting ndjson"};
+        }
+
+        // Merge the header and subheaders with the events
         std::queue<base::Event> events;
 
         for (auto it = std::next(rawJson.begin(), headerSize); it != rawJson.end(); ++it)
@@ -104,15 +106,15 @@ inline ProtocolHandler getNDJsonParser(bool prodMode = true)
             try
             {
                 auto event = std::make_shared<json::Json>(it->data());
-                // Ignore subheader events
-                if (event->isString("/module"))
+                if (isSubHeader(event))
                 {
-                    if (prodMode)
-                    {
-                        continue;
-                    }
+                    subHeader = event;
+                    continue;
                 }
+
                 event->merge(true, agentInfo);
+                event->set("/event/module", subHeader->getJson("/module").value());
+                event->set("/event/collector", subHeader->getJson("/collector").value());
                 events.push(std::move(event));
             }
             catch (const std::exception& e)
