@@ -70,22 +70,17 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     // Microseconds to sleep between attempts to push an event to the queue.
     addUnit<int>(key::QUEUE_FLOOD_SLEEP, "WAZUH_QUEUE_FLOOD_SLEEP", 100);
     // If enabled, the queue will drop the flood events instead of storing them in the file.
-    addUnit<bool>(key::QUEUE_DROP_ON_FLOOD, "WAZUH_QUEUE_DROP_ON_FLOOD", false);
+    addUnit<bool>(key::QUEUE_DROP_ON_FLOOD, "WAZUH_QUEUE_DROP_ON_FLOOD", true);
 
     // Orchestrator module
     addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 1);
 
-    // OLD Server module
-    // TODO Deprecate this configuration after the migration to the new httplib server
-    addUnit<int>(key::SERVER_THREAD_POOL_SIZE, "WAZUH_SERVER_THREAD_POOL_SIZE", 1);
-    addUnit<int>(key::SERVER_EVENT_QUEUE_SIZE, "WAZUH_SERVER_EVENT_QUEUE_SIZE", 0);
-
+    // Http server module
     addUnit<std::string>(key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", "/run/wazuh-server/engine-api.socket");
-    addUnit<int>(key::SERVER_API_QUEUE_SIZE, "WAZUH_SERVER_API_QUEUE_SIZE", 300);
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
-
-    // New API Server module
-    addUnit<std::string>(key::API_SERVER_SOCKET, "WAZUH_API_SERVER_SOCKET", "/run/wazuh-server/engine.socket");
+    addUnit<std::string>(key::SERVER_EVENT_SOCKET,
+                         "WAZUH_SERVER_EVENT_SOCKET",
+                         "/run/wazuh-server/engine.socket"); // /run/wazuh-server/queue
 
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", "/var/lib/wazuh-server/engine/tzdb");

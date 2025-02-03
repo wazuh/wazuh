@@ -22,7 +22,7 @@ Feature: Manage Geolocation Databases
         Given an existing db file "testdb-city.mmdb"
         When I send a request to add a database with path to "testdb-city.mmdb" and type "invalid"
         Then the response should be a "failure"
-        And the error message "Invalid geo::Type name string 'invalid' -> city, asn" is returned
+        And the error message "Invalid geo::Type name string 'invalid'" is returned
 
     Scenario: Delete an existing database
         Given an existing db file "testdb-city.mmdb"

@@ -4,8 +4,57 @@ import shared.resource_handler as rs
 import shared.executor as exec
 from pathlib import Path
 from engine_handler.handler import EngineHandler
+from api_communication.client import APIClient
+from api_communication.proto import catalog_pb2 as api_catalog
+from api_communication.proto import kvdb_pb2 as api_kvdb
+from api_communication.proto.engine_pb2 import GenericStatus_Response
 
 DEFAULT_NAMESPACE = 'user'
+
+def add_kvdb_task(executor: exec.Executor, client: APIClient, kvdb_path: Path) -> None:
+    def do():
+        json_request = dict()
+        json_request['name'] = kvdb_path.stem
+        json_request['path'] = kvdb_path.as_posix()
+
+        error, _ = client.jsend(
+            json_request, api_kvdb.managerPost_Request(), GenericStatus_Response())
+        if error:
+            return error
+
+        return None
+
+    def undo():
+        json_request = dict()
+        json_request['name'] = kvdb_path.stem
+
+        error, _ = client.jsend(
+            json_request, api_kvdb.managerDelete_Request(), GenericStatus_Response())
+        if error:
+            return error
+
+        return None
+
+    executor.add(exec.RecoverableTask(do, undo, f'Add KVDB: {kvdb_path.stem}'))
+
+def validate_asset_task(executor: exec.Executor, client: APIClient, asset_name: str, asset_content: str, namespace: str) -> None:
+    def do():
+        json_request = dict()
+        json_request['content'] = asset_content
+        json_request['namespaceid'] = namespace
+        json_request['format'] = 'yaml'
+        json_request['name'] = asset_name
+
+        error, _ = client.jsend(
+            json_request, api_catalog.ResourceValidate_Request(), GenericStatus_Response())
+        if error:
+            return error
+        return None
+
+    def undo():
+        return None
+
+    executor.add(exec.RecoverableTask(do, undo, f'Validate Asset: {asset_name}'))
 
 def process_integration_entry(api_socket, entry, kvdbs, added_kvdbs_paths, executor, resource_handler, namespace):
     """
@@ -16,17 +65,19 @@ def process_integration_entry(api_socket, entry, kvdbs, added_kvdbs_paths, execu
     # Recover original content
     content = yaml.dump(original, sort_keys=False)
 
+    api_client: APIClient
+    try:
+        api_client = APIClient(api_socket)
+    except Exception as e:
+        sys.exit(f'Error: {e}')
+
     if entry.parent.as_posix() not in added_kvdbs_paths:
         added_kvdbs_paths.append(entry.parent.as_posix())
         for kvdb_entry in entry.parent.glob('*.json'):
             if kvdb_entry.stem not in kvdbs:
-                recoverable_task = resource_handler.get_create_kvdb_task(
-                    api_socket, kvdb_entry.stem, str(kvdb_entry))
-                executor.add(recoverable_task)
+                add_kvdb_task(executor, api_client, kvdb_entry)
 
-    task = resource_handler.get_validate_catalog_task(
-        api_socket, name.split('/')[0], name, content, namespace)
-    executor.add(task)
+    validate_asset_task(executor, api_client, name, content, namespace)
 
 def validate_integrations(integrations_to_process, api_socket, kvdbs, ruleset_path, executor, resource_handler):
     added_kvdbs_paths = []
@@ -73,7 +124,22 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
     integration = args.get('integration')
     decoder = args.get('decoder')
     rule_folder = args.get('rule_folder')
-    kvdbs = resource_handler.get_kvdb_list(api_socket)["data"]["dbs"]
+
+    request = dict()
+    request['must_be_loaded'] = False
+
+    api_client: APIClient
+    try:
+        api_client = APIClient(api_socket)
+    except Exception as e:
+        sys.exit(f'Error: {e}')
+
+    error, response = api_client.jsend(request, api_kvdb.managerGet_Request(), api_kvdb.managerGet_Response())
+    if error:
+        sys.exit(f"Error: {response}")
+
+    kvdbs = response['dbs']
+
     specified_args = [arg for arg in [integration, rule_folder, decoder] if arg]
     if len(specified_args) > 1:
         sys.exit("Error: Only one of 'integration', 'rule_folder', or 'decoder' can be specified at a time.")

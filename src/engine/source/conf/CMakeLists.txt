@@ -31,7 +31,7 @@ add_executable(conf_ctest
     ${COMPONENT_SRC_DIR}/apiLoader_test.cpp
 )
 
-target_link_libraries(conf_ctest PRIVATE conf GTest::gtest_main apiserver)
+target_link_libraries(conf_ctest PRIVATE conf GTest::gtest_main httpsrv)
 gtest_discover_tests(conf_ctest)
 
 endif(ENGINE_BUILD_TEST)
