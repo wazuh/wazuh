@@ -1,4 +1,4 @@
-import json
+import asyncio
 from dataclasses import asdict
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -7,9 +7,11 @@ import pytest
 
 from wazuh.core import common
 from wazuh.core.engine.base import APPLICATION_JSON
+from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.models.commands import Command, Target, TargetType, Source, Status
 from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.task.order import get_orders
+
 
 @pytest.mark.parametrize(
     'comms_api_response,update_command',
@@ -90,10 +92,11 @@ async def test_get_orders(
             update_commands_status_mock.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    'exception, message',
-    [(httpx.ConnectError, 'Connection error'), (httpx.TimeoutException, 'Timeout error')]
-)
+@pytest.mark.parametrize('exception, message', [
+    (httpx.ConnectError, 'Connection error'),
+    (httpx.TimeoutException, 'Timeout error'),
+    (WazuhIndexerError, 2200),
+])
 @patch('wazuh.core.task.order.httpx.AsyncClient.post')
 @patch('wazuh.core.task.order.httpx.AsyncHTTPTransport')
 @patch('asyncio.sleep')
@@ -128,4 +131,6 @@ async def test_get_orders_ko(
     transport_mock.assert_called_with(uds=common.COMMS_API_SOCKET_PATH)
     commands_mock.assert_called_once_with(Status.PENDING)
 
-    logger_mock.error.assert_called_with('An error occurs sending the orders to the Communications API :', message)
+    if exception is WazuhIndexerError:
+        message = 'Error 2200 - Could not connect to the indexer'
+    logger_mock.error.assert_called_with(f'Failed sending the orders to the Communications API: {message}')
