@@ -48,7 +48,7 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
 }
 
-std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name) const
+std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name, bool trace, bool sandbox) const
 {
     auto policyDoc = m_storeRead->readInternalDoc(name);
     if (base::isError(policyDoc))
@@ -56,8 +56,13 @@ std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name) const
         throw std::runtime_error(base::getError(policyDoc).message);
     }
 
-    auto policy = std::make_shared<policy::Policy>(
-        base::getResponse<store::Doc>(policyDoc), m_storeRead, m_definitionsBuilder, m_registry, m_schema);
+    auto policy = std::make_shared<policy::Policy>(base::getResponse<store::Doc>(policyDoc),
+                                                   m_storeRead,
+                                                   m_definitionsBuilder,
+                                                   m_registry,
+                                                   m_schema,
+                                                   trace,
+                                                   sandbox);
 
     return policy;
 }
@@ -73,7 +78,8 @@ base::Expression Builder::buildAsset(const base::Name& name) const
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(m_registry);
     buildCtx->setValidator(m_schema);
-    buildCtx->runState().trace = true;
+    buildCtx->runState().trace = false;
+    buildCtx->runState().sandbox = false;
 
     auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
     auto asset = (*assetBuilder)(base::getResponse<store::Doc>(assetDoc));

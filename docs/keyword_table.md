@@ -24,6 +24,7 @@
 | [is_object](documentation.md#is_object) | undefined |
 | [is_public_ip](documentation.md#is_public_ip) | undefined |
 | [is_string](documentation.md#is_string) | undefined |
+| [is_test_session](documentation.md#is_test_session) | undefined |
 | [kvdb_match](documentation.md#kvdb_match) | kvdb |
 | [kvdb_not_match](documentation.md#kvdb_not_match) | kvdb |
 | [match_value](documentation.md#match_value) | undefined |
