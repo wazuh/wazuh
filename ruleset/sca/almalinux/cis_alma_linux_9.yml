@@ -14,16 +14,16 @@ policy:
   id: "cis_alma_linux_9"
   file: "cis_alma_linux_9.yml"
   name: "CIS Benchmark for Alma Linux 9"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Alma Linux 9 systems running on x86 and x64 platforms. This document was tested against Alma Linux 9."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Alma Linux 9 systems running on x86 and x64 platforms. This document was tested against Alma Linux 9. This document has been modified to support Alma Linux 10"
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
   title: "Check Alma Linux platform."
   description: "Requirements for running the policy against Alma Linux 9."
-  condition: any
+  condition: all
   rules:
-    - "f:/etc/redhat-release -> r:^AlmaLinux && r:release 9"
+    - "f:/etc/redhat-release -> r:^AlmaLinux && r:release 9|release 10"
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
