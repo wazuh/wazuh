@@ -34,7 +34,7 @@ checks:
      title: "Ensure mounting of cramfs filesystems is disabled."
      description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
      rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-     remediation: "Run the following script to unload and disable the freevxfs module: - IF - the freevxfs kernel module is available in ANY installed kernel: - Create a file ending in .conf with install freevxfs /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist freevxfs in the /etc/modprobe.d/ directory - Run modprobe -r freevxfs 2>/dev/null; rmmod freevxfs 2>/dev/null to remove freevxfs from the kernel - IF - the freevxfs kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash."
+     remediation: "Run the following script to unload and disable the cramfs module: - IF - the cramfs kernel module is available in ANY installed kernel: - Create a file ending in .conf with install cramfs /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist cramfs in the /etc/modprobe.d/ directory - Run modprobe -r cramfs 2>/dev/null; rmmod cramfs 2>/dev/null to remove freevxfs from the kernel - IF - the cramfs kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash."
      compliance:
        - cis: ["1.1.1.1"]
        - cis_csc_v8: ["4.8"]
