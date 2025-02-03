@@ -16,6 +16,7 @@ using EventT = std::tuple<std::string, Expc>;
 
 class NdJsonParserTest : public ::testing::TestWithParam<EventT>
 {
+    void SetUp() override { logging::testInit(logging::Level::Debug); }
 };
 
 template<size_t repeatedEvents = 1, typename... Args>
@@ -102,53 +103,60 @@ INSTANTIATE_TEST_SUITE_P(
     NdJsonParserTest,
     ::testing::Values(
         // Success 1 event
-        EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"subheader"})", R"({"event":"event"})"),
-               SUCCESS(makeResult(R"({"event":"event","header":"header"})"))),
+        EventT(makeRawNdJson(R"({"header":"header"})",
+                             R"({"module":"module", "collector":"collector"})",
+                             R"({"original":"event"})"),
+               SUCCESS(makeResult(
+                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
         // Success 4 events
-        EventT(makeRawNdJson<4>(R"({"header":"header"})", R"({"module":"subheader"})", R"({"event":"event"})"),
-               SUCCESS(makeResult<4>(R"({"event":"event","header":"header"})"))),
+        EventT(makeRawNdJson<4>(R"({"header":"header"})",
+                                R"({"module":"module", "collector":"collector"})",
+                                R"({"original":"event"})"),
+               SUCCESS(makeResult<4>(
+                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
         // Success 40 events
-        EventT(makeRawNdJson<40>(R"({"header":"header"})", R"({"module":"subheader"})", R"({"event":"event"})"),
-               SUCCESS(makeResult<40>(R"({"event":"event","header":"header"})"))),
+        EventT(makeRawNdJson<40>(R"({"header":"header"})",
+                                 R"({"module":"module", "collector":"collector"})",
+                                 R"({"original":"event"})"),
+               SUCCESS(makeResult<40>(
+                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
         // Success Mixed subheader
         EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"subheader"})",
-                             R"({"event":"event"})",
-                             R"({"module":"subheader"})",
-                             R"({"event":"event"})"),
-               SUCCESS(makeResult<2>(R"({"event":"event","header":"header"})"))),
+                             R"({"module":"module", "collector":"collector"})",
+                             R"({"original":"event"})",
+                             R"({"module":"module", "collector":"collector"})",
+                             R"({"original":"event"})"),
+               SUCCESS(makeResult<2>(
+                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
         // Success Mixed subheader with empty lines
         EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"subheader"})",
-                             R"({"event":"event"})",
+                             R"({"module":"module", "collector":"collector"})",
+                             R"({"original":"event"})",
                              "",
-                             R"({"module":"subheader"})",
-                             R"({"event":"event"})",
+                             R"({"module":"module", "collector":"collector"})",
+                             R"({"original":"event"})",
                              "",
-                             R"({"event":"event"})",
-                             R"({"module":"subheader"})"),
-               SUCCESS(makeResult<3>(R"({"event":"event","header":"header"})"))),
+                             R"({"original":"event"})",
+                             R"({"module":"module", "collector":"collector"})"),
+               SUCCESS(makeResult<3>(
+                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
         // Failure empty
         EventT("", FAILURE()),
         // Failure not min size
-        EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"subheader"})"), FAILURE()),
+        EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"module", "collector":"collector"})"), FAILURE()),
         // Failure invalid header
-        EventT(makeRawNdJson("header", R"({"module":"subheader"})", R"({"event":"event"})"), FAILURE()),
-        // Failure invalid subheader
-        EventT(makeRawNdJson(R"({"header":"header"})", "subheader", R"({"event":"event"})"), FAILURE()),
-        // Failure invalid event
-        EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"subheader"})", "event"), FAILURE()),
-        // Failure invalid mixed subheader
-        EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"subheader"})",
-                             R"({"event":"event"})",
-                             "subheader",
-                             R"({"event":"event"})"),
+        EventT(makeRawNdJson("header", R"({"module":"module", "collector":"collector"})", R"({"original":"event"})"),
                FAILURE()),
-        // Failure invalid mixed event
+        // Failure invalid subheader
+        EventT(makeRawNdJson(R"({"header":"header"})", "subheader", R"({"original":"event"})"), FAILURE()),
+        // Success invalid event (empty result)
+        EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"module", "collector":"collector"})", "event"),
+               SUCCESS({})),
+        // Success invalid mixed subheader (all events use the same subheader)
         EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"subheader"})",
-                             R"({"event":"event"})",
-                             R"({"module":"subheader"})",
-                             "event"),
-               FAILURE())));
+                             R"({"module":"module", "collector":"collector"})",
+                             R"({"original":"event"})",
+                             R"({"module)",
+                             R"({"original":"event"})"),
+               SUCCESS(makeResult<2>(
+                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})")))));
