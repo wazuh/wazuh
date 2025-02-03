@@ -321,8 +321,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                                 2)
                             continue
                         else:
-                            print(f'WARNING: The "{self.discard_regex.pattern}" regex did not find a match. '
-                                  f'The event will be processed.')
+                            aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex did not find a match. '
+                                  f'The event will be processed.', 3)
                     aws_tools.debug('The message is "{}"'.format(event_msg), 2)
                     aws_tools.debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
                     self.send_msg(event_msg, dump_json=False)
