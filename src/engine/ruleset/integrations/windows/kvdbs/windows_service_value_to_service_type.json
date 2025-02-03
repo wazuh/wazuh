@@ -1,9 +1,0 @@
-{
-    "0x1": "Kernel Driver",
-    "0x2": "File System Driver",
-    "0x8": "Recognizer Driver",
-    "0x10": "Win32 Own Process",
-    "0x20": "Win32 Share Process",
-    "0x110": "Interactive Own Process",
-    "0x120": "Interactive Share Process"
-}

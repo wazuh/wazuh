@@ -1,4 +1,0 @@
-name: integration/mysql/0
-decoders:
-- decoder/mysql-slowlog/0
-- decoder/mysql-error/0

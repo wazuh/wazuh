@@ -1,4 +1,0 @@
-items:
-  - version: 1.0.0-dev
-    short: Created integration for SonicWall Firewall
-    pr: "[#16766](#)"

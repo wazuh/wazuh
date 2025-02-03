@@ -10,9 +10,7 @@
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
 #include <schemf/ivalidator.hpp>
-#include <sockiface/isockFactory.hpp>
 #include <store/istore.hpp>
-#include <wdb/iwdbManager.hpp>
 
 #include <builder/ibuilder.hpp>
 #include <builder/ivalidator.hpp>
@@ -27,8 +25,6 @@ struct BuilderDeps
 
     std::string kvdbScopeName;
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
-    std::shared_ptr<sockiface::ISockFactory> sockFactory;
-    std::shared_ptr<wazuhdb::IWDBManager> wdbManager;
     std::shared_ptr<geo::IManager> geoManager;
     std::shared_ptr<IIndexerConnector> iConnector;
 };

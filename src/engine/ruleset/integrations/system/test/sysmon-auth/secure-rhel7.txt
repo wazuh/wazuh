@@ -1,7 +1,0 @@
-Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 89.160.20.156 port 1786 ssh2
-Feb 22 16:45:20 slave22 sshd[2738]: pam_succeed_if(sshd:auth): requirement "uid >= 1000" not met by user "root"
-Feb 22 16:45:26 slave22 sshd[2738]: fatal: Read from socket failed: Connection reset by peer [preauth]
-Feb 22 16:45:26 slave22 sshd[2738]: PAM 4 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=89.160.20.156  user=root
-Feb 22 16:45:26 slave22 sshd[2738]: PAM service(sshd) ignoring max retries; 5 > 3
-Feb 22 16:45:32 slave22 sshd[2742]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=89.160.20.156  user=root
-Feb 22 17:04:51 slave22 sudo:     tsg : TTY=pts/0 ; PWD=/home/tsg ; USER=root ; COMMAND=/bin/cp /var/log/secure .
