@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv sh
+
+# dumping ossec.log to standard output
+exec tail -F /var/ossec/logs/ossec.log

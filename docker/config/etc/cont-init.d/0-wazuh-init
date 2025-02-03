@@ -1,0 +1,237 @@
+#!/usr/bin/with-contenv bash
+# Wazuh App Copyright (C) 2017, Wazuh Inc. (License GPLv2)
+
+# Variables
+source /permanent_data.env
+
+WAZUH_INSTALL_PATH=/var/ossec
+WAZUH_CONFIG_MOUNT=/wazuh-config-mount
+AUTO_ENROLLMENT_ENABLED=${AUTO_ENROLLMENT_ENABLED:-true}
+
+
+##############################################################################
+# Aux functions
+##############################################################################
+print() {
+  echo -e $1
+}
+
+error_and_exit() {
+  echo "Error executing command: '$1'."
+  echo 'Exiting.'
+  exit 1
+}
+
+exec_cmd() {
+  eval $1 > /dev/null 2>&1 || error_and_exit "$1"
+}
+
+exec_cmd_stdout() {
+  eval $1 2>&1 || error_and_exit "$1"
+}
+
+
+##############################################################################
+# This function will attempt to mount every directory in PERMANENT_DATA
+# into the respective path.
+# If the path is empty means permanent data volume is also empty, so a backup
+# will be copied into it. Otherwise it will not be copied because there is
+# already data inside the volume for the specified path.
+##############################################################################
+
+mount_permanent_data() {
+  for permanent_dir in "${PERMANENT_DATA[@]}"; do
+    data_tmp="${WAZUH_INSTALL_PATH}/data_tmp/permanent${permanent_dir}/"
+    print ${data_tmp}
+    # Check if the path is not empty
+    if find ${permanent_dir} -mindepth 1 | read; then
+      print "The path ${permanent_dir} is already mounted"
+    else
+      if find ${data_tmp} -mindepth 1 | read; then
+        print "Installing ${permanent_dir}"
+        exec_cmd "cp -a ${data_tmp}. ${permanent_dir}"
+      else
+        print "The path ${permanent_dir} is empty, skipped"
+      fi
+    fi
+  done
+}
+
+##############################################################################
+# This function will replace from the permanent data volume every file
+# contained in PERMANENT_DATA_EXCP
+# Some files as 'internal_options.conf' are saved as permanent data, but
+# they must be updated to work properly if wazuh version is changed.
+##############################################################################
+
+apply_exclusion_data() {
+  for exclusion_file in "${PERMANENT_DATA_EXCP[@]}"; do
+    if [  -e ${WAZUH_INSTALL_PATH}/data_tmp/exclusion/${exclusion_file}  ]
+    then
+      DIR=$(dirname "${exclusion_file}")
+      if [ ! -e ${DIR}  ]
+      then
+        mkdir -p ${DIR}
+      fi
+
+      print "Updating ${exclusion_file}"
+      exec_cmd "cp -p ${WAZUH_INSTALL_PATH}/data_tmp/exclusion/${exclusion_file} ${exclusion_file}"
+    fi
+  done
+}
+
+##############################################################################
+# This function will rename in the permanent data volume every file
+# contained in PERMANENT_DATA_MOVE
+##############################################################################
+
+move_data_files() {
+  for mov_file in "${PERMANENT_DATA_MOVE[@]}"; do
+    file_split=( $mov_file )
+    if [ -e ${file_split[0]} ]
+    then
+      print "moving ${mov_file}"
+      exec_cmd "mv -f ${mov_file}"
+    fi
+  done
+}
+
+
+##############################################################################
+# This function will delete from the permanent data volume every file
+# contained in PERMANENT_DATA_DEL
+##############################################################################
+
+remove_data_files() {
+  for del_file in "${PERMANENT_DATA_DEL[@]}"; do
+    if [ -e ${del_file} ]
+    then
+      print "Removing ${del_file}"
+      exec_cmd "rm -f ${del_file}"
+    fi
+  done
+}
+
+##############################################################################
+# Create certificates: Manager
+##############################################################################
+
+create_ossec_key_cert() {
+  print "Creating wazuh-authd key and cert"
+  exec_cmd "openssl genrsa -out ${WAZUH_INSTALL_PATH}/etc/sslmanager.key 4096"
+  exec_cmd "openssl req -new -x509 -key ${WAZUH_INSTALL_PATH}/etc/sslmanager.key -out ${WAZUH_INSTALL_PATH}/etc/sslmanager.cert -days 3650 -subj /CN=${HOSTNAME}/"
+}
+
+##############################################################################
+# Copy all files from $WAZUH_CONFIG_MOUNT to $WAZUH_INSTALL_PATH and respect
+# destination files permissions
+#
+# For example, to mount the file /var/ossec/data/etc/ossec.conf, mount it at
+# $WAZUH_CONFIG_MOUNT/etc/ossec.conf in your container and this code will
+# replace the ossec.conf file in /var/ossec/data/etc with yours.
+##############################################################################
+
+mount_files() {
+  if [ -e "$WAZUH_CONFIG_MOUNT" ]
+  then
+    print "Identified Wazuh configuration files to mount..."
+    exec_cmd_stdout "cp --verbose -r $WAZUH_CONFIG_MOUNT/* $WAZUH_INSTALL_PATH"
+  else
+    print "No Wazuh configuration files to mount..."
+  fi
+}
+
+
+##############################################################################
+# Allow users to set the container hostname as <node_name> dynamically on
+# container start.
+#
+# To use this:
+# 1. Create your own ossec.conf file
+# 2. In your ossec.conf file, set to_be_replaced_by_hostname as your node_name
+# 3. Mount your custom ossec.conf file at $WAZUH_CONFIG_MOUNT/etc/ossec.conf
+##############################################################################
+
+set_custom_hostname() {
+  sed -i 's/<node_name>to_be_replaced_by_hostname<\/node_name>/<node_name>'"${HOSTNAME}"'<\/node_name>/g' ${WAZUH_INSTALL_PATH}/etc/ossec.conf
+}
+
+##############################################################################
+# Allow users to set the container cluster key dynamically on
+# container start.
+#
+# To use this:
+# 1. Create your own ossec.conf file
+# 2. In your ossec.conf file, set to_be_replaced_by_cluster_key as your key
+# 3. Mount your custom ossec.conf file at $WAZUH_CONFIG_MOUNT/etc/ossec.conf
+##############################################################################
+
+set_custom_cluster_key() {
+  sed -i 's/<key>to_be_replaced_by_cluster_key<\/key>/<key>'"${WAZUH_CLUSTER_KEY}"'<\/key>/g' ${WAZUH_INSTALL_PATH}/etc/ossec.conf
+}
+
+##############################################################################
+# Modify /var/ossec/queue/rids directory owner on
+# container start.
+##############################################################################
+
+set_rids_owner() {
+  chown -R wazuh:wazuh /var/ossec/queue/rids
+}
+
+##############################################################################
+# Change any ossec user/group to wazuh user/group 
+##############################################################################
+
+set_correct_permOwner() {
+  find / -group 997 -exec chown :999 {} +;
+  find / -group 101 -exec chown :999 {} +;
+  find / -user 101 -exec chown 999 {} +;
+}
+
+##############################################################################
+# Main function
+##############################################################################
+
+main() {
+  # Mount permanent data  (i.e. ossec.conf)
+  mount_permanent_data
+
+  # Restore files stored in permanent data that are not permanent  (i.e. internal_options.conf)
+  apply_exclusion_data
+
+  # Apply correct permission and ownership
+  set_correct_permOwner
+
+  # Rename files stored in permanent data (i.e. queue/ossec)
+  move_data_files
+
+  # Remove some files in permanent_data (i.e. .template.db)
+  remove_data_files
+
+  # Generate wazuh-authd certs if AUTO_ENROLLMENT_ENABLED is true and does not exist
+  if [ $AUTO_ENROLLMENT_ENABLED == true ]
+  then
+    if [ ! -e ${WAZUH_INSTALL_PATH}/etc/sslmanager.key ]
+    then
+      create_ossec_key_cert
+    fi
+  fi
+
+  # Mount selected files (WAZUH_CONFIG_MOUNT) to container
+  mount_files
+
+  # Allow setting custom hostname
+  set_custom_hostname
+
+  # Allow setting custom cluster key
+  set_custom_cluster_key
+
+  # Delete temporary data folder
+  rm -rf ${WAZUH_INSTALL_PATH}/data_tmp
+
+  # Set rids directory owner
+  set_rids_owner
+}
+
+main

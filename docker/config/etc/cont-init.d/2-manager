@@ -1,0 +1,136 @@
+#!/usr/bin/with-contenv bash
+
+##############################################################################
+# Migration sequence
+# Detect if there is a mounted volume on /wazuh-migration and copy the data
+# to /var/ossec, finally it will create a flag ".migration-completed" inside
+# the mounted volume
+##############################################################################
+
+function __colortext()
+{
+  echo -e " \e[1;$2m$1\e[0m"
+}
+
+function echogreen()
+{
+  echo $(__colortext "$1" "32")
+}
+
+function echoyellow()
+{
+  echo $(__colortext "$1" "33")
+}
+
+function echored()
+{
+  echo $(__colortext "$1" "31")
+}
+
+function_wazuh_migration(){
+  if [ -d "/wazuh-migration" ]; then
+    if [ ! -e /wazuh-migration/.migration-completed ]; then
+      if [ ! -e /wazuh-migration/global.db ]; then
+        echoyellow "The volume mounted on /wazuh-migration does not contain all the correct files."
+        return
+      fi
+
+      \cp -f /wazuh-migration/data/etc/ossec.conf /var/ossec/etc/ossec.conf
+      chown root:wazuh /var/ossec/etc/ossec.conf
+      chmod 640 /var/ossec/etc/ossec.conf
+
+      \cp -f /wazuh-migration/data/etc/client.keys /var/ossec/etc/client.keys
+      chown wazuh:wazuh /var/ossec/etc/client.keys
+      chmod 640 /var/ossec/etc/client.keys
+
+      \cp -f /wazuh-migration/data/etc/sslmanager.cert /var/ossec/etc/sslmanager.cert
+      \cp -f /wazuh-migration/data/etc/sslmanager.key /var/ossec/etc/sslmanager.key
+      chown root:root /var/ossec/etc/sslmanager.cert /var/ossec/etc/sslmanager.key
+      chmod 640 /var/ossec/etc/sslmanager.cert /var/ossec/etc/sslmanager.key
+
+      \cp -f /wazuh-migration/data/etc/shared/default/agent.conf /var/ossec/etc/shared/default/agent.conf
+      chown wazuh:wazuh /var/ossec/etc/shared/default/agent.conf
+      chmod 660 /var/ossec/etc/shared/default/agent.conf
+
+      \cp -f /wazuh-migration/data/etc/decoders/* /var/ossec/etc/decoders/
+      chown wazuh:wazuh /var/ossec/etc/decoders/*
+      chmod 660 /var/ossec/etc/decoders/*
+
+      \cp -f /wazuh-migration/data/etc/rules/* /var/ossec/etc/rules/
+      chown wazuh:wazuh /var/ossec/etc/rules/*
+      chmod 660 /var/ossec/etc/rules/*
+
+      if [ -e /wazuh-migration/data/agentless/.passlist ]; then
+        \cp -f /wazuh-migration/data/agentless/.passlist /var/ossec/agentless/.passlist
+        chown root:wazuh /var/ossec/agentless/.passlist
+        chmod 640 /var/ossec/agentless/.passlist
+      fi
+
+      \cp -f /wazuh-migration/global.db /var/ossec/queue/db/global.db
+      chown wazuh:wazuh /var/ossec/queue/db/global.db
+      chmod 640 /var/ossec/queue/db/global.db
+
+      # mark volume as migrated
+      touch /wazuh-migration/.migration-completed
+
+      echogreen "Migration completed succesfully"
+    else
+      echoyellow "This volume has already been migrated. You may proceed and remove it from the mount point (/wazuh-migration)"
+    fi
+  fi
+}
+
+function_create_custom_user() {
+  if [[ ! -z $API_USERNAME ]] && [[ ! -z $API_PASSWORD ]]; then
+  cat << EOF > /var/ossec/api/configuration/admin.json
+{
+  "username": "$API_USERNAME",
+  "password": "$API_PASSWORD"
+}
+EOF
+
+    # create or customize API user
+    if /var/ossec/framework/python/bin/python3  /var/ossec/framework/scripts/create_user.py; then
+      # remove json if exit code is 0
+      rm /var/ossec/api/configuration/admin.json
+    else
+      echored "There was an error configuring the API user"
+      # terminate container to avoid unpredictable behavior
+      exec s6-svscanctl -t /var/run/s6/services
+      exit 1
+    fi
+  fi
+}
+
+function_entrypoint_scripts() {
+  # It will run every .sh script located in entrypoint-scripts folder in lexicographical order
+  if [ -d "/entrypoint-scripts/" ]
+  then
+    for script in `ls /entrypoint-scripts/*.sh | sort -n`; do
+      bash "$script"
+    done
+  fi
+}
+
+function_configure_vulnerability_detection() {
+if [ "$INDEXER_PASSWORD" != "" ]; then
+  >&2 echo "Configuring password."
+  /var/ossec/bin/wazuh-keystore -f indexer -k username -v $INDEXER_USERNAME
+  /var/ossec/bin/wazuh-keystore -f indexer -k password -v $INDEXER_PASSWORD
+fi
+}
+
+# Migrate data from /wazuh-migration volume
+function_wazuh_migration
+
+# create API custom user
+function_create_custom_user
+
+# configure Vulnerabilty detection
+function_configure_vulnerability_detection
+
+# run entrypoint scripts
+function_entrypoint_scripts
+
+# Start Wazuh
+/var/ossec/bin/wazuh-control start
