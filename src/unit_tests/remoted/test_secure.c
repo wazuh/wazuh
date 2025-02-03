@@ -2427,23 +2427,54 @@ void test_router_message_forward_legacy_agent_end_message(void **state) {
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
-void test_router_message_forward_sync_package_negative_size_json_message(void **state)
+void test_router_message_forward_delta_package_huge_size_json_message(void **state)
 {
     test_agent_info* data = (test_agent_info*)(*state);
     char* message = "d:syscollector:{\"type\":\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
                                 ",\"description\":\"library for GIF images (library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-                                ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":-1,\"source\":\"giflib\""
+                                ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":3686061793,\"source\":\"giflib\""
                                 ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
+
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
                                                 ",\"description\":\"library for GIF images (library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-                                                ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":-1,\"source\":\"giflib\""
+                                                ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":3686061793,\"source\":\"giflib\""
                                                 ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
 
     router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
+    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
+
+}
+
+void test_router_message_forward_sync_package_negative_size_json_message(void **state)
+{
+    test_agent_info* data = (test_agent_info*)(*state);
+    char* message = "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
+                    ",\"description\":\"library for GIF images (library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
+                    ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":-608905503,\"source\":\"giflib\""
+                    ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"type\":\"state\"}";
+
+    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":\"state\",\"data\""
+    ":{\"attributes_type\":\"syscollector_packages\",\"architecture\":\"amd64\",\"checksum\":\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
+    ",\"description\":\"library for GIF images (library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
+    ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":-608905503,\"source\":\"giflib\""
+    ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"}}";
+
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message '{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":\"state\",\"data\":{\"attributes_type\":\"syscollector_packages\",\"architecture\":\"amd64\",\"checksum\":\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\",\"description\":\"library for GIF images (library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":-608905503,\"source\":\"giflib\",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"}}' for agent 001");
 
     will_return(__wrap_OSHash_Get_ex_dup, NULL);
     expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
@@ -2523,7 +2554,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_hotfixes_json_message, setup_remoted_configuration, teardown_remoted_configuration),
         cmocka_unit_test_setup_teardown(test_router_message_forward_legacy_agent_message, setup_remoted_configuration, teardown_remoted_configuration),
         cmocka_unit_test_setup_teardown(test_router_message_forward_legacy_agent_end_message, setup_remoted_configuration, teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_sync_package_negative_size_json_message, setup_remoted_configuration, teardown_remoted_configuration)
+        cmocka_unit_test_setup_teardown(test_router_message_forward_sync_package_negative_size_json_message, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_delta_package_huge_size_json_message, setup_remoted_configuration, teardown_remoted_configuration)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
