@@ -98,10 +98,12 @@ installFallbackStore()
 {
     # Creating fallback store directories
     local STORE_PATH=${INSTALLDIR}var/lib/wazuh-server/engine/store
+    local KVDB_PATH=${INSTALLDIR}var/lib/wazuh-server/engine/kvdb
     local SCHEMA_PATH=${STORE_PATH}/schema
     local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
     local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-types
 
+    mkdir -p "${KVDB_PATH}"
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
 
@@ -116,7 +118,9 @@ installFallbackStore()
     fi
 
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_PATH}
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${KVDB_PATH}
     find ${STORE_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+    find ${KVDB_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 }
 
 installEngineStore()
