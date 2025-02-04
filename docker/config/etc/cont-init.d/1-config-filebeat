@@ -1,0 +1,51 @@
+#!/usr/bin/with-contenv bash
+# Wazuh App Copyright (C) 2017, Wazuh Inc. (License GPLv2)
+
+set -e
+
+if [ "$INDEXER_URL" != "" ]; then
+  >&2 echo "Customize Elasticsearch output IP"
+  sed -i "s|hosts:.*|hosts: ['$INDEXER_URL']|g" /etc/filebeat/filebeat.yml
+fi
+
+# Configure filebeat.yml security settings
+
+if [ "$INDEXER_USERNAME" != "" ]; then
+  >&2 echo "Configuring username."
+  sed -i "s|#username:.*|username:|g" /etc/filebeat/filebeat.yml
+  sed -i "s|username:.*|username: '$INDEXER_USERNAME'|g" /etc/filebeat/filebeat.yml
+fi
+
+if [ "$INDEXER_PASSWORD" != "" ]; then
+  >&2 echo "Configuring password."
+  sed -i "s|#password:.*|password:|g" /etc/filebeat/filebeat.yml
+  sed -i "s|password:.*|password: '$INDEXER_PASSWORD'|g" /etc/filebeat/filebeat.yml
+fi
+
+if [ "$FILEBEAT_SSL_VERIFICATION_MODE" != "" ]; then
+  >&2 echo "Configuring SSL verification mode."
+  sed -i "s|#ssl.verification_mode:.*|ssl.verification_mode:|g" /etc/filebeat/filebeat.yml
+  sed -i "s|ssl.verification_mode:.*|ssl.verification_mode: '$FILEBEAT_SSL_VERIFICATION_MODE'|g" /etc/filebeat/filebeat.yml
+fi
+
+if [ "$SSL_CERTIFICATE_AUTHORITIES" != "" ]; then
+  >&2 echo "Configuring Certificate Authorities."
+  sed -i "s|#ssl.certificate_authorities:.*|ssl.certificate_authorities:|g" /etc/filebeat/filebeat.yml
+  sed -i "s|ssl.certificate_authorities:.*|ssl.certificate_authorities: ['$SSL_CERTIFICATE_AUTHORITIES']|g" /etc/filebeat/filebeat.yml
+fi
+
+if [ "$SSL_CERTIFICATE" != "" ]; then
+  >&2 echo "Configuring SSL Certificate."
+  sed -i "s|#ssl.certificate:.*|ssl.certificate:|g" /etc/filebeat/filebeat.yml
+  sed -i "s|ssl.certificate:.*|ssl.certificate: '$SSL_CERTIFICATE'|g" /etc/filebeat/filebeat.yml
+fi
+
+if [ "$SSL_KEY" != "" ]; then
+  >&2 echo "Configuring SSL Key."
+  sed -i "s|#ssl.key:.*|ssl.key:|g" /etc/filebeat/filebeat.yml
+  sed -i "s|ssl.key:.*|ssl.key: '$SSL_KEY'|g" /etc/filebeat/filebeat.yml
+fi
+
+
+chmod go-w /etc/filebeat/filebeat.yml || true
+chown root: /etc/filebeat/filebeat.yml || true

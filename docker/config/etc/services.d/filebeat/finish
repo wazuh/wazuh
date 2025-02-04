@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+echo >&2 "Filebeat exited. code=${1}"
+
+# terminate other services to exit from the container
+exec s6-svscanctl -t /var/run/s6/services
+
