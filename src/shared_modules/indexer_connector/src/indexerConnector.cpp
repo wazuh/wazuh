@@ -683,9 +683,16 @@ IndexerConnector::IndexerConnector(
                                                      "indexer.");
                         }
                     }
+                    else if (statusCode == HTTP_BAD_REQUEST)
+                    {
+                        logError(IC_NAME, "Error 400: %s, message is ignored", error.c_str());
+                    }
+                    else
+                    {
 
-                    logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-                    throw std::runtime_error(error);
+                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                        throw std::runtime_error(error);
+                    }
                 };
 
                 HTTPRequest::instance().post(
