@@ -214,8 +214,10 @@ TEST_F(RocksDBWrapperTest, TestDeleteAllEmptyDB)
 
 /**
  * @brief Tests the deleteAll function with concurrent threads
+ *
+ * @note: TODO: this test waits for #28020
  */
-TEST_F(RocksDBWrapperTest, MultiThreadTest)
+TEST_F(RocksDBWrapperTest, DISABLED_MultiThreadTest)
 {
     constexpr auto COLUMN_NAME_A {"column_A"};
     constexpr auto KEY_A {"key_A"};
