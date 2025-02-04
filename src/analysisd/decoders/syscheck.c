@@ -663,7 +663,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             }
         }
         /* MD5 message */
-        if (!*newsum->md5 || !*oldsum->md5 || strcmp(newsum->md5, oldsum->md5) == 0) {
+        if (newsum->md5 == NULL || newsum->md5[0] == '\0' || oldsum->md5 == NULL || oldsum->md5[0] == '\0'
+            || strcmp(newsum->md5, oldsum->md5) == 0) {
             localsdb->md5[0] = '\0';
         } else {
             changes = 1;
@@ -674,7 +675,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
         }
 
         /* SHA-1 message */
-        if (!*newsum->sha1 || !*oldsum->sha1 || strcmp(newsum->sha1, oldsum->sha1) == 0) {
+        if (newsum->sha1 == NULL || newsum->sha1[0] == '\0' || oldsum->sha1 == NULL || oldsum->sha1[0] == '\0'
+            || strcmp(newsum->sha1, oldsum->sha1) == 0) {
             localsdb->sha1[0] = '\0';
         } else {
             changes = 1;
@@ -793,6 +795,9 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     free(lf->full_log);
     os_strdup(localsdb->comment, lf->full_log);
     lf->log = lf->full_log;
+    // Force clean event
+    lf->program_name = NULL;
+    lf->dec_timestamp = NULL;
 
     return (0);
 }
