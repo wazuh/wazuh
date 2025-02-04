@@ -34,12 +34,17 @@ public:
      * @param definitionsBuilder Definitions builder
      * @param registry Registry instance
      * @param schema Schema validator instance
+     * @param trace Indicates whether to enable or disable the trace
+     * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
+     * production environment.
      */
     Policy(const store::Doc& doc,
            const std::shared_ptr<store::IStoreReader>& store,
            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
            const std::shared_ptr<builders::RegistryType>& registry,
-           const std::shared_ptr<schemf::IValidator>& schema);
+           const std::shared_ptr<schemf::IValidator>& schema,
+           const bool trace = false,
+           const bool sandbox = false);
 
     /**
      * @copydoc IPolicy::name

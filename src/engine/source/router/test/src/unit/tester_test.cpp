@@ -34,7 +34,8 @@ public:
 
     void addEntryCallers(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+            .WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockController));
@@ -47,13 +48,14 @@ public:
 
     void rebuildEntryFailture()
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
             .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
     }
 
     void rebuildEntryCallersSuccess(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+            .WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockController));

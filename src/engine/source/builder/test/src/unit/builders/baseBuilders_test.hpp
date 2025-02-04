@@ -33,7 +33,7 @@ using BuilderWithDeps = std::function<Builder(void)>;
 struct BuildersMocks
 {
     std::shared_ptr<const MockBuildCtx> ctx;
-    std::shared_ptr<const RunState> runState;
+    std::shared_ptr<RunState> runState;
     std::shared_ptr<MockSchema> validator;
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
@@ -49,7 +49,7 @@ protected:
     {
         mocks = std::make_shared<BuildersMocks>();
         mocks->ctx = std::make_shared<const MockBuildCtx>();
-        mocks->runState = std::make_shared<const RunState>();
+        mocks->runState = std::make_shared<RunState>();
         mocks->validator = std::make_shared<MockSchema>();
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
@@ -62,7 +62,9 @@ protected:
     void expectBuildSuccess()
     {
         EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks->ctx, runState()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks->ctx, runState())
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(mocks->runState));
     }
 };
 
