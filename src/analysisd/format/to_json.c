@@ -423,12 +423,28 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
 
         if (print_before_field(lf->fields[FIM_MTIME_BEFORE].value, lf->fields[FIM_MTIME].value)) {
             aux_time = atol(lf->fields[FIM_MTIME_BEFORE].value);
-            strftime(mtime, 20, "%FT%T%z", localtime_r(&aux_time, &tm_result));
+            if (aux_time <= 0 ) { // If is invalid, filebeat will detect it as invalid date
+                mdebug1("Invalid mtime_before value: %s", lf->fields[FIM_MTIME_BEFORE].value);
+            }
+
+            if (localtime_r(&aux_time, &tm_result) != NULL) {
+                strftime(mtime, 20, "%FT%T%z", &tm_result);
+            } else {
+                snprintf(mtime, 24, "Invalid: '%s'", lf->fields[FIM_MTIME_BEFORE].value);
+            }
+
             cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
         }
         if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value) {
             aux_time = atol(lf->fields[FIM_MTIME].value);
-            strftime(mtime, 20, "%FT%T%z", localtime_r(&aux_time, &tm_result));
+            if (aux_time <= 0 ) { // If is invalid, filebeat will detect it as invalid date
+                mdebug1("Invalid mtime value: %s", lf->fields[FIM_MTIME].value);
+            }
+            if (localtime_r(&aux_time, &tm_result) != NULL) {
+                strftime(mtime, 20, "%FT%T%z", &tm_result);
+            } else {
+                snprintf(mtime, 24, "Invalid: '%s'", lf->fields[FIM_MTIME].value);
+            }
             cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
         }
 

@@ -21,13 +21,13 @@
 #include "file_op.h"
 
 /* Prototypes */
-static int _oscomment(OS_XML *_lxml) __attribute__((nonnull));
+static int _oscomment(OS_XML *_lxml, int delim) __attribute__((nonnull));
 static int _writecontent(const char *str, __attribute__((unused)) size_t size, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
 int _xml_sgetc(OS_XML *_lxml)  __attribute__((nonnull));
-static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
+static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate, const int delim) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg, ...) __attribute__((format(printf, 2, 3), nonnull));
 
 /**
@@ -222,11 +222,11 @@ int OS_ReadXML(const char *file, OS_XML *_lxml) {
     return OS_ReadXML_Ex(file, _lxml, false);
 }
 
-static int _oscomment(OS_XML *_lxml)
+static int _oscomment(OS_XML *_lxml, int delim)
 {
     int c;
     if ((c = xml_getc_fun(_lxml->fp, _lxml)) == _R_COM) {
-        while ((c = xml_getc_fun(_lxml->fp, _lxml)) != EOF) {
+        while ((c = xml_getc_fun(_lxml->fp, _lxml)) != delim) {
             if (c == _R_COM) {
                 if ((c = xml_getc_fun(_lxml->fp, _lxml)) == _R_CONFE) {
                     return (1);
@@ -306,7 +306,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
         /* Check for comments */
         if (c == _R_CONFS) {
             int r = 0;
-            if ((r = _oscomment(_lxml)) < 0) {
+            if ((r = _oscomment(_lxml, cmp)) < 0) {
                 xml_error(_lxml, "XMLERR: Comment not closed.");
                 goto end;
             } else if (r == 1) {
@@ -345,7 +345,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
             }
             _currentlycont = _lxml->cur - 1;
             if (isspace(c)) {
-                if ((_ga = _getattributes(parent, _lxml, flag_truncate)) < 0) {
+                if ((_ga = _getattributes(parent, _lxml, flag_truncate, cmp)) < 0) {
                     goto end;
                 }
             }
@@ -536,7 +536,7 @@ static int _writecontent(const char *str, __attribute__((unused)) size_t size, u
 }
 
 /* Read the attributes of an element */
-static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate)
+static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate, const int delim)
 {
     int location = 0;
     unsigned int count = 0;
@@ -549,7 +549,7 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate
     memset(attr, '\0', XML_MAXSIZE + 1);
     memset(value, '\0', XML_MAXSIZE + 1);
 
-    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != EOF) {
+    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != delim) {
         if (count >= XML_MAXSIZE) {
             if (flag_truncate && 1 == location) {
                 value[count - 1] = '\0';
@@ -598,7 +598,7 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate
             if ((c != '"') && (c != '\'')) {
                 unsigned short int _err = 1;
                 if (isspace(c)) {
-                    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != EOF) {
+                    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != delim) {
                         if (isspace(c)) {
                             continue;
                         } else if ((c == '"') || (c == '\'')) {
@@ -638,7 +638,7 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate
             }
             c = xml_getc_fun(_lxml->fp, _lxml);
             if (isspace(c)) {
-                return (_getattributes(parent, _lxml, flag_truncate));
+                return (_getattributes(parent, _lxml, flag_truncate, delim));
             } else if (c == _R_CONFE) {
                 return (0);
             } else if (c == '/') {
