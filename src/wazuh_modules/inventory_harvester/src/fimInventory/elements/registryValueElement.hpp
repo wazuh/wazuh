@@ -74,13 +74,17 @@ public:
         Utils::replaceAll(path, "\\", "/");
         Utils::replaceAll(path, "//", "/");
 
+        std::string valueName(data->valueName());
+        Utils::replaceAll(valueName, "\\", "/");
+        Utils::replaceAll(valueName, "//", "/");
+
         NoDataHarvester element;
         element.operation = "DELETED";
         element.id = data->agentId();
         element.id += "_";
         element.id += path;
         element.id += "/";
-        element.id += data->valueName();
+        element.id += valueName;
 
         return element;
     }

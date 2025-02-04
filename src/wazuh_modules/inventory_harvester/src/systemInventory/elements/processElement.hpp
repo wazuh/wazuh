@@ -17,6 +17,7 @@
 #include "../../wcsModel/noData.hpp"
 #include "stringHelper.h"
 #include "timeHelper.h"
+#include <loggerHelper.h>
 
 template<typename TContext>
 class ProcessElement final
@@ -47,7 +48,7 @@ public:
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
 
-        if (data->processArgvs().empty() == false)
+        if (!data->processArgvs().empty())
         {
             element.data.process.args = Utils::split(data->processArgvs(), ' ');
             element.data.process.args_count = element.data.process.args.size();
