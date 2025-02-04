@@ -53,14 +53,26 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.11.0]
 
-### Manager  
+### Manager
 
-#### Fixed  
+#### Fixed
+
 - Fixed integration tests for Remoted to ensure proper execution. ([#25939](https://github.com/wazuh/wazuh/pull/25939))  
 - Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled. ([#26132](https://github.com/wazuh/wazuh/pull/26132))  
 - Fixed concurrent access errors in the Vulnerability Detector's OS scan column family. ([#26378](https://github.com/wazuh/wazuh/pull/26378))  
 
+#### Changed
+
+- Improved delimiters on XML. ([#27771](https://github.com/wazuh/wazuh/pull/27771))
+- Improved FIM decoder. ([#27893](https://github.com/wazuh/wazuh/pull/27893))
+- Improved SCA and Syscheck decoders. ([#27835](https://github.com/wazuh/wazuh/pull/27835))
+- Improved CISCAT decoder detection messages. ([#27914](https://github.com/wazuh/wazuh/pull/27914))
+
 ### Agent
+
+#### Fixed
+
+- Fixed error in event processing on AWS Custom Logs Buckets module. ([#27739](https://github.com/wazuh/wazuh/pull/27739))
 
 #### Added
 
@@ -70,6 +82,12 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Updated standard Python and NPM package location in Syscollector to align with common installation paths. ([#26236](https://github.com/wazuh/wazuh/pull/26236))
+
+### RESTful API
+
+#### Fixed
+
+- Added the `security:revoke` action to the `PUT /security/user/revoke` endpoint. ([#26255](https://github.com/wazuh/wazuh/pull/26255))
 
 
 ## [v4.10.1]
@@ -198,7 +216,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed vulnerability detector issue where RPM upgrade wouldn't download new content. ([#24909](https://github.com/wazuh/wazuh/pull/24909))
 - Fixed uncaught exception at Keystore test tool. ([#25667](https://github.com/wazuh/wazuh/pull/25667))
-- Replaced `eval` calls with `ast.literal_eval`. ([#25705](https://github.com/wazuh/wazuh/pull/25705))
+- Replaced `eval` calls with `ast.literal_eval`. Thanks to @DanielFi. ([#25705](https://github.com/wazuh/wazuh/pull/25705))
 - Fixed the cluster being disabled by default when loading configurations. ([#26277](https://github.com/wazuh/wazuh/pull/26277))
 - Added support ARM packages for wazuh-manager. ([#25945](https://github.com/wazuh/wazuh/pull/25945))
 
