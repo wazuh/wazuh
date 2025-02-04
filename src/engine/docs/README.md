@@ -17,6 +17,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [is_array](#is_array)
 - [is_boolean](#is_boolean)
 - [is_ipv4](#is_ipv4)
+- [is_ipv6](#is_ipv6)
 - [is_not_array](#is_not_array)
 - [is_not_boolean](#is_not_boolean)
 - [is_not_object](#is_not_object)
@@ -549,6 +550,7 @@ This helper function is typically used in the check stage
 
 ---
 # is_ipv4
+# is_ipv6
 
 ## Signature
 
@@ -557,16 +559,28 @@ This helper function is typically used in the check stage
 field: is_ipv4()
 ```
 
+field: is_ipv6(ip)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| ip | string | reference | Any IP |
+
+
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
 | string | Any IP |
+| [number, string, object, boolean, array] | - |
 
 
 ## Description
 
 Checks if the IP address stored in the field is an IPv4.
+Checks if the IP address stored in the field is an IPv6.
 IPv4:
   - 10.0.0.0
   - 172.16.0.0

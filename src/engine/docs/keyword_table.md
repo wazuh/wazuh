@@ -15,6 +15,7 @@
 | [is_array](documentation.md#is_array) | undefined |
 | [is_boolean](documentation.md#is_boolean) | undefined |
 | [is_ipv4](documentation.md#is_ipv4) | undefined |
+| [is_ipv6](documentation.md#is_ipv6) | undefined |
 | [is_not_array](documentation.md#is_not_array) | undefined |
 | [is_not_boolean](documentation.md#is_not_boolean) | undefined |
 | [is_not_object](documentation.md#is_not_object) | undefined |

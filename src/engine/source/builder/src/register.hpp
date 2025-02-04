@@ -85,6 +85,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "is_ipv4", {schemf::STypeToken::create(schemf::Type::IP), builders::opfilter::opBuilderHelperIsIpv4});
     registry->template add<builders::OpBuilderEntry>(
+        "is_ipv6", {schemf::STypeToken::create(schemf::Type::IP), builders::opfilter::opBuilderHelperIsIpv6});
+    registry->template add<builders::OpBuilderEntry>(
         "is_array", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsArray});
     registry->template add<builders::OpBuilderEntry>(
         "is_boolean", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsBool});
