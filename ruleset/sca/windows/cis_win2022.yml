@@ -1023,7 +1023,7 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S+'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> !r:HydraLSPipe|TermServLicensing|BROWSER'
 
   # 2.3.10.8 (L1) Configure 'Network access: Remotely accessible registry paths' is configured. (Automated)
   - id: 27052
@@ -1036,19 +1036,7 @@ checks:
       - cis: ["2.3.10.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Print\\Printers'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\Eventlog'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\OLAP Server'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Print'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ContentIndex'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\SysmonLog'
+      - 'c:reg query HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths /v Machine -> r:System\\CurrentControlSet\\Control && r:System\\CurrentControlSet\\Control && r:Software\\Microsoft\\Windows NT\\CurrentVersion'
 
   # 2.3.10.9 (L1) Configure 'Network access: Remotely accessible registry paths and sub-paths' is configured. (Automated)
   - id: 27053
@@ -1089,10 +1077,10 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Remote Access: Allow: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict clients allowed to make remote calls to SAM."
     compliance:
       - cis: ["2.3.10.11"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam -> r:O:BAG:BAD:\(A;;RC;;;BA\)'
 
   # 2.3.10.12 (L1) Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'. (Automated)
