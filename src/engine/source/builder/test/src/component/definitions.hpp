@@ -20,6 +20,7 @@ namespace builder::test
 {
 
 auto constexpr WAZUH_LOGPAR_TYPES_JSON = R"({
+    "name": "name",
     "fields": {
         "wazuh.message": "text",
         "event.code": "text"
@@ -332,6 +333,12 @@ public:
     {
         builder::BuilderDeps builderDeps;
         builderDeps.logparDebugLvl = 0;
+
+        ON_CALL(*m_spMocks->m_spSchemf, hasField(DotPath("wazuh.message"))).WillByDefault(testing::Return(true));
+        ON_CALL(*m_spMocks->m_spSchemf, hasField(DotPath("event.code"))).WillByDefault(testing::Return(true));
+        ON_CALL(*m_spMocks->m_spSchemf, isArray(DotPath("wazuh.message"))).WillByDefault(testing::Return(false));
+        ON_CALL(*m_spMocks->m_spSchemf, isArray(DotPath("event.code"))).WillByDefault(testing::Return(false));
+
         builderDeps.logpar =
             std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spMocks->m_spSchemf);
         builderDeps.kvdbScopeName = "builder";

@@ -18,7 +18,8 @@ def run(args, resource_handler: rs.ResourceHandler):
 
     # validate the api request
     try:
-        resource_handler.validate_catalog_file(api_socket, '', name, content, namespace, inFormat)
+        resource_handler.validate_catalog_file(
+            api_socket, '', name, content, namespace, inFormat)
     except Exception as e:
         sys.exit(f'Error validating asset: {e}')
 
@@ -30,11 +31,11 @@ def configure(subparsers):
         'validate', help='validate an asset.')
 
     parser_validate.add_argument('asset-name', type=str,
-                               help=f'Name of asset to validate.')
+                                 help=f'Name of asset to validate.')
 
     parser_validate.add_argument('-c', '--content', type=str, default='',
-                               help='Content of the item, can be passed as argument or '
-                               'redirected from a file using the "|" operator or the "<" '
-                               'operator.')
+                                 help='Content of the item, can be passed as argument or '
+                                 'redirected from a file using the "|" operator or the "<" '
+                                 'operator.')
 
     parser_validate.set_defaults(func=run)
