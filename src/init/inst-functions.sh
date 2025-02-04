@@ -34,7 +34,7 @@ InstallCommon()
 
 InstallPython()
 {
-    PYTHON_VERSION='3.10.15'
+    PYTHON_VERSION='3.10.16'
     PYTHON_FILENAME='python.tar.gz'
     PYTHON_INSTALLDIR=${INSTALLDIR}usr/share/wazuh-server/framework/python/
     PYTHON_FULL_PATH=${PYTHON_INSTALLDIR}$PYTHON_FILENAME
@@ -45,20 +45,7 @@ InstallPython()
 
     tar -xf $PYTHON_FULL_PATH -C ${PYTHON_INSTALLDIR} && rm -rf ${PYTHON_FULL_PATH}
 
-    mkdir -p ${INSTALLDIR}usr/share/wazuh-server/lib
-
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libwazuhext.so ${INSTALLDIR}usr/share/wazuh-server/lib
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PYTHON_INSTALLDIR}lib/libpython3.10.so.1.0 ${INSTALLDIR}usr/share/wazuh-server/lib
-
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${PYTHON_INSTALLDIR}
-}
-
-InstallPythonDependencies()
-{
-    PYTHON_BIN_PATH=${INSTALLDIR}usr/share/wazuh-server/framework/python/bin/python3
-
-    echo "Installing Python dependecies"
-    ${PYTHON_BIN_PATH} -m pip install -r ../framework/requirements.txt
 }
 
 InstallServer()
@@ -66,15 +53,15 @@ InstallServer()
     PYTHON_BIN_PATH=${INSTALLDIR}usr/share/wazuh-server/framework/python/bin/python3
 
     ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=/usr/share/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../framework/
+    ${PYTHON_BIN_PATH} -m pip install --break-system-packages --root-user-action ignore ../framework
 
     ## Install Server management API
     ${MAKEBIN} --quiet -C ../apis/server_management install INSTALLDIR=/usr/share/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../apis/server_management
+    ${PYTHON_BIN_PATH} -m pip install --break-system-packages --root-user-action ignore ../apis/server_management
 
     ## Install Communications API
     ${MAKEBIN} --quiet -C ../apis/communications install INSTALLDIR=/usr/share/wazuh-server
-    ${PYTHON_BIN_PATH} -m pip install ../apis/communications
+    ${PYTHON_BIN_PATH} -m pip install --break-system-packages --root-user-action ignore ../apis/communications
 
 }
 
@@ -198,7 +185,6 @@ InstallWazuh()
   InstallEngine
   InstallKeystore
   InstallPython
-  InstallPythonDependencies
   InstallServer
 }
 
