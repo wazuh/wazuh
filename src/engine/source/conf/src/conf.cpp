@@ -51,6 +51,8 @@ Conf::Conf(std::shared_ptr<IApiLoader> apiLoader)
     addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5.x-0001");
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOST", {"http://127.0.0.1:9200"});
     addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
+    addUnit<std::string>(
+        key::INDEXER_SSL_CA_MERGED, "INDEXER_SSL_CA_MERGED", "/var/lib/wazuh-server/tmp/root-ca-merged.pem");
     addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "WazuhEngine5+");
     addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_LIST, "WAZUH_INDEXER_SSL_CA_LIST", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
