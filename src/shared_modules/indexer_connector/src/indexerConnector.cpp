@@ -703,6 +703,10 @@ IndexerConnector::IndexerConnector(
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
                         throw std::runtime_error("Document version conflict, retrying in 1 second.");
                     }
+                    else if (statusCode == HTTP_BAD_REQUEST)
+                    {
+                        logError(IC_NAME, "Error 400: %s, message is ignored", error.c_str());
+                    }
                     else
                     {
 

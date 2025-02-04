@@ -104,17 +104,20 @@ private:
     std::unique_ptr<RouterSubscriber> m_harvesterRsyncSubscription;
     std::unique_ptr<RouterSubscriber> m_fimDeltasSubscription;
     std::unique_ptr<RouterSubscriber> m_wdbAgentEventsSubscription;
+    std::unique_ptr<RouterSubscriber> m_wdbFimEventsSubscription;
+    std::unique_ptr<RouterSubscriber> m_wdbInventoryEventsSubscription;
     bool m_noWaitToStop {true};
     std::shared_ptr<EventDispatcher> m_eventSystemInventoryDispatcher;
     std::shared_ptr<EventDispatcher> m_eventFimInventoryDispatcher;
 
     void initInventoryDeltasSubscription();
-    void initInventoryRsyncSubscription();
+    void initRsyncSubscription();
     void initFimDeltasSubscription();
-    void initFimRsyncSubscription();
-    void initWazuhDBEventSubscription();
-    void initSystemEventDispatcher();
-    void initFimEventDispatcher();
+    void initWazuhDBAgentEventSubscription();
+    void initWazuhDBFimEventSubscription();
+    void initWazuhDBInventoryEventSubscription();
+    void initSystemEventDispatcher() const;
+    void initFimEventDispatcher() const;
 };
 
 #endif // _INVENTORY_ORCHESTRATOR_FACADE_HPP

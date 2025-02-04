@@ -1216,9 +1216,8 @@ private:
 
     void buildJsonContext(const nlohmann::json* data)
     {
-        std::string_view action = data->at("/action"_json_pointer).get<std::string_view>();
-
-        if (action.compare("deleteAgent") == 0)
+        if (std::string_view action = data->at("/action"_json_pointer).get<std::string_view>();
+            action.compare("deleteAgent") == 0)
         {
             m_operation = Operation::DeleteAgent;
         }
@@ -1238,6 +1237,7 @@ private:
         {
             throw std::runtime_error("Operation not implemented: " + std::string(action));
         }
+        m_jsonData = data;
     }
 };
 

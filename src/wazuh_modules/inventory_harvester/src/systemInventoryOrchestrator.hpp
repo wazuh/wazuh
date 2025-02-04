@@ -46,6 +46,7 @@ class SystemInventoryOrchestrator final
 public:
     void processEvent(const rocksdb::PinnableSlice& input)
     {
+        logDebug2(LOGGER_DEFAULT_TAG, "SystemInventoryOrchestrator::processEvent");
         auto message = GetMessageBuffer(input.data());
 
         if (message->type() == BufferType::BufferType_RSync)
@@ -67,6 +68,7 @@ public:
         {
             throw std::runtime_error("Unknown event type");
         }
+        logDebug2(LOGGER_DEFAULT_TAG, "SystemInventoryOrchestrator::processEvent finished");
     }
 
     SystemInventoryOrchestrator()

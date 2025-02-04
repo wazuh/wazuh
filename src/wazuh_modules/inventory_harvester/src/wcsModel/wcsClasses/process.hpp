@@ -19,13 +19,13 @@
 struct Process final
 {
     std::vector<std::string_view> args;
-    std::uint64_t args_count;
+    std::uint64_t args_count = 0;
     std::string command_line;
     std::string_view executable;
     std::string_view name;
-    std::uint64_t pid;
+    std::uint64_t pid = 0;
     std::string start;
-    std::uint64_t ppid;
+    std::uint64_t ppid = 0;
 
     REFLECTABLE(MAKE_FIELD("args", &Process::args),
                 MAKE_FIELD("args_count", &Process::args_count),

@@ -174,6 +174,7 @@ public:
     // LCOV_EXCL_START
     void initialize(const nlohmann::json& configuration)
     {
+        logDebug2(LOGGER_DEFAULT_TAG, "Initializing PolicyHarvesterManager.");
         // Load and validate configuration
         validateAndLoadConfiguration(configuration);
     }

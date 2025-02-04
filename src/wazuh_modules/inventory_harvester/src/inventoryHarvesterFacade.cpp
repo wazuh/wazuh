@@ -26,6 +26,8 @@ constexpr auto EVENTS_BULK_SIZE {1};
  */
 void InventoryHarvesterFacade::initInventoryDeltasSubscription()
 {
+    logDebug2(LOGGER_DEFAULT_TAG,
+              "InventoryHarvesterFacade::initInventoryDeltasSubscription: Initializing inventory deltas subscription.");
     // Subscription to syscollector delta events.
     m_inventoryDeltasSubscription =
         std::make_unique<RouterSubscriber>("deltas-syscollector", "inventory_harvester_deltas");
@@ -44,6 +46,8 @@ void InventoryHarvesterFacade::initInventoryDeltasSubscription()
  */
 void InventoryHarvesterFacade::initFimDeltasSubscription()
 {
+    logDebug2(LOGGER_DEFAULT_TAG,
+              "InventoryHarvesterFacade::initFimDeltasSubscription: Initializing fim deltas subscription.");
     // Subscription to syscollector delta events.
     m_fimDeltasSubscription = std::make_unique<RouterSubscriber>("deltas-syscheck", "inventory_harvester_deltas");
     m_fimDeltasSubscription->subscribe(
@@ -59,8 +63,10 @@ void InventoryHarvesterFacade::initFimDeltasSubscription()
  * @brief Start the inventory rsync events subscription.
  *
  */
-void InventoryHarvesterFacade::initInventoryRsyncSubscription()
+void InventoryHarvesterFacade::initRsyncSubscription()
 {
+    logDebug2(LOGGER_DEFAULT_TAG,
+              "InventoryHarvesterFacade::initInventoryRsyncSubscription: Initializing inventory rsync subscription.");
     // Subscription to syscollector rsync events.
     m_harvesterRsyncSubscription = std::make_unique<RouterSubscriber>("rsync", "inventory_harvester_rsync");
     m_harvesterRsyncSubscription->subscribe(
@@ -120,42 +126,43 @@ void InventoryHarvesterFacade::initInventoryRsyncSubscription()
         });
 }
 
-void InventoryHarvesterFacade::initWazuhDBEventSubscription()
+void InventoryHarvesterFacade::initWazuhDBAgentEventSubscription()
 {
     m_wdbAgentEventsSubscription =
         std::make_unique<RouterSubscriber>("wdb-agent-events", "inventory_harvester_database");
     m_wdbAgentEventsSubscription->subscribe(
         [this](const std::vector<char>& message)
         {
-            auto messageParsed = nlohmann::json::parse(message.data(), message.data() + message.size());
-            if (messageParsed.contains("action"))
-            {
-                const auto& action = messageParsed.at("action").get<std::string_view>();
-                if (action.compare("deleteAgent") == 0)
-                {
-                    // Push to both system and fim events, because the agent is being deleted and we need to remove all
-                    // elements from all indices.
-                    pushSystemEvent(message, BufferType::BufferType_JSON);
-                    pushFimEvent(message, BufferType::BufferType_JSON);
-                }
-                else if (action.compare("deletePackage") == 0 || action.compare("deleteProcess") == 0)
-                {
-                    pushSystemEvent(message, BufferType::BufferType_JSON);
-                }
-                else if (action.compare("deleteFile") == 0 || action.compare("deleteRegistry") == 0)
-                {
-                    pushFimEvent(message, BufferType::BufferType_JSON);
-                }
-            }
+            // Push to both system and fim events, because the agent is being deleted and we need to remove all
+            // elements from all indices.
+            pushSystemEvent(message, BufferType::BufferType_JSON);
+            pushFimEvent(message, BufferType::BufferType_JSON);
         });
+}
+
+void InventoryHarvesterFacade::initWazuhDBFimEventSubscription()
+{
+    m_wdbFimEventsSubscription = std::make_unique<RouterSubscriber>("wdb-fim-events", "inventory_harvester_database");
+    m_wdbFimEventsSubscription->subscribe([this](const std::vector<char>& message)
+                                          { pushFimEvent(message, BufferType::BufferType_JSON); });
+}
+
+void InventoryHarvesterFacade::initWazuhDBInventoryEventSubscription()
+{
+    m_wdbInventoryEventsSubscription =
+        std::make_unique<RouterSubscriber>("wdb-inventory-events", "inventory_harvester_database");
+    m_wdbInventoryEventsSubscription->subscribe([this](const std::vector<char>& message)
+                                                { pushSystemEvent(message, BufferType::BufferType_JSON); });
 }
 
 /**
  * @brief Start the system event dispatcher
  *
  */
-void InventoryHarvesterFacade::initSystemEventDispatcher()
+void InventoryHarvesterFacade::initSystemEventDispatcher() const
 {
+    logDebug2(LOGGER_DEFAULT_TAG,
+              "InventoryHarvesterFacade::initSystemEventDispatcher: Initializing system event dispatcher.");
     // Init Orchestrator
     auto systemInventoryOrchestrator = std::make_shared<SystemInventoryOrchestrator>();
     const auto parseEventMessage = [](const rocksdb::PinnableSlice& element)
@@ -190,10 +197,7 @@ void InventoryHarvesterFacade::initSystemEventDispatcher()
             }
             catch (const std::exception& e)
             {
-                logError(LOGGER_DEFAULT_TAG,
-                         "InventoryHarvesterFacade::initSystemEventDispatcher: %s - Event message: %s",
-                         e.what(),
-                         parseEventMessage(element).c_str());
+                logError(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initSystemEventDispatcher: %s.", e.what());
             }
         });
 }
@@ -202,8 +206,10 @@ void InventoryHarvesterFacade::initSystemEventDispatcher()
  * @brief Start the system event dispatcher
  *
  */
-void InventoryHarvesterFacade::initFimEventDispatcher()
+void InventoryHarvesterFacade::initFimEventDispatcher() const
 {
+    logDebug2(LOGGER_DEFAULT_TAG,
+              "InventoryHarvesterFacade::initFimEventDispatcher: Initializing fim event dispatcher.");
     // Init Orchestrator
     auto fimInventoryOrchestrator = std::make_shared<FimInventoryOrchestrator>();
 
@@ -239,10 +245,7 @@ void InventoryHarvesterFacade::initFimEventDispatcher()
             }
             catch (const std::exception& e)
             {
-                logError(LOGGER_DEFAULT_TAG,
-                         "InventoryHarvesterFacade::initFimEventDispatcher: %s - Event message: %s",
-                         e.what(),
-                         parseEventMessage(element).c_str());
+                logError(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initFimEventDispatcher: %s", e.what());
             }
         });
 }
@@ -268,8 +271,11 @@ void InventoryHarvesterFacade::start(
 
         // Initialize all subscriptions.
         initInventoryDeltasSubscription();
-        initInventoryRsyncSubscription();
         initFimDeltasSubscription();
+        initRsyncSubscription();
+        initWazuhDBAgentEventSubscription();
+        initWazuhDBInventoryEventSubscription();
+        initWazuhDBFimEventSubscription();
 
         initSystemEventDispatcher();
         initFimEventDispatcher();
