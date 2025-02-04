@@ -3282,8 +3282,8 @@ checks:
        - soc_2: ["CC6.6"]
      condition: all
      rules:
-      - "not c:dpkg-query -s nftables -> r:install ok installed"
-      - "c:dpkg-query -s iptables -> r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables iptables -> r:install ok installed""
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables iptables -> r:unknown ok not-installed|no packages found matching"
 
   # 4.4.1.3 Ensure ufw is not in use with iptables. (Automated)
    - id: 35635
