@@ -324,7 +324,7 @@ constexpr auto PACKAGES_SQL_STATEMENT
     architecture TEXT,
     groups TEXT,
     description TEXT,
-    size INTEGER,
+    size BIGINT,
     priority TEXT,
     multiarch TEXT,
     source TEXT,
