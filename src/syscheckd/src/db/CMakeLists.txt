@@ -39,6 +39,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DOS_TYPE=OSType::OTHERS)
   add_library(fimdb SHARED ${DB_SRC})
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_definitions(-DOS_TYPE=OSType::OTHERS)
+  add_library(fimdb SHARED ${DB_SRC} ${CMAKE_SOURCE_DIR}/src/db/src/ebpf_whodata.cpp)
 else()
   add_definitions(-DOS_TYPE=OSType::OTHERS)
   add_library(fimdb SHARED ${DB_SRC})
@@ -64,7 +67,7 @@ elseif(UNIX AND NOT APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-  target_link_libraries(fimdb dbsync rsync wazuhext)
+  target_link_libraries(fimdb dbsync rsync wazuhext ${SINSP_LIB})
 else()
   target_link_libraries(
     fimdb

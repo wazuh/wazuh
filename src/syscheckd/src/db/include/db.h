@@ -213,6 +213,16 @@ EXPORTED FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
  */
 EXPORTED void fim_db_teardown();
 
+/**
+ * @brief eBPF whodata function
+ *
+ * @param drive_path Path for drive file.
+ * @param monitored_path Monitored path.
+ *
+ * @return err code.
+ */
+EXPORTED int ebpf_whodata(char * drive_path, char * monitored_path);
+
 #ifdef WIN32
 
 // Registry functions.

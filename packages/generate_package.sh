@@ -95,6 +95,7 @@ build_pkg() {
         -e IS_STAGE="${IS_STAGE}" \
         -e WAZUH_BRANCH="${BRANCH}" \
         -e WAZUH_VERBOSE="${VERBOSE}" \
+        -v /lib/modules:/lib/modules \
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} \
         ${REVISION} ${JOBS} ${DEBUG} \
