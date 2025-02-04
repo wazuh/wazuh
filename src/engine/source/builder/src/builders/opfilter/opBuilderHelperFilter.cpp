@@ -1497,4 +1497,53 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
     };
 }
 
+// <field>: +is_ipv6/$<reference>
+FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
+                               const std::vector<OpArg>& opArgs,
+                               const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 1);
+
+    utils::assertRef(opArgs, 0);
+
+    auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
+    const auto& validator = buildCtx->validator();
+    if (validator.hasField(ref->dotPath()))
+    {
+        if (validator.getType(ref->dotPath()) != schemf::Type::IP)
+        {
+            throw std::runtime_error(fmt::format("Reference '{}' is of type '{}' but expected 'IP'",
+                                                 ref->dotPath(),
+                                                 schemf::typeToStr(validator.getType(ref->dotPath()))));
+        }
+    }
+
+    const auto name = buildCtx->context().opName;
+
+    // Tracing
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Reference not found or is not a string", name)};
+    const std::string failureTrace2 {fmt::format("{} -> Failure: IP address is not IPv6", name)};
+
+    // Return op
+    return [failureTrace1, failureTrace2, successTrace, runState = buildCtx->runState(), parameter = opArgs[0]](
+               base::ConstEvent event) -> FilterResult
+    {
+        auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
+        const auto stringReference = event->getString(refPath);
+        if (!stringReference.has_value())
+        {
+            RETURN_FAILURE(runState, false, failureTrace1);
+        }
+
+        if (!::utils::ip::checkStrIsIPv6(stringReference.value()))
+        {
+            RETURN_FAILURE(runState, false, failureTrace2);
+        }
+
+        RETURN_SUCCESS(runState, true, successTrace);
+    };
+}
+
 } // namespace builder::builders::opfilter
