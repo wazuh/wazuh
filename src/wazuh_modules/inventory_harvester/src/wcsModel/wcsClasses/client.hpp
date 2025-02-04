@@ -20,7 +20,7 @@ struct Client final
 {
     // Add ECS client fields here
     std::string_view address;
-    std::uint32_t bytes;
+    std::uint32_t bytes = 0;
     std::string_view domain;
     std::string_view ip;
     std::string_view mac;

@@ -25,7 +25,7 @@ struct File final
     std::string_view inode;
     std::string mtime;
     std::string_view mode;
-    std::uint32_t size;
+    std::uint32_t size = 0;
     std::string_view target_path;
     std::string_view type;
     std::string_view uid;
