@@ -60,6 +60,7 @@ class IntegrationTester():
         '''
         events_parsed = []
         json_header = self.iconf.get_template().get_header() + "\n"
+        json_subheader = self.iconf.get_template().get_subheader() + "\n"
         try:
             while True:
                 try:
@@ -71,7 +72,7 @@ class IntegrationTester():
                     # Remove invalid events
                     events = list(filter(None, events))
                     # Create ndjson events and add the header to each event
-                    events = [json_header + self.iconf.get_template().get_event(event) for event in events]
+                    events = [json_header + json_subheader + self.iconf.get_template().get_event(event) for event in events]
 
                     # Process the events
                     if len(events) > 0:
