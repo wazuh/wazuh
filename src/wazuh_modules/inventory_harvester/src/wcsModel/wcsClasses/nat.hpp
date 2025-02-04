@@ -18,7 +18,7 @@
 struct NAT final
 {
     std::string_view ip;
-    std::int32_t port;
+    std::int32_t port = 0;
 
     REFLECTABLE(MAKE_FIELD("ip", &NAT::ip), MAKE_FIELD("port", &NAT::port));
 };
