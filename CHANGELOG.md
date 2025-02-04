@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.10.2]
+
+### Manager
+
+#### Fixed
+
+- Fixed heap buffer overflow in wazuh-analysisd. ([#1974](https://github.com/wazuh/internal-devel-requests/issues/1974))
+- Fixed error in event processing on AWS. ([#27739](https://github.com/wazuh/wazuh/pull/27739))
+
 ## [v4.10.1]
 
 ### Manager
