@@ -24,7 +24,6 @@ requirements:
   condition: any
   rules:
     - "f:/etc/redhat-release -> r:^Centos && r:release 8"
-    - "f:/etc/redhat-release -> r:^Centos && r:release 10"
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
