@@ -14,7 +14,7 @@ policy:
   id: "cis_rhel9_linux"
   file: "cis_rhel9_linux.yml"
   name: "CIS Red Hat Enterprise Linux 9 Benchmark v1.0.0."
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 9 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 9. This document has been modified to as well support Red Hat Enterprise Linux 10."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 9 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 9."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
@@ -23,11 +23,11 @@ requirements:
   description: "Requirements for running the policy against RHEL 9 family."
   condition: any
   rules:
-    - "f:/etc/redhat-release -> r:^Red Hat Enterprise Linux && r:release 9|release 10"
-    - "f:/etc/redhat-release -> r:^Cloud && r:release 9|release 10"
-    - "f:/etc/redhat-release -> r:^Oracle && r:release 9|release 10"
-    - "f:/etc/redhat-release -> r:^Better && r:release 9|release 10"
-    - "f:/etc/redhat-release -> r:^OpenVZ && r:release 9|release 10"
+    - "f:/etc/redhat-release -> r:^Red Hat Enterprise Linux && r:release 9"
+    - "f:/etc/redhat-release -> r:^Cloud && r:release 9"
+    - "f:/etc/redhat-release -> r:^Oracle && r:release 9"
+    - "f:/etc/redhat-release -> r:^Better && r:release 9"
+    - "f:/etc/redhat-release -> r:^OpenVZ && r:release 9"
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
