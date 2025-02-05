@@ -2059,7 +2059,7 @@ void test_router_message_forward_invalid_sync_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
     will_return(__wrap_router_provider_send_fb, -1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent 001");
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message '{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"}}' for agent 001");
 
     will_return(__wrap_OSHash_Get_ex_dup, NULL);
     expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
@@ -2184,7 +2184,7 @@ void test_router_message_forward_invalid_delta_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, -1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent 001");
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message '{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"}}' for agent 001");
 
     will_return(__wrap_OSHash_Get_ex_dup, NULL);
     expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
