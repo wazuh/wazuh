@@ -14,17 +14,16 @@ policy:
   id: "cis_win2022"
   file: "cis_win2022.yml"
   name: "CIS Microsoft Windows Server 2022 Benchmark v2.0.0"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2022. Please note that the rules provide accurate results for Microsoft Windows Server 2022 Operating Systems with the System language set to English. The SCA policy will work with other languages but the results will be less accurate due to some of the rules that depend on the System language. This document has been modified to as well support Windows Server 2025."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2022. Please note that the rules provide accurate results for Microsoft Windows Server 2022 Operating Systems with the System language set to English. The SCA policy will work with other languages but the results will be less accurate due to some of the rules that depend on the System language."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
   title: "Check that the Windows platform is Windows Server 2022"
   description: "Requirements for running the CIS benchmark under Windows Server 2022"
-  condition: any
+  condition: all
   rules:
     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2022'
-    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2025'
 
 checks:
   # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)' (Automated)
