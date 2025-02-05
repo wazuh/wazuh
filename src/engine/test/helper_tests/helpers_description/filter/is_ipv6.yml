@@ -19,39 +19,20 @@ helper_type: filter
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 
-arguments:
-  ip:
-    type: string
-    generate: ip
-    source: reference
-
-
 target_field:
-  type:
-    - number
-    - string
-    - object
-    - boolean
-    - array
+  type: string
+  generate: ip
 
 test:
-  - arguments:
-      ip: 127.0.0.1
-    target_field: any_value
+  - target_field: 127.0.0.1
     should_pass: false
     description: Invalid IPv6. It's an IPv4
-  - arguments:
-      ip: ::1
-    target_field: any_value
+  - target_field: ::1
     should_pass: true
     description: Valid special IPv6
-  - arguments:
-      ip: fd00:abcd::1234
-    target_field: any_value
+  - target_field:  fd00:abcd::1234
     should_pass: true
     description: Valid special IPv6
-  - arguments:
-      ip: 2a03:2880:f10c:83:face:b00c::25de
-    target_field: any_value
+  - target_field: a03:2880:f10c:83:face:b00c::25de
     should_pass: true
     description: Valid public IPv6
