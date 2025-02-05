@@ -1,0 +1,75 @@
+run-name: Build Embedded Python ${{ inputs.python_version }}
+name: Build Embedded Python
+
+on:
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: Python version to build. In semver format(X.Y.Z).
+        type: string
+        required: true
+      deps_version:
+        description: Dependecies version.
+        type: string
+        default: "50"
+        required: false
+
+  workflow_call:
+    inputs:
+      python_version:
+        required: true
+        type: string
+      deps_version:
+        default: "50"
+        type: string
+        required: false
+
+env:
+  UV_PYTHON: ${{ inputs.python_version }}
+  UV_PYTHON_INSTALL_DIR: /tmp
+  CPYTHON_NAME: cpython-${{ inputs.python_version }}-linux-x86_64-gnu
+  PYTHON_NAME: python.tar.gz
+
+jobs:
+  build-embedded-python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install cpython
+        run: uv python install ${{ inputs.python_version }}
+
+      - name: Install dependencies
+        run: /tmp/${{ env.CPYTHON_NAME }}/bin/pip3 install --break-system-packages -r framework/requirements.txt
+
+      - name: Compress pre-installed
+        working-directory: tmp
+        run: tar -zcf ${{ env.PYTHON_NAME }} --owner=0 --group=0 -C ${{ env.CPYTHON_NAME }}/ bin lib share include
+
+      - name: Upload pre-installed to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PYTHON_NAME }}
+          path: /tmp/${{ env.PYTHON_NAME }}
+          if-no-files-found: error
+
+      # - name: Upload pre-installed to S3
+      #   working-directory: packages
+      #   run: |
+      #     aws s3 cp /tmp/${{ env.PYTHON_NAME }} s3://packages.wazuh.com/deps/${{ inputs.deps_version }}/libraries/python/${{ inputs.python_version }}
+      #     s3uri="s3://packages.wazuh.com/deps/${{ inputs.deps_version }}/libraries/python/${{ inputs.python_version }}"
+      #     echo "S3 URI: ${s3uri}"
