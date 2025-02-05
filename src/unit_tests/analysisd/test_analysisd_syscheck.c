@@ -1677,6 +1677,79 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
         "New sha256sum is : 'hash_sha256'\n");
 }
 
+// This never happens, but it's a test to cover the case
+static void test_fim_generate_alert_registry_unknow_value_alert(void **state) {
+    fim_data_t *input = *state;
+    int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    cJSON *array_it;
+
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
+
+    if(input->lf->fields[FIM_FILE].value = strdup("HKEY_LOCAL_MACHINE\\software\\test"), input->lf->fields[FIM_FILE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_ARCH].value = strdup("[x64]");
+    if (input->lf->fields[FIM_REGISTRY_ARCH].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_VALUE_NAME].value = NULL; // Forcing an invalid value
+
+    input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value = strdup("REG_SZ");
+    if (input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_HASH].value = strdup("234567890ABCDEF1234567890ABCDEF123456111");
+    if (input->lf->fields[FIM_REGISTRY_HASH].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_MODE].value = strdup("scheduled");
+    if (input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("registry_value"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
+    cJSON_ArrayForEach(array_it, changed_attributes) {
+        wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
+    }
+
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_fetch_attributes
+    /* assert new attributes */
+    assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
+    assert_string_equal(input->lf->fields[FIM_MD5].value, "hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1].value, "hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256].value, "hash_sha256");
+
+    /* assert old attributes */
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
+
+    /* Assert actual output */
+    assert_string_equal(input->lf->full_log,
+        "Registry Value '[x64] HKEY_LOCAL_MACHINE\\software\\test\\Unknown key:Unknown Value' modified\n"
+        "Mode: scheduled\n"
+        "Changed attributes: size,md5,sha1,sha256\n"
+        "Size changed from '1234' to '4567'\n"
+        "Old md5sum was: 'old_hash_md5'\n"
+        "New md5sum is : 'hash_md5'\n"
+        "Old sha1sum was: 'old_hash_sha1'\n"
+        "New sha1sum is : 'hash_sha1'\n"
+        "Old sha256sum was: 'old_hash_sha256'\n"
+        "New sha256sum is : 'hash_sha256'\n");
+}
+
 static void test_fim_generate_alert_type_not_modified(void **state) {
     fim_data_t *input = *state;
     int ret;
@@ -3942,6 +4015,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_full_alert, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_registry_key_alert, setup_registry_key_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_registry_value_alert, setup_registry_value_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_generate_alert_registry_unknow_value_alert, setup_registry_value_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_type_not_modified, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_invalid_element_in_attributes, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_invalid_element_in_audit, setup_fim_data, teardown_fim_data),
