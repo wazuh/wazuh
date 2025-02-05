@@ -188,6 +188,33 @@ static int setup_DispatchDBSync(void **state) {
     return 0;
 }
 
+static int setup_DispatchDBSync2(void **state) {
+    test_dbsync_t *data = *state;
+
+    if(data->lf = calloc(1, sizeof(Eventinfo)), !data->lf)
+        return -1;
+
+    data->lf->log = strdup(
+        "{"
+            "\"component\": \"invalid\","
+            "\"type\": \"integrity_check_test\","
+            "\"data\": {"
+                "\"tail\": \"tail\","
+                "\"checksum\": \"checksum\","
+                "\"begin\": \"/a/path\","
+                "\"end\": \"/z/path\""
+            "}"
+        "}");
+
+    if(data->lf->log == NULL) return -1;
+
+    data->lf->agent_id = calloc(OS_SIZE_16, sizeof(char));
+
+    if(data->lf->agent_id == NULL) return -1;
+
+    return 0;
+}
+
 static int teardown_DispatchDBSync(void **state) {
     test_dbsync_t *data = *state;
 
@@ -426,7 +453,7 @@ static void test_dispatch_answer_remote_success(void **state) {
 
 static void test_dispatch_answer_query_too_long(void **state) {
     test_dbsync_t *data = *state;
-    char result[OS_MAXSTR];
+    char result[OS_MAXSTR] = {'\0'};
 
     data->ctx->ar_sock = 65555;
     snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
@@ -436,18 +463,6 @@ static void test_dispatch_answer_query_too_long(void **state) {
     result[OS_MAXSTR - 1] = '\0';
 
     expect_string(__wrap__merror, formatted_msg, "dbsync: Cannot build query for agent: query is too long.");
-
-    dispatch_answer(data->ctx, result);
-}
-
-static void test_dispatch_answer_query_invalid(void **state) {
-    test_dbsync_t *data = *state;
-    char result[OS_MAXSTR];
-
-    snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
-    snprintf(data->ctx->component, OS_SIZE_64, "blasqlblabla");
-
-    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
 
     dispatch_answer(data->ctx, result);
 }
@@ -504,18 +519,6 @@ static void test_dispatch_check_query_too_long(void **state) {
     command[OS_MAXSTR - 1] = '\0';
 
     expect_string(__wrap__merror, formatted_msg, "dbsync: Cannot build check query: input is too long.");
-
-    dispatch_check(data->ctx, command);
-}
-
-static void test_dispatch_check_query_invalid(void **state) {
-    test_dbsync_t *data = *state;
-    const char *command = "command";
-
-    snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
-    snprintf(data->ctx->component, OS_SIZE_64, "command_component");
-
-    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
 
     dispatch_check(data->ctx, command);
 }
@@ -645,19 +648,6 @@ static void test_dispatch_state_query_too_long(void **state) {
     dispatch_state(data->ctx);
 }
 
-static void test_dispatch_state_invalid(void **state) {
-    test_dbsync_t *data = *state;
-    const char *command = "command";
-
-    snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
-    snprintf(data->ctx->component, OS_SIZE_64, "command_component-");
-
-    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
-
-    // Assertions for this test are done through wrappers
-    dispatch_state(data->ctx);
-}
-
 static void test_dispatch_state_unable_to_communicate_with_db(void **state) {
     test_dbsync_t *data = *state;
 
@@ -779,19 +769,6 @@ static void test_dispatch_clear_query_too_long(void **state) {
     data->ctx->component[OS_MAXSTR - 1] = '\0';
 
     expect_string(__wrap__merror, formatted_msg, "dbsync: Cannot build clear query: input is too long.");
-
-    // Assertions for this test are done through wrappers
-    dispatch_clear(data->ctx);
-}
-
-static void test_dispatch_clear_query_invalid(void **state) {
-    test_dbsync_t *data = *state;
-    const char *command = "command";
-
-    snprintf(data->ctx->agent_id, OS_SIZE_16, "007");
-    snprintf(data->ctx->component, OS_SIZE_64, "xxxxx");
-
-    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
 
     // Assertions for this test are done through wrappers
     dispatch_clear(data->ctx);
@@ -1045,6 +1022,13 @@ static void test_DispatchDBSync_null_lf(void **state) {
     expect_assert_failure(DispatchDBSync(data->ctx, NULL));
 }
 
+static void test_DispatchDBSync_invalid_component(void **state) {
+    test_dbsync_t *data = *state;
+
+    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
+
+    DispatchDBSync(data->ctx, data->lf);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1066,13 +1050,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dispatch_answer_local_success, setup_dispatch_answer, teardown_dispatch_answer),
         cmocka_unit_test_setup_teardown(test_dispatch_answer_remote_success, setup_dispatch_answer, teardown_dispatch_answer),
         cmocka_unit_test_setup_teardown(test_dispatch_answer_query_too_long, setup_dispatch_answer, teardown_dispatch_answer),
-        cmocka_unit_test_setup_teardown(test_dispatch_answer_query_invalid, setup_dispatch_answer, teardown_dispatch_answer),
 
         /* dispatch_check */
         cmocka_unit_test_setup_teardown(test_dispatch_check_success, setup_dispatch_check, teardown_dispatch_check),
         cmocka_unit_test_setup_teardown(test_dispatch_check_corrupt_message, setup_dispatch_check, teardown_dispatch_check),
         cmocka_unit_test_setup_teardown(test_dispatch_check_query_too_long, setup_dispatch_check, teardown_dispatch_check),
-        cmocka_unit_test_setup_teardown(test_dispatch_check_query_invalid, setup_dispatch_check, teardown_dispatch_check),
         cmocka_unit_test_setup_teardown(test_dispatch_check_unable_to_communicate_with_db, setup_dispatch_check, teardown_dispatch_check),
         cmocka_unit_test_setup_teardown(test_dispatch_check_no_response_from_db, setup_dispatch_check, teardown_dispatch_check),
         cmocka_unit_test_setup_teardown(test_dispatch_check_error_parsing_response, setup_dispatch_check, teardown_dispatch_check),
@@ -1081,7 +1063,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dispatch_state_success, setup_dispatch_state, teardown_dispatch_state),
         cmocka_unit_test_setup_teardown(test_dispatch_state_corrupted_message, setup_dispatch_state, teardown_dispatch_state),
         cmocka_unit_test_setup_teardown(test_dispatch_state_query_too_long, setup_dispatch_state, teardown_dispatch_state),
-        cmocka_unit_test_setup_teardown(test_dispatch_state_invalid, setup_dispatch_state, teardown_dispatch_state),
         cmocka_unit_test_setup_teardown(test_dispatch_state_unable_to_communicate_with_db, setup_dispatch_state, teardown_dispatch_state),
         cmocka_unit_test_setup_teardown(test_dispatch_state_no_response_from_db, setup_dispatch_state, teardown_dispatch_state),
         cmocka_unit_test_setup_teardown(test_dispatch_state_error_parsing_response, setup_dispatch_state, teardown_dispatch_state),
@@ -1090,7 +1071,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dispatch_clear_success, setup_dispatch_clear, teardown_dispatch_clear),
         cmocka_unit_test_setup_teardown(test_dispatch_clear_corrupted_message, setup_dispatch_clear, teardown_dispatch_clear),
         cmocka_unit_test_setup_teardown(test_dispatch_clear_query_too_long, setup_dispatch_clear, teardown_dispatch_clear),
-        cmocka_unit_test_setup_teardown(test_dispatch_clear_query_invalid, setup_dispatch_clear, teardown_dispatch_clear),
         cmocka_unit_test_setup_teardown(test_dispatch_clear_unable_to_communicate_with_db, setup_dispatch_clear, teardown_dispatch_clear),
         cmocka_unit_test_setup_teardown(test_dispatch_clear_no_response_from_db, setup_dispatch_clear, teardown_dispatch_clear),
         cmocka_unit_test_setup_teardown(test_dispatch_clear_error_parsing_response, setup_dispatch_clear, teardown_dispatch_clear),
@@ -1105,6 +1085,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_message_type, setup_DispatchDBSync, teardown_DispatchDBSync),
         cmocka_unit_test_setup_teardown(test_DispatchDBSync_null_ctx, setup_DispatchDBSync, teardown_DispatchDBSync),
         cmocka_unit_test_setup_teardown(test_DispatchDBSync_null_lf, setup_DispatchDBSync, teardown_DispatchDBSync),
+        cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_component, setup_DispatchDBSync2, teardown_DispatchDBSync),
     };
 
     return cmocka_run_group_tests(tests, setup_dbsync_context, teardown_dbsync_context);
