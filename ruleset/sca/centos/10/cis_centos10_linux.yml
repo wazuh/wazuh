@@ -13,7 +13,11 @@
 policy:
   id: "cis_centos10_linux"
   file: "cis_centos10_linux.yml"
+<<<<<<< HEAD
   name: "CIS CentOS Linux 10 Benchmark"
+=======
+  name: "CentOS Linux 10 Benchmark"
+>>>>>>> 2ee7f2cd0c (CentOS 10 SCA based on CentOS 8 v2.0.0 Benchmark)
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for CentOS Linux 10 systems running on x86 and x64 platforms. This document was tested against CentOS Linux 10. This document is based on Center for Internet Security CentOS Linux 8 Benchmark v2.0.0."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
