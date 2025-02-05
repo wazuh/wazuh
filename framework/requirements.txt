@@ -4,7 +4,7 @@ cachetools==4.1.0
 chardet==3.0.4
 connexion==3.1.0
 content-size-limit-asgi==0.1.5
-cryptography==42.0.4
+cryptography==43.0.1
 Cython==0.29.36
 defusedxml==0.6.0
 fastapi==0.111.1
@@ -27,3 +27,9 @@ uuid6==2024.07.10
 uvloop==0.17.0
 uvicorn==0.24.0.post1
 xmltodict==0.12.0
+yarl==1.7.0
+zipp==3.19.1
+content_size_limit_asgi==0.1.5
+setuptools>=70.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
+anyio>=4.4.0 # not directly required, pinned by Snyk to avoid a vulnerability
+starlette>=0.40.0 # not directly required, pinned by Snyk to avoid a vulnerability
