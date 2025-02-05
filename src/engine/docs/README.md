@@ -554,21 +554,14 @@ This helper function is typically used in the check stage
 
 ```
 
-field: is_ipv6(ip)
+field: is_ipv6()
 ```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| ip | string | reference | Any IP |
-
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| [number, string, object, boolean, array] | - |
+| string | Any IP |
 
 
 ## Description
