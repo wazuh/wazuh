@@ -32,6 +32,7 @@ constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 
 constexpr auto HTTP_BAD_REQUEST {400};
 constexpr auto HTTP_CONTENT_LENGTH {413};
+constexpr auto HTTP_TOO_MANY_REQUESTS {429};
 
 constexpr auto RECURSIVE_MAX_DEPTH {20};
 
@@ -335,6 +336,11 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
 
                 sendBulkReactive(left, url, secureCommunication, depth + 1);
                 sendBulkReactive(right, url, secureCommunication, depth + 1);
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                logDebug2(IC_NAME, "Too many requests, sync ommited.");
+                throw std::runtime_error("Too many requests, sync ommited.");
             }
             else
             {
@@ -689,9 +695,16 @@ IndexerConnector::IndexerConnector(
                                                      "indexer.");
                         }
                     }
-
-                    logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-                    throw std::runtime_error(error);
+                    else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+                    {
+                        logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                        throw std::runtime_error("Too many requests, retrying in 1 second.");
+                    }
+                    else
+                    {
+                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                        throw std::runtime_error(error);
+                    }
                 };
 
                 HTTPRequest::instance().post(
