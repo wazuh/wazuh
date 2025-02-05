@@ -1,3 +1,0 @@
-[submodule "src/engine/source/wazuh-http-request"]
-	path = src/engine/source/wazuh-http-request
-	url = https://github.com/wazuh/wazuh-http-request

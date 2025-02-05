@@ -1,0 +1,7 @@
+[book]
+title = "Wazuh Server Documentation"
+description = "Technical documentation for the Wazuh Server."
+authors = ["Facundo Dalmau"]
+multilingual = false
+src = "."
+language = "en"

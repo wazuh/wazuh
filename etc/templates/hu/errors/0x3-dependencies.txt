@@ -1,3 +1,0 @@
- 
- Hiba 0x3.
- A telepítés folytatásához szüksége van egy fordító programra (pl. gcc vagy cc).

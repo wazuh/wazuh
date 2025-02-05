@@ -1,2 +1,0 @@
- Greška 0x5.
- Greška u gradnji. U nemogućnosti da završi instalaciju.

@@ -1,7 +1,0 @@
-{
-    "name": "Wazuh Engine API",
-    "version": "0.1.1",
-    "description": "Wazuh Engine API documentation",
-    "title": "Wazuh Engine API",
-    "url": "/run/wazuh-server/engine.socket"
-}

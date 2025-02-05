@@ -1,3 +1,0 @@
-# WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
-auth_token_exp_timeout: 900
-rbac_mode: white

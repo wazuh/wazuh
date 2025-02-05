@@ -1,4 +1,0 @@
-
-  3.5- Mit 'Active Response' können Befehle abhängig von
-       Events ausführen.
-       Standardmäßig sind keine 'Active Response' definiert.

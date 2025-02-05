@@ -1,3 +1,0 @@
-
- Vous êtes sur le point d'installer Wazuh.
- Vous devez avoir une compilateur C préinstallé sur votre système.

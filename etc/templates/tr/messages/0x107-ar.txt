@@ -1,5 +1,0 @@
-
-  3.5- Etkin yanıt üretme (Active response), edinilen olay
-       bilgilerine göre belirli bir komut çalıştırmanıza olanak
-       tanır.
-       Varsayılan olarak, hiçbir aktif yanıt tanımlanmadı.

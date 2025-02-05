@@ -1,3 +1,0 @@
-
- Va a comenzar con el proceso de instalación de Wazuh.
- Es necesario tener un compilador de C previamente instalado en el sistema.

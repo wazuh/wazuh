@@ -1,3 +1,0 @@
-
- Błąd 0x4.
- Niewłaściwy typ instalacji. Wybierz spośród: agent, serwer, lokalna.

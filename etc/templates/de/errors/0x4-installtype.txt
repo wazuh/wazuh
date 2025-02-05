@@ -1,4 +1,0 @@
-
- Fehler 0x4.
- Falscher Installationstyp. Bitte wählen Sie zwischen agent, server
- und local.

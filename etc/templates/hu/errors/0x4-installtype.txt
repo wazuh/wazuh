@@ -1,3 +1,0 @@
-
- Hiba 0x4.
- Rossz telepítési típus. Csak agent(kliens), szerver vagy lokális lehet.

@@ -1,1 +1,0 @@
-  ** A Magyar nyelvű telepítéshez válassza [hu].
