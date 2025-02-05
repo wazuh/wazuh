@@ -1,5 +1,5 @@
 # Security Configuration Assessment
-# CIS Checks for RHEL 9
+# CIS Checks for RHEL 10
 # Copyright (C) 2022, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
@@ -11,23 +11,23 @@
 # Center for Internet Security Red Hat Enterprise Linux 9 Benchmark v1.0.0 - 11-28-2022
 
 policy:
-  id: "cis_rhel9_linux"
-  file: "cis_rhel9_linux.yml"
-  name: "CIS Red Hat Enterprise Linux 9 Benchmark v1.0.0."
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 9 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 9."
+  id: "cis_rhel10_linux"
+  file: "cis_rhel10_linux.yml"
+  name: "CIS Red Hat Enterprise Linux 10 Benchmark."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 10 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 10. This document is based on Center for Internet Security Red Hat Enterprise Linux 9 Benchmark v1.0.0."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check RHEL9 family platform."
-  description: "Requirements for running the policy against RHEL 9 family."
+  title: "Check RHEL10 family platform."
+  description: "Requirements for running the policy against RHEL 10 family."
   condition: any
   rules:
-    - "f:/etc/redhat-release -> r:^Red Hat Enterprise Linux && r:release 9"
-    - "f:/etc/redhat-release -> r:^Cloud && r:release 9"
-    - "f:/etc/redhat-release -> r:^Oracle && r:release 9"
-    - "f:/etc/redhat-release -> r:^Better && r:release 9"
-    - "f:/etc/redhat-release -> r:^OpenVZ && r:release 9"
+    - "f:/etc/redhat-release -> r:^Red Hat Enterprise Linux && r:release 10"
+    - "f:/etc/redhat-release -> r:^Cloud && r:release 10"
+    - "f:/etc/redhat-release -> r:^Oracle && r:release 10"
+    - "f:/etc/redhat-release -> r:^Better && r:release 10"
+    - "f:/etc/redhat-release -> r:^OpenVZ && r:release 10"
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
