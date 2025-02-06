@@ -57,7 +57,7 @@ jobs:
         run: /tmp/${{ env.CPYTHON_NAME }}/bin/pip3 install --break-system-packages -r framework/requirements.txt
 
       - name: Compress pre-installed
-        working-directory: tmp
+        working-directory: /tmp
         run: tar -zcf ${{ env.PYTHON_NAME }} --owner=0 --group=0 -C ${{ env.CPYTHON_NAME }}/ bin lib share include
 
       - name: Upload pre-installed to GitHub
