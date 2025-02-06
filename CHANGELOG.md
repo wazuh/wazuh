@@ -7,9 +7,11 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed integration tests for Remoted to ensure proper execution. ([#25939](https://github.com/wazuh/wazuh/pull/25939))  
 - Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled. ([#26132](https://github.com/wazuh/wazuh/pull/26132))  
-- Fixed concurrent access errors in the Vulnerability Detector's OS scan column family. ([#26378](https://github.com/wazuh/wazuh/pull/26378))  
+
+#### Added
+
+- Added CISA vulnerability content and prioritized over NVD in vulnerability scanner. ([#27692](https://github.com/wazuh/wazuh/pull/27692))
 
 #### Changed
 
