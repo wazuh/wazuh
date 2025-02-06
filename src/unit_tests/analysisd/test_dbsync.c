@@ -194,19 +194,8 @@ static int setup_DispatchDBSync2(void **state) {
     if(data->lf = calloc(1, sizeof(Eventinfo)), !data->lf)
         return -1;
 
-    data->lf->log = strdup(
-        "{"
-            "\"component\": \"invalid\","
-            "\"type\": \"integrity_check_test\","
-            "\"data\": {"
-                "\"tail\": \"tail\","
-                "\"checksum\": \"checksum\","
-                "\"begin\": \"/a/path\","
-                "\"end\": \"/z/path\""
-            "}"
-        "}");
-
-    if(data->lf->log == NULL) return -1;
+    if (data->lf->log = calloc(OS_SIZE_512, sizeof(char)), !data->lf->log)
+        return -1;
 
     data->lf->agent_id = calloc(OS_SIZE_16, sizeof(char));
 
@@ -1022,8 +1011,76 @@ static void test_DispatchDBSync_null_lf(void **state) {
     expect_assert_failure(DispatchDBSync(data->ctx, NULL));
 }
 
-static void test_DispatchDBSync_invalid_component(void **state) {
+static void test_DispatchDBSync_invalid_blasqlblabla_component(void **state) {
     test_dbsync_t *data = *state;
+
+    snprintf(data->lf->log, OS_SIZE_512, "{"
+        "\"component\": \"blasqlblabla\","
+        "\"type\": \"integrity_check_test\","
+        "\"data\": {"
+            "\"tail\": \"tail\","
+            "\"checksum\": \"checksum\","
+            "\"begin\": \"/a/path\","
+            "\"end\": \"/z/path\""
+        "}"
+    "}");
+
+    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
+
+    DispatchDBSync(data->ctx, data->lf);
+}
+
+static void test_DispatchDBSync_invalid_command_component_component(void **state) {
+    test_dbsync_t *data = *state;
+
+    snprintf(data->lf->log, OS_SIZE_512, "{"
+        "\"component\": \"command_component\","
+        "\"type\": \"integrity_check_test\","
+        "\"data\": {"
+            "\"tail\": \"tail\","
+            "\"checksum\": \"checksum\","
+            "\"begin\": \"/a/path\","
+            "\"end\": \"/z/path\""
+        "}"
+    "}");
+
+    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
+
+    DispatchDBSync(data->ctx, data->lf);
+}
+
+static void test_DispatchDBSync_invalid_command_component_dash_component(void **state) {
+    test_dbsync_t *data = *state;
+
+    snprintf(data->lf->log, OS_SIZE_512, "{"
+        "\"component\": \"command_component-\","
+        "\"type\": \"integrity_check_test\","
+        "\"data\": {"
+            "\"tail\": \"tail\","
+            "\"checksum\": \"checksum\","
+            "\"begin\": \"/a/path\","
+            "\"end\": \"/z/path\""
+        "}"
+    "}");
+
+    expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
+
+    DispatchDBSync(data->ctx, data->lf);
+}
+
+static void test_DispatchDBSync_invalid_xxxxx_component(void **state) {
+    test_dbsync_t *data = *state;
+
+    snprintf(data->lf->log, OS_SIZE_512, "{"
+        "\"component\": \"xxxxx\","
+        "\"type\": \"integrity_check_test\","
+        "\"data\": {"
+            "\"tail\": \"tail\","
+            "\"checksum\": \"checksum\","
+            "\"begin\": \"/a/path\","
+            "\"end\": \"/z/path\""
+        "}"
+    "}");
 
     expect_string(__wrap__merror, formatted_msg, "dbsync: Invalid component specified.");
 
@@ -1085,7 +1142,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_message_type, setup_DispatchDBSync, teardown_DispatchDBSync),
         cmocka_unit_test_setup_teardown(test_DispatchDBSync_null_ctx, setup_DispatchDBSync, teardown_DispatchDBSync),
         cmocka_unit_test_setup_teardown(test_DispatchDBSync_null_lf, setup_DispatchDBSync, teardown_DispatchDBSync),
-        cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_component, setup_DispatchDBSync2, teardown_DispatchDBSync),
+        cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_blasqlblabla_component, setup_DispatchDBSync2, teardown_DispatchDBSync),
+        cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_command_component_component, setup_DispatchDBSync2, teardown_DispatchDBSync),
+        cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_command_component_dash_component, setup_DispatchDBSync2, teardown_DispatchDBSync),
+        cmocka_unit_test_setup_teardown(test_DispatchDBSync_invalid_xxxxx_component, setup_DispatchDBSync2, teardown_DispatchDBSync)
     };
 
     return cmocka_run_group_tests(tests, setup_dbsync_context, teardown_dbsync_context);
