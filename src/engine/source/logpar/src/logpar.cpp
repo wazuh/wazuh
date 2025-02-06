@@ -283,7 +283,7 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 
 namespace hlp::logpar
 {
-Logpar::Logpar(const json::Json& ecsFieldTypes,
+Logpar::Logpar(const json::Json& fieldParserOverrides,
                const std::shared_ptr<schemf::ISchema>& schema,
                size_t maxGroupRecursion,
                size_t debugLvl)
@@ -296,65 +296,65 @@ Logpar::Logpar(const json::Json& ecsFieldTypes,
     }
     m_schema = schema;
 
-    if (!ecsFieldTypes.isObject())
+    // Load field parser overrides
+    if (!fieldParserOverrides.isObject())
     {
-        // TODO: check message
-        throw std::runtime_error("Configuration file must be an object");
+        throw std::runtime_error("Field parser overrides must be an object");
     }
 
-    if (!ecsFieldTypes.isObject("/fields"))
+    if (!fieldParserOverrides.isString("/name"))
     {
-        throw std::runtime_error("Configuration file must have a 'fields' object");
+        throw std::runtime_error("Field parser overrides file must have a name");
     }
 
-    if (ecsFieldTypes.size() == 0)
+    if (!fieldParserOverrides.isObject("/fields"))
     {
-        // TODO: check message
-        throw std::runtime_error("ECS field types must not be empty");
+        throw std::runtime_error("Field parser overrides file must have a fields object");
     }
 
-    // Populate m_fieldTypes
-    auto obj = ecsFieldTypes.getObject("/fields").value();
-    for (const auto& [key, value] : obj)
+    auto asObj = fieldParserOverrides.getObject("/fields").value();
+    for (const auto& [key, value] : asObj)
     {
+        if (!schema->hasField(key))
+        {
+            throw std::runtime_error(fmt::format("Field parser override '{}' not found in schema", key));
+        }
+
         if (!value.isString())
         {
-            throw std::runtime_error(fmt::format("When loading logpar schema fields, field '{}' must "
-                                                 "be a string with the name of the type",
-                                                 key));
+            throw std::runtime_error(fmt::format("Field parser override '{}' must be a string", key));
         }
 
-        const auto schemaType = strToSchemaType(value.getString().value());
-        if (schemaType == SchemaType::ERROR_TYPE)
+        auto parserType = strToParserType(value.getString().value());
+        if (parserType == ParserType::ERROR_TYPE)
         {
-            throw std::runtime_error(fmt::format("When loading logpar schema fields, type '{}' in schema "
-                                                 "field '{}' is not supported",
-                                                 value.getString().value(),
-                                                 key));
+            throw std::runtime_error(
+                fmt::format("Field parser override '{}' invalid parser type '{}'", key, value.getString().value()));
         }
 
-        m_fieldTypes[key] = schemaType;
+        m_fieldParserOverrides[key] = parserType;
     }
 
-    m_typeParsers = {
-        // Numeric types
-        {SchemaType::LONG, ParserType::P_LONG},
-        {SchemaType::DOUBLE, ParserType::P_DOUBLE},
-        {SchemaType::FLOAT, ParserType::P_FLOAT},
-        {SchemaType::SCALED_FLOAT, ParserType::P_SCALED_FLOAT},
-        {SchemaType::BYTE, ParserType::P_BYTE},
-        // String types
-        {SchemaType::KEYWORD, ParserType::P_TEXT},
-        {SchemaType::TEXT, ParserType::P_TEXT},
-        {SchemaType::WILDCARD, ParserType::P_TEXT},
-        {SchemaType::BOOLEAN, ParserType::P_BOOL},
-        {SchemaType::IP, ParserType::P_IP},
-        {SchemaType::GEO_POINT, ParserType::P_TEXT},
-        {SchemaType::DATE, ParserType::P_DATE},
-        // Special types, not in schema
-        {SchemaType::USER_AGENT, ParserType::P_USER_AGENT},
-        {SchemaType::URL, ParserType::P_URI},
-    };
+    // Schema type -> parser table
+    m_typeParsers = {{schemf::Type::BOOLEAN, ParserType::P_BOOL},
+                     {schemf::Type::BYTE, ParserType::P_BYTE},
+                     {schemf::Type::SHORT, ParserType::P_LONG},
+                     {schemf::Type::INTEGER, ParserType::P_LONG},
+                     {schemf::Type::LONG, ParserType::P_LONG},
+                     {schemf::Type::FLOAT, ParserType::P_FLOAT},
+                     {schemf::Type::HALF_FLOAT, ParserType::P_FLOAT},
+                     {schemf::Type::SCALED_FLOAT, ParserType::P_SCALED_FLOAT},
+                     {schemf::Type::DOUBLE, ParserType::P_DOUBLE},
+                     {schemf::Type::KEYWORD, ParserType::P_TEXT},
+                     {schemf::Type::TEXT, ParserType::P_TEXT},
+                     {schemf::Type::WILDCARD, ParserType::P_TEXT},
+                     {schemf::Type::DATE, ParserType::P_DATE},
+                     {schemf::Type::DATE_NANOS, ParserType::P_DATE},
+                     {schemf::Type::IP, ParserType::P_IP},
+                     {schemf::Type::BINARY, ParserType::P_BINARY},
+                     {schemf::Type::OBJECT, ParserType::ERROR_TYPE},
+                     {schemf::Type::NESTED, ParserType::ERROR_TYPE},
+                     {schemf::Type::GEO_POINT, ParserType::ERROR_TYPE}};
 
     m_parserBuilders = {};
 }
@@ -375,7 +375,7 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
     ParserType type;
     std::vector<std::string> args(field.args.begin(), field.args.end());
     // Custom field
-    if (!m_schema->hasField(field.name.value))
+    if (!getSchema()->hasField(field.name.value))
     {
         // Custom fields use specified parser in args or text parser by default
         if (args.empty())
@@ -395,19 +395,12 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
     // Schema field
     else
     {
-        if (m_fieldTypes.count(field.name.value) == 0)
+        if (getSchema()->isArray(field.name.value))
         {
-            throw std::runtime_error(fmt::format("Field '{}' not found in schema", field.name.value));
+            throw std::runtime_error(fmt::format("Field '{}' is an array, not supported in logpar", field.name.value));
         }
 
-        const auto schemaType = m_fieldTypes.at(field.name.value);
-        if (m_typeParsers.count(schemaType) == 0)
-        {
-            throw std::runtime_error(
-                fmt::format("Parser type for ECS type '{}' not found", schemaTypeToStr(schemaType)));
-        }
-
-        type = m_typeParsers.at(schemaType);
+        type = getParser(field.name.value);
     }
 
     if (m_parserBuilders.count(type) == 0)
