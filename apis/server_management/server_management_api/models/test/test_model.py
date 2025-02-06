@@ -12,13 +12,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from connexion import ProblemException
-
 from server_management_api.controllers.util import JSON_CONTENT_TYPE
 from server_management_api.models import agent_registration_model
+
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['server_management_api.authentication'] = MagicMock()
-        from server_management_api.models import base_model_ as bm, agent_registration_model
+        from server_management_api.models import agent_registration_model
+        from server_management_api.models import base_model_ as bm
         from server_management_api.util import deserialize_model
         from wazuh import WazuhError
 

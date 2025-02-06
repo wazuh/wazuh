@@ -1,12 +1,11 @@
-from typing import List, Optional
 from enum import Enum
+from typing import List, Optional
 
-from pydantic import PositiveInt, conint, confloat, PrivateAttr, Field, field_validator, ValidationInfo
-
+from pydantic import Field, PositiveInt, PrivateAttr, ValidationInfo, confloat, conint, field_validator
 from wazuh.core.common import WAZUH_GROUPS
 from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
-from wazuh.core.config.models.ssl_config import SSLConfig
 from wazuh.core.config.models.logging import LoggingConfig, LoggingLevel
+from wazuh.core.config.models.ssl_config import SSLConfig
 
 DEFAULT_CTI_URL = "https://cti.wazuh.com"
 
@@ -293,7 +292,7 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid JWT file path.
 
         Returns
-        ------
+        -------
         str
             JWT key path.
         """

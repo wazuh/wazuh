@@ -1,14 +1,14 @@
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Request, status
 from fastapi.applications import FastAPI
+from wazuh.core.exception import WazuhEngineError, WazuhError
+from wazuh.core.indexer.models.events import FIM_INDEX, TaskResult
 
 from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.events import post_stateful_events, post_stateless_events
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.exception import WazuhEngineError, WazuhError
-from wazuh.core.indexer.models.events import TaskResult, FIM_INDEX
 
 
 @pytest.mark.asyncio

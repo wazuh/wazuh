@@ -13,12 +13,10 @@ class TestWazuhAgent:
     @pytest.mark.parametrize('version,expected', [('v4.2.0', False), ('v4.3.0', True), ('v4.4.0', True)])
     def test_can_reconnect(self, version: str, expected: bool):
         """Check the correct output of `can_reconnect` function."""
-
         assert WazuhAgent.can_reconnect(version) == expected
 
     def test_get_agents_able_to_reconnect(self):
         """Check the correct output of `get_agents_able_to_reconnect` function."""
-
         agents = [
             {'id': 1, 'version': 'v4.2.0'},
             {'id': 2, 'version': 'v4.3.0'},
@@ -67,7 +65,6 @@ class TestWazuhDAPI:
         excluded_nodes: list,
     ):
         """Check the correct output of `get_cluster_nodes` function."""
-
         self.wazuh_dapi.excluded_nodes = excluded_nodes
         fixture_affected_items_result.affected_items = nodes_data
         dapi_mock.return_value.distribute_function.return_value = fixture_affected_items_result
@@ -91,7 +88,6 @@ class TestWazuhDAPI:
         fixture_affected_items_result: AffectedItemsWazuhResult,
     ):
         """Check the correct output of `reconnect_agents` function."""
-
         agent_list = [1, 2, 3]
         fixture_affected_items_result.affected_items = agent_list
         dapi_mock.return_value.distribute_function.return_value = fixture_affected_items_result
@@ -113,7 +109,6 @@ class TestWazuhDAPI:
         fixture_affected_items_result: AffectedItemsWazuhResult,
     ):
         """Check the correct output of `get_agents_node_distribution` function."""
-
         agents_data = [
             {'id': 1, 'name': 'agent1', 'version': '4.9.0', 'node_name': 'worker1'},
             {'id': 2, 'name': 'agent2', 'version': '4.9.0', 'node_name': 'worker2'},
@@ -141,7 +136,6 @@ class TestWazuhDAPI:
         self, dapi_mock: mock.MagicMock, fixture_affected_items_result: AffectedItemsWazuhResult, limit: Optional[int]
     ):
         """Check the correct output of `get_agents_belonging_to_node` function."""
-
         agents_data = [
             {'id': 1, 'name': 'agent1', 'version': '4.9.0'},
             {'id': 2, 'name': 'agent2', 'version': '4.9.0'},

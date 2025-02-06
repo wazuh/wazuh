@@ -1,7 +1,12 @@
 import pytest
-
-from wazuh.core.config.models.central_config import Config, EngineConfig, ManagementAPIConfig, CommsAPIConfig, \
-    IndexerConfig, ConfigSections
+from wazuh.core.config.models.central_config import (
+    CommsAPIConfig,
+    Config,
+    ConfigSections,
+    EngineConfig,
+    IndexerConfig,
+    ManagementAPIConfig,
+)
 
 
 def test_config_sections_ko():

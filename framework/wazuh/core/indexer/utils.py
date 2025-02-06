@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Tuple, Iterator
+from typing import Any, Dict, Iterator, List, Tuple
 
 from wazuh.core.indexer.base import IndexerKey
 

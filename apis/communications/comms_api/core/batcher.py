@@ -1,7 +1,7 @@
 from typing import Tuple
 
-from wazuh.core.batcher.mux_demux import MuxDemuxManager
 from wazuh.core.batcher.batcher import BatcherProcess
+from wazuh.core.batcher.mux_demux import MuxDemuxManager
 from wazuh.core.config.models.comms_api import BatcherConfig
 
 

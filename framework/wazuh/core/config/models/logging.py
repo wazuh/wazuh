@@ -1,8 +1,7 @@
 import logging
-
-from pydantic import Field
 from enum import Enum
 
+from pydantic import Field
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 
 
@@ -80,12 +79,12 @@ class LoggingConfig(WazuhConfigBaseModel):
 class APILoggingConfig(WazuhConfigBaseModel):
     """Configuration for API logging.
 
-     Parameters
-     ----------
-     level : Literal["debug", "info", "warning", "error", "critical"]
-         The logging level. Default is "debug".
-     format : list[Literal["plain"]]
-         The format for logging output. Default is ["plain"].
+    Parameters
+    ----------
+    level : Literal["debug", "info", "warning", "error", "critical"]
+        The logging level. Default is "debug".
+    format : list[Literal["plain"]]
+        The format for logging output. Default is ["plain"].
     """
     level: APILoggingLevel = APILoggingLevel.debug
     format: list[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)

@@ -9,29 +9,56 @@ import pytest
 from connexion.lifecycle import ConnexionResponse
 from connexion.testing import TestContext
 
-from server_management_api.controllers.util import JSON_CONTENT_TYPE
 from server_management_api.controllers.test.utils import CustomAffectedItems
+from server_management_api.controllers.util import JSON_CONTENT_TYPE
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from server_management_api.controllers.security_controller import (
-            add_policy, add_role, add_rule, create_user,
-            delete_security_config, delete_users, edit_run_as, get_policies,
-            get_rbac_actions, get_rbac_resources, get_roles, get_rules,
-            get_security_config, get_user_me, get_user_me_policies, get_users,
-            login_user, logout_user, put_security_config, remove_policies,
-            remove_role_policy, remove_role_rule, remove_roles, remove_rules,
-            remove_user_role, revoke_all_tokens, run_as_login,
-            security_revoke_tokens, set_role_policy, set_role_rule,
-            set_user_role, update_policy, update_role, update_rule,
-            update_user)
         from wazuh import security
         from wazuh.core.exception import WazuhException, WazuhPermissionError
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.rbac import preprocessor
         from wazuh.tests.util import RBAC_bypasser
+
+        from server_management_api.controllers.security_controller import (
+            add_policy,
+            add_role,
+            add_rule,
+            create_user,
+            delete_security_config,
+            delete_users,
+            edit_run_as,
+            get_policies,
+            get_rbac_actions,
+            get_rbac_resources,
+            get_roles,
+            get_rules,
+            get_security_config,
+            get_user_me,
+            get_user_me_policies,
+            get_users,
+            login_user,
+            logout_user,
+            put_security_config,
+            remove_policies,
+            remove_role_policy,
+            remove_role_rule,
+            remove_roles,
+            remove_rules,
+            remove_user_role,
+            revoke_all_tokens,
+            run_as_login,
+            security_revoke_tokens,
+            set_role_policy,
+            set_role_rule,
+            set_user_role,
+            update_policy,
+            update_role,
+            update_rule,
+            update_user,
+        )
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
@@ -39,8 +66,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 @pytest.fixture
 def mock_request():
-    """fixture to wrap functions with request"""
-
+    """Fixture to wrap functions with request"""
     operation = MagicMock(name="operation")
     operation.method = "post"
     with TestContext(operation=operation):

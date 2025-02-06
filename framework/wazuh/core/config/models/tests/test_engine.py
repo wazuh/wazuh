@@ -1,8 +1,8 @@
-import pytest
-from unittest.mock import patch
-from pydantic import ValidationError
 from pathlib import PosixPath
+from unittest.mock import patch
 
+import pytest
+from pydantic import ValidationError
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.config.models.engine import EngineClientConfig, EngineConfig
 

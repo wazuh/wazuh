@@ -148,7 +148,6 @@ def test_generate_msg(expected_msg, rule_id):
     rule_id : str
         ID of the rule to be processed.
     """
-
     alert_template['rule']['id'] = rule_id
     assert shuffle.generate_msg(alert_template, options_template) == expected_msg
 
@@ -164,7 +163,6 @@ def test_generate_msg_severity(rule_level, severity):
     severity: int
         Expected severity level for the corresponding rule level.
     """
-
     alert_template['rule']['level'] = rule_level
     assert json.loads(shuffle.generate_msg(alert_template, options_template))['severity'] == severity
 
@@ -180,7 +178,6 @@ def test_filter_msg(rule_id, result):
     result: bool
         Expected result of the filter_msg function for the given alert.
     """
-
     alert_template['rule']['id'] = rule_id
     assert result == shuffle.filter_msg(alert_template)
 

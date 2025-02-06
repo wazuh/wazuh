@@ -8,8 +8,8 @@ import os
 from collections.abc import KeysView
 from io import StringIO
 from shutil import copyfile
-from tempfile import TemporaryDirectory, NamedTemporaryFile
-from unittest.mock import call, MagicMock, Mock, patch, ANY
+from tempfile import NamedTemporaryFile, TemporaryDirectory
+from unittest.mock import ANY, MagicMock, Mock, call, patch
 
 import pytest
 import yaml
@@ -18,9 +18,9 @@ from freezegun import freeze_time
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
+        from wazuh.core import exception, utils
         from wazuh.core.agent import WazuhDBQueryAgents
-        from wazuh.core import utils, exception
-        from wazuh.core.common import WAZUH_PATH, AGENT_NAME_LEN_LIMIT
+        from wazuh.core.common import AGENT_NAME_LEN_LIMIT, WAZUH_PATH
 
 # all necessary params
 
@@ -388,7 +388,8 @@ def test_process_array(array, q, filters, limit, search_text, sort_by, select, d
 def test_process_array_ops_order(mock_sort_array, mock_search_array, mock_filter_array_by_query, mock_select_array,
                                  mock_cut_array, mock_len):
     """Test that the process_array function calls the sort, search, filter by query, select and cut operations in the
-    expected order and with the expected parameters."""
+    expected order and with the expected parameters.
+    """
     manager_mock = Mock()
     manager_mock.attach_mock(mock_sort_array, 'mock_sort_array')
     manager_mock.attach_mock(mock_search_array, 'mock_search_array')
@@ -892,7 +893,6 @@ def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_conn_d
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
     """Tests WazuhDBQuery._sort_query function works"""
-
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent',
                                sort={'order': 'asc'}, search=None, select=None,
                                filters=None, fields={'1': None, '2': None},
@@ -1871,7 +1871,6 @@ def test_full_copy_ko():
 @freeze_time('1970-01-01')
 def test_get_date_from_timestamp():
     """Test if the result is the expected date."""
-
     date = utils.get_date_from_timestamp(0)
     assert date == datetime.datetime(1970, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
 
@@ -1879,7 +1878,6 @@ def test_get_date_from_timestamp():
 @freeze_time('1970-01-01')
 def test_get_utc_now():
     """Test if the result is the expected date."""
-
     date = utils.get_utc_now()
     assert date == datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
 

@@ -3,14 +3,14 @@ from typing import List
 
 from fastapi import Request
 from starlette.requests import ClientDisconnect
-
-from comms_api.models.events import StatefulEvents
+from wazuh.core.batcher.client import BatcherClient
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Packet
 from wazuh.core.engine import get_engine_client
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.batcher.client import BatcherClient
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Packet
 from wazuh.core.indexer.models.events import AgentMetadata, Header, Operation, TaskResult
+
+from comms_api.models.events import StatefulEvents
 
 HTTP_STATUS_OK = 200
 HTTP_STATUS_PARTIAL_CONTENT = 206

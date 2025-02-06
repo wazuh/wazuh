@@ -1,13 +1,12 @@
-import os
 import logging
+import os
 import signal
 import sys
-from multiprocessing import Queue, Process, Event
+from multiprocessing import Event, Process, Queue
 from multiprocessing.managers import DictProxy, SyncManager
 from typing import Any
 
 from wazuh.core.indexer.models.events import AgentMetadata, Header, get_module_index_name
-
 
 logger = logging.getLogger('wazuh-comms-api')
 

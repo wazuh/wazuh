@@ -12,7 +12,6 @@ class APIUriParser(OpenAPIURIParser):
 
     def resolve_params(self, params, _in):
         """Sanitizes the lower_fields parameters converting keys and values to lowercase."""
-
         # Transform to lowercase the values for query parameter's spec.yaml enums
         params.update(
             {k.lower(): [list_item.lower() for list_item in v] if isinstance(v, list) else v.lower()

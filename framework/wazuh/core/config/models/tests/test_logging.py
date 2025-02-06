@@ -2,9 +2,14 @@ import logging
 
 import pytest
 from pydantic import ValidationError
-
-from wazuh.core.config.models.logging import LoggingFormat, LoggingLevel, LoggingConfig, \
-    APILoggingLevel, APILoggingConfig, EngineLoggingLevel, EngineLoggingConfig
+from wazuh.core.config.models.logging import (
+    APILoggingConfig,
+    APILoggingLevel,
+    EngineLoggingConfig,
+    EngineLoggingLevel,
+    LoggingConfig,
+    LoggingLevel,
+)
 
 
 @pytest.mark.parametrize('init_values, expected', [

@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import contextlib
 import asyncio
+import contextlib
 import datetime
 import json
 import re
@@ -13,14 +13,13 @@ from typing import List, Union
 
 from wazuh.core import common
 from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
-from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 
 class AsyncWazuhDBConnection:
-    """
-    Represent an async connection to the wdb socket.
+    """Represent an async connection to the wdb socket.
     """
 
     def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None):
@@ -129,8 +128,7 @@ class AsyncWazuhDBConnection:
 
 
 class WazuhDBConnection:
-    """
-    Represent a connection to the wdb socket.
+    """Represent a connection to the wdb socket.
     """
 
     def __init__(self, request_slice=500):
@@ -197,7 +195,7 @@ class WazuhDBConnection:
                 (query_elements[sql_first_index + 1] == 'select' or query_elements[sql_first_index + 1] == 'delete' or
                  query_elements[sql_first_index + 1] == 'update', 'Only "select", "delete" or "update" requests can be '
                                                                   'sent to WDB'),
-                (not ';' in query, "Found a not valid symbol in database query: ;")
+                (';' not in query, "Found a not valid symbol in database query: ;")
             ]
 
         for check, error_text in input_val_errors:
@@ -305,7 +303,6 @@ class WazuhDBConnection:
         str
             New query.
         """
-
         to_lower = True
         new_query = ""
 
@@ -361,8 +358,7 @@ class WazuhDBConnection:
         return self._send(query, raw)
 
     def execute(self, query, count=False, delete=False, update=False):
-        """
-        Send a SQL query to wdb socket.
+        """Send a SQL query to wdb socket.
         """
 
         def send_request_to_wdb(query_lower, step, off, response):

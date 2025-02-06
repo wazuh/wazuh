@@ -2,11 +2,11 @@ import os
 
 from fastapi import status
 from fastapi.responses import FileResponse
+from wazuh.core.exception import WazuhCommsAPIError
 
 from comms_api.core.files import get_file_path
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhCommsAPIError
 
 
 @timeout(30)
@@ -36,7 +36,7 @@ async def get_files(file_name: str) -> FileResponse:
         return FileResponse(path, filename=file_name, stat_result=stat_result)
     except WazuhCommsAPIError as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_400_BAD_REQUEST)
-    except FileNotFoundError as exc:
+    except FileNotFoundError:
         raise HTTPError(message='File does not exist', status_code=status.HTTP_404_NOT_FOUND)
     except OSError as exc:
         raise HTTPError(message=str(exc), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -9,7 +9,6 @@ from typing import Dict, List
 
 from jsonschema import Draft4Validator
 from uuid6 import UUID
-
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
 
@@ -143,9 +142,7 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_ETC, relative: bool = Tr
 
 
 def check_component_configuration_pair(component: str, configuration: str) -> WazuhError:
-    """
-
-    Parameters
+    """Parameters
     ----------
     component : str
         Wazuh component name.

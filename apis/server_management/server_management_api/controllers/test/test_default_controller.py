@@ -12,10 +12,10 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from server_management_api.controllers.default_controller import (BasicInfo, DATE_FORMAT,
-                                                        default_info, socket)
-        from wazuh.tests.util import RBAC_bypasser
         from wazuh.core.utils import get_utc_now
+        from wazuh.tests.util import RBAC_bypasser
+
+        from server_management_api.controllers.default_controller import DATE_FORMAT, BasicInfo, default_info, socket
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 

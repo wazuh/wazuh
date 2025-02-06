@@ -3,9 +3,8 @@ from unittest import mock
 import pytest
 from opensearchpy import exceptions
 from opensearchpy.helpers.response import Hit
-
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.agent import AgentsIndex, AGENT_KEY
+from wazuh.core.indexer.agent import AGENT_KEY, AgentsIndex
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Agent, Status
 

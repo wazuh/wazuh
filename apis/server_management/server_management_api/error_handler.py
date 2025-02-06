@@ -2,16 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
-
+from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from content_size_limit_asgi.errors import ContentSizeExceeded
-
-from server_management_api.middlewares import ip_block, ip_stats, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from server_management_api.api_exception import ExpectFailedException
-from server_management_api.controllers.util import json_response, ERROR_CONTENT_TYPE
-from wazuh.core.utils import get_utc_now
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.utils import get_utc_now
+
+from server_management_api.api_exception import ExpectFailedException
+from server_management_api.controllers.util import ERROR_CONTENT_TYPE, json_response
+from server_management_api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, ip_block, ip_stats
 
 
 def prevent_bruteforce_attack(request: ConnexionRequest, attempts: int = 5):
@@ -24,7 +23,6 @@ def prevent_bruteforce_attack(request: ConnexionRequest, attempts: int = 5):
     attempts : int
         Number of attempts until an IP is blocked.
     """
-
     if request.scope['path'] in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
             request.method in {'GET', 'POST'}:
         if request.client.host not in ip_stats:
@@ -128,7 +126,6 @@ async def http_error_handler(request: ConnexionRequest,
     Response
         HTTP Response returned to the client.
     """
-
     problem = {
         'title': exc.detail,
         "detail": f"{exc.status_code}: {exc.detail}",

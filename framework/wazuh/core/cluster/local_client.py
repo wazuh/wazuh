@@ -4,20 +4,17 @@
 
 import asyncio
 import logging
-import os
 import time
 from typing import Tuple
 
 import uvloop
-
 from wazuh.core import common, exception
 from wazuh.core.cluster import client
 from wazuh.core.config.client import CentralizedConfig
 
 
 class LocalClientHandler(client.AbstractClient):
-    """
-    Handle connection with the cluster's local server.
+    """Handle connection with the cluster's local server.
     """
 
     def __init__(self, **kwargs):
@@ -118,8 +115,7 @@ class LocalClientHandler(client.AbstractClient):
 
 
 class LocalClient(client.AbstractClientManager):
-    """
-    Initialize variables, connect to the server, send a request, wait for a response and disconnect.
+    """Initialize variables, connect to the server, send a request, wait for a response and disconnect.
     """
     ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file']
 

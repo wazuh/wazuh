@@ -1,15 +1,21 @@
-import yaml
 import os
-from typing import Optional, List
-from pydantic import ValidationError
+from typing import List, Optional
 
+import yaml
+from pydantic import ValidationError
 from wazuh import WazuhInternalError
 from wazuh.core.common import WAZUH_SERVER_YML
-from wazuh.core.config.models.server import ServerSyncConfig
+from wazuh.core.config.models.central_config import (
+    CommsAPIConfig,
+    Config,
+    ConfigSections,
+    EngineConfig,
+    IndexerConfig,
+    ManagementAPIConfig,
+    ServerConfig,
+)
 from wazuh.core.config.models.management_api import RBACMode
-from wazuh.core.config.models.central_config import (Config, CommsAPIConfig,
-                                                     ManagementAPIConfig, ServerConfig,
-                                                     IndexerConfig, EngineConfig, ConfigSections)
+from wazuh.core.config.models.server import ServerSyncConfig
 
 
 class CentralizedConfig:
@@ -137,8 +143,7 @@ class CentralizedConfig:
 
     @classmethod
     def get_config_json(cls, sections: Optional[List[ConfigSections]] = None) -> str:
-        """
-        Retrieve the current configuration as a JSON str, optionally filtered by specified sections.
+        """Retrieve the current configuration as a JSON str, optionally filtered by specified sections.
 
         Parameters
         ----------
@@ -192,7 +197,7 @@ class CentralizedConfig:
         try:
             with open(WAZUH_SERVER_YML, 'w') as file:
                 yaml.dump(non_default_values, file)
-        except IOError as e:
+        except IOError:
             raise WazuhInternalError(1005)
-        except ValidationError as e:
+        except ValidationError:
             raise WazuhInternalError(1103)

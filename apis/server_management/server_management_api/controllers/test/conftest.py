@@ -3,14 +3,14 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import MagicMock, patch
-import pytest
 
+import pytest
 from connexion.testing import TestContext
 
 
 @pytest.fixture
 def mock_request(request):
-    """fixture to wrap functions with request."""
+    """Fixture to wrap functions with request."""
     controller_name = request.param
     operation = MagicMock(name="operation")
     operation.method = "post"

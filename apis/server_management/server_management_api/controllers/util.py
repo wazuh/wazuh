@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from connexion.lifecycle import ConnexionResponse
+
 from server_management_api.encoder import dumps, prettify
 
 JSON_CONTENT_TYPE="application/json"

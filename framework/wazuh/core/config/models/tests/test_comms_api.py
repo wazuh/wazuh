@@ -1,6 +1,5 @@
 import pytest
 from pydantic import ValidationError
-
 from wazuh.core.config.models.comms_api import BatcherConfig, CommsAPIConfig
 
 

@@ -1,9 +1,8 @@
-from pathlib import Path
 
 import pytest
+from wazuh.core.exception import WazuhCommsAPIError
 
 from comms_api.core.files import DIR, get_file_path
-from wazuh.core.exception import WazuhCommsAPIError
 
 
 def test_get_file_path():

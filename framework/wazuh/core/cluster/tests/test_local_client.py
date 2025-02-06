@@ -5,15 +5,15 @@
 from asyncio import Event, Transport
 from asyncio.transports import BaseTransport
 from collections.abc import Callable
-from unittest.mock import patch, AsyncMock, call
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from uvloop import EventLoopPolicy, new_event_loop
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        from wazuh.core.cluster.local_client import *
         from wazuh.core.cluster.common import InBuffer
+        from wazuh.core.cluster.local_client import *
         from wazuh.core.exception import WazuhInternalError
 
 asyncio.set_event_loop_policy(EventLoopPolicy())
@@ -175,7 +175,7 @@ async def test_wait_for_response(read_config_mock, get_cluster_items_mock):
     lc.protocol.send_request.side_effect = [b"None", exception.WazuhClusterError(3018)]
 
     with patch("asyncio.Event.wait", side_effect=asyncio.TimeoutError):
-        with pytest.raises(WazuhInternalError, match=rf".* 3020 .*"):
+        with pytest.raises(WazuhInternalError, match=r".* 3020 .*"):
             await lc.wait_for_response(timeout=200)
     lc.protocol.send_request.assert_has_calls([call(b'echo-c', b'keepalive'), call(b'echo-c', b'keepalive')])
 
@@ -186,7 +186,8 @@ async def test_wait_for_response(read_config_mock, get_cluster_items_mock):
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
 async def test_localclient_send_api_request(mock_get_running_loop, read_config_mock, get_cluster_items_mock):
     """Check the correct operation of the send_api_request function by mocking the protocol attribute.
-    Exceptions are not tested."""
+    Exceptions are not tested.
+    """
 
     class Protocol:
         def __init__(self):
@@ -241,7 +242,7 @@ async def test_localclient_send_api_request_ko(mock_get_running_loop, read_confi
     lc.protocol.send_request = AsyncMock()
     lc.protocol.send_request.side_effect = [b"None", exception.WazuhClusterError(3018)]
     with patch("asyncio.Event.wait", side_effect=asyncio.TimeoutError):
-        with pytest.raises(WazuhInternalError, match=rf".* 3020 .*"):
+        with pytest.raises(WazuhInternalError, match=r".* 3020 .*"):
             await lc.send_api_request(command=b"dapi", data=b"None")
     lc.protocol.send_request.assert_has_calls([call(b'dapi', b'None'), call(b'echo-c', b'keepalive')])
 
@@ -274,7 +275,8 @@ async def test_localclient_execute(read_config_mock, get_cluster_items_mock):
 @patch('wazuh.core.cluster.utils.read_config')
 async def test_localclient_send_file(read_config_mock, get_cluster_items_mock):
     """Check that the function send_file returns the value returned by the
-    function send_api_request called with the command 'send_file'."""
+    function send_api_request called with the command 'send_file'.
+    """
     with patch("wazuh.core.cluster.local_client.LocalClient.start"):
         with patch("wazuh.core.cluster.local_client.LocalClient.send_api_request", return_value=b"wazuh/test python"):
             lc = LocalClient()

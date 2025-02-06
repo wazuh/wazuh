@@ -6,11 +6,10 @@ import argparse
 import asyncio
 import sys
 from os import path
-from signal import signal, SIGINT
+from signal import SIGINT, signal
 
 try:
     from wazuh import WazuhError
-    from wazuh.core.results import AffectedItemsWazuhResult
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -24,8 +23,9 @@ def signal_handler(n_signal, frame):
 
 async def restore_default_passwords(script_args):
     """Try to update all RBAC default users passwords with console prompt."""
-    import yaml
     from getpass import getpass
+
+    import yaml
     from wazuh.core.common import DEFAULT_RBAC_RESOURCES
     from wazuh.security import update_user
 

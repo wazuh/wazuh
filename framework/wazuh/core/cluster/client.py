@@ -8,18 +8,16 @@ import logging
 import ssl
 import traceback
 from time import perf_counter
-from typing import Tuple, List
+from typing import List, Tuple
 
 import uvloop
-
 from wazuh.core.cluster import common
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.config.models.server import ServerConfig
 
 
 class AbstractClientManager:
-    """
-    Define an abstract client. Manage connection with server.
+    """Define an abstract client. Manage connection with server.
     """
 
     def __init__(self, server_config: ServerConfig, performance_test: int, concurrency_test: int,
@@ -128,8 +126,7 @@ class AbstractClientManager:
 
 
 class AbstractClient(common.Handler):
-    """
-    Define a client protocol. Handle connection with server.
+    """Define a client protocol. Handle connection with server.
     """
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str,

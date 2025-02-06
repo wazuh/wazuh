@@ -3,11 +3,9 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-import json
-import os
+import pathlib
 import socket
 import sys
-import pathlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,10 +21,10 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh.core.exception import (
                     WazuhError,
                     WazuhException,
+                    WazuhHAPHelperError,
                     WazuhInternalError,
                     WazuhPermissionError,
                     WazuhResourceNotFound,
-                    WazuhHAPHelperError
                 )
                 from wazuh.core.results import WazuhResult
 
@@ -113,7 +111,6 @@ def test_ping_unix_socket_error():
 )
 def test_parse_haproxy_helper_config(config: dict):
     """Verify that parse_haproxy_helper_config function returns the default configuration."""
-
     ret_val = utils.parse_haproxy_helper_config(config)
 
     for key in ((config.keys()) | utils.HELPER_DEFAULTS.keys()):
@@ -175,7 +172,6 @@ def test_parse_haproxy_helper_config(config: dict):
 )
 def test_parse_haproxy_helper_config_ko(config: dict, exception_type: WazuhException, expected_error_code: str):
     """Verify that parse_haproxy_helper_config function raises when config has an invalid type."""
-
     with pytest.raises(exception_type, match=f'.* {expected_error_code} .*'):
         utils.parse_haproxy_helper_config(config)
 
@@ -250,7 +246,8 @@ def test_get_manager_status_ko(mock_stat, exc):
 
 def test_get_cluster_status():
     """Check if cluster is enabled and running. Also check that cluster is shown as not running when a
-    WazuhInternalError is raised."""
+    WazuhInternalError is raised.
+    """
     status = utils.get_cluster_status()
     assert {'running': 'no'} == status
 
@@ -324,7 +321,6 @@ def test_log_subprocess_execution():
 @patch('wazuh.core.cluster.utils.pyDaemonModule.create_pid')
 def test_process_spawn_sleep(pyDaemon_create_pid_mock, get_pid_mock):
     """Check if the cluster pool is properly spawned."""
-
     child = 1
     utils.process_spawn_sleep(child)
 
@@ -376,11 +372,9 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
 )
 @patch('wazuh.core.cluster.utils.read_cluster_config')
 def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
-    """
-    Test that running_on_master function returns the expected value,
+    """Test that running_on_master function returns the expected value,
     based on combinations of disabled/enabled and node type.
     """
-
     read_cluster_config_mock.return_value = cluster_config
 
     assert utils.running_in_master_node() == expected

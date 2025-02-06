@@ -7,24 +7,29 @@ import re
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
-
-from server_management_api.encoder import dumps
-from server_management_api.models.security_token_response_model import TokenResponseModel
-from server_management_api.authentication import generate_token
-from server_management_api.configuration import default_security_configuration
-from server_management_api.controllers.util import json_response, JSON_CONTENT_TYPE
-from server_management_api.models.base_model_ import Body
-from server_management_api.models.configuration_model import SecurityConfigurationModel
-from server_management_api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
-                                       RuleModel, UpdateUserModel)
-from server_management_api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
-from wazuh import security, __version__
+from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import revoke_tokens
 from wazuh.rbac import preprocessor
+
+from server_management_api.authentication import generate_token
+from server_management_api.configuration import default_security_configuration
+from server_management_api.controllers.util import JSON_CONTENT_TYPE, json_response
+from server_management_api.encoder import dumps
+from server_management_api.models.base_model_ import Body
+from server_management_api.models.configuration_model import SecurityConfigurationModel
+from server_management_api.models.security_model import (
+    CreateUserModel,
+    PolicyModel,
+    RoleModel,
+    RuleModel,
+    UpdateUserModel,
+)
+from server_management_api.models.security_token_response_model import TokenResponseModel
+from server_management_api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
@@ -178,7 +183,6 @@ async def logout_user(pretty: bool = False, wait_for_complete: bool = False) -> 
     ConnexionResponse
         API response.
     """
-
     dapi = DistributedAPI(f=security.revoke_current_user_tokens,
                           request_type='local_master',
                           is_async=False,

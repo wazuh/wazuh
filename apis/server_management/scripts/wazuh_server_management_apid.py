@@ -22,8 +22,6 @@ from connexion.middleware import MiddlewarePosition
 from connexion.options import SwaggerUIOptions
 from content_size_limit_asgi import ContentSizeLimitMiddleware
 from content_size_limit_asgi.errors import ContentSizeExceeded
-from starlette.middleware.cors import CORSMiddleware
-
 from server_management_api import __path__ as api_path
 from server_management_api import error_handler
 from server_management_api.alogging import set_logging
@@ -31,22 +29,22 @@ from server_management_api.api_exception import APIError, ExpectFailedException
 from server_management_api.configuration import generate_private_key, generate_self_signed_certificate
 from server_management_api.middlewares import (
     CheckBlockedIP,
+    CheckExpectHeaderMiddleware,
     CheckRateLimitsMiddleware,
     SecureHeadersMiddleware,
     WazuhAccessLoggerMiddleware,
-    CheckExpectHeaderMiddleware,
 )
 from server_management_api.signals import lifespan_handler
 from server_management_api.uri_parser import APIUriParser
+from starlette.middleware.cors import CORSMiddleware
 from wazuh.core import common, pyDaemonModule, utils
-from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.cluster.utils import print_version
+from wazuh.core.common import WAZUH_SERVER_YML
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import ManagementAPIConfig
+from wazuh.core.config.models.management_api import ManagementAPIConfig
 from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.rbac.orm import check_database_integrity
-from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.management_api import ManagementAPIConfig
-
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
@@ -63,7 +61,6 @@ logger = None
 
 def spawn_process_pool():
     """Spawn general process pool child."""
-
     exec_pid = os.getpid()
     pyDaemonModule.create_pid(API_LOCAL_REQUEST_PROCESS, exec_pid)
 
@@ -72,7 +69,6 @@ def spawn_process_pool():
 
 def spawn_events_pool():
     """Spawn events process pool child."""
-
     events_pid = os.getpid()
     pyDaemonModule.create_pid(API_SECURITY_EVENTS_PROCESS, events_pid)
 
@@ -81,7 +77,6 @@ def spawn_events_pool():
 
 def spawn_authentication_pool():
     """Spawn authentication process pool child."""
-
     auth_pid = os.getpid()
     pyDaemonModule.create_pid(API_AUTHENTICATION_PROCESS, auth_pid)
 
@@ -98,7 +93,6 @@ def configure_ssl(params: dict, config: APISSLConfig):
     config : APISSLConfig
         Configuration for SSL
     """
-
     try:
         # Generate SSL if it does not exist and HTTPS is enabled
         if not os.path.exists(config.key) or not os.path.exists(config.cert):
@@ -261,7 +255,6 @@ def start(params: dict, config: ManagementAPIConfig):
 
 def add_debug2_log_level_and_error():
     """Add a new debug level used by wazuh api and framework."""
-
     logging.DEBUG2 = 6
 
     def debug2(self, message, *args, **kws):

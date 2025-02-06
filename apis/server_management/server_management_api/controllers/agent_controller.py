@@ -12,8 +12,8 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 
 from server_management_api.controllers.util import JSON_CONTENT_TYPE, json_response
-from server_management_api.models.agent_registration_model import AgentRegistrationModel
 from server_management_api.models.agent_group_added_model import GroupAddedModel
+from server_management_api.models.agent_registration_model import AgentRegistrationModel
 from server_management_api.models.base_model_ import Body
 from server_management_api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 

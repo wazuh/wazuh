@@ -12,9 +12,9 @@ from typing import Callable
 from connexion import ConnexionMiddleware
 from wazuh.core import common
 from wazuh.core.cluster.utils import running_in_master_node
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.manager import query_update_check_service
-from wazuh.core.config.client import CentralizedConfig
 
 from server_management_api.constants import (
     INSTALLATION_UID_KEY,
@@ -55,7 +55,6 @@ def cancel_signal_handler(func: Callable) -> Callable:
 @cancel_signal_handler
 async def check_installation_uid() -> None:
     """Check if the installation UID exists, populate it if not and inject it into the global cti context."""
-
     global cti_context
     if os.path.exists(INSTALLATION_UID_PATH):
         logger.info("Getting installation UID...")
@@ -74,7 +73,6 @@ async def check_installation_uid() -> None:
 @cancel_signal_handler
 async def get_update_information() -> None:
     """Get updates information from Update Check Service and inject into the global cti context."""
-
     global cti_context
     while True:
         logger.info('Getting updates information...')
@@ -85,7 +83,6 @@ async def get_update_information() -> None:
 @contextlib.asynccontextmanager
 async def lifespan_handler(_: ConnexionMiddleware):
     """Logs the API startup/shutdown messages, register background tasks and initialize indexer client."""
-
     tasks: list[asyncio.Task] = []
 
     if running_in_master_node():

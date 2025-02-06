@@ -3,13 +3,11 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import os
 import signal
 import sys
-from unittest.mock import call, patch, Mock
+from unittest.mock import Mock, call, patch
 
 import pytest
-
 import scripts.wazuh_server as wazuh_server
 from wazuh.core import pyDaemonModule
 from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
@@ -353,7 +351,7 @@ def test_get_script_arguments(command, expected_args):
 def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, getpid_mock, exit_mock):
     """Check and set the behavior of the `start` function."""
     import wazuh.core.cluster.utils as cluster_utils
-    from wazuh.core import common, pyDaemonModule
+    from wazuh.core import common
 
     class Arguments:
         def __init__(self, config_file, test_config, foreground, root):
@@ -472,7 +470,6 @@ def test_start(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock
 
 def test_stop_loop():
     """Check and set the behavior of wazuh_server `stop_loop` function."""
-
     loop_mock = Mock()
     wazuh_server.stop_loop(loop_mock)
     loop_mock.stop.assert_called_once()
@@ -481,7 +478,6 @@ def test_stop_loop():
 @patch('scripts.wazuh_server.shutdown_server')
 def test_sigterm_handler(shutdown_server_mock):
     """Check and set the behavior of wazuh_server `sigterm_handler` function."""
-
     server_pid = 1
     wazuh_server.sigterm_handler(signal.SIGTERM, 10, server_pid)
     shutdown_server_mock.assert_called_with(server_pid)

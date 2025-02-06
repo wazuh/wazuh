@@ -17,21 +17,20 @@ import struct
 import time
 import traceback
 from importlib import import_module
-from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
 from pathlib import Path
-
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 from uuid import uuid4
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
 from wazuh.core import common, exception
-from wazuh.core.cluster import cluster, utils as cluster_utils
+from wazuh.core.cluster import cluster
+from wazuh.core.cluster import utils as cluster_utils
 from wazuh.core.config.models.server import ServerConfig
 
 
 class Response:
-    """
-    Define and store a response from a request.
+    """Define and store a response from a request.
     """
 
     def __init__(self):
@@ -59,8 +58,7 @@ class Response:
 
 
 class InBuffer:
-    """
-    Define a buffer to receive incoming requests.
+    """Define a buffer to receive incoming requests.
     """
 
     divide_flag = b'd'  # flag used to indicate the message is divided
@@ -126,8 +124,7 @@ class InBuffer:
 
 
 class ReceiveFileTask:
-    """
-    Create an asyncio task that can be identified by a task_id.
+    """Create an asyncio task that can be identified by a task_id.
     """
 
     def __init__(self, wazuh_common, logger, task_id: bytes = b''):
@@ -165,7 +162,7 @@ class ReceiveFileTask:
         """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -185,8 +182,7 @@ class ReceiveFileTask:
 
 
 class Handler(asyncio.Protocol):
-    """
-    Define common methods for echo clients and servers.
+    """Define common methods for echo clients and servers.
     """
 
     def __init__(self, server_config: ServerConfig, logger: logging.Logger = None, tag: str = "Handler"):
@@ -357,7 +353,7 @@ class Handler(asyncio.Protocol):
         separate yields.
 
         Yields
-        -------
+        ------
         bytes
             Last received message command.
         int
@@ -501,7 +497,7 @@ class Handler(asyncio.Protocol):
         """Get the manager object that created this Handler.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -888,7 +884,7 @@ class Handler(asyncio.Protocol):
         """
         try:
             exc = json.loads(data.decode(), object_hook=as_wazuh_object)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             exc = exception.WazuhClusterError(3000, extra_message=data.decode())
 
         return exc
@@ -921,7 +917,7 @@ class Handler(asyncio.Protocol):
             ID of the task related to the file received.
 
         Raises
-        -------
+        ------
         exc : WazuhClusterError
             Timeout exception.
         """
@@ -954,8 +950,7 @@ class Handler(asyncio.Protocol):
 
 
 class WazuhCommon:
-    """
-    Task implementing common methods for both clients and servers that are Wazuh specific.
+    """Task implementing common methods for both clients and servers that are Wazuh specific.
     """
 
     def __init__(self):
@@ -971,7 +966,7 @@ class WazuhCommon:
             Logger task to return. If empty, it will return main class logger.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -1081,8 +1076,7 @@ class WazuhCommon:
 
 
 class SyncTask:
-    """
-    Common class for master/worker sync tasks.
+    """Common class for master/worker sync tasks.
     """
 
     def __init__(self, cmd: bytes, logger, manager):
@@ -1133,7 +1127,7 @@ class SyncTask:
             Keyword arguments for parent constructor class.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -1141,8 +1135,7 @@ class SyncTask:
 
 
 class SyncFiles(SyncTask):
-    """
-    Define methods to synchronize files with a remote node.
+    """Define methods to synchronize files with a remote node.
     """
 
     async def sync(self, files: Iterable, files_metadata: Dict, metadata_len: int, task_pool=None,
@@ -1256,8 +1249,7 @@ def asyncio_exception_handler(loop, context: Dict):
 
 
 class WazuhJSONEncoder(json.JSONEncoder):
-    """
-    Define special JSON encoder for Wazuh.
+    """Define special JSON encoder for Wazuh.
     """
 
     def default(self, obj):

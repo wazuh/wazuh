@@ -2,10 +2,10 @@ from threading import Thread
 
 import uvicorn
 from fastapi import APIRouter, FastAPI
-
-from comms_api.core.unix_server.commands import post_commands
-from comms_api.core.commands import CommandsManager
 from wazuh.core import common
+
+from comms_api.core.commands import CommandsManager
+from comms_api.core.unix_server.commands import post_commands
 
 
 def start_unix_server(commands_manager: CommandsManager):

@@ -5,14 +5,14 @@
 import pprint
 import typing
 from json import JSONDecodeError
-from typing import List, Dict  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 import six
 from connexion import ProblemException
+from wazuh.core.exception import WazuhError, WazuhNotAcceptable
 
 from server_management_api import util
-from server_management_api.util import raise_if_exc, get_invalid_keys
-from wazuh.core.exception import WazuhError, WazuhNotAcceptable
+from server_management_api.util import get_invalid_keys, raise_if_exc
 
 T = typing.TypeVar('T')
 
@@ -139,7 +139,6 @@ class Data(Model):
         :param data: The data of this Data.
         :type data: Model
         """
-
         self._data = data
 
 
@@ -190,7 +189,6 @@ class Items(Model):
         :param items: The items of this Items.
         :type items: Model
         """
-
         self._items = items
 
 

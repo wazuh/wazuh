@@ -10,20 +10,20 @@ import os
 import shutil
 from collections import defaultdict
 from time import perf_counter
-from typing import Tuple, Dict, Callable, List
-from typing import Union
+from typing import Callable, Dict, List, Tuple, Union
 
-from wazuh.core import cluster as metadata, common, exception, utils
-from wazuh.core.cluster import client, cluster, common as c_common
-from wazuh.core.cluster.utils import log_subprocess_execution
+from wazuh.core import cluster as metadata
+from wazuh.core import common, exception, utils
+from wazuh.core.cluster import client, cluster
+from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.utils import safe_move, get_utc_now
+from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.config.models.server import ServerConfig
+from wazuh.core.utils import get_utc_now, safe_move
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
-    """
-    Create an asyncio.Task that waits until the master sends its integrity information and processes the
+    """Create an asyncio.Task that waits until the master sends its integrity information and processes the
     received information.
     """
 
@@ -44,8 +44,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
-    """
-    Handle connection with the master node.
+    """Handle connection with the master node.
     """
 
     def __init__(self, version, node_type, **kwargs):
@@ -509,8 +508,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
 
 class Worker(client.AbstractClientManager):
-    """
-    Initialize worker variables, connect to the master and run the DAPI request queue.
+    """Initialize worker variables, connect to the master and run the DAPI request queue.
     """
 
     def __init__(self, **kwargs):

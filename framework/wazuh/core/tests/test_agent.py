@@ -7,17 +7,17 @@ import os
 import sqlite3
 import sys
 from copy import copy
+from shutil import rmtree
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from shutil import rmtree
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        from wazuh.core.agent import *
-        from wazuh.core.exception import WazuhException, WazuhIndexerError
         from server_management_api.util import remove_nones_to_dict
+        from wazuh.core.agent import *
         from wazuh.core.common import reset_context_cache
+        from wazuh.core.exception import WazuhException, WazuhIndexerError
         from wazuh.core.indexer.agent import Agent as IndexerAgent
         from wazuh.core.utils import get_group_file_path
 
@@ -64,8 +64,7 @@ wpk_versions = [['v3.10.0', '251b1af81d45d291540d8589b124302613f0a4e0'],
 class InitAgent:
 
     def __init__(self, data_path=test_data_path, db_name='schema_global_test.sql'):
-        """
-        Sets up necessary test environment for agents:
+        """Sets up necessary test environment for agents:
             * One active agent.
             * One pending agent.
             * One never_connected agent.
@@ -304,11 +303,11 @@ def test_WazuhDBQueryGroup__init__(socket_mock, send_mock, backend_mock, value):
 def test_WazuhDBQueryGroup_filters(socket_mock, send_mock, filters):
     """Test if parameter filters of WazuhDBQueryGroup works properly.
 
-        Parameters
-        ----------
-        filters : dict
-            Dict of filters to apply.
-        """
+    Parameters
+    ----------
+    filters : dict
+        Dict of filters to apply.
+    """
     query_group = WazuhDBQueryGroup(filters=filters)
     result = query_group.run()
     assert result['totalItems'] > 0
@@ -492,7 +491,6 @@ def test_agent_compute_key(id, expected_key):
     expected_key :
         Key that should be returned for given ID.
     """
-
     agent = Agent(id)
     result = agent.compute_key()
 
@@ -554,7 +552,6 @@ def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
 @patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
 def test_agent_remove(mock_remove_authd):
     """Tests if method remove() works as expected."""
-
     with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'running'}):
         agent = Agent('001')
         result = agent.remove()
@@ -718,7 +715,6 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 async def test_agent_delete_single_group(delete_group_mock, get_os_client_mock, connect_mock, close_mock, mock_exists,
                                          mock_remove):
     """Tests if method delete_single_group() works as expected"""
-
     agent = Agent('001')
     group = 'test_group'
 
@@ -761,7 +757,6 @@ def test_agent_get_agent_os_name_ko(socket_mock, send_mock):
 @patch('socket.socket.connect')
 def test_agent_get_agents_overview_default(socket_mock, send_mock):
     """Test to get all agents using default parameters"""
-
     agents = Agent.get_agents_overview()
 
     # check number of agents
@@ -841,9 +836,7 @@ def test_agent_get_agents_overview_search(socket_mock, send_mock, search, totalI
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_overview_query(socket_mock, send_mock, query, totalItems):
-    """
-
-    Parameters
+    """Parameters
     ----------
     query : str
         Defines query to filter in DB.

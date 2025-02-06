@@ -2,8 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
-
-from wazuh.core.config.models.ssl_config import SSLConfig, IndexerSSLConfig, SSLProtocol, APISSLConfig
+from wazuh.core.config.models.ssl_config import APISSLConfig, IndexerSSLConfig, SSLConfig, SSLProtocol
 
 
 @pytest.mark.parametrize('init_values,expected', [
@@ -30,7 +29,7 @@ def test_ssl_config_default_values(file_exists_mock, init_values, expected):
     {'key': 'key_example', 'cert': 'cert_example'},
 ])
 def test_ssl_config_fails_without_values(init_values):
-    'Check the correct behavior of the `SSLConfig` class validations.'
+    """Check the correct behavior of the `SSLConfig` class validations."""
     with pytest.raises(ValidationError):
         _ = SSLConfig(**init_values)
 

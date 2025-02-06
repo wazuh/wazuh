@@ -1,11 +1,11 @@
-from unittest.mock import patch, AsyncMock, call
+from unittest.mock import patch
 
 import pytest
+from wazuh.core.indexer.bulk import Operation
+from wazuh.core.indexer.models.agent import OS, Host
+from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module
 
 from framework.wazuh.core.batcher.client import BatcherClient, Packet
-from wazuh.core.indexer.bulk import Operation
-from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")

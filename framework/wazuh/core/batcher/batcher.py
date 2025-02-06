@@ -1,24 +1,21 @@
 import asyncio
+import logging
 import os
-import uuid
 import queue
 import signal
 import traceback
-import logging
-from typing import List, Optional
+import uuid
 from multiprocessing import Process
+from typing import List, Optional
 
 from opensearchpy.exceptions import RequestError
-
+from wazuh.core.batcher.buffer import Buffer
+from wazuh.core.batcher.mux_demux import Item, MuxDemuxQueue, Packet
+from wazuh.core.batcher.timer import TimerManager
+from wazuh.core.config.models.comms_api import BatcherConfig
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.bulk import BulkDoc, Operation
 from wazuh.core.indexer.models.events import Operation
-
-from wazuh.core.batcher.buffer import Buffer
-from wazuh.core.batcher.timer import TimerManager
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, Packet
-
-from wazuh.core.config.models.comms_api import BatcherConfig
 
 logger = logging.getLogger('wazuh-comms-api')
 
@@ -206,8 +203,7 @@ class BatcherProcess(Process):
         self.config = config
 
     def run(self):
-        """
-        Initialize and run a Batcher instance in the process. This method is called when the process is started.
+        """Initialize and run a Batcher instance in the process. This method is called when the process is started.
         """
         batcher = Batcher(mux_demux_queue=self.queue, config=self.config)
         asyncio.run(batcher.run())

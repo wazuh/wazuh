@@ -1,8 +1,8 @@
-import pytest
 import json
 from unittest.mock import AsyncMock
 
-from wazuh.core.indexer.bulk import Operation, BulkMetadata, BulkDoc, MixinBulk, RequiresClient
+import pytest
+from wazuh.core.indexer.bulk import BulkDoc, BulkMetadata, MixinBulk, Operation
 
 
 def test_bulk_action_values():

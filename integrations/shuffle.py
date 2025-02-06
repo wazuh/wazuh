@@ -181,7 +181,6 @@ def generate_msg(alert: any, options: any) -> str:
 
     Returns
     -------
-
     msg: str
         The JSON message to send
     """

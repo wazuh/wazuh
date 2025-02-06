@@ -4,14 +4,20 @@ from typing import List
 from opensearchpy import exceptions
 from opensearchpy._async.helpers.search import AsyncSearch
 from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
-
-
-from .base import BaseIndex, IndexerKey, POST_METHOD
-from .utils import convert_enums
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.models.commands import (
-    Action, Command, Source, Status, Target, TargetType, CreateCommandResponse, ResponseResult
+    Action,
+    Command,
+    CreateCommandResponse,
+    ResponseResult,
+    Source,
+    Status,
+    Target,
+    TargetType,
 )
+
+from .base import POST_METHOD, BaseIndex, IndexerKey
+from .utils import convert_enums
 
 COMMAND_USER_NAME = 'Management API'
 COMMAND_KEY = 'command'

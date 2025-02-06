@@ -2,29 +2,28 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import binascii
-import json
-import hashlib
-import time
-import logging
 import base64
-import jwt
+import binascii
+import hashlib
+import json
+import logging
+import time
 
+import jwt
 from connexion.exceptions import OAuthProblem
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
-from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
+from secure import ContentSecurityPolicy, Secure, Server, XFrameOptions
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-
+from wazuh.core.authentication import JWT_ALGORITHM, get_keypair
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.utils import get_utc_now
 
 from server_management_api.alogging import custom_logging
-from server_management_api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
+from server_management_api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException
 from server_management_api.configuration import default_api_configuration
-from wazuh.core.authentication import get_keypair, JWT_ALGORITHM
-from wazuh.core.config.client import CentralizedConfig
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
@@ -57,7 +56,6 @@ events_current_time = None
 
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
     """Generate Log message from the request."""
-
     time_diff = time.time() - prev_time
 
     context = request.context if hasattr(request, 'context') else {}
@@ -289,7 +287,6 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
         -------
             Returned response.
         """
-
         if 'Expect' not in request.headers:
             response = await call_next(request)
             return response

@@ -8,7 +8,6 @@ import argparse
 import asyncio
 import logging
 import os
-import psutil
 import signal
 import subprocess
 import sys
@@ -16,19 +15,18 @@ import time
 from functools import partial
 from typing import Any, List
 
+import psutil
 from wazuh.core import pyDaemonModule
-from wazuh.core.common import WAZUH_SHARE, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN
-from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import NodeType
 from wazuh.core.cluster.cluster import clean_up
-from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version, ping_unix_socket
+from wazuh.core.cluster.unix_server.server import start_unix_server
+from wazuh.core.cluster.utils import ClusterLogger, context_tag, ping_unix_socket, print_version, process_spawn_sleep
+from wazuh.core.common import CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN, WAZUH_SHARE, wazuh_gid, wazuh_uid
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import NodeType, ServerConfig
 from wazuh.core.exception import WazuhDaemonError
+from wazuh.core.task.order import get_orders
 from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
-from wazuh.core.cluster.unix_server.server import start_unix_server
-from wazuh.core.config.models.server import ServerConfig
-from wazuh.core.task.order import get_orders
-
 
 SERVER_DAEMON_NAME = 'wazuh-server'
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
@@ -176,7 +174,7 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info(f"Configuration server is not available, retrying...")
+        main_logger.info("Configuration server is not available, retrying...")
         time.sleep(1)
 
     my_server = master.Master(
@@ -233,7 +231,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info(f"Configuration server is not available, retrying...")
+        main_logger.info("Configuration server is not available, retrying...")
         time.sleep(1)
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
@@ -431,7 +429,6 @@ def _check_children_number(process: psutil.Process, expected_children_number: in
     bool
         True if the process had the expected number of children else False.
     """
-
     return len(process.children()) == expected_children_number
 
 

@@ -5,6 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from __future__ import absolute_import
+
 from datetime import date, datetime  # noqa: F401
 from typing import Dict, List  # noqa: F401
 

@@ -12,10 +12,11 @@ from server_management_api.signals import (
     ONE_DAY_SLEEP,
     cancel_signal_handler,
     check_installation_uid,
+    cti_context,
     get_update_information,
     lifespan_handler,
-    cti_context
 )
+
 
 # Fixtures
 @pytest.fixture

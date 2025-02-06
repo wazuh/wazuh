@@ -4,8 +4,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-from datetime import timezone, datetime
-from unittest.mock import patch, ANY
+from datetime import datetime, timezone
+from unittest.mock import ANY, patch
 from uuid import uuid4
 
 import httpx
@@ -15,8 +15,8 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         # TODO: Fix in #26725
         with patch('wazuh.core.utils.load_wazuh_xml'):
-            from wazuh.core.manager import *
             from wazuh.core.exception import WazuhException
+            from wazuh.core.manager import *
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
@@ -109,7 +109,7 @@ def test_get_ossec_log_fields():
 
 
 def test_get_ossec_log_fields_ko():
-    """Test get_ossec_log_fields() method returns None when nothing matches """
+    """Test get_ossec_log_fields() method returns None when nothing matches"""
     result = get_ossec_log_fields('DEBUG')
     assert not result
 
@@ -217,7 +217,7 @@ def test_parse_execd_output(error_flag, error_msg):
         result = parse_execd_output(json_response)
         assert result['status'] == 'OK'
     else:
-        with pytest.raises(WazuhException, match=f'.* 1908 .*'):
+        with pytest.raises(WazuhException, match='.* 1908 .*'):
             parse_execd_output(json_response)
 
 
@@ -225,7 +225,6 @@ def test_parse_execd_output(error_flag, error_msg):
 @pytest.mark.parametrize('last_check_date', (None, datetime.now()))
 def test_get_update_information_template(last_check_date, update_check, installation_uid):
     """Test that the get_update_information_template function is working properly with the given data."""
-
     template = get_update_information_template(uuid=installation_uid, update_check=update_check,
                                                last_check_date=last_check_date)
 
@@ -353,7 +352,6 @@ async def test_query_update_check_service_returns_correct_data_on_error(
     installation_uid, client_session_get_mock
 ):
     """Test that query_update_check_service function returns correct data when an error occurs."""
-
     response_data = {'errors': {'detail': 'Unauthorized'}}
     status = 403
 
@@ -372,7 +370,6 @@ async def test_query_update_check_service_request(
     installation_uid, client_session_get_mock
 ):
     """Test that query_update_check_service function make request to the URL with the correct headers."""
-
     version = '4.8.0'
     with patch('framework.wazuh.core.manager.wazuh.__version__', version):
         await query_update_check_service(installation_uid)

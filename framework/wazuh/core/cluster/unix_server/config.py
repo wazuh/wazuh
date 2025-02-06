@@ -1,7 +1,7 @@
-from fastapi import Response, status
-from starlette.responses import JSONResponse
 from typing import Optional
 
+from fastapi import Response, status
+from starlette.responses import JSONResponse
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import ConfigSections
 

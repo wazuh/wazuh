@@ -10,8 +10,14 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult, _goes_before_than, nested_itemgetter, merge
-        from wazuh import WazuhException, WazuhError
+        from wazuh import WazuhError, WazuhException
+        from wazuh.core.results import (
+            AffectedItemsWazuhResult,
+            WazuhResult,
+            _goes_before_than,
+            merge,
+            nested_itemgetter,
+        )
 
 param_name = ['affected_items', 'total_affected_items', 'sort_fields', 'sort_casting', 'sort_ascending',
               'all_msg', 'some_msg', 'none_msg']
@@ -48,13 +54,13 @@ def get_wazuh_failed_item():
 def test_results_WazuhResult__merge_str(dikt, priority, get_wazuh_affected_item):
     """Test method `_merge_str` from `WazuhResult`.
 
-        Parameters
-        ----------
-        dikt : dict
-            Dict with basic information for the class declaration.
-        priority : list
-            Used to set the WazuhResult priority.
-        """
+    Parameters
+    ----------
+    dikt : dict
+        Dict with basic information for the class declaration.
+    priority : list
+        Used to set the WazuhResult priority.
+    """
     wazuh_result = WazuhResult(deepcopy(dikt), str_priority=priority)
     assert isinstance(wazuh_result, WazuhResult)
     item2 = wazuh_result.dikt['data']['items'][1]['item2']

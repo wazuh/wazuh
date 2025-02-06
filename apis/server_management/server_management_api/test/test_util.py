@@ -3,15 +3,14 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-from datetime import datetime, date
-from unittest.mock import patch, ANY, call
+from datetime import date, datetime
+from unittest.mock import ANY, patch
 
 import pytest
 from connexion import ProblemException
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhPermissionError, WazuhResourceNotFound
 
 from server_management_api import util
-from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResourceNotFound, \
-    WazuhInternalError
 
 
 class TestClass:
@@ -248,7 +247,8 @@ def test_raise_if_exc(mock_create_problem, obj, code):
 ])
 def test_get_invalid_keys(dikt, f_kwargs, invalid_keys):
     """Check that `get_invalid_keys` return the correct invalid keys when comparing two dictionaries with more
-    than one nesting level."""
+    than one nesting level.
+    """
     invalid = util.get_invalid_keys(dikt, f_kwargs)
     assert invalid == invalid_keys
 

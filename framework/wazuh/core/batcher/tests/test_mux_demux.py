@@ -1,11 +1,12 @@
 import sys
 from queue import Queue
-from unittest.mock import call, patch, Mock
+from unittest.mock import Mock, call, patch
 
-from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Item, MuxDemuxManager, Packet
 from wazuh.core.indexer.bulk import Operation
-from wazuh.core.indexer.models.agent import Host, OS
+from wazuh.core.indexer.models.agent import OS, Host
 from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module, get_module_index_name
+
+from framework.wazuh.core.batcher.mux_demux import Item, MuxDemuxManager, MuxDemuxQueue, Packet
 
 
 def test_packet_initialization():

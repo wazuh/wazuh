@@ -7,11 +7,11 @@ import re
 from collections import defaultdict
 from functools import wraps
 
-from wazuh.core.agent import get_agents_info, get_groups, expand_group
-from wazuh.core.common import rbac, broadcast, cluster_nodes
+from wazuh.core.agent import expand_group, get_agents_info, get_groups
+from wazuh.core.common import broadcast, cluster_nodes, rbac
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
+from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RulesManager
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
@@ -223,7 +223,7 @@ async def _combination_processor(req_resources: list, user_permissions_for_resou
     a dictionary with the final permissions.
 
     Parameters
-    ---------
+    ----------
     req_resources : list
         Required resource for the framework's function.
     user_permissions_for_resource : dict

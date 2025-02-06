@@ -8,7 +8,7 @@ import re
 import sys
 from copy import deepcopy
 from numbers import Number
-from typing import Union, Iterable
+from typing import Iterable, Union
 
 import wazuh.core.exception as wexception
 from wazuh.core import utils
@@ -18,8 +18,7 @@ current_module = sys.modules[__name__]
 
 
 class AbstractWazuhResult(collections.abc.MutableMapping):
-    """
-    Model a result returned by any framework function. This should be the class of object that every
+    """Model a result returned by any framework function. This should be the class of object that every
     framework function returns.
     """
 
@@ -77,7 +76,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         return not self == other
 
     def __or__(self, other):
-        """ | operator used to merge two AbstractWazuhResult objects. When merged with a WazuhException, the result is
+        """| operator used to merge two AbstractWazuhResult objects. When merged with a WazuhException, the result is
         always a WazuhException
 
         Parameters
@@ -198,7 +197,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
 
     def to_dict(self):
         """Translate the result into a dict."""
-        raise NotImplemented
+        raise NotImplementedError
 
     def limit(self, limit: int = DATABASE_LIMIT, offset: int = 0):
         """Should take the first `limit` results starting from `offset`. To be redefined in WazuhResult subclasses.
@@ -254,7 +253,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
     @classmethod
     def decode_json(cls, obj):
         """Convert an encoded dictionary to the original object."""
-        raise NotImplemented
+        raise NotImplementedError
 
     def render(self) -> dict:
         """Translate the result to a readable format.
@@ -268,8 +267,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
 
 
 class WazuhResult(AbstractWazuhResult):
-    """
-    This class represent a basic framework response. I.e.:
+    """This class represent a basic framework response. I.e.:
     {"data": "items": [{"item1": "data1"},
                        {"item2": "data2"}
                        ],

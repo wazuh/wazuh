@@ -1,6 +1,5 @@
 
 import sys
-
 from xml.etree.ElementTree import parse
 
 

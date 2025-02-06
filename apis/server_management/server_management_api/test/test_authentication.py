@@ -7,7 +7,7 @@ import json
 import os
 import sys
 from copy import deepcopy
-from unittest.mock import patch, MagicMock, ANY, call
+from unittest.mock import ANY, MagicMock, call, patch
 
 from connexion.exceptions import Unauthorized
 

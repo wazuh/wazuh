@@ -172,7 +172,6 @@ def test_get_node():
 @patch('wazuh.core.cluster.cluster.walk', return_value=[('foo/bar', (), ('spam', 'eggs', '.merged'))])
 def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     """Check the different outputs of the walk_files function."""
-
     all_mocks = [walk_mock, path_join_mock, blake2b_mock, getmtime_mock]
 
     def reset_mocks(mocks):
@@ -249,7 +248,6 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
 @patch('os.path.join', return_value='/foo/bar')
 def test_walk_dir_ko(mock_path_join, mock_walk):
     """Check all errors that can be raised by the function walk_dir."""
-
     with patch('os.path.getmtime', side_effect=FileNotFoundError):
         _, logs = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
                          {'/foo/bar/': {'mod_time': True}})
@@ -298,7 +296,6 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
 })
 def test_get_files_status(mock_get_cluster_items):
     """Check the different outputs of the get_files_status function."""
-
     test_dict = {"path": "metadata"}
 
     with patch('wazuh.core.cluster.cluster.walk_dir', return_value=(test_dict, {})):
@@ -438,7 +435,6 @@ async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock):
     """Check if the decompressing function is raising the necessary exceptions."""
-
     # Raising the expected Exception
     zip_dir = '/foo/bar/'
 
@@ -509,7 +505,6 @@ def test_compare_files_ko(logger_mock, mock_get_cluster_items):
 
 def test_clean_up_ok():
     """Check if the cleaning function is working properly."""
-
     with patch('os.path.join', return_value="some/path/"):
         with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
             with patch('os.path.exists', return_value=False) as path_exists_mock:
@@ -618,7 +613,6 @@ async def test_run_in_pool(event_loop):
 
 def test_validate_haproxy_helper_config():
     """Verify that validate_haproxy_helper_config function calls validate function."""
-
     config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
 
     with patch.object(cluster, 'validate') as validate_mock:
@@ -631,7 +625,6 @@ def test_validate_haproxy_helper_config():
 
 def test_validate_haproxy_helper_config_ko():
     """Verify that validate_haproxy_helper_config raises WazuhError when there is a validation error."""
-
     config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
 
     with patch.object(cluster, 'validate', side_effect=cluster.ValidationError(message='Error test', path=['test'])):

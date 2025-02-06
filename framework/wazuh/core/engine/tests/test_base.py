@@ -6,7 +6,6 @@ from wazuh.core.engine.models.vulnerability import Type
 
 def test_base_module_init():
     """Check the correct initialization of the `BaseModule` class."""
-
     client_mock = mock.MagicMock()
     instance = BaseModule(client=client_mock)
 

@@ -5,15 +5,14 @@
 import json
 import logging
 import os
-import re
 from os import path as os_path
 from typing import Union
 
+import wazuh.core.config.client
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.utils import load_wazuh_yaml, validate_wazuh_configuration, get_group_file_path
-import wazuh.core.config.client
+from wazuh.core.utils import get_group_file_path, load_wazuh_yaml, validate_wazuh_configuration
 
 logger = logging.getLogger('wazuh')
 

@@ -7,8 +7,14 @@ from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.manager import status, get_update_information_template, get_ossec_logs, \
-    get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS
+from wazuh.core.manager import (
+    OSSEC_LOG_FIELDS,
+    get_logs_summary,
+    get_ossec_logs,
+    get_update_information_template,
+    status,
+    validate_ossec_conf,
+)
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
@@ -287,7 +293,6 @@ def get_update_information(installation_uid: str, update_information: dict) -> W
     WazuhResult
         Result with update information.
     """
-
     if not update_information:
         # Return a response with minimal data because the update_check is disabled
         return WazuhResult({'data': get_update_information_template(uuid=installation_uid, update_check=False)})

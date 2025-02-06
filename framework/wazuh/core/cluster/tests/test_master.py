@@ -9,12 +9,11 @@ from collections import defaultdict
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Dict
-from unittest.mock import patch, MagicMock, AsyncMock, call, ANY
+from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 import uvloop
 from freezegun import freeze_time
-
 from wazuh.core import exception
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -28,10 +27,11 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.tests.util import RBAC_bypasser
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-            from wazuh.core.cluster import common as cluster_common, client, master
-            from wazuh.core.cluster.master import DEFAULT_DATE
             from wazuh.core import common
+            from wazuh.core.cluster import client, master
+            from wazuh.core.cluster import common as cluster_common
             from wazuh.core.cluster.dapi import dapi
+            from wazuh.core.cluster.master import DEFAULT_DATE
 
 # Global variables
 
@@ -138,7 +138,6 @@ def test_rit_done_callback(super_callback_mock, create_task_mock):
 @patch("wazuh.core.cluster.master.ReceiveExtraValidTask.set_up_coro")
 def test_revt_init(set_up_coro_mock, create_task_mock):
     """Test the correct initialization of the ReceiveExtraValidTask class."""
-
     receive_extra_valid_task = master.ReceiveExtraValidTask(wazuh_common=cluster_common.WazuhCommon(),
                                                             logger=logging.getLogger("wazuh"))
 
@@ -202,7 +201,6 @@ def test_revt_done_callback(set_up_coro_mock, super_callback_mock, create_task_m
 
 def test_master_handler_init():
     """Test the proper initialization of the MasterHandler class."""
-
     with patch('wazuh.core.cluster.master.context_tag', ContextVar('', default="")) as cv:
         master_handler = get_master_handler()
 
@@ -229,7 +227,6 @@ def test_master_handler_init():
 
 def test_master_handler_to_dict():
     """Check if the worker healthcheck information is properly obtained."""
-
     master_handler = get_master_handler()
     output = master_handler.to_dict()
 
@@ -264,7 +261,6 @@ def test_master_handler_to_dict():
 @patch.object(logging.getLogger("wazuh"), "debug")
 def test_master_handler_process_request(logger_mock):
     """Test if all the available commands that can be received from the worker are properly defined."""
-
     master_handler = get_master_handler()
 
     class DapiMock:
@@ -372,7 +368,6 @@ def test_master_handler_process_request(logger_mock):
 @patch("wazuh.core.cluster.master.uuid4", return_value=10101010)
 async def test_master_handler_execute_ok(uuid4_mock, wait_for_mock):
     """Check if a DAPI response is properly sent."""
-
     master_handler = get_master_handler()
 
     class Server:
@@ -440,7 +435,6 @@ async def test_master_handler_execute_ok(uuid4_mock, wait_for_mock):
 @patch("wazuh.core.cluster.master.uuid4", return_value=10101010)
 async def test_master_handler_execute_ko(uuid4_mock):
     """Check if exceptions are being properly raised."""
-
     master_handler = get_master_handler()
 
     class Server:
@@ -475,7 +469,6 @@ async def test_master_handler_execute_ko(uuid4_mock):
 @patch("wazuh.core.cluster.server.AbstractServerHandler.hello", return_value=(b"ok", "payload"))
 def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, path_exists_mock, sync_files_mock):
     """Check if the 'hello' command received from worker is being correctly processed."""
-
     master_handler = get_master_handler()
 
     class Server:
@@ -507,7 +500,6 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, path_ex
 @patch("wazuh.core.cluster.server.AbstractServerHandler.hello", return_value=(b"ok", "payload"))
 def test_master_handler_hello_ko(super_hello_mock):
     """Check if the exceptions are being properly raised."""
-
     master_handler = get_master_handler()
 
     class Server:
@@ -528,7 +520,6 @@ def test_master_handler_hello_ko(super_hello_mock):
 
 def test_master_handler_get_manager():
     """Check if the Master object is properly returned."""
-
     assert isinstance(get_master_handler().get_manager(), client.AbstractClientManager)
 
 @pytest.mark.asyncio
@@ -583,7 +574,6 @@ async def test_master_handler_process_dapi_res_ok():
 
 def test_master_handler_process_dapi_res_ko():
     """Check if exceptions are being properly raised."""
-
     master_handler = get_master_handler()
 
     class Server:
@@ -616,7 +606,6 @@ def test_master_handler_get_nodes():
 
         def get_connected_nodes(self, arguments: dict = None):
             """Auxiliary method."""
-
             self.get_connected_nodes_flag = True
             return {"ok": "ok_value"}
 
@@ -638,7 +627,6 @@ def test_master_handler_get_health():
 
         def get_health(self, arguments: dict = None):
             """Auxiliary method."""
-
             self.get_health_flag = True
             return {"ok": "ok_value"}
 
@@ -673,7 +661,6 @@ def test_master_handler_get_permission():
 @patch("wazuh.core.cluster.common.WazuhCommon.setup_receive_file", return_value=b"ok")
 def test_master_handler_setup_sync_integrity(setup_receive_file_mock):
     """Check if the synchronization process was correctly started."""
-
     master_handler = get_master_handler()
 
     # Test the first condition
@@ -707,7 +694,6 @@ def test_master_handler_process_sync_error_from_worker(error_receiving_file_mock
 @patch("wazuh.core.cluster.common.WazuhCommon.end_receiving_file", return_value=b"ok")
 def test_master_handler_end_receiving_integrity_checksums(end_receiving_file_mock):
     """Check if the function is started after receiving a file."""
-
     assert get_master_handler().end_receiving_integrity_checksums("task_and_file_names") == b"ok"
     end_receiving_file_mock.assert_called_once_with(task_and_file_names='task_and_file_names',
                                                     logger_tag='Integrity check')
@@ -958,7 +944,6 @@ async def test_master_handler_integrity_sync(set_date_end_mock, info_mock):
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
 def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_move_mock, path_join_mock):
     """Check if the local files are updated and the received iterated over."""
-
     master_handler = get_master_handler()
     files_metadata = {
         "data": {"merged": "1", "merge_type": "type", "merge_name": "name", "cluster_item_key": "queue/testing/"}}
@@ -1107,7 +1092,6 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, safe_mo
 
 def test_master_handler_get_logger():
     """Check if the right Logger object is being returned."""
-
     master_handler = get_master_handler()
 
     # Test the first if
@@ -1127,7 +1111,6 @@ def test_master_handler_get_logger():
 @patch("wazuh.core.cluster.master.cluster.clean_up")
 def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock, worker_name):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
-
     master_handler = get_master_handler()
     master_handler.logger = logging.getLogger("wazuh")
     master_handler.name = worker_name
@@ -1221,7 +1204,6 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
 @patch("wazuh.core.cluster.master.metadata.__version__", "1.0.0")
 def test_master_to_dict(get_running_loop_mock):
     """Check if the master's healthcheck information is properly obtained."""
-
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master"},
@@ -1237,7 +1219,6 @@ def test_master_to_dict(get_running_loop_mock):
 @patch('asyncio.sleep')
 async def test_master_file_status_update_ok(sleep_mock):
     """Check if the file status is properly obtained."""
-
     master_class = get_master()
 
     class LoggerMock:
@@ -1290,7 +1271,6 @@ async def test_master_file_status_update_ok(sleep_mock):
 @patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value={})
 async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock):
     """Check if the file status is properly obtained."""
-
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master"},
@@ -1380,7 +1360,6 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
 @patch('asyncio.get_running_loop', return_value=loop)
 def test_master_get_node(get_running_loop_mock):
     """Check if basic information about the node is being returned."""
-
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master"},

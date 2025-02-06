@@ -2,15 +2,21 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch, MagicMock, call
-from asyncio import BaseEventLoop, BaseProtocol, StreamWriter, StreamReader, BaseTransport
+from asyncio import BaseEventLoop, BaseProtocol, BaseTransport, StreamReader, StreamWriter
 from struct import pack
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from wazuh.core.exception import WazuhException
-from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, \
-     SOCKET_COMMUNICATION_PROTOCOL_VERSION, create_wazuh_socket_message, WazuhAsyncSocket, \
-     WazuhAsyncSocketJSON
+from wazuh.core.wazuh_socket import (
+    SOCKET_COMMUNICATION_PROTOCOL_VERSION,
+    WazuhAsyncSocket,
+    WazuhAsyncSocketJSON,
+    WazuhSocket,
+    WazuhSocketJSON,
+    create_wazuh_socket_message,
+)
+
 
 @pytest.fixture
 def aux_conn_patch():
@@ -35,7 +41,6 @@ async def connected_wazuh_async_socket(aux_conn_patch):
 @patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
 def test_WazuhSocket__init__(mock_conn):
     """Tests WazuhSocket.__init__ function works"""
-
     WazuhSocket('test_path')
 
     mock_conn.assert_called_once_with()
@@ -44,7 +49,6 @@ def test_WazuhSocket__init__(mock_conn):
 @patch('wazuh.core.wazuh_socket.socket.socket.connect')
 def test_WazuhSocket_protected_connect(mock_conn):
     """Tests WazuhSocket._connect function works"""
-
     WazuhSocket('test_path')
 
     mock_conn.assert_called_with('test_path')
@@ -53,7 +57,6 @@ def test_WazuhSocket_protected_connect(mock_conn):
 @patch('wazuh.core.wazuh_socket.socket.socket.connect', side_effect=Exception)
 def test_WazuhSocket_protected_connect_ko(mock_conn):
     """Tests WazuhSocket._connect function exceptions works"""
-
     with pytest.raises(WazuhException, match=".* 1013 .*"):
         WazuhSocket('test_path')
 
@@ -62,7 +65,6 @@ def test_WazuhSocket_protected_connect_ko(mock_conn):
 @patch('wazuh.core.wazuh_socket.socket.socket.close')
 def test_WazuhSocket_close(mock_close, mock_conn):
     """Tests WazuhSocket.close function works"""
-
     queue = WazuhSocket('test_path')
 
     queue.close()
@@ -75,7 +77,6 @@ def test_WazuhSocket_close(mock_close, mock_conn):
 @patch('wazuh.core.wazuh_socket.socket.socket.send')
 def test_WazuhSocket_send(mock_send, mock_conn):
     """Tests WazuhSocket.send function works"""
-
     queue = WazuhSocket('test_path')
 
     response = queue.send(b"\x00\x01")
@@ -92,7 +93,6 @@ def test_WazuhSocket_send(mock_send, mock_conn):
 @patch('wazuh.core.wazuh_socket.socket.socket.connect')
 def test_WazuhSocket_send_ko(mock_conn, msg, effect, send_effect, expected_exception):
     """Tests WazuhSocket.send function exceptions works"""
-
     queue = WazuhSocket('test_path')
 
     if effect == 'return_value':
@@ -112,7 +112,6 @@ def test_WazuhSocket_send_ko(mock_conn, msg, effect, send_effect, expected_excep
 @patch('wazuh.core.wazuh_socket.socket.socket.recv')
 def test_WazuhSocket_receive(mock_recv, mock_unpack, mock_conn):
     """Tests WazuhSocket.receive function works"""
-
     queue = WazuhSocket('test_path')
 
     response = queue.receive()
@@ -125,7 +124,6 @@ def test_WazuhSocket_receive(mock_recv, mock_unpack, mock_conn):
 @patch('wazuh.core.wazuh_socket.socket.socket.recv', side_effect=Exception)
 def test_WazuhSocket_receive_ko(mock_recv, mock_conn):
     """Tests WazuhSocket.receive function exception works"""
-
     queue = WazuhSocket('test_path')
 
     with pytest.raises(WazuhException, match=".* 1014 .*"):
@@ -137,7 +135,6 @@ def test_WazuhSocket_receive_ko(mock_recv, mock_conn):
 @patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
 def test_WazuhSocketJSON__init__(mock_conn):
     """Tests WazuhSocketJSON.__init__ function works"""
-
     WazuhSocketJSON('test_path')
 
     mock_conn.assert_called_once_with()
@@ -147,7 +144,6 @@ def test_WazuhSocketJSON__init__(mock_conn):
 @patch('wazuh.core.wazuh_socket.WazuhSocket.send')
 def test_WazuhSocketJSON_send(mock_send, mock_conn):
     """Tests WazuhSocketJSON.send function works"""
-
     queue = WazuhSocketJSON('test_path')
 
     response = queue.send('test_msg')
@@ -178,7 +174,6 @@ def test_WazuhSocketJSON_receive(mock_loads, mock_receive, mock_conn, raw):
 @patch('wazuh.core.wazuh_socket.loads', return_value={'error':10000, 'message':'Error', 'data':'KO'})
 def test_WazuhSocketJSON_receive_ko(mock_loads, mock_receive, mock_conn):
     """Tests WazuhSocketJSON.receive function works"""
-
     queue = WazuhSocketJSON('test_path')
 
     with pytest.raises(WazuhException, match=".* 10000 .*"):
@@ -278,7 +273,6 @@ async def test_wazuh_async_socket_send_ko(connected_wazuh_async_socket: WazuhAsy
 
 def test_wazuh_async_socket_close(connected_wazuh_async_socket: WazuhAsyncSocket):
     """Test receive function."""
-
     with patch.object(connected_wazuh_async_socket.writer, 'close') as close_patch:
         connected_wazuh_async_socket.close()
         close_patch.assert_called_once()
@@ -287,7 +281,6 @@ def test_wazuh_async_socket_close(connected_wazuh_async_socket: WazuhAsyncSocket
 @pytest.mark.asyncio
 async def test_wazuh_async_json_socket_receive_json():
     """Test receive_json function."""
-
     s = WazuhAsyncSocketJSON()
     with patch.object(WazuhAsyncSocket,
                       'receive', return_value=b'{"data": {"field":"value"}}') as receive_patch:
@@ -299,7 +292,6 @@ async def test_wazuh_async_json_socket_receive_json():
 @pytest.mark.asyncio
 async def test_wazuh_async_json_socket_receive_json_ko():
     """Test receive_json function."""
-
     s = WazuhAsyncSocketJSON()
     with patch.object(WazuhAsyncSocket, 'receive',
                       return_value=b'{"error": 1000, "message": "error message"}'):

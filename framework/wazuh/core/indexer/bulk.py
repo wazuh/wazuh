@@ -1,8 +1,7 @@
-from typing import Optional, Any, List, Protocol, Coroutine
 from enum import Enum
+from typing import Any, Coroutine, List, Optional, Protocol
 
 from opensearchpy import AsyncOpenSearch
-
 from wazuh.core.indexer.base import IndexerKey
 
 

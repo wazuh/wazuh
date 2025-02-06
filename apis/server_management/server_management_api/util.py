@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import logging
 import datetime
+import logging
 import os
 import typing
 from functools import wraps
@@ -11,7 +11,6 @@ from typing import Union
 
 import six
 from connexion import ProblemException
-
 from wazuh.core import common, exception
 from wazuh.core.cluster.utils import running_in_master_node
 

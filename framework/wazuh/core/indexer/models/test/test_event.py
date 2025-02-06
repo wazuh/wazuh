@@ -1,10 +1,21 @@
 import pytest
-
 from wazuh.core.exception import WazuhError
-from wazuh.core.indexer.models.events import get_module_index_name, Module, FIM_INDEX, SCA_INDEX, \
-    VULNERABILITY_INDEX, INVENTORY_NETWORKS_INDEX, INVENTORY_PACKAGES_INDEX, INVENTORY_PROCESSES_INDEX, \
-    INVENTORY_SYSTEM_INDEX, INVENTORY_HOTFIXES_INDEX, INVENTORY_PORTS_INDEX, INVENTORY_HARDWARE_INDEX, \
-    Collector, CommandsManager
+from wazuh.core.indexer.models.events import (
+    FIM_INDEX,
+    INVENTORY_HARDWARE_INDEX,
+    INVENTORY_HOTFIXES_INDEX,
+    INVENTORY_NETWORKS_INDEX,
+    INVENTORY_PACKAGES_INDEX,
+    INVENTORY_PORTS_INDEX,
+    INVENTORY_PROCESSES_INDEX,
+    INVENTORY_SYSTEM_INDEX,
+    SCA_INDEX,
+    VULNERABILITY_INDEX,
+    Collector,
+    CommandsManager,
+    Module,
+    get_module_index_name,
+)
 
 
 @pytest.mark.parametrize('module, type, expected_name', [

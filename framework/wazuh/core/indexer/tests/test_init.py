@@ -3,10 +3,9 @@ from unittest import mock
 import pytest
 from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import TransportError
-
+from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer import Indexer, create_indexer, get_indexer_client
-from wazuh.core.config.models.indexer import IndexerConfig, IndexerNode
 
 
 @pytest.fixture
@@ -48,7 +47,6 @@ class TestIndexer:
 
     async def test_connect(self, indexer_instance_with_mocked_client):
         """Check the correct function of `connect` method."""
-
         indexer_instance_with_mocked_client._client.info.return_value = True
         await indexer_instance_with_mocked_client.connect()
 
@@ -56,7 +54,6 @@ class TestIndexer:
 
     async def test_connect_ko(self, indexer_instance_with_mocked_client):
         """Check the correct raise of `connect` method."""
-
         indexer_instance_with_mocked_client._client.info.side_effect = TransportError('', '')
 
         with pytest.raises(WazuhIndexerError, match='.*2200.*'):
@@ -64,7 +61,6 @@ class TestIndexer:
 
     async def test_close(self, indexer_instance_with_mocked_client):
         """Check the correct function of `close` method."""
-
         await indexer_instance_with_mocked_client.close()
 
         indexer_instance_with_mocked_client._client.close.assert_called_once()
@@ -73,7 +69,6 @@ class TestIndexer:
 @mock.patch('wazuh.core.indexer.Indexer', autospec=True)
 async def test_create_indexer(indexer_mock: mock.AsyncMock):
     """Check the correct function of `create_index`."""
-
     hosts = ['test']
     ports = [9200]
     user = 'user_test'
@@ -98,7 +93,6 @@ async def test_create_indexer(indexer_mock: mock.AsyncMock):
 @mock.patch('wazuh.core.indexer.Indexer', autospec=True)
 async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
     """Check the correct raise of `create_index`."""
-
     hosts = ['test']
     ports = [9200]
     user = 'user_test'

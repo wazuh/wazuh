@@ -1,13 +1,13 @@
 from fastapi import status
+from wazuh.core.exception import WazuhIndexerError, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.models.agent import Agent, Status
+from wazuh.core.utils import get_utc_now
 
 from comms_api.authentication.authentication import generate_token
 from comms_api.models.authentication import Credentials, TokenResponse
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
-from wazuh.core.exception import WazuhInternalError, WazuhIndexerError, WazuhResourceNotFound
-from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.models.agent import Agent, Status
-from wazuh.core.utils import get_utc_now
 
 
 @timeout(20)

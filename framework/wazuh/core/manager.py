@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import copy
 import json
 import os
 import re
@@ -17,14 +16,12 @@ from typing import Dict, Optional, Union
 import certifi
 import httpx
 import wazuh
-from server_management_api import configuration
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
-from wazuh.core.config.client import CentralizedConfig
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
@@ -45,7 +42,6 @@ class LoggingFormat(Enum):
 
 def status() -> dict:
     """Return the Manager processes that are running."""
-
     return get_manager_status()
 
 
@@ -192,7 +188,6 @@ def validate_ossec_conf() -> str:
     str
         Status of the configuration.
     """
-
     # Socket path
     wcom_socket_path = common.WCOM_SOCKET
     # Message for checking Wazuh configuration

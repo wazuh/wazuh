@@ -10,9 +10,8 @@ import random
 from typing import Tuple, Union
 
 import uvloop
-
 from wazuh.core import common
-from wazuh.core.cluster import client, cluster, server
+from wazuh.core.cluster import client, server
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
@@ -20,8 +19,7 @@ from wazuh.core.exception import WazuhClusterError
 
 
 class LocalServerHandler(server.AbstractServerHandler):
-    """
-    Handle requests from a local client.
+    """Handle requests from a local client.
     """
 
     def connection_made(self, transport):
@@ -102,7 +100,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             Filters to use in the implemented method.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -117,7 +115,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             Filters to use in the implemented method.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -137,7 +135,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             Node name to send the file.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -185,8 +183,7 @@ class LocalServerHandler(server.AbstractServerHandler):
 
 
 class LocalServer(server.AbstractServer):
-    """
-    Create the server, manage multiple client connections. It's connected to the cluster TCP transports.
+    """Create the server, manage multiple client connections. It's connected to the cluster TCP transports.
     """
 
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
@@ -234,8 +231,7 @@ class LocalServer(server.AbstractServer):
 
 
 class LocalServerHandlerMaster(LocalServerHandler):
-    """
-    The local server handler instance that runs in the Master node.
+    """The local server handler instance that runs in the Master node.
     """
 
     def process_request(self, command: bytes, data: bytes):
@@ -361,8 +357,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
 
 class LocalServerMaster(LocalServer):
-    """
-    The LocalServer object running in the master node.
+    """The LocalServer object running in the master node.
     """
 
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
@@ -383,8 +378,7 @@ class LocalServerMaster(LocalServer):
 
 
 class LocalServerHandlerWorker(LocalServerHandler):
-    """
-    The local server handler instance that runs in worker nodes.
+    """The local server handler instance that runs in worker nodes.
     """
 
     def process_request(self, command: bytes, data: bytes):
@@ -547,8 +541,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
 
 
 class LocalServerWorker(LocalServer):
-    """
-    The LocalServer object running in worker nodes.
+    """The LocalServer object running in worker nodes.
     """
 
     def __init__(self, node: client.AbstractClientManager, **kwargs):

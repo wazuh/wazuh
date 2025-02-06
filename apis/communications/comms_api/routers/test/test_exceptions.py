@@ -6,8 +6,13 @@ from fastapi import status
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler, \
-    exception_handler, starlette_http_exception_handler
+from comms_api.routers.exceptions import (
+    HTTPError,
+    exception_handler,
+    http_error_handler,
+    starlette_http_exception_handler,
+    validation_exception_handler,
+)
 
 
 @pytest.mark.asyncio

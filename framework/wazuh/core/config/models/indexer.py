@@ -1,6 +1,6 @@
-from pydantic import PositiveInt, Field, field_serializer
 from typing import List
 
+from pydantic import Field, PositiveInt, field_serializer
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 

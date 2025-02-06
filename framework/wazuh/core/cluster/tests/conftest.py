@@ -4,8 +4,10 @@
 
 
 import asyncio
+
 import pytest
 from uvloop import EventLoopPolicy, Loop
+
 
 @pytest.fixture(scope="session")
 def event_loop() -> Loop:

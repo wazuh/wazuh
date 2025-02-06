@@ -6,7 +6,7 @@ import asyncio
 import logging
 import sys
 import time
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from freezegun import freeze_time
@@ -69,7 +69,6 @@ with patch("asyncio.get_running_loop"):
 
 def test_acm_init():
     """Check the correct initialization of the AbstractClientManager object."""
-
     assert abstract_client_manager.name == "manager"
     assert abstract_client_manager.configuration == configuration
     assert abstract_client_manager.cluster_items == cluster_items
@@ -87,8 +86,8 @@ def test_acm_init():
 
 def test_acm_add_tasks():
     """Check that the add_tasks function generates an array of tasks based on the parameters of the
-    AbstractClientManager object."""
-
+    AbstractClientManager object.
+    """
     abstract_client_manager.client = abstract_client
     abstract_client_manager.performance_test = None
     abstract_client_manager.concurrency_test = None
@@ -181,7 +180,6 @@ async def test_acm_start(add_tasks_mock, starmap_mock, asyncio_sleep_mock):
 
 def test_ac_init():
     """Check the correct initialization of the AbstractClient object."""
-
     assert abstract_client.server is None
     assert abstract_client.client_data == b"name"
     assert abstract_client.connected is False
@@ -192,8 +190,9 @@ def test_ac_init():
 
 def test_ac_connection_result():
     """Check that once an asyncio.Future object is received, a
-       first - connection is established if no problems were found, or
-       second - closed if and Exception was received."""
+    first - connection is established if no problems were found, or
+    second - closed if and Exception was received.
+    """
 
     class CloseMock:
         def close(self):
@@ -235,11 +234,11 @@ def test_ac_connection_result():
 async def test_ac_connection_made():
     """Check that the process of connection to the manager is correctly performed.
 
-        1. asyncio.gather must call send_request(b'hello', self.client_data) coroutine
-        2. The done_callback of the future returned by asyncio.gatheris set to
-           connection_made inside connection_made
-        3. In connection_result function, a message to the log is written
-           and abstract_client.connected is set to True
+    1. asyncio.gather must call send_request(b'hello', self.client_data) coroutine
+    2. The done_callback of the future returned by asyncio.gatheris set to
+       connection_made inside connection_made
+    3. In connection_result function, a message to the log is written
+       and abstract_client.connected is set to True
 
     """
 
@@ -265,7 +264,6 @@ async def test_ac_connection_made():
 @patch('wazuh.core.cluster.client.AbstractClient._cancel_all_tasks')
 def test_ac_connection_lost(cancel_tasks_mock):
     """Check the behavior when the master closes the connection and when the connection is lost due some problems."""
-
     future_mock_nested = FutureMock()
 
     abstract_client.on_con_lost = future_mock_nested
@@ -319,7 +317,6 @@ def test_ac_cancel_all_tasks():
 
 def test_ac_process_response():
     """Check the response the clients receive depending on the input command."""
-
     # Test the fist condition
     assert (abstract_client.process_response(command=b'ok-m',
                                              payload=b"payload") == b"Successful response from master: " + b"payload")
@@ -332,7 +329,6 @@ def test_ac_process_response():
 
 def test_ac_process_request():
     """Check the command available in clients depending on the input command."""
-
     # Test the fist condition
     with patch('wazuh.core.cluster.client.AbstractClient.echo_client', return_value=b'ok') as echo_mock:
         assert (abstract_client.process_request(command=b"echo-m", data=b"data") == b'ok')
@@ -346,7 +342,6 @@ def test_ac_process_request():
 
 def test_ac_echo_client():
     """Check the proper output of the 'echo_client' method."""
-
     assert abstract_client.echo_client(b"data") == (b'ok-c', b"data")
 
 
@@ -444,7 +439,6 @@ async def test_ac_performance_test_client(send_request_mock, perf_counter_mock, 
 @patch('wazuh.core.cluster.client.AbstractClient.send_request', return_value="ok")
 async def test_ac_concurrency_test_client(send_request_mock, perf_counter_mock, done_mock):
     """Check how the server reply to all requests until the connection is lost."""
-
     n_msgs = 5
 
     async def asyncio_sleep_mock(delay, result=None, *, loop=None):
@@ -470,7 +464,6 @@ async def test_ac_concurrency_test_client(send_request_mock, perf_counter_mock, 
 @patch('wazuh.core.cluster.client.AbstractClient.send_file', return_value="ok")
 async def test_ac_send_file_task(send_file_mock, perf_counter_mock):
     """Test the 'send_file' protocol."""
-
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         await abstract_client.send_file_task("filename")
         send_file_mock.assert_called_once_with("filename")
@@ -484,7 +477,6 @@ async def test_ac_send_file_task(send_file_mock, perf_counter_mock):
 @patch('wazuh.core.cluster.client.AbstractClient.send_string', return_value="ok")
 async def test_ac_send_string_task(send_string_mock, perf_counter_mock):
     """Test the 'send_string' protocol."""
-
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         await abstract_client.send_string_task(10)
         send_string_mock.assert_called_once_with(my_str=b'a' * 10)

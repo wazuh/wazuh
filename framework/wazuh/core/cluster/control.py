@@ -2,14 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from typing import List
 import json
 
 from wazuh import WazuhInternalError
 from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
-from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
+from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 from wazuh.core.utils import filter_array_by_query
 
 

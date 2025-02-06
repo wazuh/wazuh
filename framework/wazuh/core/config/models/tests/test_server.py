@@ -2,10 +2,24 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
-
-from wazuh.core.config.models.server import MasterIntervalsConfig, MasterProcesses, MasterConfig, NodeConfig, \
-    ZipConfig, CommunicationsTimeoutConfig, CommunicationsConfig, WorkerIntervalsConfig, WorkerRetriesConfig, \
-    WorkerConfig, ServerSyncConfig, CTIConfig, ServerConfig, SharedFiles, DEFAULT_CTI_URL, JWTConfig
+from wazuh.core.config.models.server import (
+    DEFAULT_CTI_URL,
+    CommunicationsConfig,
+    CommunicationsTimeoutConfig,
+    CTIConfig,
+    JWTConfig,
+    MasterConfig,
+    MasterIntervalsConfig,
+    MasterProcesses,
+    NodeConfig,
+    ServerConfig,
+    ServerSyncConfig,
+    SharedFiles,
+    WorkerConfig,
+    WorkerIntervalsConfig,
+    WorkerRetriesConfig,
+    ZipConfig,
+)
 
 
 @pytest.mark.parametrize('init_values, expected', [
@@ -309,7 +323,7 @@ def test_jwt_config_default_values(file_exists_mock, init_values):
     {'public_key': 'key_example'},
 ])
 def test_jwt_config_fails_without_values(init_values):
-    'Check the correct behavior of the `JWTConfig` class validations.'
+    """Check the correct behavior of the `JWTConfig` class validations."""
     with pytest.raises(ValidationError):
         JWTConfig(**init_values)
 

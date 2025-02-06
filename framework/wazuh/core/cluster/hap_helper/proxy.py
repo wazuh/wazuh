@@ -198,7 +198,6 @@ class ProxyAPI:
 
     async def update_configuration_version(self):
         """Get the last version of the configuration schema and set it."""
-
         configuration_version = await self._make_hap_request('services/haproxy/configuration/version')
         self.version = configuration_version
 
@@ -289,7 +288,6 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             The servers for the provided backend.
         """
-
         return await self._make_hap_request(
             'services/haproxy/configuration/servers', query_parameters={'backend': backend}
         )
@@ -604,7 +602,6 @@ class Proxy:
         server_admin_state_delay : int
             Delay of server administration.
         """
-
         hard_stop_after = (active_agents / (n_managers * chunk_size)) * n_managers * agent_reconnection_time + (
             n_managers * server_admin_state_delay * 2
         )

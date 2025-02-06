@@ -21,8 +21,8 @@ with patch('wazuh.core.common.wazuh_uid'):
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
             from wazuh import cluster
             from wazuh.core import common
-            from wazuh.core.exception import WazuhError, WazuhResourceNotFound
             from wazuh.core.cluster.local_client import LocalClient
+            from wazuh.core.exception import WazuhError, WazuhResourceNotFound
             from wazuh.core.results import WazuhResult
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',

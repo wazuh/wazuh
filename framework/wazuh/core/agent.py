@@ -6,20 +6,29 @@ import ipaddress
 import re
 from base64 import b64encode
 from functools import lru_cache
-from pathlib import Path
 from os import listdir, path, remove
+from pathlib import Path
 from typing import List, Optional
 
 from wazuh.core import common, configuration
-from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Agent as IndexerAgent
-from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_date_from_timestamp, get_group_file_path, \
-    GROUP_FILE_EXT
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.utils import (
+    GROUP_FILE_EXT,
+    WazuhDBBackend,
+    WazuhDBQuery,
+    WazuhDBQueryDistinct,
+    WazuhDBQueryGroupBy,
+    WazuhVersion,
+    get_date_from_timestamp,
+    get_fields_to_nest,
+    get_group_file_path,
+    plain_dict_to_nested_dict,
+)
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection

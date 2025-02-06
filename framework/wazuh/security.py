@@ -8,16 +8,33 @@ from functools import lru_cache
 
 from server_management_api.authentication import get_security_conf
 from wazuh.core import common
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
-    load_spec, sanitize_rbac_policy, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
+from wazuh.core.security import (
+    REQUIRED_FIELDS,
+    SORT_FIELDS,
+    SORT_FIELDS_GET_USERS,
+    invalid_roles_tokens,
+    invalid_run_as_tokens,
+    invalid_users_tokens,
+    load_spec,
+    revoke_tokens,
+    sanitize_rbac_policy,
+)
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
-from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
-from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
-from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
-from wazuh.core.config.client import CentralizedConfig
+from wazuh.rbac.orm import (
+    MAX_ID_RESERVED,
+    AuthenticationManager,
+    PoliciesManager,
+    RolesManager,
+    RolesPoliciesManager,
+    RolesRulesManager,
+    RulesManager,
+    SecurityError,
+    UserRolesManager,
+)
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
@@ -207,6 +224,7 @@ async def update_user(user_id: str = None, password: str = None, current_user: s
         Password for the new user.
     current_user : str
         Name of the user that made the request.
+
     Raises
     ------
     WazuhError(4001)
@@ -970,7 +988,6 @@ async def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> A
     AffectedItemsWazuhResult
         Result of the operation.
     """
-
     result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
                                       some_msg=f'Some security rules were not linked to role {role_id[0]}',
                                       all_msg=f'All security rules were linked to role {role_id[0]}')
@@ -1023,7 +1040,6 @@ async def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhRe
     AffectedItemsWazuhResult
         Result of the operation.
     """
-
     role = get_role(role_id[0])
 
     if not role:
@@ -1118,7 +1134,6 @@ def get_role(role_id: str) -> bool:
     bool
         True if the role_id exists, False otherwise.
     """
-
     role_check = False
 
     with RolesManager() as rm:
@@ -1153,7 +1168,6 @@ async def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWaz
     AffectedItemsWazuhResult
          Result of operation.
     """
-
     role = get_role(role_id[0])
 
     if not role:

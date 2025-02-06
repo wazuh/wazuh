@@ -3,19 +3,25 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-from datetime import datetime
-from unittest.mock import patch, MagicMock
 from copy import copy
-import pytest
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
+import pytest
+from connexion.exceptions import HTTPException, ProblemException, Unauthorized
 from freezegun import freeze_time
 
-from connexion.exceptions import HTTPException, ProblemException, BadRequestProblem, Unauthorized
-from server_management_api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, \
-    http_error_handler, problem_error_handler, unauthorized_error_handler, \
-    expect_failed_error_handler, ERROR_CONTENT_TYPE
-from server_management_api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from server_management_api.api_exception import ExpectFailedException
+from server_management_api.error_handler import (
+    ERROR_CONTENT_TYPE,
+    _cleanup_detail_field,
+    expect_failed_error_handler,
+    http_error_handler,
+    prevent_bruteforce_attack,
+    problem_error_handler,
+    unauthorized_error_handler,
+)
+from server_management_api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 
 
 @pytest.fixture
@@ -26,7 +32,7 @@ def request_info(request):
 
 @pytest.fixture
 def mock_request(request, request_info):
-    """fixture to wrap functions with request"""
+    """Fixture to wrap functions with request"""
     req = MagicMock()
     req.client.host = 'ip'
     mock_request.query_param = {}

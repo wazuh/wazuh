@@ -2,7 +2,6 @@ from enum import Enum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
-
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
 from wazuh.core.indexer.commands import CommandsManager
