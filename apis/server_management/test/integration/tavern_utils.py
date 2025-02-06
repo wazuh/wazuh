@@ -18,7 +18,7 @@ def get_values(o):
 
     try:
         obj = o.to_dict()
-    except:
+    except Exception:
         obj = o
 
     if type(obj) is list:

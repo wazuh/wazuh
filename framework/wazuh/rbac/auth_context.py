@@ -224,7 +224,7 @@ class RBAChecker:
                 regex = ''.join(expression[self._initial_index_for_regex : -2])
                 regex = re.compile(regex)
                 return regex
-            except:
+            except Exception:
                 return False
         return False
 
