@@ -166,12 +166,12 @@ def test_data_from_dict():
 
 def test_items():
     """Test class Items."""
-    l = [TestModel('one', 2)]
-    items_model = bm.Items(l)
+    items = [TestModel('one', 2)]
+    items_model = bm.Items(items)
 
     assert items_model.swagger_types == {'items': bm.List[bm.Model]}
     assert items_model.attribute_map == {'items': 'items'}
-    assert items_model._items == l
+    assert items_model._items == items
 
     # Test class properties
     new_items = [TestModel('new', 9)]

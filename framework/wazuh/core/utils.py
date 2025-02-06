@@ -1522,12 +1522,12 @@ class WazuhDBQuery(object):
             raise WazuhError(1407, self.q)
 
         level = 0
-        for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
+        for open_level, field, op, value, close_level, separator in self.query_regex.findall(self.q):
             if field not in self.fields.keys():
                 raise WazuhError(1408, 'Available fields: {}. Field: {}'.format(', '.join(self.fields), field))
-            if operator not in self.query_operators:
+            if op not in self.query_operators:
                 raise WazuhError(
-                    1409, 'Valid operators: {}. Used operator: {}'.format(', '.join(self.query_operators), operator)
+                    1409, 'Valid operators: {}. Used operator: {}'.format(', '.join(self.query_operators), op)
                 )
 
             if open_level:
@@ -1540,7 +1540,7 @@ class WazuhDBQuery(object):
                 self.query_filters.append(
                     {
                         'value': None if value == 'null' else value,
-                        'operator': self.query_operators[operator],
+                        'operator': self.query_operators[op],
                         'field': '{}${}'.format(field, op_index),
                         'separator': self.query_separators[separator],
                         'level': level,
