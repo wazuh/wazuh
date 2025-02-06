@@ -1,4 +1,4 @@
-run-name: Build Embedded Python ${{ inputs.python_version }}
+run-name: Build Embedded Python ${{ inputs.python_version }} for DEPS ${{ inputs.deps_version }}
 name: Build Embedded Python
 
 on:
@@ -34,7 +34,7 @@ jobs:
   build-embedded-python:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
-    name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
+    name: Build Python ${{ inputs.python_version }} for DEPS ${{ inputs.deps_version }}
 
     steps:
       - name: Cancel previous runs
