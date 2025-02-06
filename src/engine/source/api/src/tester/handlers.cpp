@@ -409,16 +409,18 @@ api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
         std::shared_ptr<json::Json> event {};
         {
             const auto eventStr = base::utils::string::split(eRequest.ndjson_event(), '\n');
-            if (eventStr.size() != 2)
+            if (eventStr.size() != 3)
             {
-                callbackFn(genericError<ResponseType>("Invalid event format, 2 json objects expected"));
+                callbackFn(genericError<ResponseType>("Invalid event format, 3 json objects expected"));
                 return;
             }
             try
             {
                 auto agentInfo = json::Json(eventStr[0].data());
-                event = std::make_shared<json::Json>(eventStr[1].data());
+                auto subheader = json::Json(eventStr[1].data());
+                event = std::make_shared<json::Json>(eventStr[2].data());
                 event->merge(true, agentInfo);
+                event->merge(true, subheader, "/event");
             }
             catch (const std::exception& e)
             {

@@ -721,12 +721,13 @@ INSTANTIATE_TEST_SUITE_P(
         // [runPost]: TraceLevel: None, Timeout Error
         TestRouterTComplementStore(
             runPost,
-            routerTest::JParams(ENVIRONMENT_NAME, false).event("{\"test\": \"header\"}\n{\"test\": \"event\"}"),
+            routerTest::JParams(ENVIRONMENT_NAME, false)
+                .event("{\"header\": {\"agent\": {\"id\": \"test\"}}}\n{\"subheader\": {\"category\": \"test\", "
+                       "\"module\": \"test\"}}\n{\"event\": {\"kind\": \"test\"}}"),
             failureWPayloadComplementStore(
                 [](auto tester, auto store, auto callback) -> json::Json
                 {
                     base::Error error {"error"};
-
                     EXPECT_CALL(*tester, ingestTest(testing::_, testing::_, testing::_))
                         .WillOnce(::testing::Return(error));
                     auto expected = json::Json();
