@@ -1,0 +1,181 @@
+run-name: Package - Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
+name: Package - Build Wazuh manager
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      upload_package:
+        description: |
+          Set to true to upload the package to the S3 bucket. By default is 'true'
+        default: true
+        type: boolean
+        required: false
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be downloaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
+          Default is 'auto'.
+        default: "auto"
+        type: string
+        required: false
+      architecture:
+        description: |
+          Architecture of the package [amd64, x86_64, arm64, aarch64]
+        type: choice
+        options:
+          - amd64
+          - x86_64
+          - arm64
+          - aarch64
+        required: true
+      system:
+        description: "Package format [deb, rpm]"
+        type: choice
+        options:
+          - deb
+          - rpm
+        required: true
+      revision:
+        description: |
+          Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        description: |
+          Build package with release format.
+          By default: false
+        type: boolean
+        required: false
+      debug:
+        description: |
+          Build the binaries as debug (without optimizations).
+          By default: false
+        type: boolean
+        required: false
+      checksum:
+        description: Generate package checksum.
+        type: boolean
+        required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      docker_image_tag:
+        required: false
+        default: "auto"
+        type: string
+      architecture:
+        type: string
+        required: true
+      system:
+        type: string
+        required: true
+      revision:
+        default: "0"
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+      id:
+        type: string
+        required: false
+
+jobs:
+  Build-manager-package-rpm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    name: Build rpm wazuh-manager on amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set default values
+        run: |
+          system="rpm"
+          arch="amd64"
+          image_tag="auto"
+
+          echo "SYST=$system" >> $GITHUB_ENV
+          echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE_TAG=$image_tag" >> $GITHUB_ENV
+
+      - name: Set tag and container name
+        run: |
+          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          if [ "${{ env.DOCKER_IMAGE_TAG }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ env.DOCKER_IMAGE_TAG }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
+          else echo "TAG=${{ env.DOCKER_IMAGE_TAG }}" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=pkg_${{ env.SYST }}_manager_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+
+      - name: Build rpm wazuh-manager on amd64
+        working-directory: packages
+        run: |
+          FLAGS="--verbose -t manager -s /tmp --dont-build-docker -j $(nproc) "
+          # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYST }} $FLAGS"
+          bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYST }} $FLAGS
+
+          if [ "${{ env.SYST }}" == "deb" ]; then 
+            SYMBOLS_TAG="dbg"
+          else
+            SYMBOLS_TAG="debuginfo"
+          fi
+          # Find all files starting with 'wazuh-manager' and ending with '.rpm or .deb'
+          for file in $(find /tmp -maxdepth 1 -type f -name 'wazuh-manager*.${{ env.SYST }}' -exec basename {} 2>/dev/null \;); do
+            if [[ "$file" == *"$SYMBOLS_TAG"* ]]; then
+              PACKAGE_SYMBOLS_NAME="$file"
+            else
+              PACKAGE_NAME="$file"
+            fi
+          done
+
+          echo "PACKAGE_NAME=${PACKAGE_NAME}" | tee -a $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=${PACKAGE_SYMBOLS_NAME}" | tee -a $GITHUB_ENV
+
+      - name: Test install built manager
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
+          sudo docker run -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/ossec:/var/ossec --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
+
+          # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
+          if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded.";
+            exit 1;
+          fi
+
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          expected_files: manager_base.csv
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
+          size_check: "false"
+          ignore: "site-packages,/var/ossec/framework/python"
