@@ -38,3 +38,26 @@ jobs:
         uses: ./.github/actions/legacy_unit_tests_run
         with:
           target: ${{ matrix.target }}
+  Build-RPM-Manager:
+      runs-on: ubuntu-22.04
+      needs: Unit-Tests
+      steps:
+        - name: Build RPM Manager
+          uses: actions/github-script@v6
+          with:
+            script: |
+              github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "packages-build-manager.yml",
+                ref: "master",
+                inputs: {
+                  docker_image_tag: "auto",
+                  architecture: "x86_64",
+                  system: "rpm",
+                  revision: "0",
+                  is_stage: false,
+                  debug: false,
+                  checksum: false
+                }
+              });
