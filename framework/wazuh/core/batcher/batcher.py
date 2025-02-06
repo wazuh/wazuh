@@ -15,7 +15,6 @@ from wazuh.core.batcher.timer import TimerManager
 from wazuh.core.config.models.comms_api import BatcherConfig
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.bulk import BulkDoc, Operation
-from wazuh.core.indexer.models.events import Operation
 
 logger = logging.getLogger('wazuh-comms-api')
 

@@ -42,7 +42,6 @@ from wazuh.core.cluster.utils import print_version
 from wazuh.core.common import WAZUH_SERVER_YML
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import ManagementAPIConfig
-from wazuh.core.config.models.management_api import ManagementAPIConfig
 from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.rbac.orm import check_database_integrity
 
