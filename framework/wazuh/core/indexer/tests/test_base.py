@@ -1,5 +1,4 @@
 from dataclasses import asdict
-
 from unittest import mock
 
 from wazuh.core.indexer.base import BaseIndex, remove_empty_values

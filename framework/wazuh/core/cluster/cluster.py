@@ -27,11 +27,11 @@ from wazuh.core.cluster.utils import (
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
     IMBALANCE_TOLERANCE,
-    REMOVE_DISCONNECTED_NODE_AFTER
+    REMOVE_DISCONNECTED_NODE_AFTER,
 )
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
-from wazuh.core.config.client import CentralizedConfig
 
 logger = logging.getLogger('wazuh')
 
@@ -125,7 +125,7 @@ def check_cluster_config(config):
         Cluster configuration.
 
     Raises
-    -------
+    ------
     WazuhError
         If any of above conditions is not met.
     """
@@ -707,7 +707,7 @@ def unmerge_info(merge_type, path_file, filename):
         Filename of the merged file.
 
     Yields
-    -------
+    ------
     str
         Splitted relative file path.
     data : str

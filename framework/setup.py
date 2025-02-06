@@ -4,9 +4,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from setuptools import find_namespace_packages, setup
 from wazuh import __version__
-
-from setuptools import setup, find_namespace_packages
 
 setup(name='wazuh',
       version=__version__,

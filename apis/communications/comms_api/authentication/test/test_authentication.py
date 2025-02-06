@@ -1,19 +1,24 @@
 from copy import deepcopy
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from fastapi import status
 import pytest
+from fastapi import status
 from freezegun import freeze_time
-
 
 # TODO: Fix in #26725
 with patch('wazuh.core.utils.load_wazuh_xml'):
-    from server_management_api.authentication import INVALID_TOKEN, JWT_ISSUER
-    from comms_api.authentication.authentication import decode_token, generate_token, JWTBearer, JWT_AUDIENCE, \
-        JWT_EXPIRATION
-    from comms_api.routers.exceptions import HTTPError
+    from server_management_api.authentication import JWT_ISSUER
     from wazuh.core.exception import WazuhCommsAPIError
+
+    from comms_api.authentication.authentication import (
+        JWT_AUDIENCE,
+        JWT_EXPIRATION,
+        JWTBearer,
+        decode_token,
+        generate_token,
+    )
+    from comms_api.routers.exceptions import HTTPError
 
 payload = {
     'iss': JWT_ISSUER,
@@ -56,7 +61,7 @@ async def test_jwt_bearer_ko():
 async def test_jwt_bearer_decode_ko(decode_token_mock):
     """Validate that the `JWTBearer` class handles decode exceptions successfully."""
     mock_req = MagicMock()
-    mock_req.headers = {'Authorization': f'Bearer token'}
+    mock_req.headers = {'Authorization': 'Bearer token'}
     jwt = JWTBearer()
 
     with pytest.raises(HTTPError, match='2706: Invalid authentication token'):

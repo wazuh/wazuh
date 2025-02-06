@@ -4,17 +4,17 @@
 
 import logging
 
-from connexion import request
-from connexion.lifecycle import ConnexionResponse
-
 import wazuh.cluster as cluster
 import wazuh.manager as manager
-from server_management_api.controllers.util import json_response, XML_CONTENT_TYPE
-from server_management_api.models.base_model_ import Body
-from server_management_api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
+
+from server_management_api.controllers.util import XML_CONTENT_TYPE, json_response
+from server_management_api.models.base_model_ import Body
+from server_management_api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
 

@@ -1,9 +1,9 @@
-from unittest.mock import call, patch, MagicMock
+from unittest.mock import MagicMock, call, patch
 
 import uvicorn
 
 from comms_api.core.unix_server.commands import post_commands
-from comms_api.core.unix_server.server import start_unix_server, common
+from comms_api.core.unix_server.server import common, start_unix_server
 
 
 @patch('comms_api.core.unix_server.server.FastAPI')

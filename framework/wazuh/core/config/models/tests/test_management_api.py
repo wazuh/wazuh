@@ -1,8 +1,11 @@
 import pytest
 from pydantic import ValidationError
-
-from wazuh.core.config.models.management_api import ManagementAPIIntervals, ManagementAPIConfig, \
-    CorsConfig, AccessConfig
+from wazuh.core.config.models.management_api import (
+    AccessConfig,
+    CorsConfig,
+    ManagementAPIConfig,
+    ManagementAPIIntervals,
+)
 
 
 @pytest.mark.parametrize('init_values, expected', [

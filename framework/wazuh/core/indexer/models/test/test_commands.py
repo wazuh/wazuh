@@ -1,4 +1,4 @@
-from wazuh.core.indexer.models.commands import Action, Command, Result, Status, Source, Target, TargetType
+from wazuh.core.indexer.models.commands import Action, Command, Result, Source, Status, Target, TargetType
 
 
 def test_command_post_init():

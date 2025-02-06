@@ -1,6 +1,6 @@
-from pydantic import FilePath, PositiveInt, PositiveFloat, model_serializer
-from typing import Dict, Any
+from typing import Any, Dict
 
+from pydantic import FilePath, PositiveFloat, PositiveInt, model_serializer
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.logging import EngineLoggingConfig

@@ -99,7 +99,7 @@ def collect_non_excluded_tests() -> list:
         Sorted list with the API integration tests collected.
     """
     os.chdir(f'{TESTS_PATH}/{RESULTS_FOLDER}')
-    done_tests = glob.glob(f'test_*')
+    done_tests = glob.glob('test_*')
     os.chdir(TESTS_PATH)
     collected_tests = sorted([test for test in glob.glob('test_*') if
                               f"{test.rstrip('.tavern.yaml')}" not in done_tests])

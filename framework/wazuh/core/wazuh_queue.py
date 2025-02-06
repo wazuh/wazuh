@@ -4,7 +4,6 @@
 
 import json
 import socket
-from typing import Any
 
 from wazuh.core.common import origin_module
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -86,8 +85,7 @@ class BaseQueue:
 
 
 class WazuhQueue(BaseQueue):
-    """
-    WazuhQueue Object.
+    """WazuhQueue Object.
     """
 
     # Messages
@@ -184,8 +182,7 @@ class WazuhQueue(BaseQueue):
 
 
 class WazuhAnalysisdQueue(BaseQueue):
-    """
-    WazuhAnalysisdQueue Object.
+    """WazuhAnalysisdQueue Object.
     """
 
     MAX_MSG_SIZE = 65535

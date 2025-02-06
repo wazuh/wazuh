@@ -1,12 +1,12 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from wazuh.core.exception import WazuhCommsAPIError
+from wazuh.core.indexer.models.commands import Command, Status
 
 from comms_api.models.commands import Commands
 from comms_api.routers.commands import get_commands
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.exception import WazuhCommsAPIError
-from wazuh.core.indexer.models.commands import Command, Status
 
 COMMANDS = [Command(document_id='UB2jVpEBYSr9jxqDgXAD', status=Status.PENDING)]
 TOKEN = 'token'

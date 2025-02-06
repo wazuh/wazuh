@@ -9,9 +9,15 @@ from pwd import getpwnam
 from unittest.mock import patch
 
 import pytest
-
-from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, async_context_cached, context_cached, \
-    reset_context_cache, get_context_cache
+from wazuh.core.common import (
+    async_context_cached,
+    context_cached,
+    find_wazuh_path,
+    get_context_cache,
+    reset_context_cache,
+    wazuh_gid,
+    wazuh_uid,
+)
 
 
 @pytest.mark.parametrize('fake_path, expected', [
@@ -41,7 +47,6 @@ def test_wazuh_gid():
 
 async def test_async_context_cached():
     """Verify that async_context_cached decorator correctly saves and returns saved value when called again."""
-
     test_async_context_cached.calls_to_foo = 0
 
     @async_context_cached('foobar')
@@ -75,7 +80,6 @@ async def test_async_context_cached():
 
 def test_context_cached():
     """Verify that context_cached decorator correctly saves and returns saved value when called again."""
-
     test_context_cached.calls_to_foo = 0
 
     @context_cached('foobar')

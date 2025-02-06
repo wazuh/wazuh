@@ -3,10 +3,10 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import re
 import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 MOCK_RESPONSE = {
     'data': {

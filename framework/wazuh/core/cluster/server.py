@@ -11,11 +11,10 @@ import logging
 import ssl
 import traceback
 from time import perf_counter
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 from uuid import uuid4
 
 import uvloop
-
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
@@ -23,8 +22,7 @@ from wazuh.core.config.models.server import ServerConfig
 
 
 class AbstractServerHandler(c_common.Handler):
-    """
-    Define abstract server protocol. Handle communication with a single client.
+    """Define abstract server protocol. Handle communication with a single client.
     """
 
     def __init__(self, server, loop: asyncio.AbstractEventLoop,
@@ -239,8 +237,7 @@ class AbstractServerHandler(c_common.Handler):
 
 
 class AbstractServer:
-    """
-    Define an asynchronous server. Handle connections from all clients.
+    """Define an asynchronous server. Handle connections from all clients.
     """
 
     NO_RESULT = 'no_result'

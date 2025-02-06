@@ -1,14 +1,12 @@
-import asyncio
 from dataclasses import asdict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
 from wazuh.core import common
 from wazuh.core.engine.base import APPLICATION_JSON
 from wazuh.core.exception import WazuhIndexerError
-from wazuh.core.indexer.models.commands import Command, Target, TargetType, Source, Status
+from wazuh.core.indexer.models.commands import Command, Source, Status, Target, TargetType
 from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.task.order import get_orders
 

@@ -4,11 +4,9 @@
 
 import os
 import sys
-from unittest.mock import mock_open, ANY
-from unittest.mock import patch, MagicMock
+from unittest.mock import ANY, MagicMock, mock_open, patch
 
 import pytest
-
 from wazuh.core.common import REMOTED_SOCKET
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -20,8 +18,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.exception import WazuhError, WazuhInternalError
         from wazuh.core import configuration
+        from wazuh.core.exception import WazuhError, WazuhInternalError
 
 parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 tmp_path = 'tests/data'
@@ -197,8 +195,7 @@ def test_get_active_configuration_ko(mock_exists, agent_id, component, config, s
 )
 @patch('wazuh.core.configuration.get_ossec_conf')
 def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expected):
-    """
-    Test that update_check_is_enabled function returns the expected value,
+    """Test that update_check_is_enabled function returns the expected value,
     based on the value of UPDATE_CHECK_OSSEC_FIELD.
     """
     get_ossec_conf_mock.return_value = update_check_config

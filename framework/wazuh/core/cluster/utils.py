@@ -6,7 +6,6 @@ import fcntl
 import json
 import logging
 import os
-from pathlib import Path
 import re
 import signal
 import socket
@@ -14,14 +13,15 @@ import time
 import typing
 from contextvars import ContextVar
 from glob import glob
+from pathlib import Path
 
 from wazuh.core import common, pyDaemonModule
-from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhHAPHelperError
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.exception import WazuhError, WazuhHAPHelperError, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
-from wazuh.core.config.client import CentralizedConfig
 
 NO = 'no'
 YES = 'yes'
@@ -320,8 +320,7 @@ context_tag: ContextVar[str] = ContextVar('tag', default='')
 
 
 class ClusterFilter(logging.Filter):
-    """
-    Add cluster related information into cluster logs.
+    """Add cluster related information into cluster logs.
     """
 
     def __init__(self, tag: str, subtag: str, name: str = ''):
@@ -354,15 +353,13 @@ class ClusterFilter(logging.Filter):
 
 
 class ClusterLogger(WazuhLogger):
-    """
-    Define the logger used by wazuh-clusterd.
+    """Define the logger used by wazuh-clusterd.
     """
 
     def setup_logger(self):
-        """
-        Set ups cluster logger. In addition to super().setup_logger() this method adds:
-            * A filter to add tag and subtags to cluster logs
-            * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
+        """Set ups cluster logger. In addition to super().setup_logger() this method adds:
+        * A filter to add tag and subtags to cluster logs
+        * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
         """
         super().setup_logger()
         self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
@@ -430,11 +427,11 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
         System cluster nodes.
     broadcasting : bool
         Whether the function will be broadcasted or not.
+
     Returns
     -------
     Return either a dict or `WazuhResult` instance in case the execution did not fail. Return an exception otherwise.
     """
-
     import concurrent
     from asyncio import run
 

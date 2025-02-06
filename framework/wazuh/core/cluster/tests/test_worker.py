@@ -6,14 +6,13 @@ import asyncio
 import json
 import logging
 import sys
-from functools import partial
 from collections import defaultdict
-from unittest.mock import patch, MagicMock, call
+from functools import partial
+from unittest.mock import MagicMock, call, patch
 
 import pytest
-from freezegun import freeze_time
-
 import wazuh.core.exception as exception
+from freezegun import freeze_time
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -27,8 +26,9 @@ with patch('wazuh.core.common.wazuh_uid'):
 
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from wazuh.core.cluster import client, worker, common as cluster_common
             from wazuh.core import common as core_common
+            from wazuh.core.cluster import client, worker
+            from wazuh.core.cluster import common as cluster_common
 
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
@@ -41,7 +41,6 @@ configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, "name
 
 def get_worker_handler(loop):
     """Return the needed WorkerHandler object. This is an auxiliary method."""
-
     with patch('asyncio.get_running_loop', return_value=loop):
         abstract_client = client.AbstractClientManager(configuration=configuration,
                                                        cluster_items=cluster_items,
@@ -55,7 +54,6 @@ def get_worker_handler(loop):
 @pytest.mark.asyncio
 async def test_rit_set_up_coro(event_loop):
     """Check if a callable is being returned by this method."""
-
     with patch('wazuh.core.cluster.worker.WorkerHandler.process_files_from_master',
                return_value='') as process_files_mock:
         receive_task = worker.ReceiveIntegrityTask(wazuh_common=get_worker_handler(event_loop), logger=None)
@@ -90,7 +88,6 @@ async def test_rit_done_callback(event_loop):
 @pytest.mark.asyncio
 async def test_worker_handler_init(event_loop):
     """Test '__init__' method from WorkerHandler class."""
-
     worker_handler = get_worker_handler(event_loop)
     worker_handler.logger = None
     assert worker_handler.client_data == "Testing master 5.0.0".encode()
@@ -109,7 +106,6 @@ async def test_worker_handler_init(event_loop):
 async def test_worker_handler_connection_result(connection_result_mock, mkdir_with_mode_mock, exists_mock,
                                                 event_loop):
     """Check if the function is called whenever the master sends a response to the worker's hello command."""
-
     worker_handler = get_worker_handler(event_loop)
     worker_handler.connected = True
     worker_handler.connection_result("something")
@@ -208,7 +204,6 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
 @patch("wazuh.core.cluster.worker.cluster.clean_up")
 async def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock, event_loop):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
-
     worker_handler = get_worker_handler(event_loop)
     worker_handler.logger = logging.getLogger("wazuh")
 
@@ -269,7 +264,6 @@ async def test_worker_handler_process_request_ko(logger_mock, event_loop):
 @pytest.mark.asyncio
 async def test_worker_handler_get_manager(event_loop):
     """Check if the Worker object is being properly returned."""
-
     assert isinstance(get_worker_handler(event_loop).get_manager(), client.AbstractClientManager)
 
 
@@ -279,7 +273,8 @@ async def test_worker_handler_get_manager(event_loop):
 @patch("wazuh.core.cluster.common.WazuhCommon.setup_receive_file", return_value="OK")
 async def test_worker_handler_setup_receive_files_from_master(setup_receive_file_mock, logger_mock, event_loop):
     """Check is a task was set up to wait until the integrity information has been received from the master and
-    processed."""
+    processed.
+    """
     worker_handler = get_worker_handler(event_loop)
     worker_handler.integrity_check_status = {"date_start": 0}
     assert worker_handler.setup_receive_files_from_master() == "OK"
@@ -291,7 +286,6 @@ async def test_worker_handler_setup_receive_files_from_master(setup_receive_file
 @patch("wazuh.core.cluster.common.WazuhCommon.end_receiving_file", return_value=(b"OK", b"OK"))
 async def test_worker_handler_end_receiving_integrity(end_receiving_file_mock, event_loop):
     """Test if a task was notified about some information reception."""
-
     worker_handler = get_worker_handler(event_loop)
     assert worker_handler.end_receiving_integrity("file_name") == (b"OK", b"OK")
     end_receiving_file_mock.assert_called_once_with(task_and_file_names="file_name", logger_tag="Integrity sync")
@@ -301,7 +295,6 @@ async def test_worker_handler_end_receiving_integrity(end_receiving_file_mock, e
 @patch("wazuh.core.cluster.common.WazuhCommon.error_receiving_file", return_value=(b"error", b"error"))
 async def test_worker_handler_error_receiving_integrity(error_receiving_file_mock, event_loop):
     """Check if a task was notified about some error that had place during the process."""
-
     worker_handler = get_worker_handler(event_loop)
     assert worker_handler.error_receiving_integrity("file_name_and_errors") == (b"error", b"error")
     error_receiving_file_mock.assert_called_once_with(task_id_and_error_details="file_name_and_errors",
@@ -635,7 +628,6 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                                                mkdir_with_mode_mock, safe_move_mock, path_exists_mock,
                                                                open_mock, event_loop):
     """Check if the method is properly receiving and updating files."""
-
     all_mocks = [wazuh_gid_mock, wazuh_uid_mock, path_join_mock, mkdir_with_mode_mock, safe_move_mock, open_mock,
                  path_exists_mock]
 
@@ -807,7 +799,6 @@ async def test_worker_handler_get_logger(event_loop):
 @patch("wazuh.core.cluster.worker.dapi.APIRequestQueue", return_value="APIRequestQueue object")
 async def test_worker_init(api_request_queue, event_loop):
     """Check if the object Worker is being properly initialized."""
-
     task_pool = {'task_pool': ''}
     nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items,
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,

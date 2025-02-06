@@ -5,7 +5,9 @@
 
 import pytest
 from connexion.lifecycle import ConnexionResponse
+
 from server_management_api.controllers.util import json_response
+
 
 @pytest.mark.parametrize('pretty, body, status_code, content_type',
                             [(False, '{"a": "1", "b": "2"}', 200, 'application/json'),

@@ -11,8 +11,7 @@ from wazuh.rbac import orm
 
 
 class RBAChecker:
-    """
-    The logical operations available in our system:
+    """The logical operations available in our system:
         AND: All the clauses that it encloses must be certain so that the operation is evaluated as certain.
         OR: At least one of the clauses it contains must be correct for the operator to be evaluated as True.
         NOT: The clause enclosed by the NOT operator must give False for it to be evaluated as True.

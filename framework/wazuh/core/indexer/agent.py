@@ -1,14 +1,14 @@
 from typing import List, Optional
 
 from opensearchpy import exceptions
-# There's no other way to access these classes
-from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
 from opensearchpy._async.helpers.search import AsyncSearch
 
+# There's no other way to access these classes
+from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.indexer.base import BaseIndex, IndexerKey
 from wazuh.core.indexer.models.agent import Agent, Host, Status
 from wazuh.core.indexer.utils import get_source_items
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
 DEFAULT_GROUP = 'default'
 AGENT_KEY = 'agent'

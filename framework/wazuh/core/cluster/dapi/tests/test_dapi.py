@@ -7,13 +7,13 @@ import logging
 import os
 import sys
 from asyncio import TimeoutError
-from unittest.mock import call, MagicMock, patch, AsyncMock
+from sqlite3 import DatabaseError, Error
+from sqlite3 import OperationalError as SQLiteOperationalError
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from connexion import ProblemException
 from sqlalchemy.exc import OperationalError
-from sqlite3 import OperationalError as SQLiteOperationalError, DatabaseError, Error
-
 from wazuh.core import common
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
@@ -29,13 +29,13 @@ with patch('wazuh.common.wazuh_uid'):
             from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
-        from wazuh.core.manager import get_manager_status
-        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
-        from wazuh.core.exception import WazuhClusterError
         from server_management_api.util import raise_if_exc
+        from wazuh import WazuhError, WazuhInternalError, agent, cluster, manager
         from wazuh.core.cluster import local_client
+        from wazuh.core.cluster.dapi.dapi import APIRequestQueue, DistributedAPI
+        from wazuh.core.exception import WazuhClusterError
+        from wazuh.core.manager import get_manager_status
+        from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 
 logger = logging.getLogger('wazuh')
 

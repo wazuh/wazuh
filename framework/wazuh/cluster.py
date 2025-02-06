@@ -11,7 +11,7 @@ from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.rbac.decorators import expose_resources, async_list_handler
+from wazuh.rbac.decorators import async_list_handler, expose_resources
 
 node_id = get_node().get('node')
 

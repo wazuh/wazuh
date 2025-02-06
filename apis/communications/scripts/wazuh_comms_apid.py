@@ -4,43 +4,47 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import atexit
 import logging
 import logging.config
 import os
 import signal
 import ssl
 import sys
-import atexit
 from argparse import ArgumentParser, Namespace
 from functools import partial
-from sys import exit
-from typing import Any, Callable
 from multiprocessing import Process
 from multiprocessing.util import _exit_function
+from sys import exit
+from typing import Any, Callable
 
 from brotli_asgi import BrotliMiddleware
-from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
-from gunicorn.app.base import BaseApplication
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
-from server_management_api.alogging import set_logging
-from server_management_api.configuration import generate_private_key, generate_self_signed_certificate
-from server_management_api.middlewares import SecureHeadersMiddleware
 from comms_api.core.batcher import create_batcher_process
 from comms_api.core.commands import CommandsManager
 from comms_api.core.unix_server.server import start_unix_server
 from comms_api.middlewares.logging import LoggingMiddleware
-from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler, \
-    exception_handler, starlette_http_exception_handler
+from comms_api.routers.exceptions import (
+    HTTPError,
+    exception_handler,
+    http_error_handler,
+    starlette_http_exception_handler,
+    validation_exception_handler,
+)
 from comms_api.routers.router import router
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from gunicorn.app.base import BaseApplication
+from server_management_api.alogging import set_logging
+from server_management_api.configuration import generate_private_key, generate_self_signed_certificate
+from server_management_api.middlewares import SecureHeadersMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from wazuh.core import common, pyDaemonModule, utils
-from wazuh.core.exception import WazuhCommsAPIError
-from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
+from wazuh.core.batcher.mux_demux import MuxDemuxManager, MuxDemuxQueue
 from wazuh.core.cluster.utils import print_version
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.logging import APILoggingConfig
 from wazuh.core.config.models.comms_api import CommsAPIConfig
+from wazuh.core.config.models.logging import APILoggingConfig
+from wazuh.core.exception import WazuhCommsAPIError
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 LOGGING_TAG = 'Communications API'

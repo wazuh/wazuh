@@ -2,13 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
+import asyncio
 import logging
 import sys
-import asyncio
 from contextvars import ContextVar
-from unittest.mock import AsyncMock, MagicMock
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from uvloop import Loop
@@ -22,8 +20,8 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.local_server import *
         from wazuh.core.cluster.dapi import dapi
+        from wazuh.core.cluster.local_server import *
         from wazuh.core.exception import WazuhClusterError
 
 async def wait_function_called(func_mock):

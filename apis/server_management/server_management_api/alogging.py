@@ -2,13 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import logging
 import json
+import logging
 import re
 
-from server_management_api.api_exception import APIError
-
 from wazuh.core.config.models.logging import APILoggingConfig
+
+from server_management_api.api_exception import APIError
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')

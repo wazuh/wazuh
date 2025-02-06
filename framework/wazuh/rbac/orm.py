@@ -11,24 +11,33 @@ from enum import IntEnum
 from functools import partial
 from shutil import chown
 from time import time
-from typing import Union, Optional
+from typing import Optional, Union
 
 import yaml
-from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_, \
-    CheckConstraint
-from sqlalchemy import desc
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    create_engine,
+    desc,
+    or_,
+)
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
-from sqlalchemy.orm import Session, sessionmaker, relationship, declarative_base
+from sqlalchemy.orm import Session, declarative_base, relationship, sessionmaker
 from sqlalchemy.orm.exc import UnmappedInstanceError
-from sqlalchemy.sql.expression import select, delete
 from sqlalchemy.sql import text
-from werkzeug.security import check_password_hash, generate_password_hash
-
-from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES, WAZUH_LIB
+from sqlalchemy.sql.expression import delete, select
+from wazuh.core.common import DEFAULT_RBAC_RESOURCES, WAZUH_LIB, wazuh_gid, wazuh_uid
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_cache
-from wazuh.core.config.client import CentralizedConfig
+from werkzeug.security import check_password_hash, generate_password_hash
 
 logger = logging.getLogger("wazuh-api")
 
@@ -78,8 +87,7 @@ class SecurityError(IntEnum):
 # Declare relational tables
 
 class RolesRules(_Base):
-    """
-    Class that represents the relational table storing the relationships between Roles and Rules.
+    """Class that represents the relational table storing the relationships between Roles and Rules.
     The information stored from each relationship is:
         id: ID of the relationship
         role_id: ID of the role
@@ -100,8 +108,7 @@ class RolesRules(_Base):
 
 
 class RolesPolicies(_Base):
-    """
-    Class that represents the relational table storing the relationships between Roles and Policies.
+    """Class that represents the relational table storing the relationships between Roles and Policies.
     The information stored from each relationship is:
         id: ID of the relationship
         role_id: ID of the role
@@ -124,8 +131,7 @@ class RolesPolicies(_Base):
 
 
 class UserRoles(_Base):
-    """
-    Class that represents the relational table storing the relationships between Users and Roles.
+    """Class that represents the relational table storing the relationships between Users and Roles.
     The information stored from each relationship is:
         id: ID of the relationship
         user_id: ID of the user
@@ -244,8 +250,7 @@ class RolesTokenBlacklist(_Base):
 # Declare basic tables
 
 class User(_Base):
-    """
-    This table stores all the information related to Users.
+    """This table stores all the information related to Users.
     The information stored for each object is:
         id: ID of the user
         username: The name of the user
@@ -349,8 +354,7 @@ class User(_Base):
 
 
 class Roles(_Base):
-    """
-    This table stores all the information related to Roles.
+    """This table stores all the information related to Roles.
     The information stored for each object is:
         id: ID of the role
         name: The name of the role
@@ -437,8 +441,7 @@ class Roles(_Base):
 
 
 class Rules(_Base):
-    """
-    This table stores all the information related to Rules.
+    """This table stores all the information related to Rules.
     The information stored for each object is:
         id: ID of the rule
         name: The name of the rule
@@ -501,8 +504,7 @@ class Rules(_Base):
 
 
 class Policies(_Base):
-    """
-    This table stores all the information related to Policies.
+    """This table stores all the information related to Policies.
     The information stored for each object is:
         id: ID of the policy
         name: The name of the policy
@@ -3340,7 +3342,7 @@ def check_database_integrity():
 
         # If the database does not exist, it means this is a fresh installation and must be created properly
         else:
-            logger.info(f"RBAC database not found. Initializing")
+            logger.info("RBAC database not found. Initializing")
             db_manager.connect(DB_FILE)
             db_manager.create_database(DB_FILE)
             _set_permissions_and_ownership(DB_FILE)

@@ -1,9 +1,7 @@
 from enum import Enum
 from typing import List
-from pydantic import Field
 
-from pydantic import field_validator, ValidationInfo
-
+from pydantic import Field, ValidationInfo, field_validator
 from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
 
 
@@ -53,7 +51,7 @@ class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         str
             SSL certificate/key path.
         """
@@ -102,7 +100,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         str
             SSL certificate/key path.
         """
@@ -128,7 +126,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         List[str]
             SSL Certificate Authorities paths.
         """
@@ -182,7 +180,7 @@ class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         str
             SSL certificate authority file path.
         """

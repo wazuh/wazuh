@@ -5,12 +5,11 @@
 import json
 import os
 import re
+from importlib import reload
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
-from importlib import reload
-
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.tests.utils import init_db

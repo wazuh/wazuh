@@ -3,12 +3,11 @@ from logging import getLogger
 from typing import AsyncIterator
 
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
-
 from wazuh.core.common import ENGINE_SOCKET
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.engine.events import EventsModule
 from wazuh.core.engine.vulnerability import VulnerabilityModule
 from wazuh.core.exception import WazuhEngineError
-from wazuh.core.config.client import CentralizedConfig
 
 logger = getLogger('wazuh')
 

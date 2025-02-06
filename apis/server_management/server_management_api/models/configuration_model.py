@@ -7,7 +7,7 @@
 
 from __future__ import absolute_import
 
-from server_management_api.models.base_model_ import Body, Model
+from server_management_api.models.base_model_ import Body
 
 
 class SecurityConfigurationModel(Body):

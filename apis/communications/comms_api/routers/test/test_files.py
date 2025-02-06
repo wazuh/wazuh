@@ -2,11 +2,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import status
+from wazuh.core.exception import WazuhCommsAPIError
 
 from comms_api.core.files import DIR
-from comms_api.routers.files import get_files
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.exception import WazuhCommsAPIError
+from comms_api.routers.files import get_files
 
 
 class StatMock:

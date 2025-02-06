@@ -2,8 +2,8 @@ import json
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
-from fastapi import FastAPI, Request
 import pytest
+from fastapi import FastAPI, Request
 from freezegun import freeze_time
 from starlette.applications import Starlette
 

@@ -2,15 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import calendar
-import gzip
-import re
-import tempfile
-from datetime import date
-from os.path import join, exists
-from pathlib import Path
-from random import randint
-from unittest.mock import patch, PropertyMock
+from unittest.mock import PropertyMock, patch
 
 import pytest
 
@@ -40,7 +32,6 @@ def test_wazuh_logger_setup_logger(mock_add_handler, mock_add_level_name):
 def test_wazuh_logger__init__(mock_lformatter, mock_formatter, mock_logger_name, mock_debug_level,
                               mock_logger, mock_tag):
     """Test if WazuhLogger __init__ method initialize all attributes properly."""
-
     wlogging.WazuhLogger(tag=mock_tag, debug_level=mock_debug_level,
                          logger_name=mock_logger_name, custom_formatter=mock_formatter)
     for x in [mock_formatter, mock_logger_name, mock_debug_level, mock_logger]:
@@ -66,8 +57,7 @@ def test_wazuh_logger_getattr(attribute, expected_exception, expected_value):
 
 
 def test_customfilter():
-    """
-    Test if CustomFilter class works properly.
+    """Test if CustomFilter class works properly.
     """
     class MockedRecord():
         def __init__(self, log_type):
@@ -91,8 +81,7 @@ def test_customfilter():
     ('InternalError', True)
 ])
 def test_cli_custom_filter(value, expected):
-    """
-    Test if CLIFilter class works properly.
+    """Test if CLIFilter class works properly.
     """
     class MockedRecord:
         def __init__(self, msg):

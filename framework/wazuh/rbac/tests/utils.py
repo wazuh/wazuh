@@ -7,8 +7,8 @@ from importlib import reload
 from unittest.mock import patch
 
 from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
 from sqlalchemy import orm as sqlalchemy_orm
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import text
 
 
@@ -50,8 +50,7 @@ def init_db(schema, test_data_path):
 
 
 class MockRolePolicy:
-    """
-    A mock representation of a role policy.
+    """A mock representation of a role policy.
 
     This class represents a mock role policy with attributes for role ID, policy ID, creation date,
     and policy level.
@@ -70,8 +69,7 @@ class MockRolePolicy:
 
 
 class MockedUserRole:
-    """
-    A mock representation of a user's role.
+    """A mock representation of a user's role.
 
     This class represents a mock user's role with attributes for user ID, role ID, creation date,
     and role level.
@@ -90,8 +88,7 @@ class MockedUserRole:
 
 
 class MockRoleRules:
-    """
-    A mock representation of role rules.
+    """A mock representation of role rules.
 
     This class represents mock role rules with attributes for role ID, rule ID, creation date,
     and rule level.

@@ -2,8 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch, MagicMock
-from server_management_api import configuration, api_exception
+from unittest.mock import patch
+
+from server_management_api import configuration
+
 
 @patch('os.chmod')
 @patch('builtins.open')

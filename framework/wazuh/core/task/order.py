@@ -2,10 +2,9 @@ import asyncio
 from dataclasses import asdict
 
 import httpx
-
 from wazuh.core import common
-from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.engine.base import APPLICATION_JSON
+from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.commands import Status
 from wazuh.core.indexer.utils import convert_enums
@@ -17,7 +16,6 @@ PULL_INTERVAL = 10
 
 async def get_orders(logger: WazuhLogger):
     """Get orders from the indexer and send them to the Communications API unix socket HTTP server."""
-
     transport = httpx.AsyncHTTPTransport(uds=common.COMMS_API_SOCKET_PATH)
     client = httpx.AsyncClient(transport=transport, timeout=httpx.Timeout(10))
 

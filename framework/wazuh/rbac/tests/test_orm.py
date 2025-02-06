@@ -6,19 +6,29 @@ import json
 import os
 import re
 from importlib import reload
-from unittest.mock import patch, call, MagicMock
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 import yaml
-from sqlalchemy import create_engine, Column, String
+from sqlalchemy import Column, String, create_engine
 from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import text
-
 from wazuh.core.utils import get_utc_now
-from wazuh.rbac.tests.utils import init_db, MockRolePolicy, MockedUserRole, MockRoleRules
-from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User, SecurityError, Roles, Rules, \
-    Policies, UserRoles, RolesPolicies, RolesRules
+from wazuh.rbac.orm import (
+    MAX_ID_RESERVED,
+    WAZUH_USER_ID,
+    WAZUH_WUI_USER_ID,
+    Policies,
+    Roles,
+    RolesPolicies,
+    RolesRules,
+    Rules,
+    SecurityError,
+    User,
+    UserRoles,
+)
+from wazuh.rbac.tests.utils import MockedUserRole, MockRolePolicy, MockRoleRules, init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -680,8 +690,7 @@ def test_exist_policy_role(db_setup):
 
 
 def test_exist_role_policy(db_setup):
-    """
-    Check role-policy relation exist in the database
+    """Check role-policy relation exist in the database
     """
     with db_setup.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = add_role_policy(db_setup)
@@ -1015,7 +1024,8 @@ def test_databasemanager_set_database_version(fresh_in_memory_db):
 def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move_mock, fresh_in_memory_db):
     """Test `check_database_integrity` function briefly.
 
-    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests.
+    """
     db_mock = MagicMock()
     with patch("wazuh.rbac.orm.db_manager", new=db_mock):
         with patch("wazuh.rbac.orm.os.path.exists", return_value=True):
@@ -1061,7 +1071,8 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
 def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, exception, fresh_in_memory_db):
     """Test `check_database_integrity` function exceptions briefly.
 
-    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests.
+    """
 
     def mocked_exists(path: str):
         return path == fresh_in_memory_db.DB_FILE_TMP
@@ -1089,7 +1100,8 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
 def test_migrate_data(db_setup, from_id, to_id, users):
     """Test `migrate_data` function briefly.
 
-    NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
+    NOTE: To correctly test this procedure, use the RBAC database migration integration tests.
+    """
     # This test case updates the default user passwords and omits the rest of the migration
     if to_id == WAZUH_WUI_USER_ID:
         with patch("wazuh.rbac.orm.db_manager.get_data", return_value=users):

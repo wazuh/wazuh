@@ -2,25 +2,35 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
-from unittest.mock import patch, MagicMock, AsyncMock, call
 import binascii
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
 import jwt
 import pytest
-
-from starlette.responses import Response
-
 from connexion import AsyncApp
+from connexion.exceptions import OAuthProblem, ProblemException
 from connexion.testing import TestContext
-from connexion.exceptions import ProblemException, OAuthProblem
-
 from freezegun import freeze_time
-
-from server_management_api.middlewares import check_rate_limit, check_blocked_ip, MAX_REQUESTS_EVENTS_DEFAULT, UNKNOWN_USER_STRING, \
-    LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
-    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
-from server_management_api.api_exception import ExpectFailedException
+from starlette.responses import Response
 from wazuh.core.authentication import JWT_ALGORITHM
+
+from server_management_api.api_exception import ExpectFailedException
+from server_management_api.middlewares import (
+    LOGIN_ENDPOINT,
+    MAX_REQUESTS_EVENTS_DEFAULT,
+    RUN_AS_LOGIN_ENDPOINT,
+    UNKNOWN_USER_STRING,
+    CheckBlockedIP,
+    CheckExpectHeaderMiddleware,
+    CheckRateLimitsMiddleware,
+    SecureHeadersMiddleware,
+    WazuhAccessLoggerMiddleware,
+    access_log,
+    check_blocked_ip,
+    check_rate_limit,
+    secure_headers,
+)
 
 
 @pytest.fixture
@@ -30,7 +40,7 @@ def request_info(request):
 
 @pytest.fixture
 def mock_req(request, request_info):
-    """fixture to wrap functions with request"""
+    """Fixture to wrap functions with request"""
     req = MagicMock()
     req.client.host = 'ip'
     if 'prevent_bruteforce_attack' in request.node.name:
@@ -46,7 +56,8 @@ def mock_req(request, request_info):
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 async def test_middlewares_check_blocked_ip(mock_req):
     """Test check_blocked_ip function.
-       Check if the ip_block is emptied when the blocking period has finished."""
+    Check if the ip_block is emptied when the blocking period has finished.
+    """
     with patch("server_management_api.middlewares.ip_stats", new={'ip': {'timestamp': -300}}) as mock_ip_stats, \
         patch("server_management_api.middlewares.ip_block", new={"ip"}) as mock_ip_block:
         check_blocked_ip(mock_req)
@@ -83,7 +94,6 @@ def test_middlewares_check_rate_limit(
     current_time, max_requests, current_time_key, current_counter_key,
     expected_error_code, mock_req):
     """Test if the rate limit mechanism triggers when the `max_requests` are reached."""
-
     with patch(f"server_management_api.middlewares.{current_time_key}", new=current_time):
         code = check_rate_limit(
             current_time_key=current_time_key,

@@ -281,7 +281,8 @@ def save_logs(test_name: str):
     """Save API, cluster and Wazuh logs from every cluster node and Wazuh logs from every agent if tests fail.
     Save haproxy-lb log.
 
-    Examples:
+    Examples
+    --------
     "test_{test_name}-{node/agent}-{log}" -> "test_agents-worker1-api.log"
     "test_{test_name}-{node/agent}-{log}" -> "test_agents-agent4-ossec.log"
 

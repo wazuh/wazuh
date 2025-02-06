@@ -5,21 +5,21 @@
 import asyncio
 import hashlib
 import json
-import jwt
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 
-from connexion.exceptions import Unauthorized
-
+import jwt
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
-from server_management_api.util import raise_if_exc
-from wazuh.core.authentication import get_keypair, JWT_ALGORITHM, JWT_ISSUER
+from connexion.exceptions import Unauthorized
+from wazuh.core.authentication import JWT_ALGORITHM, JWT_ISSUER, get_keypair
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
-from wazuh.core.config.client import CentralizedConfig
+
+from server_management_api.util import raise_if_exc
 
 INVALID_TOKEN = "Invalid token"
 EXPIRED_TOKEN = "Token expired"

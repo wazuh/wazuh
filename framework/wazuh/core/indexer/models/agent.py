@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import os
-from dataclasses import asdict, dataclass, InitVar
+from dataclasses import InitVar, asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from hmac import compare_digest

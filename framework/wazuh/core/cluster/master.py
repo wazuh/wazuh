@@ -12,12 +12,14 @@ from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from time import perf_counter
-from typing import Tuple, Dict, Callable
+from typing import Callable, Dict, Tuple
 from uuid import uuid4
 
-from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core import cluster as metadata
+from wazuh.core import common, exception, utils
 from wazuh.core.agent import Agent
-from wazuh.core.cluster import server, cluster, common as c_common
+from wazuh.core.cluster import cluster, server
+from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
@@ -27,8 +29,7 @@ DEFAULT_DATE: str = 'n/a'
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
-    """
-    Define the process and variables necessary to receive and process integrity information from the master.
+    """Define the process and variables necessary to receive and process integrity information from the master.
 
     This task is created by the master when the worker starts sending its integrity file metadata and it's destroyed
     by the master once the necessary files to update have been sent.
@@ -68,8 +69,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
-    """
-    Define the process and variables necessary to receive and process extra valid files from the worker.
+    """Define the process and variables necessary to receive and process extra valid files from the worker.
 
     This task is created when the worker starts sending extra valid files and its destroyed once the master has updated
     all the required information.
@@ -105,8 +105,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
 
 
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
-    """
-    Handle incoming requests and sync processes with a worker.
+    """Handle incoming requests and sync processes with a worker.
     """
 
     def __init__(self, **kwargs):
@@ -512,7 +511,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity check']
         date_start_master = utils.get_utc_now()
-        logger.info(f"Starting.")
+        logger.info("Starting.")
 
         await self.wait_for_file(file=received_file, task_id=task_id)
 
@@ -766,12 +765,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
 
 class Master(server.AbstractServer):
-    """
-    Create the server. Handle multiple clients, DAPI and Send Sync requests.
+    """Create the server. Handle multiple clients, DAPI and Send Sync requests.
     """
 
     def __init__(self, **kwargs):
         """Class constructor.
+
         Parameters
         ----------
         kwargs

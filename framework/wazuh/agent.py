@@ -6,7 +6,6 @@ from os import chmod, chown, path
 from typing import Optional, Union
 
 from server_management_api.models.agent_registration_model import Host
-
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
     Agent,
@@ -16,18 +15,14 @@ from wazuh.core.agent import (
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.agent import DEFAULT_GROUP
+from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.commands import create_restart_command, create_set_group_command
 from wazuh.core.indexer.models.agent import Host as IndexerAgentHost
 from wazuh.core.indexer.models.commands import ResponseResult
-from wazuh.core.indexer.commands import create_restart_command, create_set_group_command
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.utils import (
-    get_hash,
-    process_array,
-    get_group_file_path
-)
+from wazuh.core.utils import get_group_file_path, get_hash, process_array
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 

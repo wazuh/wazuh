@@ -7,8 +7,8 @@
 from time import strftime
 
 from wazuh.core import common
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
 Wazuh HIDS Python package
@@ -29,21 +29,18 @@ try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
         raise WazuhInternalError(999, msg)
-except Exception as e:
+except Exception:
     raise WazuhInternalError(999, msg)
 
 
 class Wazuh:
-    """
-    Basic class to set up OSSEC directories
+    """Basic class to set up OSSEC directories
     """
 
     def __init__(self):
-        """
-        Initialize basic information and directories.
+        """Initialize basic information and directories.
         :return:
         """
-
         self.version = f'v{__version__}'
         self.type = 'server'
         self.path = common.WAZUH_SHARE
@@ -73,8 +70,7 @@ class Wazuh:
                 }
 
     def _initialize(self):
-        """
-        Calculates all Wazuh installation metadata
+        """Calculates all Wazuh installation metadata
         """
         # info DB if possible
         try:

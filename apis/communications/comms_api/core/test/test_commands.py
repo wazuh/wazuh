@@ -1,10 +1,10 @@
-from unittest.mock import call, patch, AsyncMock
 from multiprocessing import Event
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
+from wazuh.core.indexer.models.commands import Command, Status, Target, TargetType
 
 from comms_api.core.commands import CommandsManager, pull_commands
-from wazuh.core.indexer.models.commands import Command, Status, Target, TargetType
 
 DOCUMENT_ID = 'UB2jVpEBYSr9jxqDgXAD'
 AGENT_ID = '01915801-4b34-7131-9d88-ff06ff05aefd'

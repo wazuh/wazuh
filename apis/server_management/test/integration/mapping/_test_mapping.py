@@ -9,7 +9,7 @@ import re
 import sys
 from collections import defaultdict
 from copy import copy
-from os import path, chdir, walk
+from os import chdir, path, walk
 
 base = path.dirname(path.dirname(path.dirname(path.dirname(path.dirname(path.abspath(__file__))))))
 framework = path.join(base, 'framework', 'wazuh')

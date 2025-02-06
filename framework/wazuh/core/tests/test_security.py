@@ -6,7 +6,6 @@ from contextvars import ContextVar
 from unittest.mock import patch
 
 import pytest
-
 from wazuh.tests.test_security import db_setup  # noqa
 
 

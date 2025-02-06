@@ -2,21 +2,20 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from asyncio import Transport
 from asyncio import AbstractServer as AsyncioAbstractServer
+from asyncio import Transport
 from contextvars import ContextVar
 from logging import Logger
-from unittest.mock import call, patch, ANY, Mock, AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call, patch
 
 import pytest
 from freezegun import freeze_time
 from uvloop import EventLoopPolicy
 
-
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        from wazuh.core.cluster.server import *
         from wazuh.core.cluster import common as c_common
+        from wazuh.core.cluster.server import *
         from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhResourceNotFound
 
 asyncio.set_event_loop_policy(EventLoopPolicy())
@@ -102,7 +101,6 @@ async def test_AbstractServerHandler_process_request(mock_process_request, mock_
 @freeze_time("1970-01-01")
 async def test_AbstractServerHandler_echo_master(event_loop):
     """Check that the echo_master function updates the last_keepalive variable and returns a confirmation message."""
-
     abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                     cluster_items={"test": "server"})
 
@@ -140,7 +138,7 @@ def test_AbstractServerHandler_hello(event_loop):
         abstract_server_handler.hello(b"elif_test")
 
     abstract_server_handler.server.clients["if_test"] = "testing"
-    with pytest.raises(WazuhClusterError, match=f".* 3028 .* if_test"):
+    with pytest.raises(WazuhClusterError, match=".* 3028 .* if_test"):
         abstract_server_handler.hello(b"if_test")
     assert abstract_server_handler.name == ""
 
@@ -385,7 +383,8 @@ def test_AbstractServer_setup_task_logger():
 @patch("asyncio.get_running_loop", new=Mock())
 def test_AbstractServer_get_connected_nodes(mock_process_array):
     """Check that all the necessary data is sent to the utils.process_array
-    function to return all the information of the connected nodes."""
+    function to return all the information of the connected nodes.
+    """
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
                                      cluster_items={"test4": 4})
     basic_dict = {"info": {"first": "test"}}
@@ -432,7 +431,8 @@ def test_AbstractServer_get_connected_nodes_ko(mock_process_array):
 @patch("asyncio.get_running_loop", new=Mock())
 async def test_AbstractServer_check_clients_keepalive(sleep_mock):
     """Check that the function check_clients_keepalive checks the date of the
-    last last_keepalive of the clients to verify if they are connected or not."""
+    last last_keepalive of the clients to verify if they are connected or not.
+    """
 
     class TransportMock:
         def close(self):
@@ -476,7 +476,8 @@ async def test_AbstractServer_check_clients_keepalive(sleep_mock):
 @patch('wazuh.core.cluster.server.perf_counter', return_value=0)
 async def test_AbstractServer_performance_test(perf_counter_mock, sleep_mock):
     """Check that the function performance_test sends a big message to all clients
-     and then get the time it took to send them."""
+    and then get the time it took to send them.
+    """
 
     class ClientMock:
         async def send_request(self, command, data):
@@ -502,7 +503,8 @@ async def test_AbstractServer_performance_test(perf_counter_mock, sleep_mock):
 @patch('wazuh.core.cluster.server.perf_counter', return_value=0)
 async def test_AbstractServer_concurrency_test(perf_counter_mock, sleep_mock):
     """Check that the function concurrency_test sends messages to all clients
-     and then get the time it took to send them."""
+    and then get the time it took to send them.
+    """
 
     class ClientMock:
         async def send_request(self, command, data):
@@ -526,7 +528,8 @@ async def test_AbstractServer_concurrency_test(perf_counter_mock, sleep_mock):
 @patch('wazuh.core.cluster.server.AbstractServer.check_clients_keepalive')
 async def test_AbstractServer_start(keepalive_mock, mock_path_join):
     """Check that the start function starts infinite asynchronous tasks according
-    to the parameters with which the AbstractServer object has been created."""
+    to the parameters with which the AbstractServer object has been created.
+    """
 
     class SSLMock:
         def load_cert_chain(self):

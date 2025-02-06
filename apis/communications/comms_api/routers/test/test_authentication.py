@@ -4,13 +4,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi import status
 from freezegun import freeze_time
+from wazuh.core.exception import WazuhIndexerError, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.indexer.models.agent import Agent, Status
+from wazuh.core.utils import get_utc_now
 
 from comms_api.models.authentication import Credentials, TokenResponse
 from comms_api.routers.authentication import authentication
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.exception import WazuhInternalError, WazuhIndexerError, WazuhResourceNotFound
-from wazuh.core.indexer.models.agent import Agent, Status
-from wazuh.core.utils import get_utc_now
 
 
 @pytest.mark.asyncio

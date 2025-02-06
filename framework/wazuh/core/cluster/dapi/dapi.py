@@ -13,22 +13,22 @@ import time
 from collections import defaultdict
 from concurrent.futures import process
 from copy import copy, deepcopy
-from functools import reduce, partial
+from functools import partial, reduce
 from operator import or_
-from typing import Callable, Dict, Tuple, List
-
-from sqlalchemy.exc import OperationalError
+from typing import Callable, Dict, List, Tuple
 
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
 import wazuh.core.results as wresults
+from sqlalchemy.exc import OperationalError
 from wazuh import agent
 from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
-from wazuh.core.cluster import local_client, common as c_common
-from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
+from wazuh.core.cluster import common as c_common
+from wazuh.core.cluster import local_client
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhException
 
 pools = common.mp_pools.get()
 
@@ -124,8 +124,7 @@ class DistributedAPI:
             self.logger.debug(message)
 
     async def distribute_function(self) -> [Dict, exception.WazuhException]:
-        """
-        Distribute an API call.
+        """Distribute an API call.
 
         Returns
         -------
@@ -196,8 +195,7 @@ class DistributedAPI:
                                                 dapi_errors=await self.get_error_info(e))
 
     def check_wazuh_status(self):
-        """
-        There are some services that are required for wazuh to correctly process API requests. If any of those services
+        """There are some services that are required for wazuh to correctly process API requests. If any of those services
         is not running, the API must raise an exception indicating that:
             * It's not ready yet to process requests if services are restarting
             * There's an error in any of those services that must be addressed before using the API if any service is
@@ -315,8 +313,7 @@ class DistributedAPI:
                               cls=c_common.WazuhJSONEncoder)
 
     def get_client(self) -> c_common.Handler:
-        """
-        Create another LocalClient if necessary and stores it to be closed later.
+        """Create another LocalClient if necessary and stores it to be closed later.
 
         :return: client. Maybe an instance of LocalClient, WorkerHandler or MasterHandler
         """
@@ -648,8 +645,7 @@ class WazuhRequestQueue:
 
 
 class APIRequestQueue(WazuhRequestQueue):
-    """
-    Represents a queue of API requests. This thread will be always in background, it will remain blocked until a
+    """Represents a queue of API requests. This thread will be always in background, it will remain blocked until a
     request is pushed into its request_queue. Then, it will answer the request and get blocked again.
     """
 

@@ -1,7 +1,6 @@
 from unittest import mock
 
 import pytest
-
 from wazuh.core.engine.events import EventsModule
 from wazuh.core.exception import WazuhError
 

@@ -5,9 +5,9 @@ from typing import Dict, List, Optional
 
 from fastapi import status
 from uuid6 import UUID
+from wazuh.core.indexer.models.commands import Command
 
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.indexer.models.commands import Command
 
 
 class CommandsManager():

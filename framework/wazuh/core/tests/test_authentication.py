@@ -1,4 +1,4 @@
-from unittest.mock import patch, call, MagicMock
+from unittest.mock import MagicMock, call, patch
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):

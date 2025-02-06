@@ -1,24 +1,30 @@
 from dataclasses import asdict
 from unittest import mock
 
+import pytest
 from opensearchpy import exceptions
 from opensearchpy.helpers.response import Hit
-import pytest
-
 from wazuh.core.exception import WazuhError
+from wazuh.core.indexer.base import POST_METHOD, IndexerKey
 from wazuh.core.indexer.commands import (
-    CommandsManager,
-    create_restart_command,
     COMMAND_KEY,
     COMMAND_USER_NAME,
+    CommandsManager,
+    create_fetch_config_command,
+    create_restart_command,
     create_set_group_command,
-    create_fetch_config_command
 )
-from wazuh.core.indexer.base import POST_METHOD, IndexerKey
-from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.indexer.models.commands import (
-    Action, Command, Source, Status, Target, TargetType, CreateCommandResponse, ResponseResult
+    Action,
+    Command,
+    CreateCommandResponse,
+    ResponseResult,
+    Source,
+    Status,
+    Target,
+    TargetType,
 )
+from wazuh.core.indexer.utils import convert_enums
 
 
 class TestCommandsManager:

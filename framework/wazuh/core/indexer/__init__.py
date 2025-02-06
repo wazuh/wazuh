@@ -6,13 +6,13 @@ from logging import getLogger
 from typing import AsyncIterator, List
 
 from opensearchpy import AsyncOpenSearch
-from opensearchpy.exceptions import TransportError, ImproperlyConfigured
+from opensearchpy.exceptions import ImproperlyConfigured, TransportError
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.indexer.commands import CommandsManager
-from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 logger = getLogger('wazuh')
 

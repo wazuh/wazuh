@@ -186,7 +186,6 @@ def send_msg(msg: any) -> None:
     url: str
         URL of the API.
     """
-
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     url = 'https://events.pagerduty.com/v2/enqueue'
     res = requests.post(url, data=msg, headers=headers, timeout=10)

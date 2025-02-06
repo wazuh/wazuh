@@ -8,15 +8,43 @@ from pathlib import Path
 
 import jsonschema as js
 import pytest
-
-from server_management_api.validator import (check_exp, _alphanumeric_param, _array_numbers, _array_names, _boolean, _dates,
-                           _empty_boolean, _hashes, _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges,
-                           _search_param, _sort_param, _timeframe_type, _type_format, _yes_no_boolean,
-                           allowed_fields, is_safe_path, _wazuh_version,
-                           _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
-                           _iso8601_date_time, _numbers_or_all,
-                           check_component_configuration_pair, _active_response_command, _wpk_path)
 from wazuh import WazuhError
+
+from server_management_api.validator import (
+    _active_response_command,
+    _alphanumeric_param,
+    _array_names,
+    _array_numbers,
+    _base64,
+    _boolean,
+    _dates,
+    _empty_boolean,
+    _group_names,
+    _group_names_or_all,
+    _hashes,
+    _ips,
+    _iso8601_date,
+    _iso8601_date_time,
+    _names,
+    _numbers,
+    _numbers_or_all,
+    _paths,
+    _query_param,
+    _ranges,
+    _search_param,
+    _sort_param,
+    _symbols_alphanumeric_param,
+    _timeframe_type,
+    _type_format,
+    _wazuh_key,
+    _wazuh_version,
+    _wpk_path,
+    _yes_no_boolean,
+    allowed_fields,
+    check_component_configuration_pair,
+    check_exp,
+    is_safe_path,
+)
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -248,7 +276,8 @@ def test_validation_json_ko(value, format):
 ])
 def test_check_component_configuration_pair(component, configuration, expected_response):
     """Verify that `check_component_configuration_pair` function returns an exception when the configuration does
-    not belong to a Wazuh component."""
+    not belong to a Wazuh component.
+    """
     response = check_component_configuration_pair(component, configuration)
     if isinstance(response, Exception):
         assert isinstance(response, expected_response.__class__)

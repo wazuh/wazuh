@@ -1,4 +1,5 @@
 import sys
+
 from framework.wazuh.core.batcher.buffer import Buffer, Packet
 from framework.wazuh.core.batcher.mux_demux import Item
 

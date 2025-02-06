@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from connexion.lifecycle import ConnexionResponse
@@ -14,7 +14,7 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from wazuh import agent, stats
+        from wazuh import agent
         from wazuh.core.common import DATABASE_LIMIT
         from wazuh.tests.util import RBAC_bypasser
 

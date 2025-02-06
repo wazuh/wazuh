@@ -8,7 +8,6 @@ import socket
 from json import dumps, loads
 from struct import pack, unpack
 
-from wazuh import common
 from wazuh.core.exception import WazuhException, WazuhInternalError
 
 SOCKET_COMMUNICATION_PROTOCOL_VERSION = 1
@@ -195,7 +194,8 @@ class WazuhAsyncSocket:
 
 class WazuhAsyncSocketJSON(WazuhAsyncSocket):
     """Handler class to connect and operate asynchronously with a socket using
-    messages in JSON format."""
+    messages in JSON format.
+    """
 
     async def send(self, msg_bytes: str, header_format: str = "<I") -> bytes:
         """Convert the message from JSON format to bytes and send it to the socket.

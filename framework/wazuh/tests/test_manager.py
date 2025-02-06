@@ -8,7 +8,7 @@ import operator
 import os
 import socket
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -23,10 +23,10 @@ with patch('wazuh.core.common.wazuh_uid'):
             del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-            from wazuh.manager import *
+            from wazuh import WazuhInternalError
             from wazuh.core.manager import LoggingFormat
             from wazuh.core.tests.test_manager import get_logs
-            from wazuh import WazuhInternalError
+            from wazuh.manager import *
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -199,7 +199,6 @@ def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
 @patch('os.path.exists', return_value=False)
 def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
     """Tests restarting a manager exceptions"""
-
     # Socket path not exists
     with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
         restart()
@@ -330,7 +329,8 @@ def test_update_ossec_conf(move_mock, remove_mock, exists_mock, full_copy_mock, 
 def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, full_copy_mock, prettify_mock, write_mock,
                               validate_mock, new_conf):
     """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
-    is not valid."""
+    is not valid.
+    """
     result = update_ossec_conf(new_conf=new_conf)
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1125

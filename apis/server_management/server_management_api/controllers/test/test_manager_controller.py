@@ -7,18 +7,19 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from connexion.lifecycle import ConnexionResponse
+
 from server_management_api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from server_management_api.controllers.test.utils import CustomAffectedItems
-
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from server_management_api.controllers.manager_controller import check_available_version
         from wazuh import manager
         from wazuh.core.manager import query_update_check_service
         from wazuh.tests.util import RBAC_bypasser
+
+        from server_management_api.controllers.manager_controller import check_available_version
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']

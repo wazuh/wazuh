@@ -7,8 +7,8 @@
 
 from __future__ import absolute_import
 
-from server_management_api.models.base_model_ import Model
 from server_management_api import util
+from server_management_api.models.base_model_ import Model
 
 
 class BasicInfo(Model):
@@ -110,7 +110,7 @@ class BasicInfo(Model):
 
         :param api_version: The api_version of this BasicInfo.
         :type api_version: str
-            """
+        """
         self._api_version = api_version
 
     @property
@@ -128,7 +128,7 @@ class BasicInfo(Model):
 
         :param revision: The revision of this BasicInfo.
         :type revision: int
-            """
+        """
         self._revision = revision
 
     @property
@@ -146,7 +146,7 @@ class BasicInfo(Model):
 
         :param license_name: The license_name of this BasicInfo.
         :type license_name: str
-            """
+        """
         self._license_name = license_name
 
     @property
@@ -164,7 +164,7 @@ class BasicInfo(Model):
 
         :param license_url: The license_url of this BasicInfo.
         :type license_url: str
-            """
+        """
         self._license_url = license_url
 
     @property
@@ -182,7 +182,7 @@ class BasicInfo(Model):
 
         :param hostname: The hostname of this BasicInfo.
         :type hostname: str
-            """
+        """
         self._hostname = hostname
 
     @property
@@ -200,5 +200,5 @@ class BasicInfo(Model):
 
         :param timestamp: The timestamp of this BasicInfo.
         :type timestamp: str
-            """
+        """
         self._timestamp = timestamp

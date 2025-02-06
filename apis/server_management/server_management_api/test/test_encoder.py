@@ -9,9 +9,10 @@ import pytest
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        from server_management_api.encoder import prettify, dumps
-        from wazuh.core.results import WazuhResult
         from wazuh.core.indexer.agent import Agent
+        from wazuh.core.results import WazuhResult
+
+        from server_management_api.encoder import dumps, prettify
 
 
 def custom_hook(dct):

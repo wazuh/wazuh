@@ -147,7 +147,6 @@ def context_cached(key: str = '') -> Any:
 
 def reset_context_cache() -> None:
     """Reset context cache."""
-
     for context_var in _context_cache.values():
         context_var.set(None)
 
@@ -160,7 +159,6 @@ def get_context_cache() -> dict:
     dict
         Dictionary with the context variables representing the cache.
     """
-
     return _context_cache
 
 

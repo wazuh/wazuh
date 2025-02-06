@@ -1,11 +1,16 @@
+from unittest.mock import mock_open, patch
+
 import pytest
-from unittest.mock import patch, mock_open
-
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.central_config import (Config, CommsAPIConfig, ManagementAPIConfig,
-                                                     IndexerConfig, EngineConfig, ConfigSections)
+from wazuh.core.config.models.central_config import (
+    CommsAPIConfig,
+    Config,
+    ConfigSections,
+    EngineConfig,
+    IndexerConfig,
+    ManagementAPIConfig,
+)
 from wazuh.core.config.models.server import DEFAULT_SERVER_INTERNAL_CONFIG, ServerConfig
-
 
 mock_config_data = {
     "server": {

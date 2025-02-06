@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
 import socket
+from unittest.mock import patch
 
 import pytest
 from wazuh.core.exception import WazuhException
@@ -13,7 +13,6 @@ from wazuh.core.wazuh_queue import BaseQueue, WazuhAnalysisdQueue, WazuhQueue
 @patch('wazuh.core.wazuh_queue.BaseQueue._connect')
 def test_BaseQueue__init__(mock_conn):
     """Test BaseQueue.__init__ function."""
-
     BaseQueue('test_path')
 
     mock_conn.assert_called_once_with()
@@ -41,7 +40,6 @@ def test_BaseQueue__exit__(mock_connect, mock_close):
 @patch('wazuh.core.wazuh_queue.socket.socket.setsockopt')
 def test_BaseQueue_protected_connect(mock_set, mock_conn):
     """Test BaseQueue._connect function."""
-
     BaseQueue('test_path')
 
     with patch('wazuh.core.wazuh_queue.socket.socket.getsockopt', return_value=1):
@@ -54,7 +52,6 @@ def test_BaseQueue_protected_connect(mock_set, mock_conn):
 @patch('wazuh.core.wazuh_queue.socket.socket.connect', side_effect=Exception)
 def test_BaseQueue_protected_connect_ko(mock_conn):
     """Test BaseQueue._connect function exceptions."""
-
     with pytest.raises(WazuhException, match=".* 1010 .*"):
         BaseQueue('test_path')
 
@@ -75,7 +72,6 @@ def test_BaseQueue_protected_send(mock_conn, send_response, error):
     error : bool
         Indicates whether a WazuhException will be raised or not.
     """
-
     queue = BaseQueue('test_path')
 
     with patch('socket.socket.send', return_value=send_response):
@@ -112,7 +108,6 @@ def test_BaseQueue_protected_send_ko(mock_send, mock_conn, errno, match):
 @patch('wazuh.core.wazuh_queue.socket.socket.close')
 def test_BaseQueue_close(mock_close, mock_conn):
     """Test BaseQueue.close function."""
-
     with BaseQueue('test_path'):
         pass
 
@@ -145,7 +140,6 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
     msg_type : str
         String indicating the message type.
     """
-
     queue = WazuhQueue('test_path')
 
     response = queue.send_msg_to_agent(msg, agent_id, msg_type)
@@ -174,7 +168,6 @@ def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, ms
     expected_exception : int
         Expected Wazuh exception.
     """
-
     queue = WazuhQueue('test_path')
 
     with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
@@ -187,7 +180,6 @@ def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, ms
 @patch('wazuh.core.wazuh_queue.WazuhAnalysisdQueue._send')
 def test_WazuhAnalysisdQueue_send_msg(mock_send, mock_conn):
     """Test WazuhAnalysisdQueue.send_msg function."""
-
     queue = WazuhAnalysisdQueue('test_path')
 
     msg_header = '1:Head:'
@@ -207,7 +199,6 @@ def test_WazuhAnalysisdQueue_send_msg(mock_send, mock_conn):
 @patch('wazuh.core.wazuh_queue.WazuhAnalysisdQueue._send', side_effect=Exception)
 def test_WazuhAnalysisdQueue_send_msg_ko(mock_send, mock_conn, max_msg_size, expected_error_code):
     """Test WazuhAnalysisdQueue.send_msg function exceptions."""
-
     queue = WazuhAnalysisdQueue('test_path')
     queue.MAX_MSG_SIZE = max_msg_size
 

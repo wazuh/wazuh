@@ -25,6 +25,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             del sys.modules['wazuh.rbac.orm']
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
+        from server_management_api.util import remove_nones_to_dict
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.agent import (
             add_agent,
@@ -32,10 +33,10 @@ with patch('wazuh.core.common.wazuh_uid'):
             create_group,
             delete_agents,
             delete_groups,
-            get_group_conf,
             get_agent_groups,
             get_agents,
             get_agents_in_group,
+            get_group_conf,
             reconnect_agents,
             remove_agents_from_group,
             restart_agents,
@@ -50,8 +51,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
         from wazuh.core.tests.test_agent import InitAgent
         from wazuh.core.utils import GROUP_FILE_EXT
-
-        from server_management_api.util import remove_nones_to_dict
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -306,7 +305,7 @@ async def test_agent_add_agent(
     type,
     version,
 ):
-    """Test `add_agent` from agent module. """
+    """Test `add_agent` from agent module."""
     new_agent = IndexerAgent(
         id=id,
         name=name,

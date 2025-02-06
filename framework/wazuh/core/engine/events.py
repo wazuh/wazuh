@@ -1,6 +1,6 @@
-from httpx import RequestError
 from typing import AsyncGenerator
 
+from httpx import RequestError
 from wazuh.core.engine.base import APPLICATION_JSON, APPLICATION_NDJSON, BaseModule
 from wazuh.core.engine.models.base import ErrorResponse
 from wazuh.core.exception import WazuhEngineError, WazuhError

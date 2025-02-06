@@ -7,7 +7,6 @@ import hashlib
 import json
 import operator
 import os
-import psutil
 import re
 import stat
 import sys
@@ -15,16 +14,15 @@ import typing
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from itertools import groupby, chain
-from os import chmod, chown, listdir, mkdir, curdir, rename, utime, path
+from itertools import chain, groupby
+from os import chmod, chown, curdir, listdir, mkdir, path, rename, utime
 from pathlib import Path
-from shutil import move, copy2
-from signal import signal, alarm, SIGALRM, SIGKILL
+from shutil import copy2, move
+from signal import SIGALRM, SIGKILL, alarm, signal
 
+import psutil
 import yaml
-from cachetools import cached, TTLCache
-
-import server_management_api.configuration
+from cachetools import TTLCache, cached
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -115,7 +113,6 @@ def find_nth(string: str, substring: str, n: int) -> int:
     int
         Index of the n'th occurrence of a substring within a string.
     """
-
     start = string.find(substring)
     while start >= 0 and n > 1:
         start = string.find(substring, start + len(substring))
@@ -136,7 +133,6 @@ def previous_month(n: int = 1) -> datetime.date:
     datetime.date
         First date of the previous n month.
     """
-
     date = get_utc_now().replace(day=1)  # First day of current month
 
     for i in range(0, int(n)):
@@ -261,7 +257,6 @@ def cut_array(array: list, offset: int = 0, limit: int = common.DATABASE_LIMIT) 
     list
         Cut array.
     """
-
     if limit is not None:
         if limit > common.MAXIMUM_DATABASE_LIMIT:
             raise WazuhError(1405, extra_message=str(limit))
@@ -423,7 +418,6 @@ def search_array(array, search_text: str = None, complementary_search: bool = Fa
     list
         Filtered array.
     """
-
     found = []
 
     for item in array:
@@ -627,7 +621,6 @@ def chmod_r(file_path: str, mode: int):
     mode: int
         File mode in octal.
     """
-
     if path.isdir(file_path):
         for item in listdir(file_path):
             item_path = path.join(file_path, item)
@@ -793,8 +786,7 @@ def get_fields_to_nest(fields, force_fields=[], split_character="_"):
 
 
 def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[], split_character='_'):
-    """
-    Turns an input dictionary with "nested" fields in form
+    """Turns an input dictionary with "nested" fields in form
                 field_subfield
     into a real nested dictionary in form
                 field {subfield}
@@ -1202,8 +1194,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
 
 class AbstractDatabaseBackend:
-    """
-    This class describes an abstract database backend that executes database queries.
+    """This class describes an abstract database backend that executes database queries.
     """
 
     def __init__(self):
@@ -1217,8 +1208,7 @@ class AbstractDatabaseBackend:
 
 
 class WazuhDBBackend(AbstractDatabaseBackend):
-    """
-    This class describes a wazuh db backend that executes database queries.
+    """This class describes a wazuh db backend that executes database queries.
     """
 
     def __init__(self, agent_id=None, query_format='agent', request_slice=500):
@@ -1239,8 +1229,7 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         self.conn.close()
 
     def _substitute_params(self, query, request):
-        """
-        Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
+        """Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
         parameters by itself.
         """
         for k, v in request.items():

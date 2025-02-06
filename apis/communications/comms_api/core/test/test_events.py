@@ -1,20 +1,36 @@
 import json
-import pytest
-from unittest.mock import call, patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
+import pytest
 from fastapi import FastAPI, Request
 from starlette.requests import ClientDisconnect
-
-from comms_api.core.events import send_stateful_events, send_stateless_events, send_events, parse_stateful_events, \
-    parse_tasks_results
-from comms_api.models.events import StatefulEvents
 from wazuh.core.batcher.client import BatcherClient
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.bulk import Operation
-from wazuh.core.indexer.models.agent import Host, OS
-from wazuh.core.indexer.models.events import Agent, AgentMetadata, Header, Module, TaskResult, SCA_INDEX, FIM_INDEX, \
-    VULNERABILITY_INDEX, INVENTORY_PORTS_INDEX, INVENTORY_PROCESSES_INDEX, INVENTORY_NETWORKS_INDEX
 from wazuh.core.indexer.commands import CommandsManager
+from wazuh.core.indexer.models.agent import OS, Host
+from wazuh.core.indexer.models.events import (
+    FIM_INDEX,
+    INVENTORY_NETWORKS_INDEX,
+    INVENTORY_PORTS_INDEX,
+    INVENTORY_PROCESSES_INDEX,
+    SCA_INDEX,
+    VULNERABILITY_INDEX,
+    Agent,
+    AgentMetadata,
+    Header,
+    Module,
+    TaskResult,
+)
+
+from comms_api.core.events import (
+    parse_stateful_events,
+    parse_tasks_results,
+    send_events,
+    send_stateful_events,
+    send_stateless_events,
+)
+from comms_api.models.events import StatefulEvents
 
 
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)

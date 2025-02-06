@@ -4,16 +4,16 @@
 
 import logging
 
-from connexion.lifecycle import ConnexionResponse
-
 import wazuh.manager as manager
-from server_management_api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
-from server_management_api.controllers.util import json_response
-from server_management_api.util import only_master_endpoint, raise_if_exc
-from server_management_api.signals import cti_context
+from connexion.lifecycle import ConnexionResponse
 from wazuh.core import configuration
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.manager import query_update_check_service
+
+from server_management_api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
+from server_management_api.controllers.util import json_response
+from server_management_api.signals import cti_context
+from server_management_api.util import only_master_endpoint, raise_if_exc
 
 logger = logging.getLogger('wazuh-api')
 

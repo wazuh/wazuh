@@ -8,27 +8,27 @@ from wazuh.core.cluster.utils import (
     AGENT_CHUNK_SIZE,
     AGENT_RECONNECTION_STABILITY_TIME,
     AGENT_RECONNECTION_TIME,
+    CLIENT_CERT,
+    CLIENT_CERT_KEY,
+    CLIENT_CERT_PASSWORD,
     EXCLUDED_NODES,
     FREQUENCY,
     HAPROXY_ADDRESS,
     HAPROXY_BACKEND,
+    HAPROXY_CERT,
     HAPROXY_PASSWORD,
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
     HAPROXY_RESOLVER,
     HAPROXY_USER,
-    HAPROXY_CERT,
-    CLIENT_CERT,
-    CLIENT_CERT_KEY,
-    CLIENT_CERT_PASSWORD,
     HELPER_DEFAULTS,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
     ClusterFilter,
     context_tag,
 )
-from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
 CONNECTION_PORT = 1514
 
@@ -78,7 +78,6 @@ class HAPHelper:
         logging.Logger
             The configured logger.
         """
-
         logger = logging.getLogger('wazuh').getChild('HAPHelper')
         logger.addFilter(ClusterFilter(tag=tag, subtag='Main'))
 
@@ -370,7 +369,6 @@ class HAPHelper:
 
     async def manage_wazuh_cluster_nodes(self):
         """Main loop for check balance of Wazuh cluster."""
-
         while True:
             context_tag.set(self.tag)
             try:
@@ -434,7 +432,6 @@ class HAPHelper:
         reconnect_agents : bool, optional
             Reconnect agents after set the hard-stop-after, by default True.
         """
-
         if wait_connection_retry:
             connection_retry = self.get_connection_retry()
             self.logger.debug(f'Waiting {connection_retry}s for workers connections...')

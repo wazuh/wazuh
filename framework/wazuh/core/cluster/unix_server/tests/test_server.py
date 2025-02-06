@@ -1,10 +1,8 @@
-import pytest
 from unittest.mock import call, patch
 
 import uvicorn
-
-from wazuh.core.cluster.unix_server.server import start_unix_server, get_log_config, common
 from wazuh.core.cluster.unix_server.config import get_config
+from wazuh.core.cluster.unix_server.server import common, get_log_config, start_unix_server
 
 
 def test_get_log_config():

@@ -13,14 +13,12 @@ import ssl
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, mock_open, call, ANY, AsyncMock
+from unittest.mock import ANY, AsyncMock, MagicMock, call, mock_open, patch
 
 import pytest
 from uvloop import EventLoopPolicy, new_event_loop
-
 from wazuh import Wazuh
 from wazuh.core import exception
-from wazuh.core.engine.base import APPLICATION_JSON
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -70,7 +68,6 @@ async def test_response_init():
 @pytest.mark.asyncio
 async def test_response_read():
     """Test for the 'read' method that belongs to the Response class. This method waits until a response is received."""
-
     with patch('asyncio.Event.wait') as wait_mock:
         response = cluster_common.Response()
         response.content = 'Testing'
@@ -81,8 +78,8 @@ async def test_response_read():
 @pytest.mark.asyncio
 async def test_response_write():
     """Test for the 'write' method that belongs to the Response class. It sets the content of a response and its
-    availability."""
-
+    availability.
+    """
     with patch('asyncio.Event.wait') as wait_mock:
         with patch('asyncio.Event.set') as set_mock:
             response = cluster_common.Response()
@@ -98,7 +95,6 @@ async def test_response_write():
 
 def test_inbuffer_init():
     """Test the method '__init__' that belongs to InBuffer class."""
-
     assert in_buffer.counter == 0
     assert in_buffer.total == 0
     assert in_buffer.cmd == ""
@@ -109,7 +105,6 @@ def test_inbuffer_init():
 @patch('struct.unpack')
 def test_inbuffer_get_info_from_header(unpack_mock):
     """Test if the information contained in a request's header is properly extracted."""
-
     unpack_mock.return_value = (0, 2048, b'pwd')
 
     assert isinstance(in_buffer.get_info_from_header(b"header", "hhl", 1), bytes)
@@ -132,7 +127,6 @@ def test_inbuffer_get_info_from_header(unpack_mock):
 
 def test_inbuffer_receive_data():
     """Test if the data is being correctly added to the payload bytearray."""
-
     in_buffer.total = 2048
     in_buffer.received = 1024
 
@@ -204,7 +198,6 @@ def test_rft_str_method(set_up_coro_mock, create_task_mock, logger_mock, event_m
 @patch('wazuh.core.cluster.common.WazuhCommon')
 def test_rft_set_up_coro(wazuh_common_mock, logger_mock):
     """Test if the exception is being properly raised when an Exception takes place."""
-
     with pytest.raises(NotImplementedError):
         cluster_common.ReceiveFileTask(wazuh_common_mock, logger_mock, b"task")
 
@@ -466,7 +459,7 @@ async def test_handler_send_string():
         with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
             assert exception.WazuhClusterError(3020).message.encode() in await handler.send_string(b"something")
             logger_mock.assert_called_once_with(
-                f'There was an error while trying to send a string: Error 3020 - Timeout sending request',
+                'There was an error while trying to send a string: Error 3020 - Timeout sending request',
                 exc_info=False)
 
 
@@ -784,7 +777,6 @@ def test_handler_process_unknown_cmd():
 
 def test_handler_process_dapi_error():
     """Test if 'dapi_err' command is properly handled in 'process_dapi_error'."""
-
     handler = cluster_common.Handler(cluster_items)
 
     class ClientsMock:
@@ -874,11 +866,12 @@ def test_handler_setup_task_logger():
 async def test_handler_wait_for_file():
     """Check if wait_for is called with expected parameters.
 
-       The implementation is complex because asyncio.wait_for is patched.
-       Handler.wait_for_file and and unlocking coroutine are run using asyncio.gather
-       The unlocking coroutine waits 0.5 seconds, while the timeout is set to 10 seconds
-       The test must not raise any exception.
-       '"""
+    The implementation is complex because asyncio.wait_for is patched.
+    Handler.wait_for_file and and unlocking coroutine are run using asyncio.gather
+    The unlocking coroutine waits 0.5 seconds, while the timeout is set to 10 seconds
+    The test must not raise any exception.
+    '
+    """
 
     async def unlock_file(event: asyncio.Event):
         await asyncio.sleep(0.5)
@@ -893,8 +886,9 @@ async def test_handler_wait_for_file():
 @patch('wazuh.core.cluster.common.Handler.send_request')
 async def test_handler_wait_for_file_ko(send_request_mock):
     """Check if expected exception is raised.
-        Condition 1: when event.wait() exceeds the timeout, WazuhClusterError 3039 is raised
-        Condition 2: when any other exception occurs, WazuhClusterError 3040  is raised"""
+    Condition 1: when event.wait() exceeds the timeout, WazuhClusterError 3039 is raised
+    Condition 2: when any other exception occurs, WazuhClusterError 3040  is raised
+    """
 
     async def delay():
         await asyncio.sleep(0.5)
@@ -918,13 +912,11 @@ async def test_handler_wait_for_file_ko(send_request_mock):
 
 def test_wazuh_common_init():
     """Test the '__init__' method correct functioning."""
-
     wazuh_common_test = cluster_common.WazuhCommon()
     assert wazuh_common_test.sync_tasks == {}
 
 def test_wazuh_common_get_logger():
     """Check if a Logger object is properly returned."""
-
     with pytest.raises(NotImplementedError):
         wazuh_common.get_logger()
 
@@ -952,7 +944,6 @@ def test_wazuh_common_setup_receive_file():
 @patch('logging.Logger')
 def test_wazuh_common_end_receiving_file_ok(logger_mock, wazuh_common_mock):
     """Check if the full path to the received file is properly stored and availability is notified."""
-
     with patch('wazuh.core.cluster.common.ReceiveFileTask.set_up_coro'):
         with patch('asyncio.create_task'):
             file_task = cluster_common.ReceiveFileTask(wazuh_common_mock, logger_mock, b"task")
@@ -966,7 +957,6 @@ def test_wazuh_common_end_receiving_file_ok(logger_mock, wazuh_common_mock):
 @patch('os.path.exists', return_value=True)
 def test_wazuh_common_end_receiving_file_ko(path_exists_mock, os_remove_mock):
     """Test the 'end_receiving_file' correct functioning in a failure scenario."""
-
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
         wazuh_common.end_receiving_file("not_task_ID filepath")
 
@@ -980,7 +970,6 @@ def test_wazuh_common_end_receiving_file_ko(path_exists_mock, os_remove_mock):
 @patch('json.loads')
 def test_wazuh_common_error_receiving_file_ok(json_loads_mock):
     """Check how error are handled by peer in the sent file process."""
-
     with patch('os.path.exists', return_value=True):
         with patch('os.remove'):
             # Test first condition and its nested condition
@@ -993,7 +982,6 @@ def test_wazuh_common_error_receiving_file_ok(json_loads_mock):
 
 def test_wazuh_common_error_receiving_file_ko():
     """Test the 'error_receiving_file' when an exception takes place."""
-
     with patch('json.loads'):
         with patch('os.path.exists', return_value=True):
             with patch('os.remove', side_effect=Exception):
@@ -1028,7 +1016,6 @@ def test_wazuh_common_get_node():
 @patch('traceback.format_tb', return_value="traceback")
 def test_asyncio_exception_handler(format_tb, mock_loop, mock_logging):
     """Test logger.error proper message."""
-
     cluster_common.asyncio_exception_handler(mock_loop, {'exception': Exception, 'message': "Some message"})
     output = "tUnhandled exception: <class 'Exception'> Some message\n" \
              "rUnhandled exception: <class 'Exception'> Some message\n" \
@@ -1045,7 +1032,6 @@ def test_asyncio_exception_handler(format_tb, mock_loop, mock_logging):
 
 def test_wazuh_json_encoder_default():
     """Test if a special JSON encoder is defined for Wazuh."""
-
     wazuh_encoder = cluster_common.WazuhJSONEncoder()
 
     # Test first condition
@@ -1104,7 +1090,6 @@ def test_wazuh_json_encoder_default():
 
 def test_as_wazuh_object_ok():
     """Test the different outputs taking into account the input values."""
-
     # Test the first condition and nested if
     assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
 
@@ -1147,7 +1132,6 @@ def test_as_wazuh_object_ok():
 
 def test_as_wazuh_object_ko():
     """Test if the exceptions are correctly raised."""
-
     with pytest.raises(exception.WazuhInternalError, match=r'.* 1000 .*'):
         cluster_common.as_wazuh_object({"__callable__": {"__name__": "value", "__wazuh__": "value"}})
 
@@ -1172,7 +1156,8 @@ def test_sync_task_init():
 @patch('wazuh.core.cluster.common.Handler.send_request', side_effect=Exception())
 async def test_sync_task_request_permission(send_request_mock):
     """Check if a True value is returned once a permission to start synchronization is granted or a False when it
-    is not."""
+    is not.
+    """
     sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"), get_handler())
 
     # Test first condition
