@@ -169,7 +169,7 @@ class SolarisWrapper final : public IPackageWrapper
             return UNKNOWN_VALUE;
         }
 
-        int size() const override
+        int64_t size() const override
         {
             return 0;
         }
