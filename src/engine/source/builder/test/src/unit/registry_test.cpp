@@ -3,8 +3,6 @@
 #include <kvdb/mockKvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/mockSchema.hpp>
-#include <sockiface/mockSockFactory.hpp>
-#include <wdb/mockWdbManager.hpp>
 
 #include "builders/ibuildCtx.hpp"
 #include "mockRegistry.hpp" // Force include to ensure it compiles
@@ -123,8 +121,6 @@ TEST(RegistryTest, RegisterBuilders)
     fakeLogparDefs.setObject("/fields");
     deps.logpar = std::make_shared<hlp::logpar::Logpar>(fakeLogparDefs, std::make_shared<schemf::mocks::MockSchema>());
     deps.kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
-    deps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
-    deps.wdbManager = std::make_shared<MockWdbManager>();
     deps.kvdbScopeName = "test";
     deps.logparDebugLvl = 0;
 

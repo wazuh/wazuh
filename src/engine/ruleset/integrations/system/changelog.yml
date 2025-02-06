@@ -1,7 +1,0 @@
-items:
-  - version: 0.0.2-dev
-    short: Add base sysmon-linux integration
-    pr: "[#17399](https://github.com/wazuh/wazuh/pull/17399)"
-  - version: 0.0.1-dev
-    short: Created integration for system auth events
-    pr: "[#17273](https://github.com/wazuh/wazuh/pull/17273)"

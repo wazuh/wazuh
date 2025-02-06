@@ -1,1 +1,0 @@
-2022/05/14 19:55:51 [error] 6689#6689: *16764375 FastCGI sent in stderr: "PHP message: PHP Warning: Division by zero in /var/www/html/my.php on line 438" while reading upstream, client: 10.1.1.1, server: mytest.com, request: "GET /my.php HTTP/1.1", upstream: "fastcgi://unix:/run/php/php7.2-fpm.sock:", host: "my.test.com"

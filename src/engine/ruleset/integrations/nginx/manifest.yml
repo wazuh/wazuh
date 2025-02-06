@@ -1,5 +1,0 @@
-decoders:
-- decoder/nginx-access/0
-- decoder/nginx-error/0
-- decoder/nginx-access-base/0
-name: integration/nginx/0

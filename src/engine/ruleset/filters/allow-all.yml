@@ -1,8 +1,0 @@
-name: filter/allow-all/0
-
-metadata:
-  description: Default filter to allow all events (for default ruleset)
-  author:
-    name: Wazuh, Inc.
-    url: https://wazuh.com
-    date: 2022/11/08

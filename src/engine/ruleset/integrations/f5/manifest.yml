@@ -1,4 +1,0 @@
-decoders:
-- decoder/f5-apm/0
-- decoder/f5-afm/0
-name: integration/f5/0
