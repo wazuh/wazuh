@@ -42,7 +42,7 @@ def pytest_addoption(parser):
 
 
 def get_token_login_api():
-    """Get the API token for the test
+    """Get the API token for the test.
 
     Returns
     -------
@@ -202,8 +202,7 @@ def change_rbac_mode(rbac_mode: str = 'white'):
 
 
 def enable_white_mode():
-    """Set white mode for non-rbac integration tests
-    """
+    """Set white mode for non-rbac integration tests."""
     with open(os.path.join(env_path, 'configurations', 'base', 'manager', 'config', 'api', 'configuration', 'security',
                            'security.yaml'), '+r') as rbac_conf:
         content = rbac_conf.read()
@@ -212,8 +211,7 @@ def enable_white_mode():
 
 
 def clean_tmp_folder():
-    """Remove temporal folder used te configure the environment and set RBAC mode to Black.
-    """
+    """Remove temporal folder used te configure the environment and set RBAC mode to Black."""
     shutil.rmtree(os.path.join(env_path, 'configurations', 'tmp', 'manager'), ignore_errors=True)
     shutil.rmtree(os.path.join(env_path, 'configurations', 'tmp', 'agent'), ignore_errors=True)
 
@@ -393,7 +391,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
 
 
 def get_health():
-    """Get the current status of the integration environment
+    """Get the current status of the integration environment.
 
     Returns
     -------

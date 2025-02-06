@@ -98,7 +98,7 @@ def send_msg_to_wdb(msg, raw=False):
 
 
 def check_agent(test_data, agent):
-    """Checks a single agent is correct"""
+    """Checks a single agent is correct."""
     assert all(map(lambda x: x is not None, agent.values()))
     assert 'status' in agent
     assert 'id' in agent
@@ -142,7 +142,7 @@ def test_WazuhDBQueryAgents__init__(socket_mock, send_mock, backend_mock, value)
 
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_filter_date(mock_socket_conn):
-    """Tests _filter_date of WazuhDBQueryAgents returns expected query"""
+    """Tests _filter_date of WazuhDBQueryAgents returns expected query."""
     query_agent = WazuhDBQueryAgents()
     query_agent._filter_date({'value': '7d', 'operator': '<', 'field': 'time'}, 'os.name')
 
@@ -156,7 +156,7 @@ def test_WazuhDBQueryAgents_filter_date(mock_socket_conn):
 ])
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_sort_query(mock_socket_conn, field, expected_query):
-    """Tests _sort_query of WazuhDBQueryAgents returns expected result
+    """Tests _sort_query of WazuhDBQueryAgents returns expected result.
 
     Parameters
     ----------
@@ -173,7 +173,7 @@ def test_WazuhDBQueryAgents_sort_query(mock_socket_conn, field, expected_query):
 
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
-    """Tests _add_search_to_query of WazuhDBQueryAgents returns expected query"""
+    """Tests _add_search_to_query of WazuhDBQueryAgents returns expected query."""
     query_agent = WazuhDBQueryAgents(search={'value': 'test', 'negation': True})
     query_agent._add_search_to_query()
 
@@ -188,7 +188,7 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
 ])
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, data):
-    """Tests _format_data_into_dictionary of WazuhDBQueryAgents returns expected data"""
+    """Tests _format_data_into_dictionary of WazuhDBQueryAgents returns expected data."""
     query_agent = WazuhDBQueryAgents(offset=0, limit=1, sort=None,
                                      search=None, select={'id', 'status', 'group', 'dateAdd', 'manager',
                                                           'disconnection_time'},
@@ -215,7 +215,7 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, data):
 
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
-    """Tests _parse_legacy_filters of WazuhDBQueryAgents returns expected query"""
+    """Tests _parse_legacy_filters of WazuhDBQueryAgents returns expected query."""
     query_agent = WazuhDBQueryAgents(filters={'older_than': 'test'})
     query_agent._parse_legacy_filters()
 
@@ -232,7 +232,7 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
 ])
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_filter, q_filter):
-    """Tests _process_filter of WazuhDBQueryAgents returns expected query
+    """Tests _process_filter of WazuhDBQueryAgents returns expected query.
 
     Parameters
     ----------
@@ -365,7 +365,7 @@ def test_WazuhDBQueryGroupByAgents(mock_socket_conn, send_mock, filter_fields, e
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
-    """Tests if _add_sort_to_query method of WazuhDBQueryGroup works properly"""
+    """Tests if _add_sort_to_query method of WazuhDBQueryGroup works properly."""
     query_group = WazuhDBQueryGroup()
     query_group._add_sort_to_query()
 
@@ -441,7 +441,7 @@ def test_agent_load_info_from_db(socket_mock, send_mock, id, expected_ip, expect
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_load_info_from_db_ko(socket_mock, send_mock):
-    """Tests if method load_info_from_db raises expected exception"""
+    """Tests if method load_info_from_db raises expected exception."""
     with pytest.raises(WazuhResourceNotFound, match='.* 1701 .*'):
         agent = Agent(id=11250)
         agent.load_info_from_db()
@@ -455,7 +455,7 @@ def test_agent_load_info_from_db_ko(socket_mock, send_mock):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_basic_information(socket_mock, send_mock, id, select):
-    """Tests if method get_basic_information returns expected data
+    """Tests if method get_basic_information returns expected data.
 
     Parameters
     ----------
@@ -482,7 +482,7 @@ def test_agent_get_basic_information(socket_mock, send_mock, id, select):
     (5, 'NSBOb25lIE5vbmUgTm9uZQ=='),
 ])
 def test_agent_compute_key(id, expected_key):
-    """Tests if method compute_key returns expected key for each agent
+    """Tests if method compute_key returns expected key for each agent.
 
     Parameters
     ----------
@@ -510,7 +510,7 @@ def test_agent_compute_key(id, expected_key):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_key(socket_mock, send_mock, id, expected_key):
-    """Tests if method get_key returns expected key for each agent
+    """Tests if method get_key returns expected key for each agent.
 
     Parameters
     ----------
@@ -562,7 +562,7 @@ def test_agent_remove(mock_remove_authd):
 
 @patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
 def test_agent_remove_ko(mock_remove_authd):
-    """Tests if method remove() raises expected exception"""
+    """Tests if method remove() raises expected exception."""
     with pytest.raises(WazuhError, match='.* 1726 .*'):
         agent = Agent('001')
         agent.remove()
@@ -570,7 +570,7 @@ def test_agent_remove_ko(mock_remove_authd):
 
 @patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_remove_authd(mock_wazuh_socket):
-    """Tests if method remove_authd() works as expected"""
+    """Tests if method remove_authd() works as expected."""
     agent = Agent('001')
     agent._remove_authd(purge=True)
     mock_wazuh_socket.return_value.send.assert_called_once_with(
@@ -640,7 +640,7 @@ def test_agent_add_ko(mock_maganer_status):
 ])
 @patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key, force):
-    """Tests if method _add_authd() works as expected
+    """Tests if method _add_authd() works as expected.
 
     Parameters
     ----------
@@ -680,7 +680,7 @@ def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key, force):
 ])
 @patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_exception):
-    """Tests if method _add_authd() raises expected exception"""
+    """Tests if method _add_authd() raises expected exception."""
     agent = Agent('001')
 
     if not mocked_exception:
@@ -714,7 +714,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @patch('wazuh.core.indexer.agent.AgentsIndex.delete_group')
 async def test_agent_delete_single_group(delete_group_mock, get_os_client_mock, connect_mock, close_mock, mock_exists,
                                          mock_remove):
-    """Tests if method delete_single_group() works as expected"""
+    """Tests if method delete_single_group() works as expected."""
     agent = Agent('001')
     group = 'test_group'
 
@@ -731,7 +731,7 @@ async def test_agent_delete_single_group(delete_group_mock, get_os_client_mock, 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agent_os_name(socket_mock, send_mock, agent_id, expected_result):
-    """Tests if method get_agent_os_name() returns expected value
+    """Tests if method get_agent_os_name() returns expected value.
 
     Parameters
     ----------
@@ -748,7 +748,7 @@ def test_agent_get_agent_os_name(socket_mock, send_mock, agent_id, expected_resu
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agent_os_name_ko(socket_mock, send_mock):
-    """Tests if method get_agent_os_name() returns expected value when there is no attribute in the DB"""
+    """Tests if method get_agent_os_name() returns expected value when there is no attribute in the DB."""
     agent = Agent('004')
     assert 'null' == agent.get_agent_os_name()
 
@@ -756,7 +756,7 @@ def test_agent_get_agent_os_name_ko(socket_mock, send_mock):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_overview_default(socket_mock, send_mock):
-    """Test to get all agents using default parameters"""
+    """Test to get all agents using default parameters."""
     agents = Agent.get_agents_overview()
 
     # check number of agents
@@ -784,7 +784,7 @@ def test_agent_get_agents_overview_default(socket_mock, send_mock):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status, older_than, offset):
-    """Test get_agents_overview function with multiple select parameters
+    """Test get_agents_overview function with multiple select parameters.
 
     Parameters
     ----------
@@ -813,7 +813,7 @@ def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_overview_search(socket_mock, send_mock, search, totalItems):
-    """Test searching by IP and Register IP
+    """Test searching by IP and Register IP.
 
     Parameters
     ----------
@@ -855,7 +855,7 @@ def test_agent_get_agents_overview_query(socket_mock, send_mock, query, totalIte
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_overview_status_olderthan(socket_mock, send_mock, status, older_than, totalItems):
-    """Test filtering by status
+    """Test filtering by status.
 
     Parameters
     ----------
@@ -898,7 +898,7 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     False,
 ])
 def test_agent_group_exists(group_exists):
-    """Test if group_exists() returns True when time from last connection is greater than <seconds>
+    """Test if group_exists() returns True when time from last connection is greater than <seconds>.
 
     Parameters
     ----------
@@ -911,7 +911,7 @@ def test_agent_group_exists(group_exists):
 
 
 def test_agent_group_exists_ko():
-    """Test if group_exists() raises exception when the name isn't valid"""
+    """Test if group_exists() raises exception when the name isn't valid."""
     with pytest.raises(WazuhError, match='.* 1722 .*'):
         Agent.group_exists('default**')
 
@@ -1013,7 +1013,7 @@ def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
 
 @patch('wazuh.core.indexer.create_indexer')
 async def test_get_agents_info(create_indexer_mock):
-    """Test that get_agents_info() returns expected agent IDs"""
+    """Test that get_agents_info() returns expected agent IDs."""
     reset_context_cache()
 
     agents = []
@@ -1029,7 +1029,7 @@ async def test_get_agents_info(create_indexer_mock):
 
 
 def test_get_groups():
-    """Test that get_groups() returns expected agent groups"""
+    """Test that get_groups() returns expected agent groups."""
     expected_result = {'group-1', 'group-2'}
     groups = os.path.join(test_data_path, 'groups')
 
@@ -1094,7 +1094,7 @@ async def test_expand_group(create_indexer_mock, group, group_agents, expected_a
      {'filters': {'rbac_ids': {'group1'}, 'testing': 'first'}, 'rbac_negate': False})
 ])
 def test_get_rbac_filters(system_resources, permitted_resources, filters, expected_result):
-    """Check that the function get_rbac_filters calculates correctly the list of allowed or denied
+    """Check that the function get_rbac_filters calculates correctly the list of allowed or denied.
 
     Parameters
     ----------

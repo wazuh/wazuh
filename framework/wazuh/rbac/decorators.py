@@ -115,7 +115,7 @@ def _optimize_resources(req_resources: list) -> defaultdict:
     Example:
         ["node:id:master-node",            {
         "node:id:worker1",         -->         "node:id": {"master", "worker1", "worker2"}
-        "node:id:worker2"]                 }
+        "node:id:worker2"]                 }.
 
     Parameters
     ----------
@@ -274,7 +274,7 @@ async def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'whi
 
 
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs: dict) -> tuple:
-    """Resource pairs exposed by the framework function
+    """Resource pairs exposed by the framework function.
 
     Parameters
     ----------

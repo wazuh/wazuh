@@ -64,7 +64,7 @@ def test_check_user_master():
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
 @patch('server_management_api.authentication.raise_if_exc', side_effect=None)
 async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
-    """Verify if result is as expected"""
+    """Verify if result is as expected."""
     result = authentication.check_user('test_user', 'test_pass')
 
     assert result == {'sub': 'test_user', 'active': True}, 'Result is not as expected'
@@ -75,7 +75,7 @@ async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi
 
 
 def test_get_security_conf():
-    """Check that returned object is as expected"""
+    """Check that returned object is as expected."""
     result = authentication.get_security_conf()
     assert isinstance(result, dict)
     assert all(x in result.keys() for x in ('auth_token_exp_timeout', 'rbac_mode'))
@@ -91,7 +91,7 @@ def test_get_security_conf():
 @patch('server_management_api.authentication.raise_if_exc', side_effect=None)
 async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_get_keypair,
                         mock_encode, auth_context):
-    """Verify if result is as expected"""
+    """Verify if result is as expected."""
 
     class NewDatetime:
         def timestamp(self) -> float:
@@ -161,7 +161,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
 @patch('server_management_api.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
 async def test_decode_token_ko(mock_get_keypair, mock_raise_if_exc, mock_distribute_function):
-    """Assert exceptions are handled as expected inside decode_token()"""
+    """Assert exceptions are handled as expected inside decode_token()."""
     with pytest.raises(Unauthorized):
         authentication.decode_token(token='test_token')
 

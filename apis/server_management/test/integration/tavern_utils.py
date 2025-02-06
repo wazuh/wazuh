@@ -42,8 +42,7 @@ def test_distinct_key(response):
 
 
 def test_token_raw_format(response):
-    """:param response: Request response
-    """
+    """:param response: Request response"""
     assert type(response.text) is str
 
 
@@ -166,7 +165,7 @@ def test_sort_response(response, key=None, reverse=False):
 
     def get_val_from_dict(dictionary, keys):
         """Get value from dictionary dynamically, given a list of keys.
-        E.g. get_val_from_dict(d, ['field1','field2']) will return d['field1']['field2']
+        E.g. get_val_from_dict(d, ['field1','field2']) will return d['field1']['field2'].
 
         Parameters
         ----------
@@ -289,7 +288,7 @@ def test_save_response_data(response):
 
 
 def test_validate_auth_context(response, expected_roles=None):
-    """Check that the authorization context has been matched with the correct rules
+    """Check that the authorization context has been matched with the correct rules.
 
     Parameters
     ----------

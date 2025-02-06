@@ -383,7 +383,7 @@ class DistributedAPI:
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
-        res = json.loads(await client.send_file(os.path.join(common.WAZUH_PATH,
+        json.loads(await client.send_file(os.path.join(common.WAZUH_PATH,
                                                              self.f_kwargs['tmp_file']),
                                                 node_name),
                          object_hook=c_common.as_wazuh_object)
@@ -626,7 +626,7 @@ class DistributedAPI:
 
 
 class WazuhRequestQueue:
-    """Represents a queue of Wazuh requests"""
+    """Represents a queue of Wazuh requests."""
 
     def __init__(self, server):
         self.request_queue = asyncio.Queue()

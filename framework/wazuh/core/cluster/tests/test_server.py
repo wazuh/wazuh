@@ -611,7 +611,7 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
 
     with patch("asyncio.get_running_loop", return_value=LoopMock()), \
         patch("logging.getLogger", return_value=logger), \
-        patch.object(logger, "error") as mock_logger, \
+        patch.object(logger, "error"), \
         patch("ssl.create_default_context", return_value=ssl_mock), \
         patch.object(ssl_mock, "load_cert_chain"):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3007 .*'):

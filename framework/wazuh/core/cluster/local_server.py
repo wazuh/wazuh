@@ -19,8 +19,7 @@ from wazuh.core.exception import WazuhClusterError
 
 
 class LocalServerHandler(server.AbstractServerHandler):
-    """Handle requests from a local client.
-    """
+    """Handle requests from a local client."""
 
     def connection_made(self, transport):
         """Define the process of accepting a connection.
@@ -183,8 +182,7 @@ class LocalServerHandler(server.AbstractServerHandler):
 
 
 class LocalServer(server.AbstractServer):
-    """Create the server, manage multiple client connections. It's connected to the cluster TCP transports.
-    """
+    """Create the server, manage multiple client connections. It's connected to the cluster TCP transports."""
 
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
         """Class constructor.
@@ -231,8 +229,7 @@ class LocalServer(server.AbstractServer):
 
 
 class LocalServerHandlerMaster(LocalServerHandler):
-    """The local server handler instance that runs in the Master node.
-    """
+    """The local server handler instance that runs in the Master node."""
 
     def process_request(self, command: bytes, data: bytes):
         """Define requests available in the local server.
@@ -357,8 +354,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
 
 class LocalServerMaster(LocalServer):
-    """The LocalServer object running in the master node.
-    """
+    """The LocalServer object running in the master node."""
 
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
         """Class constructor.
@@ -378,8 +374,7 @@ class LocalServerMaster(LocalServer):
 
 
 class LocalServerHandlerWorker(LocalServerHandler):
-    """The local server handler instance that runs in worker nodes.
-    """
+    """The local server handler instance that runs in worker nodes."""
 
     def process_request(self, command: bytes, data: bytes):
         """Define available requests in the local server.
@@ -541,8 +536,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
 
 
 class LocalServerWorker(LocalServer):
-    """The LocalServer object running in worker nodes.
-    """
+    """The LocalServer object running in worker nodes."""
 
     def __init__(self, node: client.AbstractClientManager, **kwargs):
         """Class constructor.

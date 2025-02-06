@@ -39,7 +39,7 @@ def mock_wazuh_path():
 
 class InitManager:
     def __init__(self):
-        """Sets up necessary environment to test manager functions"""
+        """Sets up necessary environment to test manager functions."""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
 
@@ -61,7 +61,7 @@ manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', '
 
 @patch('wazuh.core.manager.status', return_value=manager_status)
 def test_get_status(mock_status):
-    """Tests get_status() function works"""
+    """Tests get_status() function works."""
     result = get_status()
 
     # Assert there are no errors and type returned
@@ -160,7 +160,7 @@ def test_ossec_log_q(mock_exists, mock_active_logging_format, q, field, operatio
 @patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
 @patch("wazuh.core.manager.exists", return_value=True)
 def test_ossec_log_summary(mock_exists, mock_active_logging_format):
-    """Tests ossec_log_summary function works and returned data match with expected"""
+    """Tests ossec_log_summary function works and returned data match with expected."""
     expected_result = {
         'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
         'wazuh-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
@@ -186,7 +186,7 @@ def test_ossec_log_summary(mock_exists, mock_active_logging_format):
 @patch('wazuh.core.cluster.utils.open')
 @patch('os.path.exists', return_value=True)
 def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
-    """Tests restarting a manager"""
+    """Tests restarting a manager."""
     result = restart()
 
     # Assert there are no errors and type of the result.
@@ -198,7 +198,7 @@ def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('os.path.exists', return_value=False)
 def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
-    """Tests restarting a manager exceptions"""
+    """Tests restarting a manager exceptions."""
     # Socket path not exists
     with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
         restart()
@@ -225,7 +225,7 @@ def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
 ])
 @patch("wazuh.core.manager.exists", return_value=True)
 def test_validation(mock_exists, error_flag, error_msg):
-    """Test validation() method works as expected
+    """Test validation() method works as expected.
 
     Tests configuration validation function with multiple scenarios:
         * No errors found in configuration
@@ -271,7 +271,7 @@ def test_validation_ko(mock_validate, exception):
 @patch('builtins.open')
 @patch('wazuh.manager.get_ossec_conf', return_value={})
 def test_read_ossec_conf(get_ossec_conf_mock, open_mock, raw):
-    """Tests read_ossec_conf() function works as expected"""
+    """Tests read_ossec_conf() function works as expected."""
     open_mock.return_value.__enter__.return_value.read.return_value = ""
     result = read_ossec_conf(raw=raw)
 
@@ -283,7 +283,7 @@ def test_read_ossec_conf(get_ossec_conf_mock, open_mock, raw):
 
 
 def test_read_ossec_con_ko():
-    """Tests read_ossec_conf() function returns an error"""
+    """Tests read_ossec_conf() function returns an error."""
     result = read_ossec_conf(section='test')
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
@@ -291,7 +291,7 @@ def test_read_ossec_con_ko():
 
 @patch('builtins.open')
 def test_get_basic_info(mock_open):
-    """Tests get_basic_info() function works as expected"""
+    """Tests get_basic_info() function works as expected."""
     result = get_basic_info()
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'

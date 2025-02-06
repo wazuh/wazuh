@@ -26,7 +26,7 @@ class RBAChecker:
         FIND: Recursively launches the MATCH function to search for all levels of authorization context, the
           operation is the same, if there is at least one occurrence, the function will return True
         FIND$: Just like the previous one, in this case the function MATCH$ is recursively executed.
-    Regex schema ----> "r'REGULAR_EXPRESSION', this is the wildcard for detecting regular expressions"
+    Regex schema ----> "r'REGULAR_EXPRESSION', this is the wildcard for detecting regular expressions".
     """
     _logical_operators = ['AND', 'OR', 'NOT']
     _functions = ['MATCH', 'MATCH$', 'FIND', 'FIND$']
@@ -116,7 +116,7 @@ class RBAChecker:
         return role_chunk, auth_chunk
 
     def process_lists(self, role_chunk: list, auth_context: list, mode: str) -> int:
-        """Process lists of role chunks and authorization context chunks
+        """Process lists of role chunks and authorization context chunks.
 
         Parameters
         ----------

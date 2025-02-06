@@ -656,7 +656,7 @@ def chown_r(file_path: str, uid: int, gid: int):
 
 
 def safe_move(source: str, target: str, ownership: tuple = None, time: tuple = None, permissions: int = None):
-    """Move a file even between filesystems
+    """Move a file even between filesystems.
 
     This function is useful to move files even when target directory is in a different filesystem from the source.
     Write permissions are required on target directory.
@@ -814,7 +814,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     }
     :param data: dictionary to nest
     :param nested: fields to nest
-    :param force_fields: fields to force nesting in
+    :param force_fields: fields to force nesting in.
     """
     # separate fields and subfields:
     # nested = {'board': ['serial'], 'cpu': ['cores', 'mhz', 'name'], 'ram': ['free', 'total']}
@@ -1061,7 +1061,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """Check an operation between value1 and value2. 'value1' could be an integer, it is necessary cast value2 to
-        integer if this happens
+        integer if this happens.
 
         Parameters
         ----------
@@ -1194,8 +1194,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
 
 class AbstractDatabaseBackend:
-    """This class describes an abstract database backend that executes database queries.
-    """
+    """This class describes an abstract database backend that executes database queries."""
 
     def __init__(self):
         self.conn = self.connect_to_db()
@@ -1208,8 +1207,7 @@ class AbstractDatabaseBackend:
 
 
 class WazuhDBBackend(AbstractDatabaseBackend):
-    """This class describes a wazuh db backend that executes database queries.
-    """
+    """This class describes a wazuh db backend that executes database queries."""
 
     def __init__(self, agent_id=None, query_format='agent', request_slice=500):
         if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):

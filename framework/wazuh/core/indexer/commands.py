@@ -98,7 +98,7 @@ class CommandsManager(BaseIndex):
         return commands
 
     async def update_commands_status(self, order_ids: List[str], status: str):
-        """Update the status for a list of order id's
+        """Update the status for a list of order id's.
 
         Args:
             order_ids (List[str]): List of order id's to update.

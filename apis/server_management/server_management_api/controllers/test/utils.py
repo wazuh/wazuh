@@ -6,7 +6,7 @@ from wazuh.core.results import AffectedItemsWazuhResult
 
 
 class CustomAffectedItems(AffectedItemsWazuhResult):
-    """Mock custom values that are needed in controller tests"""
+    """Mock custom values that are needed in controller tests."""
 
     def __init__(self, empty: bool = False):
         if not empty:

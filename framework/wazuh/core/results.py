@@ -77,7 +77,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
 
     def __or__(self, other):
         """| operator used to merge two AbstractWazuhResult objects. When merged with a WazuhException, the result is
-        always a WazuhException
+        always a WazuhException.
 
         Parameters
         ----------
@@ -272,7 +272,7 @@ class WazuhResult(AbstractWazuhResult):
                        {"item2": "data2"}
                        ],
      "message": "Everything ok"
-     }
+     }.
     """
 
     def __init__(self, dct: Union[dict, object], str_priority: list = None):
@@ -339,7 +339,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
      "total_affected_items": 2,
      "total_failed_items": 5,
      ...
-     }
+     }.
     """
 
     def __init__(self, dikt: dict = None, affected_items: list = None, total_affected_items: int = None,
@@ -716,7 +716,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
 
 
 def nested_itemgetter(*expressions):
-    """Build a function to get items according to expressions. That getter function receives a dictionary as the only
+    r"""Build a function to get items according to expressions. That getter function receives a dictionary as the only
     positional argument and returns the referenced item.
 
     Example:
@@ -806,7 +806,7 @@ def _goes_before_than(a: Union[tuple, list], b: Union[tuple, list], ascending: U
 
 def merge(*iterables, criteria: Union[tuple, list] = None, ascending: Union[tuple, list] = None,
           types: Union[tuple, list] = None) -> Iterable:
-    """Merge iterables in a single one assuming they are already ordered according to criteria, ascending and types
+    """Merge iterables in a single one assuming they are already ordered according to criteria, ascending and types.
 
     Parameters
     ----------

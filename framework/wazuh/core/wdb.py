@@ -19,8 +19,7 @@ DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 
 class AsyncWazuhDBConnection:
-    """Represent an async connection to the wdb socket.
-    """
+    """Represent an async connection to the wdb socket."""
 
     def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None):
         """Class constructor.
@@ -128,8 +127,7 @@ class AsyncWazuhDBConnection:
 
 
 class WazuhDBConnection:
-    """Represent a connection to the wdb socket.
-    """
+    """Represent a connection to the wdb socket."""
 
     def __init__(self, request_slice=500):
         """Class constructor.
@@ -154,7 +152,7 @@ class WazuhDBConnection:
         self.close()
 
     def __query_input_validation(self, query: str):
-        """Check input queries have the correct format
+        """Check input queries have the correct format.
 
         Accepted query formats:
         - agent 001 sql sql_sentence
@@ -358,8 +356,7 @@ class WazuhDBConnection:
         return self._send(query, raw)
 
     def execute(self, query, count=False, delete=False, update=False):
-        """Send a SQL query to wdb socket.
-        """
+        """Send a SQL query to wdb socket."""
 
         def send_request_to_wdb(query_lower, step, off, response):
             try:

@@ -35,12 +35,12 @@ from server_management_api.middlewares import (
 
 @pytest.fixture
 def request_info(request):
-    """Return the dictionary of the parametrize"""
+    """Return the dictionary of the parametrize."""
     return request.param if 'prevent_bruteforce_attack' in request.node.name else None
 
 @pytest.fixture
 def mock_req(request, request_info):
-    """Fixture to wrap functions with request"""
+    """Fixture to wrap functions with request."""
     req = MagicMock()
     req.client.host = 'ip'
     if 'prevent_bruteforce_attack' in request.node.name:

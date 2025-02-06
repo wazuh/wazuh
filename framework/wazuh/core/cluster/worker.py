@@ -44,8 +44,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
-    """Handle connection with the master node.
-    """
+    """Handle connection with the master node."""
 
     def __init__(self, version, node_type, **kwargs):
         """Class constructor.
@@ -508,8 +507,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
 
 class Worker(client.AbstractClientManager):
-    """Initialize worker variables, connect to the master and run the DAPI request queue.
-    """
+    """Initialize worker variables, connect to the master and run the DAPI request queue."""
 
     def __init__(self, **kwargs):
         """Class constructor.

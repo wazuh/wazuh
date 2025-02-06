@@ -233,7 +233,7 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
 @expose_resources(actions=['cluster:read'],
                   resources=[f'node:id:{node_id}'])
 def get_basic_info() -> AffectedItemsWazuhResult:
-    """Wrapper for Wazuh().to_dict
+    """Wrapper for Wazuh().to_dict.
 
     Returns
     -------

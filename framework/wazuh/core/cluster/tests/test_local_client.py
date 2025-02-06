@@ -194,7 +194,7 @@ async def test_localclient_send_api_request(mock_get_running_loop, read_config_m
             self.response_available = asyncio.Event()
             self.response = b"Async"
 
-        async def send_request(command, data):
+        async def send_request(self, data):
             return data
     get_cluster_items_mock.return_value = {
         'intervals': {

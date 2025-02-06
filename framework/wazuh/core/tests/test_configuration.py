@@ -170,7 +170,7 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
 @patch('os.path.exists')
 def test_get_active_configuration_ko(mock_exists, agent_id, component, config, socket_exist, socket_class,
                                      expected_error, expected_id):
-    """Test all raised exceptions"""
+    """Test all raised exceptions."""
     mock_exists.return_value = socket_exist
     with patch(f'wazuh.core.wazuh_socket.{socket_class}.__init__',
                return_value=MagicMock() if expected_id == 1121 and socket_exist else None):

@@ -362,7 +362,7 @@ def test_DistributedAPI_get_client(loop_mock):
 @patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'worker'})
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='invalid_json')
 async def test_DistributedAPI_remote_request_errors(mock_client_execute, mock_get_node):
-    """Check the behaviour when the execute_remote_request function raised an error"""
+    """Check the behaviour when the execute_remote_request function raised an error."""
     # Test execute_remote_request when it raises a JSONDecodeError
     dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'local_master'}
     await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
@@ -379,7 +379,7 @@ async def test_DistributedAPI_remote_request():
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node', return_value={'worker1': ['001', '002']})
 @patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='invalid_json')
 async def test_DistributedAPI_forward_request_errors(mock_client_execute, mock_get_solver_node, mock_get_node):
-    """Check the behaviour when the forward_request function raised an error"""
+    """Check the behaviour when the forward_request function raised an error."""
     # Test forward_request when it raises a JSONDecodeError
     dapi_kwargs = {'f': agent.reconnect_agents, 'logger': logger, 'request_type': 'distributed_master'}
     await raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)

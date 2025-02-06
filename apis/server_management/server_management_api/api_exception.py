@@ -7,8 +7,7 @@ from wazuh.core.exception import WazuhTooManyRequests
 
 
 class APIException(Exception):
-    """Wazuh API exception class.
-    """
+    """Wazuh API exception class."""
 
     def __init__(self, code: int, details: str = None):
         """APIException class constructor.

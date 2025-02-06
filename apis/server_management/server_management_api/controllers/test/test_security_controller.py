@@ -66,7 +66,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 @pytest.fixture
 def mock_request():
-    """Fixture to wrap functions with request"""
+    """Fixture to wrap functions with request."""
     operation = MagicMock(name="operation")
     operation.method = "post"
     with TestContext(operation=operation):

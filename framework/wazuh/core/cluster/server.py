@@ -22,8 +22,7 @@ from wazuh.core.config.models.server import ServerConfig
 
 
 class AbstractServerHandler(c_common.Handler):
-    """Define abstract server protocol. Handle communication with a single client.
-    """
+    """Define abstract server protocol. Handle communication with a single client."""
 
     def __init__(self, server, loop: asyncio.AbstractEventLoop,
                  server_config: ServerConfig, logger: logging.Logger = None, tag: str = "Client"):
@@ -237,8 +236,7 @@ class AbstractServerHandler(c_common.Handler):
 
 
 class AbstractServer:
-    """Define an asynchronous server. Handle connections from all clients.
-    """
+    """Define an asynchronous server. Handle connections from all clients."""
 
     NO_RESULT = 'no_result'
 

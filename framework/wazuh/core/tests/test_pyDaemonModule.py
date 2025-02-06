@@ -13,7 +13,7 @@ from wazuh.core.pyDaemonModule import *
 
 @patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path('/tmp'))
 def test_create_pid():
-    """Tests create_pid function works"""
+    """Tests create_pid function works."""
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
@@ -22,7 +22,7 @@ def test_create_pid():
 @patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path('/tmp'))
 @patch('wazuh.core.pyDaemonModule.os.chmod', side_effect=OSError)
 def test_create_pid_ko(mock_chmod):
-    """Tests create_pid function exception works"""
+    """Tests create_pid function exception works."""
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         with pytest.raises(WazuhException, match=".* 3002 .*"):
@@ -43,7 +43,7 @@ def test_get_parent_pid(os_listdir_mock, expected_pid, process_name):
 
 
 def test_delete_pid():
-    """Tests delete_pid function works"""
+    """Tests delete_pid function works."""
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         with patch('wazuh.core.pyDaemonModule.common.WAZUH_RUN', new=Path(tmpdirname.split('/')[2])):

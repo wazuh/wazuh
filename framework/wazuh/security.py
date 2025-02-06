@@ -214,7 +214,7 @@ async def create_user(username: str = None, password: str = None) -> AffectedIte
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
 async def update_user(user_id: str = None, password: str = None, current_user: str = None) -> AffectedItemsWazuhResult:
-    """Update a specified user
+    """Update a specified user.
 
     Parameters
     ----------
@@ -616,7 +616,7 @@ async def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazu
 
 @expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'])
 async def update_policy(policy_id: str = None, name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
-    """Update a policy in the system
+    """Update a policy in the system.
 
     Parameters
     ----------
@@ -1149,7 +1149,7 @@ def get_role(role_id: str) -> bool:
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007, 4008, 4010]})
 async def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResult:
-    """Remove a relationship between a role and a policy
+    """Remove a relationship between a role and a policy.
 
     Parameters
     ----------

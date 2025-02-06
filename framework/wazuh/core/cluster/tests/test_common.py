@@ -57,7 +57,7 @@ loop = new_event_loop()
 
 @pytest.mark.asyncio
 async def test_response_init():
-    """Test for the 'init' method that belongs to the Response class"""
+    """Test for the 'init' method that belongs to the Response class."""
     event = asyncio.Event()
     with patch('asyncio.Event', return_value=event):
         response = cluster_common.Response()
@@ -887,7 +887,7 @@ async def test_handler_wait_for_file():
 async def test_handler_wait_for_file_ko(send_request_mock):
     """Check if expected exception is raised.
     Condition 1: when event.wait() exceeds the timeout, WazuhClusterError 3039 is raised
-    Condition 2: when any other exception occurs, WazuhClusterError 3040  is raised
+    Condition 2: when any other exception occurs, WazuhClusterError 3040  is raised.
     """
 
     async def delay():

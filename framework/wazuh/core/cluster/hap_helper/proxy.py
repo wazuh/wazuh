@@ -73,7 +73,7 @@ class ProxyBalanceAlgorithm(Enum):
 
 
 class ProxyAPI:
-    """Wrapper for calling HAProxy REST API"""
+    """Wrapper for calling HAProxy REST API."""
 
     HAP_ENDPOINT = 'v2'
 

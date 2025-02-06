@@ -85,8 +85,7 @@ class BaseQueue:
 
 
 class WazuhQueue(BaseQueue):
-    """WazuhQueue Object.
-    """
+    """WazuhQueue Object."""
 
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
@@ -182,8 +181,7 @@ class WazuhQueue(BaseQueue):
 
 
 class WazuhAnalysisdQueue(BaseQueue):
-    """WazuhAnalysisdQueue Object.
-    """
+    """WazuhAnalysisdQueue Object."""
 
     MAX_MSG_SIZE = 65535
 

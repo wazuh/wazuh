@@ -20,7 +20,7 @@ def test_bulk_action_exists_with_valid_action():
 
 
 def test_bulk_action_exists_with_invalid_action():
-    """Check that the `exists` method works as expected with invalid options"""
+    """Check that the `exists` method works as expected with invalid options."""
     assert Operation.exists('invalid_action') is False
     assert Operation.exists('') is False
     assert Operation.exists('CREATE') is False

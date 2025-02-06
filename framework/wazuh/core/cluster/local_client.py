@@ -14,8 +14,7 @@ from wazuh.core.config.client import CentralizedConfig
 
 
 class LocalClientHandler(client.AbstractClient):
-    """Handle connection with the cluster's local server.
-    """
+    """Handle connection with the cluster's local server."""
 
     def __init__(self, **kwargs):
         """Class constructor.
@@ -115,12 +114,11 @@ class LocalClientHandler(client.AbstractClient):
 
 
 class LocalClient(client.AbstractClientManager):
-    """Initialize variables, connect to the server, send a request, wait for a response and disconnect.
-    """
+    """Initialize variables, connect to the server, send a request, wait for a response and disconnect."""
     ASYNC_COMMANDS = [b'dapi', b'dapi_fwd', b'send_file']
 
     def __init__(self):
-        """Class constructor"""
+        """Class constructor."""
         super().__init__(performance_test=0, concurrency_test=0,
                          file='', string=0, logger=logging.getLogger(), tag="Local Client",
                          server_config=CentralizedConfig.get_server_config())
