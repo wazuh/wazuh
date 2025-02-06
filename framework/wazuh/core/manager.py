@@ -9,7 +9,7 @@ import re
 import socket
 import ssl
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from os.path import exists
 from typing import Dict, Optional, Union
@@ -138,8 +138,8 @@ def get_ossec_logs(limit: int = 2000) -> list:
             date, tag, level, description = log_fields
 
             # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-            log_line = {'timestamp': date.strftime(common.DATE_FORMAT), 'tag': tag,
-                        'level': level, 'description': description}
+            timestamp = date.astimezone(timezone.utc).strftime(common.DATE_FORMAT)
+            log_line = {'timestamp': timestamp, 'tag': tag, 'level': level, 'description': description}
             logs.append(log_line)
 
     return logs
