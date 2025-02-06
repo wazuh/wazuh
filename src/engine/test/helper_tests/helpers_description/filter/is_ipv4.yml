@@ -1,0 +1,38 @@
+# Name of the helper function
+name: is_ipv4
+
+metadata:
+  description: |
+    Checks if the IP address stored in the field is an IPv4.
+    IPv4:
+      - 10.0.0.0
+      - 172.16.0.0
+      - 192.168.0.0
+      - 127.0.0.0
+    This helper function is typically used in the check stage
+
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - target_field: 3002:0bd6:0000:0000:0000:ee00:0033:6778
+    should_pass: false
+    description: Invalid IPv4. It's an IPv6
+  - target_field: 127.0.0.1
+    should_pass: true
+    description: Valid special IPv4
+  - target_field: 192.168.0.0
+    should_pass: true
+    description: Valid special IPv4
+  - target_field: 8.8.8.8
+    should_pass: true
+    description: Valid public IPv4
