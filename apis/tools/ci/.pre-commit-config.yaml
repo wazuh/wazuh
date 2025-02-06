@@ -5,6 +5,6 @@ repos:
     hooks:
       # Run linter
       - id: ruff
-        args: [ --fix, --config=apis/tools/ci/.ruff.toml ]
+        args: [ --fix ]
       # Run formatter
       - id: ruff-format

@@ -19,7 +19,7 @@ pip install ruff
 > [!Note]
 > Python version +3.11 requires specifying the flag `--break-system-packages` to install a package outside of a virtual environment.
 
-You can now use `ruff check --config ./apis/tools/ci/.ruff.toml` and `ruff format --config ./apis/tools/ci/.ruff.toml` commands to look for or fix issues present in the code.
+You can now use `ruff check` and `ruff format` commands to look for or fix issues present in the code.
 
 ### Pre-commit
 
@@ -54,7 +54,6 @@ We can configure VSCode to format and fix lint issues on save, for that, include
       "editor.codeActionsOnSave": {
           "source.fixAll": "explicit"
         }
-    },
-    "ruff.configuration": "<WAZUH_PATH>/apis/tools/ci/ruff.toml"
+    }
 }
 ```
