@@ -1,4 +1,4 @@
-name: Legacy unit tests for wazuh agent
+name: Legacy unit tests for wazuh
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ jobs:
     strategy:
           fail-fast: false
           matrix:
-              target: [agent, winagent]
+              target: [agent, winagent, server]
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
@@ -26,15 +26,15 @@ jobs:
         uses: ./.github/actions/install_build_deps
         with:
           target: ${{ matrix.target }}
-      - name: "Build wazuh agent"
+      - name: "Build wazuh"
         uses: ./.github/actions/build_test_flags
         with:
           target: ${{ matrix.target }}
-      - name: "Build wazuh agent legacy unit tests"
+      - name: "Build wazuh legacy unit tests"
         uses: ./.github/actions/legacy_unit_tests_build
         with:
           target: ${{ matrix.target }}
-      - name: "Run wazuh agent legacy unit tests"
+      - name: "Run wazuh legacy unit tests"
         uses: ./.github/actions/legacy_unit_tests_run
         with:
           target: ${{ matrix.target }}
