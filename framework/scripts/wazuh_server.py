@@ -104,10 +104,8 @@ def start_daemons(root: bool):
 
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
-        COMMS_API_DAEMON_NAME: [COMMS_API_SCRIPT_PATH]
-            + (['-r'] if root else []),
-        MANAGEMENT_API_DAEMON_NAME: [MANAGEMENT_API_SCRIPT_PATH]
-            + (['-r'] if root else []),
+        COMMS_API_DAEMON_NAME: [COMMS_API_SCRIPT_PATH] + (['-r'] if root else []),
+        MANAGEMENT_API_DAEMON_NAME: [MANAGEMENT_API_SCRIPT_PATH] + (['-r'] if root else []),
     }
 
     for name, args in daemons.items():
@@ -174,7 +172,7 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info("Configuration server is not available, retrying...")
+        main_logger.info('Configuration server is not available, retrying...')
         time.sleep(1)
 
     my_server = master.Master(
@@ -231,7 +229,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info("Configuration server is not available, retrying...")
+        main_logger.info('Configuration server is not available, retrying...')
         time.sleep(1)
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
@@ -285,7 +283,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
 
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
-            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
+            logging.info('Connection with server has been lost. Reconnecting in 10 seconds.')
             await asyncio.sleep(server_config.worker.intervals.connection_retry)
 
 
@@ -451,7 +449,7 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
     """
     child: psutil.Process = _get_child_process(processes, proc_name)
     if child.status() == psutil.STATUS_ZOMBIE:
-        main_logger.error(f"Daemon `{proc_name}` is not running, stopping the whole server.")
+        main_logger.error(f'Daemon `{proc_name}` is not running, stopping the whole server.')
         clean_pid_files(proc_name)
         return
     if not _check_children_number(child, children_number):
@@ -506,8 +504,8 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
     comms_api_config = CentralizedConfig.get_comms_api_config()
     process_children = {
         MANAGEMENT_API_DAEMON_NAME[:15]: 3,
-        COMMS_API_DAEMON_NAME:  comms_api_config.workers + 4,
-        ENGINE_DAEMON_NAME:  0
+        COMMS_API_DAEMON_NAME: comms_api_config.workers + 4,
+        ENGINE_DAEMON_NAME: 0,
     }
 
     await check_for_server_readiness(server_process, process_children)

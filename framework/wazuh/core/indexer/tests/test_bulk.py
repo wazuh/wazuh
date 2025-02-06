@@ -34,7 +34,7 @@ def test_bulk_metadata_decode():
 
 
 @pytest.mark.parametrize(
-    "index, doc_id, action, doc, expected_output",
+    'index, doc_id, action, doc, expected_output',
     [
         (
             'test_index',
@@ -98,6 +98,7 @@ def test_bulk_doc_delete():
 @pytest.mark.asyncio
 async def test_mixin_bulk():
     """Check that the `bulk` method works as expected."""
+
     class TestClient(MixinBulk):
         _client = AsyncMock()
 
@@ -110,7 +111,9 @@ async def test_mixin_bulk():
 
     await test_instance.bulk(data)
 
-    expected_bulk_docs = b'{"create": {"_index": "test_index", "_id": "1"}}\n{"field": "value"}\n' + \
-        b'{"delete": {"_index": "test_index", "_id": "2"}}\n'
+    expected_bulk_docs = (
+        b'{"create": {"_index": "test_index", "_id": "1"}}\n{"field": "value"}\n'
+        + b'{"delete": {"_index": "test_index", "_id": "2"}}\n'
+    )
 
     test_instance._client.bulk.assert_called_once_with(expected_bulk_docs)

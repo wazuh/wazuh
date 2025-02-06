@@ -31,13 +31,16 @@ async def test_get_commands(jwt_bearer_mock, decode_token_mock, pull_commands_mo
 
 @pytest.mark.asyncio
 @patch('comms_api.routers.commands.decode_token')
-@pytest.mark.parametrize('exception', [
-    WazuhCommsAPIError(2706),
-])
+@pytest.mark.parametrize(
+    'exception',
+    [
+        WazuhCommsAPIError(2706),
+    ],
+)
 async def test_get_commands_ko(decode_token_mock, exception):
     """Verify that the `get_commands` handler catches exceptions successfully."""
     request = MagicMock()
 
     with patch('comms_api.routers.commands.pull_commands', MagicMock(side_effect=exception)):
-        with pytest.raises(HTTPError, match=fr'{exception.code}: {exception.message}'):
+        with pytest.raises(HTTPError, match=rf'{exception.code}: {exception.message}'):
             _ = await get_commands('', request)

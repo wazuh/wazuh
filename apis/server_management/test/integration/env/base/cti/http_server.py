@@ -14,19 +14,16 @@ MOCK_RESPONSE = {
         'minor': [
             {
                 'description': '',
-                'published_date':'2024-05-10T16:06:52Z',
-                'semver':{
-                    'major':4,
-                    'minor':9,
-                    'patch':0
-                },
-                'tag':'v4.9.0',
-                'title':'Wazuh v4.9.0'
+                'published_date': '2024-05-10T16:06:52Z',
+                'semver': {'major': 4, 'minor': 9, 'patch': 0},
+                'tag': 'v4.9.0',
+                'title': 'Wazuh v4.9.0',
             },
         ],
-        'patch': []
+        'patch': [],
     }
 }
+
 
 class Handler(BaseHTTPRequestHandler):
     """Custom HTTP request handler to respond to Wazuh's CTI service requests."""
@@ -44,18 +41,21 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(403)
             self.end_headers()
 
+
 def _argparse() -> argparse.Namespace:
     """Parse command line arguments.
-    
+
     Returns
     -------
     argparse.Namespace
         Simple object for storing attributes.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('port', action='store', default=4041, type=int, nargs='?',
-                        help='Specify alternate port [default: 4041]')
+    parser.add_argument(
+        'port', action='store', default=4041, type=int, nargs='?', help='Specify alternate port [default: 4041]'
+    )
     return parser.parse_args()
+
 
 def main():
     args = _argparse()
@@ -67,6 +67,7 @@ def main():
     except KeyboardInterrupt:
         pass
     server.server_close()
+
 
 if __name__ == '__main__':
     main()

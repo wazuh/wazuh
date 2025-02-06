@@ -12,11 +12,7 @@ mock_config_data = {
         'port': 1516,
         'bind_addr': '0.0.0.0',
         'nodes': ['node1'],
-        'node': {
-            'name': 'example',
-            'type': 'master',
-            'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}
-        },
+        'node': {'name': 'example', 'type': 'master', 'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}},
         'worker': {},
         'master': {},
         'communications': {},
@@ -27,11 +23,11 @@ mock_config_data = {
         'hosts': [{'host': 'localhost', 'port': 9200}],
         'username': 'admin',
         'password': 'password',
-        'ssl': {'use_ssl': False, 'key': "", 'certificate': "", 'certificate_authorities': [""]}
+        'ssl': {'use_ssl': False, 'key': '', 'certificate': '', 'certificate_authorities': ['']},
     },
     'engine': {},
     'management_api': {},
-    'communications_api': {}
+    'communications_api': {},
 }
 
 
@@ -52,14 +48,17 @@ async def test_get_config_all_sections(patch_load):
     assert expected == got.body.decode('utf-8')
 
 
-@pytest.mark.parametrize('sections', [
-    (['engine']),
-    (['engine', 'indexer']),
-    (['communications_api']),
-    (['management_api']),
-    (['server', 'engine']),
-    (['engine', 'indexer', 'server', 'communications_api', 'management_api'])
-])
+@pytest.mark.parametrize(
+    'sections',
+    [
+        (['engine']),
+        (['engine', 'indexer']),
+        (['communications_api']),
+        (['management_api']),
+        (['server', 'engine']),
+        (['engine', 'indexer', 'server', 'communications_api', 'management_api']),
+    ],
+)
 async def test_get_config_valid_sections(patch_load, sections):
     """Verify that the `get_config` function works as expected with sections specified."""
     expected = CentralizedConfig._config.model_dump_json(include=sections)
@@ -69,10 +68,7 @@ async def test_get_config_valid_sections(patch_load, sections):
     assert expected == got.body.decode('utf-8')
 
 
-@pytest.mark.parametrize('sections, value', [
-    ('example', 'example'),
-    ('engine,err', 'err')
-])
+@pytest.mark.parametrize('sections, value', [('example', 'example'), ('engine,err', 'err')])
 async def test_get_config_invalid_sections(sections, value):
     """Verify that the `get_config` function works as expected with invalid sections."""
     response = await get_config(sections)

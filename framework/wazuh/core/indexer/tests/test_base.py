@@ -18,7 +18,7 @@ def test_remove_empty_values():
     d = {'key': None, 'key2': 1}
     expected = {'key2': 1}
     result = remove_empty_values(d.items())
-   
+
     assert result == expected
 
 

@@ -44,18 +44,17 @@ default_cluster_config = {
 
 def test_ping_unix_socket_file_does_not_exist():
     """Verify ping_unix_socket returns False when the socket file does not exist."""
-    with patch("pathlib.Path.exists", return_value=False):
-        assert not utils.ping_unix_socket(pathlib.Path("/tmp/nonexistent_socket"))
+    with patch('pathlib.Path.exists', return_value=False):
+        assert not utils.ping_unix_socket(pathlib.Path('/tmp/nonexistent_socket'))
 
 
 @pytest.mark.parametrize('timeout', (None, 10))
 def test_ping_unix_socket_successful(timeout: int | None):
     """Verify a successful connection to the UNIX socket."""
-    with patch("pathlib.Path.exists", return_value=True), \
-            patch("socket.socket") as mock_socket:
+    with patch('pathlib.Path.exists', return_value=True), patch('socket.socket') as mock_socket:
         mock_client = MagicMock()
         mock_socket.return_value = mock_client
-        socket_path = pathlib.Path("/tmp/existing_socket")
+        socket_path = pathlib.Path('/tmp/existing_socket')
 
         assert utils.ping_unix_socket(socket_path, timeout) is True
         mock_client.settimeout.assert_called_once_with(timeout)
@@ -65,12 +64,11 @@ def test_ping_unix_socket_successful(timeout: int | None):
 
 def test_ping_unix_socket_connection_timeout():
     """Verify ping_unix_socket returns False when the connection to the UNIX socket times out."""
-    with patch("pathlib.Path.exists", return_value=True), \
-            patch("socket.socket") as mock_socket:
+    with patch('pathlib.Path.exists', return_value=True), patch('socket.socket') as mock_socket:
         mock_client = MagicMock()
         mock_client.connect.side_effect = socket.timeout
         mock_socket.return_value = mock_client
-        socket_path = pathlib.Path("/tmp/existing_socket")
+        socket_path = pathlib.Path('/tmp/existing_socket')
 
         assert not utils.ping_unix_socket(socket_path)
         mock_client.connect.assert_called_once_with(str(socket_path))
@@ -78,42 +76,41 @@ def test_ping_unix_socket_connection_timeout():
 
 def test_ping_unix_socket_error():
     """Verify ping_unix_socket returns False when there is a generic socket error."""
-    with patch("pathlib.Path.exists", return_value=True), \
-         patch("socket.socket") as mock_socket:
+    with patch('pathlib.Path.exists', return_value=True), patch('socket.socket') as mock_socket:
         mock_client = MagicMock()
-        mock_client.connect.side_effect = socket.error("Test error")
+        mock_client.connect.side_effect = socket.error('Test error')
         mock_socket.return_value = mock_client
-        socket_path = pathlib.Path("/tmp/existing_socket")
+        socket_path = pathlib.Path('/tmp/existing_socket')
 
         assert not utils.ping_unix_socket(socket_path)
         mock_client.connect.assert_called_once_with(str(socket_path))
 
 
 @pytest.mark.parametrize(
-        'config',
-        (
-            {
-                utils.HAPROXY_DISABLED: 'no',
-                utils.HAPROXY_ADDRESS: 'test',
-                utils.HAPROXY_PASSWORD: 'test',
-                utils.HAPROXY_USER: 'test'
-            },
-            {
-                utils.HAPROXY_DISABLED: 'no',
-                utils.HAPROXY_ADDRESS: 'test',
-                utils.HAPROXY_PASSWORD: 'test',
-                utils.HAPROXY_USER: 'test',
-                utils.FREQUENCY: '60',
-                utils.AGENT_CHUNK_SIZE: '120',
-                utils.IMBALANCE_TOLERANCE: '0.1'
-            }
-        )
+    'config',
+    (
+        {
+            utils.HAPROXY_DISABLED: 'no',
+            utils.HAPROXY_ADDRESS: 'test',
+            utils.HAPROXY_PASSWORD: 'test',
+            utils.HAPROXY_USER: 'test',
+        },
+        {
+            utils.HAPROXY_DISABLED: 'no',
+            utils.HAPROXY_ADDRESS: 'test',
+            utils.HAPROXY_PASSWORD: 'test',
+            utils.HAPROXY_USER: 'test',
+            utils.FREQUENCY: '60',
+            utils.AGENT_CHUNK_SIZE: '120',
+            utils.IMBALANCE_TOLERANCE: '0.1',
+        },
+    ),
 )
 def test_parse_haproxy_helper_config(config: dict):
     """Verify that parse_haproxy_helper_config function returns the default configuration."""
     ret_val = utils.parse_haproxy_helper_config(config)
 
-    for key in ((config.keys()) | utils.HELPER_DEFAULTS.keys()):
+    for key in (config.keys()) | utils.HELPER_DEFAULTS.keys():
         assert key in ret_val
 
         assert isinstance(ret_val[utils.HAPROXY_DISABLED], bool)
@@ -124,7 +121,7 @@ def test_parse_haproxy_helper_config(config: dict):
             utils.AGENT_RECONNECTION_STABILITY_TIME,
             utils.AGENT_RECONNECTION_TIME,
             utils.REMOVE_DISCONNECTED_NODE_AFTER,
-            utils.HAPROXY_PORT
+            utils.HAPROXY_PORT,
         ]:
             assert isinstance(ret_val[key], int)
 
@@ -144,7 +141,7 @@ def test_parse_haproxy_helper_config(config: dict):
                 utils.FREQUENCY: 'bad',
             },
             WazuhError,
-            '3004'
+            '3004',
         ),
         (
             {
@@ -152,10 +149,10 @@ def test_parse_haproxy_helper_config(config: dict):
                 utils.HAPROXY_ADDRESS: 'test',
                 utils.HAPROXY_PASSWORD: 'test',
                 utils.HAPROXY_USER: 'test',
-                utils.IMBALANCE_TOLERANCE: 'bad'
+                utils.IMBALANCE_TOLERANCE: 'bad',
             },
             WazuhError,
-            '3004'
+            '3004',
         ),
         (
             {
@@ -163,12 +160,12 @@ def test_parse_haproxy_helper_config(config: dict):
                 utils.HAPROXY_ADDRESS: 'test',
                 utils.HAPROXY_PASSWORD: 'test',
                 utils.HAPROXY_USER: 'test',
-                utils.HAPROXY_PROTOCOL: 'https'
+                utils.HAPROXY_PROTOCOL: 'https',
             },
             WazuhHAPHelperError,
-            '3042'
-        )
-    ]
+            '3042',
+        ),
+    ],
 )
 def test_parse_haproxy_helper_config_ko(config: dict, exception_type: WazuhException, expected_error_code: str):
     """Verify that parse_haproxy_helper_config function raises when config has an invalid type."""
@@ -226,10 +223,8 @@ def test_get_manager_status():
             for value in status.values():
                 assert value == 'running'
 
-@pytest.mark.parametrize('exc', [
-    PermissionError,
-    FileNotFoundError
-])
+
+@pytest.mark.parametrize('exc', [PermissionError, FileNotFoundError])
 @patch('os.stat')
 def test_get_manager_status_ko(mock_stat, exc):
     """Check that get_manager_status function correctly handles expected exceptions.
@@ -288,26 +283,29 @@ def test_ClusterFilter():
 
 def test_ClusterLogger():
     """Verify that ClusterLogger defines the logger used by wazuh-server."""
-    cluster_logger = utils.ClusterLogger(tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
-                                         debug_level=1)
+    cluster_logger = utils.ClusterLogger(
+        tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s', debug_level=1
+    )
     cluster_logger.setup_logger()
 
     assert cluster_logger.logger.level == logging.DEBUG
 
 
-
 def test_log_subprocess_execution():
     """Check that the passed messages from subprocesses are logged with the expected level."""
-    logs = {'debug': {'example_debug': ["Debug level message."]},
-            'debug2': {'example_debug2': ["Debug2 level message."]},
-            'warning': {'example_debug2': ["Warning level message."]},
-            'error': {'example_error': ["Error level message."]},
-            'generic_errors': ['First generic error to be logged', 'Second generic error to be logged'],
-            }
-    with patch.object(utils.logger, 'debug') as debug_logger, \
-            patch.object(utils.logger, 'debug2') as debug2_logger, \
-            patch.object(utils.logger, 'warning') as warning_logger, \
-            patch.object(utils.logger, 'error') as error_logger:
+    logs = {
+        'debug': {'example_debug': ['Debug level message.']},
+        'debug2': {'example_debug2': ['Debug2 level message.']},
+        'warning': {'example_debug2': ['Warning level message.']},
+        'error': {'example_error': ['Error level message.']},
+        'generic_errors': ['First generic error to be logged', 'Second generic error to be logged'],
+    }
+    with (
+        patch.object(utils.logger, 'debug') as debug_logger,
+        patch.object(utils.logger, 'debug2') as debug2_logger,
+        patch.object(utils.logger, 'warning') as warning_logger,
+        patch.object(utils.logger, 'error') as error_logger,
+    ):
         utils.log_subprocess_execution(utils.logger, logs)
         debug_logger.assert_called_with(f"{dict(logs['debug'])}")
         debug2_logger.assert_called_with(f"{dict(logs['debug2'])}")
@@ -368,7 +366,7 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
     (
         [{'node_type': 'master'}, True],
         [{'node_type': 'worker'}, False],
-    )
+    ),
 )
 @patch('wazuh.core.cluster.utils.read_cluster_config')
 def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
@@ -379,16 +377,20 @@ def test_running_on_master_node(read_cluster_config_mock, cluster_config, expect
 
     assert utils.running_in_master_node() == expected
 
-@pytest.mark.parametrize('result', [
-    WazuhError(6001),
-    WazuhInternalError(1000),
-    WazuhPermissionError(4000),
-    WazuhResourceNotFound(1710),
-    'value',
-    1,
-    False,
-    {'key': 'value'}
-])
+
+@pytest.mark.parametrize(
+    'result',
+    [
+        WazuhError(6001),
+        WazuhInternalError(1000),
+        WazuhPermissionError(4000),
+        WazuhResourceNotFound(1710),
+        'value',
+        1,
+        False,
+        {'key': 'value'},
+    ],
+)
 def test_raise_if_exc(result):
     """Check that raise_if_exc raises an exception if the result is one."""
     if isinstance(result, Exception):

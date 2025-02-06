@@ -40,7 +40,9 @@ def start_unix_server(node: str):
     app.include_router(router)
 
     log_config = get_log_config(node=node)
-    t = Thread(target=uvicorn.run,
-               kwargs={'app': app, 'uds': common.CONFIG_SERVER_SOCKET_PATH, 'log_config': log_config},
-               daemon=True)
+    t = Thread(
+        target=uvicorn.run,
+        kwargs={'app': app, 'uds': common.CONFIG_SERVER_SOCKET_PATH, 'log_config': log_config},
+        daemon=True,
+    )
     t.start()

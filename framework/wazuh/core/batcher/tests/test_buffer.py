@@ -101,7 +101,7 @@ def test_check_count_limit_reached_with_one_paket():
 
 def test_check_size_limit_false():
     """Check that the `check_size_limit` method works as expected with an empty buffer."""
-    item = Item(id='1', operation='create', content={"example": "example"})
+    item = Item(id='1', operation='create', content={'example': 'example'})
     packet = Packet()
     packet.add_item(item)
     size_of_msg = sys.getsizeof(item.content)
@@ -114,7 +114,7 @@ def test_check_size_limit_false():
 
 def test_check_size_limit_reached():
     """Check that the `check_size_limit` method works as expected with a full buffer."""
-    item = Item(id='1', operation='create', content={"example": "example"})
+    item = Item(id='1', operation='create', content={'example': 'example'})
     packet = Packet()
     packet.add_item(item)
     size_of_msg = sys.getsizeof(item.content)
@@ -129,7 +129,7 @@ def test_check_size_limit_reached():
 
 def test_check_size_limit_reached_with_one_paket():
     """Check that the `check_size_limit` method works as expected with a full packet."""
-    item = Item(id='1', operation='create', content={"example": "example"})
+    item = Item(id='1', operation='create', content={'example': 'example'})
     size_of_msg = sys.getsizeof(item.content)
     packet = Packet()
     for i in range(2):
@@ -142,7 +142,7 @@ def test_check_size_limit_reached_with_one_paket():
 
 def test_copy():
     """Check that the `copy` method works as expected."""
-    msg = Item(id='1', operation='create', content={"example": "example"})
+    msg = Item(id='1', operation='create', content={'example': 'example'})
     packet = Packet()
     list_of_msg = [msg for _ in range(4)]
     for msg in list_of_msg:
@@ -159,7 +159,7 @@ def test_copy():
 
 def test_reset():
     """Check that the `reset` method works as expected."""
-    msg = Item(id='1', operation='create', content={"example": "example"})
+    msg = Item(id='1', operation='create', content={'example': 'example'})
     packet = Packet()
     list_of_msg = [msg for _ in range(4)]
     for msg in list_of_msg:

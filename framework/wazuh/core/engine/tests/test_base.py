@@ -17,5 +17,5 @@ def test_convert_enums():
     d = {'key': None, 'key2': Type.PACKAGE_LIST}
     expected = {'key2': Type.PACKAGE_LIST.value}
     result = convert_enums(d.items())
-   
+
     assert result == expected

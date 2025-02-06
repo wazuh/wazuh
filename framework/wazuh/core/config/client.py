@@ -40,7 +40,7 @@ class CentralizedConfig:
         """
         if cls._config is None:
             if not os.path.exists(WAZUH_SERVER_YML):
-                raise FileNotFoundError(f"Configuration file not found: {WAZUH_SERVER_YML}")
+                raise FileNotFoundError(f'Configuration file not found: {WAZUH_SERVER_YML}')
             with open(WAZUH_SERVER_YML, 'r') as file:
                 config_data = yaml.safe_load(file)
                 cls._config = Config(**config_data)
@@ -186,11 +186,11 @@ class CentralizedConfig:
         if cls._config is None:
             cls.load()
 
-        if config["auth_token_exp_timeout"] is not None:
-            cls._config.management_api.jwt_expiration_timeout = config["auth_token_exp_timeout"]
+        if config['auth_token_exp_timeout'] is not None:
+            cls._config.management_api.jwt_expiration_timeout = config['auth_token_exp_timeout']
 
-        if config["rbac_mode"] is not None:
-            cls._config.management_api.rbac_mode = RBACMode(config["rbac_mode"])
+        if config['rbac_mode'] is not None:
+            cls._config.management_api.rbac_mode = RBACMode(config['rbac_mode'])
 
         non_default_values = cls._config.model_dump(exclude_defaults=True)
 

@@ -38,9 +38,15 @@ class CustomFilter:
 
 class WazuhLogger:
     """Define attributes of a Python Wazuh daemon's logger."""
-    def __init__(self, debug_level: [int, str], logger_name: str = 'wazuh',
-                 custom_formatter: callable = None, tag: str = '%(asctime)s %(levelname)s: %(message)s',
-                 max_size: int = 0):
+
+    def __init__(
+        self,
+        debug_level: [int, str],
+        logger_name: str = 'wazuh',
+        custom_formatter: callable = None,
+        tag: str = '%(asctime)s %(levelname)s: %(message)s',
+        max_size: int = 0,
+    ):
         """Constructor.
 
         Parameters
@@ -57,11 +63,11 @@ class WazuhLogger:
         self.logger = None
         self.debug_level = debug_level
         self.logger_name = logger_name
-        self.default_formatter = logging.Formatter(tag, style='%', datefmt="%Y/%m/%d %H:%M:%S")
+        self.default_formatter = logging.Formatter(tag, style='%', datefmt='%Y/%m/%d %H:%M:%S')
         if custom_formatter is None:
             self.custom_formatter = self.default_formatter
         else:
-            self.custom_formatter = custom_formatter(style='%', datefmt="%Y/%m/%d %H:%M:%S")
+            self.custom_formatter = custom_formatter(style='%', datefmt='%Y/%m/%d %H:%M:%S')
 
     def setup_logger(self):
         """Prepare a logger with:
@@ -91,7 +97,7 @@ class WazuhLogger:
                     kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
                 self._log(logging.ERROR, msg, args, **kws)
 
-        logging.addLevelName(logging.DEBUG2, "DEBUG2")
+        logging.addLevelName(logging.DEBUG2, 'DEBUG2')
 
         logging.Logger.debug2 = debug2
         logging.Logger.error = error
@@ -119,7 +125,7 @@ class WazuhLogger:
         elif item in vars(self):
             return getattr(self, item, None)
         else:
-            raise AttributeError(f"{self.__class__.__name__} object has no attribute {item}")
+            raise AttributeError(f'{self.__class__.__name__} object has no attribute {item}')
 
 
 class CLIFilter(logging.Filter):

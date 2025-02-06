@@ -38,7 +38,7 @@ class TestAgentIndex:
             id=self.create_id,
             body={AGENT_KEY: new_agent.to_dict()},
             op_type='create',
-            refresh='true'
+            refresh='true',
         )
 
     async def test_create_ko(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
@@ -85,7 +85,7 @@ class TestAgentIndex:
             _source_excludes=exclude,
             size=limit,
             from_=offset,
-            sort=sort
+            sort=sort,
         )
 
     async def test_update(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
@@ -104,22 +104,8 @@ class TestAgentIndex:
         await index_instance.delete_group(group_name=group_name)
 
         query = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.FILTER: [{
-                        IndexerKey.TERM: {
-                            'agent.groups': group_name
-                        }
-                    }]
-                }
-            },
-            'script': {
-                'source': AgentsIndex.REMOVE_GROUP_SCRIPT,
-                'lang': 'painless',
-                'params': {
-                    'group': group_name
-                }
-            }
+            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: [{IndexerKey.TERM: {'agent.groups': group_name}}]}},
+            'script': {'source': AgentsIndex.REMOVE_GROUP_SCRIPT, 'lang': 'painless', 'params': {'group': group_name}},
         }
         client_mock.update_by_query.assert_called_once_with(index=[index_instance.INDEX], body=query)
 
@@ -134,15 +120,7 @@ class TestAgentIndex:
         result = await index_instance.get_group_agents(group_name=group_name)
 
         query = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.FILTER: [{
-                        IndexerKey.TERM: {
-                            'agent.groups': group_name
-                        }
-                    }]
-                }
-            }
+            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: [{IndexerKey.TERM: {'agent.groups': group_name}}]}}
         }
         client_mock.search.assert_called_once_with(index=[index_instance.INDEX], body=query)
 
@@ -189,22 +167,8 @@ class TestAgentIndex:
                 """
 
         query = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.FILTER: [{
-                        IndexerKey.IDS: {
-                            'values': agent_ids
-                        }
-                    }]
-                }
-            },
-            'script': {
-                'source': source,
-                'lang': 'painless',
-                'params': {
-                    'group': group_name
-                }
-            }
+            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: [{IndexerKey.IDS: {'values': agent_ids}}]}},
+            'script': {'source': source, 'lang': 'painless', 'params': {'group': group_name}},
         }
         client_mock.update_by_query.assert_called_once_with(index=[index_instance.INDEX], body=query)
 
@@ -215,21 +179,7 @@ class TestAgentIndex:
         await index_instance._update_groups(group_name=group_name, agent_ids=agent_ids, remove=True)
 
         query = {
-            IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.FILTER: [{
-                        IndexerKey.IDS: {
-                            'values': agent_ids
-                        }
-                    }]
-                }
-            },
-            'script': {
-                'source': AgentsIndex.REMOVE_GROUP_SCRIPT,
-                'lang': 'painless',
-                'params': {
-                    'group': group_name
-                }
-            }
+            IndexerKey.QUERY: {IndexerKey.BOOL: {IndexerKey.FILTER: [{IndexerKey.IDS: {'values': agent_ids}}]}},
+            'script': {'source': AgentsIndex.REMOVE_GROUP_SCRIPT, 'lang': 'painless', 'params': {'group': group_name}},
         }
         client_mock.update_by_query.assert_called_once_with(index=[index_instance.INDEX], body=query)

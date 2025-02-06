@@ -10,6 +10,7 @@ class TimerManager:
     max_time_seconds : int
         Maximum time in seconds before triggering the timeout event.
     """
+
     def __init__(self, max_time_seconds: int):
         self.max_time_seconds = max_time_seconds
         self._timeout_event = asyncio.Event()

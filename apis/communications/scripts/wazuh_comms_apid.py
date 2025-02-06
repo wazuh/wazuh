@@ -114,10 +114,10 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
     try:
         if not os.path.exists(keyfile) or not os.path.exists(certfile):
             private_key = generate_private_key(keyfile)
-            logger.info(f"Generated private key file in {keyfile}")
+            logger.info(f'Generated private key file in {keyfile}')
 
             generate_self_signed_certificate(private_key, certfile)
-            logger.info(f"Generated certificate file in {certfile}")
+            logger.info(f'Generated certificate file in {certfile}')
     except ssl.SSLError as exc:
         raise WazuhCommsAPIError(2700, extra_message=str(exc))
     except IOError as exc:
@@ -209,11 +209,7 @@ class StandaloneApplication(BaseApplication):
         super().__init__()
 
     def load_config(self):
-        config = {
-            key: value
-            for key, value in self.options.items()
-            if key in self.cfg.settings and value is not None
-        }
+        config = {key: value for key, value in self.options.items() if key in self.cfg.settings and value is not None}
         for key, value in config.items():
             self.cfg.set(key.lower(), value)
 
@@ -227,7 +223,7 @@ def signal_handler(
     parent_pid: int,
     mux_demux_manager: MuxDemuxManager,
     batcher_process: Process,
-    commands_manager: CommandsManager
+    commands_manager: CommandsManager,
 ) -> None:
     """Handle incoming signals to gracefully shutdown the API.
 
@@ -246,7 +242,7 @@ def signal_handler(
     commands_manager : CommandsManager
         Commands manager.
     """
-    logger.info(f"Received signal {signal.Signals(signum).name}, shutting down")
+    logger.info(f'Received signal {signal.Signals(signum).name}, shutting down')
     terminate_processes(parent_pid, mux_demux_manager, batcher_process, commands_manager)
 
 
@@ -286,7 +282,7 @@ if __name__ == '__main__':
     try:
         CentralizedConfig.load()
     except Exception as e:
-        print(f"Error when trying to load the configuration. {e}")
+        print(f'Error when trying to load the configuration. {e}')
         sys.exit(1)
 
     comms_api_config = CentralizedConfig.get_comms_api_config()
@@ -314,9 +310,12 @@ if __name__ == '__main__':
     signal.signal(
         signal.SIGTERM,
         partial(
-            signal_handler, parent_pid=pid, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process,
-            commands_manager=commands_manager
-        )
+            signal_handler,
+            parent_pid=pid,
+            mux_demux_manager=mux_demux_manager,
+            batcher_process=batcher_process,
+            commands_manager=commands_manager,
+        ),
     )
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 

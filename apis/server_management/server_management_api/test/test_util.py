@@ -15,25 +15,17 @@ from server_management_api import util
 
 class TestClass:
     """Mock swagger type."""
+
     __test__ = False
 
     def __init__(self, origin=None):
-        self.swagger_types = {
-            'api_response': 'test_api_response',
-            'data': str
-        }
-        self.attribute_map = {
-            'api_response': 'api_response',
-            'data': 'data'
-        }
+        self.swagger_types = {'api_response': 'test_api_response', 'data': str}
+        self.attribute_map = {'api_response': 'api_response', 'data': 'data'}
         self.__args__ = ['arg0', 'arg1', 'arg2']
         self.__origin__ = origin
 
 
-@pytest.mark.parametrize('item, is_transformed', [
-    (date.today(), False),
-    (datetime.today(), True)
-])
+@pytest.mark.parametrize('item, is_transformed', [(date.today(), False), (datetime.today(), True)])
 def test_serialize(item, is_transformed):
     """Assert serialize() function transform datetime as expected.
 
@@ -52,19 +44,14 @@ def test_serialize(item, is_transformed):
         assert result == item
 
 
-@pytest.mark.parametrize('item, klass', [
-    ('test', str),
-    ('2020-06-24 17:02:53.034374', datetime)
-])
+@pytest.mark.parametrize('item, klass', [('test', str), ('2020-06-24 17:02:53.034374', datetime)])
 def test_deserialize_primitive(item, klass):
     """Check that _deserialize_primitive function returns expected object."""
     result = util._deserialize_primitive(item, klass)
     assert result == item
 
 
-@pytest.mark.parametrize('item', [
-    'test', True, {'key': 'value'}
-])
+@pytest.mark.parametrize('item', ['test', True, {'key': 'value'}])
 def test_deserialize_object(item):
     """Check that _deserialize_object function works as expected."""
     result = util._deserialize_object(item)
@@ -163,17 +150,20 @@ def test_remove_nones_to_dict():
     assert 'key2' not in result.keys()
 
 
-@pytest.mark.parametrize('param, param_type, expected_result', [
-    (None, 'search', None),
-    (None, 'sort', None),
-    (None, 'random', None),
-    ('ubuntu', 'search', {'value': 'ubuntu', 'negation': False}),
-    ('-ubuntu', 'search', {'value': 'ubuntu', 'negation': True}),
-    ('field1', 'sort', {'fields': ['field1'], 'order': 'asc'}),
-    ('field1,field2', 'sort', {'fields': ['field1', 'field2'], 'order': 'asc'}),
-    ('-field1,field2', 'sort', {'fields': ['field1', 'field2'], 'order': 'desc'}),
-    ('random', 'random', 'random')
-])
+@pytest.mark.parametrize(
+    'param, param_type, expected_result',
+    [
+        (None, 'search', None),
+        (None, 'sort', None),
+        (None, 'random', None),
+        ('ubuntu', 'search', {'value': 'ubuntu', 'negation': False}),
+        ('-ubuntu', 'search', {'value': 'ubuntu', 'negation': True}),
+        ('field1', 'sort', {'fields': ['field1'], 'order': 'asc'}),
+        ('field1,field2', 'sort', {'fields': ['field1', 'field2'], 'order': 'asc'}),
+        ('-field1,field2', 'sort', {'fields': ['field1', 'field2'], 'order': 'desc'}),
+        ('random', 'random', 'random'),
+    ],
+)
 def test_parse_api_param(param, param_type, expected_result):
     """Check that parse_api_param returns the expected result."""
     assert util.parse_api_param(param, param_type) == expected_result
@@ -186,13 +176,16 @@ def test_to_relative_path(mock_real_path):
     mock_real_path.assert_called_once_with('api/conf/api.yaml', ANY)
 
 
-@pytest.mark.parametrize('exception_type, code, extra_fields, returned_code, returned_exception', [
-    (ValueError, 100, None, ValueError(100), ValueError),
-    (WazuhError, 1000, ['remediation', 'code'], 400, ProblemException),
-    (WazuhPermissionError, 4000, ['remediation', 'code'], 403, ProblemException),
-    (WazuhResourceNotFound, 1710, ['remediation', 'code'], 404, ProblemException),
-    (WazuhInternalError, 1000, ['remediation', 'code'], 500, ProblemException)
-])
+@pytest.mark.parametrize(
+    'exception_type, code, extra_fields, returned_code, returned_exception',
+    [
+        (ValueError, 100, None, ValueError(100), ValueError),
+        (WazuhError, 1000, ['remediation', 'code'], 400, ProblemException),
+        (WazuhPermissionError, 4000, ['remediation', 'code'], 403, ProblemException),
+        (WazuhResourceNotFound, 1710, ['remediation', 'code'], 404, ProblemException),
+        (WazuhInternalError, 1000, ['remediation', 'code'], 500, ProblemException),
+    ],
+)
 def test_create_problem(exception_type, code, extra_fields, returned_code, returned_exception):
     """Check that _create_problem returns exception with expected data."""
     with pytest.raises(returned_exception) as exc_info:
@@ -205,12 +198,15 @@ def test_create_problem(exception_type, code, extra_fields, returned_code, retur
         assert None not in exc_info.value.ext.values()
 
 
-@pytest.mark.parametrize('obj, code', [
-    ((WazuhError(6001), ['value0', 'value1']), 429),
-    ((WazuhInternalError(1000), ['value0', 'value1']), None),
-    ((WazuhPermissionError(4000), ['value0', 'value1']), None),
-    ((WazuhResourceNotFound(1710), ['value0', 'value1']), None)
-])
+@pytest.mark.parametrize(
+    'obj, code',
+    [
+        ((WazuhError(6001), ['value0', 'value1']), 429),
+        ((WazuhInternalError(1000), ['value0', 'value1']), None),
+        ((WazuhPermissionError(4000), ['value0', 'value1']), None),
+        ((WazuhResourceNotFound(1710), ['value0', 'value1']), None),
+    ],
+)
 @patch('server_management_api.util._create_problem')
 def test_raise_if_exc(mock_create_problem, obj, code):
     """Check that raise_if_exc calls _create_problem when an exception is given."""
@@ -221,30 +217,18 @@ def test_raise_if_exc(mock_create_problem, obj, code):
         assert result == obj
 
 
-@pytest.mark.parametrize("dikt, f_kwargs, invalid_keys", [
-    ({"key1": 0, "key2": 0}, {"key1": 0}, {"key2"}),
-    ({
-         "key1": 0,
-         "key2": {
-             "key21": 0,
-             "key22": {
-                 "key221": 0,
-                 "key222": {
-                     "key2221": 0
-                 }
-             }
-         }
-     },
-     {
-         "key2": {
-             "key22": {
-                 "key221": 0
-             }
-         }
-     },
-     {"key1", "key21", "key222"}),
-    ({"key1": 0}, {"key1": 0, "key2": 0}, set())
-])
+@pytest.mark.parametrize(
+    'dikt, f_kwargs, invalid_keys',
+    [
+        ({'key1': 0, 'key2': 0}, {'key1': 0}, {'key2'}),
+        (
+            {'key1': 0, 'key2': {'key21': 0, 'key22': {'key221': 0, 'key222': {'key2221': 0}}}},
+            {'key2': {'key22': {'key221': 0}}},
+            {'key1', 'key21', 'key222'},
+        ),
+        ({'key1': 0}, {'key1': 0, 'key2': 0}, set()),
+    ],
+)
 def test_get_invalid_keys(dikt, f_kwargs, invalid_keys):
     """Check that `get_invalid_keys` return the correct invalid keys when comparing two dictionaries with more
     than one nesting level.
@@ -253,13 +237,11 @@ def test_get_invalid_keys(dikt, f_kwargs, invalid_keys):
     assert invalid == invalid_keys
 
 
-@pytest.mark.parametrize('link', [
-    '',
-    'https://documentation.wazuh.com/current/user-manual/api/reference.html'
-])
+@pytest.mark.parametrize('link', ['', 'https://documentation.wazuh.com/current/user-manual/api/reference.html'])
 @pytest.mark.asyncio
 async def test_deprecate_endpoint(link):
     """Check that `deprecate_endpoint` decorator adds valid deprecation headers."""
+
     class DummyObject:
         headers = {}
 

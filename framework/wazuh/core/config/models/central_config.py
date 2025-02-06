@@ -10,6 +10,7 @@ from wazuh.core.config.models.server import ServerConfig
 
 class ConfigSections(str, Enum):
     """Enum representing the different sections of the CentralizedConfig."""
+
     SERVER = 'server'
     INDEXER = 'indexer'
     ENGINE = 'engine'
@@ -19,12 +20,12 @@ class ConfigSections(str, Enum):
     @classmethod
     def _missing_(cls, value: str) -> None:
         """Missing enum value handler.
-        
+
         Parameters
         ----------
         value : str
             Enum value.
-        
+
         Raises
         ------
         ValueError
@@ -49,6 +50,7 @@ class Config(WazuhConfigBaseModel):
     communications_api : CommsAPIConfig, optional
         Configuration for the communications API. Default is an instance of CommsAPIConfig.
     """
+
     server: ServerConfig
     indexer: IndexerConfig
     engine: EngineConfig = EngineConfig()

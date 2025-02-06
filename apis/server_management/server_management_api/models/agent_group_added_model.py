@@ -13,7 +13,6 @@ from server_management_api.models.base_model_ import Body
 
 
 class GroupAddedModel(Body):
-
     def __init__(self, group_id: str = None):
         """GroupAddedModel body model.
 

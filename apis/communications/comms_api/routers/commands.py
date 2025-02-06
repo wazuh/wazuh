@@ -32,7 +32,7 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())], request: Req
         List of commands.
     """
     try:
-        uuid = decode_token(token)["uuid"]
+        uuid = decode_token(token)['uuid']
         commands = await pull_commands(request.app.state.commands_manager, uuid)
         return Commands(commands=commands)
     except WazuhCommsAPIError as exc:

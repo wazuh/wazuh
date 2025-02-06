@@ -23,7 +23,7 @@ def create_memory_db(sql_file, session, test_data_path):
 
 def init_db(schema, test_data_path):
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+        with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
             with patch('shutil.chown'), patch('os.chmod'):
                 import wazuh.rbac.orm as orm
 
@@ -61,6 +61,7 @@ class MockRolePolicy:
         created_at (str): The creation date of the policy.
         level (int): The policy level.
     """
+
     def __init__(self, role_id, policy_id, created_at, level):
         self.role_id = role_id
         self.policy_id = policy_id
@@ -80,6 +81,7 @@ class MockedUserRole:
         created_at (str): The creation date of the user's role.
         level (int): The role level.
     """
+
     def __init__(self, user_id, role_id, created_at, level):
         self.user_id = user_id
         self.role_id = role_id
@@ -99,6 +101,7 @@ class MockRoleRules:
         created_at (str): The creation date of the rules.
         level (int): The rule level.
     """
+
     def __init__(self, role_id, rule_id, created_at, level):
         self.role_id = role_id
         self.rule_id = rule_id

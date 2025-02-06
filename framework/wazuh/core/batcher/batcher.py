@@ -32,6 +32,7 @@ class Batcher:
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
+
     def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
         self.queue: MuxDemuxQueue = mux_demux_queue
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
@@ -103,7 +104,7 @@ class Batcher:
                                         output_packet.add_item(item)
 
                     if not action_found:
-                        logger.error(f"Error processing batcher response, no known action in: {response_item}")
+                        logger.error(f'Error processing batcher response, no known action in: {response_item}')
 
             for packet in output_packets:
                 self.queue.send_to_demux(packet)
@@ -141,8 +142,7 @@ class Batcher:
         try:
             while not self._shutdown_event.is_set():
                 done, pending = await asyncio.wait(
-                    [self._get_from_queue(), self._timer.wait_timeout_event()],
-                    return_when=asyncio.FIRST_COMPLETED
+                    [self._get_from_queue(), self._timer.wait_timeout_event()], return_when=asyncio.FIRST_COMPLETED
                 )
 
                 # Process completed tasks
@@ -197,6 +197,7 @@ class BatcherProcess(Process):
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
+
     def __init__(self, mux_demux_queue: MuxDemuxQueue, config: BatcherConfig):
         super().__init__()
         self.queue = mux_demux_queue

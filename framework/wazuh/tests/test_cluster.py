@@ -25,16 +25,24 @@ with patch('wazuh.core.common.wazuh_uid'):
             from wazuh.core.exception import WazuhError, WazuhResourceNotFound
             from wazuh.core.results import WazuhResult
 
-default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
-                  'key': '', 'port': 1516, 'bind_addr': 'localhost', 'nodes': ['127.0.0.1'], 'hidden': 'no'}
+default_config = {
+    'disabled': True,
+    'node_type': 'master',
+    'name': 'wazuh',
+    'node_name': 'node01',
+    'key': '',
+    'port': 1516,
+    'bind_addr': 'localhost',
+    'nodes': ['127.0.0.1'],
+    'hidden': 'no',
+}
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
 async def test_node_wrapper(mock_read_config):
     """Verify that the node_wrapper returns the default node information."""
     result = await cluster.get_node_wrapper()
-    assert result.affected_items == [{'node': default_config["node_name"],
-                                      'type': default_config["node_type"]}]
+    assert result.affected_items == [{'node': default_config['node_name'], 'type': default_config['node_type']}]
 
 
 @patch('wazuh.cluster.get_node', side_effect=WazuhError(1001))
@@ -47,7 +55,7 @@ async def test_node_wrapper_exception(mock_get_node):
 async def test_get_status_json():
     """Verify that get_status_json returns the default status information."""
     result = await cluster.get_status_json()
-    expected = WazuhResult({'data': {"running": "no"}})
+    expected = WazuhResult({'data': {'running': 'no'}})
     assert result == expected
 
 

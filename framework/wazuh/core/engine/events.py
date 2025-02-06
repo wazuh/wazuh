@@ -13,12 +13,12 @@ class EventsModule(BaseModule):
 
     async def send(self, event_stream: AsyncGenerator[bytes, None]) -> None:
         """Send events to the engine.
-        
+
         Parameters
         ----------
         event_stream : AsyncGenerator[bytes, None]
             Events as a byte stream.
-        
+
         Raises
         ------
         WazuhError(2710)
@@ -31,7 +31,7 @@ class EventsModule(BaseModule):
                 headers={
                     'Accept': APPLICATION_JSON,
                     'Content-Type': APPLICATION_NDJSON,
-                }
+                },
             )
 
             if response.is_error:

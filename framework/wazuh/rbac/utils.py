@@ -29,6 +29,7 @@ def token_cache(cache: TTLCache):
     -------
     Requested function
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -46,5 +47,7 @@ def token_cache(cache: TTLCache):
                 return f(*args, **kwargs)
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator

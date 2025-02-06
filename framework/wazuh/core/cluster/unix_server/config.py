@@ -20,7 +20,7 @@ async def get_config(sections: Optional[str] = None) -> Response:
         HTTP OK response with the configuration as content.
     """
     if sections is not None:
-        section_list = sections.split(",")
+        section_list = sections.split(',')
         try:
             validated_sections = [ConfigSections(section) for section in section_list]
         except ValueError as e:

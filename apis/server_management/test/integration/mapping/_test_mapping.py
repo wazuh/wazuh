@@ -23,7 +23,7 @@ file_path = path.join(integration_tests, 'mapping', 'integration_test_api_endpoi
 wazuh_modules = [
     api,  # API
     framework,  # SDK, CORE and RBAC (recursive call)
-    integration_tests  # Integration tests
+    integration_tests,  # Integration tests
 ]
 
 file_tag_regex = re.compile(r'([^_]+).*\.[a-z]{2,4}')
@@ -45,11 +45,11 @@ def calculate_test_mappings():
             test_mapping[test_tag.lower()].append(test)
 
     # Create custom tag for basic tests
-    for test in sorted(
-            [tests for tests in map(lambda x: test_mapping[x], ['agent', 'cluster'])]):
+    for test in sorted([tests for tests in map(lambda x: test_mapping[x], ['agent', 'cluster'])]):
         test_mapping['basic'].extend(test)
 
     return test_mapping
+
 
 def extract_module_from_path(file_path):
     """Extracts the module from the file path."""
@@ -57,6 +57,7 @@ def extract_module_from_path(file_path):
     # Assuming the module is the last part of the path
     wazuh_modules = parts[-1]
     return wazuh_modules
+
 
 def get_file_and_test_info(test_name, test_mapping, module_name):
     try:
@@ -77,8 +78,11 @@ def get_file_and_test_info(test_name, test_mapping, module_name):
         related_tests = [test for test in test_mapping['rbac'] if test_tag in test and module_name in test]
     elif test_mapping[test_tag]:
         # If a tag matches, both their normal and RBAC tests will be assigned
-        related_tests = test_mapping[test_tag] + [test for test in test_mapping['rbac'] if test_tag in test] \
-            if test_tag != 'rbac' else test_mapping[test_tag]
+        related_tests = (
+            test_mapping[test_tag] + [test for test in test_mapping['rbac'] if test_tag in test]
+            if test_tag != 'rbac'
+            else test_mapping[test_tag]
+        )
     else:
         # If no tag is matched, basic tests will be assigned
         related_tests = test_mapping['basic']
@@ -134,6 +138,7 @@ if __name__ == '__main__':
         files = next((item['tests'] for item in match['files'] if item['name'] == file_name), [])
         print('No tests assigned to that file' if not files else '\n'.join(files))
     else:
-        print('Invalid number of arguments.\n\t- No arguments: generate test mapping file.\n\t- One argument: '
-              'Show assigned integration tests to that file.')
-        
+        print(
+            'Invalid number of arguments.\n\t- No arguments: generate test mapping file.\n\t- One argument: '
+            'Show assigned integration tests to that file.'
+        )

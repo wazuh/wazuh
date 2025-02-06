@@ -9,12 +9,12 @@ import pytest
 from server_management_api.uri_parser import LOWER_FIELDS, APIUriParser
 
 
-@pytest.mark.parametrize('query_parm',
-                         LOWER_FIELDS)
+@pytest.mark.parametrize('query_parm', LOWER_FIELDS)
 def test_apiuriparser_resolve_params(query_parm):
     """Test Parameter Sanitization."""
     uri_parser = APIUriParser({}, {})
     with patch('connexion.uri_parsing.AbstractURIParser.resolve_params') as resolv_mock:
+
         def side_effect_resolve_param(params, _in):
             return params
 

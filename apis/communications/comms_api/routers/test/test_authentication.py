@@ -33,7 +33,7 @@ async def test_authentication(
     uuid = '0'
     credentials = Credentials(uuid=uuid, key='key')
     response = await authentication(credentials)
-    
+
     get_opensearch_client_mock.assert_called_once()
     connect_mock.assert_called_once()
     close_mock.assert_called_once()
@@ -42,14 +42,18 @@ async def test_authentication(
     generate_token_mock.assert_called_once_with(credentials.uuid)
     assert response == TokenResponse(token='token')
 
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize('exception,message', [
-    (WazuhIndexerError(2200), 'Couldn\'t connect to the indexer: Error 2200 - Could not connect to the indexer'),
-    (WazuhResourceNotFound(1701), 'Agent does not exist'),
-    (WazuhInternalError(6003), 'Couldn\'t get key pair: Error 6003 - Error trying to load the JWT secret'),
-])
+@pytest.mark.parametrize(
+    'exception,message',
+    [
+        (WazuhIndexerError(2200), "Couldn't connect to the indexer: Error 2200 - Could not connect to the indexer"),
+        (WazuhResourceNotFound(1701), 'Agent does not exist'),
+        (WazuhInternalError(6003), "Couldn't get key pair: Error 6003 - Error trying to load the JWT secret"),
+    ],
+)
 async def test_authentication_ko(exception, message):
     """Verify that the `authentication` handler catches exceptions successfully."""
     with patch('wazuh.core.indexer.create_indexer', AsyncMock(side_effect=exception)):
-        with pytest.raises(HTTPError, match=fr'{status.HTTP_403_FORBIDDEN}: {message}'):
+        with pytest.raises(HTTPError, match=rf'{status.HTTP_403_FORBIDDEN}: {message}'):
             _ = await authentication(Credentials(uuid='', key=''))

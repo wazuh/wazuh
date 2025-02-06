@@ -150,7 +150,7 @@ class WazuhDAPI:
             f=reconnect_agents,
             f_kwargs={'agent_list': agent_list},
             request_type='distributed_master',
-            wait_for_complete=True
+            wait_for_complete=True,
         )
 
         return data.affected_items

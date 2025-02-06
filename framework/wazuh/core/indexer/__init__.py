@@ -108,7 +108,6 @@ class Indexer(MixinBulk):
         except ImproperlyConfigured as e:
             raise WazuhIndexerError(2200, extra_message=f'{e}. Check your indexer configuration and SSL certificates')
 
-
     async def close(self) -> None:
         """Close the Wazuh Indexer client."""
         logger.debug('Closing the indexer client session.')
@@ -196,7 +195,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         user=indexer_config.username,
         password=indexer_config.password,
         ssl=indexer_config.ssl if indexer_config.ssl else None,
-        retries=3
+        retries=3,
     )
 
     try:

@@ -81,19 +81,14 @@ class CommandsManager(BaseIndex):
         commands : List[Command]
             Command list.
         """
-        query = AsyncSearch(using=self._client, index=self.INDEX).filter({
-            IndexerKey.TERM: {
-                f'{COMMAND_KEY}.{IndexerKey.STATUS}': status.value
-            }
-        })
+        query = AsyncSearch(using=self._client, index=self.INDEX).filter(
+            {IndexerKey.TERM: {f'{COMMAND_KEY}.{IndexerKey.STATUS}': status.value}}
+        )
         response = await query.execute()
 
         commands = []
         for hit in response:
-            commands.append(Command(
-                document_id=hit.meta[IndexerKey.ID],
-                **hit.to_dict()[COMMAND_KEY]
-            ))
+            commands.append(Command(document_id=hit.meta[IndexerKey.ID], **hit.to_dict()[COMMAND_KEY]))
 
         return commands
 
@@ -104,14 +99,10 @@ class CommandsManager(BaseIndex):
             order_ids (List[str]): List of order id's to update.
             status (str): New status to set.
         """
-        query = AsyncUpdateByQuery(using=self._client, index=self.INDEX).filter(
-            {
-                IndexerKey.TERMS: {'command.order_id': order_ids}
-            }
-        ).script(
-            source=self.UPDATE_STATUS_SCRIPT,
-            lang=IndexerKey.PAINLESS,
-            params={'status': status}
+        query = (
+            AsyncUpdateByQuery(using=self._client, index=self.INDEX)
+            .filter({IndexerKey.TERMS: {'command.order_id': order_ids}})
+            .script(source=self.UPDATE_STATUS_SCRIPT, lang=IndexerKey.PAINLESS, params={'status': status})
         )
         _ = await query.execute()
 
@@ -137,10 +128,7 @@ def create_restart_command(agent_id: str) -> Command:
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='restart',
-            version='5.0.0'
-        ),
+        action=Action(name='restart', version='5.0.0'),
         user=COMMAND_USER_NAME,
         timeout=100,
     )
@@ -167,13 +155,7 @@ def create_set_group_command(agent_id: str, groups: List[str]) -> Command:
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='set-group',
-            args={
-                'groups': groups
-            },
-            version='5.0.0'
-        ),
+        action=Action(name='set-group', args={'groups': groups}, version='5.0.0'),
         user=COMMAND_USER_NAME,
         timeout=100,
     )
@@ -198,11 +180,7 @@ def create_fetch_config_command(agent_id: str) -> Command:
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='fetch-config',
-            args={},
-            version='5.0.0'
-        ),
+        action=Action(name='fetch-config', args={}, version='5.0.0'),
         user=COMMAND_USER_NAME,
         timeout=100,
     )

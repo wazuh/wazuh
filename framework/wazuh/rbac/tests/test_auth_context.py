@@ -17,7 +17,7 @@ test_data_path = os.path.join(test_path, 'data/')
 @pytest.fixture(scope='function')
 def db_setup():
     with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+        with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
             with patch('shutil.chown'), patch('os.chmod'):
                 from wazuh.rbac.auth_context import RBAChecker
     init_db('schema_security_test.sql', test_data_path)

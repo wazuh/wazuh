@@ -1,4 +1,3 @@
-
 import sys
 from xml.etree.ElementTree import parse
 
@@ -41,16 +40,27 @@ def parse_section(original, new_section):
             The ET element inside 'full_tree'. None if not found.
         """
         if element_to_search.attrib:
-            result = full_tree.find('.//{tag}[@{attrib_key}="{attrib_value}"]'.format(
-                tag=element_to_search.tag, attrib_key=next(iter(element_to_search.attrib.keys())),
-                attrib_value=next(iter(element_to_search.attrib.values())))
+            result = full_tree.find(
+                './/{tag}[@{attrib_key}="{attrib_value}"]'.format(
+                    tag=element_to_search.tag,
+                    attrib_key=next(iter(element_to_search.attrib.keys())),
+                    attrib_value=next(iter(element_to_search.attrib.values())),
+                )
             )
             # If element with same tag and attribute is not found in 'full_tree', look for element with
             # same tag and value (text).
-            result = next(
-                (full_tree_element for full_tree_element in iter(full_tree.iter(element_to_search.tag))
-                 if full_tree_element.text == element_to_search.text),
-                None) if result is None else result
+            result = (
+                next(
+                    (
+                        full_tree_element
+                        for full_tree_element in iter(full_tree.iter(element_to_search.tag))
+                        if full_tree_element.text == element_to_search.text
+                    ),
+                    None,
+                )
+                if result is None
+                else result
+            )
         else:
             result = full_tree.find('.//{tag}'.format(tag=element_to_search.tag))
 

@@ -30,11 +30,11 @@ models_path = dirname(dirname(abspath(__file__)))
 
 class TestModel(bm.Body):
     """Test class for custom Model. Body inherits from Model and has all the attributes required for testing."""
+
     __test__ = False
 
     def __init__(self, *args):
-
-        self.swagger_types = {f"arg_{i + 1}": type(arg) for i, arg in enumerate(args)}
+        self.swagger_types = {f'arg_{i + 1}': type(arg) for i, arg in enumerate(args)}
 
         if not self.swagger_types:
             self.swagger_types = {'arg_1': str}
@@ -87,7 +87,7 @@ def test_model_to_dict():
     test_model = TestModel(*model_params)
     dikt = test_model.to_dict()
     assert isinstance(dikt, dict)
-    assert dikt == {f"arg_{i + 1}": value for i, value in enumerate(model_params)}
+    assert dikt == {f'arg_{i + 1}': value for i, value in enumerate(model_params)}
 
 
 def test_model_to_str():
@@ -186,10 +186,7 @@ def test_items_from_dict():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('additional_kwargs', [
-    {},
-    {'arg_2': 'test'}
-])
+@pytest.mark.parametrize('additional_kwargs', [{}, {'arg_2': 'test'}])
 async def test_body_get_kwargs(additional_kwargs):
     """Test class Body `get_kwargs` class method."""
     request = {'arg_1': 'value1'}
@@ -208,7 +205,9 @@ async def test_body_get_kwargs(additional_kwargs):
 async def test_body_get_kwargs_ko():
     """Test class Body `get_kwargs` class method exceptions."""
     invalid_request = {'invalid': 'value1'}
-    with patch('server_management_api.models.base_model_.util.deserialize_model', side_effect=JSONDecodeError('msg', 'a', 1)):
+    with patch(
+        'server_management_api.models.base_model_.util.deserialize_model', side_effect=JSONDecodeError('msg', 'a', 1)
+    ):
         with pytest.raises(ProblemException) as exc:
             await TestModel.get_kwargs(invalid_request)
 
@@ -297,18 +296,14 @@ def test_all_models(deserialize_mock, module_name):
                 deserialize_mock.assert_called_with('test', module_class)
 
 
-@pytest.mark.parametrize('key', (
-    '7b8276c3bf96aff5709346d368f04aed',
-    'test',
-    '7b8276c3bf96aff5709346d368f04aedA'
-))
+@pytest.mark.parametrize('key', ('7b8276c3bf96aff5709346d368f04aed', 'test', '7b8276c3bf96aff5709346d368f04aedA'))
 async def test_agent_registration_model_validation(key):
     request = {
         'id': '01929571-49b5-75e8-a3f6-1d2b84f4f71a',
         'name': 'testing',
         'key': key,
         'type': 'endpoint',
-        'version': '5.0.0'
+        'version': '5.0.0',
     }
 
     if len(key) != agent_registration_model.KEY_LENGTH:

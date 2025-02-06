@@ -38,7 +38,7 @@ async def default_info(pretty: bool = False) -> ConnexionResponse:
         'license_name': info_data['info']['license']['name'],
         'license_url': info_data['info']['license']['url'],
         'hostname': socket.gethostname(),
-        'timestamp': get_utc_now().strftime(DATE_FORMAT)
+        'timestamp': get_utc_now().strftime(DATE_FORMAT),
     }
     data = WazuhResult({'data': BasicInfo.from_dict(data)})
 

@@ -43,7 +43,7 @@ class TestAgent:
         [
             ({'groups': 'default,test'}, {'groups': 'default,test'}),
             ({'name': 'test'}, {'name': 'test'}),
-        ]
+        ],
     )
     def test_to_dict(self, data: dict, expected):
         """Check the correct function if `to_dict` method."""

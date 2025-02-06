@@ -26,7 +26,7 @@ class JWTBearer(HTTPBearer):
         ----------
         request : Request
             HTTP request.
-        
+
         Raises
         ------
         HTTPError
@@ -35,7 +35,7 @@ class JWTBearer(HTTPBearer):
         Returns
         -------
         str
-            HTTP Authorization header credentials.        
+            HTTP Authorization header credentials.
         """
         try:
             credentials: Optional[HTTPAuthorizationCredentials] = await super(JWTBearer, self).__call__(request)
