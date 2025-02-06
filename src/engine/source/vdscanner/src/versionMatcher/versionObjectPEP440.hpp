@@ -133,12 +133,28 @@ public:
 
         size_t pos = 0;
 
-        // Parse epoch
+        // Parse epoch safely, ensure it is a number
         size_t exclamationPos = version.find('!');
         if (exclamationPos != std::string::npos)
         {
-            data.epoch = std::stoul(version.substr(0, exclamationPos));
+            if (exclamationPos == 0 || exclamationPos >= version.size())
+            {
+                return false; // Invalid epoch (empty or misplaced '!')
+            }
+            std::string epochStr = version.substr(0, exclamationPos);
+            if (std::all_of(epochStr.begin(), epochStr.end(), ::isdigit))
+            {
+                data.epoch = std::stoul(epochStr);
+            }
+            else
+            {
+                return false; // Invalid epoch format
+            }
             pos = exclamationPos + 1;
+        }
+        else
+        {
+            data.epoch = 0;
         }
 
         // Parse release version
@@ -147,6 +163,12 @@ public:
         {
             ++pos;
         }
+
+        if (start == pos)
+        {
+            return false; // No valid release version found
+        }
+
         data.versionStr = version.substr(start, pos - start);
 
         // Remove trailing '.' if present
@@ -155,14 +177,15 @@ public:
             data.versionStr.pop_back();
         }
 
-        // Helper to skip separators
-        auto skipSeparators = [&version, &pos]()
+        // Helper function to skip separators
+        auto skipSeparators = [&]()
         {
             while (pos < version.size() && (version[pos] == '.' || version[pos] == '-' || version[pos] == '_'))
             {
                 ++pos;
             }
         };
+
         skipSeparators();
 
         // Parse pre-release
@@ -193,7 +216,7 @@ public:
 
                 skipSeparators();
 
-                // Parse pre-release number
+                // Parse pre-release number safely
                 start = pos;
                 while (pos < version.size() && std::isdigit(version[pos]))
                 {
@@ -202,6 +225,10 @@ public:
                 if (start != pos)
                 {
                     data.preReleaseNumber = std::stoul(version.substr(start, pos - start));
+                }
+                else
+                {
+                    data.preReleaseNumber = 0;
                 }
                 break;
             }
@@ -221,7 +248,7 @@ public:
 
                 skipSeparators();
 
-                // Parse post-release number
+                // Parse post-release number safely
                 start = pos;
                 while (pos < version.size() && std::isdigit(version[pos]))
                 {
@@ -230,6 +257,10 @@ public:
                 if (start != pos)
                 {
                     data.postReleaseNumber = std::stoul(version.substr(start, pos - start));
+                }
+                else
+                {
+                    data.postReleaseNumber = 0;
                 }
                 break;
             }
@@ -245,7 +276,7 @@ public:
 
             skipSeparators();
 
-            // Parse dev-release number
+            // Parse dev-release number safely
             start = pos;
             while (pos < version.size() && std::isdigit(version[pos]))
             {
@@ -254,6 +285,10 @@ public:
             if (start != pos)
             {
                 data.devReleaseNumber = std::stoul(version.substr(start, pos - start));
+            }
+            else
+            {
+                data.devReleaseNumber = 0;
             }
         }
 
