@@ -1280,7 +1280,7 @@ async def revoke_all_tokens(pretty: bool = False) -> ConnexionResponse:
         nodes=nodes,
     )
     data = raise_if_exc(await dapi.distribute_function())
-    if type(data) == AffectedItemsWazuhResult and len(data.affected_items) == 0:
+    if type(data) is AffectedItemsWazuhResult and len(data.affected_items) == 0:
         raise_if_exc(WazuhPermissionError(4000, data.message))
 
     return json_response(data, pretty=pretty)
