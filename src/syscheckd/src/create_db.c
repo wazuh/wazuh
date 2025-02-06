@@ -14,6 +14,7 @@
 #include "integrity_op.h"
 #include "time_op.h"
 #include "db/include/db.h"
+#include "ebpf/include/ebpf_whodata.h"
 #include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -603,6 +604,7 @@ time_t fim_scan() {
 
     if (_base_line == 0) {
         _base_line = 1;
+        ebpf_whodata("/test");
     } else {
         // In the first scan, the fim initialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
