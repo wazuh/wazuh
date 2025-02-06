@@ -101,17 +101,17 @@ def test_context_cached():
     assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {}})], ContextVar)
 
     # foo called with an argument
-    assert foo('other_arg') == 'other_arg' and test_context_cached.calls_to_foo == 2, (
-        '"other_arg" should be ' 'returned with 2 calls to foo. '
-    )
+    assert (
+        foo('other_arg') == 'other_arg' and test_context_cached.calls_to_foo == 2
+    ), '"other_arg" should be returned with 2 calls to foo. '
     assert isinstance(
         get_context_cache()[json.dumps({'key': 'foobar', 'args': ['other_arg'], 'kwargs': {}})], ContextVar
     )
 
     # foo called with the same argument as default, a new context var is created in the cache
-    assert foo('bar') == 'bar' and test_context_cached.calls_to_foo == 3, (
-        '"bar" should be returned with 3 calls to ' 'foo. '
-    )
+    assert (
+        foo('bar') == 'bar' and test_context_cached.calls_to_foo == 3
+    ), '"bar" should be returned with 3 calls to foo. '
     assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': ['bar'], 'kwargs': {}})], ContextVar)
 
     # Reset cache and calls to foo
@@ -119,9 +119,9 @@ def test_context_cached():
     test_context_cached.calls_to_foo = 0
 
     # foo called with kwargs, a new context var is created with kwargs not empty
-    assert foo(data='bar') == 'bar' and test_context_cached.calls_to_foo == 1, (
-        '"bar" should be returned with 1 ' 'calls to foo. '
-    )
+    assert (
+        foo(data='bar') == 'bar' and test_context_cached.calls_to_foo == 1
+    ), '"bar" should be returned with 1 calls to foo. '
     assert isinstance(
         get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {'data': 'bar'}})], ContextVar
     )

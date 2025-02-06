@@ -558,7 +558,7 @@ async def test_AbstractServer_check_clients_keepalive(sleep_mock):
                 except IndexError:
                     pass
                 mock_error.assert_called_once_with(
-                    'No keep alives have been received from ' 'worker_test in the last minute. Disconnecting',
+                    'No keep alives have been received from worker_test in the last minute. Disconnecting',
                     exc_info=False,
                 )
 

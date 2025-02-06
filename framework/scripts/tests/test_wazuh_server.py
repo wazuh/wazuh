@@ -327,7 +327,7 @@ async def test_worker_main(asyncio_sleep_mock):
                                 ]
                             )
                             logging_info_mock.assert_called_once_with(
-                                'Connection with server has been lost. ' 'Reconnecting in 10 seconds.'
+                                'Connection with server has been lost. Reconnecting in 10 seconds.'
                             )
                             asyncio_sleep_mock.assert_called_once_with(34)
 

@@ -520,7 +520,7 @@ class AbstractServer:
                     > self.server_config.master.intervals.max_allowed_time_without_keep_alive
                 ):
                     keep_alive_logger.error(
-                        'No keep alives have been received from {} in the last minute. ' 'Disconnecting'.format(
+                        'No keep alives have been received from {} in the last minute. Disconnecting'.format(
                             client_name
                         ),
                         exc_info=False,

@@ -24,13 +24,13 @@ class APIException(Exception):
         # show relative paths in exceptions
         self.exceptions = {
             2000: 'Some parameters are not expected in the configuration',
-            2002: 'Error migrating configuration from old API version. ' 'Default configuration will be applied',
+            2002: 'Error migrating configuration from old API version. Default configuration will be applied',
             2003: 'Error loading SSL/TLS certificates',
             2004: 'Configuration file could not be loaded',
             2005: 'Body request is not a valid JSON',
             2006: 'Error parsing body request to UTF-8',
             2007: 'Body is empty',
-            2009: 'Semicolon (;) is a reserved character and must ' 'be percent-encoded (%3B) to use it.',
+            2009: 'Semicolon (;) is a reserved character and must be percent-encoded (%3B) to use it.',
             2010: 'Error while attempting to bind on address: address already in use',
             2011: 'Error setting up API logger',
             2012: 'Error while attempting to check RBAC database integrity',

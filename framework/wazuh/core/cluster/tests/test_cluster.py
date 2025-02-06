@@ -491,7 +491,7 @@ def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_
         with patch('zlib.compress', return_value=b'compressed_test_content'):
             _, logs = cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'})
             assert logs['warning']['some/path'] == [
-                'Maximum zip size exceeded. ' 'Not all files will be compressed during this sync.'
+                'Maximum zip size exceeded. Not all files will be compressed during this sync.'
             ]
 
         with patch('zlib.compress', return_value='compressed_test_content'):

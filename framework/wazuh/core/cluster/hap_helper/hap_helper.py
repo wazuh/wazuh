@@ -486,7 +486,7 @@ class HAPHelper:
                 or helper_config[CLIENT_CERT_PASSWORD]
             ):
                 logger.warning(
-                    'HTTPS related parameters have been set but will be ignored since ' 'HTTP is defined as protocol.'
+                    'HTTPS related parameters have been set but will be ignored since HTTP is defined as protocol.'
                 )
 
                 # Set the certificate information to default values to avoid errors in the communication
