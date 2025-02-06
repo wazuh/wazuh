@@ -84,7 +84,7 @@ def get_identifier(resources):
 
 
 @pytest.mark.parametrize(
-    'decorator_params, function_params, rbac, ' 'fake_system_resources, allowed_resources, result, mode',
+    'decorator_params, function_params, rbac, fake_system_resources, allowed_resources, result, mode',
     configurations_black + configurations_white,
 )
 async def test_expose_resources(

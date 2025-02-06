@@ -198,7 +198,7 @@ class WazuhDBConnection:
                     query_elements[sql_first_index + 1] == 'select'
                     or query_elements[sql_first_index + 1] == 'delete'
                     or query_elements[sql_first_index + 1] == 'update',
-                    'Only "select", "delete" or "update" requests can be ' 'sent to WDB',
+                    'Only "select", "delete" or "update" requests can be sent to WDB',
                 ),
                 (';' not in query, 'Found a not valid symbol in database query: ;'),
             ]

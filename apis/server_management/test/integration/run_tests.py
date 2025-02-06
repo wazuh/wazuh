@@ -212,7 +212,7 @@ def get_script_arguments():
         dest='rbac',
         default='both',
         choices=rbac_choices,
-        help='Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default ' '"both".',
+        help='Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default "both".',
         action='store',
     )
     parser.add_argument(

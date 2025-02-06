@@ -80,12 +80,12 @@ def get_script_arguments():
 
     change_password_parser = arg_subparsers.add_parser(
         'change-password',
-        help='Change the password for each default user. Empty values ' 'will leave the password unchanged.',
+        help='Change the password for each default user. Empty values will leave the password unchanged.',
     )
     change_password_parser.set_defaults(func=restore_default_passwords)
     reset_parser = arg_subparsers.add_parser(
         'factory-reset',
-        help='Reset the RBAC database to its default state. This will completely' ' wipe your custom RBAC information.',
+        help='Reset the RBAC database to its default state. This will completely wipe your custom RBAC information.',
     )
     reset_parser.add_argument(
         '-f',

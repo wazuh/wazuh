@@ -319,10 +319,10 @@ def test_validate_group_configuration(response, expected_field, expected_value):
         response_config.keys()
     ), 'The expected config key is not present in the received response.'
 
-    assert response_config[expected_field] == expected_value, (
-        'The received value for query does not match with the expected one. ' 'Received: {}. Expected: {}'.format(
-            response_config[expected_field], expected_value
-        )
+    assert (
+        response_config[expected_field] == expected_value
+    ), 'The received value for query does not match with the expected one. Received: {}. Expected: {}'.format(
+        response_config[expected_field], expected_value
     )
 
 

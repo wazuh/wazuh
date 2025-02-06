@@ -99,7 +99,7 @@ def configure_ssl(params: dict, config: APISSLConfig):
         # Generate SSL if it does not exist and HTTPS is enabled
         if not os.path.exists(config.key) or not os.path.exists(config.cert):
             logger.info(
-                'HTTPS is enabled but cannot find the private key and/or certificate. ' 'Attempting to generate them'
+                'HTTPS is enabled but cannot find the private key and/or certificate. Attempting to generate them'
             )
             private_key = generate_private_key(config.key)
             logger.info(f'Generated private key file in {config.key}')

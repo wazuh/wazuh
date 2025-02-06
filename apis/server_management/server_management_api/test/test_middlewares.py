@@ -82,7 +82,7 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
         assert exc_info.value.status == 403
         assert exc_info.value.title == 'Permission Denied'
         assert exc_info.value.detail == (
-            'Limit of login attempts reached. The current IP has been blocked due ' 'to a high number of login attempts'
+            'Limit of login attempts reached. The current IP has been blocked due to a high number of login attempts'
         )
         assert exc_info.ext == mock_req
 

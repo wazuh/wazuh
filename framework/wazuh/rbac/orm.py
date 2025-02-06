@@ -2418,7 +2418,7 @@ class UserRolesManager(RBACManager):
                     user_id = AuthenticationManager(manager.sessions[target]).get_user(username=user_name)['id']
                 except TypeError:
                     logger.warning(
-                        f'User {user_id} ({user_name}) no longer exists. Removing affected ' 'user-role relationships'
+                        f'User {user_id} ({user_name}) no longer exists. Removing affected user-role relationships'
                     )
                     continue
 
@@ -2430,7 +2430,7 @@ class UserRolesManager(RBACManager):
                     role_id = RolesManager(manager.sessions[target]).get_role(name=role_name)['id']
                 except TypeError:
                     logger.warning(
-                        f'Role {role_id} ({role_name}) no longer exists. Removing affected ' 'user-role relationships'
+                        f'Role {role_id} ({role_name}) no longer exists. Removing affected user-role relationships'
                     )
                     continue
 
@@ -2882,7 +2882,7 @@ class RolesPoliciesManager(RBACManager):
                     role_id = RolesManager(manager.sessions[target]).get_role(name=role_name)['id']
                 except TypeError:
                     logger.warning(
-                        f'Role {role_id} ({role_name}) no longer exists. Removing affected ' 'role-policy relationships'
+                        f'Role {role_id} ({role_name}) no longer exists. Removing affected role-policy relationships'
                     )
                     continue
 
@@ -3227,7 +3227,7 @@ class RolesRulesManager(RBACManager):
                     role_id = RolesManager(manager.sessions[target]).get_role(name=role_name)['id']
                 except TypeError:
                     logger.warning(
-                        f'Role {role_id} ({role_name}) no longer exists. Removing affected ' 'role-rule relationships'
+                        f'Role {role_id} ({role_name}) no longer exists. Removing affected role-rule relationships'
                     )
                     continue
 
@@ -3239,7 +3239,7 @@ class RolesRulesManager(RBACManager):
                     rule_id = RulesManager(manager.sessions[target]).get_rule_by_name(rule_name=rule_name)['id']
                 except TypeError:
                     logger.warning(
-                        f'Rule {rule_id} ({rule_name}) no longer exists. Removing affected ' 'role-rule relationships'
+                        f'Rule {rule_id} ({rule_name}) no longer exists. Removing affected role-rule relationships'
                     )
                     continue
 

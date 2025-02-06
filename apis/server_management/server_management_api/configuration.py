@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 CACHE_DEPRECATED_MESSAGE = (
-    'The `cache` API configuration option was deprecated in {release} and will be removed ' 'in the next minor release.'
+    'The `cache` API configuration option was deprecated in {release} and will be removed in the next minor release.'
 )
 
 default_security_configuration = {'auth_token_exp_timeout': 900, 'rbac_mode': 'white'}

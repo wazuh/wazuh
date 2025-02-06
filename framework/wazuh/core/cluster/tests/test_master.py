@@ -935,13 +935,13 @@ async def test_master_handler_integrity_check(
             integrity_sync_mock.assert_called_once_with({'extra_valid': compare_result})
             assert info_mock.call_args_list == [
                 call('Starting.'),
-                call('Finished in 0.000s. Received metadata ' 'of 14 files. Sync required.'),
+                call('Finished in 0.000s. Received metadata of 14 files. Sync required.'),
             ]
         else:
             send_request_mock.assert_called_once_with(command=b'syn_m_c_ok', data=b'')
             assert info_mock.call_args_list == [
                 call('Starting.'),
-                call('Finished in 0.000s. Received metadata ' 'of 14 files. Sync not required.'),
+                call('Finished in 0.000s. Received metadata of 14 files. Sync not required.'),
             ]
 
 
@@ -1007,7 +1007,7 @@ async def test_master_handler_integrity_sync(set_date_end_mock, info_mock):
     )
     assert info_mock.call_args_list == [
         call('Starting.'),
-        call('Files to create in worker: 1 | Files to update in worker: 0 | ' 'Files to delete in worker: 0'),
+        call('Files to create in worker: 1 | Files to update in worker: 0 | Files to delete in worker: 0'),
     ]
     set_date_end_mock.assert_called_once()
 
@@ -1317,7 +1317,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                 'permissions to be accessed by all users. Changing the file permissions to 777 '
                 'will solve this issue.'
             ),
-            call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 ' 'and higher versions.'),
+            call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.'),
         ]
     )
 
@@ -1337,7 +1337,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                 'permissions to be accessed by all users. Changing the file permissions to 777 '
                 'will solve this issue.'
             ),
-            call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 ' 'and higher versions.'),
+            call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.'),
         ]
     )
 
