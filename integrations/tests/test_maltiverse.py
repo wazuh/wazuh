@@ -295,9 +295,11 @@ def test_get_source_ip_in_alert(alert, is_private, expected):
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
-    with patch('maltiverse.maltiverse_alert') as alert_mock, patch('ipaddress.IPv4Address') as ip_mock, patch(
-        'maltiverse.requests.Session.get'
-    ) as mock_get:
+    with (
+        patch('maltiverse.maltiverse_alert') as alert_mock,
+        patch('ipaddress.IPv4Address') as ip_mock,
+        patch('maltiverse.requests.Session.get') as mock_get,
+    ):
         alert_mock.return_value = {}
         ip_mock_instance = ip_mock.return_value
         ip_mock_instance.is_private = is_private
@@ -534,9 +536,11 @@ def test_debug():
     """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
     example_msg = 'some message'
 
-    with patch('maltiverse.debug_enabled', return_value=True), patch(
-        'maltiverse.open', mock_open()
-    ) as open_mock, patch('maltiverse.LOG_FILE', return_value='integrations.log') as log_file:
+    with (
+        patch('maltiverse.debug_enabled', return_value=True),
+        patch('maltiverse.open', mock_open()) as open_mock,
+        patch('maltiverse.LOG_FILE', return_value='integrations.log') as log_file,
+    ):
         maltiverse.debug(example_msg)
         open_mock.assert_called_with(log_file, 'a')
         open_mock().write.assert_called_with(f'{example_msg}\n')

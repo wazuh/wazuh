@@ -52,14 +52,11 @@ def test_BaseQueue_protected_connect(mock_set, mock_conn):
 @patch('wazuh.core.wazuh_queue.socket.socket.connect', side_effect=Exception)
 def test_BaseQueue_protected_connect_ko(mock_conn):
     """Test BaseQueue._connect function exceptions."""
-    with pytest.raises(WazuhException, match=".* 1010 .*"):
+    with pytest.raises(WazuhException, match='.* 1010 .*'):
         BaseQueue('test_path')
 
 
-@pytest.mark.parametrize('send_response, error', [
-    (1, False),
-    (0, True)
-])
+@pytest.mark.parametrize('send_response, error', [(1, False), (0, True)])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.BaseQueue.MAX_MSG_SIZE', new=0)
 def test_BaseQueue_protected_send(mock_conn, send_response, error):
@@ -76,7 +73,7 @@ def test_BaseQueue_protected_send(mock_conn, send_response, error):
 
     with patch('socket.socket.send', return_value=send_response):
         if error:
-            with pytest.raises(WazuhException, match=".* 1011 .*"):
+            with pytest.raises(WazuhException, match='.* 1011 .*'):
                 queue._send('msg')
         else:
             queue._send('msg')
@@ -84,10 +81,7 @@ def test_BaseQueue_protected_send(mock_conn, send_response, error):
     mock_conn.assert_called_with('test_path')
 
 
-@pytest.mark.parametrize(
-        "errno,match",
-        [(1, ".* 1011 .*")]
-)
+@pytest.mark.parametrize('errno,match', [(1, '.* 1011 .*')])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.BaseQueue.MAX_MSG_SIZE', new=0)
 @patch('socket.socket.send')
@@ -115,17 +109,20 @@ def test_BaseQueue_close(mock_close, mock_conn):
     mock_close.assert_called_once_with()
 
 
-@pytest.mark.parametrize('msg, agent_id, msg_type', [
-    ('test_msg', '000', 'ar-message'),
-    ('test_msg', '001', 'ar-message'),
-    ('test_msg', None, 'ar-message'),
-    ('syscheck restart', '000', None),
-    ('force_reconnect', '000', None),
-    ('restart-ossec0', '001', None),
-    ('syscheck restart', None, None),
-    ('force_reconnect', None, None),
-    ('restart-ossec0', None, None)
-])
+@pytest.mark.parametrize(
+    'msg, agent_id, msg_type',
+    [
+        ('test_msg', '000', 'ar-message'),
+        ('test_msg', '001', 'ar-message'),
+        ('test_msg', None, 'ar-message'),
+        ('syscheck restart', '000', None),
+        ('force_reconnect', '000', None),
+        ('restart-ossec0', '001', None),
+        ('syscheck restart', None, None),
+        ('force_reconnect', None, None),
+        ('restart-ossec0', None, None),
+    ],
+)
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue._send')
 def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_type):
@@ -148,10 +145,13 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
     mock_conn.assert_called_once_with('test_path')
 
 
-@pytest.mark.parametrize('msg, agent_id, msg_type, expected_exception', [
-    ('test_msg', '000', None, 1012),
-    ('syscheck restart', None, None, 1014),
-])
+@pytest.mark.parametrize(
+    'msg, agent_id, msg_type, expected_exception',
+    [
+        ('test_msg', '000', None, 1012),
+        ('syscheck restart', None, None, 1014),
+    ],
+)
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=Exception)
 def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, msg_type, expected_exception):
@@ -191,10 +191,7 @@ def test_WazuhAnalysisdQueue_send_msg(mock_send, mock_conn):
     mock_send.assert_called_once_with(f'{msg_header}{msg}'.encode())
 
 
-@pytest.mark.parametrize(
-        "max_msg_size,expected_error_code",
-        ([20, 1014], [1, 1012])
-)
+@pytest.mark.parametrize('max_msg_size,expected_error_code', ([20, 1014], [1, 1012]))
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhAnalysisdQueue._send', side_effect=Exception)
 def test_WazuhAnalysisdQueue_send_msg_ko(mock_send, mock_conn, max_msg_size, expected_error_code):

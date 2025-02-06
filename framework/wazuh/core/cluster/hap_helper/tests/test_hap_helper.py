@@ -635,7 +635,7 @@ class TestHAPHelper:
                                     haproxy_cert_file=HAPROXY_CERT_VALUE,
                                     client_cert_file=None,
                                     client_key_file=None,
-                                    client_password=None
+                                    client_password=None,
                                 )
 
                                 proxy_mock.assert_called_once_with(

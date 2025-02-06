@@ -11,11 +11,16 @@ valid_retries = 5
 valid_timeout = 20.0
 
 
-@pytest.mark.parametrize('init_values, expected', [
-    ({'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout},
-     {'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout}),
-    ({}, {'api_socket_path': ENGINE_SOCKET, 'retries': 3, 'timeout': 10.0}),
-])
+@pytest.mark.parametrize(
+    'init_values, expected',
+    [
+        (
+            {'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout},
+            {'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout},
+        ),
+        ({}, {'api_socket_path': ENGINE_SOCKET, 'retries': 3, 'timeout': 10.0}),
+    ],
+)
 @patch('pathlib.Path.is_file', return_value=True)
 def test_engine_client_config_default_values(mock_is_file, init_values, expected):
     """Check the correct initialization of the `EngineClientConfig` class."""
@@ -26,22 +31,36 @@ def test_engine_client_config_default_values(mock_is_file, init_values, expected
     assert client_config.timeout == expected['timeout']
 
 
-@pytest.mark.parametrize('init_values', [
-    {'api_socket_path': 'invalid_path', 'retries': 3, 'timeout': 10.0},
-    {'api_socket_path': valid_socket_path, 'retries': -1, 'timeout': 10.0},
-    {'api_socket_path': valid_socket_path, 'retries': 3, 'timeout': -5.0},
-])
+@pytest.mark.parametrize(
+    'init_values',
+    [
+        {'api_socket_path': 'invalid_path', 'retries': 3, 'timeout': 10.0},
+        {'api_socket_path': valid_socket_path, 'retries': -1, 'timeout': 10.0},
+        {'api_socket_path': valid_socket_path, 'retries': 3, 'timeout': -5.0},
+    ],
+)
 def test_engine_client_config_invalid_values(init_values):
     """Check the correct behavior of the `EngineClientConfig` class validations."""
     with pytest.raises(ValidationError):
         _ = EngineClientConfig(**init_values)
 
 
-@pytest.mark.parametrize('init_values, expected', [
-    ({'tzdv_automatic_update': True, 'client': {'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout}},
-     {'tzdv_automatic_update': True, 'client': {'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout}}),
-    ({}, {'tzdv_automatic_update': False, 'client': {}}),
-])
+@pytest.mark.parametrize(
+    'init_values, expected',
+    [
+        (
+            {
+                'tzdv_automatic_update': True,
+                'client': {'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout},
+            },
+            {
+                'tzdv_automatic_update': True,
+                'client': {'api_socket_path': valid_socket_path, 'retries': valid_retries, 'timeout': valid_timeout},
+            },
+        ),
+        ({}, {'tzdv_automatic_update': False, 'client': {}}),
+    ],
+)
 @patch('pathlib.Path.is_file', return_value=True)
 def test_engine_config_default_values(mock_is_file, init_values, expected):
     """Check the correct initialization of the `EngineConfig` class."""
@@ -51,11 +70,14 @@ def test_engine_config_default_values(mock_is_file, init_values, expected):
     assert engine_config.client == EngineClientConfig(**expected['client'])
 
 
-@pytest.mark.parametrize('invalid_values', [
-    {'client': {'api_socket_path': 'invalid_path'}},
-    {'client': {'retries': -1}},
-    {'client': {'timeout': -5.0}},
-])
+@pytest.mark.parametrize(
+    'invalid_values',
+    [
+        {'client': {'api_socket_path': 'invalid_path'}},
+        {'client': {'retries': -1}},
+        {'client': {'timeout': -5.0}},
+    ],
+)
 def test_engine_config_invalid_values(invalid_values):
     """Check the correct behavior of the `EngineConfig` class validations."""
     with pytest.raises(ValidationError):

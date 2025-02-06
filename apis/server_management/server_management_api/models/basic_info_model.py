@@ -12,9 +12,16 @@ from server_management_api.models.base_model_ import Model
 
 
 class BasicInfo(Model):
-
-    def __init__(self, title: str = None, api_version: str = None, revision: int = None, license_name: str = None,
-                 license_url: str = None, hostname: str = None, timestamp:  str = None):
+    def __init__(
+        self,
+        title: str = None,
+        api_version: str = None,
+        revision: int = None,
+        license_name: str = None,
+        license_url: str = None,
+        hostname: str = None,
+        timestamp: str = None,
+    ):
         """BasicInfo - a model defined in Swagger.
 
         :param title: API title name.
@@ -45,7 +52,7 @@ class BasicInfo(Model):
             'license_name': str,
             'license_url': str,
             'hostname': str,
-            'timestamp': str
+            'timestamp': str,
         }
 
         self.attribute_map = {
@@ -55,7 +62,7 @@ class BasicInfo(Model):
             'license_name': 'license_name',
             'license_url': 'license_url',
             'hostname': 'hostname',
-            'timestamp': 'timestamp'
+            'timestamp': 'timestamp',
         }
 
         self._title = title

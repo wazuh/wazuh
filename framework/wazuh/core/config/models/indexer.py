@@ -15,6 +15,7 @@ class IndexerNode(WazuhConfigBaseModel):
     port : PositiveInt
         The port number for the indexer.
     """
+
     host: str
     port: PositiveInt
 
@@ -33,6 +34,7 @@ class IndexerConfig(WazuhConfigBaseModel):
     ssl : IndexerSSLConfig, optional
         SSL configuration for the indexer. Default is None.
     """
+
     hosts: List[IndexerNode] = Field(min_length=1)
     username: str
     password: str

@@ -25,7 +25,7 @@ payload = {
     'aud': JWT_AUDIENCE,
     'iat': 0,
     'exp': 0 + JWT_EXPIRATION,
-    'uuid': '019113d7-d428-725e-a87a-a7661cf5f641'
+    'uuid': '019113d7-d428-725e-a87a-a7661cf5f641',
 }
 
 
@@ -52,7 +52,7 @@ async def test_jwt_bearer_ko():
     jwt = JWTBearer()
 
     message = 'not enough values to unpack \(expected 3\, got 0\)'
-    with pytest.raises(HTTPError, match=fr'{status.HTTP_403_FORBIDDEN}: {message}'):
+    with pytest.raises(HTTPError, match=rf'{status.HTTP_403_FORBIDDEN}: {message}'):
         _ = await jwt(mock_req)
 
 
@@ -71,8 +71,10 @@ async def test_jwt_bearer_decode_ko(decode_token_mock):
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1))
 @patch('comms_api.authentication.authentication.encode', return_value='test_token')
-@patch('comms_api.authentication.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
-                                                            '-----BEGIN PUBLIC KEY-----'))
+@patch(
+    'comms_api.authentication.authentication.get_keypair',
+    return_value=('-----BEGIN PRIVATE KEY-----', '-----BEGIN PUBLIC KEY-----'),
+)
 async def test_generate_token(mock_get_keypair, mock_encode):
     """Verify that the `generate_token` function works as expected."""
     result = generate_token(uuid=payload['uuid'])
@@ -85,8 +87,10 @@ async def test_generate_token(mock_get_keypair, mock_encode):
 
 @freeze_time(datetime(1970, 1, 1))
 @patch('comms_api.authentication.authentication.decode')
-@patch('comms_api.authentication.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
-                                                                                 '-----BEGIN PUBLIC KEY-----'))
+@patch(
+    'comms_api.authentication.authentication.get_keypair',
+    return_value=('-----BEGIN PRIVATE KEY-----', '-----BEGIN PUBLIC KEY-----'),
+)
 def test_decode_token(mock_get_keypair, mock_decode):
     """Verify that the `decode_token` function works as expected."""
     mock_decode.return_value = deepcopy(payload)
@@ -97,8 +101,10 @@ def test_decode_token(mock_get_keypair, mock_decode):
     mock_get_keypair.assert_called_once()
 
 
-@patch('comms_api.authentication.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
-                                                                                 '-----BEGIN PUBLIC KEY-----'))
+@patch(
+    'comms_api.authentication.authentication.get_keypair',
+    return_value=('-----BEGIN PRIVATE KEY-----', '-----BEGIN PUBLIC KEY-----'),
+)
 def test_decode_token_ko(mock_get_keypair):
     """Assert exceptions are handled as expected inside the `decode_token` function."""
     with pytest.raises(WazuhCommsAPIError, match='Error 2706 - Invalid authentication token'):

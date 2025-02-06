@@ -70,7 +70,7 @@ def convert_enums(items: List[Tuple[str, Any]]) -> Dict[str, Any]:
         Dictionary with enums values and no None values.
     """
     new_dict = {}
-    for (k, v) in items:
+    for k, v in items:
         if isinstance(v, Enum):
             new_dict[k] = v.value
         elif v is not None:

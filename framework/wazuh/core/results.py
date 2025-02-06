@@ -40,9 +40,10 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         elif isinstance(dct, AbstractWazuhResult):
             self.dikt = dct.dikt
         else:
-            raise wexception.WazuhInternalError(1000, extra_message=f"dct param must be a dict or "
-                                                                    f"an AbstractWazuhResult subclass, "
-                                                                    f"not a {type(dct)}")
+            raise wexception.WazuhInternalError(
+                1000,
+                extra_message=f'dct param must be a dict or ' f'an AbstractWazuhResult subclass, ' f'not a {type(dct)}',
+            )
 
     def __getitem__(self, item):
         return self.dikt[item]
@@ -51,7 +52,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         self.dikt[key] = value
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + repr(self.__dict__) + ")"
+        return self.__class__.__name__ + '(' + repr(self.__dict__) + ')'
 
     def __iter__(self):
         return self.dikt.__iter__()
@@ -96,7 +97,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         if isinstance(other, wexception.WazuhException):
             return other
         elif not isinstance(other, (dict, AbstractWazuhResult)):
-            raise wexception.WazuhInternalError(1000, extra_message=f"Cannot be merged with {type(other)} object")
+            raise wexception.WazuhInternalError(1000, extra_message=f'Cannot be merged with {type(other)} object')
 
         result = deepcopy(self)
 
@@ -193,7 +194,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         str
             Resultant string.
         """
-        return "|".join([self_field, other_field]) if self_field != other_field else other_field
+        return '|'.join([self_field, other_field]) if self_field != other_field else other_field
 
     def to_dict(self):
         """Translate the result into a dict."""
@@ -216,7 +217,7 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         """
         result = deepcopy(self)
         if 'data' in result and 'items' in result['data'] and isinstance(result['data']['items'], list):
-            result['data']['items'] = result['data']['items'][offset:offset + limit]
+            result['data']['items'] = result['data']['items'][offset : offset + limit]
         return result
 
     def sort(self, fields: list = None, order: str = 'asc'):
@@ -305,10 +306,7 @@ class WazuhResult(AbstractWazuhResult):
         dict
             Result as a dictionary.
         """
-        return {
-            'str_priority': self._str_priority,
-            'result': deepcopy(self.dikt)
-        }
+        return {'str_priority': self._str_priority, 'result': deepcopy(self.dikt)}
 
     @classmethod
     def decode_json(cls, obj):
@@ -342,9 +340,18 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
      }.
     """
 
-    def __init__(self, dikt: dict = None, affected_items: list = None, total_affected_items: int = None,
-                 sort_fields: list = None, sort_casting: list = None, sort_ascending: list = None, all_msg: str = "",
-                 some_msg: str = "", none_msg: str = ""):
+    def __init__(
+        self,
+        dikt: dict = None,
+        affected_items: list = None,
+        total_affected_items: int = None,
+        sort_fields: list = None,
+        sort_casting: list = None,
+        sort_ascending: list = None,
+        all_msg: str = '',
+        some_msg: str = '',
+        none_msg: str = '',
+    ):
         """Initialize method.
 
         Parameters
@@ -423,8 +430,9 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             If dct is of a wrong type.
         """
         if not isinstance(other, AffectedItemsWazuhResult):
-            raise wexception.WazuhInternalError(1000,
-                                                extra_message=f"Failed items cannot be taken from {type(other)} object")
+            raise wexception.WazuhInternalError(
+                1000, extra_message=f'Failed items cannot be taken from {type(other)} object'
+            )
 
         for error, ids in other._failed_items.items():
             for id_ in ids:
@@ -466,14 +474,16 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         elif isinstance(result, wexception.WazuhException):
             return result
         elif not isinstance(other, AffectedItemsWazuhResult):
-            raise wexception.WazuhInternalError(1000, extra_message=f"Cannot be merged with {type(other)} object")
+            raise wexception.WazuhInternalError(1000, extra_message=f'Cannot be merged with {type(other)} object')
 
         result.add_failed_items_from(other)
-        result.affected_items = merge(result.affected_items,
-                                      other.affected_items,
-                                      criteria=self.sort_fields,
-                                      ascending=self.sort_ascending,
-                                      types=self.sort_casting)
+        result.affected_items = merge(
+            result.affected_items,
+            other.affected_items,
+            criteria=self.sort_fields,
+            ascending=self.sort_ascending,
+            types=self.sort_casting,
+        )
         result.total_affected_items = result.total_affected_items + other.total_affected_items
 
         return result
@@ -497,7 +507,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             'dikt': self.dikt,
             'all_msg': self.all_msg,
             'some_msg': self.some_msg,
-            'none_msg': self.none_msg
+            'none_msg': self.none_msg,
         }
 
     @property
@@ -616,8 +626,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         for exc, set_ in zip(obj['failed_items_keys'], obj['failed_items_values']):
             error = getattr(wexception, exc['__class__']).from_dict(exc['__object__'])
             for id_ in set_:
-                result.add_failed_item(id_=id_,
-                                       error=error)
+                result.add_failed_item(id_=id_, error=error)
         return result
 
     def encode_json(self) -> dict:
@@ -642,9 +651,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         result['failed_items_keys'] = []
         result['failed_items_values'] = []
         for exc, set_ in self.failed_items.items():
-            result['failed_items_keys'].append({'__object__': exc.to_dict(),
-                                                '__class__': exc.__class__.__name__
-                                                })
+            result['failed_items_keys'].append({'__object__': exc.to_dict(), '__class__': exc.__class__.__name__})
             result['failed_items_values'].append(list(set_))
 
         return result
@@ -701,18 +708,18 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             'affected_items': self.affected_items,
             'total_affected_items': self.total_affected_items,
             'total_failed_items': self.total_failed_items,
-            'failed_items': [{'error': {'code': exc.code, 'message': exc.message} | (
-                {'remediation': exc.remediation} if exc.remediation is not None else {}),
-                              'id': sort_ids(ids)
-                              }
-                             for exc, ids in ordered_failed_items],
-            **self.dikt
+            'failed_items': [
+                {
+                    'error': {'code': exc.code, 'message': exc.message}
+                    | ({'remediation': exc.remediation} if exc.remediation is not None else {}),
+                    'id': sort_ids(ids),
+                }
+                for exc, ids in ordered_failed_items
+            ],
+            **self.dikt,
         }
 
-        return {'data': result,
-                'message': self.message,
-                'error': set_error_code()
-                }
+        return {'data': result, 'message': self.message, 'error': set_error_code()}
 
 
 def nested_itemgetter(*expressions):
@@ -761,8 +768,9 @@ def nested_itemgetter(*expressions):
     return _nested_itemgetter
 
 
-def _goes_before_than(a: Union[tuple, list], b: Union[tuple, list], ascending: Union[tuple, list] = None,
-                      casters: Iterable = None) -> bool:
+def _goes_before_than(
+    a: Union[tuple, list], b: Union[tuple, list], ascending: Union[tuple, list] = None, casters: Iterable = None
+) -> bool:
     """Return true if a should be placed before b according to ascending and casters. It is similar to a lexicographical
     order but taking into account ascending or descending order in each tuple position.
 
@@ -804,8 +812,12 @@ def _goes_before_than(a: Union[tuple, list], b: Union[tuple, list], ascending: U
     return False
 
 
-def merge(*iterables, criteria: Union[tuple, list] = None, ascending: Union[tuple, list] = None,
-          types: Union[tuple, list] = None) -> Iterable:
+def merge(
+    *iterables,
+    criteria: Union[tuple, list] = None,
+    ascending: Union[tuple, list] = None,
+    types: Union[tuple, list] = None,
+) -> Iterable:
     """Merge iterables in a single one assuming they are already ordered according to criteria, ascending and types.
 
     Parameters

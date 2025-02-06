@@ -479,10 +479,15 @@ class HAPHelper:
             connection_port = int(port_config.get('remote')[0].get('port', CONNECTION_PORT))
 
             protocol = helper_config[HAPROXY_PROTOCOL]
-            if protocol == 'http' and (helper_config[HAPROXY_CERT] or helper_config[CLIENT_CERT] or
-                                       helper_config[CLIENT_CERT_KEY] or helper_config[CLIENT_CERT_PASSWORD]):
-                logger.warning("HTTPS related parameters have been set but will be ignored since "
-                               "HTTP is defined as protocol.")
+            if protocol == 'http' and (
+                helper_config[HAPROXY_CERT]
+                or helper_config[CLIENT_CERT]
+                or helper_config[CLIENT_CERT_KEY]
+                or helper_config[CLIENT_CERT_PASSWORD]
+            ):
+                logger.warning(
+                    'HTTPS related parameters have been set but will be ignored since ' 'HTTP is defined as protocol.'
+                )
 
                 # Set the certificate information to default values to avoid errors in the communication
                 helper_config[HAPROXY_CERT] = HELPER_DEFAULTS[HAPROXY_CERT]
@@ -500,7 +505,7 @@ class HAPHelper:
                 haproxy_cert_file=helper_config[HAPROXY_CERT],
                 client_cert_file=helper_config[CLIENT_CERT],
                 client_key_file=helper_config[CLIENT_CERT_KEY],
-                client_password=helper_config[CLIENT_CERT_PASSWORD]
+                client_password=helper_config[CLIENT_CERT_PASSWORD],
             )
             proxy = Proxy(
                 wazuh_backend=helper_config[HAPROXY_BACKEND],

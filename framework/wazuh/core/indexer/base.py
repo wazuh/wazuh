@@ -9,6 +9,7 @@ POST_METHOD = 'POST'
 
 class IndexerKey(str, Enum):
     """Opensearch API request fields keys."""
+
     _INDEX = '_index'
     _ID = '_id'
     _SOURCE = '_source'
@@ -71,7 +72,7 @@ def remove_empty_values(items: List[Tuple[str, Any]]) -> Dict[str, Any]:
         Dictionary without None values.
     """
     new_dict = {}
-    for (k, v) in items:
+    for k, v in items:
         if v is not None:
             new_dict[k] = v
 

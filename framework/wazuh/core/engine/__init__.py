@@ -46,7 +46,7 @@ async def get_engine_client() -> AsyncIterator[Engine]:
     client = Engine(
         socket_path=engine_config.client.api_socket_path,
         timeout=engine_config.client.timeout,
-        retries=engine_config.client.retries
+        retries=engine_config.client.retries,
     )
 
     try:

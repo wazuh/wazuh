@@ -22,7 +22,7 @@ from server_management_api.constants import (
     UPDATE_INFORMATION_KEY,
 )
 
-ONE_DAY_SLEEP = 60*60*24
+ONE_DAY_SLEEP = 60 * 60 * 24
 
 logger = logging.getLogger('wazuh-api')
 
@@ -49,6 +49,7 @@ def cancel_signal_handler(func: Callable) -> Callable:
             await func(*args, **kwargs)
         except asyncio.CancelledError:
             pass
+
     return wrapper
 
 
@@ -57,11 +58,11 @@ async def check_installation_uid() -> None:
     """Check if the installation UID exists, populate it if not and inject it into the global cti context."""
     global cti_context
     if os.path.exists(INSTALLATION_UID_PATH):
-        logger.info("Getting installation UID...")
+        logger.info('Getting installation UID...')
         with open(INSTALLATION_UID_PATH, 'r') as file:
             installation_uid = file.readline()
     else:
-        logger.info("Populating installation UID...")
+        logger.info('Populating installation UID...')
         installation_uid = str(uuid.uuid4())
         with open(INSTALLATION_UID_PATH, 'w') as file:
             file.write(installation_uid)

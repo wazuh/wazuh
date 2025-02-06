@@ -30,8 +30,11 @@ def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, is_res
     str
         Message that will be sent to the WazuhQueue socket.
     """
-    return f"(msg_to_agent) [] {flag} {str_agent_id} {msg}" if not is_restart else \
-        f"(msg_to_agent) [] {flag} {str_agent_id} {msg} - null (from_the_server) (no_rule_id)"
+    return (
+        f'(msg_to_agent) [] {flag} {str_agent_id} {msg}'
+        if not is_restart
+        else f'(msg_to_agent) [] {flag} {str_agent_id} {msg} - null (from_the_server) (no_rule_id)'
+    )
 
 
 class BaseQueue:
@@ -88,16 +91,17 @@ class WazuhQueue(BaseQueue):
     """WazuhQueue Object."""
 
     # Messages
-    HC_SK_RESTART = "syscheck restart"  # syscheck restart
-    HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
-    RESTART_AGENTS = "restart-ossec0"
-    RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': origin_module.get()},
-                                                                 command="restart-wazuh0",
-                                                                 parameters={"extra_args": [],
-                                                                             "alert": {}}))
+    HC_SK_RESTART = 'syscheck restart'  # syscheck restart
+    HC_FORCE_RECONNECT = 'force_reconnect'  # force reconnect command
+    RESTART_AGENTS = 'restart-ossec0'
+    RESTART_AGENTS_JSON = json.dumps(
+        create_wazuh_socket_message(
+            origin={'module': origin_module.get()}, command='restart-wazuh0', parameters={'extra_args': [], 'alert': {}}
+        )
+    )
 
     # Types
-    AR_TYPE = "ar-message"
+    AR_TYPE = 'ar-message'
 
     def send_msg_to_agent(self, msg: str = '', agent_id: str = '', msg_type: str = '') -> str:
         """Send message to agent.
@@ -154,7 +158,7 @@ class WazuhQueue(BaseQueue):
         if msg_type == WazuhQueue.AR_TYPE:
             socket_msg = create_wazuh_queue_socket_msg(flag, str_agent_id, msg)
             # Return message
-            ret_msg = "Command sent."
+            ret_msg = 'Command sent.'
 
         # NO-AR: Restart syscheck and reconnect
         # Restart agents
@@ -165,17 +169,17 @@ class WazuhQueue(BaseQueue):
             socket_msg = create_wazuh_queue_socket_msg(flag, str_agent_id, msg, is_restart=msg_is_restart)
             # Return message
             if msg == WazuhQueue.HC_SK_RESTART:
-                ret_msg = "Restarting Syscheck on agent" if agent_id else "Restarting Syscheck on all agents"
+                ret_msg = 'Restarting Syscheck on agent' if agent_id else 'Restarting Syscheck on all agents'
             elif msg == WazuhQueue.HC_FORCE_RECONNECT:
-                ret_msg = "Reconnecting agent" if agent_id else "Reconnecting all agents"
+                ret_msg = 'Reconnecting agent' if agent_id else 'Reconnecting all agents'
             else:  # msg == WazuhQueue.RESTART_AGENTS or msg == WazuhQueue.RESTART_AGENTS_JSON
-                ret_msg = "Restarting agent" if agent_id else "Restarting all agents"
+                ret_msg = 'Restarting agent' if agent_id else 'Restarting all agents'
 
         try:
             # Send message
             self._send(socket_msg.encode())
         except:
-            raise WazuhError(1014, extra_message=f": WazuhQueue socket with path {self.path}")
+            raise WazuhError(1014, extra_message=f': WazuhQueue socket with path {self.path}')
 
         return ret_msg
 
@@ -209,13 +213,10 @@ class WazuhAnalysisdQueue(BaseQueue):
         WazuhError(1014)
             If there was an error communicating with socket.
         """
-        socket_msg = f"{msg_header}{msg}".encode()
+        socket_msg = f'{msg_header}{msg}'.encode()
 
         if len(socket_msg) > self.MAX_MSG_SIZE:
-            raise WazuhError(
-                1012,
-                f"The event is too large to be sent to analysisd (maximum is {self.MAX_MSG_SIZE}B)"
-            )
+            raise WazuhError(1012, f'The event is too large to be sent to analysisd (maximum is {self.MAX_MSG_SIZE}B)')
 
         try:
             # Send message

@@ -10,7 +10,7 @@ from wazuh.core.indexer.models.commands import Command
 from comms_api.routers.exceptions import HTTPError
 
 
-class CommandsManager():
+class CommandsManager:
     """Expose commands received from the local server to the Communications API worker processes."""
 
     def __init__(self):

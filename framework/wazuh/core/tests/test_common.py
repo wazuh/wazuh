@@ -20,28 +20,34 @@ from wazuh.core.common import (
 )
 
 
-@pytest.mark.parametrize('fake_path, expected', [
-    ('/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh', '/var/ossec'),
-    ('/my/custom/path/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh', '/my/custom/path'),
-    ('/my/fake/path', '')
-])
+@pytest.mark.parametrize(
+    'fake_path, expected',
+    [
+        ('/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh', '/var/ossec'),
+        (
+            '/my/custom/path/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh',
+            '/my/custom/path',
+        ),
+        ('/my/fake/path', ''),
+    ],
+)
 def test_find_wazuh_path(fake_path, expected):
     with patch('wazuh.core.common.__file__', new=fake_path):
-        assert (find_wazuh_path.__wrapped__() == expected)
+        assert find_wazuh_path.__wrapped__() == expected
 
 
 def test_find_wazuh_path_relative_path():
     with patch('os.path.abspath', return_value='~/framework'):
-        assert (find_wazuh_path.__wrapped__() == '~')
+        assert find_wazuh_path.__wrapped__() == '~'
 
 
 def test_wazuh_uid():
-    with patch('wazuh.core.common.getpwnam', return_value=getpwnam("root")):
+    with patch('wazuh.core.common.getpwnam', return_value=getpwnam('root')):
         wazuh_uid()
 
 
 def test_wazuh_gid():
-    with patch('wazuh.core.common.getgrnam', return_value=getgrnam("root")):
+    with patch('wazuh.core.common.getgrnam', return_value=getgrnam('root')):
         wazuh_gid()
 
 
@@ -57,16 +63,17 @@ async def test_async_context_cached():
     # The result of function 'foo' is being cached and it has been called once
     assert await foo() == 'bar' and test_async_context_cached.calls_to_foo == 1
     assert await foo() == 'bar' and test_async_context_cached.calls_to_foo == 1
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {}})], ContextVar)
+    assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {}})], ContextVar)
 
     # foo called with an argument
     assert await foo('other_arg') == 'other_arg' and test_async_context_cached.calls_to_foo == 2
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['other_arg'], "kwargs": {}})],
-                      ContextVar)
+    assert isinstance(
+        get_context_cache()[json.dumps({'key': 'foobar', 'args': ['other_arg'], 'kwargs': {}})], ContextVar
+    )
 
     # foo called with the same argument as default, a new context var is created in the cache
     assert await foo('bar') == 'bar' and test_async_context_cached.calls_to_foo == 3
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['bar'], "kwargs": {}})], ContextVar)
+    assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': ['bar'], 'kwargs': {}})], ContextVar)
 
     # Reset cache and calls to foo
     reset_context_cache()
@@ -74,8 +81,9 @@ async def test_async_context_cached():
 
     # foo called with kwargs, a new context var is created with kwargs not empty
     assert await foo(data='bar') == 'bar' and test_async_context_cached.calls_to_foo == 1
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {"data": "bar"}})],
-                      ContextVar)
+    assert isinstance(
+        get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {'data': 'bar'}})], ContextVar
+    )
 
 
 def test_context_cached():
@@ -90,25 +98,30 @@ def test_context_cached():
     # The result of function 'foo' is being cached and it has been called once
     assert foo() == 'bar' and test_context_cached.calls_to_foo == 1, '"bar" should be returned with 1 call to foo.'
     assert foo() == 'bar' and test_context_cached.calls_to_foo == 1, '"bar" should be returned with 1 call to foo.'
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {}})], ContextVar)
+    assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {}})], ContextVar)
 
     # foo called with an argument
-    assert foo('other_arg') == 'other_arg' and test_context_cached.calls_to_foo == 2, '"other_arg" should be ' \
-                                                                                      'returned with 2 calls to foo. '
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['other_arg'], "kwargs": {}})],
-                      ContextVar)
+    assert foo('other_arg') == 'other_arg' and test_context_cached.calls_to_foo == 2, (
+        '"other_arg" should be ' 'returned with 2 calls to foo. '
+    )
+    assert isinstance(
+        get_context_cache()[json.dumps({'key': 'foobar', 'args': ['other_arg'], 'kwargs': {}})], ContextVar
+    )
 
     # foo called with the same argument as default, a new context var is created in the cache
-    assert foo('bar') == 'bar' and test_context_cached.calls_to_foo == 3, '"bar" should be returned with 3 calls to ' \
-                                                                          'foo. '
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['bar'], "kwargs": {}})], ContextVar)
+    assert foo('bar') == 'bar' and test_context_cached.calls_to_foo == 3, (
+        '"bar" should be returned with 3 calls to ' 'foo. '
+    )
+    assert isinstance(get_context_cache()[json.dumps({'key': 'foobar', 'args': ['bar'], 'kwargs': {}})], ContextVar)
 
     # Reset cache and calls to foo
     reset_context_cache()
     test_context_cached.calls_to_foo = 0
 
     # foo called with kwargs, a new context var is created with kwargs not empty
-    assert foo(data='bar') == 'bar' and test_context_cached.calls_to_foo == 1, '"bar" should be returned with 1 ' \
-                                                                               'calls to foo. '
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {"data": "bar"}})],
-                      ContextVar)
+    assert foo(data='bar') == 'bar' and test_context_cached.calls_to_foo == 1, (
+        '"bar" should be returned with 1 ' 'calls to foo. '
+    )
+    assert isinstance(
+        get_context_cache()[json.dumps({'key': 'foobar', 'args': [], 'kwargs': {'data': 'bar'}})], ContextVar
+    )

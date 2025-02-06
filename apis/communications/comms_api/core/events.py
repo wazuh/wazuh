@@ -42,7 +42,7 @@ async def send_stateless_events(request: Request) -> None:
     ----------
     request : Request
         Incoming HTTP request.
-    
+
     Raises
     ------
     WazuhError(2708)
@@ -57,19 +57,19 @@ async def send_stateless_events(request: Request) -> None:
 
 async def parse_stateful_events(request: Request) -> StatefulEvents:
     """Parse stateful events body stream into an object.
-    
+
     Parameters
     ----------
     request : Request
         Incoming HTTP request.
-    
+
     Raises
     ------
     WazuhError(2708)
         If the client closed the request before the server could process the stream.
     WazuhError(2709)
         Invalid request body structure.
-    
+
     Returns
     -------
     StatefulEvents
@@ -148,12 +148,12 @@ async def send_events(events: StatefulEvents, batcher_client: BatcherClient) -> 
 
 def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
     """Parse tasks results.
-    
+
     Parameters
     ----------
     tasks_results : List[dict]
         Tasks results dictionary list.
-    
+
     Returns
     -------
     results : List[TaskResult]
@@ -165,17 +165,14 @@ def parse_tasks_results(tasks_results: List[dict]) -> List[TaskResult]:
         status = r[IndexerKey.STATUS]
         if status >= HTTP_STATUS_OK and status <= HTTP_STATUS_PARTIAL_CONTENT:
             task_result = TaskResult(
-                index=r[IndexerKey._INDEX],
-                id=r[IndexerKey._ID],
-                result=r[IndexerKey.RESULT],
-                status=status
+                index=r[IndexerKey._INDEX], id=r[IndexerKey._ID], result=r[IndexerKey.RESULT], status=status
             )
         else:
             if IndexerKey.ERROR not in r:
                 error_reason = r[IndexerKey.RESULT]
             else:
                 error_reason = r[IndexerKey.ERROR][IndexerKey.REASON]
-                    
+
             task_result = TaskResult(
                 index=r[IndexerKey._INDEX],
                 id=r[IndexerKey._ID],

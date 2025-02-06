@@ -43,18 +43,18 @@ class Model(object):
         for attr, _ in six.iteritems(self.swagger_types):
             value = getattr(self, attr)
             if isinstance(value, list):
-                result[attr] = list(map(
-                    lambda x: x.to_dict() if hasattr(x, "to_dict") else x,
-                    value
-                ))
-            elif hasattr(value, "to_dict"):
+                result[attr] = list(map(lambda x: x.to_dict() if hasattr(x, 'to_dict') else x, value))
+            elif hasattr(value, 'to_dict'):
                 result[attr] = value.to_dict()
             elif isinstance(value, dict):
-                result[attr] = dict(map(
-                    lambda item: (item[0], item[1].to_dict())
-                    if hasattr(item[1], "to_dict") else util.serialize(item),
-                    value.items()
-                ))
+                result[attr] = dict(
+                    map(
+                        lambda item: (item[0], item[1].to_dict())
+                        if hasattr(item[1], 'to_dict')
+                        else util.serialize(item),
+                        value.items(),
+                    )
+                )
             else:
                 result[attr] = util.serialize(value)
 
@@ -81,7 +81,6 @@ class Model(object):
 
 
 class AllOf:
-
     def __init__(self, *models):
         self.models = models
 
@@ -93,20 +92,15 @@ class AllOf:
 
 
 class Data(Model):
-
     def __init__(self, data: Model = None):  # noqa: E501
         """Data - a model defined in Swagger.
 
         :param data: The data of this Data.  # noqa: E501
         :type data: Model
         """
-        self.swagger_types = {
-            'data': Model
-        }
+        self.swagger_types = {'data': Model}
 
-        self.attribute_map = {
-            'data': 'data'
-        }
+        self.attribute_map = {'data': 'data'}
 
         self._data = data
 
@@ -143,20 +137,15 @@ class Data(Model):
 
 
 class Items(Model):
-
     def __init__(self, items: List[Model] = None):  # noqa: E501
         """Items - a model defined in Swagger.
 
         :param items: The items of this Items.  # noqa: E501
         :type items: Model
         """
-        self.swagger_types = {
-            'items': List[Model]
-        }
+        self.swagger_types = {'items': List[Model]}
 
-        self.attribute_map = {
-            'items': 'items'
-        }
+        self.attribute_map = {'items': 'items'}
 
         self._items = items
 
@@ -205,8 +194,7 @@ class Body(Model):
             invalid = get_invalid_keys(dikt, f_kwargs)
 
             if invalid:
-                raise ProblemException(status=400, title='Bad Request',
-                                       detail=f'Invalid field found {invalid}')
+                raise ProblemException(status=400, title='Bad Request', detail=f'Invalid field found {invalid}')
 
         if additional_kwargs is not None:
             f_kwargs.update(additional_kwargs)

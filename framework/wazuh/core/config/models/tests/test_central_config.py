@@ -16,22 +16,47 @@ def test_config_sections_ko():
         ConfigSections(value)
 
 
-@pytest.mark.parametrize('init_values, expected', [
-    ({
-        'indexer': {'hosts': [{'host': 'localhost', 'port': 9200}], 'username': 'user_example', 'password': 'password_example'},
-        'server': {'nodes': ['master'], 'node': {'name': 'example', 'type': 'master', 'ssl':
-            {'key': 'value', 'cert': 'value', 'ca': 'value'}}}
-     },
-     {
-        'node': {'name': 'example', 'type': 'master', 'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}},
-        'server': {'nodes': ['master'], 'port': 1516, 'bind_addr': 'localhost', 'hidden': False, 'update_check': False,
-                   'logging.level': 'info'},
-        'indexer': {'hosts': [{'host': 'localhost', 'port': 9200}], 'username': 'user_example', 'password': 'password_example'},
-        'engine': {},
-        'management_api': {},
-        'communications_api': {}
-    }),
-])
+@pytest.mark.parametrize(
+    'init_values, expected',
+    [
+        (
+            {
+                'indexer': {
+                    'hosts': [{'host': 'localhost', 'port': 9200}],
+                    'username': 'user_example',
+                    'password': 'password_example',
+                },
+                'server': {
+                    'nodes': ['master'],
+                    'node': {
+                        'name': 'example',
+                        'type': 'master',
+                        'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'},
+                    },
+                },
+            },
+            {
+                'node': {'name': 'example', 'type': 'master', 'ssl': {'key': 'value', 'cert': 'value', 'ca': 'value'}},
+                'server': {
+                    'nodes': ['master'],
+                    'port': 1516,
+                    'bind_addr': 'localhost',
+                    'hidden': False,
+                    'update_check': False,
+                    'logging.level': 'info',
+                },
+                'indexer': {
+                    'hosts': [{'host': 'localhost', 'port': 9200}],
+                    'username': 'user_example',
+                    'password': 'password_example',
+                },
+                'engine': {},
+                'management_api': {},
+                'communications_api': {},
+            },
+        ),
+    ],
+)
 def test_config_default_values(init_values, expected):
     """Check the correct initialization of the `Config` class."""
     config = Config(**init_values)

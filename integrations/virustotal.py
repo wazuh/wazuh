@@ -265,15 +265,10 @@ def query_api(hash: str, apikey: str) -> any:
     Exception
         If the status code is different than 200.
     """
-    headers = {
-        "accept": "application/json",
-        'x-apikey': apikey
-    }
+    headers = {'accept': 'application/json', 'x-apikey': apikey}
 
     debug('# Querying VirusTotal API')
-    response = requests.get(
-        f'https://www.virustotal.com/api/v3/files/{hash}', headers=headers, timeout=timeout
-    )
+    response = requests.get(f'https://www.virustotal.com/api/v3/files/{hash}', headers=headers, timeout=timeout)
 
     if response.status_code == 200:
         json_response = response.json()

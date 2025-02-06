@@ -20,8 +20,12 @@ class TestIndexer:
         'params',
         [
             {'user': 'user_test', 'password': 'password_test', 'use_ssl': False},
-            {'user': 'user_test', 'password': 'password_test', 'client_cert_path': '/tmp/client.pem', 
-             'client_key_path': '/tmp/client-key.pem'},
+            {
+                'user': 'user_test',
+                'password': 'password_test',
+                'client_cert_path': '/tmp/client.pem',
+                'client_key_path': '/tmp/client-key.pem',
+            },
         ],
     )
     def test_indexer_init(self, params: dict):
@@ -105,11 +109,8 @@ async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
     with mock.patch('wazuh.core.indexer.sleep') as sleep_mock:
         with pytest.raises(WazuhIndexerError, match='.*2200.*'):
             instance_mock = await create_indexer(
-                hosts=hosts,
-                ports=ports,
-                user=user,
-                password=password,
-                retries=retries)
+                hosts=hosts, ports=ports, user=user, password=password, retries=retries
+            )
 
         assert instance_mock.connect.call_count == retries + 1
         instance_mock.close.assert_called_once()
@@ -118,7 +119,7 @@ async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
 
 @mock.patch('wazuh.core.indexer.create_indexer')
 @mock.patch('wazuh.core.config.client.CentralizedConfig.get_indexer_config')
-async def test_get_indexer_client( get_indexer_config_mock, create_indexer_mock):
+async def test_get_indexer_client(get_indexer_config_mock, create_indexer_mock):
     """Check the correct function of `get_indexer_client`."""
     config_test = IndexerConfig(
         hosts=[IndexerNode(host='example', port=9200)],

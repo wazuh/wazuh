@@ -28,6 +28,7 @@ class RBAChecker:
         FIND$: Just like the previous one, in this case the function MATCH$ is recursively executed.
     Regex schema ----> "r'REGULAR_EXPRESSION', this is the wildcard for detecting regular expressions".
     """
+
     _logical_operators = ['AND', 'OR', 'NOT']
     _functions = ['MATCH', 'MATCH$', 'FIND', 'FIND$']
     _initial_index_for_regex = 2
@@ -220,15 +221,16 @@ class RBAChecker:
             if not expression.startswith(self._regex_prefix):
                 return False
             try:
-                regex = ''.join(expression[self._initial_index_for_regex:-2])
+                regex = ''.join(expression[self._initial_index_for_regex : -2])
                 regex = re.compile(regex)
                 return regex
             except:
                 return False
         return False
 
-    def match_item(self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None,
-                   mode: str = 'MATCH') -> Union[int, bool]:
+    def match_item(
+        self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None, mode: str = 'MATCH'
+    ) -> Union[int, bool]:
         """This function will go through all authorization contexts and system roles recursively until it finds the
         structure indicated in role_chunk.
 
@@ -280,8 +282,9 @@ class RBAChecker:
 
         return False
 
-    def find_item(self, role_chunk: Union[list, dict], auth_context: dict = None, mode: str = 'FIND',
-                  role_id: int = None) -> bool:
+    def find_item(
+        self, role_chunk: Union[list, dict], auth_context: dict = None, mode: str = 'FIND', role_id: int = None
+    ) -> bool:
         """This function will use the match function and will launch it recursively on all the authorization context
         tree, on all the levels.
 

@@ -7,7 +7,7 @@ from wazuh.core.cluster.unix_server.server import common, get_log_config, start_
 
 def test_get_log_config():
     """Validate that `get_log_config` function works as expected."""
-    node = "test-node"
+    node = 'test-node'
     expected_fmt = '%(asctime)s %(levelname)s: [test-node] [Config Server] %(message)s'
     expected_datefmt = '%Y/%m/%d %H:%M:%S'
 
@@ -32,13 +32,14 @@ def test_start_unix_server(mock_thread, router_mock, fastapi_mock):
     start_unix_server('Master')
     logging = get_log_config('Master')
 
-    router_mock.assert_has_calls([
-        call(prefix='/api/v1'),
-        call().add_api_route('/config', get_config, methods=['GET'])
-    ])
-    mock_thread.assert_has_calls([
-        call(target=uvicorn.run, kwargs={'app': fastapi_mock(), 'uds': common.CONFIG_SERVER_SOCKET_PATH,
-                                         'log_config': logging},
-             daemon=True),
-        call().start()
-    ])
+    router_mock.assert_has_calls([call(prefix='/api/v1'), call().add_api_route('/config', get_config, methods=['GET'])])
+    mock_thread.assert_has_calls(
+        [
+            call(
+                target=uvicorn.run,
+                kwargs={'app': fastapi_mock(), 'uds': common.CONFIG_SERVER_SOCKET_PATH, 'log_config': logging},
+                daemon=True,
+            ),
+            call().start(),
+        ]
+    )

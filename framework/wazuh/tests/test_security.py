@@ -23,7 +23,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 security_cases = list()
 rbac_cases = list()
-default_orm_engine = create_engine("sqlite:///:memory:")
+default_orm_engine = create_engine('sqlite:///:memory:')
 os.chdir(test_data_path)
 
 for file in glob.glob('*.yml'):
@@ -55,6 +55,7 @@ def reload_default_rbac_resources():
         with patch('sqlalchemy.create_engine', return_value=default_orm_engine):
             with patch('shutil.chown'), patch('os.chmod'):
                 import wazuh.rbac.orm as orm
+
                 reload(orm)
                 orm.db_manager.connect(orm.DB_FILE)
                 orm.db_manager.create_database(orm.DB_FILE)
@@ -73,11 +74,12 @@ def db_setup():
         patch('wazuh.core.common.wazuh_uid'),
         patch('wazuh.core.common.wazuh_gid'),
         # TODO: Fix in #26725
-        patch('wazuh.core.utils.load_wazuh_xml')
+        patch('wazuh.core.utils.load_wazuh_xml'),
     ):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
+        with patch('sqlalchemy.create_engine', return_value=create_engine('sqlite://')):
             with patch('shutil.chown'), patch('os.chmod'):
                 import wazuh.rbac.orm as orm
+
                 # Clear mappers
                 sqlalchemy_orm.clear_mappers()
                 # Invalidate in-memory database
@@ -109,7 +111,7 @@ def db_setup():
 @pytest.fixture(scope='function')
 def new_default_resources():
     global default_orm_engine
-    default_orm_engine = create_engine("sqlite:///:memory:")
+    default_orm_engine = create_engine('sqlite:///:memory:')
 
     security, orm = reload_default_rbac_resources()
 

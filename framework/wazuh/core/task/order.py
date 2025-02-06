@@ -42,7 +42,7 @@ async def get_orders(logger: WazuhLogger):
                     headers={
                         'Accept': APPLICATION_JSON,
                         'Content-Type': APPLICATION_JSON,
-                    }
+                    },
                 )
 
                 response_body = response.json()
@@ -60,8 +60,7 @@ async def get_orders(logger: WazuhLogger):
                     logger.info(f'Updating processed commands: {processed_commands_ids}')
 
                     await indexer_client.commands_manager.update_commands_status(
-                        order_ids=processed_commands_ids,
-                        status=Status.SENT.value
+                        order_ids=processed_commands_ids, status=Status.SENT.value
                     )
 
         except (httpx.ConnectError, httpx.TimeoutException, WazuhIndexerError) as e:

@@ -169,16 +169,17 @@ broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 origin_module: ContextVar[str] = ContextVar('origin_module', default='framework')
 try:
-    mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
-        'process_pool': ProcessPoolExecutor(max_workers=1),
-        'authentication_pool': ProcessPoolExecutor(max_workers=1),
-        'events_pool': ProcessPoolExecutor(max_workers=1)
-    })
+    mp_pools: ContextVar[Dict] = ContextVar(
+        'mp_pools',
+        default={
+            'process_pool': ProcessPoolExecutor(max_workers=1),
+            'authentication_pool': ProcessPoolExecutor(max_workers=1),
+            'events_pool': ProcessPoolExecutor(max_workers=1),
+        },
+    )
 # Handle exception when the user running Wazuh cannot access /dev/shm.
 except (FileNotFoundError, PermissionError):
-    mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={
-        'thread_pool': ThreadPoolExecutor(max_workers=1)
-    })
+    mp_pools: ContextVar[Dict] = ContextVar('mp_pools', default={'thread_pool': ThreadPoolExecutor(max_workers=1)})
 _context_cache = dict()
 
 
@@ -230,8 +231,8 @@ RESTART_WAZUH_COMMAND = 'restart-wazuh'
 
 
 # =========================================== Wazuh constants - Date format ============================================
-DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-DECIMALS_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+DECIMALS_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
 # ========================================= Wazuh constants - Size and limits ==========================================

@@ -26,13 +26,9 @@ class TokenResponseModel(Model):
         :param token: The token of this TokenResponseModel.  # noqa: E501
         :type token: str
         """
-        self.swagger_types = {
-            'token': str
-        }
+        self.swagger_types = {'token': str}
 
-        self.attribute_map = {
-            'token': 'token'
-        }
+        self.attribute_map = {'token': 'token'}
 
         self._token = token
 

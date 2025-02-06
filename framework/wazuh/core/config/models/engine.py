@@ -18,6 +18,7 @@ class EngineClientConfig(WazuhConfigBaseModel):
     timeout : PositiveFloat
         The timeout duration in seconds. Default: 10.0.
     """
+
     api_socket_path: FilePath = FilePath(ENGINE_SOCKET)
     retries: PositiveInt = 3
     timeout: PositiveFloat = 10
@@ -35,6 +36,7 @@ class EngineConfig(WazuhConfigBaseModel):
     logging : LoggingConfig
         Configuration for logging. Default is an instance of LoggingConfig.
     """
+
     tzdv_automatic_update: bool = False
     client: EngineClientConfig = EngineClientConfig()
     logging: EngineLoggingConfig = EngineLoggingConfig()

@@ -47,8 +47,10 @@ from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.rbac.orm import check_database_integrity
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
-CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
-                        'be completely removed in the next major release.'
+CACHE_DELETED_MESSAGE = (
+    'The `cache` API configuration option no longer takes effect since {release} and will '
+    'be completely removed in the next major release.'
+)
 
 API_MAIN_PROCESS = 'wazuh-server-management-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-server-management-apid_exec'
@@ -96,14 +98,13 @@ def configure_ssl(params: dict, config: APISSLConfig):
     try:
         # Generate SSL if it does not exist and HTTPS is enabled
         if not os.path.exists(config.key) or not os.path.exists(config.cert):
-            logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
-                        'Attempting to generate them')
+            logger.info(
+                'HTTPS is enabled but cannot find the private key and/or certificate. ' 'Attempting to generate them'
+            )
             private_key = generate_private_key(config.key)
-            logger.info(
-                f"Generated private key file in {config.key}")
+            logger.info(f'Generated private key file in {config.key}')
             generate_self_signed_certificate(private_key, config.cert)
-            logger.info(
-                f"Generated certificate file in {config.cert}")
+            logger.info(f'Generated certificate file in {config.cert}')
 
         # Load SSL context
         allowed_ssl_protocols = {
@@ -111,14 +112,14 @@ def configure_ssl(params: dict, config: APISSLConfig):
             'tlsv1': ssl.PROTOCOL_TLSv1,
             'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
             'tlsv1.2': ssl.PROTOCOL_TLSv1_2,
-            'auto': ssl.PROTOCOL_TLS_SERVER
+            'auto': ssl.PROTOCOL_TLS_SERVER,
         }
 
         config_ssl_protocol = config.ssl_protocol
         ssl_protocol = allowed_ssl_protocols[config_ssl_protocol.lower()]
 
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            warnings.filterwarnings('ignore', category=DeprecationWarning)
             if ssl_protocol in (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1_1):
                 logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
 
@@ -136,12 +137,11 @@ def configure_ssl(params: dict, config: APISSLConfig):
         params['ssl_keyfile'] = config.key
 
         # Load SSL ciphers if any has been specified
-        if config.ssl_ciphers != "":
+        if config.ssl_ciphers != '':
             params['ssl_ciphers'] = config.ssl_ciphers.upper()
 
     except ssl.SSLError as exc:
-        error = APIError(
-            2003, details='Private key does not match with the certificate')
+        error = APIError(2003, details='Private key does not match with the certificate')
         logger.error(error)
         raise error from exc
     except IOError as exc:
@@ -150,14 +150,15 @@ def configure_ssl(params: dict, config: APISSLConfig):
             logger.error(error)
             raise error from exc
         elif exc.errno == 13:
-            error = APIError(2003,
-                                details='Ensure the certificates have the correct permissions')
+            error = APIError(2003, details='Ensure the certificates have the correct permissions')
             logger.error(error)
             raise error from exc
         else:
-            msg = f'Wazuh API SSL ERROR. Please, ensure ' \
-                    f'if path to certificates is correct in the configuration ' \
-                    f'file {WAZUH_SERVER_YML}'
+            msg = (
+                f'Wazuh API SSL ERROR. Please, ensure '
+                f'if path to certificates is correct in the configuration '
+                f'file {WAZUH_SERVER_YML}'
+            )
             print(msg)
             logger.error(msg)
             raise exc from exc
@@ -187,9 +188,13 @@ def start(params: dict, config: ManagementAPIConfig):
     if 'thread_pool' not in common.mp_pools.get():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(
-            asyncio.wait([loop.run_in_executor(pool,
-                                               getattr(sys.modules[__name__], f'spawn_{name}'))
-                          for name, pool in common.mp_pools.get().items()]))
+            asyncio.wait(
+                [
+                    loop.run_in_executor(pool, getattr(sys.modules[__name__], f'spawn_{name}'))
+                    for name, pool in common.mp_pools.get().items()
+                ]
+            )
+        )
 
     # Set up API
     app = AsyncApp(
@@ -198,17 +203,14 @@ def start(params: dict, config: ManagementAPIConfig):
         swagger_ui_options=SwaggerUIOptions(swagger_ui=False),
         pythonic_params=True,
         lifespan=lifespan_handler,
-        uri_parser_class=APIUriParser
+        uri_parser_class=APIUriParser,
     )
-    app.add_api('spec.yaml',
-                arguments={
-                    'title': 'Wazuh API',
-                    'protocol': 'https',
-                    'host': config.host,
-                    'port': config.port},
-                strict_validation=True,
-                validate_responses=False
-                )
+    app.add_api(
+        'spec.yaml',
+        arguments={'title': 'Wazuh API', 'protocol': 'https', 'host': config.host, 'port': config.port},
+        strict_validation=True,
+        validate_responses=False,
+    )
 
     # Maximum body size that the API can accept (bytes)
     if config.access.max_request_per_minute > 0:
@@ -267,7 +269,7 @@ def add_debug2_log_level_and_error():
                 kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
             self._log(logging.ERROR, msg, args, **kws)
 
-    logging.addLevelName(logging.DEBUG2, "DEBUG2")
+    logging.addLevelName(logging.DEBUG2, 'DEBUG2')
 
     logging.Logger.debug2 = debug2
     logging.Logger.error = error
@@ -297,7 +299,7 @@ if __name__ == '__main__':
     try:
         CentralizedConfig.load()
     except Exception as e:
-        print(f"Error when trying to load the configuration. {e}")
+        print(f'Error when trying to load the configuration. {e}')
         sys.exit(1)
 
     management_config = CentralizedConfig.get_management_api_config()
@@ -313,7 +315,7 @@ if __name__ == '__main__':
     try:
         uvicorn_params['log_config'] = set_logging(logging_config=management_config.logging, tag=LOGGING_TAG)
     except APIError as api_log_error:
-        print(f"Error when trying to start the Wazuh API. {api_log_error}")
+        print(f'Error when trying to start the Wazuh API. {api_log_error}')
         sys.exit(1)
 
     # Configure and create the wazuh-api logger
@@ -342,7 +344,7 @@ if __name__ == '__main__':
     try:
         start(uvicorn_params, config=management_config)
     except APIError as e:
-        print(f"Error when trying to start the Wazuh API. {e}")
+        print(f'Error when trying to start the Wazuh API. {e}')
         sys.exit(1)
     except Exception as e:
         print(f'Internal error when trying to start the Wazuh API. {e}')

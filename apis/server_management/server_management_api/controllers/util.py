@@ -6,12 +6,14 @@ from connexion.lifecycle import ConnexionResponse
 
 from server_management_api.encoder import dumps, prettify
 
-JSON_CONTENT_TYPE="application/json"
-XML_CONTENT_TYPE="application/xml; charset=utf-8"
-ERROR_CONTENT_TYPE="application/problem+json; charset=utf-8"
+JSON_CONTENT_TYPE = 'application/json'
+XML_CONTENT_TYPE = 'application/xml; charset=utf-8'
+ERROR_CONTENT_TYPE = 'application/problem+json; charset=utf-8'
 
 
-def json_response(data: dict, pretty: bool = False, status_code: int = 200, content_type: str = JSON_CONTENT_TYPE) -> ConnexionResponse:
+def json_response(
+    data: dict, pretty: bool = False, status_code: int = 200, content_type: str = JSON_CONTENT_TYPE
+) -> ConnexionResponse:
     """Generate a json Response from a dictionary.
 
     Parameters
@@ -30,6 +32,6 @@ def json_response(data: dict, pretty: bool = False, status_code: int = 200, cont
     Response
         JSON response  generated from the data.
     """
-    return ConnexionResponse(body=prettify(data) if pretty else dumps(data),
-                             content_type=content_type,
-                             status_code=status_code)
+    return ConnexionResponse(
+        body=prettify(data) if pretty else dumps(data), content_type=content_type, status_code=status_code
+    )

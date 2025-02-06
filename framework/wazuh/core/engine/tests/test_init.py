@@ -53,11 +53,14 @@ async def test_get_engine_client():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('socket_path,error_number', [
-    ('http://timeout', 2800),
-    ('test', 2801),
-    ('http://invalid', 2802),
-])
+@pytest.mark.parametrize(
+    'socket_path,error_number',
+    [
+        ('http://timeout', 2800),
+        ('test', 2801),
+        ('http://invalid', 2802),
+    ],
+)
 async def test_get_engine_client_ko(socket_path: str, error_number: int):
     """Check that the `get_engine_client` returns a WazuhEngineError on an exception."""
     with pytest.raises(WazuhEngineError, match=f'.*{error_number}.*'):
