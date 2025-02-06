@@ -47,6 +47,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
@@ -67,9 +74,9 @@ jobs:
           path: /tmp/${{ env.PYTHON_NAME }}
           if-no-files-found: error
 
-      # - name: Upload pre-installed to S3
-      #   working-directory: packages
-      #   run: |
-      #     aws s3 cp /tmp/${{ env.PYTHON_NAME }} s3://packages.wazuh.com/deps/${{ inputs.deps_version }}/libraries/python/${{ inputs.python_version }}
-      #     s3uri="s3://packages.wazuh.com/deps/${{ inputs.deps_version }}/libraries/python/${{ inputs.python_version }}"
-      #     echo "S3 URI: ${s3uri}"
+      - name: Upload pre-installed to S3
+        working-directory: packages
+        run: |
+          aws s3 cp /tmp/${{ env.PYTHON_NAME }} s3://packages.wazuh.com/deps/${{ inputs.deps_version }}/libraries/python/${{ inputs.python_version }}
+          s3uri="s3://packages.wazuh.com/deps/${{ inputs.deps_version }}/libraries/python/${{ inputs.python_version }}"
+          echo "S3 URI: ${s3uri}"
