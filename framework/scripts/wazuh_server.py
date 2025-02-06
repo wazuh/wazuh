@@ -8,7 +8,6 @@ import argparse
 import asyncio
 import logging
 import os
-import psutil
 import signal
 import subprocess
 import sys
@@ -16,19 +15,18 @@ import time
 from functools import partial
 from typing import Any, List
 
+import psutil
 from wazuh.core import pyDaemonModule
-from wazuh.core.common import WAZUH_SHARE, wazuh_gid, wazuh_uid, CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN
-from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.server import NodeType
 from wazuh.core.cluster.cluster import clean_up
-from wazuh.core.cluster.utils import ClusterLogger, context_tag, process_spawn_sleep, print_version, ping_unix_socket
+from wazuh.core.cluster.unix_server.server import start_unix_server
+from wazuh.core.cluster.utils import ClusterLogger, context_tag, ping_unix_socket, print_version, process_spawn_sleep
+from wazuh.core.common import CONFIG_SERVER_SOCKET_PATH, WAZUH_RUN, WAZUH_SHARE, wazuh_gid, wazuh_uid
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.server import NodeType, ServerConfig
 from wazuh.core.exception import WazuhDaemonError
+from wazuh.core.task.order import get_orders
 from wazuh.core.utils import clean_pid_files, create_wazuh_dir
 from wazuh.core.wlogging import WazuhLogger
-from wazuh.core.cluster.unix_server.server import start_unix_server
-from wazuh.core.config.models.server import ServerConfig
-from wazuh.core.task.order import get_orders
-
 
 SERVER_DAEMON_NAME = 'wazuh-server'
 COMMS_API_DAEMON_NAME = 'wazuh-comms-apid'
@@ -106,10 +104,8 @@ def start_daemons(root: bool):
 
     daemons = {
         ENGINE_DAEMON_NAME: [ENGINE_BINARY_PATH, 'server', '-l', engine_log_level[debug_mode_], 'start'],
-        COMMS_API_DAEMON_NAME: [COMMS_API_SCRIPT_PATH]
-            + (['-r'] if root else []),
-        MANAGEMENT_API_DAEMON_NAME: [MANAGEMENT_API_SCRIPT_PATH]
-            + (['-r'] if root else []),
+        COMMS_API_DAEMON_NAME: [COMMS_API_SCRIPT_PATH] + (['-r'] if root else []),
+        MANAGEMENT_API_DAEMON_NAME: [MANAGEMENT_API_SCRIPT_PATH] + (['-r'] if root else []),
     }
 
     for name, args in daemons.items():
@@ -176,7 +172,7 @@ async def master_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info(f"Configuration server is not available, retrying...")
+        main_logger.info('Configuration server is not available, retrying...')
         time.sleep(1)
 
     my_server = master.Master(
@@ -233,7 +229,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
     start_unix_server(tag)
 
     while not ping_unix_socket(CONFIG_SERVER_SOCKET_PATH):
-        main_logger.info(f"Configuration server is not available, retrying...")
+        main_logger.info('Configuration server is not available, retrying...')
         time.sleep(1)
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
@@ -287,7 +283,7 @@ async def worker_main(args: argparse.Namespace, server_config: ServerConfig, log
 
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
-            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
+            logging.info('Connection with server has been lost. Reconnecting in 10 seconds.')
             await asyncio.sleep(server_config.worker.intervals.connection_retry)
 
 
@@ -431,7 +427,6 @@ def _check_children_number(process: psutil.Process, expected_children_number: in
     bool
         True if the process had the expected number of children else False.
     """
-
     return len(process.children()) == expected_children_number
 
 
@@ -454,7 +449,7 @@ def check_daemon(processes: list, proc_name: str, children_number: int):
     """
     child: psutil.Process = _get_child_process(processes, proc_name)
     if child.status() == psutil.STATUS_ZOMBIE:
-        main_logger.error(f"Daemon `{proc_name}` is not running, stopping the whole server.")
+        main_logger.error(f'Daemon `{proc_name}` is not running, stopping the whole server.')
         clean_pid_files(proc_name)
         return
     if not _check_children_number(child, children_number):
@@ -509,8 +504,8 @@ async def monitor_server_daemons(loop: asyncio.BaseEventLoop, server_process: ps
     comms_api_config = CentralizedConfig.get_comms_api_config()
     process_children = {
         MANAGEMENT_API_DAEMON_NAME[:15]: 3,
-        COMMS_API_DAEMON_NAME:  comms_api_config.workers + 4,
-        ENGINE_DAEMON_NAME:  0
+        COMMS_API_DAEMON_NAME: comms_api_config.workers + 4,
+        ENGINE_DAEMON_NAME: 0,
     }
 
     await check_for_server_readiness(server_process, process_children)

@@ -70,9 +70,12 @@ def test_main_exception():
 
 def test_main():
     """Test the correct execution of the main function."""
-    with patch('shuffle.open', mock_open()), patch('json.load', return_value=alert_template), patch(
-        'requests.post', return_value=requests.Response
-    ), patch('shuffle.process_args') as process:
+    with (
+        patch('shuffle.open', mock_open()),
+        patch('json.load', return_value=alert_template),
+        patch('requests.post', return_value=requests.Response),
+        patch('shuffle.process_args') as process,
+    ):
         shuffle.main(sys_args_template)
         process.assert_called_once_with(sys_args_template)
 
@@ -94,9 +97,11 @@ def test_process_args_exit(side_effect, return_value):
     return_value : int
         Value to be returned when sys.exit() is invoked.
     """
-    with patch('shuffle.open', mock_open()), patch('json.load') as json_load, pytest.raises(
-        SystemExit
-    ) as pytest_wrapped_e:
+    with (
+        patch('shuffle.open', mock_open()),
+        patch('json.load') as json_load,
+        pytest.raises(SystemExit) as pytest_wrapped_e,
+    ):
         json_load.side_effect = side_effect
         shuffle.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == return_value
@@ -104,11 +109,14 @@ def test_process_args_exit(side_effect, return_value):
 
 def test_process_args():
     """Test the correct execution of the process_args function."""
-    with patch('shuffle.open', mock_open()), patch('shuffle.get_json_alert') as alert_load, patch(
-        'shuffle.get_json_options'
-    ) as options_load, patch('shuffle.send_msg') as send_msg, patch(
-        'shuffle.generate_msg', return_value=msg_template
-    ) as generate_msg, patch('requests.post', return_value=requests.Response):
+    with (
+        patch('shuffle.open', mock_open()),
+        patch('shuffle.get_json_alert') as alert_load,
+        patch('shuffle.get_json_options') as options_load,
+        patch('shuffle.send_msg') as send_msg,
+        patch('shuffle.generate_msg', return_value=msg_template) as generate_msg,
+        patch('requests.post', return_value=requests.Response),
+    ):
         alert_load.return_value = alert_template
         options_load.return_value = options_template
         shuffle.process_args(sys_args_template)
@@ -120,18 +128,23 @@ def test_process_args():
 
 def test_process_args_not_sending_message():
     """Test that the send_msg function is not executed due to empty message after generate_msg."""
-    with patch('shuffle.open', mock_open()), patch('json.load', return_value=alert_template), patch(
-        'shuffle.send_msg'
-    ) as send_msg, patch('shuffle.generate_msg', return_value=''):
+    with (
+        patch('shuffle.open', mock_open()),
+        patch('json.load', return_value=alert_template),
+        patch('shuffle.send_msg') as send_msg,
+        patch('shuffle.generate_msg', return_value=''),
+    ):
         shuffle.process_args(sys_args_template)
         send_msg.assert_not_called()
 
 
 def test_debug():
     """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
-    with patch('shuffle.debug_enabled', return_value=True), patch('shuffle.open', mock_open()) as open_mock, patch(
-        'shuffle.LOG_FILE', return_value='integrations.log'
-    ) as log_file:
+    with (
+        patch('shuffle.debug_enabled', return_value=True),
+        patch('shuffle.open', mock_open()) as open_mock,
+        patch('shuffle.LOG_FILE', return_value='integrations.log') as log_file,
+    ):
         shuffle.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
         open_mock().write.assert_called_with(f'{msg_template}\n')
@@ -148,7 +161,6 @@ def test_generate_msg(expected_msg, rule_id):
     rule_id : str
         ID of the rule to be processed.
     """
-
     alert_template['rule']['id'] = rule_id
     assert shuffle.generate_msg(alert_template, options_template) == expected_msg
 
@@ -164,7 +176,6 @@ def test_generate_msg_severity(rule_level, severity):
     severity: int
         Expected severity level for the corresponding rule level.
     """
-
     alert_template['rule']['level'] = rule_level
     assert json.loads(shuffle.generate_msg(alert_template, options_template))['severity'] == severity
 
@@ -180,7 +191,6 @@ def test_filter_msg(rule_id, result):
     result: bool
         Expected result of the filter_msg function for the given alert.
     """
-
     alert_template['rule']['id'] = rule_id
     assert result == shuffle.filter_msg(alert_template)
 

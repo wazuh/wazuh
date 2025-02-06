@@ -6,22 +6,22 @@ from wazuh.core.indexer.models.commands import Source
 
 @pytest.fixture
 def search_result():
-    return {IndexerKey.HITS: {IndexerKey.HITS: [
-        {IndexerKey._ID: 1, IndexerKey._SOURCE: {'id': 1, 'name': 'test1'}},
-        {IndexerKey._ID: 2, IndexerKey._SOURCE: {'id': 2, 'name': 'test2'}},
-        {IndexerKey._ID: 3, IndexerKey._SOURCE: {'id': 3, 'name': 'test3'}}
-    ]}}
+    return {
+        IndexerKey.HITS: {
+            IndexerKey.HITS: [
+                {IndexerKey._ID: 1, IndexerKey._SOURCE: {'id': 1, 'name': 'test1'}},
+                {IndexerKey._ID: 2, IndexerKey._SOURCE: {'id': 2, 'name': 'test2'}},
+                {IndexerKey._ID: 3, IndexerKey._SOURCE: {'id': 3, 'name': 'test3'}},
+            ]
+        }
+    }
 
 
 def test_get_source_items(search_result: dict):
     """Check the correct function of `get_source_items`."""
     output = [item for item in utils.get_source_items(search_result)]
 
-    assert output == [
-        {'id': 1, 'name': 'test1'}, 
-        {'id': 2, 'name': 'test2'},
-        {'id': 3, 'name': 'test3'}
-    ]
+    assert output == [{'id': 1, 'name': 'test1'}, {'id': 2, 'name': 'test2'}, {'id': 3, 'name': 'test3'}]
 
 
 def test_get_source_items_id(search_result: dict):
@@ -43,5 +43,5 @@ def test_convert_enums():
     d = {'key': None, 'key2': Source.ENGINE}
     expected = {'key2': Source.ENGINE.value}
     result = utils.convert_enums(d.items())
-   
+
     assert result == expected

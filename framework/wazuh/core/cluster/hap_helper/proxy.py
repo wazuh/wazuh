@@ -73,7 +73,7 @@ class ProxyBalanceAlgorithm(Enum):
 
 
 class ProxyAPI:
-    """Wrapper for calling HAProxy REST API"""
+    """Wrapper for calling HAProxy REST API."""
 
     HAP_ENDPOINT = 'v2'
 
@@ -88,7 +88,7 @@ class ProxyAPI:
         haproxy_cert_file: str | bool = True,
         client_cert_file: str | None = None,
         client_key_file: str | None = None,
-        client_password: str | None = None
+        client_password: str | None = None,
     ):
         self.username = username
         self.password = password
@@ -98,8 +98,11 @@ class ProxyAPI:
         self.protocol = protocol
         # Required for HTTPS use
         self.haproxy_cert = haproxy_cert_file
-        self.client_cert = (client_cert_file, client_key_file, client_password) \
-            if client_cert_file and self.protocol == 'https' else None
+        self.client_cert = (
+            (client_cert_file, client_key_file, client_password)
+            if client_cert_file and self.protocol == 'https'
+            else None
+        )
 
         self.version = 0
 
@@ -112,8 +115,9 @@ class ProxyAPI:
             In case of errors communicating with the HAProxy REST API.
         """
         try:
-            async with httpx.AsyncClient(verify=self.haproxy_cert, cert=self.client_cert,
-                                         timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
+            async with httpx.AsyncClient(
+                verify=self.haproxy_cert, cert=self.client_cert, timeout=httpx.Timeout(DEFAULT_TIMEOUT)
+            ) as client:
                 response = await client.get(
                     join(f'{self.protocol}://', f'{self.address}:{self.port}', self.HAP_ENDPOINT, 'health'),
                     auth=(self.username, self.password),
@@ -166,9 +170,12 @@ class ProxyAPI:
         query_parameters.update({'version': self.version})
 
         try:
-            async with httpx.AsyncClient(verify=self.haproxy_cert,
-                                         cert=self.client_cert, follow_redirects=True,
-                                         timeout=httpx.Timeout(DEFAULT_TIMEOUT)) as client:
+            async with httpx.AsyncClient(
+                verify=self.haproxy_cert,
+                cert=self.client_cert,
+                follow_redirects=True,
+                timeout=httpx.Timeout(DEFAULT_TIMEOUT),
+            ) as client:
                 response = await client.request(
                     method=method.value,
                     url=uri,
@@ -198,7 +205,6 @@ class ProxyAPI:
 
     async def update_configuration_version(self):
         """Get the last version of the configuration schema and set it."""
-
         configuration_version = await self._make_hap_request('services/haproxy/configuration/version')
         self.version = configuration_version
 
@@ -289,7 +295,6 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             The servers for the provided backend.
         """
-
         return await self._make_hap_request(
             'services/haproxy/configuration/servers', query_parameters={'backend': backend}
         )
@@ -604,7 +609,6 @@ class Proxy:
         server_admin_state_delay : int
             Delay of server administration.
         """
-
         hard_stop_after = (active_agents / (n_managers * chunk_size)) * n_managers * agent_reconnection_time + (
             n_managers * server_admin_state_delay * 2
         )

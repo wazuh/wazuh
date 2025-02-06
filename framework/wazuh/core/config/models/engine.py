@@ -1,6 +1,6 @@
-from pydantic import FilePath, PositiveInt, PositiveFloat, model_serializer
-from typing import Dict, Any
+from typing import Any, Dict
 
+from pydantic import FilePath, PositiveFloat, PositiveInt, model_serializer
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 from wazuh.core.config.models.logging import EngineLoggingConfig
@@ -18,6 +18,7 @@ class EngineClientConfig(WazuhConfigBaseModel):
     timeout : PositiveFloat
         The timeout duration in seconds. Default: 10.0.
     """
+
     api_socket_path: FilePath = FilePath(ENGINE_SOCKET)
     retries: PositiveInt = 3
     timeout: PositiveFloat = 10
@@ -35,6 +36,7 @@ class EngineConfig(WazuhConfigBaseModel):
     logging : LoggingConfig
         Configuration for logging. Default is an instance of LoggingConfig.
     """
+
     tzdv_automatic_update: bool = False
     client: EngineClientConfig = EngineClientConfig()
     logging: EngineLoggingConfig = EngineLoggingConfig()

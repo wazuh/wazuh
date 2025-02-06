@@ -1,19 +1,18 @@
 from enum import Enum
 from typing import List
-from pydantic import Field
 
-from pydantic import field_validator, ValidationInfo
-
+from pydantic import Field, ValidationInfo, field_validator
 from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
 
 
 class SSLProtocol(str, Enum):
     """Enum representing supported SSL/TLS protocols."""
-    tls = "TLS"
-    tls_v1 = "TLSv1"
-    tls_v1_1 = "TLSv1.1"
-    tls_v1_2 = "TLSv1.2"
-    auto = "auto"
+
+    tls = 'TLS'
+    tls_v1 = 'TLSv1'
+    tls_v1_1 = 'TLSv1.1'
+    tls_v1_2 = 'TLSv1.2'
+    auto = 'auto'
 
 
 class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
@@ -30,10 +29,11 @@ class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     keyfile_password : str
         The password for the SSL key file. Default is an empty string.
     """
+
     key: str
     cert: str
     ca: str
-    keyfile_password: str = ""
+    keyfile_password: str = ''
 
     @field_validator('key', 'cert', 'ca')
     @classmethod
@@ -53,7 +53,7 @@ class SSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         str
             SSL certificate/key path.
         """
@@ -78,6 +78,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         Whether to verify the server TLS certificates or not. Default is True.
 
     """
+
     use_ssl: bool = False
     key: str = ''
     certificate: str = ''
@@ -102,7 +103,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         str
             SSL certificate/key path.
         """
@@ -128,7 +129,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         List[str]
             SSL Certificate Authorities paths.
         """
@@ -157,6 +158,7 @@ class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     ssl_ciphers : str
         The SSL ciphers to use. Default is an empty string.
     """
+
     key: str
     cert: str
     use_ca: bool = False
@@ -182,7 +184,7 @@ class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             Invalid SSL file path.
 
         Returns
-        ------
+        -------
         str
             SSL certificate authority file path.
         """

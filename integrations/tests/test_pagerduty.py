@@ -78,9 +78,13 @@ def test_main_exception():
 
 def test_main():
     """Test the correct execution of the main function."""
-    with patch('pagerduty.open', mock_open()), patch('json.load', return_value=alert_template), patch(
-        'json.load', return_value=options_template
-    ), patch('requests.post', return_value=requests.Response), patch('pagerduty.process_args') as process:
+    with (
+        patch('pagerduty.open', mock_open()),
+        patch('json.load', return_value=alert_template),
+        patch('json.load', return_value=options_template),
+        patch('requests.post', return_value=requests.Response),
+        patch('pagerduty.process_args') as process,
+    ):
         pagerduty.main(sys_args_template)
         process.assert_called_once_with(sys_args_template)
 
@@ -102,9 +106,11 @@ def test_process_args_exit(side_effect, return_value):
     return_value : int
         Value to be returned when sys.exit() is invoked.
     """
-    with patch('pagerduty.open', mock_open()), patch('json.load') as json_load, pytest.raises(
-        SystemExit
-    ) as pytest_wrapped_e:
+    with (
+        patch('pagerduty.open', mock_open()),
+        patch('json.load') as json_load,
+        pytest.raises(SystemExit) as pytest_wrapped_e,
+    ):
         json_load.side_effect = side_effect
         pagerduty.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == return_value
@@ -112,11 +118,14 @@ def test_process_args_exit(side_effect, return_value):
 
 def test_process_args():
     """Test the correct execution of the process_args function."""
-    with patch('pagerduty.open', mock_open()), patch('pagerduty.get_json_alert') as alert_load, patch(
-        'pagerduty.get_json_options'
-    ) as options_load, patch('pagerduty.send_msg') as send_msg, patch(
-        'pagerduty.generate_msg', return_value=msg_template
-    ) as generate_msg, patch('requests.post', return_value=requests.Response):
+    with (
+        patch('pagerduty.open', mock_open()),
+        patch('pagerduty.get_json_alert') as alert_load,
+        patch('pagerduty.get_json_options') as options_load,
+        patch('pagerduty.send_msg') as send_msg,
+        patch('pagerduty.generate_msg', return_value=msg_template) as generate_msg,
+        patch('requests.post', return_value=requests.Response),
+    ):
         alert_load.return_value = alert_template
         options_load.return_value = options_template
         pagerduty.process_args(sys_args_template)
@@ -128,11 +137,14 @@ def test_process_args():
 
 def test_process_args_not_sending_message():
     """Test that the send_msg function is not executed due to empty message after generate_msg."""
-    with patch('pagerduty.open', mock_open()), patch('pagerduty.get_json_alert') as alert_load, patch(
-        'pagerduty.get_json_options'
-    ) as options_load, patch('pagerduty.send_msg') as send_msg, patch(
-        'pagerduty.generate_msg', return_value=''
-    ), pytest.raises(Exception):
+    with (
+        patch('pagerduty.open', mock_open()),
+        patch('pagerduty.get_json_alert') as alert_load,
+        patch('pagerduty.get_json_options') as options_load,
+        patch('pagerduty.send_msg') as send_msg,
+        patch('pagerduty.generate_msg', return_value=''),
+        pytest.raises(Exception),
+    ):
         alert_load.return_value = alert_template
         options_load.return_value = options_template
         pagerduty.process_args(sys_args_template)
@@ -141,9 +153,11 @@ def test_process_args_not_sending_message():
 
 def test_debug():
     """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
-    with patch('pagerduty.debug_enabled', return_value=True), patch('pagerduty.open', mock_open()) as open_mock, patch(
-        'pagerduty.LOG_FILE', return_value='integrations.log'
-    ) as log_file:
+    with (
+        patch('pagerduty.debug_enabled', return_value=True),
+        patch('pagerduty.open', mock_open()) as open_mock,
+        patch('pagerduty.LOG_FILE', return_value='integrations.log') as log_file,
+    ):
         pagerduty.debug(str(msg_template))
         open_mock.assert_called_with(log_file, 'a')
         open_mock().write.assert_called_with(str(msg_template) + '\n')

@@ -4,10 +4,9 @@
 
 import json
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 from wazuh.core.exception import WazuhClusterError
 
 with patch('wazuh.common.getgrnam'):

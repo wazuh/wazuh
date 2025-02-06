@@ -13,16 +13,16 @@ def get_file_path(file_name: str) -> str:
     ----------
     file_name : str
         File name.
-    
+
     Raises
     ------
     WazuhCommsAPIError
         If the path does not comply with the requirements.
-    
+
     Returns
     -------
     str
-        Path to the file.    
+        Path to the file.
     """
     if file_name.endswith('/'):
         raise WazuhCommsAPIError(2704)

@@ -6,13 +6,13 @@ from logging import getLogger
 from typing import AsyncIterator, List
 
 from opensearchpy import AsyncOpenSearch
-from opensearchpy.exceptions import TransportError, ImproperlyConfigured
+from opensearchpy.exceptions import ImproperlyConfigured, TransportError
+from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.indexer.commands import CommandsManager
-from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models.ssl_config import IndexerSSLConfig
 
 logger = getLogger('wazuh')
 
@@ -108,7 +108,6 @@ class Indexer(MixinBulk):
         except ImproperlyConfigured as e:
             raise WazuhIndexerError(2200, extra_message=f'{e}. Check your indexer configuration and SSL certificates')
 
-
     async def close(self) -> None:
         """Close the Wazuh Indexer client."""
         logger.debug('Closing the indexer client session.')
@@ -196,7 +195,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         user=indexer_config.username,
         password=indexer_config.password,
         ssl=indexer_config.ssl if indexer_config.ssl else None,
-        retries=3
+        retries=3,
     )
 
     try:

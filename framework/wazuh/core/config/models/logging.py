@@ -1,18 +1,19 @@
 import logging
-
-from pydantic import Field
 from enum import Enum
 
+from pydantic import Field
 from wazuh.core.config.models.base import WazuhConfigBaseModel
 
 
 class LoggingFormat(str, Enum):
     """Enum representing the available logging formats."""
+
     plain = 'plain'
 
 
 class LoggingLevel(str, Enum):
     """Enum representing the different levels of logging verbosity."""
+
     info = 'info'
     debug = 'debug'
     debug2 = 'debug2'
@@ -20,6 +21,7 @@ class LoggingLevel(str, Enum):
 
 class APILoggingLevel(str, Enum):
     """Enum representing the different levels of logging verbosity for an API."""
+
     debug = 'debug'
     info = 'info'
     warning = 'warning'
@@ -29,6 +31,7 @@ class APILoggingLevel(str, Enum):
 
 class EngineLoggingLevel(str, Enum):
     """Enum representing the different levels of logging verbosity for the Engine."""
+
     trace = 'trace'
     debug = 'debug'
     info = 'info'
@@ -45,6 +48,7 @@ class EngineLoggingConfig(WazuhConfigBaseModel):
     level : EngineLoggingLevel
         The logging level. Default is "info".
     """
+
     level: EngineLoggingLevel = EngineLoggingLevel.info
 
 
@@ -56,6 +60,7 @@ class LoggingConfig(WazuhConfigBaseModel):
     level : Literal["info", "debug", "debug2"]
         The logging level. Default is "info".
     """
+
     level: LoggingLevel = LoggingLevel.info
 
     def get_level_value(self) -> int:
@@ -80,13 +85,14 @@ class LoggingConfig(WazuhConfigBaseModel):
 class APILoggingConfig(WazuhConfigBaseModel):
     """Configuration for API logging.
 
-     Parameters
-     ----------
-     level : Literal["debug", "info", "warning", "error", "critical"]
-         The logging level. Default is "debug".
-     format : list[Literal["plain"]]
-         The format for logging output. Default is ["plain"].
+    Parameters
+    ----------
+    level : Literal["debug", "info", "warning", "error", "critical"]
+        The logging level. Default is "debug".
+    format : list[Literal["plain"]]
+        The format for logging output. Default is ["plain"].
     """
+
     level: APILoggingLevel = APILoggingLevel.debug
     format: list[LoggingFormat] = Field(default=[LoggingFormat.plain], min_length=1)
 

@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import ast
-import json
 import re
 import subprocess
 import time
@@ -19,7 +18,7 @@ def get_values(o):
 
     try:
         obj = o.to_dict()
-    except:
+    except Exception:
         obj = o
 
     if type(obj) is list:
@@ -35,18 +34,16 @@ def get_values(o):
 
 
 def test_distinct_key(response):
-    """
-    :param response: Request response
+    """:param response: Request response
     :return: True if all request response items are unique
     """
     assert not any(
-        response.json()["data"]["affected_items"].count(item) > 1 for item in response.json()["data"]["affected_items"])
+        response.json()['data']['affected_items'].count(item) > 1 for item in response.json()['data']['affected_items']
+    )
 
 
 def test_token_raw_format(response):
-    """
-    :param response: Request response
-    """
+    """:param response: Request response"""
     assert type(response.text) is str
 
 
@@ -88,9 +85,9 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
 
         # Check if there are keys in response that were not specified in 'select_keys', apart from those which can be
         # mandatory (id, agent_id, etc).
-        assert (set1 == set() or set1 == set1.intersection(
-            {'id', 'agent_id', 'file', 'task_id',
-             'policy_id'} | main_keys)), f'Select keys are {main_keys}, but the response contains these keys: {set1}'
+        assert set1 == set() or set1 == set1.intersection(
+            {'id', 'agent_id', 'file', 'task_id', 'policy_id'} | main_keys
+        ), f'Select keys are {main_keys}, but the response contains these keys: {set1}'
 
         for nested_key in nested_keys.items():
             # nested_key = compliance, value
@@ -130,25 +127,26 @@ def test_select_distinct_nested_sca_checks(response, select_key):
     for item in response.json()['data']['affected_items']:
         # Check that there are no keys in the item that are not specified in 'select_keys'
         set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1 == set1.intersection(main_keys), \
-            f'Select keys are {main_keys}, but an item contains the keys: {set(item.keys())}'
+        assert set1 == set() or set1 == set1.intersection(
+            main_keys
+        ), f'Select keys are {main_keys}, but an item contains the keys: {set(item.keys())}'
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
-    """
-    :param response: Request response
+    """:param response: Request response
     :param select_key: Parametrized key used for select param in request
     :return: True if request response item key matches used select param
     """
     if '.' in select_key:
         expected_keys_level0 = {'agent_id', select_key.split('.')[0]}
         expected_keys_level1 = {select_key.split('.')[1]}
-        assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys_level0
-        assert set(
-            response.json()["data"]["affected_items"][0][select_key.split('.')[0]].keys()) == expected_keys_level1
+        assert set(response.json()['data']['affected_items'][0].keys()) == expected_keys_level0
+        assert (
+            set(response.json()['data']['affected_items'][0][select_key.split('.')[0]].keys()) == expected_keys_level1
+        )
     else:
         expected_keys = {'agent_id', select_key}
-        assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
+        assert set(response.json()['data']['affected_items'][0].keys()) == expected_keys
 
 
 def test_sort_response(response, key=None, reverse=False):
@@ -170,7 +168,7 @@ def test_sort_response(response, key=None, reverse=False):
 
     def get_val_from_dict(dictionary, keys):
         """Get value from dictionary dynamically, given a list of keys.
-        E.g. get_val_from_dict(d, ['field1','field2']) will return d['field1']['field2']
+        E.g. get_val_from_dict(d, ['field1','field2']) will return d['field1']['field2'].
 
         Parameters
         ----------
@@ -221,8 +219,9 @@ def test_sort_response(response, key=None, reverse=False):
         # Change position of items without the key we are sorting by
         # Our sql query considers an item not having the key < an item having the key
         # The 'sorted' function considers an item not having the key > an item having the key
-        list_no_keys = [item for item in sorted_items if not any(get_val_from_dict(item, key.split('.'))
-                                                                 for key in keys)]
+        list_no_keys = [
+            item for item in sorted_items if not any(get_val_from_dict(item, key.split('.')) for key in keys)
+        ]
         for item in list_no_keys:
             sorted_items.remove(item)
         sorted_items = sorted_items + list_no_keys if reverse else list_no_keys + sorted_items
@@ -231,7 +230,7 @@ def test_sort_response(response, key=None, reverse=False):
 
 
 def test_validate_data_dict_field(response, fields_dict):
-    assert fields_dict, "Fields dict is empty"
+    assert fields_dict, 'Fields dict is empty'
     for field, dikt in fields_dict.items():
         field_list = response.json()['data'][field]
 
@@ -244,8 +243,7 @@ def test_validate_data_dict_field(response, fields_dict):
 
 
 def test_count_elements(response, n_expected_items):
-    """
-    :param response: Request response
+    """:param response: Request response
     :param n_expected_items: Expected number of elements in affected_items
     """
     assert len(response.json()['data']['affected_items']) == n_expected_items
@@ -270,17 +268,17 @@ def test_expected_value(response, key, expected_values, empty_response_possible=
     affected_items = response.json()['data']['affected_items']
 
     if not affected_items and not empty_response_possible:
-        raise Exception("No items found in the response")
+        raise Exception('No items found in the response')
 
     for item in affected_items:
         response_set = set(map(str, item[key])) if isinstance(item[key], list) else {str(item[key])}
-        assert bool(expected_values.intersection(response_set)), \
-            f'Expected values {expected_values} not found in {item[key]}'
+        assert bool(
+            expected_values.intersection(response_set)
+        ), f'Expected values {expected_values} not found in {item[key]}'
 
 
 def test_response_is_different(response, response_value, unexpected_value):
-    """
-    :param response_value: Value to compare
+    """:param response_value: Value to compare
     :param unexpected_value: Response value should be different to this.
     """
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"
@@ -295,7 +293,7 @@ def test_save_response_data(response):
 
 
 def test_validate_auth_context(response, expected_roles=None):
-    """Check that the authorization context has been matched with the correct rules
+    """Check that the authorization context has been matched with the correct rules.
 
     Parameters
     ----------
@@ -310,18 +308,22 @@ def test_validate_auth_context(response, expected_roles=None):
 
 def test_validate_group_configuration(response, expected_field, expected_value):
     response_json = response.json()
-    assert len(response_json['data']['affected_items']) > 0 and \
-           'config' in response_json['data']['affected_items'][0] and \
-           'localfile' in response_json['data']['affected_items'][0]['config'], \
-        'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
+    assert (
+        len(response_json['data']['affected_items']) > 0
+        and 'config' in response_json['data']['affected_items'][0]
+        and 'localfile' in response_json['data']['affected_items'][0]['config']
+    ), 'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
 
     response_config = response_json['data']['affected_items'][0]['config']['localfile'][0]
-    assert expected_field in set(response_config.keys()), \
-        'The expected config key is not present in the received response.'
+    assert expected_field in set(
+        response_config.keys()
+    ), 'The expected config key is not present in the received response.'
 
-    assert response_config[expected_field] == expected_value, \
-        'The received value for query does not match with the expected one. ' \
-        'Received: {}. Expected: {}'.format(response_config[expected_field], expected_value)
+    assert (
+        response_config[expected_field] == expected_value
+    ), 'The received value for query does not match with the expected one. Received: {}. Expected: {}'.format(
+        response_config[expected_field], expected_value
+    )
 
 
 def test_validate_search(response, search_param):
@@ -334,11 +336,12 @@ def test_validate_search(response, search_param):
 
 
 def test_validate_key_not_in_response(response, key):
-    assert all(key not in item for item in response.json()["data"]["affected_items"])
+    assert all(key not in item for item in response.json()['data']['affected_items'])
 
 
-def test_validate_vd_scans(response, first_node_name, first_node_count, second_node_name, second_node_count,
-                           third_node_name, third_node_count):
+def test_validate_vd_scans(
+    response, first_node_name, first_node_count, second_node_name, second_node_count, third_node_name, third_node_count
+):
     nodes = []
     if first_node_count > 0:
         nodes.append(first_node_name)
@@ -348,7 +351,7 @@ def test_validate_vd_scans(response, first_node_name, first_node_count, second_n
         nodes.append(third_node_name)
 
     # All the names in nodes must be in the response
-    assert all(node in response.json()["data"]["affected_items"] for node in nodes)
+    assert all(node in response.json()['data']['affected_items'] for node in nodes)
 
 
 def check_agentd_started(response, agents_list):
@@ -378,7 +381,7 @@ def check_agentd_started(response, agents_list):
             Datetime object representing the timestamp got.
         """
         timestamp = timestamp_regex.search(string=log).group(0)
-        return datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
+        return datetime.strptime(timestamp, '%Y/%m/%d %H:%M:%S')
 
     # Save the time when the restart command was sent
     restart_request_time = datetime.utcnow().replace(microsecond=0) - response.elapsed
@@ -388,14 +391,17 @@ def check_agentd_started(response, agents_list):
         while tries < 80:
             try:
                 # Save agentd logs in a list
-                command = f"docker exec env-wazuh-agent{int(agent_id)}-1 grep agentd /var/ossec/logs/ossec.log"
+                command = f'docker exec env-wazuh-agent{int(agent_id)}-1 grep agentd /var/ossec/logs/ossec.log'
                 output = subprocess.check_output(command.split()).decode().strip().split('\n')
             except subprocess.SubprocessError as exc:
-                raise subprocess.SubprocessError(f"Error while trying to get logs from agent {agent_id}") from exc
+                raise subprocess.SubprocessError(f'Error while trying to get logs from agent {agent_id}') from exc
 
             # Ignore agentd logs before restart_request_time
-            logs_after_restart = [agentd_log for agentd_log in output if
-                                  get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()]
+            logs_after_restart = [
+                agentd_log
+                for agentd_log in output
+                if get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()
+            ]
 
             # Check the log indicating agentd started is in the agent's ossec.log (after the restart request)
             if any(agentd_started_regex.search(string=agentd_log) for agentd_log in logs_after_restart):
@@ -404,7 +410,7 @@ def check_agentd_started(response, agents_list):
             tries += 1
             time.sleep(1)
         else:
-            raise ProcessLookupError("The wazuh-agentd daemon was not started after requesting the restart")
+            raise ProcessLookupError('The wazuh-agentd daemon was not started after requesting the restart')
 
 
 def check_agent_active_status(agents_list):
@@ -416,16 +422,22 @@ def check_agent_active_status(agents_list):
     agents_list : list
         List of expected agents to be restarted.
     """
-    active_agents_script_path = "/tools/print_active_agents.py"
+    active_agents_script_path = '/tools/print_active_agents.py'
     id_active_agents = []
     tries = 0
     while tries < 25:
         try:
             # Get active agents
-            output = subprocess.check_output(f"docker exec env-wazuh-master-1 /var/ossec/framework/python/bin/python3 "
-                                             f"{active_agents_script_path}".split()).decode().strip()
+            output = (
+                subprocess.check_output(
+                    f'docker exec env-wazuh-master-1 /var/ossec/framework/python/bin/python3 '
+                    f'{active_agents_script_path}'.split()
+                )
+                .decode()
+                .strip()
+            )
         except subprocess.SubprocessError as exc:
-            raise subprocess.SubprocessError("Error while trying to get agents") from exc
+            raise subprocess.SubprocessError('Error while trying to get agents') from exc
 
         # Transform string representation of list to list and save agents id
         id_active_agents = [agent['id'] for agent in ast.literal_eval(output)]
@@ -437,7 +449,7 @@ def check_agent_active_status(agents_list):
         time.sleep(1)
     else:
         non_active_agents = [a for a in agents_list if a not in id_active_agents]
-        raise SystemError(f"Agents {non_active_agents} have a status different to active after restarting")
+        raise SystemError(f'Agents {non_active_agents} have a status different to active after restarting')
 
 
 def healthcheck_agent_restart(response, agents_list):
@@ -470,9 +482,13 @@ def validate_update_check_response(response, current_version, update_check):
         assert error_code == 2100
         return
 
-    available_update_keys = ["last_available_major", "last_available_minor", "last_available_patch"]
+    available_update_keys = ['last_available_major', 'last_available_minor', 'last_available_patch']
     keys_to_check = [
-        ("tag", str), ("description", (str, type(None))), ("title", str), ("published_date", str), ("semver", dict)
+        ('tag', str),
+        ('description', (str, type(None))),
+        ('title', str),
+        ('published_date', str),
+        ('semver', dict),
     ]
 
     data = response.json()['data']

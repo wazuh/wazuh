@@ -4,16 +4,15 @@
 
 import logging
 import socket
-from datetime import datetime
 
 from connexion.lifecycle import ConnexionResponse
-
-from server_management_api.controllers.util import json_response
-from server_management_api.models.basic_info_model import BasicInfo
 from wazuh.core.common import DATE_FORMAT
 from wazuh.core.results import WazuhResult
 from wazuh.core.security import load_spec
 from wazuh.core.utils import get_utc_now
+
+from server_management_api.controllers.util import json_response
+from server_management_api.models.basic_info_model import BasicInfo
 
 logger = logging.getLogger('wazuh-api')
 
@@ -39,7 +38,7 @@ async def default_info(pretty: bool = False) -> ConnexionResponse:
         'license_name': info_data['info']['license']['name'],
         'license_url': info_data['info']['license']['url'],
         'hostname': socket.gethostname(),
-        'timestamp': get_utc_now().strftime(DATE_FORMAT)
+        'timestamp': get_utc_now().strftime(DATE_FORMAT),
     }
     data = WazuhResult({'data': BasicInfo.from_dict(data)})
 

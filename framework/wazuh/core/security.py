@@ -6,9 +6,8 @@ import os
 from functools import lru_cache
 
 import yaml
-
 from server_management_api import __path__ as api_path
-from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
+from wazuh.rbac.orm import DB_FILE, RolesManager, TokenManager, check_database_integrity
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
@@ -62,7 +61,7 @@ def invalid_users_tokens(users: list = None):
 
 
 def invalid_roles_tokens(roles: list = None):
-    """Add the necessary rules to invalidate all affected role's tokens
+    """Add the necessary rules to invalidate all affected role's tokens.
 
     Parameters
     ----------

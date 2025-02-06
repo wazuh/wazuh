@@ -6,7 +6,6 @@ from contextvars import ContextVar
 from unittest.mock import patch
 
 import pytest
-
 from wazuh.tests.test_security import db_setup  # noqa
 
 
@@ -40,16 +39,12 @@ def test_revoke_tokens(db_setup):
     """
     security, WazuhResult, _ = db_setup
     mock_current_user = ContextVar('current_user', default='wazuh')
-    with patch("wazuh.core.common.current_user", new=mock_current_user):
+    with patch('wazuh.core.common.current_user', new=mock_current_user):
         result = security.revoke_current_user_tokens()
         assert isinstance(result, WazuhResult)
 
 
-@pytest.mark.parametrize('role_list, expected_roles', [
-    ([104], {104}),
-    ([102, 103], {102, 103}),
-    ([], set())
-])
+@pytest.mark.parametrize('role_list, expected_roles', [([104], {104}), ([102, 103], {102, 103}), ([], set())])
 def test_invalid_roles_tokens(db_setup, role_list, expected_roles):
     """Check that the argument passed to `TokenManager.add_user_roles_rules` formed by `roles` is correct.
 
@@ -82,11 +77,9 @@ def test_invalid_run_as_tokens(mock_add_user_roles_rules, db_setup):
     mock_add_user_roles_rules.assert_called_with(run_as=True)
 
 
-@pytest.mark.parametrize('role_list, expected_users', [
-    ([100, 101], {100, 103, 102}),
-    ([102], {104}),
-    ([102, 103, 104], {101, 104, 102})
-])
+@pytest.mark.parametrize(
+    'role_list, expected_users', [([100, 101], {100, 103, 102}), ([102], {104}), ([102, 103, 104], {101, 104, 102})]
+)
 def test_check_relationships(db_setup, role_list, expected_users):
     """Check that the relationship between role and user is correct according to
     `schema_security_test.sql`.
@@ -104,11 +97,7 @@ def test_check_relationships(db_setup, role_list, expected_users):
     assert core_security.check_relationships(roles=[role_id for role_id in role_list]) == expected_users
 
 
-@pytest.mark.parametrize('user_list, expected_users', [
-    ([104], {104}),
-    ([102, 103], {102, 103}),
-    ([], set())
-])
+@pytest.mark.parametrize('user_list, expected_users', [([104], {104}), ([102, 103], {102, 103}), ([], set())])
 def test_invalid_users_tokens(db_setup, user_list, expected_users):
     """Check that the argument passed to `TokenManager.add_user_roles_rules` formed by `users` is correct.
 
@@ -128,13 +117,13 @@ def test_invalid_users_tokens(db_setup, user_list, expected_users):
         assert set(related_users) == expected_users
 
 
-@patch("wazuh.core.security.revoke_tokens")
-@patch("wazuh.core.security.check_database_integrity")
-@patch("wazuh.core.security.os.remove")
+@patch('wazuh.core.security.revoke_tokens')
+@patch('wazuh.core.security.check_database_integrity')
+@patch('wazuh.core.security.os.remove')
 def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_setup):
     """Check that the RBAC database factory reset is correct."""
     _, _, core_security = db_setup
     assert core_security.rbac_db_factory_reset() == {'reset': True}
-    assert remove_mock.call_args[0][0].name == "rbac.db"
+    assert remove_mock.call_args[0][0].name == 'rbac.db'
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()

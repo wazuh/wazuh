@@ -71,8 +71,11 @@ def collect_tests(test_list: str = None, keyword: str = None, rbac: str = 'both'
         kw = kw if kw is not None else ''
         t_list = t_list.split(',') if t_list else None
         collected_items = []
-        candidate_tests = [test for test in glob.glob('test_*.yaml') for t in t_list if t in test] \
-            if t_list else glob.glob('test_*.yaml')
+        candidate_tests = (
+            [test for test in glob.glob('test_*.yaml') for t in t_list if t in test]
+            if t_list
+            else glob.glob('test_*.yaml')
+        )
         for file in candidate_tests:
             if kw in file:
                 if rb == 'yes' and 'rbac' in file:
@@ -85,7 +88,7 @@ def collect_tests(test_list: str = None, keyword: str = None, rbac: str = 'both'
 
     collected_tests = filter_tests(keyword, rbac, t_list=test_list)
     print(f'Collected tests [{len(collected_tests)}]:')
-    print('{}\n\n'.format(", ".join(collected_tests)))
+    print('{}\n\n'.format(', '.join(collected_tests)))
 
     return collected_tests
 
@@ -99,12 +102,13 @@ def collect_non_excluded_tests() -> list:
         Sorted list with the API integration tests collected.
     """
     os.chdir(f'{TESTS_PATH}/{RESULTS_FOLDER}')
-    done_tests = glob.glob(f'test_*')
+    done_tests = glob.glob('test_*')
     os.chdir(TESTS_PATH)
-    collected_tests = sorted([test for test in glob.glob('test_*') if
-                              f"{test.rstrip('.tavern.yaml')}" not in done_tests])
+    collected_tests = sorted(
+        [test for test in glob.glob('test_*') if f"{test.rstrip('.tavern.yaml')}" not in done_tests]
+    )
     print(f'Collected tests [{len(collected_tests)}]:')
-    print('{}\n\n'.format(", ".join(collected_tests)))
+    print('{}\n\n'.format(', '.join(collected_tests)))
 
     return collected_tests
 
@@ -130,10 +134,8 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
         iteration : int
             Number indicating the iteration to be run.
         """
-        test_name = \
-            f'{test.rsplit(".")[0]}' \
-            f'{iteration if iteration != 1 else ""}'
-        html_params = [f"--html={RESULTS_FOLDER}/html_reports/{test_name}.html", '--self-contained-html']
+        test_name = f'{test.rsplit(".")[0]}' f'{iteration if iteration != 1 else ""}'
+        html_params = [f'--html={RESULTS_FOLDER}/html_reports/{test_name}.html', '--self-contained-html']
         with open(os.path.join(RESULTS_FOLDER, test_name), 'w') as f:
             command = PYTEST_COMMAND.split(' ') + html_params + [test]
             subprocess.call(command, stdout=f)
@@ -161,30 +163,67 @@ def get_results(filename: str = None):
     else:
         os.chdir(RESULTS_FOLDER)
         for file in sorted(glob.glob('test_*')):
-            print(f"Calculating result for {file}")
+            print(f'Calculating result for {file}')
             calculate_result(file)
 
 
 def get_script_arguments():
     """Get command line arguments given to the script."""
     rbac_choices = ['both', 'yes', 'no']
-    parser = argparse.ArgumentParser(usage="%(prog)s [options]",
-                                     description="API integration tests",
-                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        usage='%(prog)s [options]', description='API integration tests', formatter_class=argparse.RawTextHelpFormatter
+    )
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-l', '--list', dest='test_list', default=None,
-                       help='Specify a list of tests separated by a comma.', action='store')
-    group.add_argument('-e', '--exclude', dest='exclude', action='store_true', default=None,
-                       help='Run every test excluding the already saved in the RESULTS_FOLDER.')
-    group.add_argument('-r', '--results', dest='results', action='store_true', default=None,
-                       help='Get result summary from the already run tests.')
-    parser.add_argument('-k', '--keyword', dest='keyword', default=None,
-                        help='Specify the keyword to filter tests out. Default None.', action='store')
-    parser.add_argument('-R', '--rbac', dest='rbac', default='both', choices=rbac_choices,
-                        help='Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default '
-                             '"both".', action='store')
-    parser.add_argument('-i', '--iterations', dest='iterations', default=1, type=int,
-                        help='Specify how many times will every test be run. Default 1.', action='store')
+    group.add_argument(
+        '-l',
+        '--list',
+        dest='test_list',
+        default=None,
+        help='Specify a list of tests separated by a comma.',
+        action='store',
+    )
+    group.add_argument(
+        '-e',
+        '--exclude',
+        dest='exclude',
+        action='store_true',
+        default=None,
+        help='Run every test excluding the already saved in the RESULTS_FOLDER.',
+    )
+    group.add_argument(
+        '-r',
+        '--results',
+        dest='results',
+        action='store_true',
+        default=None,
+        help='Get result summary from the already run tests.',
+    )
+    parser.add_argument(
+        '-k',
+        '--keyword',
+        dest='keyword',
+        default=None,
+        help='Specify the keyword to filter tests out. Default None.',
+        action='store',
+    )
+    parser.add_argument(
+        '-R',
+        '--rbac',
+        dest='rbac',
+        default='both',
+        choices=rbac_choices,
+        help='Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default "both".',
+        action='store',
+    )
+    parser.add_argument(
+        '-i',
+        '--iterations',
+        dest='iterations',
+        default=1,
+        type=int,
+        help='Specify how many times will every test be run. Default 1.',
+        action='store',
+    )
 
     return parser.parse_args()
 

@@ -17,22 +17,20 @@ import struct
 import time
 import traceback
 from importlib import import_module
-from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
 from pathlib import Path
-
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 from uuid import uuid4
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
 from wazuh.core import common, exception
-from wazuh.core.cluster import cluster, utils as cluster_utils
+from wazuh.core.cluster import cluster
+from wazuh.core.cluster import utils as cluster_utils
 from wazuh.core.config.models.server import ServerConfig
 
 
 class Response:
-    """
-    Define and store a response from a request.
-    """
+    """Define and store a response from a request."""
 
     def __init__(self):
         """Class constructor."""
@@ -59,9 +57,7 @@ class Response:
 
 
 class InBuffer:
-    """
-    Define a buffer to receive incoming requests.
-    """
+    """Define a buffer to receive incoming requests."""
 
     divide_flag = b'd'  # flag used to indicate the message is divided
 
@@ -119,16 +115,14 @@ class InBuffer:
         -------
             Extended data buffer.
         """
-        len_data = len(data[:self.total - self.received])
-        self.payload[self.received:len_data + self.received] = data[:self.total - self.received]
+        len_data = len(data[: self.total - self.received])
+        self.payload[self.received : len_data + self.received] = data[: self.total - self.received]
         self.received += len_data
         return data[len_data:]
 
 
 class ReceiveFileTask:
-    """
-    Create an asyncio task that can be identified by a task_id.
-    """
+    """Create an asyncio task that can be identified by a task_id."""
 
     def __init__(self, wazuh_common, logger, task_id: bytes = b''):
         """Class constructor.
@@ -165,7 +159,7 @@ class ReceiveFileTask:
         """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -185,11 +179,9 @@ class ReceiveFileTask:
 
 
 class Handler(asyncio.Protocol):
-    """
-    Define common methods for echo clients and servers.
-    """
+    """Define common methods for echo clients and servers."""
 
-    def __init__(self, server_config: ServerConfig, logger: logging.Logger = None, tag: str = "Handler"):
+    def __init__(self, server_config: ServerConfig, logger: logging.Logger = None, tag: str = 'Handler'):
         """Class constructor.
 
         Parameters
@@ -204,7 +196,7 @@ class Handler(asyncio.Protocol):
         super().__init__()
         # The counter is used to identify each message. If an incoming request has a known ID,
         # it is processed as a response.
-        self.counter = random.SystemRandom().randint(0, 2 ** 32 - 1)
+        self.counter = random.SystemRandom().randint(0, 2**32 - 1)
         # The box stores all sent messages IDs.
         self.box = {}
         # The div_msg_box stores all divided messages under its IDs.
@@ -259,7 +251,7 @@ class Handler(asyncio.Protocol):
         self.counter : int
             New counter.
         """
-        self.counter = (self.counter + 1) % (2 ** 32)
+        self.counter = (self.counter + 1) % (2**32)
         return self.counter
 
     def msg_build(self, command: bytes, counter: int, data: bytes) -> List[bytearray]:
@@ -294,32 +286,35 @@ class Handler(asyncio.Protocol):
         # Message size is <= request_chunk, send the message
         if len(data) <= self.request_chunk:
             msg = bytearray(message_size)
-            msg[:self.header_len] = struct.pack(self.header_format, counter, len(data), command)
-            msg[self.header_len:message_size] = data
+            msg[: self.header_len] = struct.pack(self.header_format, counter, len(data), command)
+            msg[self.header_len : message_size] = data
             return [msg]
 
         # Message size > request_chunk, send the message divided
         else:
             # Command with the flag d (divided)
-            command = command[:-len(InBuffer.divide_flag)] + InBuffer.divide_flag
+            command = command[: -len(InBuffer.divide_flag)] + InBuffer.divide_flag
             msg_list = []
             partial_data_size = 0
             data_size = len(data)
             while partial_data_size < data_size:
-                message_size = self.request_chunk \
-                    if data_size - partial_data_size + self.header_len >= self.request_chunk \
+                message_size = (
+                    self.request_chunk
+                    if data_size - partial_data_size + self.header_len >= self.request_chunk
                     else data_size - partial_data_size + self.header_len
+                )
 
                 # Last divided message, remove the flag
                 if message_size == data_size - partial_data_size + self.header_len:
-                    command = command[:-len(InBuffer.divide_flag)] + b'-' * len(InBuffer.divide_flag)
+                    command = command[: -len(InBuffer.divide_flag)] + b'-' * len(InBuffer.divide_flag)
 
                 msg = bytearray(message_size)
-                msg[:self.header_len] = struct.pack(self.header_format, counter, message_size - self.header_len,
-                                                    command)
-                msg[self.header_len:message_size] = data[
-                                                    partial_data_size:partial_data_size + message_size - self.header_len
-                                                    ]
+                msg[: self.header_len] = struct.pack(
+                    self.header_format, counter, message_size - self.header_len, command
+                )
+                msg[self.header_len : message_size] = data[
+                    partial_data_size : partial_data_size + message_size - self.header_len
+                ]
                 partial_data_size += message_size - self.header_len
                 msg_list.append(msg)
 
@@ -337,9 +332,9 @@ class Handler(asyncio.Protocol):
             # Check if a new message was received.
             if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len:
                 # A new message has been received. Both header and payload must be processed.
-                self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
-                                                                  header_format=self.header_format,
-                                                                  header_size=self.header_len)
+                self.in_buffer = self.in_msg.get_info_from_header(
+                    header=self.in_buffer, header_format=self.header_format, header_size=self.header_len
+                )
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 return True
             elif self.in_msg.received != 0:
@@ -357,7 +352,7 @@ class Handler(asyncio.Protocol):
         separate yields.
 
         Yields
-        -------
+        ------
         bytes
             Last received message command.
         int
@@ -406,8 +401,9 @@ class Handler(asyncio.Protocol):
             raise exception.WazuhClusterError(3018, extra_message=str(e))
         try:
             # A lock is hold until response.write() is called inside data_received() method.
-            response_data = await asyncio.wait_for(response.read(),
-                                                   timeout=self.server_config.communications.timeouts.cluster_request)
+            response_data = await asyncio.wait_for(
+                response.read(), timeout=self.server_config.communications.timeouts.cluster_request
+            )
 
             del self.box[msg_counter]
         except asyncio.TimeoutError:
@@ -493,7 +489,7 @@ class Handler(asyncio.Protocol):
             local_req_chunk = self.request_chunk - len(task_id) - 1
             for c in range(0, total, local_req_chunk):
                 with contextlib.suppress(exception.WazuhClusterError):
-                    await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
+                    await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c : c + local_req_chunk])
 
         return task_id
 
@@ -501,7 +497,7 @@ class Handler(asyncio.Protocol):
         """Get the manager object that created this Handler.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -521,7 +517,7 @@ class Handler(asyncio.Protocol):
             res = await self.get_manager().local_server.clients[client].send_string(self.in_str[string_id].payload)
             await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res)
         except Exception as e:
-            self.logger.error(f"Error sending API response to local client: {e}")
+            self.logger.error(f'Error sending API response to local client: {e}')
             if isinstance(e, exception.WazuhException):
                 exc = json.dumps(e, cls=WazuhJSONEncoder)
             else:
@@ -587,8 +583,10 @@ class Handler(asyncio.Protocol):
             command, payload = b'err', json.dumps(e, cls=WazuhJSONEncoder).encode()
         except Exception as e:
             self.logger.error(f"Unhandled error processing request '{command}': {e}", exc_info=True)
-            command, payload = b'err', json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)),
-                                                  cls=WazuhJSONEncoder).encode()
+            command, payload = (
+                b'err',
+                json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)), cls=WazuhJSONEncoder).encode(),
+            )
         if command is not None:
             msgs = self.msg_build(command, counter, payload)
             for msg in msgs:
@@ -656,7 +654,7 @@ class Handler(asyncio.Protocol):
         elif command == b'err':
             return self.process_error_from_peer(payload)
         else:
-            return b"Unkown response command received: " + command
+            return b'Unkown response command received: ' + command
 
     def echo(self, data: bytes) -> Tuple[bytes, bytes]:
         """Define response to 'echo' command.
@@ -715,7 +713,7 @@ class Handler(asyncio.Protocol):
             Response message.
         """
         self.in_file[data] = {'fd': open(common.WAZUH_RUN / data.decode(), 'wb'), 'checksum': hashlib.sha256()}
-        return b"ok ", b"Ready to receive new file"
+        return b'ok ', b'Ready to receive new file'
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
         """Update file content.
@@ -735,7 +733,7 @@ class Handler(asyncio.Protocol):
         name, file_content = data.split(b' ', 1)
         self.in_file[name]['fd'].write(file_content)
         self.in_file[name]['checksum'].update(file_content)
-        return b"ok", b"File updated"
+        return b'ok', b'File updated'
 
     def end_file(self, data: bytes) -> Tuple[bytes, bytes]:
         """Close file descriptor (write file in disk) and check BLAKE2b.
@@ -756,10 +754,10 @@ class Handler(asyncio.Protocol):
         self.in_file[name]['fd'].close()
         if self.in_file[name]['checksum'].digest() == checksum:
             del self.in_file[name]
-            return b"ok", b"File received correctly"
+            return b'ok', b'File received correctly'
         else:
             del self.in_file[name]
-            return b"err", b"File wasn't correctly received. Checksums aren't equal."
+            return b'err', b"File wasn't correctly received. Checksums aren't equal."
 
     def cancel_task(self, data: bytes) -> Tuple[bytes, bytes]:
         """Add task_id to interrupted_tasks and log the error message.
@@ -780,11 +778,13 @@ class Handler(asyncio.Protocol):
         error_json = json.loads(error_details, object_hook=as_wazuh_object)
         if task_id != b'None':
             self.interrupted_tasks.add(task_id)
-            self.logger.error(f'The task was canceled due to the following error on the remote node: {error_json}',
-                              exc_info=False)
+            self.logger.error(
+                f'The task was canceled due to the following error on the remote node: {error_json}', exc_info=False
+            )
         else:
-            self.logger.error(f'The task was requested to be canceled but no task_id was received: {error_json}',
-                              exc_info=False)
+            self.logger.error(
+                f'The task was requested to be canceled but no task_id was received: {error_json}', exc_info=False
+            )
 
         return b'ok', b'Request received correctly'
 
@@ -803,9 +803,9 @@ class Handler(asyncio.Protocol):
         bytes
             String ID.
         """
-        name = str(random.SystemRandom().randint(0, 2 ** 32 - 1)).encode()
+        name = str(random.SystemRandom().randint(0, 2**32 - 1)).encode()
         self.in_str[name] = InBuffer(total=int(data))
-        return b"ok", name
+        return b'ok', name
 
     def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
         """Update string contents.
@@ -824,7 +824,7 @@ class Handler(asyncio.Protocol):
         """
         name, str_data = data.split(b' ', 1)
         self.in_str[name].receive_data(str_data)
-        return b"ok", b"String updated"
+        return b'ok', b'String updated'
 
     def process_error_str(self, expected_len: bytes) -> Tuple[bytes, bytes]:
         """Search and delete item inside self.in_str.
@@ -849,8 +849,11 @@ class Handler(asyncio.Protocol):
         expected_len = int(expected_len.decode())
 
         for item in list(self.in_str):
-            if self.in_str.get(item, None) and self.in_str.get(item).total == expected_len and not \
-                    regex.match(self.in_str.get(item).payload):
+            if (
+                self.in_str.get(item, None)
+                and self.in_str.get(item).total == expected_len
+                and not regex.match(self.in_str.get(item).payload)
+            ):
                 self.in_str.pop(item, None)
                 return b'ok', item
 
@@ -888,7 +891,7 @@ class Handler(asyncio.Protocol):
         """
         try:
             exc = json.loads(data.decode(), object_hook=as_wazuh_object)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             exc = exception.WazuhClusterError(3000, extra_message=data.decode())
 
         return exc
@@ -921,7 +924,7 @@ class Handler(asyncio.Protocol):
             ID of the task related to the file received.
 
         Raises
-        -------
+        ------
         exc : WazuhClusterError
             Timeout exception.
         """
@@ -935,8 +938,9 @@ class Handler(asyncio.Protocol):
                 exc = exception.WazuhClusterError(3040, extra_message=str(e))
             # Notify the sending node to stop its task.
             with contextlib.suppress(Exception):
-                await self.send_request(command=b"cancel_task",
-                                        data=f"{task_id} {json.dumps(exc, cls=WazuhJSONEncoder)}".encode())
+                await self.send_request(
+                    command=b'cancel_task', data=f'{task_id} {json.dumps(exc, cls=WazuhJSONEncoder)}'.encode()
+                )
             raise exc
 
     async def log_exceptions(self, f):
@@ -954,9 +958,7 @@ class Handler(asyncio.Protocol):
 
 
 class WazuhCommon:
-    """
-    Task implementing common methods for both clients and servers that are Wazuh specific.
-    """
+    """Task implementing common methods for both clients and servers that are Wazuh specific."""
 
     def __init__(self):
         """Class constructor."""
@@ -971,7 +973,7 @@ class WazuhCommon:
             Logger task to return. If empty, it will return main class logger.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -1025,7 +1027,8 @@ class WazuhCommon:
                     os.remove(os.path.join(common.WAZUH_RUN, filename))
                 except Exception as e:
                     self.get_logger(logger_tag).error(
-                        f"Attempt to delete file {os.path.join(common.WAZUH_RUN, filename)} failed: {e}")
+                        f'Attempt to delete file {os.path.join(common.WAZUH_RUN, filename)} failed: {e}'
+                    )
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
         # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
@@ -1061,12 +1064,13 @@ class WazuhCommon:
                 try:
                     os.remove(self.sync_tasks[task_id].filename)
                 except Exception as e:
-                    self.get_logger(logger_tag).error(f"Attempt to delete file {self.sync_tasks[task_id].filename} "
-                                                      f"failed: {e}")
+                    self.get_logger(logger_tag).error(
+                        f'Attempt to delete file {self.sync_tasks[task_id].filename} ' f'failed: {e}'
+                    )
             self.sync_tasks[task_id].filename = error_details_json
             self.sync_tasks[task_id].received_information.set()
         else:
-            self.get_logger(logger_tag).error(f"Error in synchronization process: {error_details_json}")
+            self.get_logger(logger_tag).error(f'Error in synchronization process: {error_details_json}')
         return b'ok', b'Error received'
 
     def get_node(self):
@@ -1081,9 +1085,7 @@ class WazuhCommon:
 
 
 class SyncTask:
-    """
-    Common class for master/worker sync tasks.
-    """
+    """Common class for master/worker sync tasks."""
 
     def __init__(self, cmd: bytes, logger, manager):
         """Class constructor.
@@ -1112,10 +1114,10 @@ class SyncTask:
         try:
             result = await self.server.send_request(command=self.cmd + b'_p', data=b'')
         except Exception as e:
-            self.logger.error(f"Error asking for permission: {e}")
+            self.logger.error(f'Error asking for permission: {e}')
         else:
             if result == b'True':
-                self.logger.debug("Permission to synchronize granted.")
+                self.logger.debug('Permission to synchronize granted.')
                 return True
             else:
                 self.logger.debug(f"Master didn't grant permission to start a new synchronization: {result}")
@@ -1133,7 +1135,7 @@ class SyncTask:
             Keyword arguments for parent constructor class.
 
         Raises
-        -------
+        ------
         NotImplementedError
             If the method is not implemented.
         """
@@ -1141,12 +1143,11 @@ class SyncTask:
 
 
 class SyncFiles(SyncTask):
-    """
-    Define methods to synchronize files with a remote node.
-    """
+    """Define methods to synchronize files with a remote node."""
 
-    async def sync(self, files: Iterable, files_metadata: Dict, metadata_len: int, task_pool=None,
-                   zip_limit: int = None):
+    async def sync(
+        self, files: Iterable, files_metadata: Dict, metadata_len: int, task_pool=None, zip_limit: int = None
+    ):
         """Send metadata and files to other node.
 
         Parameters
@@ -1176,10 +1177,12 @@ class SyncFiles(SyncTask):
         zip_limit_tolerance = self.server.server_config.communications.zip.limit_tolerance
         timeout_receiving_file = self.server.server_config.communications.timeouts.receiving_file
 
-        self.logger.debug(f"Compressing {'files and ' if files else ''}"
-                          f"'files_metadata.json' of {metadata_len} files.")
-        compressed_data, logs = await cluster.run_in_pool(self.server.loop, task_pool, cluster.compress_files,
-                                                          self.server.name, files, files_metadata, zip_limit)
+        self.logger.debug(
+            f"Compressing {'files and ' if files else ''}" f"'files_metadata.json' of {metadata_len} files."
+        )
+        compressed_data, logs = await cluster.run_in_pool(
+            self.server.loop, task_pool, cluster.compress_files, self.server.name, files, files_metadata, zip_limit
+        )
 
         cluster_utils.log_subprocess_execution(self.logger, logs)
 
@@ -1192,19 +1195,19 @@ class SyncFiles(SyncTask):
                 raise
 
             # Send zip file to the master into chunks.
-            self.logger.debug("Sending zip file.")
+            self.logger.debug('Sending zip file.')
             time_to_send = time.perf_counter()
             sent_size = await self.server.send_file(compressed_data, task_id)
             time_to_send = time.perf_counter() - time_to_send
-            self.logger.debug("Zip file sent.")
+            self.logger.debug('Zip file sent.')
 
             # Notify what is the zip path for the current taskID.
             await self.server.send_request(
                 command=self.cmd + b'_e',
-                data=task_id + b' ' + os.path.relpath(compressed_data, common.WAZUH_RUN).encode()
+                data=task_id + b' ' + os.path.relpath(compressed_data, common.WAZUH_RUN).encode(),
             )
         except Exception as e:
-            self.logger.error(f"Error sending zip file: {e}")
+            self.logger.error(f'Error sending zip file: {e}')
             if isinstance(e, exception.WazuhException):
                 exc = json.dumps(e, cls=WazuhJSONEncoder).encode()
             else:
@@ -1217,24 +1220,28 @@ class SyncFiles(SyncTask):
                 # Decrease max zip size if task was interrupted (otherwise, KeyError exception raised).
                 self.server.interrupted_tasks.remove(task_id)
                 self.server.current_zip_limit = max(min_zip_size, sent_size * (1 - zip_limit_tolerance))
-                self.logger.debug(f"Decreasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f} MB.")
+                self.logger.debug(f'Decreasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f} MB.')
             except KeyError:
                 # Increase max zip size if two conditions are met:
                 #   1. Current zip limit is lower than default.
                 #   2. Time to send zip was far under timeout_receiving_file.
-                if (self.server.current_zip_limit < max_zip_size and
-                        time_to_send < timeout_receiving_file * (1 - zip_limit_tolerance)):
-                    self.server.current_zip_limit = min(max_zip_size,
-                                                        self.server.current_zip_limit * (1 / (1 - zip_limit_tolerance)))
-                    self.logger.debug(f"Increasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f}"
-                                      f" MB.")
+                if self.server.current_zip_limit < max_zip_size and time_to_send < timeout_receiving_file * (
+                    1 - zip_limit_tolerance
+                ):
+                    self.server.current_zip_limit = min(
+                        max_zip_size, self.server.current_zip_limit * (1 / (1 - zip_limit_tolerance))
+                    )
+                    self.logger.debug(
+                        f'Increasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f}' f' MB.'
+                    )
 
             try:
                 # Remove local file.
                 os.unlink(compressed_data)
             except FileNotFoundError:
-                self.logger.error(f"File {compressed_data} could not be removed/not found. "
-                                  f"May be due to a lost connection.")
+                self.logger.error(
+                    f'File {compressed_data} could not be removed/not found. ' f'May be due to a lost connection.'
+                )
 
 
 def asyncio_exception_handler(loop, context: Dict):
@@ -1251,14 +1258,15 @@ def asyncio_exception_handler(loop, context: Dict):
         Dictionary containing fields explained in
         https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler.
     """
-    logging.error(f"Unhandled exception: {context['exception']} {context['message']}\n"
-                  ''.join(traceback.format_tb(context['exception'].__traceback__)))
+    logging.error(
+        f"Unhandled exception: {context['exception']} {context['message']}\n" ''.join(
+            traceback.format_tb(context['exception'].__traceback__)
+        )
+    )
 
 
 class WazuhJSONEncoder(json.JSONEncoder):
-    """
-    Define special JSON encoder for Wazuh.
-    """
+    """Define special JSON encoder for Wazuh."""
 
     def default(self, obj):
         if callable(obj):
@@ -1276,19 +1284,15 @@ class WazuhJSONEncoder(json.JSONEncoder):
             attributes['__type__'] = type(obj).__name__
             return result
         elif isinstance(obj, exception.WazuhException):
-            result = {'__wazuh_exception__': {'__class__': obj.__class__.__name__,
-                                              '__object__': obj.to_dict()}}
+            result = {'__wazuh_exception__': {'__class__': obj.__class__.__name__, '__object__': obj.to_dict()}}
             return result
         elif isinstance(obj, wresults.AbstractWazuhResult):
-            result = {'__wazuh_result__': {'__class__': obj.__class__.__name__,
-                                           '__object__': obj.encode_json()}
-                      }
+            result = {'__wazuh_result__': {'__class__': obj.__class__.__name__, '__object__': obj.encode_json()}}
             return result
         elif isinstance(obj, (datetime.datetime, datetime.date)):
             return {'__wazuh_datetime__': obj.isoformat()}
         elif isinstance(obj, Exception):
-            return {'__unhandled_exc__': {'__class__': obj.__class__.__name__,
-                                          '__args__': obj.args}}
+            return {'__unhandled_exc__': {'__class__': obj.__class__.__name__, '__args__': obj.args}}
 
         return json.JSONEncoder.default(self, obj)
 
@@ -1327,9 +1331,9 @@ def as_wazuh_object(dct: Dict):
         return dct
 
     except (KeyError, AttributeError):
-        raise exception.WazuhInternalError(1000,
-                                           extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
-                                           cmd_error=True)
+        raise exception.WazuhInternalError(
+            1000, extra_message=f'Wazuh object cannot be decoded from JSON {dct}', cmd_error=True
+        )
 
 
 def create_ssl_context(
@@ -1358,15 +1362,8 @@ def create_ssl_context(
         Node key file password. Default is no password.
     """
     try:
-        ssl_context = ssl.create_default_context(
-            purpose=purpose,
-            cafile=cafile
-        )
-        ssl_context.load_cert_chain(
-            certfile=certfile,
-            keyfile=keyfile,
-            password=keyfile_password
-        )
+        ssl_context = ssl.create_default_context(purpose=purpose, cafile=cafile)
+        ssl_context.load_cert_chain(certfile=certfile, keyfile=keyfile, password=keyfile_password)
     except ssl.SSLError as exc:
         logger.error(f'Failed loading SSL context: {exc}. Using default one.')
         ssl_context = ssl.create_default_context(purpose=purpose)

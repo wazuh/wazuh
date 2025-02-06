@@ -6,12 +6,12 @@
 
 
 from __future__ import absolute_import
+
 from datetime import date, datetime  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
-from typing import List, Dict  # noqa: F401
-
-from server_management_api.models.base_model_ import Model
 from server_management_api import util
+from server_management_api.models.base_model_ import Model
 
 
 class TokenResponseModel(Model):
@@ -21,24 +21,20 @@ class TokenResponseModel(Model):
     """
 
     def __init__(self, token: str = None):  # noqa: E501
-        """TokenResponseModel - a model defined in Swagger
+        """TokenResponseModel - a model defined in Swagger.
 
         :param token: The token of this TokenResponseModel.  # noqa: E501
         :type token: str
         """
-        self.swagger_types = {
-            'token': str
-        }
+        self.swagger_types = {'token': str}
 
-        self.attribute_map = {
-            'token': 'token'
-        }
+        self.attribute_map = {'token': 'token'}
 
         self._token = token
 
     @classmethod
     def from_dict(cls, dikt) -> 'TokenResponseModel':
-        """Returns the dict as a model
+        """Returns the dict as a model.
 
         :param dikt: A dict.
         :type: dict
@@ -65,5 +61,4 @@ class TokenResponseModel(Model):
         :param token: The token of this TokenResponseModel.
         :type token: str
         """
-
         self._token = token

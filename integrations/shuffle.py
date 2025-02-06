@@ -99,7 +99,7 @@ def main(args):
 
 def process_args(args) -> None:
     """This is the core function, creates a message with all valid fields
-    and overwrite or add with the optional fields
+    and overwrite or add with the optional fields.
 
     Parameters
     ----------
@@ -149,7 +149,7 @@ def process_args(args) -> None:
 
 def debug(msg: str) -> None:
     """Log the message in the log file with the timestamp, if debug flag
-    is enabled
+    is enabled.
 
     Parameters
     ----------
@@ -170,7 +170,7 @@ def filter_msg(alert) -> bool:
 
 
 def generate_msg(alert: any, options: any) -> str:
-    """Generate the JSON object with the message to be send
+    """Generate the JSON object with the message to be send.
 
     Parameters
     ----------
@@ -181,7 +181,6 @@ def generate_msg(alert: any, options: any) -> str:
 
     Returns
     -------
-
     msg: str
         The JSON message to send
     """
@@ -216,7 +215,7 @@ def generate_msg(alert: any, options: any) -> str:
 
 
 def send_msg(msg: str, url: str) -> None:
-    """Send the message to the API
+    """Send the message to the API.
 
     Parameters
     ----------
@@ -231,7 +230,7 @@ def send_msg(msg: str, url: str) -> None:
 
 
 def get_json_alert(file_location: str) -> any:
-    """Read JSON alert object from file
+    """Read JSON alert object from file.
 
     Parameters
     ----------
@@ -262,7 +261,7 @@ def get_json_alert(file_location: str) -> any:
 
 
 def get_json_options(file_location: str) -> any:
-    """Read JSON options object from file
+    """Read JSON options object from file.
 
     Parameters
     ----------

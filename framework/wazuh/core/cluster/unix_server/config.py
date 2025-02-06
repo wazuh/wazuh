@@ -1,7 +1,7 @@
-from fastapi import Response, status
-from starlette.responses import JSONResponse
 from typing import Optional
 
+from fastapi import Response, status
+from starlette.responses import JSONResponse
 from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.config.models.central_config import ConfigSections
 
@@ -20,7 +20,7 @@ async def get_config(sections: Optional[str] = None) -> Response:
         HTTP OK response with the configuration as content.
     """
     if sections is not None:
-        section_list = sections.split(",")
+        section_list = sections.split(',')
         try:
             validated_sections = [ConfigSections(section) for section in section_list]
         except ValueError as e:

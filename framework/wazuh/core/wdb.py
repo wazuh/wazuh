@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import contextlib
 import asyncio
+import contextlib
 import datetime
 import json
 import re
@@ -13,15 +13,13 @@ from typing import List, Union
 
 from wazuh.core import common
 from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
-from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 
 DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 
 class AsyncWazuhDBConnection:
-    """
-    Represent an async connection to the wdb socket.
-    """
+    """Represent an async connection to the wdb socket."""
 
     def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None):
         """Class constructor.
@@ -79,13 +77,13 @@ class AsyncWazuhDBConnection:
                 data = await self._reader.readexactly(4)
                 data_size = struct.unpack('<I', data[0:4])[0]
                 data = await self._reader.readexactly(data_size)
-                data = data.decode(encoding='utf-8', errors='ignore').split(" ", 1)
+                data = data.decode(encoding='utf-8', errors='ignore').split(' ', 1)
             except asyncio.IncompleteReadError as e:
                 raise WazuhInternalError(2010, extra_message=e)
 
             if raw:
                 return data
-            elif data[0] == "err":
+            elif data[0] == 'err':
                 raise WazuhError(2003, data[1])
             else:
                 return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
@@ -129,9 +127,7 @@ class AsyncWazuhDBConnection:
 
 
 class WazuhDBConnection:
-    """
-    Represent a connection to the wdb socket.
-    """
+    """Represent a connection to the wdb socket."""
 
     def __init__(self, request_slice=500):
         """Class constructor.
@@ -156,7 +152,7 @@ class WazuhDBConnection:
         self.close()
 
     def __query_input_validation(self, query: str):
-        """Check input queries have the correct format
+        """Check input queries have the correct format.
 
         Accepted query formats:
         - agent 001 sql sql_sentence
@@ -172,32 +168,39 @@ class WazuhDBConnection:
         WazuhError(2004)
             Database query not valid.
         """
-        query_elements = query.split(" ")
+        query_elements = query.split(' ')
         sql_first_index = 2 if query_elements[0] == 'agent' else 1
 
         if query_elements[0] == 'mitre':
             input_val_errors = [
-                (query_elements[sql_first_index] == 'sql',
-                 'Incorrect WDB request type'),
-                (query_elements[2] == 'select',
-                 'Wrong SQL query for Mitre database')
+                (query_elements[sql_first_index] == 'sql', 'Incorrect WDB request type'),
+                (query_elements[2] == 'select', 'Wrong SQL query for Mitre database'),
             ]
         elif query_elements[sql_first_index] == 'rootcheck':
             input_val_errors = [
-                (query_elements[sql_first_index + 1] == 'delete' or query_elements[sql_first_index + 1] == 'save',
-                 'Only "save" or "delete" requests can be sent to WDB')
+                (
+                    query_elements[sql_first_index + 1] == 'delete' or query_elements[sql_first_index + 1] == 'save',
+                    'Only "save" or "delete" requests can be sent to WDB',
+                )
             ]
         else:
             input_val_errors = [
-                (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
-                (query_elements[0] == 'agent' or query_elements[0] == 'global' or query_elements[0] == 'task',
-                 "The {} database is not valid".format(query_elements[0])),
-                (query_elements[1].isdigit() if query_elements[0] == 'agent' else True,
-                 "Incorrect agent ID {}".format(query_elements[1])),
-                (query_elements[sql_first_index + 1] == 'select' or query_elements[sql_first_index + 1] == 'delete' or
-                 query_elements[sql_first_index + 1] == 'update', 'Only "select", "delete" or "update" requests can be '
-                                                                  'sent to WDB'),
-                (not ';' in query, "Found a not valid symbol in database query: ;")
+                (query_elements[sql_first_index] == 'sql', 'Incorrect WDB request type.'),
+                (
+                    query_elements[0] == 'agent' or query_elements[0] == 'global' or query_elements[0] == 'task',
+                    'The {} database is not valid'.format(query_elements[0]),
+                ),
+                (
+                    query_elements[1].isdigit() if query_elements[0] == 'agent' else True,
+                    'Incorrect agent ID {}'.format(query_elements[1]),
+                ),
+                (
+                    query_elements[sql_first_index + 1] == 'select'
+                    or query_elements[sql_first_index + 1] == 'delete'
+                    or query_elements[sql_first_index + 1] == 'update',
+                    'Only "select", "delete" or "update" requests can be sent to WDB',
+                ),
+                (';' not in query, 'Found a not valid symbol in database query: ;'),
             ]
 
         for check, error_text in input_val_errors:
@@ -235,13 +238,13 @@ class WazuhDBConnection:
         data = self.__conn.recv(4)
         data_size = struct.unpack('<I', data[0:4])[0]
 
-        data = self._recvall(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
+        data = self._recvall(data_size).decode(encoding='utf-8', errors='ignore').split(' ', 1)
 
         # Max size socket buffer is 64KB
         if data_size >= MAX_SOCKET_BUFFER_SIZE:
             raise WazuhInternalError(2009)
 
-        if data[0] == "err":
+        if data[0] == 'err':
             raise WazuhError(2003, data[1])
         elif raw:
             return data
@@ -261,7 +264,7 @@ class WazuhDBConnection:
     def json_decoder(dct):
         result = {}
         for k, v in dct.items():
-            if v == "(null)":
+            if v == '(null)':
                 continue
             if isinstance(v, str) and DATE_FORMAT.match(v):
                 result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S').replace(tzinfo=datetime.timezone.utc)
@@ -305,9 +308,8 @@ class WazuhDBConnection:
         str
             New query.
         """
-
         to_lower = True
-        new_query = ""
+        new_query = ''
 
         for i in query:
             if to_lower and i != "'":
@@ -361,14 +363,13 @@ class WazuhDBConnection:
         return self._send(query, raw)
 
     def execute(self, query, count=False, delete=False, update=False):
-        """
-        Send a SQL query to wdb socket.
-        """
+        """Send a SQL query to wdb socket."""
 
         def send_request_to_wdb(query_lower, step, off, response):
             try:
-                request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset',
-                                                                                         'offset {}'.format(off))
+                request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(
+                    ':offset', 'offset {}'.format(off)
+                )
                 request_response = self._send(request, raw=True)[1]
                 response.extend(WazuhDBConnection.loads(request_response))
                 if len(request_response) * 2 < MAX_SOCKET_BUFFER_SIZE:
@@ -390,17 +391,19 @@ class WazuhDBConnection:
 
         # only for delete queries
         if delete:
-            regex = re.compile(r"\w+ \d+? (sql delete from ([a-z0-9,_ ]+)|\w+ delete$)")
+            regex = re.compile(r'\w+ \d+? (sql delete from ([a-z0-9,_ ]+)|\w+ delete$)')
             if regex.match(query_lower) is None:
-                raise WazuhError(2004, "Delete query is wrong")
+                raise WazuhError(2004, 'Delete query is wrong')
             return self._send(query_lower)
 
         # only for update queries
         if update:
-            regex = re.compile(r"\w+ \d+? sql update ([\w\d,*_ ]+) set value = '([\w\d,*_ ]+)' where key (=|like)?"
-                               r" '([a-z0-9,*_%\- ]+)'")
+            regex = re.compile(
+                r"\w+ \d+? sql update ([\w\d,*_ ]+) set value = '([\w\d,*_ ]+)' where key (=|like)?"
+                r" '([a-z0-9,*_%\- ]+)'"
+            )
             if regex.match(query_lower) is None:
-                raise WazuhError(2004, "Update query is wrong")
+                raise WazuhError(2004, 'Update query is wrong')
             return self._send(query_lower)
 
         # Remove text inside 'where' clause to prevent finding reserved words (offset/count)
@@ -409,21 +412,21 @@ class WazuhDBConnection:
         # if the query has already a parameter limit / offset, divide using it
         offset = 0
         if re.search(r'offset \d+', query_without_where):
-            offset = int(re.compile(r".* offset (\d+)").match(query_lower).group(1))
+            offset = int(re.compile(r'.* offset (\d+)').match(query_lower).group(1))
             # Replace offset with a wildcard
             query_lower = ' :offset'.join(query_lower.rsplit((' offset {}'.format(offset)), 1))
 
         if not re.search(r'.?select count\([\w \*]+\)( as [^,]+)? from', query_without_where):
             lim = 0
             if re.search(r'limit \d+', query_without_where):
-                lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
+                lim = int(re.compile(r'.* limit (\d+)').match(query_lower).group(1))
                 # Replace limit with a wildcard
                 query_lower = ' :limit'.join(query_lower.rsplit((' limit {}'.format(lim)), 1))
 
-            regex = re.compile(r"\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+?) from")
+            regex = re.compile(r'\w+(?: \d*|)? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+?) from')
             select = regex.match(query_lower).group(1)
-            gb_regex = re.compile(r"(group by [^\s]+)")
-            countq = query_lower.replace(select, "count(*)", 1).replace(":limit", "").replace(":offset", "")
+            gb_regex = re.compile(r'(group by [^\s]+)')
+            countq = query_lower.replace(select, 'count(*)', 1).replace(':limit', '').replace(':offset', '')
             try:
                 group_by = gb_regex.search(query_lower)
                 if group_by:
@@ -449,8 +452,9 @@ class WazuhDBConnection:
                 while off < limit + offset:
                     step = limit if self.request_slice > limit > 0 else self.request_slice
                     # Min() used to avoid fetching more items than the maximum specified in `limit`.
-                    self.request_slice = send_request_to_wdb(query_lower, min(limit + offset - off, step), off,
-                                                             response)
+                    self.request_slice = send_request_to_wdb(
+                        query_lower, min(limit + offset - off, step), off, response
+                    )
                     off += step
             except ValueError as e:
                 raise WazuhError(2006, str(e))

@@ -7,15 +7,22 @@
 
 from __future__ import absolute_import
 
-from server_management_api.models.base_model_ import Model
 from server_management_api import util
+from server_management_api.models.base_model_ import Model
 
 
 class BasicInfo(Model):
-
-    def __init__(self, title: str = None, api_version: str = None, revision: int = None, license_name: str = None,
-                 license_url: str = None, hostname: str = None, timestamp:  str = None):
-        """BasicInfo - a model defined in Swagger
+    def __init__(
+        self,
+        title: str = None,
+        api_version: str = None,
+        revision: int = None,
+        license_name: str = None,
+        license_url: str = None,
+        hostname: str = None,
+        timestamp: str = None,
+    ):
+        """BasicInfo - a model defined in Swagger.
 
         :param title: API title name.
         :type title: str
@@ -45,7 +52,7 @@ class BasicInfo(Model):
             'license_name': str,
             'license_url': str,
             'hostname': str,
-            'timestamp': str
+            'timestamp': str,
         }
 
         self.attribute_map = {
@@ -55,7 +62,7 @@ class BasicInfo(Model):
             'license_name': 'license_name',
             'license_url': 'license_url',
             'hostname': 'hostname',
-            'timestamp': 'timestamp'
+            'timestamp': 'timestamp',
         }
 
         self._title = title
@@ -68,7 +75,7 @@ class BasicInfo(Model):
 
     @classmethod
     def from_dict(cls, dikt) -> 'BasicInfo':
-        """Returns the dict as a model
+        """Returns the dict as a model.
 
         :param dikt: A dict.
         :type: dict
@@ -110,7 +117,7 @@ class BasicInfo(Model):
 
         :param api_version: The api_version of this BasicInfo.
         :type api_version: str
-            """
+        """
         self._api_version = api_version
 
     @property
@@ -128,7 +135,7 @@ class BasicInfo(Model):
 
         :param revision: The revision of this BasicInfo.
         :type revision: int
-            """
+        """
         self._revision = revision
 
     @property
@@ -146,7 +153,7 @@ class BasicInfo(Model):
 
         :param license_name: The license_name of this BasicInfo.
         :type license_name: str
-            """
+        """
         self._license_name = license_name
 
     @property
@@ -164,7 +171,7 @@ class BasicInfo(Model):
 
         :param license_url: The license_url of this BasicInfo.
         :type license_url: str
-            """
+        """
         self._license_url = license_url
 
     @property
@@ -182,7 +189,7 @@ class BasicInfo(Model):
 
         :param hostname: The hostname of this BasicInfo.
         :type hostname: str
-            """
+        """
         self._hostname = hostname
 
     @property
@@ -200,5 +207,5 @@ class BasicInfo(Model):
 
         :param timestamp: The timestamp of this BasicInfo.
         :type timestamp: str
-            """
+        """
         self._timestamp = timestamp
