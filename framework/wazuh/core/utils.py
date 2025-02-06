@@ -411,7 +411,7 @@ def get_values(o: object, fields: list = None) -> list:
 
     try:
         obj = o.to_dict()  # Agent...
-    except:
+    except Exception:
         obj = o
 
     if type(obj) is list:
