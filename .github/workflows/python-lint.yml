@@ -1,0 +1,23 @@
+name: Python lint
+on: 
+  pull_request:
+    paths:
+      - '.github/workflows/python-lint.yml'
+      - 'apis/**'
+      - 'framework/**'
+      - 'integrations/**'
+      - 'wodles/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/ruff-action@v2
+        with:
+          # Trick to avoid running the linter and failing in this stage
+          args: check --show-settings
+      - run: |
+        ruff check --config /home/runner/work/wazuh/apis/tools/ci/.ruff.toml $(git diff --name-only ${{ github.event.pull_request.base.sha }} -- '*.py')
