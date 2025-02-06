@@ -21,7 +21,7 @@ class TokenResponseModel(Model):
     """
 
     def __init__(self, token: str = None):  # noqa: E501
-        """TokenResponseModel - a model defined in Swagger
+        """TokenResponseModel - a model defined in Swagger.
 
         :param token: The token of this TokenResponseModel.  # noqa: E501
         :type token: str
@@ -38,7 +38,7 @@ class TokenResponseModel(Model):
 
     @classmethod
     def from_dict(cls, dikt) -> 'TokenResponseModel':
-        """Returns the dict as a model
+        """Returns the dict as a model.
 
         :param dikt: A dict.
         :type: dict

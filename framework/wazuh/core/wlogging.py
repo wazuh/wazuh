@@ -7,8 +7,7 @@ import logging.handlers
 
 
 class CustomFilter:
-    """Define a custom filter to differentiate between log types.
-    """
+    """Define a custom filter to differentiate between log types."""
 
     def __init__(self, log_type: str):
         """Constructor.
@@ -38,8 +37,7 @@ class CustomFilter:
 
 
 class WazuhLogger:
-    """Define attributes of a Python Wazuh daemon's logger.
-    """
+    """Define attributes of a Python Wazuh daemon's logger."""
     def __init__(self, debug_level: [int, str], logger_name: str = 'wazuh',
                  custom_formatter: callable = None, tag: str = '%(asctime)s %(levelname)s: %(message)s',
                  max_size: int = 0):
@@ -104,7 +102,7 @@ class WazuhLogger:
         """Overwrite __getattr__ magic method.
             * If the item requested is an attribute of self.logger, return it.
             * If it's an attribute of self, return it.
-            * Otherwise, raise an AttributeError exception
+            * Otherwise, raise an AttributeError exception.
 
         Parameters
         ----------
@@ -125,8 +123,7 @@ class WazuhLogger:
 
 
 class CLIFilter(logging.Filter):
-    """Define a custom filter to filter WazuhInternalErrors
-    """
+    """Define a custom filter to filter WazuhInternalErrors."""
 
     messages_to_avoid = ['Wazuh Internal Error', 'WazuhInternalError']
 

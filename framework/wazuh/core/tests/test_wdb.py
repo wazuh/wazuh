@@ -125,8 +125,7 @@ async def test_run_wdb_command_ko(wdb_response):
 
 
 def test_failed_connection():
-    """Tests an exception is properly raised when it's not possible to connect to wdb
-    """
+    """Tests an exception is properly raised when it's not possible to connect to wdb."""
     # tests the socket path doesn't exists
     with patch('wazuh.core.common.WDB_SOCKET', '/this/path/doesnt/exist'):
         with pytest.raises(exception.WazuhException, match=".* 2005 .*"):
@@ -141,8 +140,7 @@ def test_failed_connection():
 @patch("socket.socket.connect")
 @patch("socket.socket.send")
 def test_wrong_character_encodings_wdb(send_mock, connect_mock):
-    """Tests receiving a text with a bad character encoding from wazuh db
-    """
+    """Tests receiving a text with a bad character encoding from wazuh db."""
     def recv_mock(size_to_receive):
         bad_string = b' {"bad": "\x96bad"}'
         return format_msg(bad_string) if size_to_receive == 4 else bad_string
@@ -156,8 +154,7 @@ def test_wrong_character_encodings_wdb(send_mock, connect_mock):
 @patch("socket.socket.connect")
 @patch("socket.socket.send")
 def test_null_values_are_removed(send_mock, connect_mock):
-    """Tests '(null)' values are removed from the resulting dictionary
-    """
+    """Tests '(null)' values are removed from the resulting dictionary."""
     def recv_mock(size_to_receive):
         nulls_string = b' [{"a": "a", "b": "(null)", "c": [1, 2, 3], "d": {"e": "(null)"}}]'
         return format_msg(nulls_string) if size_to_receive == 4 else nulls_string
@@ -171,8 +168,7 @@ def test_null_values_are_removed(send_mock, connect_mock):
 @patch("socket.socket.connect")
 @patch("socket.socket.send")
 def test_failed_send_private(send_mock, connect_mock):
-    """Tests an exception is properly raised when it's not possible to send a msg to the wdb socket
-    """
+    """Tests an exception is properly raised when it's not possible to send a msg to the wdb socket."""
     def recv_mock(size_to_receive):
         error_string = b'err {"agents": {"001": "Error"}}'
         return format_msg(error_string) if size_to_receive == 4 else error_string
@@ -197,8 +193,7 @@ def test_failed_send_private(send_mock, connect_mock):
 @patch("socket.socket.connect")
 @patch("socket.socket.send")
 def test_remove_agents_database(send_mock, connect_mock, content):
-    """Tests delete_agents_db method handle exceptions properly
-    """
+    """Tests delete_agents_db method handle exceptions properly."""
     def recv_mock(size_to_receive):
         return format_msg(content) if size_to_receive == 4 else content
 

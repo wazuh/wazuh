@@ -35,7 +35,7 @@ class TestClass:
     (datetime.today(), True)
 ])
 def test_serialize(item, is_transformed):
-    """Assert serialize() function transform datetime as expected
+    """Assert serialize() function transform datetime as expected.
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ def test_serialize(item, is_transformed):
     ('2020-06-24 17:02:53.034374', datetime)
 ])
 def test_deserialize_primitive(item, klass):
-    """Check that _deserialize_primitive function returns expected object"""
+    """Check that _deserialize_primitive function returns expected object."""
     result = util._deserialize_primitive(item, klass)
     assert result == item
 
@@ -66,39 +66,39 @@ def test_deserialize_primitive(item, klass):
     'test', True, {'key': 'value'}
 ])
 def test_deserialize_object(item):
-    """Check that _deserialize_object function works as expected"""
+    """Check that _deserialize_object function works as expected."""
     result = util._deserialize_object(item)
     assert result == item
 
 
 def test_deserialize_date():
-    """Check that _deserialize_date function transforms string into date"""
+    """Check that _deserialize_date function transforms string into date."""
     result = util.deserialize_date('2020-06-24')
     assert isinstance(result, date)
 
 
 @patch('dateutil.parser.parse', side_effect=ImportError)
 def test_deserialize_date_ko(mock_import):
-    """Check that _deserialize_date function correctly handles expected exceptions"""
+    """Check that _deserialize_date function correctly handles expected exceptions."""
     result = util.deserialize_date('2020-06-24')
     assert not isinstance(result, date)
 
 
 def test_deserialize_datetime():
-    """Check that _deserialize_datetime function transforms string into datetime"""
+    """Check that _deserialize_datetime function transforms string into datetime."""
     result = util.deserialize_datetime('2020-06-24 17:02:53.034374')
     assert isinstance(result, datetime)
 
 
 @patch('dateutil.parser.parse', side_effect=ImportError)
 def test_deserialize_datetime_ko(mock_import):
-    """Check that _deserialize_datetime function correctly handles expected exceptions"""
+    """Check that _deserialize_datetime function correctly handles expected exceptions."""
     result = util.deserialize_datetime('2020-06-24 17:02:53.034374')
     assert not isinstance(result, date)
 
 
 def test_deserialize_model():
-    """Check that _deserialize_model function transforms item into desired object"""
+    """Check that _deserialize_model function transforms item into desired object."""
     test = {'data': 'test'}
     result = util.deserialize_model(test, TestClass)
 
@@ -109,14 +109,14 @@ def test_deserialize_model():
 
 
 def test_deserialize_list():
-    """Check that _deserialize_list function transforms list of items into list of desired objects"""
+    """Check that _deserialize_list function transforms list of items into list of desired objects."""
     test = ['test1', 'test2']
     result = util._deserialize_list(test, TestClass)
     assert all(isinstance(x, TestClass) for x in result)
 
 
 def test_deserialize_dict():
-    """Check that _deserialize_dict function transforms dict of items into dict of desired objects"""
+    """Check that _deserialize_dict function transforms dict of items into dict of desired objects."""
     test = {'key1': 'value', 'key2': 'value', 'key3': 'value'}
     result = util._deserialize_dict(test, TestClass)
     assert all(isinstance(x, TestClass) for x in result.values())
@@ -130,7 +130,7 @@ def test_deserialize_dict():
 @patch('server_management_api.util._deserialize_dict')
 @patch('server_management_api.util.deserialize_model')
 def test_deserialize(mock_model, mock_dict, mock_list, mock_datetime, mock_date, mock_object, mock_primitive):
-    """Check that _deserialize calls the expected function depending on the class"""
+    """Check that _deserialize calls the expected function depending on the class."""
     assert util._deserialize(None, None) is None
 
     util._deserialize(30, int)
@@ -158,7 +158,7 @@ def test_deserialize(mock_model, mock_dict, mock_list, mock_datetime, mock_date,
 
 
 def test_remove_nones_to_dict():
-    """Check that remove_nones_to_dict removes key:value when value is None"""
+    """Check that remove_nones_to_dict removes key:value when value is None."""
     result = util.remove_nones_to_dict({'key1': 'value1', 'key2': None, 'key3': 'value3'})
     assert 'key2' not in result.keys()
 
@@ -175,13 +175,13 @@ def test_remove_nones_to_dict():
     ('random', 'random', 'random')
 ])
 def test_parse_api_param(param, param_type, expected_result):
-    """Check that parse_api_param returns the expected result"""
+    """Check that parse_api_param returns the expected result."""
     assert util.parse_api_param(param, param_type) == expected_result
 
 
 @patch('os.path.relpath')
 def test_to_relative_path(mock_real_path):
-    """Check that to_relative_path calls expected function with given params"""
+    """Check that to_relative_path calls expected function with given params."""
     util.to_relative_path('api/conf/api.yaml')
     mock_real_path.assert_called_once_with('api/conf/api.yaml', ANY)
 
@@ -194,7 +194,7 @@ def test_to_relative_path(mock_real_path):
     (WazuhInternalError, 1000, ['remediation', 'code'], 500, ProblemException)
 ])
 def test_create_problem(exception_type, code, extra_fields, returned_code, returned_exception):
-    """Check that _create_problem returns exception with expected data"""
+    """Check that _create_problem returns exception with expected data."""
     with pytest.raises(returned_exception) as exc_info:
         util._create_problem(exception_type(code))
 
@@ -213,7 +213,7 @@ def test_create_problem(exception_type, code, extra_fields, returned_code, retur
 ])
 @patch('server_management_api.util._create_problem')
 def test_raise_if_exc(mock_create_problem, obj, code):
-    """Check that raise_if_exc calls _create_problem when an exception is given"""
+    """Check that raise_if_exc calls _create_problem when an exception is given."""
     result = util.raise_if_exc(obj)
     if isinstance(obj, Exception):
         mock_create_problem.assert_called_once_with(obj, code)

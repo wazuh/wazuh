@@ -129,7 +129,7 @@ def check_cluster_config(config):
     WazuhError
         If any of above conditions is not met.
     """
-    iv = InputValidator()
+    InputValidator()
 
     if config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
@@ -553,10 +553,8 @@ def compare_files(good_files, check_files, node_name):
     # Extra files are the ones present in check files (worker) but not in good files (master). The underscore is used
     # to not change the function, as previously it returned an iterator for the 'extra_valid' files as well, but these
     # are no longer in use.
-    condition_func = lambda x: next(
-        (file_config.extra_valid for file_config in server_config.files if file_config.dir == check_files[x]['cluster_item_key']),
-        False
-    )
+    def condition_func(x):
+        return next((file_config.extra_valid for file_config in server_config.files if file_config.dir == check_files[x]['cluster_item_key']), False)
     _extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(), condition_func)
     extra_files = {key: check_files[key] for key in extra}
     # extra_valid_files = {key: check_files[key] for key in _extra_valid}

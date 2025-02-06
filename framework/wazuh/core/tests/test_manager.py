@@ -25,7 +25,7 @@ ossec_log_json_path = '{0}/ossec_log.log'.format(test_data_path)
 
 class InitManager:
     def __init__(self):
-        """Sets up necessary environment to test manager functions"""
+        """Sets up necessary environment to test manager functions."""
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')
 
@@ -63,7 +63,7 @@ def get_logs(json_log: bool = False):
 @patch('os.path.exists')
 @patch('wazuh.core.cluster.utils.glob')
 def test_get_status(manager_glob, manager_exists, test_manager, process_status):
-    """Tests core.manager.status()
+    """Tests core.manager.status().
 
     Tests manager.status() function in two cases:
         * PID files are created and processed are running,
@@ -99,7 +99,7 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
 
 
 def test_get_ossec_log_fields():
-    """Test get_ossec_log_fields() method returns a tuple"""
+    """Test get_ossec_log_fields() method returns a tuple."""
     result = get_ossec_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
     assert isinstance(result, tuple), 'The result is not a tuple'
     assert result[0] == datetime(2020, 7, 14, 6, 10, 40, tzinfo=timezone.utc)
@@ -109,7 +109,7 @@ def test_get_ossec_log_fields():
 
 
 def test_get_ossec_log_fields_ko():
-    """Test get_ossec_log_fields() method returns None when nothing matches"""
+    """Test get_ossec_log_fields() method returns None when nothing matches."""
     result = get_ossec_log_fields('DEBUG')
     assert not result
 
@@ -118,7 +118,7 @@ def test_get_ossec_log_fields_ko():
     LoggingFormat.plain, LoggingFormat.json
 ])
 def test_get_ossec_logs(log_format):
-    """Test get_ossec_logs() method returns result with expected information"""
+    """Test get_ossec_logs() method returns result with expected information."""
     logs = get_logs(json_log=log_format == LoggingFormat.json).splitlines()
 
     with patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=log_format):
@@ -134,7 +134,7 @@ def test_get_ossec_logs(log_format):
 @patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
 @patch('wazuh.core.manager.exists', return_value=True)
 def test_get_logs_summary(mock_exists, mock_active_logging_format):
-    """Test get_logs_summary() method returns result with expected information"""
+    """Test get_logs_summary() method returns result with expected information."""
     logs = get_logs().splitlines()
     with patch('wazuh.core.manager.tail', return_value=logs):
         result = get_logs_summary()
@@ -147,7 +147,7 @@ def test_get_logs_summary(mock_exists, mock_active_logging_format):
 @patch('wazuh.core.manager.exists', return_value=True)
 @patch('wazuh.core.manager.WazuhSocket')
 def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
-    with patch('socket.socket') as sock:
+    with patch('socket.socket'):
         # Mock sock response
         json_response = json.dumps({'error': 0, 'message': ""}).encode()
         mock_wazuhsocket.return_value.receive.return_value = json_response

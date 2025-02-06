@@ -320,8 +320,7 @@ context_tag: ContextVar[str] = ContextVar('tag', default='')
 
 
 class ClusterFilter(logging.Filter):
-    """Add cluster related information into cluster logs.
-    """
+    """Add cluster related information into cluster logs."""
 
     def __init__(self, tag: str, subtag: str, name: str = ''):
         """Class constructor.
@@ -353,8 +352,7 @@ class ClusterFilter(logging.Filter):
 
 
 class ClusterLogger(WazuhLogger):
-    """Define the logger used by wazuh-clusterd.
-    """
+    """Define the logger used by wazuh-clusterd."""
 
     def setup_logger(self):
         """Set ups cluster logger. In addition to super().setup_logger() this method adds:

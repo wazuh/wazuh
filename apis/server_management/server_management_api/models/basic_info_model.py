@@ -15,7 +15,7 @@ class BasicInfo(Model):
 
     def __init__(self, title: str = None, api_version: str = None, revision: int = None, license_name: str = None,
                  license_url: str = None, hostname: str = None, timestamp:  str = None):
-        """BasicInfo - a model defined in Swagger
+        """BasicInfo - a model defined in Swagger.
 
         :param title: API title name.
         :type title: str
@@ -68,7 +68,7 @@ class BasicInfo(Model):
 
     @classmethod
     def from_dict(cls, dikt) -> 'BasicInfo':
-        """Returns the dict as a model
+        """Returns the dict as a model.
 
         :param dikt: A dict.
         :type: dict

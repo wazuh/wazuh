@@ -57,8 +57,7 @@ def test_wazuh_logger_getattr(attribute, expected_exception, expected_value):
 
 
 def test_customfilter():
-    """Test if CustomFilter class works properly.
-    """
+    """Test if CustomFilter class works properly."""
     class MockedRecord():
         def __init__(self, log_type):
             if log_type:
@@ -81,8 +80,7 @@ def test_customfilter():
     ('InternalError', True)
 ])
 def test_cli_custom_filter(value, expected):
-    """Test if CLIFilter class works properly.
-    """
+    """Test if CLIFilter class works properly."""
     class MockedRecord:
         def __init__(self, msg):
             self.msg = msg

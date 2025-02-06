@@ -17,8 +17,7 @@ from wazuh.core.config.models.server import ServerConfig
 
 
 class AbstractClientManager:
-    """Define an abstract client. Manage connection with server.
-    """
+    """Define an abstract client. Manage connection with server."""
 
     def __init__(self, server_config: ServerConfig, performance_test: int, concurrency_test: int,
                  file: str, string: int, logger: logging.Logger = None, tag: str = "Client Manager"):
@@ -126,8 +125,7 @@ class AbstractClientManager:
 
 
 class AbstractClient(common.Handler):
-    """Define a client protocol. Handle connection with server.
-    """
+    """Define a client protocol. Handle connection with server."""
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str,
                  logger: logging.Logger, manager: AbstractClientManager, server_config: ServerConfig,

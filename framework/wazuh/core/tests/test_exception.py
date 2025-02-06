@@ -24,7 +24,7 @@ from wazuh.core.exception import WazuhError, WazuhException
             'Error 1017 - Some Wazuh daemons are not ready yet in node "Node Name" (not ready daemons)'),        
     ])
 def test_wazuh_exception_to_string(code, extra_message, extra_remediation, cmd_error, dapi_errors, title , type, exc_string):
-    """Check object constructor"""
+    """Check object constructor."""
     exc = WazuhException(code, extra_message, extra_remediation, cmd_error, dapi_errors, title, type)
     assert str(exc) == exc_string
 

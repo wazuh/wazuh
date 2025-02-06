@@ -264,7 +264,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: str =
             return response['error'], response['data']
 
     def get_active_configuration_agent():
-        """Get agent active configuration"""
+        """Get agent active configuration."""
         # Always communicate with remote socket
         dest_socket = common.REMOTED_SOCKET
 

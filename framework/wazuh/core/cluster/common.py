@@ -30,8 +30,7 @@ from wazuh.core.config.models.server import ServerConfig
 
 
 class Response:
-    """Define and store a response from a request.
-    """
+    """Define and store a response from a request."""
 
     def __init__(self):
         """Class constructor."""
@@ -58,8 +57,7 @@ class Response:
 
 
 class InBuffer:
-    """Define a buffer to receive incoming requests.
-    """
+    """Define a buffer to receive incoming requests."""
 
     divide_flag = b'd'  # flag used to indicate the message is divided
 
@@ -124,8 +122,7 @@ class InBuffer:
 
 
 class ReceiveFileTask:
-    """Create an asyncio task that can be identified by a task_id.
-    """
+    """Create an asyncio task that can be identified by a task_id."""
 
     def __init__(self, wazuh_common, logger, task_id: bytes = b''):
         """Class constructor.
@@ -182,8 +179,7 @@ class ReceiveFileTask:
 
 
 class Handler(asyncio.Protocol):
-    """Define common methods for echo clients and servers.
-    """
+    """Define common methods for echo clients and servers."""
 
     def __init__(self, server_config: ServerConfig, logger: logging.Logger = None, tag: str = "Handler"):
         """Class constructor.
@@ -950,8 +946,7 @@ class Handler(asyncio.Protocol):
 
 
 class WazuhCommon:
-    """Task implementing common methods for both clients and servers that are Wazuh specific.
-    """
+    """Task implementing common methods for both clients and servers that are Wazuh specific."""
 
     def __init__(self):
         """Class constructor."""
@@ -1076,8 +1071,7 @@ class WazuhCommon:
 
 
 class SyncTask:
-    """Common class for master/worker sync tasks.
-    """
+    """Common class for master/worker sync tasks."""
 
     def __init__(self, cmd: bytes, logger, manager):
         """Class constructor.
@@ -1135,8 +1129,7 @@ class SyncTask:
 
 
 class SyncFiles(SyncTask):
-    """Define methods to synchronize files with a remote node.
-    """
+    """Define methods to synchronize files with a remote node."""
 
     async def sync(self, files: Iterable, files_metadata: Dict, metadata_len: int, task_pool=None,
                    zip_limit: int = None):
@@ -1249,8 +1242,7 @@ def asyncio_exception_handler(loop, context: Dict):
 
 
 class WazuhJSONEncoder(json.JSONEncoder):
-    """Define special JSON encoder for Wazuh.
-    """
+    """Define special JSON encoder for Wazuh."""
 
     def default(self, obj):
         if callable(obj):

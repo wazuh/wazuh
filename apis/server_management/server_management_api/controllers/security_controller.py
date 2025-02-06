@@ -1229,7 +1229,7 @@ async def security_revoke_tokens():
 
 
 async def put_security_config(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Update current security configuration with the given one
+    """Update current security configuration with the given one.
 
     Parameters
     ----------

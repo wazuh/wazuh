@@ -98,7 +98,7 @@ def test_start_daemons_ko(mock_popen):
     process_mock.configure_mock(**attrs)
     mock_popen.return_value = process_mock
 
-    with patch.object(wazuh_server, 'main_logger') as main_logger_mock, \
+    with patch.object(wazuh_server, 'main_logger'), \
         patch.object(wazuh_server.pyDaemonModule, 'get_parent_pid', return_value=pid):
 
         with pytest.raises(wazuh_server.WazuhDaemonError, match='Error starting wazuh-engined: return code 1'):

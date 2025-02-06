@@ -105,8 +105,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
 
 
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
-    """Handle incoming requests and sync processes with a worker.
-    """
+    """Handle incoming requests and sync processes with a worker."""
 
     def __init__(self, **kwargs):
         """Class constructor.
@@ -765,8 +764,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
 
 class Master(server.AbstractServer):
-    """Create the server. Handle multiple clients, DAPI and Send Sync requests.
-    """
+    """Create the server. Handle multiple clients, DAPI and Send Sync requests."""
 
     def __init__(self, **kwargs):
         """Class constructor.

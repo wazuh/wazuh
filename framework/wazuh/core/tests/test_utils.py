@@ -86,7 +86,7 @@ input_array = [
 # MOCK DATA
 
 class ClassTest(object):
-    """__init__() functions as the class constructor"""
+    """__init__() functions as the class constructor."""
 
     def __init__(self, name=None, job=None):
         self.name = name
@@ -507,7 +507,7 @@ def test_chmod_r(mock_chmod):
     """Tests chmod_r function."""
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False)
-        dummy_tmp = TemporaryDirectory(dir=tmpdirname)
+        TemporaryDirectory(dir=tmpdirname)
         utils.chmod_r(tmpdirname, 0o777)
         mock_chmod.assert_any_call(tmpdirname, 0o777)
         mock_chmod.assert_any_call(os.path.join(tmpdirname, tmpfile.name), 0o777)
@@ -518,7 +518,7 @@ def test_chown_r(mock_chown):
     """Test chown_r function."""
     with TemporaryDirectory() as tmp_dirname:
         tmp_file = NamedTemporaryFile(dir=tmp_dirname, delete=False)
-        dummy_tmp = TemporaryDirectory(dir=tmp_dirname)
+        TemporaryDirectory(dir=tmp_dirname)
         utils.chown_r(tmp_dirname, 'test_user', 'test_group')
         mock_chown.assert_any_call(tmp_dirname, 'test_user', 'test_group')
         mock_chown.assert_any_call(os.path.join(tmp_dirname, tmp_file.name), 'test_user', 'test_group')
@@ -892,7 +892,7 @@ def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_conn_d
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
-    """Tests WazuhDBQuery._sort_query function works"""
+    """Tests WazuhDBQuery._sort_query function works."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent',
                                sort={'order': 'asc'}, search=None, select=None,
                                filters=None, fields={'1': None, '2': None},
@@ -1657,7 +1657,7 @@ def test_WazuhDBQueryDistinct_protected_format_data_into_dictionary(mock_socket_
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQueryGroupBy__init__(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
-    """Tests utils.WazuhDBQueryGroupBy.__init__ function works"""
+    """Tests utils.WazuhDBQueryGroupBy.__init__ function works."""
     utils.WazuhDBQueryGroupBy(filter_fields=None, offset=0, limit=1, table='agent',
                               sort=None, search=None, select={'fields': ['name']},
                               filters=None, fields={'name': '`group`'},

@@ -26,13 +26,13 @@ from server_management_api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPO
 
 @pytest.fixture
 def request_info(request):
-    """Return the dictionary of the parametrize"""
+    """Return the dictionary of the parametrize."""
     return request.param if 'prevent_bruteforce_attack' in request.node.name else None
 
 
 @pytest.fixture
 def mock_request(request, request_info):
-    """Fixture to wrap functions with request"""
+    """Fixture to wrap functions with request."""
     req = MagicMock()
     req.client.host = 'ip'
     mock_request.query_param = {}
@@ -114,7 +114,7 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
         if path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
             and method in {'GET', 'POST'}:
             mock_pbfa.assert_called_once_with(request=mock_request, attempts=1000)
-        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        datetime(1970, 1, 1, 0, 0, 10).timestamp()
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code

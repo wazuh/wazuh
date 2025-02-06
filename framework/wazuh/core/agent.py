@@ -427,8 +427,7 @@ class Agent:
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
               'group_config_status': 'group_config_status', 'status_code': 'status_code'}
 
-    new_fields = {'id': 'id', 'name': 'name', 'key': 'key', 'groups': 'groups', 'type': 'type', 'version': 'version',
-                 'type': 'type', 'last_login': 'last_login', 'persistent_connection_mode': 'persistent_connection_mode'}
+    new_fields = {'id': 'id', 'name': 'name', 'key': 'key', 'groups': 'groups', 'type': 'type', 'version': 'version', 'last_login': 'last_login', 'persistent_connection_mode': 'persistent_connection_mode'}
 
     def __init__(self, id: str = None, name: str = None, ip: str = None, key: str = None, force: dict = None):
         """Initialize an agent.
@@ -875,7 +874,7 @@ class Agent:
 
     @staticmethod
     def group_exists(group_id: str) -> bool:
-        """Check if the group exists
+        """Check if the group exists.
 
         Parameters
         ----------

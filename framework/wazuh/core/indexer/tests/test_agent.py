@@ -49,7 +49,7 @@ class TestAgentIndex:
             await index_instance.create(id=self.create_id, **self.create_params)
 
     async def test_delete(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
-        """Check the correct function of `delete` method"""
+        """Check the correct function of `delete` method."""
         ids = ['0191480e-7f67-7fd3-8c52-f49a3176360b', '0191480e-7f67-7fd3-8c52-f49a3176360c']
         indexes = ','.join([index_instance.INDEX, *index_instance.SECONDARY_INDEXES])
         query = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}

@@ -112,7 +112,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64),
 ])
 def test_validation_check_exp_ok(exp, regex_name):
-    """Verify that check_exp() returns True with correct params"""
+    """Verify that check_exp() returns True with correct params."""
     assert check_exp(exp, regex_name)
 
 
@@ -180,19 +180,19 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('aDhjasdh3=', _base64),
 ])
 def test_validation_check_exp_ko(exp, regex_name):
-    """Verify that check_exp() returns False with incorrect params"""
+    """Verify that check_exp() returns False with incorrect params."""
     assert not check_exp(exp, regex_name)
 
 
 def test_allowed_fields():
-    """Verify that allowed_fields() returns list with allowed fields from a dict"""
+    """Verify that allowed_fields() returns list with allowed fields from a dict."""
     result = allowed_fields({'field0': 'value0', 'field1': 'value1'})
     assert isinstance(result, list)
 
 
 def test_is_safe_path():
-    """Verify that is_safe_path() works as expected"""
-    base_path = Path(__file__).parent.parent.parent.parent
+    """Verify that is_safe_path() works as expected."""
+    Path(__file__).parent.parent.parent.parent
 
     assert is_safe_path('/api/configuration/api.yaml')
     assert is_safe_path('c:\\api\\configuration\\api.yaml')

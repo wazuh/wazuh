@@ -28,13 +28,13 @@ class Model(object):
 
     @classmethod
     def from_dict(cls: typing.Type[T], dikt) -> T:
-        """Returns the dict as a model"""
+        """Returns the dict as a model."""
         if isinstance(dikt, Exception):
             raise dikt
         return util.deserialize_model(dikt, cls)
 
     def to_dict(self):
-        """Returns the model properties as a dict
+        """Returns the model properties as a dict.
 
         :rtype: dict
         """
@@ -61,22 +61,22 @@ class Model(object):
         return result
 
     def to_str(self):
-        """Returns the string representation of the model
+        """Returns the string representation of the model.
 
         :rtype: str
         """
         return pprint.pformat(self.to_dict())
 
     def __repr__(self):
-        """For `print` and `pprint`"""
+        """For `print` and `pprint`."""
         return self.to_str()
 
     def __eq__(self, other):
-        """Returns true if both objects are equal"""
+        """Returns true if both objects are equal."""
         return self.__dict__ == other.__dict__
 
     def __ne__(self, other):
-        """Returns true if both objects are not equal"""
+        """Returns true if both objects are not equal."""
         return not self == other
 
 
@@ -95,7 +95,7 @@ class AllOf:
 class Data(Model):
 
     def __init__(self, data: Model = None):  # noqa: E501
-        """Data - a model defined in Swagger
+        """Data - a model defined in Swagger.
 
         :param data: The data of this Data.  # noqa: E501
         :type data: Model
@@ -112,7 +112,7 @@ class Data(Model):
 
     @classmethod
     def from_dict(cls, dikt) -> 'Data':
-        """Returns the dict as a model
+        """Returns the dict as a model.
 
         :param dikt: A dict.
         :type: dict
@@ -145,7 +145,7 @@ class Data(Model):
 class Items(Model):
 
     def __init__(self, items: List[Model] = None):  # noqa: E501
-        """Items - a model defined in Swagger
+        """Items - a model defined in Swagger.
 
         :param items: The items of this Items.  # noqa: E501
         :type items: Model
@@ -162,7 +162,7 @@ class Items(Model):
 
     @classmethod
     def from_dict(cls, dikt) -> 'Items':
-        """Returns the dict as a model
+        """Returns the dict as a model.
 
         :param dikt: A dict.
         :type: dict
@@ -215,7 +215,7 @@ class Body(Model):
 
     @classmethod
     def from_dict(cls, dikt):
-        """Returns the dict as a model
+        """Returns the dict as a model.
 
         :param dikt: A dict.
         :type: dict

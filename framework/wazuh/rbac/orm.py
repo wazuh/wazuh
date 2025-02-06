@@ -92,7 +92,7 @@ class RolesRules(_Base):
         id: ID of the relationship
         role_id: ID of the role
         rule_id: ID of the rule
-        created_at: Date of the relationship creation
+        created_at: Date of the relationship creation.
     """
     __tablename__ = "roles_rules"
 
@@ -114,7 +114,7 @@ class RolesPolicies(_Base):
         role_id: ID of the role
         policy_id: ID of the policy
         level: Priority in case of multiple policies (a lower level means more priority)
-        created_at: Date of the relationship creation
+        created_at: Date of the relationship creation.
     """
     __tablename__ = "roles_policies"
 
@@ -137,7 +137,7 @@ class UserRoles(_Base):
         user_id: ID of the user
         role_id: ID of the role
         level: Priority in case of multiple roles (a lower level means more priority)
-        created_at: Date of the relationship creation
+        created_at: Date of the relationship creation.
     """
     __tablename__ = "user_roles"
 
@@ -160,7 +160,7 @@ class RunAsTokenBlacklist(_Base):
     invalid. An invalid token is an expired or revoked token.
     The information stored is:
         nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
-        is_valid_until: Token's expiration date
+        is_valid_until: Token's expiration date.
     """
     __tablename__ = "runas_token_blacklist"
 
@@ -190,7 +190,7 @@ class UsersTokenBlacklist(_Base):
     The information stored is:
         user_id: ID of the user affected by the token
         nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
-        is_valid_until: Token's expiration date
+        is_valid_until: Token's expiration date.
     """
     __tablename__ = "users_token_blacklist"
 
@@ -205,7 +205,7 @@ class UsersTokenBlacklist(_Base):
         self.is_valid_until = self.nbf_invalid_until + CentralizedConfig.get_management_api_config().jwt_expiration_timeout
 
     def to_dict(self):
-        """Return the information of the token rule
+        """Return the information of the token rule.
 
         Returns
         -------
@@ -221,7 +221,7 @@ class RolesTokenBlacklist(_Base):
     The information stored is:
         role_id: ID of the role affected by the token
         nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
-        is_valid_until: Token's expiration date
+        is_valid_until: Token's expiration date.
     """
     __tablename__ = "roles_token_blacklist"
 
@@ -237,7 +237,7 @@ class RolesTokenBlacklist(_Base):
                                CentralizedConfig.get_management_api_config().jwt_expiration_timeout)
 
     def to_dict(self):
-        """Return the information of the token rule
+        """Return the information of the token rule.
 
         Returns
         -------
@@ -256,7 +256,7 @@ class User(_Base):
         username: The name of the user
         password: The password of the user
         allow_run_as: Whether the user is able to log in with an authorization context or not
-        created_at: Date of the user creation
+        created_at: Date of the user creation.
     """
     __tablename__ = 'users'
 
@@ -358,7 +358,7 @@ class Roles(_Base):
     The information stored for each object is:
         id: ID of the role
         name: The name of the role
-        created_at: Date of the role creation
+        created_at: Date of the role creation.
     """
     __tablename__ = "roles"
 
@@ -446,7 +446,7 @@ class Rules(_Base):
         id: ID of the rule
         name: The name of the rule
         rule: The body of the rule
-        created_at: Date of the rule creation
+        created_at: Date of the rule creation.
     """
     __tablename__ = "rules"
 
@@ -509,7 +509,7 @@ class Policies(_Base):
         id: ID of the policy
         name: The name of the policy
         policy: The body of the policy
-        created_at: Date of the policy creation
+        created_at: Date of the policy creation.
     """
     __tablename__ = "policies"
 
@@ -3018,7 +3018,7 @@ class DatabaseManager:
     """Class used to manage the RBAC databases."""
 
     def __init__(self):
-        """Class constructor"""
+        """Class constructor."""
         self.engines = {}
         self.sessions = {}
 
@@ -3259,7 +3259,7 @@ class DatabaseManager:
 
 
 def check_if_reserved_id(from_id: Optional[str], to_id: Optional[str]):
-    """Checks if the ids are reserved ones
+    """Checks if the ids are reserved ones.
 
     Parameters
     ----------

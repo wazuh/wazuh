@@ -9,7 +9,7 @@ from wazuh.core.config.models.ssl_config import APISSLConfig
 
 
 class RBACMode(str, Enum):
-    """Enum representing the different RBAC modes"""
+    """Enum representing the different RBAC modes."""
     white = "white"
     black = "black"
 

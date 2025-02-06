@@ -272,7 +272,7 @@ def test_results_AffectedItemsWazuhResult_render(get_wazuh_affected_item):
     ([{'a': {'b': 3}, 'c.1': 5}], ['c\\.1'], [{'a': {'b': 3}, 'c.1': 5}])
 ])
 def test_results_nested_itemgetter(item, expressions, expected_result):
-    """Test function `nested_itemgetter` from module results
+    """Test function `nested_itemgetter` from module results.
 
     Parameters
     ----------

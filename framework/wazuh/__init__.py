@@ -34,8 +34,7 @@ except Exception:
 
 
 class Wazuh:
-    """Basic class to set up OSSEC directories
-    """
+    """Basic class to set up OSSEC directories."""
 
     def __init__(self):
         """Initialize basic information and directories.
@@ -70,8 +69,7 @@ class Wazuh:
                 }
 
     def _initialize(self):
-        """Calculates all Wazuh installation metadata
-        """
+        """Calculates all Wazuh installation metadata."""
         # info DB if possible
         try:
             wdb_conn = WazuhDBConnection()

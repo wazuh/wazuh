@@ -196,7 +196,6 @@ async def test_reconnect_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'restart_agents' endpoint is working as expected."""
     result = await restart_agents()
-    f_kwargs = {'agent_list': '*'}
     mock_dapi.assert_called_once_with(f=agent.restart_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',

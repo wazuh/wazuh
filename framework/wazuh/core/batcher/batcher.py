@@ -203,8 +203,7 @@ class BatcherProcess(Process):
         self.config = config
 
     def run(self):
-        """Initialize and run a Batcher instance in the process. This method is called when the process is started.
-        """
+        """Initialize and run a Batcher instance in the process. This method is called when the process is started."""
         batcher = Batcher(mux_demux_queue=self.queue, config=self.config)
         asyncio.run(batcher.run())
 

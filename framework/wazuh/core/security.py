@@ -61,7 +61,7 @@ def invalid_users_tokens(users: list = None):
 
 
 def invalid_roles_tokens(roles: list = None):
-    """Add the necessary rules to invalidate all affected role's tokens
+    """Add the necessary rules to invalidate all affected role's tokens.
 
     Parameters
     ----------

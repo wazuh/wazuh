@@ -566,7 +566,7 @@ async def test_master_handler_process_dapi_res_ok():
     master_handler.server.pending_api_requests = {}
     with patch.object(master_handler, "forward_dapi_response", return_value=True) as forward_dapi_response_mock:
         assert master_handler.process_dapi_res(b"req_id string_id") == (b'ok', b'Response forwarded to worker')
-        while forward_dapi_response_mock.called == False:
+        while forward_dapi_response_mock.called is False:
             asyncio.sleep(0.01)
 
         forward_dapi_response_mock.assert_called()
@@ -1252,7 +1252,7 @@ async def test_master_file_status_update_ok(sleep_mock):
 
     logger_mock = LoggerMock()
 
-    with patch("wazuh.core.cluster.master.cluster.run_in_pool", side_effect=run_in_pool) as run_in_pool_mock:
+    with patch("wazuh.core.cluster.master.cluster.run_in_pool", side_effect=run_in_pool):
         with patch("wazuh.core.cluster.master.Master.setup_task_logger",
                    return_value=logger_mock) as setup_task_logger_mock:
             with pytest.raises(Exception, match='Stop while true'):

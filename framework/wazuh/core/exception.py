@@ -12,8 +12,7 @@ GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
 
 class WazuhException(Exception):
-    """Wazuh Exception object.
-    """
+    """Wazuh Exception object."""
 
     ERRORS = {
         # < 999: API
@@ -545,7 +544,7 @@ class WazuhException(Exception):
 
 class WazuhInternalError(WazuhException):
     """This type of exception is raised when an unexpected error in framework code occurs,
-    which means an internal error could not be handled
+    which means an internal error could not be handled.
     """
     _default_type = "about:blank"
     _default_title = "Wazuh Internal Error"
@@ -585,43 +584,37 @@ class WazuhInternalError(WazuhException):
 
 
 class WazuhClusterError(WazuhInternalError):
-    """This type of exception is raised inside the cluster.
-    """
+    """This type of exception is raised inside the cluster."""
     _default_type = "about:blank"
     _default_title = "Wazuh Cluster Error"
 
 
 class WazuhHAPHelperError(WazuhClusterError):
-    """This type of exception is raised inside the HAProxy Helper.
-    """
+    """This type of exception is raised inside the HAProxy Helper."""
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
 
 
 class WazuhCommsAPIError(WazuhInternalError):
-    """This type of exception is raised inside the Communications API.
-    """
+    """This type of exception is raised inside the Communications API."""
     _default_type = "about:blank"
     _default_title = "Communications API Error"
 
 
 class WazuhEngineError(WazuhInternalError):
-    """This type of exception is raised inside the engine.
-    """
+    """This type of exception is raised inside the engine."""
     _default_type = "about:blank"
     _default_title = "Wazuh Engine Error"
 
 
 class WazuhIndexerError(WazuhInternalError):
-    """This type of exception is raised inside the indexer.
-    """
+    """This type of exception is raised inside the indexer."""
     _default_type = "about:blank"
     _default_title = "Wazuh Indexer Error"
 
 
 class WazuhDaemonError(WazuhInternalError):
-    """This type of exception is raised inside the server daemons.
-    """
+    """This type of exception is raised inside the server daemons."""
     _default_type = "about:blank"
     _default_title = "Wazuh Daemon Error"
 
@@ -685,28 +678,24 @@ class WazuhError(WazuhException):
 
 
 class WazuhPermissionError(WazuhError):
-    """This type of exception is raised as a controlled response to a permission denied accessing a resource.
-    """
+    """This type of exception is raised as a controlled response to a permission denied accessing a resource."""
     _default_type = "about:blank"
     _default_title = "Permission Denied"
 
 
 class WazuhResourceNotFound(WazuhError):
-    """This type of exception is raised as a controlled response to a not found resource.
-    """
+    """This type of exception is raised as a controlled response to a not found resource."""
     _default_type = "about:blank"
     _default_title = "Resource Not Found"
 
 
 class WazuhTooManyRequests(WazuhError):
-    """This type of exception is raised as a controlled response to too many requests.
-    """
+    """This type of exception is raised as a controlled response to too many requests."""
     _default_type = "about:blank"
     _default_title = "Too Many Requests"
 
 
 class WazuhNotAcceptable(WazuhError):
-    """This type of exception is raised as a controlled response to a not acceptable request
-    """
+    """This type of exception is raised as a controlled response to a not acceptable request."""
     _default_type = "about:blank"
     _default_title = "Not Acceptable"

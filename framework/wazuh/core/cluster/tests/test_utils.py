@@ -277,7 +277,7 @@ def test_manager_restart():
 
 
 def test_ClusterFilter():
-    """Verify that ClusterFilter adds cluster related information into cluster logs"""
+    """Verify that ClusterFilter adds cluster related information into cluster logs."""
     cluster_filter = utils.ClusterFilter(tag='Cluster', subtag='config')
     record = utils.ClusterFilter(tag='Testing', subtag='config')
     record.update_tag(new_tag='Testing_tag')
