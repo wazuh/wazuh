@@ -1109,15 +1109,15 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         for val in value1:
             if op == '~':
                 # value1 should be str if operator is '~'
-                val = str(val) if type(val) == int else val
+                val = str(val) if type(val) is int else val
                 if value2 in val:
                     return True
             else:
                 # cast value2 to integer if value1 is integer
                 value2 = check_date_format(value2)
-                if type(value2) == datetime:
+                if type(value2) is datetime:
                     val = check_date_format(val)
-                value2 = int(value2) if type(val) == int else value2
+                value2 = int(value2) if type(val) is int else value2
                 if operators[op](val, value2):
                     return True
 

@@ -194,7 +194,7 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
     # When the used protocol is HTTPS and the HAProxy certificate is not defined, an error is raised.
     # If the client certificate info is not declared and the tls_ca parameter in the Dataplane API configuration is set,
     # the communication fails
-    if helper_config[HAPROXY_PROTOCOL].lower() == 'https' and type(helper_config[HAPROXY_CERT]) == bool:
+    if helper_config[HAPROXY_PROTOCOL].lower() == 'https' and type(helper_config[HAPROXY_CERT]) is bool:
         raise WazuhHAPHelperError(3042, extra_message='HAProxy certificate file required in the haproxy_cert parameter')
 
     return helper_config
