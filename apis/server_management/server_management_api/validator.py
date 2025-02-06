@@ -182,14 +182,6 @@ def format_base64(value):
     return check_exp(value, _base64)
 
 
-@Draft4Validator.FORMAT_CHECKER.checks('get_dirnames_path')
-def format_get_dirnames_path(relative_path):
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _get_dirnames_path)
-
-
 @Draft4Validator.FORMAT_CHECKER.checks('hash')
 def format_hash(value):
     return check_exp(value, _hashes)
@@ -208,16 +200,6 @@ def format_numbers(value):
 @Draft4Validator.FORMAT_CHECKER.checks('numbers_or_all')
 def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks('xml_filename')
-def format_xml_filename(value):
-    return check_exp(value, _xml_filename)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks('xml_filename_path')
-def format_xml_filename_path(value):
-    return check_exp(value, _xml_filename_path)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks('path')
