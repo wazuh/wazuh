@@ -39,25 +39,88 @@ jobs:
         with:
           target: ${{ matrix.target }}
   Build-RPM-Manager:
-      runs-on: ubuntu-22.04
-      needs: Unit-Tests
-      steps:
-        - name: Build RPM Manager
-          uses: actions/github-script@v6
-          with:
-            script: |
-              github.rest.actions.createWorkflowDispatch({
+    runs-on: ubuntu-22.04
+    needs: Unit-Tests
+    steps:
+      - name: Build RPM Manager
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const workflowFile = "packages-build-manager.yml";
+            const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME; // Use PR branch or direct push branch
+            const timeoutMinutes = 35;
+            const pollingInterval = 30 * 1000; // 30 seconds
+            const maxRetries = (timeoutMinutes * 60 * 1000) / pollingInterval;
+
+            console.log(`Triggering workflow: ${workflowFile} on branch ${branchRef}`);
+
+            // Dispatch the workflow
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowFile,
+              ref: branchRef,
+              inputs: {
+                docker_image_tag: "auto",
+                architecture: "x86_64",
+                system: "rpm",
+                revision: "0",
+                is_stage: false,
+                debug: false,
+                checksum: false
+              }
+            });
+
+            console.log("Workflow dispatched successfully. Waiting for execution...");
+
+            // Function to get the latest workflow run
+            async function getLatestWorkflowRun() {
+              const response = await github.rest.actions.listWorkflowRuns({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                workflow_id: "packages-build-manager.yml",
-                ref: "master",
-                inputs: {
-                  docker_image_tag: "auto",
-                  architecture: "x86_64",
-                  system: "rpm",
-                  revision: "0",
-                  is_stage: false,
-                  debug: false,
-                  checksum: false
-                }
+                workflow_id: workflowFile,
+                branch: branchRef,
+                per_page: 1
               });
+
+              if (response.data.workflow_runs.length === 0) {
+                return null;
+              }
+              return response.data.workflow_runs[0];
+            }
+
+            let run;
+            let attempts = 0;
+
+            // Wait for the workflow to start
+            while (!run && attempts < maxRetries) {
+              run = await getLatestWorkflowRun();
+              if (run && run.status !== "queued" && run.status !== "in_progress") {
+                console.log(`Workflow started: ${run.html_url}`);
+                break;
+              }
+
+              console.log(`Waiting for workflow to start... (Attempt ${attempts + 1}/${maxRetries})`);
+              await new Promise(resolve => setTimeout(resolve, pollingInterval));
+              attempts++;
+            }
+
+            if (!run) {
+              throw new Error("Timeout: Workflow did not start within 35 minutes.");
+            }
+
+            // Wait for the workflow to complete
+            while (run.status === "queued" || run.status === "in_progress") {
+              console.log(`Workflow is running... (Current Status: ${run.status})`);
+              await new Promise(resolve => setTimeout(resolve, pollingInterval));
+
+              run = await getLatestWorkflowRun();
+            }
+
+            // Output the final status and link to workflow
+            console.log(`Workflow completed with status: ${run.conclusion}`);
+            console.log(`Check results: ${run.html_url}`);
+
+            if (run.conclusion !== "success") {
+              throw new Error(`Workflow failed with conclusion: ${run.conclusion}`);
+            }
