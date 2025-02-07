@@ -267,7 +267,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
 
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + Utils::rightTrim(fileName, ".xz")};
-    EXPECT_TRUE(std::filesystem::exists(contentPath));
+
+    // This file shouldn't exist because we clean up the content folder too
+    EXPECT_FALSE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
