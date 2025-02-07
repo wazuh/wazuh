@@ -339,8 +339,8 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logDebug2(IC_NAME, "Document version conflict, sync omitted");
-                throw std::runtime_error("Version conflict, retrying in 1 second.");
+                logDebug2(IC_NAME, "Document version conflict, sync omitted.");
+                throw std::runtime_error("Document version conflict, sync omitted.");
             }
             else
             {
@@ -698,7 +698,7 @@ IndexerConnector::IndexerConnector(
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
-                        throw std::runtime_error("Version conflict, retrying in 1 second.");
+                        throw std::runtime_error("Document version conflict, retrying in 1 second.");
                     }
                     else
                     {
