@@ -31,15 +31,13 @@ INSTANTIATE_TEST_SUITE_P(
         StageT(R"(true)", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
         StageT(R"({})", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
         StageT(R"({"key": "val", "key2": "val2"})", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
-        // -- Index name is not 'alerts' string
+        // -- Index name is not string
         StageT(R"({"index": 1})", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
         StageT(R"({"index": true})", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
         StageT(R"({"index": null})", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
         StageT(R"({"index": [{"index": "non-alerts"}]})",
                getIndexerOutputBuilder(getNullIndexerConnector()),
                FAILURE()),
-        StageT(R"({"index": "non-alerts"})", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
-        // -- Index name is 'alerts'
         StageT(R"({"index": "alerts"})",
                getIndexerOutputBuilder(getNullIndexerConnector()),
                SUCCESS(
@@ -56,15 +54,13 @@ INSTANTIATE_TEST_SUITE_P(
         StageT(R"(true)", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"key": "val", "key2": "val2"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
-        // -- Index name is not 'alerts' string
+        // -- Index name is not string
         StageT(R"({"index": 1})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"index": true})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"index": null})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"index": [{"index": "non-alerts"}]})",
                getIndexerOutputBuilder(getMockIndexerConnector()),
                FAILURE()),
-        StageT(R"({"index": "non-alerts"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
-        // -- Index name is 'alerts'
         StageT(R"({"index": "alerts"})",
                getIndexerOutputBuilder(getMockIndexerConnector()),
                SUCCESS(
@@ -147,7 +143,7 @@ TEST_F(IndexerOutputOperationTest, output_success)
     ASSERT_TRUE(operation);
 
     // Configure the behavior
-    EXPECT_CALL(*iConnector, publish(StartsWith(R"({"operation": "ADD", "data": {)")));
+    EXPECT_CALL(*iConnector, publish(StartsWith(R"({"operation": "ADD", "index": "alerts", "data": {)")));
 
     // Run the operation
     auto result = operation(event);
