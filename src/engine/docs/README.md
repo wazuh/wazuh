@@ -17,6 +17,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [is_array](#is_array)
 - [is_boolean](#is_boolean)
 - [is_ipv4](#is_ipv4)
+- [is_ipv6](#is_ipv6)
 - [is_not_array](#is_not_array)
 - [is_not_boolean](#is_not_boolean)
 - [is_not_object](#is_not_object)
@@ -36,7 +37,6 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [string_less_or_equal](#string_less_or_equal)
 - [string_not_equal](#string_not_equal)
 ## Map
-- [active_response_send](#active_response_send)
 - [as](#as)
 - [concat](#concat)
 - [concat_any](#concat_any)
@@ -51,14 +51,11 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [ip_version](#ip_version)
 - [join](#join)
 - [regex_extract](#regex_extract)
-- [send_upgrade_confirmation](#send_upgrade_confirmation)
 - [sha1](#sha1)
 - [system_epoch](#system_epoch)
 - [to_int](#to_int)
 - [to_string](#to_string)
 - [upcase](#upcase)
-- [wdb_query](#wdb_query)
-- [wdb_update](#wdb_update)
 ## Transformation
 - [array_append](#array_append)
 - [array_append_any](#array_append_any)
@@ -567,6 +564,38 @@ field: is_ipv4()
 ## Description
 
 Checks if the IP address stored in the field is an IPv4.
+IPv4:
+  - 10.0.0.0
+  - 172.16.0.0
+  - 192.168.0.0
+  - 127.0.0.0
+This helper function is typically used in the check stage
+
+
+**Keywords**
+
+- `undefined` 
+
+---
+# is_ipv6
+
+## Signature
+
+```
+
+field: is_ipv6()
+```
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any IP |
+
+
+## Description
+
+Checks if the IP address stored in the field is an IPv6.
 IPv4:
   - 10.0.0.0
   - 172.16.0.0
@@ -1172,42 +1201,6 @@ This helper function is typically used in the check stage
 - `comparison` 
 
 ---
-# active_response_send
-
-## Signature
-
-```
-
-field: active_response_send(ar-message)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| ar-message | string | value or reference | Any string |
-
-
-## Outputs
-
-| Type | Possible values |
-| ---- | --------------- |
-| string | Any string |
-
-
-## Description
-
-Sends a message through the active response queue and updates the field with the result of the execution
-if the message could be sent without any problem it will be set to true, if not to false.
-Thre result value doesn`t mean that it checks the correct execution of the Active response.
-This helper function is typically used in the map stage.
-
-
-**Keywords**
-
-- `undefined` 
-
----
 # as
 
 ## Signature
@@ -1730,41 +1723,6 @@ This helper function is used in the map stage
 - `undefined` 
 
 ---
-# send_upgrade_confirmation
-
-## Signature
-
-```
-
-field: send_upgrade_confirmation(json)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| json | object | reference | Any object |
-
-
-## Outputs
-
-| Type | Possible values |
-| ---- | --------------- |
-| boolean | Any boolean |
-
-
-## Description
-
-Receives a JSON object that must contain the agent id, error field and message among other mandatory fields and
-send it throug the UPGRADE socket. The result of the communication will be return as a boolean value
-being true when sent ok and false otherwise. This helper function is typically used in the map stage.
-
-
-**Keywords**
-
-- `undefined` 
-
----
 # sha1
 
 ## Signature
@@ -1936,78 +1894,6 @@ If the “field” already exists, then it will be replaced. In case of errors �
 **Keywords**
 
 - `string` 
-
----
-# wdb_query
-
-## Signature
-
-```
-
-field: wdb_query(query)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| query | string | value or reference | Any string |
-
-
-## Outputs
-
-| Type | Possible values |
-| ---- | --------------- |
-| string | Any string |
-
-
-## Description
-
-Perform a query to wazuh-db. If it was able to connect to wazuh-db and run a valid query (no errors)
-then map the payload response of wazuh-db into field. If the field field already exists, then it will be replaced.
-In case of errors target field will not be modified.
-This helper function is typically used in the map stage
-
-
-**Keywords**
-
-- `wdb` 
-
----
-# wdb_update
-
-## Signature
-
-```
-
-field: wdb_update(query)
-```
-
-## Arguments
-
-| parameter | Type | Source | Accepted values |
-| --------- | ---- | ------ | --------------- |
-| query | string | value or reference | Any string |
-
-
-## Outputs
-
-| Type | Possible values |
-| ---- | --------------- |
-| boolean | Any boolean |
-
-
-## Description
-
-Perform a query to wazuh-db. If it was able to connect to wazuh-db and run a valid query (no errors)
-then map `true` into field if not, then map `false` into field.
-If the field field already exists, then it will be replaced. In case of errors target field will not be modified.
-This helper function is typically used in the map stage
-
-
-**Keywords**
-
-- `wdb` 
 
 ---
 # array_append

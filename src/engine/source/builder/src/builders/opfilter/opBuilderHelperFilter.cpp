@@ -1497,7 +1497,7 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
     };
 }
 
-// <field>: +is_ipv4/$<reference>
+// <field>: +is_ipv4/
 FilterOp opBuilderHelperIsIpv4(const Reference& targetField,
                                const std::vector<OpArg>& opArgs,
                                const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1527,6 +1527,44 @@ FilterOp opBuilderHelperIsIpv4(const Reference& targetField,
         }
 
         if (!::utils::ip::checkStrIsIPv4(targetString.value()))
+        {
+            RETURN_FAILURE(runState, false, failureTrace2);
+        }
+
+        RETURN_SUCCESS(runState, true, successTrace);
+    };
+}
+
+// <field>: +is_ipv6/
+FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
+                               const std::vector<OpArg>& opArgs,
+                               const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 0);
+
+    const auto name = buildCtx->context().opName;
+
+    // Tracing
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+    const std::string failureTrace1 {
+        fmt::format("[{}] -> Failure: Target field '{}' not found or is not a string", name, targetField.dotPath())};
+    const std::string failureTrace2 {fmt::format("{} -> Failure: IP address is not IPv6", name)};
+
+    // Return op
+    return [failureTrace1,
+            failureTrace2,
+            successTrace,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
+    {
+        const auto targetString = event->getString(targetField);
+        if (!targetString.has_value())
+        {
+            RETURN_FAILURE(runState, false, failureTrace1);
+        }
+
+        if (!::utils::ip::checkStrIsIPv6(targetString.value()))
         {
             RETURN_FAILURE(runState, false, failureTrace2);
         }
