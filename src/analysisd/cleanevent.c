@@ -387,7 +387,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Check for suricata (new) date format
      * ex: 01/28/1979-09:13:16.240702  [**]
      */
-    else if ( (loglen > 26) &&
+    else if ( (loglen > 28) &&
               (pieces[2] == '/') &&
               (pieces[5] == '/') &&
               (pieces[10] == '-') &&
