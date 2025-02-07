@@ -145,7 +145,7 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
 
                     for field, (type, validate_function) in custom_fields_map.items():
                         expected_value = get_value_from_hierarchy(expected, field)
-                        if expected == None:
+                        if expected_value == None:
                             continue
                         if validate_function(expected_value):
                             if type == 'object':
