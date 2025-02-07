@@ -13,18 +13,14 @@
 #include "builders/opfilter/opBuilderHelperFilter.hpp"
 
 // Map builders
-#include "builders/opmap/activeResponse.hpp"
 #include "builders/opmap/map.hpp"
 #include "builders/opmap/mmdb.hpp"
 #include "builders/opmap/opBuilderHelperMap.hpp"
-#include "builders/opmap/upgradeConfirmation.hpp"
-#include "builders/opmap/wdb.hpp"
 
 // Transform builders
 #include "builders/opmap/kvdb.hpp"
 #include "builders/optransform/array.hpp"
 #include "builders/optransform/hlp.hpp"
-#include "builders/optransform/sca.hpp"
 #include "builders/optransform/windows.hpp"
 
 // Stage builders
@@ -321,30 +317,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "kvdb_decode_bitmask",
         {schemf::runtimeValidation(),
          builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager, deps.kvdbScopeName)});
-
-    // Active Response builders
-    registry->template add<builders::OpBuilderEntry>(
-        "active_response_send", {schemf::runtimeValidation(), builders::getOpBuilderSendAr(deps.sockFactory)});
-    // TODO: this builder is not used in the ruleset
-    // registry->template add<builders::OpBuilderEntry>("active_response_create",
-    //                                                  {schemf::runtimeValidation(), builders::CreateARBuilder});
-
-    // Upgrade confirmation builder
-    registry->template add<builders::OpBuilderEntry>(
-        "send_upgrade_confirmation",
-        {schemf::JTypeToken::create(json::Json::Type::Boolean),
-         builders::opmap::getUpgradeConfirmationBUilder(deps.sockFactory)});
-
-    // WDB builders
-    registry->template add<builders::OpBuilderEntry>(
-        "wdb_update", {schemf::runtimeValidation(), builders::opmap::getWdbUpdateBuilder(deps.wdbManager)});
-    registry->template add<builders::OpBuilderEntry>(
-        "wdb_query", {schemf::runtimeValidation(), builders::opmap::getWdbQueryBuilder(deps.wdbManager)});
-
-    // SCA builders
-    registry->template add<builders::OpBuilderEntry>(
-        "sca_decoder",
-        {schemf::runtimeValidation(), builders::optransform::getBuilderSCAdecoder(deps.wdbManager, deps.sockFactory)});
 
     // Windows builders
     // registry->template add<builders::OpBuilderEntry>(
