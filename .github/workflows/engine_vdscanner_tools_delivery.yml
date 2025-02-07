@@ -13,10 +13,10 @@ on:
       - ".github/workflows/engine_vdscanner_tools_delivery.yml"
       - "src/engine/source/feedmanager/schemas/"
 
-  # Trigger when a pull request is merged into master
+  # Trigger when a pull request is merged into main
   push:
     branches:
-      - master
+      - main
     paths:
       - "src/engine/source/vdscanner/tools/**"
       - "src/engine/source/vdscanner/src/**"

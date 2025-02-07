@@ -27,7 +27,7 @@ wazuh# cd packages
 **Options:**
 | Option     | Description                                            | Default               |
 |------------|----------------------------------------------------------|-----------------------|
-| -b, --branch | Git branch to use (optional)                          | master                |
+| -b, --branch | Git branch to use (optional)                          | main                |
 | -t, --target | Target package to build (required): manager or agent    | -                     |
 | -a, --architecture | Target architecture (optional): amd64, i386, etc. | -                     |
 | -j, --jobs  | Number of parallel jobs (optional)                       | 2                     |
