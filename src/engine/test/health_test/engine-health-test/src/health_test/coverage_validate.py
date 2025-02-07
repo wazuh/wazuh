@@ -102,8 +102,8 @@ def print_coverity_results(asset_traces_by_stage: dict, output_file: Path):
                     report += "There are no tracks assigned for this stage.\n"
                 else:
                     only_success_traces = get_only_success_traces(traces)
-                    only_failure_traces = get_only_failure_traces(traces)
-                    coverage = len(only_success_traces) / len(traces) * 100
+                    only_failure_traces = get_only_failure_traces(traces, only_success_traces)
+                    coverage = len(only_success_traces) / (len(only_success_traces) + len(only_failure_traces)) * 100
                     report += f"Coverity: {coverage:.2f}%\n"
                     report += "Failure Traces:\n"
                     for trace in only_failure_traces:
@@ -240,25 +240,29 @@ def get_only_success_traces(traces: list) -> list:
     return [trace for trace in traces if "-> Success" in trace]
 
 
-def get_only_failure_traces(traces: list) -> list:
-    return [trace for trace in traces if "-> Success" not in trace]
+def get_only_failure_traces(traces: list, success: list) -> list:
+    seen_conditions = set()
+    failure_traces = []
+
+    for trace in traces:
+        condition = trace.split(' -> ')[0]
+
+        # Check if it is not in "Success" and if it has not been previously processed
+        if "-> Success" not in trace and condition not in [s.split(' -> ')[0] for s in success] and condition not in seen_conditions:
+            failure_traces.append(trace)
+            seen_conditions.add(condition)
+
+    return failure_traces
 
 
 def update_remnant_traces(first_sample_traces: dict, new_sample_traces: dict):
-    merged_traces = {}
-
-    for stage, traces in first_sample_traces.items():
-        if stage not in merged_traces:
-            merged_traces[stage] = []
-        merged_traces[stage].extend(traces)
-
     for stage, traces in new_sample_traces.items():
-        if stage not in merged_traces:
-            merged_traces[stage] = []
-        merged_traces[stage].extend(traces)
+        if stage not in first_sample_traces:
+            first_sample_traces[stage] = []
+        first_sample_traces[stage].extend(traces)
 
-    for stage in merged_traces:
-        merged_traces[stage] = list(set(merged_traces[stage]))
+    for stage in first_sample_traces:
+        first_sample_traces[stage] = list(set(first_sample_traces[stage]))
 
 
 def load_asset_trace(output: EngineTestOutput,  engine_api_socket, asset_traces_by_stage: dict):
