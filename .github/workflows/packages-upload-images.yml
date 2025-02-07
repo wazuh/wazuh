@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - '[0-9]+.[0-9]+.[0-9]+'
-      - 'master'
+      - 'main'
     paths:
       - 'packages/**'
 
