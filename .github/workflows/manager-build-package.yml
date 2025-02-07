@@ -9,7 +9,7 @@ on:
       - "src/**"
       - "packages/**"
 jobs:
-  Build-RPM-Manager:
+  build:
     runs-on: ubuntu-22.04
     steps:
       - name: Build DEB Manager
@@ -18,9 +18,14 @@ jobs:
           script: |
             const workflowFile = "packages-build-manager.yml";
             const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME; // Use PR branch or direct push branch
-            const timeoutMinutes = 35;
+            const timeoutMinutes = 60;
             const pollingIntervalMs = 30 * 1000; // 30 seconds
             const maxAttempts = Math.ceil((timeoutMinutes * 60 * 1000) / pollingIntervalMs);
+
+            function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
 
             console.log(`Triggering workflow: ${workflowFile} on branch "${branchRef}"`);
 
@@ -42,6 +47,8 @@ jobs:
               });
 
             console.log("Workflow dispatched successfully. Waiting for the run to appear...");
+
+            await sleep(pollingIntervalMs); // Sleep for a bit to allow the workflow to start
 
             // Helper function to get the latest run
             async function getLatestWorkflowRun() {
@@ -103,9 +110,13 @@ jobs:
           script: |
             const workflowFile = "packages-build-manager.yml";
             const branchRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME; // Use PR branch or direct push branch
-            const timeoutMinutes = 35;
+            const timeoutMinutes = 60;
             const pollingIntervalMs = 30 * 1000; // 30 seconds
             const maxAttempts = Math.ceil((timeoutMinutes * 60 * 1000) / pollingIntervalMs);
+
+            function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
 
             console.log(`Triggering workflow: ${workflowFile} on branch "${branchRef}"`);
 
@@ -127,6 +138,8 @@ jobs:
               });
 
             console.log("Workflow dispatched successfully. Waiting for the run to appear...");
+
+            await sleep(pollingIntervalMs); // Sleep for a bit to allow the workflow to start
 
             // Helper function to get the latest run
             async function getLatestWorkflowRun() {
