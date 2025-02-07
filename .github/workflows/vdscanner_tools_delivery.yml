@@ -34,7 +34,6 @@ concurrency:
 env:
   TOOLS_DIR: ${{github.workspace}}/src/wazuh_modules/vulnerability_scanner/build/testtool/
   TOOLS_FILE_NAME: legacy_vdscanner_tools
-  VDSCANNER_DIR: ${{github.workspace}}/src/wazuh_modules/vulnerability_scanner/
 
 jobs:
   build:
@@ -83,10 +82,24 @@ jobs:
           path: src/wazuh_modules/vulnerability_scanner
           test: "false"
 
+      - name: Prepare vdscanner tools
+        run: |
+          SRC_DIR=${{github.workspace}}/src/
+          SHARED_MODULES_DIR=${{github.workspace}}/src/shared_modules/
+          EXTERNAL_DIR=${{github.workspace}}/src/external/
+          VDSCANNER_DIR=${{github.workspace}}/src/wazuh_modules/vulnerability_scanner/
+
+          cp -r ${VDSCANNER_DIR}schemas ${{env.TOOLS_DIR}}
+          cp ${SRC_DIR}libwazuhext.so ${{env.TOOLS_DIR}}
+          cp ${EXTERNAL_DIR}rocksdb/build/librocksdb.so.8.3.2 ${{env.TOOLS_DIR}}librocksdb.so.8
+          cp ${SHARED_MODULES_DIR}indexer_connector/build/libindexer_connector.so ${{env.TOOLS_DIR}}
+          cp ${SHARED_MODULES_DIR}router/build/librouter.so ${{env.TOOLS_DIR}}
+          cp ${SHARED_MODULES_DIR}content_manager/build/libcontent_manager.so ${{env.TOOLS_DIR}}
+          cp ${VDSCANNER_DIR}build/libvulnerability_scanner.so ${{env.TOOLS_DIR}}
+
       - name: Compress vdscanner tools and flatbuffer schemas.
         run: |
-          cp -r ${{env.VDSCANNER_DIR}}/schemas ${{env.TOOLS_DIR}}
-          cd ${{env.TOOLS_DIR}}; XZ_OPT=-9; find . \( -name scanner -o -name rocksDBQuery -o -name schemas \) -exec tar cfJ ${{env.TOOLS_FILE_NAME}}.tar.xz {} +;
+          cd ${{env.TOOLS_DIR}}; XZ_OPT=-9; find . \( -name "*.so*" -o -wholename ./scanner/vd_scanner_testtool -o -wholename ./rocksDBQuery/rocks_db_query_testtool -o -name schemas \) -exec tar cfJ ${{env.TOOLS_FILE_NAME}}.tar.xz {} +;
           if [ $? -eq 0 ]; then
             size=$(du -sh ${{env.TOOLS_FILE_NAME}}.tar.xz)
             echo "vdscanner tools successfully compressed: ${size}"
