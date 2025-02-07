@@ -1,1 +1,0 @@
-vhost1.domaine.fr 192.168.3.2 - - [26/Dec/2021:11:22:14 +0200] "GET /hello HTTP/1.1" 404 499 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:50.0) Gecko/20100101 Firefox/50.0"

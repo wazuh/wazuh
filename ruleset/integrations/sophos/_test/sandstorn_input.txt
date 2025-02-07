@@ -1,1 +1,0 @@
-device="SFW" date=2017-01-31 time=14:52:11 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=138301618041 log_type="Sandbox" log_component="Mail" log_subtype="Allowed" priority=Information user_name="" src_ip= filename="" filetype="" filesize=0 sha1sum="" source="" reason="eligible" destination="" subject=""

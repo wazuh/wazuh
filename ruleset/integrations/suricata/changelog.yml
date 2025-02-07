@@ -1,4 +1,0 @@
-items:
-  - version: 1.0.0-dev
-    short: Created integration for suricata
-    pr: "[#17291](https://github.com/wazuh/wazuh/pull/17291)"
