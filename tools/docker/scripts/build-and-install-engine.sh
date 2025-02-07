@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Force use the specific commit of master to aviod breaking changes in:
+# Force use the specific commit of main to avoid breaking changes in:
 # - Python packages
 # - Engine configuration
 

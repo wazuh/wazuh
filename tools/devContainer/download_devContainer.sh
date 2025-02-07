@@ -9,7 +9,7 @@ trap 'cd "$OLD_PWD";rm -rf "$TMP_DIR"' EXIT
 TMP_DIR="/tmp/wazuh_devContainer"
 REPO_DEV_DIR="src/engine/tools/devContainer"
 REPO_URL="https://github.com/wazuh/wazuh.git"
-BRANCH="master"
+BRANCH="main"
 
 EXCLUDED_FILES=(
     "download_devContainer.sh"

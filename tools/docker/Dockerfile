@@ -12,7 +12,7 @@ ENV WAZUH_ROOT=/root/wazuh
 ENV ENGINE_SRC=$WAZUH_ROOT/src/engine
 ENV ENGINE_BUILD=$ENGINE_SRC/build
 
-# Force use the specific commit of master to aviod breaking changes like:
+# Force use the specific commit of main to avoid breaking changes like:
 # - Python packages
 # - Engine configuration and CLI
 ENV ENGINE_COMMIT_ID=3e82b9d7ec6fcd2e846008a6f5ada902f1a58ee2
