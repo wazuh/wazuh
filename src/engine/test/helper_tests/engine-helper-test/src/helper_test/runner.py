@@ -535,13 +535,18 @@ def build_run_post_request(input_data: dict, level: api_tester.TraceLevel) -> ap
         }
     }
 
+    test_event_subheader : dict = {
+        "collector": "file",
+        "module": "logcollector"
+    }
+
     test_event : dict = {
         "event": {
             "original": json.dumps(input_data, separators=(',', ':'))
         }
     }
 
-    request.ndjson_event = json.dumps(test_event_header) + "\n" + json.dumps(test_event)
+    request.ndjson_event = json.dumps(test_event_header) + "\n" + json.dumps(test_event_subheader) + "\n" + json.dumps(test_event)
 
     request.namespaces.extend([NAMESPACE])
     return request
