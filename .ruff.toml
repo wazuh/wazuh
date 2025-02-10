@@ -2,8 +2,6 @@
 include = [
     "framework/**/*.py",
     "apis/**/*.py",
-    "wodles/**/*.py",
-    "integrations/**/*.py",
 ]
 line-length = 120
 indent-width = 4
@@ -40,7 +38,6 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.per-file-ignores]
-"wodles/**/*.py" = ["E402"]
 "apis/server_management/server_management_api/test/integration/env/configurations/**/*.py" = ["E402"]
 "__init__.py" = ["F401"]
 
