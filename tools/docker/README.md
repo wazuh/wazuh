@@ -1,6 +1,6 @@
 # Description
 
-**Current version: 20250130-0**
+**Current version: 20250210-0**
 
 This is a container for the develop wazuh-engine. It is based on the `ubuntu:20.04` image and contains all the necessary dependencies to run the engine.
 To connect to the container, you can use the `ssh` service. The default user is `root` and the password is `Engine123`.
@@ -20,7 +20,7 @@ Once the container is created, you will not require to build the image again unt
 First step is to build the image. You can use the following command:
 
 ``` bash
-export VERSION=20250130-0
+export VERSION=20250210-0
 docker buildx build -t engine-container:$VERSION . --no-cache
 # Tag the image as latest to use it as the default image (recommended)
 docker tag engine-container:$VERSION engine-container:latest
@@ -34,10 +34,9 @@ To check the image, you can use the `docker images` command, you should see the 
 
 ```bash
 ╰─# docker images
-
-REPOSITORY         TAG          IMAGE ID       CREATED          SIZE
-engine-container   20250130-0   8kd72xgq1m9c   42 minutes ago   12.2GB
-engine-container   latest       8kd72xgq1m9c   42 minutes ago   12.2GB
+REPOSITORY         TAG          IMAGE ID       CREATED         SIZE
+engine-container   20250210-0   7bffbbf1e002   2 minutes ago   16.2GB
+engine-container   latest       7bffbbf1e002   2 minutes ago   16.2GB
 ```
 
 ## Create the container
@@ -50,7 +49,7 @@ docker create -p 4022:22 --name engine-container engine-container:latest
 
 Alternatively, you can use a specific version of the image
 ``` bash
-export VERSION=20250130-0
+export VERSION=20250210-0
 docker create -p 4022:22 --name engine-container engine-container:$VERSION
 ```
 This command will create a container named `engine-container` and will map the port `4022` of the host to the port `22` of the container. A container is created in a stopped state.
@@ -59,8 +58,8 @@ To check the status of the container, you can use the following command:
 
 ``` bash
 ╰─# docker ps -a
-CONTAINER ID   IMAGE                     COMMAND                  CREATED         STATUS    PORTS     NAMES
-8kd72xgq1m9c   engine-container:latest   "/usr/bin/EntryPoint…"   31 seconds ago   Created             engine-container
+CONTAINER ID   IMAGE                     COMMAND                  CREATED          STATUS    PORTS     NAMES
+972f6e656920   engine-container:latest   "/usr/bin/EntryPoint…"   44 seconds ago   Created             engine-container
 ```
 
 ## Start the container
@@ -81,8 +80,8 @@ You can check the status of the container using the following command:
 
 ``` bash
 ╰─# docker ps
-CONTAINER ID   IMAGE                     COMMAND                  CREATED          STATUS          PORTS                                   NAMES
-8kd72xgq1m9c   engine-container:latest   "/usr/bin/EntryPoint…"   49 seconds ago   Up 10q seconds   0.0.0.0:4022->22/tcp, :::4022->22/tcp   engine-container
+CONTAINER ID   IMAGE                     COMMAND                  CREATED              STATUS         PORTS                                     NAMES
+972f6e656920   engine-container:latest   "/usr/bin/EntryPoint…"   About a minute ago   Up 8 seconds   0.0.0.0:4022->22/tcp, [::]:4022->22/tcp   engine-container
 ```
 
 
