@@ -53,6 +53,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "not_exists", {schemf::runtimeValidation(), builders::opfilter::notExistsBuilder});
     registry->template add<builders::OpBuilderEntry>(
+        "is_test_session", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsTestSession});
+    registry->template add<builders::OpBuilderEntry>(
         "array_contains", {schemf::isArrayToken(), builders::opfilter::opBuilderHelperContains});
     registry->template add<builders::OpBuilderEntry>(
         "array_contains_any", {schemf::isArrayToken(), builders::opfilter::opBuilderHelperContainsAny});

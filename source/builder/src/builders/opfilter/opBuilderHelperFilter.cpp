@@ -1573,4 +1573,32 @@ FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
     };
 }
 
+// <field>: +is_test_session
+FilterOp opBuilderHelperIsTestSession(const Reference& targetField,
+                                      const std::vector<OpArg>& opArgs,
+                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 0);
+
+    const auto name = buildCtx->context().opName;
+    const auto runState = buildCtx->runState();
+
+    // Tracing
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+
+    const std::string failureTrace {
+        fmt::format("[{}] -> Failure: The evaluated environment is a production environment", name)};
+
+    // Return op
+    return [failureTrace, successTrace, runState](base::ConstEvent event) -> FilterResult
+    {
+        if (runState->sandbox)
+        {
+            RETURN_SUCCESS(runState, true, successTrace);
+        }
+        RETURN_FAILURE(runState, false, failureTrace);
+    };
+}
+
 } // namespace builder::builders::opfilter

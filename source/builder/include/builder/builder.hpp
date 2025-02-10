@@ -51,7 +51,8 @@ public:
             const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
             const BuilderDeps& builderDeps);
 
-    std::shared_ptr<IPolicy> buildPolicy(const base::Name& name) const override;
+    std::shared_ptr<IPolicy>
+    buildPolicy(const base::Name& name, bool trace = false, bool sandbox = false) const override;
     base::Expression buildAsset(const base::Name& name) const override;
 
     base::OptError validateIntegration(const json::Json& json, const std::string& namespaceId) const override;
