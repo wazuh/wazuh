@@ -15,7 +15,7 @@ ENV ENGINE_BUILD=$ENGINE_SRC/build
 # Force use the specific commit of main to avoid breaking changes like:
 # - Python packages
 # - Engine configuration and CLI
-ENV ENGINE_COMMIT_ID=3e82b9d7ec6fcd2e846008a6f5ada902f1a58ee2
+ENV ENGINE_COMMIT_ID=a40f0bd8704dd9ff4232e74ebd74df8dcefc13ef
 ENV ENGINE_PRESET=release
 ENV ENGINE_ON_BACKGROUND=1
 ENV MM_LICENCE_KEY=
