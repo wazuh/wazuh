@@ -16,7 +16,6 @@
 #include "../../wcsModel/inventoryProcessHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
 #include "stringHelper.h"
-#include "timeHelper.h"
 #include <loggerHelper.h>
 
 template<typename TContext>
@@ -33,30 +32,35 @@ public:
 
     static DataHarvester<InventoryProcessHarvester> build(TContext* data)
     {
-        std::string commandLine(data->processCmdline());
-        Utils::replaceAll(commandLine, "\\", "/");
-        Utils::replaceAll(commandLine, "//", "/");
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty");
+        }
+
+        auto processId = data->processId();
+        if (processId.empty())
+        {
+            throw std::runtime_error("Process ID is empty");
+        }
 
         DataHarvester<InventoryProcessHarvester> element;
-        element.id = data->agentId();
+        element.id = agentId;
         element.id += "_";
-        element.id += data->processId();
+        element.id += processId;
         element.operation = "INSERTED";
 
-        element.data.agent.id = data->agentId();
+        element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
 
-        if (!data->processArgvs().empty())
-        {
-            element.data.process.args = Utils::split(data->processArgvs(), ' ');
-            element.data.process.args_count = element.data.process.args.size();
-        }
-        element.data.process.command_line = commandLine;
+        element.data.process.args = data->processArguments();
+        element.data.process.args_count = element.data.process.args.size();
+        element.data.process.command_line = data->processCmdline();
         element.data.process.name = data->processName();
-        element.data.process.pid = std::stoull(std::string(data->processId()));
-        element.data.process.start = Utils::rawTimestampToISO8601(data->processStart());
+        element.data.process.pid = std::stoull(std::string(processId));
+        element.data.process.start = data->processStartISO8601();
         element.data.process.ppid = data->processParentID();
 
         return element;
@@ -64,11 +68,23 @@ public:
 
     static NoDataHarvester deleteElement(TContext* data)
     {
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty");
+        }
+
+        auto processId = data->processId();
+        if (processId.empty())
+        {
+            throw std::runtime_error("Process ID is empty");
+        }
+
         NoDataHarvester element;
         element.operation = "DELETED";
-        element.id = data->agentId();
+        element.id = agentId;
         element.id += "_";
-        element.id += data->processId();
+        element.id += processId;
         return element;
     }
 };

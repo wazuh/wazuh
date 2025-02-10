@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventoryPackageHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include <stdexcept>
 
 template<typename TContext>
 class PackageElement final
@@ -30,12 +31,24 @@ public:
 
     static DataHarvester<InventoryPackageHarvester> build(TContext* data)
     {
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty, cannot upsert system element.");
+        }
+
+        auto packageItemId = data->packageItemId();
+        if (packageItemId.empty())
+        {
+            throw std::runtime_error("Package ID is empty, cannot upsert system element.");
+        }
+
         DataHarvester<InventoryPackageHarvester> element;
-        element.id = data->agentId();
+        element.id = agentId;
         element.id += "_";
-        element.id += data->packageItemId();
+        element.id += packageItemId;
         element.operation = "INSERTED";
-        element.data.agent.id = data->agentId();
+        element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
@@ -44,7 +57,7 @@ public:
         element.data.package.name = data->packageName();
         element.data.package.version = data->packageVersion();
         element.data.package.vendor = data->packageVendor();
-        element.data.package.installed = data->packageInstallTime().compare(" ") == 0 ? "" : data->packageInstallTime();
+        element.data.package.installed = data->packageInstallTime();
         element.data.package.size = data->packageSize();
         element.data.package.type = data->packageFormat();
         element.data.package.description = data->packageDescription();
@@ -55,11 +68,22 @@ public:
 
     static NoDataHarvester deleteElement(TContext* data)
     {
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty, cannot upsert system element.");
+        }
+
+        auto packageItemId = data->packageItemId();
+        if (packageItemId.empty())
+        {
+            throw std::runtime_error("Package ID is empty, cannot upsert system element.");
+        }
         NoDataHarvester element;
         element.operation = "DELETED";
-        element.id = data->agentId();
+        element.id = agentId;
         element.id += "_";
-        element.id += data->packageItemId();
+        element.id += packageItemId;
         return element;
     }
 };

@@ -14,6 +14,8 @@
 
 #include "flatbuffers/include/rsync_generated.h"
 #include "flatbuffers/include/syscollector_deltas_generated.h"
+#include "stringHelper.h"
+#include "timeHelper.h"
 #include <json.hpp>
 #include <variant>
 
@@ -257,7 +259,7 @@ public:
         return "";
     }
 
-    std::string_view packageInstallTime() const
+    std::string_view packageInstallTimeRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -938,7 +940,7 @@ public:
         return "";
     }
 
-    std::string_view processCmdline() const
+    std::string_view processCmdlineRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -960,6 +962,17 @@ public:
             return "";
         }
         return "";
+    }
+
+    std::string_view processCmdline()
+    {
+        if (m_commandLineSanitized.empty())
+        {
+            m_commandLineSanitized = processCmdlineRaw();
+            Utils::replaceAll(m_commandLineSanitized, "\\", "/");
+            Utils::replaceAll(m_commandLineSanitized, "//", "/");
+        }
+        return m_commandLineSanitized;
     }
 
     std::string_view processArgvs() const
@@ -1010,7 +1023,7 @@ public:
         return 0;
     }
 
-    uint64_t processStart() const
+    uint64_t processStartRaw() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -1032,6 +1045,38 @@ public:
             return 0;
         }
         return 0;
+    }
+
+    std::string_view processStartISO8601()
+    {
+        if (m_processStartISO8601.empty())
+        {
+            m_processStartISO8601 = Utils::rawTimestampToISO8601(static_cast<uint32_t>(processStartRaw()));
+        }
+        return m_processStartISO8601;
+    }
+
+    std::vector<std::string_view> processArguments()
+    {
+        if (m_processArguments.empty())
+        {
+            std::string_view argvs = processArgvs();
+            if (!argvs.empty())
+            {
+                m_processArguments = Utils::split(argvs, ' ');
+            }
+        }
+        return m_processArguments;
+    }
+
+    std::string_view packageInstallTime()
+    {
+        auto installTimeRaw = packageInstallTimeRaw();
+        if (installTimeRaw.compare(" ") == 0)
+        {
+            return "";
+        }
+        return installTimeRaw;
     }
 
     Operation operation() const
@@ -1060,6 +1105,11 @@ private:
     const SyscollectorDeltas::Delta* m_delta = nullptr;
     const Synchronization::SyncMsg* m_syncMsg = nullptr;
     const nlohmann::json* m_jsonData = nullptr;
+
+    std::string m_commandLineSanitized;
+    std::string m_processStartISO8601;
+    std::vector<std::string_view> m_processArguments;
+
     /**
      * @brief Scan context.
      *

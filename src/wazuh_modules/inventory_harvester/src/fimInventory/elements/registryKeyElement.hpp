@@ -32,14 +32,10 @@ public:
 
     static DataHarvester<FimRegistryInventoryHarvester> build(TContext* data)
     {
-        std::string path(data->path());
-        Utils::replaceAll(path, "\\", "/");
-        Utils::replaceAll(path, "//", "/");
-
         DataHarvester<FimRegistryInventoryHarvester> element;
         element.id = data->agentId();
         element.id += "_";
-        element.id += path;
+        element.id += data->path();
         element.operation = "INSERTED";
 
         element.data.agent.id = data->agentId();
@@ -47,29 +43,24 @@ public:
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
 
-        element.data.registry.hive = Utils::getHive(data->path());
-        element.data.registry.key = path;
-        Utils::replaceFirstView(element.data.registry.key, element.data.registry.hive, "");
+        element.data.registry.hive = data->hive();
+        element.data.registry.key = data->key();
         element.data.registry.uid = data->uid();
         element.data.registry.owner = data->userName();
         element.data.registry.gid = data->gid();
         element.data.registry.group = data->groupName();
         element.data.registry.arch = data->arch();
-        element.data.registry.mtime = Utils::rawTimestampToISO8601(data->mtime());
+        element.data.registry.mtime = data->mtimeISO8601();
         return element;
     }
 
     static NoDataHarvester deleteElement(TContext* data)
     {
-        std::string path(data->path());
-        Utils::replaceAll(path, "\\", "/");
-        Utils::replaceAll(path, "//", "/");
-
         NoDataHarvester element;
         element.operation = "DELETED";
         element.id = data->agentId();
         element.id += "_";
-        element.id += path;
+        element.id += data->path();
         return element;
     }
 };

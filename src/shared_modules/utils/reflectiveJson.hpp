@@ -58,7 +58,7 @@ static std::array<const char*, 256> ESCAPE_TABLE = []
     return table;
 }();
 
-bool needEscape(std::string_view input)
+inline bool needEscape(std::string_view input)
 {
     for (auto c : input)
     {
