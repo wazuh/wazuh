@@ -228,8 +228,7 @@ def run(args, resource_handler: rs.ResourceHandler):
     for asset_type in [type for type in updated_manifest.keys() if type in ['decoders', 'rules', 'outputs', 'filters']]:
         assets_path = ruleset_path / asset_type
         if not assets_path.exists():
-            print(f'Error: {
-                  assets_path} directory does not exist but it is declared in the integration manifest file')
+            print(f'Error: {assets_path} directory does not exist but it is declared in the integration manifest file')
             return -1
 
         added_kvdbs_paths = []
