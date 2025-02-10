@@ -4,7 +4,7 @@ We use pre-commit along with ruff to lint and format our code.
 
 This combination gives us auto-formatting on save, lint warnings and prevents us from uploading non-compliant code when committing changes.
 
-The configurations can be found at the `.pre-commit-config.yaml` and `.ruff.toml` files at the root of the repository.
+The configurations can be found at the `apis/tools/ci/.pre-commit-config.yaml` and `.ruff.toml` files.
 
 To start using them, just install the tools following the steps below.
 
