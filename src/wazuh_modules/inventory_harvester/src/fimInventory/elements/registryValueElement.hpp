@@ -31,20 +31,10 @@ public:
 
     static DataHarvester<FimRegistryInventoryHarvester> build(TContext* data)
     {
-        std::string path(data->path());
-        Utils::replaceAll(path, "\\", "/");
-        Utils::replaceAll(path, "//", "/");
-
-        std::string valueName(data->valueName());
-        Utils::replaceAll(valueName, "\\", "/");
-        Utils::replaceAll(valueName, "//", "/");
-
         DataHarvester<FimRegistryInventoryHarvester> element;
         element.id = data->agentId();
         element.id += "_";
-        element.id += path;
-        element.id += "/";
-        element.id += valueName;
+        element.id += data->path();
         element.operation = "INSERTED";
 
         element.data.agent.id = data->agentId();
@@ -52,13 +42,10 @@ public:
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
 
-        element.data.registry.hive = Utils::getHive(path);
-        element.data.registry.key = path;
-        Utils::replaceFirstView(element.data.registry.key, element.data.registry.hive, "");
-        element.data.registry.path = element.data.registry.key;
-        element.data.registry.path += "/";
-        element.data.registry.path += valueName;
-        element.data.registry.value = valueName;
+        element.data.registry.hive = data->hive();
+        element.data.registry.key = data->key();
+        element.data.registry.path = data->path();
+        element.data.registry.value = data->valueName();
 
         element.data.registry.data.hash.md5 = data->md5();
         element.data.registry.data.hash.sha1 = data->sha1();
@@ -70,21 +57,11 @@ public:
 
     static NoDataHarvester deleteElement(TContext* data)
     {
-        std::string path(data->path());
-        Utils::replaceAll(path, "\\", "/");
-        Utils::replaceAll(path, "//", "/");
-
-        std::string valueName(data->valueName());
-        Utils::replaceAll(valueName, "\\", "/");
-        Utils::replaceAll(valueName, "//", "/");
-
         NoDataHarvester element;
         element.operation = "DELETED";
         element.id = data->agentId();
         element.id += "_";
-        element.id += path;
-        element.id += "/";
-        element.id += valueName;
+        element.id += data->path();
 
         return element;
     }

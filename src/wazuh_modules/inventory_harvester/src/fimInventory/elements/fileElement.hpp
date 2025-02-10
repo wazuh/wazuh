@@ -32,15 +32,11 @@ public:
 
     static DataHarvester<FimFileInventoryHarvester> build(TContext* data)
     {
-        std::string path(data->path());
-        Utils::replaceAll(path, "\\", "/");
-        Utils::replaceAll(path, "//", "/");
-
         DataHarvester<FimFileInventoryHarvester> element;
 
         element.id = data->agentId();
         element.id += "_";
-        element.id += path;
+        element.id += data->path();
         element.operation = "INSERTED";
 
         element.data.agent.id = data->agentId();
@@ -51,29 +47,25 @@ public:
         element.data.file.hash.sha1 = data->sha1();
         element.data.file.hash.sha256 = data->sha256();
         element.data.file.hash.md5 = data->md5();
-        element.data.file.path = path;
+        element.data.file.path = data->path();
         element.data.file.gid = data->gid();
         element.data.file.group = data->groupName();
         element.data.file.uid = data->uid();
         element.data.file.owner = data->userName();
         element.data.file.size = data->size();
 
-        element.data.file.mtime = Utils::rawTimestampToISO8601(data->mtime());
+        element.data.file.mtime = data->mtimeISO8601();
 
         return element;
     }
 
     static NoDataHarvester deleteElement(TContext* data)
     {
-        std::string path(data->path());
-        Utils::replaceAll(path, "\\", "/");
-        Utils::replaceAll(path, "//", "/");
-
         NoDataHarvester element;
         element.operation = "DELETED";
         element.id = data->agentId();
         element.id += "_";
-        element.id += path;
+        element.id += data->path();
         return element;
     }
 };

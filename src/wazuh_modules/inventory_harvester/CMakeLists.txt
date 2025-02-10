@@ -35,3 +35,11 @@ set_target_properties(inventory_harvester PROPERTIES
 add_dependencies(inventory_harvester compile_schemas_input)
 
 add_subdirectory(testtool)
+
+# if(UNIT_TEST)
+  add_subdirectory(tests)
+# else()
+#   if(FSANITIZE)
+#     set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+#   endif(FSANITIZE)
+# endif(UNIT_TEST)

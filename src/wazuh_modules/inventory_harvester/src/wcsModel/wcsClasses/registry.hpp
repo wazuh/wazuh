@@ -26,10 +26,10 @@ struct Registry final
         REFLECTABLE(MAKE_FIELD("hash", &Data::hash), MAKE_FIELD("type", &Data::type));
     };
 
-    std::string key;
+    std::string_view key;
     std::string value;
     std::string hive;
-    std::string path;
+    std::string_view path;
     Data data;
     std::string_view gid;
     std::string_view group;

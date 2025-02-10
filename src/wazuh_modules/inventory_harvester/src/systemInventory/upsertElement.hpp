@@ -38,15 +38,15 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
-        if (data->originTable() == TContext::OriginTable::Os)
+        if (const auto originTable = data->originTable(); originTable == TContext::OriginTable::Os)
         {
             data->m_serializedElement = serializeToJSON(OsElement<TContext>::build(data.get()));
         }
-        else if (data->originTable() == TContext::OriginTable::Packages)
+        else if (originTable == TContext::OriginTable::Packages)
         {
             data->m_serializedElement = serializeToJSON(PackageElement<TContext>::build(data.get()));
         }
-        else if (data->originTable() == TContext::OriginTable::Processes)
+        else if (originTable == TContext::OriginTable::Processes)
         {
             data->m_serializedElement = serializeToJSON(ProcessElement<TContext>::build(data.get()));
         }
