@@ -40,7 +40,7 @@ jobs:
           cp ../wazuh.zip src/winagent/wazuh.zip
       # Upload build artifacts.
       - name: Upload Artifact winagent
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: winagent
           path: src/winagent
@@ -61,7 +61,7 @@ jobs:
           architecture: x64
       # Download the compressed winagent build.
       - name: Download Artifact winagent
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: winagent
           path: C:\winagent\
