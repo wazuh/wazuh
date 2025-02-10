@@ -3,12 +3,11 @@ from logging import getLogger
 from typing import AsyncIterator
 
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
-
 from wazuh.core.common import ENGINE_SOCKET
+from wazuh.core.config.client import CentralizedConfig
 from wazuh.core.engine.events import EventsModule
 from wazuh.core.engine.vulnerability import VulnerabilityModule
 from wazuh.core.exception import WazuhEngineError
-from wazuh.core.config.client import CentralizedConfig
 
 logger = getLogger('wazuh')
 
@@ -47,7 +46,7 @@ async def get_engine_client() -> AsyncIterator[Engine]:
     client = Engine(
         socket_path=engine_config.client.api_socket_path,
         timeout=engine_config.client.timeout,
-        retries=engine_config.client.retries
+        retries=engine_config.client.retries,
     )
 
     try:

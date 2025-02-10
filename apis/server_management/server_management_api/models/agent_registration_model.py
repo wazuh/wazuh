@@ -5,6 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from __future__ import absolute_import
+
 from datetime import date, datetime  # noqa: F401
 from typing import Dict, List  # noqa: F401
 
@@ -16,16 +17,10 @@ KEY_LENGTH = 32
 
 
 class DisconnectedTime(Model):
-    def __init__(self, enabled=True, value="1h"):
-        self.swagger_types = {
-            'enabled': bool,
-            'value': str
-        }
+    def __init__(self, enabled=True, value='1h'):
+        self.swagger_types = {'enabled': bool, 'value': str}
 
-        self.attribute_map = {
-            'enabled': 'enabled',
-            'value': 'value'
-        }
+        self.attribute_map = {'enabled': 'enabled', 'value': 'value'}
 
         self._enabled = enabled
         self._value = value
@@ -48,17 +43,13 @@ class DisconnectedTime(Model):
 
 
 class AgentForce(Model):
-    def __init__(self, enabled=True, disconnected_time=None, after_registration_time="1h"):
-        self.swagger_types = {
-            'enabled': bool,
-            'disconnected_time': DisconnectedTime,
-            'after_registration_time': str
-        }
+    def __init__(self, enabled=True, disconnected_time=None, after_registration_time='1h'):
+        self.swagger_types = {'enabled': bool, 'disconnected_time': DisconnectedTime, 'after_registration_time': str}
 
         self.attribute_map = {
             'enabled': 'enabled',
             'disconnected_time': 'disconnected_time',
-            'after_registration_time': 'after_registration_time'
+            'after_registration_time': 'after_registration_time',
         }
 
         self._enabled = enabled
@@ -94,17 +85,9 @@ class OS(Model):
     """Agent OS model."""
 
     def __init__(self, name: str = None, type: str = None, version: str = None):
-        self.swagger_types = {
-            'name': str,
-            'type': str,
-            'version': str
-        }
+        self.swagger_types = {'name': str, 'type': str, 'version': str}
 
-        self.attribute_map = {
-            'name': 'name',
-            'type': 'type',
-            'version': 'version'
-        }
+        self.attribute_map = {'name': 'name', 'type': 'type', 'version': 'version'}
 
         self._name = name
         self._type = type

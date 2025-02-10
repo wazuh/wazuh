@@ -1,24 +1,30 @@
 from dataclasses import asdict
 from unittest import mock
 
+import pytest
 from opensearchpy import exceptions
 from opensearchpy.helpers.response import Hit
-import pytest
-
 from wazuh.core.exception import WazuhError
+from wazuh.core.indexer.base import POST_METHOD, IndexerKey
 from wazuh.core.indexer.commands import (
-    CommandsManager,
-    create_restart_command,
     COMMAND_KEY,
     COMMAND_USER_NAME,
+    CommandsManager,
+    create_fetch_config_command,
+    create_restart_command,
     create_set_group_command,
-    create_fetch_config_command
 )
-from wazuh.core.indexer.base import POST_METHOD, IndexerKey
-from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.indexer.models.commands import (
-    Action, Command, Source, Status, Target, TargetType, CreateCommandResponse, ResponseResult
+    Action,
+    Command,
+    CreateCommandResponse,
+    ResponseResult,
+    Source,
+    Status,
+    Target,
+    TargetType,
 )
+from wazuh.core.indexer.utils import convert_enums
 
 
 class TestCommandsManager:
@@ -41,9 +47,9 @@ class TestCommandsManager:
                 {IndexerKey._ID: 'pBjePGfvgm'},
                 {IndexerKey._ID: 'mp2Xymz6F3'},
                 {IndexerKey._ID: 'aYsJYUEmVk'},
-                {IndexerKey._ID: 'QTjrFfpoIS'}
+                {IndexerKey._ID: 'QTjrFfpoIS'},
             ],
-            IndexerKey.RESULT: ResponseResult.CREATED
+            IndexerKey.RESULT: ResponseResult.CREATED,
         }
         client_mock.transport.perform_request.return_value = return_value
 
@@ -65,10 +71,7 @@ class TestCommandsManager:
         assert response.document_ids == document_ids
         assert response.result == return_value.get(IndexerKey.RESULT)
 
-    @pytest.mark.parametrize("exc", [
-        exceptions.RequestError,
-        exceptions.TransportError
-    ])
+    @pytest.mark.parametrize('exc', [exceptions.RequestError, exceptions.TransportError])
     async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock, exc):
         """Check the error handling of the `create` method."""
         client_mock.transport.perform_request.side_effect = exc(400, 'error')
@@ -78,16 +81,11 @@ class TestCommandsManager:
     async def test_get_commands(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `get_commands` method."""
         document_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
-        search_result = {'_hits': [
-            Hit({
-                IndexerKey._ID: document_id,
-                IndexerKey._SOURCE: {
-                    COMMAND_KEY: {
-                        'source': Source.SERVICES
-                    }
-                }
-            })
-        ]}
+        search_result = {
+            '_hits': [
+                Hit({IndexerKey._ID: document_id, IndexerKey._SOURCE: {COMMAND_KEY: {'source': Source.SERVICES}}})
+            ]
+        }
         client_mock.search.return_value = search_result
         expected_result = [Command(document_id=document_id, source=Source.SERVICES)]
 
@@ -95,13 +93,7 @@ class TestCommandsManager:
 
         query = {
             IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.FILTER: [
-                        {
-                            IndexerKey.TERM: {'command.status': Status.PENDING}
-                        }
-                    ]
-                }
+                IndexerKey.BOOL: {IndexerKey.FILTER: [{IndexerKey.TERM: {'command.status': Status.PENDING}}]}
             }
         }
         client_mock.search.assert_called_once_with(index=[index_instance.INDEX], body=query)
@@ -116,21 +108,13 @@ class TestCommandsManager:
 
         query = {
             IndexerKey.QUERY: {
-                IndexerKey.BOOL: {
-                    IndexerKey.FILTER: [{
-                        IndexerKey.TERMS: {
-                            'command.order_id': order_ids
-                        }
-                    }]
-                }
+                IndexerKey.BOOL: {IndexerKey.FILTER: [{IndexerKey.TERMS: {'command.order_id': order_ids}}]}
             },
             'script': {
                 'source': CommandsManager.UPDATE_STATUS_SCRIPT,
                 'lang': 'painless',
-                'params': {
-                    'status': status
-                }
-            }
+                'params': {'status': status},
+            },
         }
         client_mock.update_by_query.assert_called_once_with(index=[index_instance.INDEX], body=query)
 
@@ -144,12 +128,9 @@ def test_create_restart_command():
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='restart',
-            version='5.0.0'
-        ),
+        action=Action(name='restart', version='5.0.0'),
         user=COMMAND_USER_NAME,
-        timeout=100
+        timeout=100,
     )
 
     command = create_restart_command(agent_id=agent_id)
@@ -168,15 +149,9 @@ def test_create_set_group_command():
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='set-group',
-            args={
-                'groups': groups
-            },
-            version='5.0.0'
-        ),
+        action=Action(name='set-group', args={'groups': groups}, version='5.0.0'),
         user=COMMAND_USER_NAME,
-        timeout=100
+        timeout=100,
     )
 
     command = create_set_group_command(agent_id=agent_id, groups=groups)
@@ -194,13 +169,9 @@ def test_create_fetch_config_command():
             type=TargetType.AGENT,
             id=agent_id,
         ),
-        action=Action(
-            name='fetch-config',
-            version='5.0.0',
-            args={}
-        ),
+        action=Action(name='fetch-config', version='5.0.0', args={}),
         user=COMMAND_USER_NAME,
-        timeout=100
+        timeout=100,
     )
 
     command = create_fetch_config_command(agent_id=agent_id)

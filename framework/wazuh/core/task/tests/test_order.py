@@ -1,14 +1,12 @@
-import asyncio
 from dataclasses import asdict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
 from wazuh.core import common
 from wazuh.core.engine.base import APPLICATION_JSON
 from wazuh.core.exception import WazuhIndexerError
-from wazuh.core.indexer.models.commands import Command, Target, TargetType, Source, Status
+from wazuh.core.indexer.models.commands import Command, Source, Status, Target, TargetType
 from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.task.order import get_orders
 
@@ -18,7 +16,7 @@ from wazuh.core.task.order import get_orders
     (
         [{'commands': [{'order_id': 'test'}]}, True],
         [{'commands': []}, False],
-    )
+    ),
 )
 @pytest.mark.parametrize('status_code,log_error', ([200, False], (400, True)))
 @pytest.mark.parametrize('pending_commands', [True, False])
@@ -37,30 +35,32 @@ async def test_get_orders(
     status_code,
     log_error,
     comms_api_response,
-    update_command
+    update_command,
 ):
     """Check the correct functionality of the `get_orders` function."""
-    commands_list = [
-        Command(
-            document_id='test',
-            request_id='test',
-            order_id='test',
-            source=Source.SERVICES.value,
-            user='test',
-            target=Target(id='test', type=TargetType.AGENT.value),
-            timeout=1,
-            status=Status.PENDING
-        )
-    ] if pending_commands else []
+    commands_list = (
+        [
+            Command(
+                document_id='test',
+                request_id='test',
+                order_id='test',
+                source=Source.SERVICES.value,
+                user='test',
+                target=Target(id='test', type=TargetType.AGENT.value),
+                timeout=1,
+                status=Status.PENDING,
+            )
+        ]
+        if pending_commands
+        else []
+    )
 
     get_commands_mock = AsyncMock(return_value=commands_list)
     update_commands_status_mock = AsyncMock()
     create_indexer_mock.return_value.commands_manager.get_commands = get_commands_mock
     create_indexer_mock.return_value.commands_manager.update_commands_status = update_commands_status_mock
 
-    client_mock.return_value = MagicMock(
-        **{'status_code': status_code, 'json.return_value': comms_api_response}
-    )
+    client_mock.return_value = MagicMock(**{'status_code': status_code, 'json.return_value': comms_api_response})
 
     sleep_mock.side_effect = (None, StopAsyncIteration)
     logger_mock = MagicMock()
@@ -74,14 +74,14 @@ async def test_get_orders(
     if pending_commands:
         client_mock.assert_called_with(
             url='http://localhost/api/v1/commands',
-            json={"commands": [asdict(command, dict_factory=convert_enums) for command in commands_list]},
-            headers={'Accept': APPLICATION_JSON, 'Content-Type': APPLICATION_JSON}
+            json={'commands': [asdict(command, dict_factory=convert_enums) for command in commands_list]},
+            headers={'Accept': APPLICATION_JSON, 'Content-Type': APPLICATION_JSON},
         )
     else:
         client_mock.assert_not_called()
 
     if log_error and pending_commands:
-        logger_mock.error.assert_called_with(f"Post orders failed: 400 - {comms_api_response}")
+        logger_mock.error.assert_called_with(f'Post orders failed: 400 - {comms_api_response}')
     else:
         logger_mock.error.assert_not_called()
 
@@ -92,11 +92,14 @@ async def test_get_orders(
             update_commands_status_mock.assert_not_called()
 
 
-@pytest.mark.parametrize('exception, message', [
-    (httpx.ConnectError, 'Connection error'),
-    (httpx.TimeoutException, 'Timeout error'),
-    (WazuhIndexerError, 2200),
-])
+@pytest.mark.parametrize(
+    'exception, message',
+    [
+        (httpx.ConnectError, 'Connection error'),
+        (httpx.TimeoutException, 'Timeout error'),
+        (WazuhIndexerError, 2200),
+    ],
+)
 @patch('wazuh.core.task.order.httpx.AsyncClient.post')
 @patch('wazuh.core.task.order.httpx.AsyncHTTPTransport')
 @patch('asyncio.sleep')
@@ -115,7 +118,7 @@ async def test_get_orders_ko(
             user='test',
             target=Target(id='test', type=TargetType.AGENT),
             timeout=1,
-            status=Status.PENDING
+            status=Status.PENDING,
         )
     ]
     commands_mock = AsyncMock(return_value=commands_list)

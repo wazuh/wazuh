@@ -14,6 +14,7 @@ class BatcherClient:
         The frequency, in seconds, at which the client checks for responses in the queue.
         Defaults to 0.1 seconds.
     """
+
     def __init__(self, queue: MuxDemuxQueue, wait_frequency: float = 0.05):
         self.queue = queue
         self.wait_frequency = wait_frequency

@@ -1,0 +1,10 @@
+exclude: '^src/|^tools/|^tests/'
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Run linter
+      - id: ruff
+        args: [ --fix ]
+      # Run formatter
+      - id: ruff-format

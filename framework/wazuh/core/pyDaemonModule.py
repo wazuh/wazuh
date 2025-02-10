@@ -3,12 +3,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-import psutil
 import os
 import re
 from os import path
 from pathlib import Path
 
+import psutil
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
 

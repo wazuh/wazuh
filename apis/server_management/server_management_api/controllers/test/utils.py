@@ -6,12 +6,11 @@ from wazuh.core.results import AffectedItemsWazuhResult
 
 
 class CustomAffectedItems(AffectedItemsWazuhResult):
-    """Mock custom values that are needed in controller tests"""
+    """Mock custom values that are needed in controller tests."""
 
     def __init__(self, empty: bool = False):
         if not empty:
-            super().__init__(dikt={'dikt_key': 'dikt_value'},
-                             affected_items=[{'id': '001'}])
+            super().__init__(dikt={'dikt_key': 'dikt_value'}, affected_items=[{'id': '001'}])
         else:
             super().__init__()
 

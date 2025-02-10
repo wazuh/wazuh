@@ -1,5 +1,4 @@
 from dataclasses import asdict
-
 from unittest import mock
 
 from wazuh.core.indexer.base import BaseIndex, remove_empty_values
@@ -19,7 +18,7 @@ def test_remove_empty_values():
     d = {'key': None, 'key2': 1}
     expected = {'key2': 1}
     result = remove_empty_values(d.items())
-   
+
     assert result == expected
 
 

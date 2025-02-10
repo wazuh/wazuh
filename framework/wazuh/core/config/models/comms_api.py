@@ -1,9 +1,8 @@
-from pydantic import PositiveInt, PositiveFloat
-
+from pydantic import PositiveFloat, PositiveInt
 from server_management_api.constants import API_CERT_PATH, API_KEY_PATH
 from wazuh.core.config.models.base import WazuhConfigBaseModel
-from wazuh.core.config.models.ssl_config import APISSLConfig
 from wazuh.core.config.models.logging import APILoggingConfig
+from wazuh.core.config.models.ssl_config import APISSLConfig
 
 
 class BatcherConfig(WazuhConfigBaseModel):
@@ -18,6 +17,7 @@ class BatcherConfig(WazuhConfigBaseModel):
     wait_time : PositiveFloat
         The time in seconds to wait before sending the batch. Default: 0.15.
     """
+
     max_elements: PositiveInt = 5
     max_size: PositiveInt = 3000
     wait_time: PositiveFloat = 0.15
@@ -43,14 +43,11 @@ class CommsAPIConfig(WazuhConfigBaseModel):
     ssl : APISSLConfig
         SSL configuration for the communications API. Default is an instance of APISSLConfig.
     """
-    host: str = "localhost"
+
+    host: str = 'localhost'
     port: PositiveInt = 27000
     workers: PositiveInt = 4
 
     logging: APILoggingConfig = APILoggingConfig()
     batcher: BatcherConfig = BatcherConfig()
-    ssl: APISSLConfig = APISSLConfig(
-        key=API_KEY_PATH.as_posix(),
-        cert=API_CERT_PATH.as_posix(),
-        ssl_ciphers=""
-    )
+    ssl: APISSLConfig = APISSLConfig(key=API_KEY_PATH.as_posix(), cert=API_CERT_PATH.as_posix(), ssl_ciphers='')

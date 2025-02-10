@@ -1,15 +1,14 @@
-import uvicorn
-from fastapi import APIRouter, FastAPI
 from threading import Thread
 from typing import Any
 
-from wazuh.core.cluster.unix_server.config import get_config
+import uvicorn
+from fastapi import APIRouter, FastAPI
 from wazuh.core import common
+from wazuh.core.cluster.unix_server.config import get_config
 
 
 def get_log_config(node: str) -> dict[str, Any]:
-    """
-    Generate a logging configuration with a consistent format.
+    """Generate a logging configuration with a consistent format.
 
     Parameters
     ----------
@@ -41,7 +40,9 @@ def start_unix_server(node: str):
     app.include_router(router)
 
     log_config = get_log_config(node=node)
-    t = Thread(target=uvicorn.run,
-               kwargs={'app': app, 'uds': common.CONFIG_SERVER_SOCKET_PATH, 'log_config': log_config},
-               daemon=True)
+    t = Thread(
+        target=uvicorn.run,
+        kwargs={'app': app, 'uds': common.CONFIG_SERVER_SOCKET_PATH, 'log_config': log_config},
+        daemon=True,
+    )
     t.start()

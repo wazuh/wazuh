@@ -9,7 +9,6 @@ from wazuh.core.InputValidator import InputValidator
 
 
 class TestInputValidator(TestCase):
-
     def test_check_name(self):
         result = InputValidator().check_name('test')
         self.assertEqual(result, True)

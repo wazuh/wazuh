@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import os
-from dataclasses import asdict, dataclass, InitVar
+from dataclasses import InitVar, asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from hmac import compare_digest
@@ -44,6 +44,7 @@ def _hash_key(key: str, salt: bytes) -> str:
 
 class Status(str, Enum):
     """Agent connection status enum."""
+
     ACTIVE = 'active'
     DISCONNECTED = 'disconnected'
     NEVER_CONNECTED = 'never_connected'
@@ -52,6 +53,7 @@ class Status(str, Enum):
 @dataclass
 class OS:
     """Agent operating system information."""
+
     name: str = None
     type: str = None
     version: str = None
@@ -60,6 +62,7 @@ class OS:
 @dataclass
 class Host:
     """Agent host information."""
+
     architecture: str = None
     hostname: str = None
     ip: List[str] = None

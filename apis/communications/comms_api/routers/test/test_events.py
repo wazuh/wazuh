@@ -1,14 +1,14 @@
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Request, status
 from fastapi.applications import FastAPI
+from wazuh.core.exception import WazuhEngineError, WazuhError
+from wazuh.core.indexer.models.events import FIM_INDEX, TaskResult
 
 from comms_api.models.events import StatefulEventsResponse
 from comms_api.routers.events import post_stateful_events, post_stateless_events
 from comms_api.routers.exceptions import HTTPError
-from wazuh.core.exception import WazuhEngineError, WazuhError
-from wazuh.core.indexer.models.events import TaskResult, FIM_INDEX
 
 
 @pytest.mark.asyncio
@@ -16,10 +16,7 @@ from wazuh.core.indexer.models.events import TaskResult, FIM_INDEX
 @patch('comms_api.routers.events.parse_stateful_events')
 async def test_post_stateful_events(parse_stateful_events_mock, send_stateful_events_mock):
     """Verify that the `post_stateful_events` handler works as expected."""
-    request = Request(scope={
-        'type': 'http',
-        'app': FastAPI()
-    })
+    request = Request(scope={'type': 'http', 'app': FastAPI()})
     request.app.state.batcher_queue = AsyncMock()
 
     results = [TaskResult(index=FIM_INDEX, id='123', result='created', status=201)]
@@ -69,5 +66,5 @@ async def test_post_stateless_events_ko():
     exception = WazuhEngineError(2802)
 
     with patch('comms_api.routers.events.send_stateless_events', MagicMock(side_effect=exception)):
-        with pytest.raises(HTTPError, match=fr'{exception.code}: {exception.message}'):
+        with pytest.raises(HTTPError, match=rf'{exception.code}: {exception.message}'):
             _ = await post_stateless_events(MagicMock())

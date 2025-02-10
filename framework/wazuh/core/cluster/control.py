@@ -2,19 +2,28 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from typing import List
 import json
 
 from wazuh import WazuhInternalError
 from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
-from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
+from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 from wazuh.core.utils import filter_array_by_query
 
 
-async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.DATABASE_LIMIT,
-                    sort=None, search=None, select=None, filter_type='all', q='', distinct: bool = False):
+async def get_nodes(
+    lc: local_client.LocalClient,
+    filter_node=None,
+    offset=0,
+    limit=common.DATABASE_LIMIT,
+    sort=None,
+    search=None,
+    select=None,
+    filter_type='all',
+    q='',
+    distinct: bool = False,
+):
     """Get basic information of each of the cluster nodes.
 
     Parameters
@@ -47,11 +56,27 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
     """
     if q:
         # If exists q parameter, apply limit and offset after filtering by q.
-        arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.DATABASE_LIMIT, 'sort': sort,
-                     'search': search, 'select': select, 'filter_type': filter_type, 'distinct': distinct}
+        arguments = {
+            'filter_node': filter_node,
+            'offset': 0,
+            'limit': common.DATABASE_LIMIT,
+            'sort': sort,
+            'search': search,
+            'select': select,
+            'filter_type': filter_type,
+            'distinct': distinct,
+        }
     else:
-        arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
-                     'select': select, 'filter_type': filter_type, 'distinct': distinct}
+        arguments = {
+            'filter_node': filter_node,
+            'offset': offset,
+            'limit': limit,
+            'sort': sort,
+            'search': search,
+            'select': select,
+            'filter_type': filter_type,
+            'distinct': distinct,
+        }
 
     response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode())
     result = json.loads(response, object_hook=as_wazuh_object)
@@ -64,7 +89,7 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
         # Get totalItems after applying q filter.
         result['totalItems'] = len(result['items'])
         # Apply offset and limit filters.
-        result['items'] = result['items'][offset:offset + limit]
+        result['items'] = result['items'][offset : offset + limit]
 
     return result
 
@@ -86,8 +111,15 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     result : dict
         Data of the node.
     """
-    arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.DATABASE_LIMIT, 'sort': None, 'search': None,
-                 'select': select, 'filter_type': 'all'}
+    arguments = {
+        'filter_node': filter_node,
+        'offset': 0,
+        'limit': common.DATABASE_LIMIT,
+        'sort': None,
+        'search': None,
+        'select': select,
+        'filter_type': 'all',
+    }
 
     response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode())
     node_info_array = json.loads(response, object_hook=as_wazuh_object)
@@ -142,19 +174,20 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
     result : dict
         Agent's basic information.
     """
-    filter_status = ["all"] if not filter_status else filter_status
-    filter_node = ["all"] if not filter_node else filter_node
+    filter_status = ['all'] if not filter_status else filter_status
+    filter_node = ['all'] if not filter_node else filter_node
     select_fields = {'id', 'ip', 'name', 'status', 'node_name', 'version'}
 
-    input_json = {'f': Agent.get_agents_overview,
-                  'f_kwargs': {
-                      'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
-                      'limit': None,
-                      'select': list(select_fields)
-                  },
-                  'from_cluster': False,
-                  'wait_for_complete': False
-                  }
+    input_json = {
+        'f': Agent.get_agents_overview,
+        'f_kwargs': {
+            'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
+            'limit': None,
+            'select': list(select_fields),
+        },
+        'from_cluster': False,
+        'wait_for_complete': False,
+    }
 
     response = await lc.execute(command=b'dapi', data=json.dumps(input_json, cls=WazuhJSONEncoder).encode())
     result = json.loads(response, object_hook=as_wazuh_object)

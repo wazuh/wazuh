@@ -2,20 +2,16 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
+from wazuh.core.config.models.ssl_config import APISSLConfig, IndexerSSLConfig, SSLConfig, SSLProtocol
 
-from wazuh.core.config.models.ssl_config import SSLConfig, IndexerSSLConfig, SSLProtocol, APISSLConfig
 
-
-@pytest.mark.parametrize('init_values,expected', [
-    (
-        {'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example'},
-        ''
-    ),
-    (
-        {'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'keyfile_password': 'example'},
-        'example'
-    )
-])
+@pytest.mark.parametrize(
+    'init_values,expected',
+    [
+        ({'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example'}, ''),
+        ({'key': 'key_example', 'cert': 'cert_example', 'ca': 'ca_example', 'keyfile_password': 'example'}, 'example'),
+    ],
+)
 @patch('os.path.isfile', return_value=True)
 def test_ssl_config_default_values(file_exists_mock, init_values, expected):
     """Check the correct initialization of the `SSLConfig` class."""
@@ -24,27 +20,57 @@ def test_ssl_config_default_values(file_exists_mock, init_values, expected):
     assert ssl_config.keyfile_password == expected
 
 
-@pytest.mark.parametrize('init_values', [
-    {},
-    {'key': 'key_example'},
-    {'key': 'key_example', 'cert': 'cert_example'},
-])
+@pytest.mark.parametrize(
+    'init_values',
+    [
+        {},
+        {'key': 'key_example'},
+        {'key': 'key_example', 'cert': 'cert_example'},
+    ],
+)
 def test_ssl_config_fails_without_values(init_values):
-    'Check the correct behavior of the `SSLConfig` class validations.'
+    """Check the correct behavior of the `SSLConfig` class validations."""
     with pytest.raises(ValidationError):
         _ = SSLConfig(**init_values)
 
 
-@pytest.mark.parametrize('init_values,expected', [
-    (
-        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': False},
-        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': False}
-    ),
-    (
-        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': True},
-        {'use_ssl': True, 'key': 'key_example', 'certificate': 'cert_example', 'certificate_authorities': ['ca_example'], 'verify_certificates': True}
-    )
-])
+@pytest.mark.parametrize(
+    'init_values,expected',
+    [
+        (
+            {
+                'use_ssl': True,
+                'key': 'key_example',
+                'certificate': 'cert_example',
+                'certificate_authorities': ['ca_example'],
+                'verify_certificates': False,
+            },
+            {
+                'use_ssl': True,
+                'key': 'key_example',
+                'certificate': 'cert_example',
+                'certificate_authorities': ['ca_example'],
+                'verify_certificates': False,
+            },
+        ),
+        (
+            {
+                'use_ssl': True,
+                'key': 'key_example',
+                'certificate': 'cert_example',
+                'certificate_authorities': ['ca_example'],
+                'verify_certificates': True,
+            },
+            {
+                'use_ssl': True,
+                'key': 'key_example',
+                'certificate': 'cert_example',
+                'certificate_authorities': ['ca_example'],
+                'verify_certificates': True,
+            },
+        ),
+    ],
+)
 @patch('os.path.isfile', return_value=True)
 def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expected):
     """Check the correct initialization of the `IndexerSSLConfig` class."""
@@ -58,28 +84,44 @@ def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expect
     assert ssl_config.verify_certificates == expected['verify_certificates']
 
 
-@pytest.mark.parametrize('init_values,expected', [
-    (
-        {'key': 'key_example', 'cert': 'cert_example'},
-        {'use_ca': False, 'ca': '', 'ssl_protocol': SSLProtocol.auto, 'ssl_ciphers': ''}
-    ),
-    (
-        {'key': 'key_example', 'cert': 'cert_example', 'use_ca': True},
-        {'use_ca': True, 'ca': '', 'ssl_protocol': SSLProtocol.auto, 'ssl_ciphers': ''}
-    ),
-    (
-        {'key': 'key_example', 'cert': 'cert_example', 'use_ca': True, 'ca': 'ca_example'},
-        {'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.auto, 'ssl_ciphers': ''}
-    ),
-    (
-        {'key': 'key_example', 'cert': 'cert_example', 'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.tls},
-        {'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.tls, 'ssl_ciphers': ''}
-    ),
-    (
-        {'key': 'key_example', 'cert': 'cert_example', 'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.tls, 'ssl_ciphers': 'cipher_example'},
-        {'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.tls, 'ssl_ciphers': 'cipher_example'}
-    )
-])
+@pytest.mark.parametrize(
+    'init_values,expected',
+    [
+        (
+            {'key': 'key_example', 'cert': 'cert_example'},
+            {'use_ca': False, 'ca': '', 'ssl_protocol': SSLProtocol.auto, 'ssl_ciphers': ''},
+        ),
+        (
+            {'key': 'key_example', 'cert': 'cert_example', 'use_ca': True},
+            {'use_ca': True, 'ca': '', 'ssl_protocol': SSLProtocol.auto, 'ssl_ciphers': ''},
+        ),
+        (
+            {'key': 'key_example', 'cert': 'cert_example', 'use_ca': True, 'ca': 'ca_example'},
+            {'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.auto, 'ssl_ciphers': ''},
+        ),
+        (
+            {
+                'key': 'key_example',
+                'cert': 'cert_example',
+                'use_ca': True,
+                'ca': 'ca_example',
+                'ssl_protocol': SSLProtocol.tls,
+            },
+            {'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.tls, 'ssl_ciphers': ''},
+        ),
+        (
+            {
+                'key': 'key_example',
+                'cert': 'cert_example',
+                'use_ca': True,
+                'ca': 'ca_example',
+                'ssl_protocol': SSLProtocol.tls,
+                'ssl_ciphers': 'cipher_example',
+            },
+            {'use_ca': True, 'ca': 'ca_example', 'ssl_protocol': SSLProtocol.tls, 'ssl_ciphers': 'cipher_example'},
+        ),
+    ],
+)
 @patch('os.path.isfile', return_value=True)
 def test_api_ssl_config_default_values(isfile_mock, init_values, expected):
     """Check the correct initialization of the `APISSLConfig` class."""
@@ -91,11 +133,7 @@ def test_api_ssl_config_default_values(isfile_mock, init_values, expected):
     assert ssl_config.ssl_ciphers == expected['ssl_ciphers']
 
 
-@pytest.mark.parametrize('init_values', [
-    {},
-    {'key': 'key_example'},
-    {'cert': 'cert_example'}
-])
+@pytest.mark.parametrize('init_values', [{}, {'key': 'key_example'}, {'cert': 'cert_example'}])
 def test_api_ssl_config_fails_without_values(init_values):
     """Check the correct behavior of the `APISSLConfig` class validations."""
     with pytest.raises(ValidationError):

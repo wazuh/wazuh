@@ -11,11 +11,10 @@ import logging
 import ssl
 import traceback
 from time import perf_counter
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 from uuid import uuid4
 
 import uvloop
-
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
@@ -23,12 +22,16 @@ from wazuh.core.config.models.server import ServerConfig
 
 
 class AbstractServerHandler(c_common.Handler):
-    """
-    Define abstract server protocol. Handle communication with a single client.
-    """
+    """Define abstract server protocol. Handle communication with a single client."""
 
-    def __init__(self, server, loop: asyncio.AbstractEventLoop,
-                 server_config: ServerConfig, logger: logging.Logger = None, tag: str = "Client"):
+    def __init__(
+        self,
+        server,
+        loop: asyncio.AbstractEventLoop,
+        server_config: ServerConfig,
+        logger: logging.Logger = None,
+        tag: str = 'Client',
+    ):
         """Class constructor.
 
         Parameters
@@ -44,7 +47,7 @@ class AbstractServerHandler(c_common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}", server_config=server_config)
+        super().__init__(logger=logger, tag=f'{tag} {str(uuid4().hex[:8])}', server_config=server_config)
         self.server = server
         self.loop = loop
         self.last_keepalive = utils.get_utc_now().timestamp()
@@ -96,7 +99,7 @@ class AbstractServerHandler(c_common.Handler):
         bytes
             Response message.
         """
-        if command == b"echo-c":
+        if command == b'echo-c':
             return self.echo_master(data)
         elif command == b'hello':
             return self.hello(data)
@@ -165,7 +168,7 @@ class AbstractServerHandler(c_common.Handler):
             Result message.
         """
         if command == b'ok-c':
-            return b"Successful response from client: " + payload
+            return b'Successful response from client: ' + payload
         else:
             return super().process_response(command, payload)
 
@@ -181,19 +184,25 @@ class AbstractServerHandler(c_common.Handler):
         """
         if self.name:
             if exc is None:
-                self.logger.debug(f"Disconnected {self.name}.")
+                self.logger.debug(f'Disconnected {self.name}.')
             else:
-                self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
-                                  f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
+                self.logger.error(
+                    f"Error during connection with '{self.name}': {exc}.\n"
+                    f"{''.join(traceback.format_tb(exc.__traceback__))}",
+                    exc_info=False,
+                )
             if self.name in self.server.clients:
                 del self.server.clients[self.name]
             for task in self.handler_tasks:
                 task.cancel()
         elif exc is not None:
-            self.logger.error(f"Error during handshake with incoming connection: {exc}. \n"
-                              f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
+            self.logger.error(
+                f"Error during handshake with incoming connection: {exc}. \n"
+                f"{''.join(traceback.format_tb(exc.__traceback__))}",
+                exc_info=False,
+            )
         else:
-            self.logger.error("Error during handshake with incoming connection.", exc_info=False)
+            self.logger.error('Error during handshake with incoming connection.', exc_info=False)
 
     def add_request(self, broadcast_id, f, *args, **kwargs):
         """Add a request to the queue to execute a function in this server handler.
@@ -239,14 +248,18 @@ class AbstractServerHandler(c_common.Handler):
 
 
 class AbstractServer:
-    """
-    Define an asynchronous server. Handle connections from all clients.
-    """
+    """Define an asynchronous server. Handle connections from all clients."""
 
     NO_RESULT = 'no_result'
 
-    def __init__(self, performance_test: int, concurrency_test: int, server_config: ServerConfig,
-                 logger: logging.Logger = None, tag: str = "Abstract Server"):
+    def __init__(
+        self,
+        performance_test: int,
+        concurrency_test: int,
+        server_config: ServerConfig,
+        logger: logging.Logger = None,
+        tag: str = 'Abstract Server',
+    ):
         """Class constructor.
 
         Parameters
@@ -397,9 +410,17 @@ class AbstractServer:
         task_logger.addFilter(ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
-    def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                            sort: Dict = None, search: Dict = None, select: Dict = None,
-                            filter_type: str = 'all', distinct: bool = False) -> Dict:
+    def get_connected_nodes(
+        self,
+        filter_node: str = None,
+        offset: int = 0,
+        limit: int = common.DATABASE_LIMIT,
+        sort: Dict = None,
+        search: Dict = None,
+        select: Dict = None,
+        filter_type: str = 'all',
+        distinct: bool = False,
+    ) -> Dict:
         """Get all connected nodes, including the master node.
 
         Parameters
@@ -441,15 +462,19 @@ class AbstractServer:
                 Whether the node must be added to the result or not.
             """
             return (filter_node is None or node_info['name'] in filter_node) and (
-                        filter_type == 'all' or node_info['type'] == filter_type)
+                filter_type == 'all' or node_info['type'] == filter_type
+            )
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
             select = default_fields
         else:
             if not set(select).issubset(default_fields):
-                raise exception.WazuhError(1724, extra_message=', '.join(set(select) - default_fields),
-                                           extra_remediation=', '.join(default_fields))
+                raise exception.WazuhError(
+                    1724,
+                    extra_message=', '.join(set(select) - default_fields),
+                    extra_remediation=', '.join(default_fields),
+                )
 
         if filter_type != 'all' and filter_type not in {'worker', 'master'}:
             raise exception.WazuhError(1728)
@@ -459,18 +484,23 @@ class AbstractServer:
             if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.server_config.node.name]))):
                 raise exception.WazuhResourceNotFound(1730)
 
-        res = [val.to_dict()['info'] for val in itertools.chain([self], self.clients.values())
-               if return_node(val.to_dict()['info'])]
+        res = [
+            val.to_dict()['info']
+            for val in itertools.chain([self], self.clients.values())
+            if return_node(val.to_dict()['info'])
+        ]
 
-        return utils.process_array([{k: v[k] for k in select} for v in res],
-                                   search_text=search['value'] if search is not None else None,
-                                   complementary_search=search['negation'] if search is not None else False,
-                                   sort_by=sort['fields'] if sort is not None else None,
-                                   sort_ascending=False if sort is not None and sort['order'] == 'desc' else True,
-                                   allowed_sort_fields=default_fields,
-                                   offset=offset,
-                                   limit=limit,
-                                   distinct=distinct)
+        return utils.process_array(
+            [{k: v[k] for k in select} for v in res],
+            search_text=search['value'] if search is not None else None,
+            complementary_search=search['negation'] if search is not None else False,
+            sort_by=sort['fields'] if sort is not None else None,
+            sort_ascending=False if sort is not None and sort['order'] == 'desc' else True,
+            allowed_sort_fields=default_fields,
+            offset=offset,
+            limit=limit,
+            distinct=distinct,
+        )
 
     async def check_clients_keepalive(self):
         """Check date of the last received keep alive.
@@ -479,17 +509,24 @@ class AbstractServer:
         the server starts and it runs every check_worker_lastkeepalive defined in the configuration
         seconds.
         """
-        keep_alive_logger = self.setup_task_logger("Keep alive")
+        keep_alive_logger = self.setup_task_logger('Keep alive')
         while True:
-            keep_alive_logger.debug("Calculating.")
+            keep_alive_logger.debug('Calculating.')
             curr_timestamp = utils.get_utc_now().timestamp()
             # Iterate all clients and close the connection when their last keepalive is older than allowed.
             for client_name, client in self.clients.copy().items():
-                if curr_timestamp - client.last_keepalive > self.server_config.master.intervals.max_allowed_time_without_keep_alive:
-                    keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
-                                            "Disconnecting".format(client_name), exc_info=False)
+                if (
+                    curr_timestamp - client.last_keepalive
+                    > self.server_config.master.intervals.max_allowed_time_without_keep_alive
+                ):
+                    keep_alive_logger.error(
+                        'No keep alives have been received from {} in the last minute. Disconnecting'.format(
+                            client_name
+                        ),
+                        exc_info=False,
+                    )
                     client.transport.close()
-            keep_alive_logger.debug("Calculated.")
+            keep_alive_logger.debug('Calculated.')
             await asyncio.sleep(self.server_config.master.intervals.check_worker_last_keep_alive)
 
     async def performance_test(self):
@@ -500,9 +537,9 @@ class AbstractServer:
                     before = perf_counter()
                     response = await client.send_request(b'echo', b'a' * self.performance)
                     after = perf_counter()
-                    self.logger.info(f"Received size: {len(response)} // Time: {after - before}")
+                    self.logger.info(f'Received size: {len(response)} // Time: {after - before}')
                 except Exception as e:
-                    self.logger.error(f"Error during performance test: {e}")
+                    self.logger.error(f'Error during performance test: {e}')
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
@@ -514,10 +551,11 @@ class AbstractServer:
                     try:
                         await client.send_request(b'echo', f'concurrency {i} client {client_name}'.encode())
                     except Exception as e:
-                        self.logger.error(f"Error during concurrency test ({i+1}/{self.concurrency}, {client_name}): "
-                                          f"{e}")
+                        self.logger.error(
+                            f'Error during concurrency test ({i+1}/{self.concurrency}, {client_name}): ' f'{e}'
+                        )
             after = perf_counter()
-            self.logger.info(f"Time sending {self.concurrency} messages: {after - before}")
+            self.logger.info(f'Time sending {self.concurrency} messages: {after - before}')
             await asyncio.sleep(10)
 
     async def start(self):
@@ -533,7 +571,7 @@ class AbstractServer:
             self.server_config.node.ssl.ca,
             self.server_config.node.ssl.cert,
             self.server_config.node.ssl.key,
-            self.server_config.node.ssl.keyfile_password
+            self.server_config.node.ssl.keyfile_password,
         )
 
         try:
@@ -543,7 +581,7 @@ class AbstractServer:
                 ),
                 host=self.server_config.bind_addr,
                 port=self.server_config.port,
-                ssl=ssl_context
+                ssl=ssl_context,
             )
         except OSError as e:
             raise exception.WazuhClusterError(3007, extra_message=e)

@@ -1,8 +1,7 @@
-from typing import Optional, Any, List, Protocol, Coroutine
 from enum import Enum
+from typing import Any, Coroutine, List, Optional, Protocol
 
 from opensearchpy import AsyncOpenSearch
-
 from wazuh.core.indexer.base import IndexerKey
 
 
@@ -18,6 +17,7 @@ class Operation(str, Enum):
     DELETE : str
         Operation to delete an existing document.
     """
+
     CREATE = 'create'
     UPDATE = 'update'
     DELETE = 'delete'
@@ -43,6 +43,7 @@ class BulkMetadata:
     operation : Operation
         Type of operation to perform.
     """
+
     def __init__(self, index: str, doc_id: Optional[str], operation: Operation):
         self.index = index
         self.doc_id = doc_id
@@ -73,6 +74,7 @@ class BulkDoc:
     doc : Optional[Any]
         Document content. Can be None for delete operations.
     """
+
     def __init__(self, index: str, doc_id: Optional[str], operation: Operation, doc: Optional[Any]):
         self.metadata = BulkMetadata(index=index, doc_id=doc_id, operation=operation)
         self.doc = doc
@@ -154,6 +156,7 @@ class BulkDoc:
 
 class RequiresClient(Protocol):
     """Protocol to ensure that a class has a _client attribute of type AsyncOpenSearch."""
+
     _client: AsyncOpenSearch
 
 
@@ -161,6 +164,7 @@ class MixinBulk:
     """Mixin to add bulk operation functionality to a class.
     This Mixin requires that the class using it has an attribute `_client` of type `AsyncOpenSearch`.
     """
+
     async def bulk(self: RequiresClient, data: List[BulkDoc]) -> Coroutine:
         """Execute a bulk operation using the provided list of `BulkDoc` instances.
 

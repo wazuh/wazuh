@@ -11,8 +11,7 @@ from wazuh.rbac import orm
 
 
 class RBAChecker:
-    """
-    The logical operations available in our system:
+    """The logical operations available in our system:
         AND: All the clauses that it encloses must be certain so that the operation is evaluated as certain.
         OR: At least one of the clauses it contains must be correct for the operator to be evaluated as True.
         NOT: The clause enclosed by the NOT operator must give False for it to be evaluated as True.
@@ -27,8 +26,9 @@ class RBAChecker:
         FIND: Recursively launches the MATCH function to search for all levels of authorization context, the
           operation is the same, if there is at least one occurrence, the function will return True
         FIND$: Just like the previous one, in this case the function MATCH$ is recursively executed.
-    Regex schema ----> "r'REGULAR_EXPRESSION', this is the wildcard for detecting regular expressions"
+    Regex schema ----> "r'REGULAR_EXPRESSION', this is the wildcard for detecting regular expressions".
     """
+
     _logical_operators = ['AND', 'OR', 'NOT']
     _functions = ['MATCH', 'MATCH$', 'FIND', 'FIND$']
     _initial_index_for_regex = 2
@@ -117,7 +117,7 @@ class RBAChecker:
         return role_chunk, auth_chunk
 
     def process_lists(self, role_chunk: list, auth_context: list, mode: str) -> int:
-        """Process lists of role chunks and authorization context chunks
+        """Process lists of role chunks and authorization context chunks.
 
         Parameters
         ----------
@@ -221,15 +221,16 @@ class RBAChecker:
             if not expression.startswith(self._regex_prefix):
                 return False
             try:
-                regex = ''.join(expression[self._initial_index_for_regex:-2])
+                regex = ''.join(expression[self._initial_index_for_regex : -2])
                 regex = re.compile(regex)
                 return regex
-            except:
+            except Exception:
                 return False
         return False
 
-    def match_item(self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None,
-                   mode: str = 'MATCH') -> Union[int, bool]:
+    def match_item(
+        self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None, mode: str = 'MATCH'
+    ) -> Union[int, bool]:
         """This function will go through all authorization contexts and system roles recursively until it finds the
         structure indicated in role_chunk.
 
@@ -281,8 +282,9 @@ class RBAChecker:
 
         return False
 
-    def find_item(self, role_chunk: Union[list, dict], auth_context: dict = None, mode: str = 'FIND',
-                  role_id: int = None) -> bool:
+    def find_item(
+        self, role_chunk: Union[list, dict], auth_context: dict = None, mode: str = 'FIND', role_id: int = None
+    ) -> bool:
         """This function will use the match function and will launch it recursively on all the authorization context
         tree, on all the levels.
 

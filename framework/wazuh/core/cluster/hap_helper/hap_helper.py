@@ -8,27 +8,27 @@ from wazuh.core.cluster.utils import (
     AGENT_CHUNK_SIZE,
     AGENT_RECONNECTION_STABILITY_TIME,
     AGENT_RECONNECTION_TIME,
+    CLIENT_CERT,
+    CLIENT_CERT_KEY,
+    CLIENT_CERT_PASSWORD,
     EXCLUDED_NODES,
     FREQUENCY,
     HAPROXY_ADDRESS,
     HAPROXY_BACKEND,
+    HAPROXY_CERT,
     HAPROXY_PASSWORD,
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
     HAPROXY_RESOLVER,
     HAPROXY_USER,
-    HAPROXY_CERT,
-    CLIENT_CERT,
-    CLIENT_CERT_KEY,
-    CLIENT_CERT_PASSWORD,
     HELPER_DEFAULTS,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
     ClusterFilter,
     context_tag,
 )
-from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 from wazuh.core.config.client import CentralizedConfig
+from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
 CONNECTION_PORT = 1514
 
@@ -78,7 +78,6 @@ class HAPHelper:
         logging.Logger
             The configured logger.
         """
-
         logger = logging.getLogger('wazuh').getChild('HAPHelper')
         logger.addFilter(ClusterFilter(tag=tag, subtag='Main'))
 
@@ -370,7 +369,6 @@ class HAPHelper:
 
     async def manage_wazuh_cluster_nodes(self):
         """Main loop for check balance of Wazuh cluster."""
-
         while True:
             context_tag.set(self.tag)
             try:
@@ -434,7 +432,6 @@ class HAPHelper:
         reconnect_agents : bool, optional
             Reconnect agents after set the hard-stop-after, by default True.
         """
-
         if wait_connection_retry:
             connection_retry = self.get_connection_retry()
             self.logger.debug(f'Waiting {connection_retry}s for workers connections...')
@@ -482,10 +479,15 @@ class HAPHelper:
             connection_port = int(port_config.get('remote')[0].get('port', CONNECTION_PORT))
 
             protocol = helper_config[HAPROXY_PROTOCOL]
-            if protocol == 'http' and (helper_config[HAPROXY_CERT] or helper_config[CLIENT_CERT] or
-                                       helper_config[CLIENT_CERT_KEY] or helper_config[CLIENT_CERT_PASSWORD]):
-                logger.warning("HTTPS related parameters have been set but will be ignored since "
-                               "HTTP is defined as protocol.")
+            if protocol == 'http' and (
+                helper_config[HAPROXY_CERT]
+                or helper_config[CLIENT_CERT]
+                or helper_config[CLIENT_CERT_KEY]
+                or helper_config[CLIENT_CERT_PASSWORD]
+            ):
+                logger.warning(
+                    'HTTPS related parameters have been set but will be ignored since HTTP is defined as protocol.'
+                )
 
                 # Set the certificate information to default values to avoid errors in the communication
                 helper_config[HAPROXY_CERT] = HELPER_DEFAULTS[HAPROXY_CERT]
@@ -503,7 +505,7 @@ class HAPHelper:
                 haproxy_cert_file=helper_config[HAPROXY_CERT],
                 client_cert_file=helper_config[CLIENT_CERT],
                 client_key_file=helper_config[CLIENT_CERT_KEY],
-                client_password=helper_config[CLIENT_CERT_PASSWORD]
+                client_password=helper_config[CLIENT_CERT_PASSWORD],
             )
             proxy = Proxy(
                 wazuh_backend=helper_config[HAPROXY_BACKEND],

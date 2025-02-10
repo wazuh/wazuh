@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from setuptools import setup, find_namespace_packages
+from setuptools import find_namespace_packages, setup
 
 # To install the library, run the following
 #
@@ -29,5 +29,5 @@ setup(
     license='GPLv2',
     long_description="""
     The Communications API is an open source RESTful API that allows Wazuh agents to interact with the server.
-    """
+    """,
 )
