@@ -19,6 +19,7 @@ jobs:
   # Build the winagent on linux.
   build:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'main')
     steps:
       - uses: actions/checkout@v3
       # Install wingw required to build the winagent.
