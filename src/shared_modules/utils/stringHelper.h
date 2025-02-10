@@ -569,24 +569,6 @@ namespace Utils
         }
         return tokens;
     }
-
-    static std::string_view getHive(std::string_view path)
-    {
-        const static std::map<std::string, std::string, std::less<>> hives = {{"HKEY_CLASSES_ROOT", "HKCR"},
-                                                                              {"HKEY_CURRENT_USER", "HKCU"},
-                                                                              {"HKEY_LOCAL_MACHINE", "HKLM"},
-                                                                              {"HKEY_USERS", "HKU"},
-                                                                              {"HKEY_CURRENT_CONFIG", "HKCC"}};
-
-        for (const auto& [key, value] : hives)
-        {
-            if (Utils::startsWith(path, key))
-            {
-                return value;
-            }
-        }
-        return "";
-    }
 #endif
 
 } // namespace Utils

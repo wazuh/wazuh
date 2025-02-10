@@ -15,6 +15,7 @@
 #include "../../wcsModel/data.hpp"
 #include "../../wcsModel/inventorySystemHarvester.hpp"
 #include "../../wcsModel/noData.hpp"
+#include <stdexcept>
 
 template<typename TContext>
 class OsElement final
@@ -30,10 +31,16 @@ public:
 
     static DataHarvester<InventorySystemHarvester> build(TContext* data)
     {
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty, cannot upsert system element.");
+        }
+
         DataHarvester<InventorySystemHarvester> element;
-        element.id = data->agentId();
+        element.id = agentId;
         element.operation = "INSERTED";
-        element.data.agent.id = data->agentId();
+        element.data.agent.id = agentId;
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
         element.data.agent.ip = data->agentIp();
@@ -65,9 +72,15 @@ public:
 
     static NoDataHarvester deleteElement(TContext* data)
     {
+        auto agentId = data->agentId();
+        if (agentId.empty())
+        {
+            throw std::runtime_error("Agent ID is empty, cannot delete system element.");
+        }
+
         NoDataHarvester element;
         element.operation = "DELETED";
-        element.id = data->agentId();
+        element.id = agentId;
         return element;
     }
 };

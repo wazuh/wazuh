@@ -19,7 +19,7 @@
 struct File final
 {
     std::string_view name;
-    std::string path;
+    std::string_view path;
     std::string_view gid;
     std::string_view group;
     std::string_view inode;

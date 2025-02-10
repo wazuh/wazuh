@@ -14,6 +14,8 @@
 
 #include "flatbuffers/include/rsync_generated.h"
 #include "flatbuffers/include/syscheck_deltas_generated.h"
+#include "stringHelper.h"
+#include "timeHelper.h"
 #include <json.hpp>
 #include <variant>
 
@@ -204,7 +206,7 @@ public:
         return "";
     }
 
-    std::string_view path()
+    std::string_view pathRaw()
     {
         if (m_type == VariantType::Delta)
         {
@@ -239,7 +241,7 @@ public:
         return "";
     }
 
-    std::string_view valueName()
+    std::string_view valueNameRaw()
     {
         if (m_type == VariantType::Delta)
         {
@@ -628,6 +630,99 @@ public:
         return 0;
     }
 
+    std::string_view valueName()
+    {
+        if (m_valueNameSanitized.empty())
+        {
+            m_valueNameSanitized = valueNameRaw();
+            Utils::replaceAll(m_valueNameSanitized, "\\", "/");
+            Utils::replaceAll(m_valueNameSanitized, "//", "/");
+        }
+        return m_valueNameSanitized;
+    }
+
+    std::string_view path()
+    {
+        const static std::map<std::string_view, std::string_view, std::less<>> hives = {
+            {"HKEY_CLASSES_ROOT", "HKCR"},
+            {"HKEY_CURRENT_USER", "HKCU"},
+            {"HKEY_LOCAL_MACHINE", "HKLM"},
+            {"HKEY_USERS", "HKU"},
+            {"HKEY_CURRENT_CONFIG", "HKCC"}};
+
+        if (m_pathSanitized.empty())
+        {
+            m_pathSanitized = pathRaw();
+            Utils::replaceAll(m_pathSanitized, "\\", "/");
+            Utils::replaceAll(m_pathSanitized, "//", "/");
+
+            for (const auto& [key, value] : hives)
+            {
+                if (Utils::replaceFirstView(m_pathSanitized, key, value))
+                {
+                    break;
+                }
+            }
+
+            if (m_originTable == OriginTable::RegistryValue)
+            {
+                m_pathSanitized += "/";
+                m_pathSanitized += valueName();
+            }
+        }
+        return m_pathSanitized;
+    }
+
+    std::string_view mtimeISO8601()
+    {
+        if (m_mtimeISO8601.empty())
+        {
+            m_mtimeISO8601 = Utils::rawTimestampToISO8601(static_cast<uint32_t>(mtime()));
+        }
+        return m_mtimeISO8601;
+    }
+
+    std::string_view hive()
+    {
+        const static std::map<std::string_view, std::string_view, std::less<>> hives = {
+            {"HKEY_CLASSES_ROOT", "HKCR"},
+            {"HKEY_CURRENT_USER", "HKCU"},
+            {"HKEY_LOCAL_MACHINE", "HKLM"},
+            {"HKEY_USERS", "HKU"},
+            {"HKEY_CURRENT_CONFIG", "HKCC"}};
+
+        for (const auto& [key, value] : hives)
+        {
+            if (Utils::startsWith(pathRaw(), key))
+            {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    std::string_view key()
+    {
+        const static std::vector<std::string_view> hives = {
+            "HKEY_CLASSES_ROOT/", "HKEY_CURRENT_USER/", "HKEY_LOCAL_MACHINE/", "HKEY_USERS/", "HKEY_CURRENT_CONFIG/"};
+
+        if (m_keySanitized.empty())
+        {
+            m_keySanitized = pathRaw();
+            Utils::replaceAll(m_keySanitized, "\\", "/");
+            Utils::replaceAll(m_keySanitized, "//", "/");
+
+            for (const auto& hive : hives)
+            {
+                if (Utils::replaceFirstView(m_keySanitized, hive, ""))
+                {
+                    break;
+                }
+            }
+        }
+        return m_keySanitized;
+    }
+
     std::string m_serializedElement;
 
 private:
@@ -639,6 +734,12 @@ private:
     const SyscheckDeltas::Delta* m_delta = nullptr;
     const Synchronization::SyncMsg* m_syncMsg = nullptr;
     const nlohmann::json* m_jsonData = nullptr;
+
+    // Allocations to mantain the lifetime of the data.
+    std::string m_pathSanitized;
+    std::string m_valueNameSanitized;
+    std::string m_mtimeISO8601;
+    std::string m_keySanitized;
 
     /**
      * @brief Scan context.
