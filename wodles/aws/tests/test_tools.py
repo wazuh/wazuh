@@ -163,9 +163,9 @@ def test_arg_valid_iam_role_duration_raises_exception_when_invalid_duration_prov
 
 
 @pytest.mark.parametrize("test_input, expected_output", [
-    (('external_id', None, None), "ERROR: Used a subscriber but no --iam_role_arn provided."),
-    (('external_id', None, 'iam_role_arn'), "ERROR: Used a subscriber but no --queue provided."),
-    ((None, 'name', 'iam_role_arn'), "ERROR: Used a subscriber but no --external_id provided.")
+    (('external_id', None, None, 'default'), "ERROR: Used a subscriber but no --iam_role_arn provided."),
+    (('external_id', None, 'iam_role_arn', 'default'), "ERROR: Used a subscriber but no --queue provided."),
+    ((None, 'name', 'iam_role_arn', 'default'), "ERROR: Used a subscriber but no --external_id provided.")
 ])
 def test_arg_validate_security_lake_auth_params(test_input, expected_output):
     """Test the arg_validate_security_lake_auth_params function of aws_tools."""

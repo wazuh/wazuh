@@ -161,7 +161,8 @@ def main(argv):
             if options.subscriber.lower() == "security_lake":
                 aws_tools.arg_validate_security_lake_auth_params(options.external_id,
                                                                  options.queue,
-                                                                 options.iam_role_arn)
+                                                                 options.iam_role_arn,
+                                                                 options.aws_profile)
                 bucket_handler = subscribers.s3_log_handler.AWSSLSubscriberBucket
                 message_processor = subscribers.sqs_message_processor.AWSSSecLakeMessageProcessor
             elif options.subscriber.lower() == "buckets":
