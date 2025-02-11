@@ -11,7 +11,7 @@ from api_communication.proto import geo_pb2 as api_geo
 from api_communication.proto import engine_pb2 as api_engine
 
 ENV_DIR = os.environ.get("ENV_DIR", "")
-SOCKET_PATH = (Path(ENV_DIR) / "queue/sockets/engine-api").as_posix()
+SOCKET_PATH = (Path(ENV_DIR) / "queue/sockets/engine-api.socket").as_posix()
 RULESET_DIR = (Path(ENV_DIR) / "engine").as_posix()
 
 api_client = APIClient(SOCKET_PATH)

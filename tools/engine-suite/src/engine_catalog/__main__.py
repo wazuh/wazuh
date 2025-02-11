@@ -2,14 +2,12 @@ import sys
 import argparse
 from importlib.metadata import metadata
 
-import shared.resource_handler as rs
 from shared.default_settings import Constants as DefaultSettings
 from engine_catalog.cmds.delete import configure as configure_delete
 from engine_catalog.cmds.get import configure as configure_get
 from engine_catalog.cmds.update import configure as configure_update
 from engine_catalog.cmds.create import configure as configure_create
 from engine_catalog.cmds.validate import configure as configure_validate
-from engine_catalog.cmds.load import configure as configure_load
 
 
 def parse_args():
@@ -37,15 +35,13 @@ def parse_args():
     configure_update(subparsers)
     configure_create(subparsers)
     configure_validate(subparsers)
-    configure_load(subparsers)
 
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    resource_handler = rs.ResourceHandler()
-    args.func(vars(args), resource_handler)
+    args.func(vars(args))
 
 
 if __name__ == '__main__':

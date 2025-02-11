@@ -154,11 +154,6 @@ public:
     void postEvent(base::Event&& event) override { m_eventQueue->push(std::move(event)); }
 
     /**
-     * @copydoc router::IRouterAPI::postRawNdjson
-     */
-    void postRawNdjson(std::string&& batch) override;
-
-    /**
      * @copydoc router::IRouterAPI::changeEpsSettings
      */
     base::OptError changeEpsSettings(uint eps, uint refreshInterval) override;

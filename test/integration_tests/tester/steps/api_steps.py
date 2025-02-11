@@ -16,7 +16,7 @@ from api_utils.commands import engine_clear
 
 ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
-SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
+SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api.socket"
 RULESET_DIR = ENV_DIR + "/engine"
 
 api_client = APIClient(SOCKET_PATH)
@@ -31,6 +31,9 @@ def run_command(command):
 def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
     try:
         error, response = api_client.send_recv(request)
+        print(f'Request: {request}')
+        print(f"Error: {error}")
+        print(f"Response: {response}")
         assert error is None, f"{error}"
         parse_response = ParseDict(response, expected_response_type)
         if parse_response.status == api_engine.ERROR:
@@ -208,9 +211,7 @@ def step_impl(context, message: str, session_name: str, debug_level: str, queue_
 
     json_event : dict = {
         "event": {
-            "original": {
-                "message": message
-            }
+            "original": message
         }
     }
     header_json_event : dict = {

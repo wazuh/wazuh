@@ -1,27 +1,36 @@
 import sys
-import shared.resource_handler as rs
-from shared.resource_handler import Format, StringToFormat
+from api_communication.client import APIClient
+from api_communication.proto.catalog_pb2 import ResourcePost_Request
+from api_communication.proto.engine_pb2 import GenericStatus_Response
 
 
-def run(args, resource_handler: rs.ResourceHandler):
-
+def run(args):
     # Get the params
     api_socket: str = args['api_socket']
-    namespace: str = args['namespace']
-    type: str = args['asset-type']
-    inFormat: Format = StringToFormat(args['format'])
-    content = args['content']
 
+    json_request = dict()
+    json_request['namespaceid'] = args['namespace']
+    json_request['type'] = args['asset-type']
+    json_request['format'] = args['format']
+
+    content = args['content']
     # Read all content from stdin
     if not content:
         content = sys.stdin.read()
 
+    json_request['content'] = content
+
     # Create the api request
     try:
-        resource_handler.add_catalog_file(
-            api_socket, type, '', content, namespace, inFormat)
+        client = APIClient(api_socket)
+        error, response = client.jsend(
+            json_request, ResourcePost_Request(), GenericStatus_Response())
+
+        if error:
+            sys.exit(f'Error creating asset: {error}')
+
     except Exception as e:
-        sys.exit(f'Error updating asset: {e}')
+        sys.exit(f'Error creating asset: {e}')
 
     return 0
 
