@@ -33,7 +33,7 @@ concurrency:
 
 env:
   TOOLS_DIR: ${{github.workspace}}/src/wazuh_modules/vulnerability_scanner/build/testtool/
-  TOOLS_FILE_NAME: legacy_vdscanner_tools
+  TOOLS_FILE_NAME: legacy_vdscanner_testtools
 
 jobs:
   build:
