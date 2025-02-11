@@ -1,9 +1,10 @@
+#include <filesystem>
 #include <memory>
 
 #include <gtest/gtest.h>
 
-#include <apiserver/apiServer.hpp>
 #include <base/logging.hpp>
+#include <httpsrv/server.hpp>
 
 #include <conf/apiLoader.hpp>
 
@@ -30,13 +31,13 @@ class ApiLoaderServerTest : public testing::TestWithParam<std::tuple<std::string
 {
 protected:
     std::shared_ptr<conf::IApiLoader> m_apiLoader;
-    std::shared_ptr<apiserver::ApiServer> m_server;
+    std::shared_ptr<httpsrv::Server> m_server;
     std::shared_ptr<std::string> m_response {};
     std::shared_ptr<int> m_status {};
 
     void addConfigEndpoint()
     {
-        m_server->addRoute(apiserver::Method::GET,
+        m_server->addRoute(httpsrv::Method::GET,
                            "/api/v1/config",
                            [this](const httplib::Request& req, httplib::Response& res)
                            {
@@ -59,11 +60,12 @@ protected:
     {
         logging::testInit();
         m_apiLoader = std::make_shared<conf::ApiLoader>();
-        m_server = std::make_shared<apiserver::ApiServer>();
+        m_server = std::make_shared<httpsrv::Server>("test");
         m_status = std::make_shared<int>(200);
         m_response = std::make_shared<std::string>("UNSET RESPONSE");
         unlink(serverPath);
         addConfigEndpoint();
+        std::filesystem::create_directories(std::filesystem::path(serverPath).parent_path());
         m_server->start(serverPath);
     }
 

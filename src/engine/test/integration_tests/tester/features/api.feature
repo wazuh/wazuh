@@ -5,7 +5,7 @@ Feature: Tester API Management
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
     And I create a "default" session that points to policy "policy/wazuh/0"
     When I send a request to the tester to add a new session called "default" with the data from policy:"policy/wazuh/0"
-    Then I should receive a failture response indicating that "Error creating session: The name of the testing environment already exist"
+    Then I should receive a failture response indicating that "The name of the testing environment already exist"
 
   Scenario: Add a new session for testing via API
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
@@ -25,7 +25,7 @@ Feature: Tester API Management
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
     And I create a "default" session that points to policy "policy/wazuh/0"
     When I send a request to the tester to delete the session "non-existent"
-    Then I should receive a failture response indicating that "Error deleting session: The testing environment not exist"
+    Then I should receive a failture response indicating that "The testing environment not exist"
 
   Scenario: Get all sessions via API
     Given I have a policy "policy/wazuh/0" that has an integration called "wazuh-core-test" loaded
@@ -60,16 +60,16 @@ Feature: Tester API Management
     Given I have a policy "policy/wazuh/0" that has an integration called "other-wazuh-core-test" loaded
     And I create a "test" session that points to policy "policy/wazuh/0"
     When I send a request to send the event "hi! i am an event test!" from "test" session with "NONE" debug "system" namespace, agent.name "001ASD" and "decoder/other-test-message/0" asset trace
-    Then I should receive the next output: "{"output":"{\"event\":{\"original\":{\"message\":\"hi! i am an event test!\"},\"collector\":\"file\",\"module\":\"logcollector\"},\"agent\":{\"name\":\"header-agent\",\"id\":\"001ASD\"}}"}"
+    Then I should receive the next output: "{"output":"{\"event\":{\"original\":\"hi! i am an event test!\",\"module\":\"logcollector\",\"collector\":\"file\"},\"agent\":{\"name\":\"header-agent\",\"id\":\"001ASD\"}}"}"
 
   Scenario: Send events to specific session with low debug via API
     Given I have a policy "policy/wazuh/0" that has an integration called "other-wazuh-core-test" loaded
     And I create a "test" session that points to policy "policy/wazuh/0"
     When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug "system" namespace, agent.name "BB22" and "decoder/other-test-message/0" asset trace
-    Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true}],"output":"{\"event\":{\"original\":{\"message\":\"hi! i am an event test!\"},\"collector\":\"file\",\"module\":\"logcollector\"},\"agent\":{\"name\":\"header-agent\",\"id\":\"BB22\"}}"}"
+    Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true}],"output":"{\"event\":{\"original\":\"hi! i am an event test!\",\"module\":\"logcollector\",\"collector\":\"file\"},\"agent\":{\"name\":\"header-agent\",\"id\":\"BB22\"}}"}"
 
   Scenario: Send events to specific session with high debug via API
     Given I have a policy "policy/wazuh/0" that has an integration called "other-wazuh-core-test" loaded
     And I create a "test" session that points to policy "policy/wazuh/0"
     When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug "system" namespace, agent.name "BB22" and "decoder/other-test-message/0" asset trace
-    Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $agent.id == BB22] -> Success"]}],"output":"{\"event\":{\"original\":{\"message\":\"hi! i am an event test!\"},\"collector\":\"file\",\"module\":\"logcollector\"},\"agent\":{\"name\":\"header-agent\",\"id\":\"BB22\"}}"}"
+    Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/other-test-message/0","success":true,"traces":["[check: $agent.id == BB22] -> Success"]}],"output":"{\"event\":{\"original\":\"hi! i am an event test!\",\"module\":\"logcollector\",\"collector\":\"file\"},\"agent\":{\"name\":\"header-agent\",\"id\":\"BB22\"}}"}"
