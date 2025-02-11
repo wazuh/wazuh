@@ -20,11 +20,6 @@ protected:
     // LCOV_EXCL_START
     SystemInventoryDeleteElement() = default;
     ~SystemInventoryDeleteElement() override = default;
-    /**
-     * @brief Set the environment for testing.
-     *
-     */
-    void SetUp() override;
     // LCOV_EXCL_STOP
 };
 
