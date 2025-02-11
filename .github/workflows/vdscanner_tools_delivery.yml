@@ -128,7 +128,7 @@ jobs:
 
       # Upload vdscanner tools
       - name: Upload vdscanner tools
-        #if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{env.TOOLS_FILE_NAME}}
