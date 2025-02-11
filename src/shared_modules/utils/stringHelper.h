@@ -555,7 +555,7 @@ namespace Utils
         return temp;
     }
 
-    static std::vector<std::string_view> split(std::string_view str, const char delimiter)
+    static std::vector<std::string_view> splitView(std::string_view str, const char delimiter)
     {
         std::vector<std::string_view> tokens;
         std::string_view token;

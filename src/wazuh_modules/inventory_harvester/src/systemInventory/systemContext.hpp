@@ -1063,7 +1063,7 @@ public:
             std::string_view argvs = processArgvs();
             if (!argvs.empty())
             {
-                m_processArguments = Utils::split(argvs, ' ');
+                m_processArguments = Utils::splitView(argvs, ' ');
             }
         }
         return m_processArguments;
