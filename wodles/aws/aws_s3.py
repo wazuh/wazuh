@@ -159,12 +159,6 @@ def main(argv):
                 service.get_alerts()
         elif options.subscriber:
             if options.subscriber.lower() == "security_lake":
-                if options.aws_profile:
-                    aws_tools.error(
-                        "The AWS Security Lake integration does not make use of the Profile authentication "
-                        f"method. Check the available ones for it in "
-                        f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
-                    sys.exit(3)
                 aws_tools.arg_validate_security_lake_auth_params(options.external_id,
                                                                  options.queue,
                                                                  options.iam_role_arn)
@@ -178,11 +172,12 @@ def main(argv):
                 message_processor = subscribers.sqs_message_processor.AWSS3MessageProcessor
             else:
                 raise Exception("Invalid type of subscriber")
+            profile = options.aws_profile or "default"
             subscriber_queue = subscribers.sqs_queue.AWSSQSQueue(
                 external_id=options.external_id,
                 iam_role_arn=options.iam_role_arn,
                 iam_role_duration=options.iam_role_duration,
-                profile=options.aws_profile,
+                profile=profile,
                 sts_endpoint=options.sts_endpoint,
                 service_endpoint=options.service_endpoint,
                 name=options.queue,

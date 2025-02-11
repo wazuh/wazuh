@@ -621,21 +621,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         os_strdup(children[j]->content, cur_subscriber->service_endpoint);
                     }
                 } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
-                    if (strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) == 0){
-                        merror("The '%s' parameter is not available for Security Lake.", XML_AWS_PROFILE);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    } else {
-                        if (strlen(children[j]->content) != 0)  {
+                     if (strlen(children[j]->content) != 0)  {
                         free(cur_subscriber->aws_profile);
                         os_strdup(children[j]->content, cur_subscriber->aws_profile);
-                        } else {
-                         // If the value is empty, raise error
-                         merror("Invalid content for tag '%s': It cannot be empty", XML_IAM_ROLE_ARN);
-                         return OS_INVALID;
-                        }
-                    }
-
+                     }
                 } else if (strcmp(children[j]->element, XML_DISCARD_REGEX) == 0) {
                     if (strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) == 0) {
                         merror("The '%s' parameter is not available for Security Lake.", XML_DISCARD_REGEX);
