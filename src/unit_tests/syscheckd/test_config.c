@@ -140,7 +140,7 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 74)));
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
-    assert_int_equal(syscheck.enable_whodata, 1);
+    assert_int_equal(syscheck.enable_whodata_audit, 1);
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
@@ -210,7 +210,7 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_non_null(syscheck.directories);
     assert_int_equal(syscheck.enable_synchronization, 0);
     assert_int_equal(syscheck.restart_audit, 0);
-    assert_int_equal(syscheck.enable_whodata, 1);
+    assert_int_equal(syscheck.enable_whodata_audit, 1);
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 0);
     assert_int_equal(syscheck.process_priority, 10);
@@ -265,7 +265,7 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(OSList_GetFirstNode(syscheck.directories));
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
-    assert_int_equal(syscheck.enable_whodata, 0);
+    assert_int_equal(syscheck.enable_whodata_audit, 0);
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);

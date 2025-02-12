@@ -290,8 +290,38 @@ int main(int argc, char **argv)
         realtime_start();
     }
 
+    // Launch Whodata ebpf real-time thread
+    if (syscheck.enable_whodata_ebpf) {
+        if (healthcheck_whodata_ebpf() < 0) {
+            directory_t *dir_it;
+            OSListNode *node_it;
+
+            mwarn(XXX);
+
+            // Switch whodata eBPF to whodata audit
+
+            OSList_foreach(node_it, syscheck.directories) {
+                dir_it = node_it->data;
+                if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & EBPF_DRIVER)) {
+                    dir_it->options &= ~EBPF_DRIVER;
+                    dir_it->options |= AUDIT_DRIVER;
+                }
+            }
+
+            OSList_foreach(node_it, syscheck.wildcards) {
+                dir_it = node_it->data;
+                if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & EBPF_DRIVER)) {
+                    dir_it->options &= ~EBPF_DRIVER;
+                    dir_it->options |= AUDIT_DRIVER;
+                }
+            }
+
+            syscheck.enable_whodata_ebpf = 0;
+        }
+    }
+
     // Audit events thread
-    if (!syscheck.disabled && syscheck.enable_whodata) {
+    if (!syscheck.disabled && syscheck.enable_whodata_audit) {
 #ifdef ENABLE_AUDIT
         if (audit_init() < 0) {
             directory_t *dir_it;
@@ -303,7 +333,7 @@ int main(int argc, char **argv)
 
             OSList_foreach(node_it, syscheck.directories) {
                 dir_it = node_it->data;
-                if (dir_it->options & WHODATA_ACTIVE) {
+                if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
                 }
@@ -311,7 +341,7 @@ int main(int argc, char **argv)
 
             OSList_foreach(node_it, syscheck.wildcards) {
                 dir_it = node_it->data;
-                if (dir_it->options & WHODATA_ACTIVE) {
+                if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
                 }
