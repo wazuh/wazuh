@@ -1,6 +1,7 @@
 #include "indexerOutput.hpp"
 
 #include <memory>
+#include <regex>
 #include <stdexcept>
 
 #include "builders/utils.hpp"
@@ -45,6 +46,13 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     }
 
     auto indexName = value.getString().value();
+    // Verify index name starts with wazuh- and contains only lowecase alphanumeric characters, hyphens and dots
+    if (!std::regex_match(indexName, std::regex("wazuh-[a-z0-9.-]+")))
+    {
+        throw std::runtime_error(fmt::format("Invalid index name '{}'. Index name must start with 'wazuh-' and contain "
+                                             "only lowercase alphanumeric characters, hyphens and dots",
+                                             indexName));
+    }
 
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
