@@ -17,13 +17,18 @@ extern "C" {
 #endif
 
 /**
- * @brief eBPF whodata function
- *
- * @param monitored_path Monitored path.
+ * @brief eBPF whodata healthcheck
  *
  * @return err code.
  */
-int ebpf_whodata(char * monitored_path);
+int ebpf_whodata_healthcheck();
+
+/**
+ * @brief eBPF whodata function
+ *
+ * @return err code.
+ */
+int ebpf_whodata();
 
 #ifdef __cplusplus
 }
