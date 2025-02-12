@@ -19,11 +19,10 @@ extern "C" {
 /**
  * @brief eBPF whodata function
  *
- * @param monitored_path Monitored path.
  *
  * @return err code.
  */
-int ebpf_whodata(char * monitored_path);
+int ebpf_whodata();
 
 #ifdef __cplusplus
 }
