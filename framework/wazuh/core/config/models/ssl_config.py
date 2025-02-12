@@ -2,7 +2,9 @@ from enum import Enum
 from typing import List
 
 from pydantic import Field, ValidationInfo, field_validator
+from wazuh.core.common import WAZUH_INDEXER_CA_BUNDLE
 from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
+from wazuh.core.exception import WazuhError
 
 
 class SSLProtocol(str, Enum):
@@ -76,14 +78,14 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         List of paths to the CA certificate file. Default is a list containing one empty string.
     verify_certificates : bool
         Whether to verify the server TLS certificates or not. Default is True.
-
     """
 
     use_ssl: bool = False
     key: str = ''
     certificate: str = ''
-    certificate_authorities: List[str] = Field(default=[''], min_length=1)
+    certificate_authorities: List[str] = Field(default=[''], min_length=1, exclude=True)
     verify_certificates: bool = True
+    certificate_authorities_bundle: str = WAZUH_INDEXER_CA_BUNDLE
 
     @field_validator('key', 'certificate')
     @classmethod
@@ -113,8 +115,8 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
 
     @field_validator('certificate_authorities')
     @classmethod
-    def validate_cs_files(cls, paths: List[str], info: ValidationInfo) -> List[str]:
-        """Validate that the SSL certificate authorities files exist.
+    def validate_ca_files(cls, paths: List[str], info: ValidationInfo) -> List[str]:
+        """Validate that the SSL certificate authorities files exist and create a bundle file.
 
         Parameters
         ----------
@@ -137,7 +139,31 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
             for path in paths:
                 cls._validate_file_path(path, info.field_name)
 
+            cls.create_ca_bundle(paths)
+
         return paths
+
+    @classmethod
+    def create_ca_bundle(cls, file_paths: List[str]):
+        """Merge certificate authorities files into a single bundle file.
+
+        Parameters
+        ----------
+        file_paths : List[str]
+            CA files paths.
+
+        Raises
+        ------
+        WazuhError(1006)
+            File does not exist or permission error.
+        """
+        try:
+            with open(WAZUH_INDEXER_CA_BUNDLE, 'w') as bundle_file:
+                for file_path in file_paths:
+                    with open(file_path, 'r') as file:
+                        bundle_file.write(file.read())
+        except IOError as e:
+            raise WazuhError(1006, str(e))
 
 
 class APISSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
