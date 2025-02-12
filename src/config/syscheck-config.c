@@ -91,7 +91,8 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->wildcards                       = NULL;
     syscheck->enable_synchronization          = 1;
     syscheck->restart_audit                   = 1;
-    syscheck->enable_whodata                  = 0;
+    syscheck->enable_whodata_audit            = 0;
+    syscheck->enable_whodata_ebpf             = 0;
     syscheck->realtime                        = NULL;
     syscheck->audit_healthcheck               = 1;
     syscheck->process_priority                = 10;
@@ -765,6 +766,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_restrict = "restrict";
     const char *xml_check_sha256sum = "check_sha256sum";
     const char *xml_whodata = "whodata";
+    const char *xml_driver = "driver";
     const char *xml_recursion_level = "recursion_level";
     const char *xml_tag = "tags";
     const char *xml_diff_size_limit = "diff_size_limit";
@@ -864,12 +866,36 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             if (strcmp(*values, "yes") == 0) {
                 opts &= ~ SCHEDULED_ACTIVE;
                 opts |= WHODATA_ACTIVE;
+#ifdef __linux__
+                opts |= EBPF_DRIVER; // Default driver for Linux
+#else
+                opts |= AUDIT_DRIVER; // Other systems have only audit
+#endif
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ WHODATA_ACTIVE;
+                opts &= ~ EBPF_DRIVER;
+                opts &= ~ AUDIT_DRIVER;
             } else {
                 mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                 goto out_free;
             }
+        }
+        /* Check whodata */
+        else if (strcmp(*attrs, xml_driver) == 0) {
+#ifdef __linux__
+            if (strcmp(*values, "ebpf") == 0) {
+                opts &= ~ AUDIT_DRIVER;
+                opts |= EBPF_DRIVER;
+            } else if (strcmp(*values, "audit") == 0) {
+                opts &= ~ EBPF_DRIVER;
+                opts |= AUDIT_DRIVER;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+#else
+            mdebug1("Option '%s' is only available on Linux systems.", xml_check_attrs);
+#endif
         }
         /* Check permission */
         else if (strcmp(*attrs, xml_check_perm) == 0) {
@@ -1147,7 +1173,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                 // Check directories options to determine whether to start the whodata thread or not
                 if (wildcard->options & WHODATA_ACTIVE) {
-                    syscheck->enable_whodata = 1;
+                    if (wildcard->options & AUDIT_DRIVER) {
+                        syscheck->enable_whodata_audit = 1;
+                    }
+                    if (wildcard->options & EBPF_DRIVER) {
+                        syscheck->enable_whodata_ebpf = 1;
+                    }
                 }
 
                 paths = expand_wildcards(clean_path);
@@ -2268,6 +2299,9 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         REALTIME_ACTIVE,
         WHODATA_ACTIVE,
         SCHEDULED_ACTIVE,
+        CHECK_TYPE,
+        EBPF_DRIVER,
+        AUDIT_DRIVER,
 	    0
 	};
     char *check_strings[] = {
@@ -2286,6 +2320,9 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "realtime",
         "whodata",
         "scheduled",
+        "reg_value_type"
+        "ebpf_driver",
+        "audit_driver",
 	    NULL
 	};
 

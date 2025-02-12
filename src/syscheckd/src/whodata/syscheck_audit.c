@@ -222,15 +222,14 @@ void audit_create_rules_file() {
     w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
-        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
-            continue;
+        if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
+            real_path = fim_get_real_path(dir_it);
+
+            mdebug2(FIM_ADDED_RULE_TO_FILE, real_path);
+            fprintf(fp, "-w %s -p wa -k %s\n", real_path, AUDIT_KEY);
+
+            free(real_path);
         }
-        real_path = fim_get_real_path(dir_it);
-
-        mdebug2(FIM_ADDED_RULE_TO_FILE, real_path);
-        fprintf(fp, "-w %s -p wa -k %s\n", real_path, AUDIT_KEY);
-
-        free(real_path);
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
@@ -281,33 +280,31 @@ void audit_rules_to_realtime() {
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
 
-        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
-            continue;
-        }
+        if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
+            found = 0;
+            real_path = fim_get_real_path(dir_it);
 
-        found = 0;
-        real_path = fim_get_real_path(dir_it);
-
-        if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
-            free(real_path);
-            continue;
-        }
-
-        for (int j = 0; syscheck.audit_key[j]; j++) {
-            if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1) {
-                found = 1;
-                break;
+            if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
+                free(real_path);
+                continue;
             }
-        }
 
-        if (!found){
-            realtime_check = 1;
-            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
-            dir_it->options &= ~WHODATA_ACTIVE;
-            dir_it->options |= REALTIME_ACTIVE;
-        }
+            for (int j = 0; syscheck.audit_key[j]; j++) {
+                if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1) {
+                    found = 1;
+                    break;
+                }
+            }
 
-        free(real_path);
+            if (!found){
+                realtime_check = 1;
+                mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
+                dir_it->options &= ~WHODATA_ACTIVE;
+                dir_it->options |= REALTIME_ACTIVE;
+            }
+
+            free(real_path);
+        }
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
@@ -464,41 +461,39 @@ void *audit_main(audit_data_t *audit_data) {
     w_rwlock_wrlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
-        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
-            continue;
-        }
-        path = fim_get_real_path(dir_it);
-        // Check if it's a broken link.
-        if (*path == '\0') {
-            free(path);
-            continue;
-        }
-        dir_it->options &= ~ WHODATA_ACTIVE;
-        dir_it->options |= REALTIME_ACTIVE;
+        if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
+            path = fim_get_real_path(dir_it);
+            // Check if it's a broken link.
+            if (*path == '\0') {
+                free(path);
+                continue;
+            }
+            dir_it->options &= ~ WHODATA_ACTIVE;
+            dir_it->options |= REALTIME_ACTIVE;
 
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime == NULL) {
-            realtime_start();
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            if (syscheck.realtime == NULL) {
+                realtime_start();
+            }
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            realtime_adddir(path, dir_it);
+            free(path);
         }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        realtime_adddir(path, dir_it);
-        free(path);
     }
 
     OSList_foreach(node_it, syscheck.wildcards) {
         dir_it = node_it->data;
-        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
-            continue;
-        }
+        if ((dir_it->options & WHODATA_ACTIVE) && (dir_it->options & AUDIT_DRIVER)) {
 
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime == NULL) {
-            realtime_start();
-        }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            if (syscheck.realtime == NULL) {
+                realtime_start();
+            }
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
-        dir_it->options &= ~ WHODATA_ACTIVE;
-        dir_it->options |= REALTIME_ACTIVE;
+            dir_it->options &= ~ WHODATA_ACTIVE;
+            dir_it->options |= REALTIME_ACTIVE;
+        }
     }
 
     w_rwlock_unlock(&syscheck.directories_lock);
