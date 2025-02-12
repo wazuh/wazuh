@@ -604,7 +604,6 @@ time_t fim_scan() {
 
     if (_base_line == 0) {
         _base_line = 1;
-        ebpf_whodata("/test");
     } else {
         // In the first scan, the fim initialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
@@ -1794,7 +1793,7 @@ void update_wildcards_config() {
             }
 #endif
 #if ENABLE_AUDIT
-            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            if ((FIM_MODE(dir_it->options) == FIM_WHODATA) && (dir_it->options & AUDIT_DRIVER)) {
                 remove_audit_rule_syscheck(dir_it->path);
             }
 #endif
