@@ -49,6 +49,7 @@ class TMonitoring final
     std::map<std::string, bool, std::less<>> m_servers;
     std::thread m_thread;
     std::mutex m_mutex;
+    std::mutex m_mutex_wait;
     std::condition_variable m_condition;
     std::atomic<bool> m_stop {false};
     uint32_t m_interval {HEALTH_CHECK_INTERVAL_MS};
@@ -173,7 +174,7 @@ public:
                 while (!m_stop)
                 {
                     // Wait for the interval.
-                    std::unique_lock lock(m_mutex);
+                    std::unique_lock lock(m_mutex_wait);
                     m_condition.wait_for(
                         lock, std::chrono::milliseconds(m_interval), [this]() { return m_stop.load(); });
 
@@ -183,6 +184,7 @@ public:
                         // Check the health of the servers.
                         for (const auto& [serverAddress, _] : m_servers)
                         {
+                            std::lock_guard lock(m_mutex);
                             healthCheck(serverAddress, authentication);
                         }
                     }
@@ -199,7 +201,7 @@ public:
      */
     bool isAvailable(const std::string& serverAddress)
     {
-        std::scoped_lock lock(m_mutex);
+        std::lock_guard lock(m_mutex);
         return m_servers.at(serverAddress);
     }
 };
