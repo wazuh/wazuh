@@ -24,6 +24,7 @@
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -303,6 +304,8 @@ namespace Utils
          */
         void delete_(const std::string& key, const std::string& columnName) override // NOLINT
         {
+            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             if (key.empty())
             {
                 throw std::invalid_argument("Key is empty");
@@ -455,20 +458,9 @@ namespace Utils
          */
         void createColumn(const std::string& columnName) override
         {
-            if (columnName.empty())
-            {
-                throw std::invalid_argument {"Column name is empty"};
-            }
+            std::unique_lock<std::shared_mutex> lock {m_columnsInstancesMutex};
 
-            rocksdb::ColumnFamilyHandle* pColumnFamily;
-
-            if (const auto status {m_db->CreateColumnFamily(
-                    RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName, &pColumnFamily)};
-                !status.ok())
-            {
-                throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
-            }
-            m_columnsInstances.emplace_back(m_db, pColumnFamily);
+            createColumnNoLock(columnName);
         }
 
         /**
@@ -480,15 +472,9 @@ namespace Utils
          */
         bool columnExists(const std::string& columnName) const override
         {
-            if (columnName.empty())
-            {
-                throw std::invalid_argument {"Column name is empty"};
-            }
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
-            return std::find_if(m_columnsInstances.begin(),
-                                m_columnsInstances.end(),
-                                [&columnName](const ColumnFamilyRAII& handle)
-                                { return columnName == handle->GetName(); }) != m_columnsInstances.end();
+            return columnExistsNoLock(columnName);
         }
 
         /**
@@ -558,42 +544,29 @@ namespace Utils
          */
         void deleteAll(const std::string& columnName)
         {
-            // Delete all data from the specified column
+            // Acquire the exclusive lock to protect the shared column family container.
+            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
+            // Use the non-locking version because the lock is already held.
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
-            if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
+            // Create a WriteBatch to accumulate delete operations.
+            rocksdb::WriteBatch batch;
+
+            // Create a new iterator for the specified column family.
+            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
+
+            // Iterate through all keys in the column and add a delete operation for each key.
+            it->SeekToFirst();
+            while (it->Valid())
             {
-                // Find the column handle on the list and drop it
-                const auto it =
-                    std::find_if(m_columnsInstances.begin(),
-                                 m_columnsInstances.end(),
-                                 [&columnName](const auto& handle) { return columnName == handle->GetName(); });
-
-                // Check if the column exists
-                if (it != m_columnsInstances.end())
-                {
-                    it->drop();
-                    m_columnsInstances.erase(it);
-
-                    createColumn(columnName);
-                }
+                batch.Delete(columnHandle.handle(), it->key());
+                it->Next();
             }
-            else
+
+            // Commit the batch deletion.
+            if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
             {
-                rocksdb::WriteBatch batch;
-                std::unique_ptr<rocksdb::Iterator> itDefault(
-                    m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
-
-                itDefault->SeekToFirst();
-                while (itDefault->Valid())
-                {
-                    batch.Delete(columnHandle.handle(), itDefault->key());
-                    itDefault->Next();
-                }
-
-                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
-                {
-                    throw std::runtime_error("Error deleting data: " + status.ToString());
-                }
+                throw std::runtime_error("Error deleting data: " + status.ToString());
             }
         }
 
@@ -648,6 +621,8 @@ namespace Utils
          */
         void deleteAll(const std::function<void(std::string&, std::string&)>& callback, const std::string& columnName)
         {
+            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             // Get the column family handle
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
 
@@ -687,10 +662,70 @@ namespace Utils
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
+        mutable std::shared_mutex m_columnsInstancesMutex;           ///< Mutex for the column family list.
         const bool m_enableWal;                                      ///< Whether to enable WAL or not.
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
+
+        /**
+         * @brief Get the column family handle based on the column name.
+         * @param columnName Name of the column family.
+         * @return ColumnFamilyRAII& Column family handle.
+         * @note This method is not thread-safe and should be called from a thread-safe context.
+         */
+        ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
+        {
+
+            auto columnNameFind {columnName};
+            if (columnName.empty())
+            {
+                columnNameFind = rocksdb::kDefaultColumnFamilyName;
+            }
+
+            if (const auto it {std::find_if(m_columnsInstances.begin(),
+                                            m_columnsInstances.end(),
+                                            [&columnNameFind](const ColumnFamilyRAII& handle)
+                                            { return columnNameFind == handle.handle()->GetName(); })};
+                it != m_columnsInstances.end())
+            {
+                return *it;
+            }
+
+            throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
+        }
+
+        /**
+         * @brief Check if a column exists in the database.
+         * @param columnName Name of the column family.
+         * @return bool True if the column exists.
+         * @note This method is not thread-safe and should be called from a thread-safe context.
+         */
+        bool columnExistsNoLock(const std::string& columnName) const
+        {
+            return std::find_if(m_columnsInstances.begin(),
+                                m_columnsInstances.end(),
+                                [&columnName](const ColumnFamilyRAII& handle)
+                                { return columnName == handle->GetName(); }) != m_columnsInstances.end();
+        }
+
+        /**
+         * @brief Create a new column family in the database.
+         * @param columnName Name of the new column.
+         * @note This method is not thread-safe and should be called from a thread-safe context.
+         */
+        void createColumnNoLock(const std::string& columnName)
+        {
+            rocksdb::ColumnFamilyHandle* handle;
+            if (const auto status {m_db->CreateColumnFamily(
+                    RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName, &handle)};
+                !status.ok())
+            {
+                throw std::runtime_error {"Failed to create column: " + status.ToString()};
+            }
+
+            m_columnsInstances.emplace_back(m_db, handle);
+        }
 
         /**
          * @brief Will try to repair the database if it is corrupt or throw exception if something failed.
@@ -715,32 +750,6 @@ namespace Utils
                                          "wasn't corruption. Code: " +
                                          std::to_string(errorStatus.code()) + " Reason: " + errorStatus.getState());
             }
-        }
-
-        /**
-         * @brief Returns the column family handle identified by its name.
-         *
-         * @param columnName Name of the column family. If empty, the default handle is returned.
-         * @return rocksdb::ColumnFamilyHandle* Column family handle pointer.
-         */
-        ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
-        {
-            auto columnNameFind {columnName};
-            if (columnName.empty())
-            {
-                columnNameFind = rocksdb::kDefaultColumnFamilyName;
-            }
-
-            if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                            m_columnsInstances.end(),
-                                            [&columnNameFind](const ColumnFamilyRAII& handle)
-                                            { return columnNameFind == handle.handle()->GetName(); })};
-                it != m_columnsInstances.end())
-            {
-                return *it;
-            }
-
-            throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
         }
 
         auto createTransaction(const rocksdb::WriteOptions& writeOptions)
