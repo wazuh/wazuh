@@ -210,9 +210,8 @@ BuildEngine()
 {
   ENGINE_SRC_PATH=$(pwd)/engine
   cd "${ENGINE_SRC_PATH}"
-
   # Configure the engine
-  cmake --preset=relwithdebinfo --no-warn-unused-cli
+  VCPKG_ROOT=$VCPKG_ROOT cmake --preset=relwithdebinfo --no-warn-unused-cli
   # Compile only the engine
   cmake --build build --target main -j $(nproc)
 
