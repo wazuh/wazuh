@@ -72,11 +72,11 @@ def test_ssl_config_fails_without_values(init_values):
     ],
 )
 @patch('os.path.isfile', return_value=True)
-def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expected):
+@patch('builtins.open')
+def test_indexer_ssl_config_default_values(open_mock, file_exists_mock, init_values, expected):
     """Check the correct initialization of the `IndexerSSLConfig` class."""
     ssl_config = IndexerSSLConfig(**init_values)
 
-    assert ssl_config.use_ssl == expected['use_ssl']
     assert ssl_config.use_ssl == expected['use_ssl']
     assert ssl_config.key == expected['key']
     assert ssl_config.certificate == expected['certificate']
