@@ -38,14 +38,7 @@ INSTANTIATE_TEST_SUITE_P(
         StageT(R"({"index": [{"index": "non-alerts"}]})",
                getIndexerOutputBuilder(getNullIndexerConnector()),
                FAILURE()),
-        StageT(R"({"index": "alerts"})",
-               getIndexerOutputBuilder(getNullIndexerConnector()),
-               SUCCESS(
-                   [](const BuildersMocks& mocks)
-                   {
-                       EXPECT_CALL(*mocks.ctx, runState());
-                       return base::Term<base::EngineOp>::create("write.output(wazuh-indexer/alerts)", {});
-                   })),
+        StageT(R"({"index": "alerts"})", getIndexerOutputBuilder(getNullIndexerConnector()), FAILURE()),
         // non-null Indexer connector
         StageT(R"([])", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"("notObject")", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
@@ -61,13 +54,18 @@ INSTANTIATE_TEST_SUITE_P(
         StageT(R"({"index": [{"index": "non-alerts"}]})",
                getIndexerOutputBuilder(getMockIndexerConnector()),
                FAILURE()),
-        StageT(R"({"index": "alerts"})",
+        // Invalid string
+        StageT(R"({"index": "alerts"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
+        StageT(R"({"index": "wazuh-Alerts"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
+        StageT(R"({"index": "wazuh-alerts-#"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
+        // Valid string
+        StageT(R"({"index": "wazuh-alerts-5.x"})",
                getIndexerOutputBuilder(getMockIndexerConnector()),
                SUCCESS(
                    [](const BuildersMocks& mocks)
                    {
                        EXPECT_CALL(*mocks.ctx, runState());
-                       return base::Term<base::EngineOp>::create("write.output(wazuh-indexer/alerts)", {});
+                       return base::Term<base::EngineOp>::create("write.output(wazuh-indexer/wazuh-alerts-5.x)", {});
                    }))
         // End
         ),
