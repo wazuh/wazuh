@@ -106,7 +106,7 @@ protected:
         // Reset the mock
         ::testing::Mock::VerifyAndClearExpectations(&mockConnector);
         // Set success definition for builder creation
-        definition = json::Json(R"({"index": "alerts"})");
+        definition = json::Json(R"({"index": "wazuh-alerts"})");
     }
 
     void TearDown() override
@@ -134,14 +134,14 @@ TEST_F(IndexerOutputOperationTest, output_success)
     // Check the expression
     ASSERT_TRUE(expression->isTerm());
     auto term = expression->getPtr<base::Term<base::EngineOp>>();
-    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/alerts)");
+    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/wazuh-alerts)");
 
     // Check the operation
     auto operation = term->getFn();
     ASSERT_TRUE(operation);
 
     // Configure the behavior
-    EXPECT_CALL(*iConnector, publish(StartsWith(R"({"operation": "ADD", "index": "alerts", "data": {)")));
+    EXPECT_CALL(*iConnector, publish(StartsWith(R"({"operation": "ADD", "index": "wazuh-alerts", "data": {)")));
 
     // Run the operation
     auto result = operation(event);
@@ -161,7 +161,7 @@ TEST_F(IndexerOutputOperationTest, output_fail)
     // Check the expression
     ASSERT_TRUE(expression->isTerm());
     auto term = expression->getPtr<base::Term<base::EngineOp>>();
-    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/alerts)");
+    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/wazuh-alerts)");
 
     // Check the operation
     auto operation = term->getFn();
