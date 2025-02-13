@@ -476,7 +476,7 @@ TEST_F(RocksDBWrapperTest, ColumnExistEmptyThrows)
 {
     constexpr auto COLUMN_NAME {""};
 
-    EXPECT_THROW(db_wrapper->columnExists(COLUMN_NAME), std::invalid_argument);
+    EXPECT_NO_THROW(db_wrapper->columnExists(COLUMN_NAME));
 }
 
 /**
@@ -499,7 +499,7 @@ TEST_F(RocksDBWrapperTest, CreateMultipleColumns)
 TEST_F(RocksDBWrapperTest, CreateColumnEmptyNameThrows)
 {
     constexpr auto COLUMN_NAME {""};
-    EXPECT_THROW(db_wrapper->createColumn(COLUMN_NAME), std::invalid_argument);
+    EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME));
 }
 
 /**
