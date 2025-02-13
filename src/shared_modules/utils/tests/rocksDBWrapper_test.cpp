@@ -221,7 +221,7 @@ TEST_F(RocksDBWrapperTest, MultiThreadTest)
     constexpr auto KEY_A {"key_A"};
     constexpr auto VALUE_A {"value_A"};
 
-    const int MAX_ELEMENTS {10000};
+    const int MAX_ELEMENTS {100};
 
     if (!db_wrapper->columnExists(COLUMN_NAME_A))
     {

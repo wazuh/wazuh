@@ -235,12 +235,12 @@ namespace Utils
          */
         bool get(const std::string& key, std::string& value, const std::string& columnName = "")
         {
-            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
-
             if (key.empty())
             {
                 throw std::invalid_argument("Key is empty");
             }
+
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
             if (const auto status {
                     m_db->Get(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle(), key, &value)};
@@ -271,6 +271,8 @@ namespace Utils
             {
                 throw std::invalid_argument("Key is empty");
             }
+
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
             if (const auto status {
                     m_db->Get(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle(), key, &value)};
@@ -308,8 +310,6 @@ namespace Utils
          */
         void delete_(const std::string& key, const std::string& columnName) override // NOLINT
         {
-            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
-
             if (key.empty())
             {
                 throw std::invalid_argument("Key is empty");
@@ -317,6 +317,8 @@ namespace Utils
 
             rocksdb::WriteOptions writeOptions;
             writeOptions.disableWAL = !m_enableWal;
+
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
             const auto status {m_db->Delete(writeOptions, getColumnFamilyBasedOnName(columnName).handle(), key)};
             if (!status.ok())
@@ -346,6 +348,8 @@ namespace Utils
          */
         std::pair<std::string, rocksdb::Slice> getLastKeyValue(const std::string& columnName = "")
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             std::unique_ptr<rocksdb::Iterator> it(
                 m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle()));
 
@@ -365,6 +369,8 @@ namespace Utils
          */
         RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override // NOLINT
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             return {std::shared_ptr<rocksdb::Iterator>(
                         m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle())),
                     key};
@@ -376,6 +382,8 @@ namespace Utils
          */
         RocksDBIterator begin(const std::string& columnName = "")
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             RocksDBIterator rocksDBIterator(
                 std::shared_ptr<rocksdb::Iterator>(
                     m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle())),
@@ -503,6 +511,8 @@ namespace Utils
          */
         void deleteAll() override
         {
+            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             std::vector<std::string> columnsNames;
             auto it = m_columnsInstances.begin();
 
@@ -538,7 +548,7 @@ namespace Utils
 
             for (const auto& columnName : columnsNames)
             {
-                createColumn(columnName);
+                createColumnNoLock(columnName);
             }
         }
 
@@ -548,12 +558,11 @@ namespace Utils
          */
         void deleteAll(const std::string& columnName)
         {
-            // Acquire the exclusive lock to protect the shared column family container.
-            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
-
-            const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
-            if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
+            if (!columnName.empty())
             {
+                // Acquire the exclusive lock to protect the shared column family container.
+                std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
                 // Find the column handle on the list and drop it
                 const auto it =
                     std::find_if(m_columnsInstances.begin(),
@@ -571,6 +580,10 @@ namespace Utils
             }
             else
             {
+                std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
+                const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
+
                 rocksdb::WriteBatch batch;
                 std::unique_ptr<rocksdb::Iterator> itDefault(
                     m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
@@ -602,6 +615,8 @@ namespace Utils
          */
         void deleteAll(const std::function<void(std::string&, std::string&)>& callback)
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             // Delete data from all family columns
             for (const auto& columnHandle : m_columnsInstances)
             {
@@ -640,7 +655,7 @@ namespace Utils
          */
         void deleteAll(const std::function<void(std::string&, std::string&)>& callback, const std::string& columnName)
         {
-            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
             // Get the column family handle
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
@@ -695,7 +710,6 @@ namespace Utils
          */
         ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
         {
-
             auto columnNameFind {columnName};
             if (columnName.empty())
             {
