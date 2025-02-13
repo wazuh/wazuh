@@ -7,7 +7,7 @@
     FortiAuth ID: 44730 - 44739
 -->
 
-<group name="fortiauth">
+<group name="fortiauth,">
 
   <rule id="44730" level="0">
     <decoded_as>fortiauth</decoded_as>
