@@ -26,6 +26,8 @@ protected:
 TEST_F(LogparTest, Builds)
 {
     auto config = logpar_test::getConfig();
+    EXPECT_CALL(*schema, hasField(testing::StrEq(logpar_test::TEXT_FIELD_OVERRIDE))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*schema, hasField(testing::StrEq(logpar_test::LONG_FIELD_OVERRIDE))).WillOnce(::testing::Return(true));
     ASSERT_NO_THROW(logpar::Logpar logpar(config, schema));
 }
 
@@ -35,9 +37,21 @@ TEST_F(LogparTest, BuildsNotObjectConfig)
     ASSERT_THROW(logpar::Logpar logpar(config, schema), std::runtime_error);
 }
 
-TEST_F(LogparTest, BuildsEmptyConfig)
+TEST_F(LogparTest, BuildsNoNameConfig)
 {
     json::Json config {"{}"};
+    ASSERT_THROW(logpar::Logpar logpar(config, schema), std::runtime_error);
+}
+
+TEST_F(LogparTest, BuildsNoFieldsConfig)
+{
+    json::Json config {R"({"name":"name"})"};
+    ASSERT_THROW(logpar::Logpar logpar(config, schema), std::runtime_error);
+}
+
+TEST_F(LogparTest, BuildsNotStringOverride)
+{
+    json::Json config {R"({"name":"name","fields":{"text":1}})"};
     ASSERT_THROW(logpar::Logpar logpar(config, schema), std::runtime_error);
 }
 
@@ -83,7 +97,8 @@ INSTANTIATE_TEST_SUITE_P(Parses,
                                            ParseExprT("<~opt>?lit", false),
                                            ParseExprT("lit(?lit", false),
                                            ParseExprT("literal<text><~custom/long><~>", false),
-                                           ParseExprT("literal<text>:<~custom/long/error_arg><~>", false)));
+                                           ParseExprT("literal<text>:<~custom/long/error_arg><~>", false),
+                                           ParseExprT("literal<array>", false)));
 
 using BuildParseT = std::tuple<bool, std::string, std::string, json::Json>;
 class LogparBuildParseTest

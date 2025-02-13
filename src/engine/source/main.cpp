@@ -258,16 +258,16 @@ int main(int argc, char* argv[])
             hlp::initTZDB(confManager.get<std::string>(conf::key::TZDB_PATH),
                           confManager.get<bool>(conf::key::TZDB_AUTO_UPDATE));
 
-            base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-            auto hlpParsers = store->readInternalDoc(hlpConfigFileName);
-            if (std::holds_alternative<base::Error>(hlpParsers))
+            base::Name logparFieldOverrides({"schema", "wazuh-logpar-overrides", "0"});
+            auto res = store->readInternalDoc(logparFieldOverrides);
+            if (std::holds_alternative<base::Error>(res))
             {
-                throw std::runtime_error(fmt::format("Could not retreive configuration file [{}] needed by the "
+                throw std::runtime_error(fmt::format("Could not retreive logpar field overrides [{}] needed by the "
                                                      "HLP module, error: {}",
-                                                     hlpConfigFileName.fullName(),
-                                                     std::get<base::Error>(hlpParsers).message));
+                                                     logparFieldOverrides.fullName(),
+                                                     base::getError(res).message));
             }
-            logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers), schema);
+            logpar = std::make_shared<hlp::logpar::Logpar>(base::getResponse<store::Doc>(res), schema);
             hlp::registerParsers(logpar);
             LOG_INFO("HLP initialized.");
         }

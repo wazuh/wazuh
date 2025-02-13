@@ -15,96 +15,6 @@
 
 namespace hlp
 {
-/**
- * @brief Schema types of fields
- *
- */
-enum class SchemaType
-{
-    // Numeric types
-    LONG,
-    DOUBLE,
-    FLOAT,
-    SCALED_FLOAT,
-    BYTE,
-    // String types
-    KEYWORD,
-    TEXT,
-    WILDCARD,
-    // Other types
-    BOOLEAN,
-    IP,
-    OBJECT,
-    GEO_POINT,
-    NESTED,
-    DATE,
-    // Special types, not in schema
-    USER_AGENT,
-    URL,
-    // Error type
-    ERROR_TYPE
-};
-
-constexpr auto schemaTypeToStr(SchemaType type)
-{
-    switch (type)
-    {
-        case SchemaType::LONG: return "long";
-        case SchemaType::DOUBLE: return "double";
-        case SchemaType::FLOAT: return "float";
-        case SchemaType::SCALED_FLOAT: return "scaled_float";
-        case SchemaType::BYTE: return "byte";
-        case SchemaType::KEYWORD: return "keyword";
-        case SchemaType::TEXT: return "text";
-        case SchemaType::WILDCARD: return "wildcard";
-        case SchemaType::BOOLEAN: return "boolean";
-        case SchemaType::IP: return "ip";
-        case SchemaType::OBJECT: return "object";
-        case SchemaType::GEO_POINT: return "geo_point";
-        case SchemaType::NESTED: return "nested";
-        case SchemaType::DATE: return "date";
-        case SchemaType::USER_AGENT: return "useragent";
-        case SchemaType::URL: return "url";
-        default: return "error_type";
-    }
-}
-
-constexpr auto strToSchemaType(std::string_view str)
-{
-    if (str == schemaTypeToStr(SchemaType::LONG))
-        return SchemaType::LONG;
-    if (str == schemaTypeToStr(SchemaType::DOUBLE))
-        return SchemaType::DOUBLE;
-    if (str == schemaTypeToStr(SchemaType::FLOAT))
-        return SchemaType::FLOAT;
-    if (str == schemaTypeToStr(SchemaType::SCALED_FLOAT))
-        return SchemaType::SCALED_FLOAT;
-    if (str == schemaTypeToStr(SchemaType::BYTE))
-        return SchemaType::BYTE;
-    if (str == schemaTypeToStr(SchemaType::KEYWORD))
-        return SchemaType::KEYWORD;
-    if (str == schemaTypeToStr(SchemaType::TEXT))
-        return SchemaType::TEXT;
-    if (str == schemaTypeToStr(SchemaType::WILDCARD))
-        return SchemaType::WILDCARD;
-    if (str == schemaTypeToStr(SchemaType::BOOLEAN))
-        return SchemaType::BOOLEAN;
-    if (str == schemaTypeToStr(SchemaType::IP))
-        return SchemaType::IP;
-    if (str == schemaTypeToStr(SchemaType::OBJECT))
-        return SchemaType::OBJECT;
-    if (str == schemaTypeToStr(SchemaType::GEO_POINT))
-        return SchemaType::GEO_POINT;
-    if (str == schemaTypeToStr(SchemaType::NESTED))
-        return SchemaType::NESTED;
-    if (str == schemaTypeToStr(SchemaType::DATE))
-        return SchemaType::DATE;
-    if (str == schemaTypeToStr(SchemaType::USER_AGENT))
-        return SchemaType::USER_AGENT;
-    if (str == schemaTypeToStr(SchemaType::URL))
-        return SchemaType::URL;
-    return SchemaType::ERROR_TYPE;
-}
 
 /**
  * @brief Parser types
@@ -376,15 +286,12 @@ private:
     using ParserBuilder = hlp::ParserBuilder;
     using Hlp = hlp::parser::Parser;
 
-    std::shared_ptr<schemf::ISchema> m_schema;
-
     size_t m_maxGroupRecursion;
-
     size_t m_debugLvl;
-
-    std::unordered_map<std::string, SchemaType> m_fieldTypes;
-    std::unordered_map<SchemaType, ParserType> m_typeParsers;
+    std::weak_ptr<schemf::ISchema> m_schema;
+    std::unordered_map<schemf::Type, ParserType> m_typeParsers;
     std::unordered_map<ParserType, ParserBuilder> m_parserBuilders;
+    std::unordered_map<std::string, ParserType> m_fieldParserOverrides;
 
     // build the parsers from the different parser info types
     Hlp buildLiteralParser(const parser::Literal& literal) const;
@@ -395,18 +302,70 @@ private:
     // build the parsers while adding the target field to the json
     Hlp buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const;
 
+    /**
+     * @brief Get the Schema object
+     *
+     * @return std::shared_ptr<schemf::ISchema>
+     * @throws std::runtime_error if the schema is not available
+     */
+    inline std::shared_ptr<schemf::ISchema> getSchema() const
+    {
+        auto schema = m_schema.lock();
+        if (!schema)
+        {
+            throw std::runtime_error("Logpar tried to get schema but it was not available");
+        }
+
+        return schema;
+    }
+
+    /**
+     * @brief Get the Parser object for the given field
+     *
+     * @param field the field to get the parser
+     * @return ParserType
+     *
+     * @throws std::runtime_error if the parser is not found or not supported
+     */
+    inline ParserType getParser(const std::string& field) const
+    {
+        // Return override if it exists
+        if (m_fieldParserOverrides.count(field) != 0)
+        {
+            return m_fieldParserOverrides.at(field);
+        }
+
+        // Get the type from the schema table otherwise
+        auto schema = getSchema();
+        auto type = schema->getType(field);
+        if (m_typeParsers.count(type) == 0)
+        {
+            throw std::runtime_error(fmt::format(
+                "Parser for ECS type '{}' not found, needed for field '{}'", schemf::typeToStr(type), field));
+        }
+
+        auto parserType = m_typeParsers.at(type);
+        if (parserType == ParserType::ERROR_TYPE)
+        {
+            throw std::runtime_error(fmt::format(
+                "Parser for ECS type '{}' not supported, needed for field '{}'", schemf::typeToStr(type), field));
+        }
+
+        return parserType;
+    }
+
 public:
     /**
      * @brief Construct a new Logpar object
      *
-     * @param ecsFieldTypes a json object with the schema types of the schema fields
+     * @param fieldParserOverrides a json object with overrides for the field parsers
      * @param schema the schema to validate the fields
      * @param maxGroupRecursion the maximum number of times a group can be nested
      * @param debugLvl the debug level
      *
      * @throws std::runtime_error if errors occur while initializing
      */
-    Logpar(const json::Json& ecsFieldTypes,
+    Logpar(const json::Json& fieldParserOverrides,
            const std::shared_ptr<schemf::ISchema>& schema,
            size_t maxGroupRecursion = 1,
            size_t debugLvl = 0);

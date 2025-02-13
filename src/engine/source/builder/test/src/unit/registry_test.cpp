@@ -118,6 +118,7 @@ TEST(RegistryTest, RegisterBuilders)
     auto metaRegistry = builders::RegistryType::create<Registry>();
     BuilderDeps deps {};
     json::Json fakeLogparDefs;
+    fakeLogparDefs.setString("name", "/name");
     fakeLogparDefs.setObject("/fields");
     deps.logpar = std::make_shared<hlp::logpar::Logpar>(fakeLogparDefs, std::make_shared<schemf::mocks::MockSchema>());
     deps.kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
