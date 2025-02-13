@@ -9,7 +9,6 @@
 
 import argparse
 import configparser
-from logging import warning
 from os import path
 from datetime import datetime
 from typing import Optional
@@ -322,7 +321,7 @@ def arg_validate_security_lake_auth_params(
         error('Used a subscriber but no --external_id provided.')
         sys.exit(21)
     if profile is None:
-        info('Used a subscriber but no --aws_profile provided, the "default" value will be used.')
+        debug('Used a subscriber but no --aws_profile provided, the "default" value will be used.', 2)
 
 
 def get_aws_config_params() -> configparser.RawConfigParser:
