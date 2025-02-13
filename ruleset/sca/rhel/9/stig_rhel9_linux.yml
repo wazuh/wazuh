@@ -1,0 +1,1677 @@
+# Security Configuration Assessment
+# DISA STIG Checks for RHEL 9
+# Copyright (C) 2024, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software Foundation
+#
+# Based on:
+# DISA STIG Red Hat Enterprise Linux 9 Security Technical Implementation Guide v2r3 - 2024-01-22
+
+policy:
+  id: stig_rhel9_linux
+  file: stig_rhel9_linux.yml
+  name: "DISA STIG Red Hat Enterprise Linux 9 Security Technical Implementation Guide v2r3"
+  description: "This document provides security technical implementation guidance for Red Hat Enterprise Linux 9 systems. This guide was tested against Red Hat Enterprise Linux 9 and provides prescriptive guidance for establishing a secure configuration posture."
+  references:
+    - https://public.cyber.mil/stigs/downloads/
+    - https://www.stigviewer.com/stig/red_hat_enterprise_linux_9/
+
+requirements:
+  title: "Check RHEL9 family platform"
+  description: "Requirements for running the STIG policy against RHEL 9 family."
+  condition: any
+  rules:
+    - "f:/etc/redhat-release -> r:^Red Hat Enterprise Linux && r:release 9"
+    - "f:/etc/redhat-release -> r:^CentOS && r:release 9"
+    - "f:/etc/redhat-release -> r:^Oracle && r:release 9"
+    - "f:/etc/redhat-release -> r:^Rocky && r:release 9"
+    - "f:/etc/redhat-release -> r:^AlmaLinux && r:release 9"
+
+variables:
+  $sshd_file: /etc/ssh/sshd_config
+  $pam_pwquality: /etc/security/pwquality.conf
+  $login_defs: /etc/login.defs
+  $system_auth: /etc/pam.d/system-auth
+  $password_auth: /etc/pam.d/password-auth
+
+checks:
+  # RHEL-09-211020
+  - id: 257779
+    title: "RHEL 9 must display the Standard Mandatory DoD Notice and Consent Banner before granting local or remote access to the system."
+    description: "Display of a standardized and approved use notification before granting access to the operating system ensures privacy and security notification verbiage used is consistent with applicable federal laws, Executive Orders, directives, policies, regulations, standards, and guidance."
+    rationale: "The banner must provide privacy and security notices consistent with applicable federal laws, Executive Orders, directives, policies, regulations, standards, and guidance."
+    remediation: |
+      Configure the operating system to display the Standard Mandatory DoD Notice and Consent Banner before granting access to the system.
+      Edit the /etc/issue file and add the required banner message text.
+    severity: "medium"
+    vuln_id: "V-257779"
+    stig_id: "RHEL-09-211020"
+    rule_id: "SV-257779r925322_rule"
+    cci: ["CCI-000048"]
+    compliance:
+      - nist_800_53: ["AC-8 a", "AC-8 b", "AC-8 c"]
+      - disa_stig: ["SRG-OS-000023-GPOS-00006"]
+    condition: all
+    rules:
+      - 'f:/etc/issue -> r:^You are accessing a U.S. Government \(USG\) Information System \(IS\)'
+      - 'f:/etc/issue -> r:^that is provided for USG-authorized use only'
+      - 'f:/etc/issue -> r:^By using this IS \(which includes any device attached to this IS\), you consent'
+      - 'f:/etc/issue -> r:^to the following conditions'
+      - 'f:/etc/issue -> r:^-The USG routinely intercepts and monitors communications on this IS for purposes'
+      - 'f:/etc/issue -> r:^including, but not limited to, penetration testing, COMSEC monitoring, network'
+      - 'f:/etc/issue -> r:^operations and defense, personnel misconduct \(PM\), law enforcement \(LE\), and'
+      - 'f:/etc/issue -> r:^counterintelligence \(CI\) investigations'
+      - 'f:/etc/issue -> r:^-At any time, the USG may inspect and seize data stored on this IS'
+      - 'f:/etc/issue -> r:^-Communications using, or data stored on, this IS are not private, are subject'
+      - 'f:/etc/issue -> r:^to routine monitoring, interception, and search, and may be disclosed or used'
+      - 'f:/etc/issue -> r:^for any USG-authorized purpose'
+      - 'f:/etc/issue -> r:^-This IS includes security measures \(e.g., authentication and access controls\)'
+      - 'f:/etc/issue -> r:^to protect USG interests--not for your personal benefit or privacy'
+      - 'f:/etc/issue -> r:^-Notwithstanding the above, using this IS does not constitute consent to PM, LE'
+      - 'f:/etc/issue -> r:^or CI investigative searching or monitoring of the content of privileged'
+      - 'f:/etc/issue -> r:^communications, or work product, related to personal representation or services'
+      - 'f:/etc/issue -> r:^by attorneys, psychotherapists, or clergy, and their assistants. Such'
+      - 'f:/etc/issue -> r:^communications and work product are private and confidential'
+
+  # RHEL-09-211040
+  - id: 257783
+    title: "RHEL 9 must enable the systemd-journald service."
+    description: "The systemd-journald service provides system logging capabilities essential for system monitoring and troubleshooting."
+    rationale: "Maintaining an audit trail of system activity logs can help identify configuration errors, troubleshoot service disruptions, and identify unauthorized activities."
+    remediation: |
+      Configure the operating system to enable the systemd-journald service with the following commands:
+      # systemctl enable systemd-journald.service
+      # systemctl start systemd-journald.service
+    severity: "medium"
+    vuln_id: "V-257783"
+    stig_id: "RHEL-09-211040"
+    rule_id: "SV-257783r925322_rule"
+    cci: ["CCI-000169"]
+    compliance:
+      - nist_800_53: ["AU-12 a"]
+      - disa_stig: ["SRG-OS-000037-GPOS-00015"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled systemd-journald.service -> r:^enabled'
+      - 'c:systemctl is-active systemd-journald.service -> r:^active'
+
+  # RHEL-09-211045
+  - id: 257784
+    title: "RHEL 9 must disable the ctrl-alt-del-burst action."
+    description: "A locally logged-on user who presses Ctrl-Alt-Delete, when at the console, can reboot the system."
+    rationale: "Disabling the ctrl-alt-del-burst action prevents users from rebooting the system via Ctrl-Alt-Delete."
+    remediation: |
+      Configure the system to disable the CtrlAltDelBurstAction by adding or modifying the following line in "/etc/systemd/system.conf":
+
+      CtrlAltDelBurstAction=none
+
+      Reload the daemon for this change to take effect:
+      # systemctl daemon-reload
+    severity: "medium"
+    vuln_id: "V-257784"
+    stig_id: "RHEL-09-211050"
+    rule_id: "SV-257784r1044832_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/systemd/system.conf -> r:^CtrlAltDelBurstAction=none$'
+
+  # RHEL-09-000001
+  - id: "RHEL-09-000001"
+    title: "RHEL 9 must implement NIST FIPS-validated cryptography for the following: to provision digital signatures, to generate cryptographic hashes, and to protect data requiring data-at-rest protections in accordance with applicable federal laws, Executive Orders, directives, policies, regulations, and standards."
+    description: "Use of weak or untested encryption algorithms undermines the purposes of utilizing encryption to protect data. The operating system must implement cryptographic modules adhering to the higher standards approved by the federal government since this provides assurance they have been tested and validated."
+    rationale: "FIPS 140-2 is the current standard for validating that mechanisms used to access cryptographic modules utilize authentication that meets DoD requirements. This allows for Security Levels 1, 2, 3, or 4 for use on a general purpose computing system."
+    remediation: |
+      Configure RHEL 9 to use FIPS mode:
+      1. Add the following line to /etc/default/grub in the GRUB_CMDLINE_LINUX parameter:
+         fips=1
+      2. Rebuild the grub.cfg file:
+         # grub2-mkconfig -o /boot/grub2/grub.cfg
+      3. Reboot the system
+      4. Verify FIPS mode is enabled:
+         # fips-mode-setup --check
+    severity: "high"
+    vuln_id: "V-230221"
+    stig_id: "RHEL-09-000001"
+    rule_id: "SV-230221r627750_rule"
+    cci: ["CCI-000068", "CCI-002450"]
+    compliance:
+      - nist_800_53: ["SC-13", "SC-13(1)"]
+      - disa_stig: ["SRG-OS-000478-GPOS-00223"]
+    condition: all
+    rules:
+      - 'c:fips-mode-setup --check -> r:FIPS mode is enabled'
+      - 'f:/proc/sys/crypto/fips_enabled -> r:1'
+      - 'f:/etc/system-fips -> r:.'
+
+  # RHEL-09-000002
+  - id: "RHEL-09-000002"
+    title: "RHEL 9 vendor packaged system security patches and updates must be installed and up to date."
+    description: "Security patches and updates help ensure systems are protected from known vulnerabilities. Keeping systems up to date with security patches is essential to maintain the confidentiality, integrity, and availability of the system."
+    rationale: "Security flaws with software applications are discovered daily. Vendors are constantly updating and patching their products to address newly discovered security vulnerabilities. Organizations are required to promptly install security patches and updates to protect against known vulnerabilities."
+    remediation: |
+      Install all security patches and updates:
+      # dnf update --security
+      To verify the system is configured to update from Red Hat Network (RHN):
+      # subscription-manager identity
+    severity: "high"
+    vuln_id: "V-230222"
+    stig_id: "RHEL-09-000002"
+    rule_id: "SV-230222r627750_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:dnf check-update --security -> r:^$'
+
+  # RHEL-09-211050
+  - id: 257785
+    title: "RHEL 9 must disable the ctrl-alt-del.target."
+    description: "A locally logged-on user who presses Ctrl-Alt-Delete, when at the console, can reboot the system. If accidentally pressed, as could happen in the case of a mixed OS environment, this can create the risk of short-term loss of availability of systems."
+    rationale: "Disabling the ctrl-alt-del.target ensures users cannot reboot the system via Ctrl-Alt-Delete, requiring them to utilize proper procedures for system shutdown or restart."
+    remediation: |
+      Configure the system to disable the ctrl-alt-del.target with the following commands:
+      # systemctl disable ctrl-alt-del.target
+      # systemctl mask ctrl-alt-del.target
+    severity: "medium"
+    vuln_id: "V-257785"
+    stig_id: "RHEL-09-211050"
+    rule_id: "SV-257785r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled ctrl-alt-del.target -> r:^masked'
+
+  # RHEL-09-211055
+  - id: 257786
+    title: "RHEL 9 must disable the debug-shell service."
+    description: "The debug-shell service provides a shell for debugging systemd during boot. If enabled, anyone with console access can access a root shell during boot."
+    rationale: "Providing root access during boot could allow unauthorized access to system resources."
+    remediation: |
+      Configure the system to disable the debug-shell service with the following commands:
+      # systemctl disable debug-shell.service
+      # systemctl mask debug-shell.service
+    severity: "high"
+    vuln_id: "V-257786"
+    stig_id: "RHEL-09-211055"
+    rule_id: "SV-257786r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled debug-shell.service -> r:^masked'
+
+  # RHEL-09-212025
+  - id: 257790
+    title: "RHEL 9 grub.cfg file must be group-owned by root."
+    description: "The grub.cfg file contains boot parameters and passwords for grub. Protection of this file is critical for system security."
+    rationale: "Proper group ownership of the grub.cfg file ensures that only root users can modify the boot parameters."
+    remediation: |
+      Configure the system to set group ownership of /boot/grub2/grub.cfg to root:
+      # chown :root /boot/grub2/grub.cfg
+    severity: "medium"
+    vuln_id: "V-257790"
+    stig_id: "RHEL-09-212025"
+    rule_id: "SV-257790r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/boot/grub2/grub.cfg -> r:^\w+:\w+:.*$ && !r:^.*:root:.*$'
+
+  # RHEL-09-213055
+  - id: 257806
+    title: "RHEL 9 must disable the firewire-core kernel module."
+    description: "The firewire-core kernel module provides support for FireWire devices. If this module is not needed, it must be disabled."
+    rationale: "Disabling modules that are not needed prevents unauthorized access via these unused modules."
+    remediation: |
+      Configure the system to disable the firewire-core kernel module:
+      Add or update the following lines in /etc/modprobe.d/firewire-core.conf:
+      install firewire-core /bin/false
+      blacklist firewire-core
+    severity: "medium"
+    vuln_id: "V-257806"
+    stig_id: "RHEL-09-213055"
+    rule_id: "SV-257806r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/firewire-core.conf -> r:^blacklist firewire-core'
+      - 'f:/etc/modprobe.d/firewire-core.conf -> r:^install firewire-core /bin/false'
+
+  # RHEL-09-213060
+  - id: 257807
+    title: "RHEL 9 must disable the SCTP kernel module."
+    description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol, designed to support the idea of message-oriented communication. If this protocol is not needed, it must be disabled."
+    rationale: "Disabling SCTP protects the system against exploitation of any flaws in its implementation."
+    remediation: |
+      Configure the system to disable the SCTP kernel module:
+      Add or update the following lines in /etc/modprobe.d/sctp.conf:
+      install sctp /bin/false
+      blacklist sctp
+    severity: "medium"
+    vuln_id: "V-257807"
+    stig_id: "RHEL-09-213060"
+    rule_id: "SV-257807r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/sctp.conf -> r:^blacklist sctp'
+      - 'f:/etc/modprobe.d/sctp.conf -> r:^install sctp /bin/false'
+
+  # RHEL-09-213065
+  - id: 257808
+    title: "RHEL 9 must disable the TIPC kernel module."
+    description: "The Transparent Inter-Process Communication (TIPC) protocol is a transport layer protocol designed for use in clustered computer environments. If this protocol is not needed, it must be disabled."
+    rationale: "Disabling TIPC protects the system against exploitation of any flaws in its implementation."
+    remediation: |
+      Configure the system to disable the TIPC kernel module:
+      Add or update the following lines in /etc/modprobe.d/tipc.conf:
+      install tipc /bin/false
+      blacklist tipc
+    severity: "medium"
+    vuln_id: "V-257808"
+    stig_id: "RHEL-09-213065"
+    rule_id: "SV-257808r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/tipc.conf -> r:^blacklist tipc'
+      - 'f:/etc/modprobe.d/tipc.conf -> r:^install tipc /bin/false'
+
+  # RHEL-09-214005
+  - id: 257820
+    title: "RHEL 9 must enable the DNF package signature verification."
+    description: "Package signatures provide a way to verify the integrity and origin of packages to be installed."
+    rationale: "Ensuring all packages are signed helps ensure the packages have not been tampered with and have come from a trusted vendor."
+    remediation: |
+      Configure DNF to verify package signatures:
+      Add or update the following line in /etc/dnf/dnf.conf:
+      gpgcheck=1
+    severity: "high"
+    vuln_id: "V-257820"
+    stig_id: "RHEL-09-214005"
+    rule_id: "SV-257820r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-5 (3)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/dnf/dnf.conf -> r:^gpgcheck\s*=\s*1'
+
+  # RHEL-09-213070
+  - id: 257809
+    title: "RHEL 9 must implement address space layout randomization (ASLR)."
+    description: "Address space layout randomization (ASLR) makes it more difficult for an attacker to predict the location of attack code they have introduced into a process' address space during an attempt at exploitation."
+    rationale: "ASLR makes it more difficult for an attacker to know the location of existing code to repurpose it using return oriented programming (ROP) techniques."
+    remediation: |
+      Configure ASLR by adding or editing the following line in a file under /etc/sysctl.d:
+      kernel.randomize_va_space = 2
+    severity: "medium"
+    vuln_id: "V-257809"
+    stig_id: "RHEL-09-213070"
+    rule_id: "SV-257809r1044866_rule"
+    cci: ["CCI-002824"]
+    compliance:
+      - nist_800_53: ["SC-39"]
+      - disa_stig: ["SRG-OS-000433-GPOS-00193", "SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:^2$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^kernel.randomize_va_space\s*=\s*2$'
+
+  # RHEL-09-213095
+  - id: 257814
+    title: "RHEL 9 must disable core dumps for all users."
+    description: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data."
+    rationale: "Core dumps should be disabled as they may contain sensitive information and are generally only useful for developers."
+    remediation: |
+      Add the following line to /etc/security/limits.conf or a file in /etc/security/limits.d/:
+      * hard core 0
+    severity: "medium"
+    vuln_id: "V-257814"
+    stig_id: "RHEL-09-213095"
+    rule_id: "SV-257814r991589_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/security/limits.conf -> r:^\*\s+hard\s+core\s+0$'
+      - 'f:/etc/security/limits.d/*.conf -> r:^\*\s+hard\s+core\s+0$'
+
+  # RHEL-09-213105
+  - id: 257816
+    title: "RHEL 9 must disable the use of user namespaces."
+    description: "User namespaces are used primarily for Linux containers. Disabling them helps prevent potential container escape vulnerabilities."
+    rationale: "User namespaces must be disabled unless explicitly required for container operations."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      user.max_user_namespaces = 0
+    severity: "medium"
+    vuln_id: "V-257816"
+    stig_id: "RHEL-09-213105"
+    rule_id: "SV-257816r1014825_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl user.max_user_namespaces -> r:^0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^user.max_user_namespaces\s*=\s*0$'
+
+  # RHEL-09-213115
+  - id: 257818
+    title: "The kdump service on RHEL 9 must be disabled."
+    description: "Kernel core dumps may contain the full contents of system memory at the time of the crash."
+    rationale: "Unless the system is used for kernel development or testing, there is little need to run the kdump service."
+    remediation: |
+      Disable and mask the kdump service:
+      # systemctl disable --now kdump.service
+      # systemctl mask --now kdump.service
+    severity: "medium"
+    vuln_id: "V-257818"
+    stig_id: "RHEL-09-213115"
+    rule_id: "SV-257818r1044876_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled kdump.service -> r:^masked$'
+      - 'c:systemctl is-active kdump.service -> r:^inactive$'
+
+  # RHEL-09-213035
+  - id: 257802
+    title: "RHEL 9 must enable kernel parameters to enforce discretionary access control on symlinks."
+    description: "Symbolic links are permitted to be followed only when outside a sticky world-writable directory, or when the UID of the link and follower match, or when the directory owner matches the symlink's owner."
+    rationale: "Disallowing such symlinks helps mitigate vulnerabilities based on insecure file system access by privileged programs."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      fs.protected_symlinks = 1
+    severity: "medium"
+    vuln_id: "V-257802"
+    stig_id: "RHEL-09-213035"
+    rule_id: "SV-257802r958702_rule"
+    cci: ["CCI-000165", "CCI-002235"]
+    compliance:
+      - nist_800_53: ["AC-3 (10)"]
+      - disa_stig: ["SRG-OS-000312-GPOS-00123", "SRG-OS-000324-GPOS-00125"]
+    condition: all
+    rules:
+      - 'c:sysctl fs.protected_symlinks -> r:^1$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^fs.protected_symlinks\s*=\s*1$'
+
+  # RHEL-09-213075
+  - id: 257810
+    title: "RHEL 9 must prevent kernel profiling by unprivileged users."
+    description: "Preventing unauthorized users from profiling the kernel mitigates the risk of gaining additional system knowledge for exploitation attempts."
+    rationale: "Kernel profiling information could be used by malicious users to identify potential vulnerabilities and target them for exploitation."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      kernel.perf_event_paranoid = 2
+    severity: "medium"
+    vuln_id: "V-257810"
+    stig_id: "RHEL-09-213075"
+    rule_id: "SV-257810r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl kernel.perf_event_paranoid -> r:^2$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^kernel.perf_event_paranoid\s*=\s*2$'
+
+  # RHEL-09-213080
+  - id: 257811
+    title: "RHEL 9 must restrict exposed kernel pointer addresses access."
+    description: "Restricting access to kernel pointer addresses makes it more difficult for attackers to identify kernel address locations for potential attacks."
+    rationale: "Kernel pointer addresses can be used to determine the location of kernel functions and data structures, which could be used in kernel exploits."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      kernel.kptr_restrict = 1
+    severity: "medium"
+    vuln_id: "V-257811"
+    stig_id: "RHEL-09-213080"
+    rule_id: "SV-257811r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl kernel.kptr_restrict -> r:^1$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^kernel.kptr_restrict\s*=\s*1$'
+
+  # RHEL-09-213085
+  - id: 257812
+    title: "RHEL 9 must restrict privileged access to the kernel message buffer."
+    description: "The kernel message buffer contains sensitive information about system operation and must be protected from unauthorized access."
+    rationale: "Unrestricted access to kernel messages could provide attackers with information about system vulnerabilities."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      kernel.dmesg_restrict = 1
+    severity: "medium"
+    vuln_id: "V-257812"
+    stig_id: "RHEL-09-213085"
+    rule_id: "SV-257812r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl kernel.dmesg_restrict -> r:^1$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^kernel.dmesg_restrict\s*=\s*1$'
+
+  # RHEL-09-213090
+  - id: 257813
+    title: "RHEL 9 must disable the bpf syscall."
+    description: "The Berkeley Packet Filter (BPF) syscall can be used to create side channels and bypass security controls."
+    rationale: "BPF allows unprivileged users to run code in kernel context, which could be used for privilege escalation attacks."
+    remediation: |
+      Add or modify the following line in a kernel parameter configuration file in the /etc/sysctl.d/ directory:
+      kernel.unprivileged_bpf_disabled = 1
+
+      Load the new settings:
+      # sysctl --system
+    severity: "medium"
+    vuln_id: "V-257813"
+    stig_id: "RHEL-09-213090"
+    rule_id: "SV-257813r1044871_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl kernel.unprivileged_bpf_disabled -> r:^kernel.unprivileged_bpf_disabled\s*=\s*1$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^kernel.unprivileged_bpf_disabled\s*=\s*1$'
+
+  # RHEL-09-213100
+  - id: 257815
+    title: "RHEL 9 must enable hardlink protection."
+    description: "Hardlink protection prevents users from creating hard links to files they do not own, protecting against various types of attacks."
+    rationale: "Unrestricted hardlink creation could be used in conjunction with other vulnerabilities to escalate privileges or access sensitive files."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      fs.protected_hardlinks = 1
+    severity: "medium"
+    vuln_id: "V-257815"
+    stig_id: "RHEL-09-213100"
+    rule_id: "SV-257815r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl fs.protected_hardlinks -> r:^1$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^fs.protected_hardlinks\s*=\s*1$'
+
+  # RHEL-09-221010
+  - id: 257830
+    title: "RHEL 9 must require users to provide a password for privilege escalation."
+    description: "Without requiring passwords for privilege escalation, unauthorized users might gain access to administrative privileges."
+    rationale: "The sudo command allows authorized users to run programs as other users, including root. Password authentication ensures accountability."
+    remediation: |
+      Edit the /etc/sudoers file with the following command:
+      # visudo
+      Remove or comment out any lines with NOPASSWD tag.
+    severity: "medium"
+    vuln_id: "V-257830"
+    stig_id: "RHEL-09-221010"
+    rule_id: "SV-257830r925322_rule"
+    cci: ["CCI-002038"]
+    compliance:
+      - nist_800_53: ["IA-11"]
+      - disa_stig: ["SRG-OS-000373-GPOS-00156", "SRG-OS-000373-GPOS-00157"]
+    condition: all
+    rules:
+      - 'f:/etc/sudoers -> !r:NOPASSWD'
+      - 'f:/etc/sudoers.d/* -> !r:NOPASSWD'
+
+  # RHEL-09-221020
+  - id: 257831
+    title: "RHEL 9 must implement the pam_pwquality.so module in the password-auth file."
+    description: "Strong password requirements must be enforced to prevent unauthorized access to the system."
+    rationale: "Password quality restrictions help prevent users from choosing weak passwords that can be easily compromised."
+    remediation: |
+      Add or modify the following line in /etc/pam.d/password-auth:
+      password required pam_pwquality.so retry=3
+    severity: "medium"
+    vuln_id: "V-257831"
+    stig_id: "RHEL-09-221020"
+    rule_id: "SV-257831r925322_rule"
+    cci: ["CCI-000192"]
+    compliance:
+      - nist_800_53: ["IA-5 (1) (a)"]
+      - disa_stig: ["SRG-OS-000069-GPOS-00037"]
+    condition: all
+    rules:
+      - 'f:/etc/pam.d/password-auth -> r:^password\s+required\s+pam_pwquality.so'
+
+  # RHEL-09-221025
+  - id: 257832
+    title: "RHEL 9 must implement the pam_pwquality.so module in the system-auth file."
+    description: "Password quality requirements must be consistently enforced across all authentication methods."
+    rationale: "Implementing pam_pwquality in system-auth ensures password requirements are applied system-wide."
+    remediation: |
+      Add or modify the following line in /etc/pam.d/system-auth:
+      password required pam_pwquality.so retry=3
+    severity: "medium"
+    vuln_id: "V-257832"
+    stig_id: "RHEL-09-221025"
+    rule_id: "SV-257832r925322_rule"
+    cci: ["CCI-000192"]
+    compliance:
+      - nist_800_53: ["IA-5 (1) (a)"]
+      - disa_stig: ["SRG-OS-000069-GPOS-00037"]
+    condition: all
+    rules:
+      - 'f:/etc/pam.d/system-auth -> r:^password\s+required\s+pam_pwquality.so'
+
+  # RHEL-09-221030
+  - id: 257833
+    title: "RHEL 9 must prevent the use of dictionary words for passwords."
+    description: "If the system allows the use of dictionary words for passwords, this increases the chance of password compromise by dictionary attacks."
+    rationale: "Password complexity requirements must be enforced to prevent dictionary attacks and brute forcing of passwords."
+    remediation: |
+      Configure RHEL 9 to prevent the use of dictionary words for passwords.
+
+      Add or modify the following line in /etc/security/pwquality.conf:
+      dictcheck = 1
+    severity: "medium"
+    vuln_id: "V-257833"
+    stig_id: "RHEL-09-231010"
+    rule_id: "SV-257833r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["IA-5 (1) (a)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/security/pwquality.conf -> r:^dictcheck\s*=\s*1$'
+
+  # RHEL-09-221035
+  - id: 257834
+    title: "RHEL 9 must enforce a minimum 15-character password length."
+    description: "Password length is one of the most important factors in password strength."
+    rationale: "Longer passwords are more resistant to brute-force attacks and provide a larger character space for complex passwords."
+    remediation: |
+      Add or modify the following line in /etc/security/pwquality.conf:
+      minlen = 15
+    severity: "medium"
+    vuln_id: "V-257834"
+    stig_id: "RHEL-09-221035"
+    rule_id: "SV-257834r925322_rule"
+    cci: ["CCI-000205"]
+    compliance:
+      - nist_800_53: ["IA-5 (1) (a)"]
+      - disa_stig: ["SRG-OS-000078-GPOS-00046"]
+    condition: all
+    rules:
+      - 'f:/etc/security/pwquality.conf -> r:^minlen\s*=\s*15$'
+
+  # RHEL-09-221040
+  - id: 257835
+    title: "RHEL 9 must require at least one uppercase character when creating or changing passwords."
+    description: "Password complexity must include uppercase characters to increase the number of possible combinations."
+    rationale: "Mixed case passwords help resist automated cracking attempts by increasing the possible character set."
+    remediation: |
+      Add or modify the following line in /etc/security/pwquality.conf:
+      ucredit = -1
+    severity: "medium"
+    vuln_id: "V-257835"
+    stig_id: "RHEL-09-221040"
+    rule_id: "SV-257835r925322_rule"
+    cci: ["CCI-000192"]
+    compliance:
+      - nist_800_53: ["IA-5 (1) (a)"]
+      - disa_stig: ["SRG-OS-000069-GPOS-00037"]
+    condition: all
+    rules:
+      - 'f:/etc/security/pwquality.conf -> r:^ucredit\s*=\s*-1$'
+
+  # RHEL-09-221045
+  - id: 257836
+    title: "RHEL 9 must require at least one lowercase character when creating or changing passwords."
+    description: "Password complexity must include lowercase characters to increase the number of possible combinations."
+    rationale: "Mixed case passwords help resist automated cracking attempts by increasing the possible character set."
+    remediation: |
+      Add or modify the following line in /etc/security/pwquality.conf:
+      lcredit = -1
+    severity: "medium"
+    vuln_id: "V-257836"
+    stig_id: "RHEL-09-221045"
+    rule_id: "SV-257836r925322_rule"
+    cci: ["CCI-000192"]
+    compliance:
+      - nist_800_53: ["IA-5 (1) (a)"]
+      - disa_stig: ["SRG-OS-000069-GPOS-00037"]
+    condition: all
+    rules:
+      - 'f:/etc/security/pwquality.conf -> r:^lcredit\s*=\s*-1$'
+
+  # RHEL-09-230010
+  - id: 257840
+    title: "RHEL 9 must disable the accepting of IPv4 source-routed packets."
+    description: "Source-routed packets allow the source of the packet to suggest that routers forward the packet along a different path."
+    rationale: "Source-routing allows attackers to spoof IP addresses and bypass network security measures."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      net.ipv4.conf.all.accept_source_route = 0
+    severity: "medium"
+    vuln_id: "V-257840"
+    stig_id: "RHEL-09-230010"
+    rule_id: "SV-257840r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+
+  # RHEL-09-230015
+  - id: 257841
+    title: "RHEL 9 must disable the accepting of IPv6 source-routed packets."
+    description: "Source-routed packets allow the source of the packet to suggest that routers forward the packet along a different path."
+    rationale: "Source-routing allows attackers to spoof IP addresses and bypass network security measures."
+    remediation: |
+      Configure RHEL 9 to not accept IPv6 source-routed packets.
+      
+      Add or modify the following line in a system configuration file in the /etc/sysctl.d/ directory:
+      net.ipv6.conf.all.accept_source_route = 0
+
+      Load the new settings:
+      # sysctl --system
+    severity: "medium"
+    vuln_id: "V-257841"
+    stig_id: "RHEL-09-231070"
+    rule_id: "SV-257841r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
+
+  # RHEL-09-230020
+  - id: 257842
+    title: "RHEL 9 must not forward IPv4 source-routed packets."
+    description: "Source-routed packet forwarding allows the source of the packet to suggest that routers forward the packet along a different path."
+    rationale: "Forwarding source-routed packets could allow unauthorized users to circumvent network security measures."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      net.ipv4.conf.all.forwarding = 0
+    severity: "medium"
+    vuln_id: "V-257842"
+    stig_id: "RHEL-09-230020"
+    rule_id: "SV-257842r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.forwarding -> r:^0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv4.conf.all.forwarding\s*=\s*0$'
+
+  # RHEL-09-230025
+  - id: 257843
+    title: "RHEL 9 must not forward IPv6 source-routed packets."
+    description: "Source-routed packet forwarding allows the source of the packet to suggest that routers forward the packet along a different path."
+    rationale: "Forwarding source-routed packets could allow unauthorized users to circumvent network security measures."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      net.ipv6.conf.all.forwarding = 0
+    severity: "medium"
+    vuln_id: "V-257843"
+    stig_id: "RHEL-09-230025"
+    rule_id: "SV-257843r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
+
+  # RHEL-09-230030
+  - id: 257844
+    title: "RHEL 9 must ignore IPv4 ICMP redirect messages."
+    description: "ICMP redirect messages can be used to redirect traffic through unauthorized paths."
+    rationale: "Accepting ICMP redirects has few legitimate uses and can be used by attackers to redirect traffic to malicious hosts."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      net.ipv4.conf.all.accept_redirects = 0
+    severity: "medium"
+    vuln_id: "V-257844"
+    stig_id: "RHEL-09-230030"
+    rule_id: "SV-257844r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+
+  # RHEL-09-230035
+  - id: 257845
+    title: "RHEL 9 must ignore IPv6 ICMP redirect messages."
+    description: "ICMP redirect messages can be used to redirect traffic through unauthorized paths."
+    rationale: "Accepting ICMP redirects has few legitimate uses and can be used by attackers to redirect traffic to malicious hosts."
+    remediation: |
+      Add or edit the following line in a file under /etc/sysctl.d:
+      net.ipv6.conf.all.accept_redirects = 0
+    severity: "medium"
+    vuln_id: "V-257845"
+    stig_id: "RHEL-09-230035"
+    rule_id: "SV-257845r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+
+  # RHEL-09-240010
+  - id: 257850
+    title: "RHEL 9 audit system must be configured to audit all attempts to alter system time through settimeofday."
+    description: "Arbitrary changes to the system time can be used to mask malicious activities in log files."
+    rationale: "Unexpected changes in system time can be an indicator of system compromise."
+    remediation: |
+      Configure the audit system to audit all attempts to alter system time through settimeofday.
+
+      Add or modify the following rules in /etc/audit/rules.d/audit.rules:
+      -a always,exit -F arch=b32 -S settimeofday -F key=audit_time_rules
+      -a always,exit -F arch=b64 -S settimeofday -F key=audit_time_rules
+
+      Load the rules with:
+      # augenrules --load
+    severity: "medium"
+    vuln_id: "V-257850"
+    stig_id: "RHEL-09-231090"
+    rule_id: "SV-257850r925322_rule"
+    cci: ["CCI-000169", "CCI-000366"]
+    compliance:
+      - nist_800_53: ["AU-12 (3)", "CM-6 b"]
+      - disa_stig: ["SRG-OS-000062-GPOS-00031", "SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:auditctl -l -> r:-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+settimeofday\s+-F\s+key=audit_time_rules'
+      - 'c:auditctl -l -> r:-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+settimeofday\s+-F\s+key=audit_time_rules'
+
+  # RHEL-09-240015
+  - id: 257851
+    title: "RHEL 9 audit system must be configured to audit all attempts to alter system time through stime."
+    description: "Without auditing, malicious changes to system time could go undetected."
+    rationale: "System time should be changed only by authorized users. Unauthorized changes could disrupt system services or hide malicious activity."
+    remediation: |
+      Add or update the following rules in /etc/audit/rules.d/audit.rules:
+      -a always,exit -F arch=b32 -S stime -F key=audit_time_rules
+      -a always,exit -F arch=b64 -S stime -F key=audit_time_rules
+    severity: "medium"
+    vuln_id: "V-257851"
+    stig_id: "RHEL-09-240015"
+    rule_id: "SV-257851r925322_rule"
+    cci: ["CCI-000169"]
+    compliance:
+      - nist_800_53: ["AU-12 (1)"]
+      - disa_stig: ["SRG-OS-000062-GPOS-00031"]
+    condition: all
+    rules:
+      - 'f:/etc/audit/rules.d/audit.rules -> r:^.*-S\s+stime.*$'
+
+  # RHEL-09-240020
+  - id: 257852
+    title: "RHEL 9 audit system must be configured to audit all attempts to alter system time through clock_settime."
+    description: "Without auditing, malicious changes to system time could go undetected."
+    rationale: "System time should be changed only by authorized users. Unauthorized changes could disrupt system services or hide malicious activity."
+    remediation: |
+      Add or update the following rules in /etc/audit/rules.d/audit.rules:
+      -a always,exit -F arch=b32 -S clock_settime -F key=audit_time_rules
+      -a always,exit -F arch=b64 -S clock_settime -F key=audit_time_rules
+    severity: "medium"
+    vuln_id: "V-257852"
+    stig_id: "RHEL-09-240020"
+    rule_id: "SV-257852r925322_rule"
+    cci: ["CCI-000169"]
+    compliance:
+      - nist_800_53: ["AU-12 (1)"]
+      - disa_stig: ["SRG-OS-000062-GPOS-00031"]
+    condition: all
+    rules:
+      - 'f:/etc/audit/rules.d/audit.rules -> r:^.*-S\s+clock_settime.*$'
+
+  # RHEL-09-240025
+  - id: 257853
+    title: "RHEL 9 must enable auditing of processes that start prior to the audit daemon."
+    description: "Without auditing early boot processes, malicious activity during system startup could go undetected."
+    rationale: "Audit records from system startup are necessary to detect unauthorized changes to system configuration during boot."
+    remediation: |
+      Add or modify the following line in /etc/default/grub:
+      GRUB_CMDLINE_LINUX="audit=1"
+      Then run: grub2-mkconfig -o /boot/grub2/grub.cfg
+    severity: "medium"
+    vuln_id: "V-257853"
+    stig_id: "RHEL-09-240025"
+    rule_id: "SV-257853r925322_rule"
+    cci: ["CCI-000169"]
+    compliance:
+      - nist_800_53: ["AU-12 (1)"]
+      - disa_stig: ["SRG-OS-000062-GPOS-00031"]
+    condition: all
+    rules:
+      - 'f:/etc/default/grub -> r:^GRUB_CMDLINE_LINUX=".*audit=1.*"$'
+
+  # RHEL-09-240030
+  - id: 257854
+    title: "RHEL 9 must configure the audit system to keep at least one weeks worth of audit records."
+    description: "The audit system must maintain sufficient audit records to support after-the-fact investigation of security incidents."
+    rationale: "Without maintaining audit records for at least a week, investigation of security incidents may be hindered."
+    remediation: |
+      Add or modify the following line in /etc/audit/auditd.conf:
+      num_logs = 7
+      max_log_file_action = rotate
+    severity: "medium"
+    vuln_id: "V-257854"
+    stig_id: "RHEL-09-240030"
+    rule_id: "SV-257854r925322_rule"
+    cci: ["CCI-001849"]
+    compliance:
+      - nist_800_53: ["AU-4"]
+      - disa_stig: ["SRG-OS-000341-GPOS-00132"]
+    condition: all
+    rules:
+      - 'f:/etc/audit/auditd.conf -> r:^num_logs\s*=\s*7$'
+      - 'f:/etc/audit/auditd.conf -> r:^max_log_file_action\s*=\s*rotate$'
+
+  # RHEL-09-250010
+  - id: 257860
+    title: "RHEL 9 must disable the telnet service."
+    description: "The telnet protocol uses unencrypted network communication."
+    rationale: "Telnet's unencrypted nature makes it vulnerable to eavesdropping and must not be used."
+    remediation: |
+      Configure the telnet service to be disabled with the following commands:
+
+      # systemctl stop telnet.socket
+      # systemctl disable telnet.socket
+      # systemctl mask telnet.socket
+    severity: "high"
+    vuln_id: "V-257860"
+    stig_id: "RHEL-09-231040"
+    rule_id: "SV-257860r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled telnet.socket -> r:^masked$'
+      - 'c:systemctl is-active telnet.socket -> r:^inactive$'
+
+  # RHEL-09-250015
+  - id: 257861
+    title: "RHEL 9 must disable the rsh service."
+    description: "The rsh service uses unencrypted network communication and weak authentication, which could allow unauthorized access."
+    rationale: "The r-commands (rsh, rlogin, rcp) use an insecure authentication mechanism and should not be used."
+    remediation: |
+      Run the following commands:
+      # systemctl stop rsh.socket
+      # systemctl disable rsh.socket
+      # systemctl mask rsh.socket
+    severity: "high"
+    vuln_id: "V-257861"
+    stig_id: "RHEL-09-250015"
+    rule_id: "SV-257861r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-active rsh.socket -> r:^inactive$'
+      - 'c:systemctl is-enabled rsh.socket -> r:^masked$'
+
+  # RHEL-09-250020
+  - id: 257862
+    title: "RHEL 9 must disable the TFTP service."
+    description: "TFTP does not support authentication and has no confidentiality protection for data in transit."
+    rationale: "TFTP could be used to transfer sensitive data without authentication or encryption."
+    remediation: |
+      Run the following commands:
+      # systemctl stop tftp.socket
+      # systemctl disable tftp.socket
+      # systemctl mask tftp.socket
+    severity: "medium"
+    vuln_id: "V-257862"
+    stig_id: "RHEL-09-250020"
+    rule_id: "SV-257862r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-active tftp.socket -> r:^inactive$'
+      - 'c:systemctl is-enabled tftp.socket -> r:^masked$'
+
+  # RHEL-09-250025
+  - id: 257863
+    title: "RHEL 9 must disable the vsftpd service."
+    description: "FTP does not protect against eavesdropping of data in transit and should not be used."
+    rationale: "The FTP protocol transmits authentication credentials and file data in clear text, making it vulnerable to interception."
+    remediation: |
+      Run the following commands:
+      # systemctl stop vsftpd.service
+      # systemctl disable vsftpd.service
+      # systemctl mask vsftpd.service
+    severity: "medium"
+    vuln_id: "V-257863"
+    stig_id: "RHEL-09-250025"
+    rule_id: "SV-257863r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-active vsftpd.service -> r:^inactive$'
+      - 'c:systemctl is-enabled vsftpd.service -> r:^masked$'
+
+  # RHEL-09-250030
+  - id: 257864
+    title: "RHEL 9 must disable automatic mounting of USB mass storage devices."
+    description: "Automatically mounting USB mass storage devices allows potentially malicious devices to be mounted without authorization."
+    rationale: "USB mass storage devices could contain malicious code or be used to exfiltrate data."
+    remediation: |
+      Edit /etc/modprobe.d/blacklist.conf and add:
+      install usb-storage /bin/true
+    severity: "medium"
+    vuln_id: "V-257864"
+    stig_id: "RHEL-09-250030"
+    rule_id: "SV-257864r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/blacklist.conf -> r:^install\s+usb-storage\s+/bin/true$'
+
+  # RHEL-09-260010
+  - id: 257870
+    title: "RHEL 9 must mount /tmp with the noexec option."
+    description: "Making the /tmp mount point executable increases the opportunity for unprivileged users to execute malicious code."
+    rationale: "The noexec mount option prevents the direct execution of binaries from the mounted filesystem."
+    remediation: |
+      Configure the system to mount the /tmp directory with the noexec option.
+
+      Add or modify the following line in /etc/fstab:
+      /tmp /tmp tmpfs noexec,nodev,nosuid 0 0
+
+      Mount the filesystem with:
+      # mount -o remount /tmp
+    severity: "medium"
+    vuln_id: "V-257870"
+    stig_id: "RHEL-09-231120"
+    rule_id: "SV-257870r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:mount -> r:^tmpfs\s+on\s+/tmp\s+.*\snoexec\s'
+      - 'f:/etc/fstab -> r:^.*\s+/tmp\s+.*\snoexec\s'
+
+  # RHEL-09-260015
+  - id: 257871
+    title: "RHEL 9 must mount /var/log with a separate device."
+    description: "The /var/log directory is used by system services to store log data."
+    rationale: "A separate /var/log partition ensures that logging space is separated from the root file system, preventing log files from consuming excessive disk space that may affect system operation."
+    remediation: |
+      Configure the system to mount /var/log on a separate partition:
+      
+      1. Create a new partition for /var/log
+      2. Add an entry to /etc/fstab for the new partition
+      3. Copy existing log files to the new partition
+      4. Mount the new partition
+    severity: "medium"
+    vuln_id: "V-257871"
+    stig_id: "RHEL-09-230010"
+    rule_id: "SV-257871r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/var/log\s+type'
+      - 'f:/etc/fstab -> r:^[^#]+\s+/var/log\s+'
+
+  # RHEL-09-260020
+  - id: 257872
+    title: "RHEL 9 must mount /var/log/audit with a separate device."
+    description: "A separate audit log partition ensures that audit logs are protected from other system activities."
+    rationale: "Maintaining audit logs on a separate partition protects audit data from resource exhaustion in other partitions."
+    remediation: |
+      Add or modify the following line in /etc/fstab:
+      <device> /var/log/audit <filesystem> defaults 0 0
+    severity: "medium"
+    vuln_id: "V-257872"
+    stig_id: "RHEL-09-260020"
+    rule_id: "SV-257872r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/var/log/audit\s+type'
+      - 'f:/etc/fstab -> r:^.*\s+/var/log/audit\s+'
+
+  # RHEL-09-260025
+  - id: 257873
+    title: "RHEL 9 must enable SELinux."
+    description: "SELinux provides Mandatory Access Control (MAC) which is essential for system security."
+    rationale: "Without SELinux, the system may be vulnerable to privilege escalation attacks and unauthorized access."
+    remediation: |
+      Set the following in /etc/selinux/config:
+      SELINUX=enforcing
+      SELINUXTYPE=targeted
+    severity: "high"
+    vuln_id: "V-257873"
+    stig_id: "RHEL-09-260025"
+    rule_id: "SV-257873r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/selinux/config -> r:^SELINUX=enforcing'
+      - 'f:/etc/selinux/config -> r:^SELINUXTYPE=targeted'
+      - 'c:getenforce -> r:^Enforcing'
+
+  # RHEL-09-260030
+  - id: 257874
+    title: "RHEL 9 must prevent special devices on non-root local partitions."
+    description: "Special devices on non-root partitions could be used to circumvent security controls."
+    rationale: "Mounting partitions with nodev prevents users from creating block or character special devices on those partitions."
+    remediation: |
+      Add the nodev option to all non-root local partitions in /etc/fstab.
+    severity: "medium"
+    vuln_id: "V-257874"
+    stig_id: "RHEL-09-260030"
+    rule_id: "SV-257874r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/home\s+.*\snodev[\s,]'
+      - 'c:mount -> r:/var\s+.*\snodev[\s,]'
+      - 'c:mount -> r:/tmp\s+.*\snodev[\s,]'
+
+  # RHEL-09-260035
+  - id: 257875
+    title: "RHEL 9 must restrict access to the kernel message buffer."
+    description: "Restricting access to kernel message buffer prevents unprivileged users from obtaining sensitive kernel information."
+    rationale: "The kernel message buffer may contain sensitive information or kernel addresses that could aid an attacker."
+    remediation: |
+      Configure the system to restrict access to the kernel message buffer.
+
+      Add or modify the following line in a system configuration file in the /etc/sysctl.d/ directory:
+      kernel.dmesg_restrict = 1
+
+      Load the new settings:
+      # sysctl --system
+    severity: "medium"
+    vuln_id: "V-257875"
+    stig_id: "RHEL-09-231100"
+    rule_id: "SV-257875r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl kernel.dmesg_restrict -> r:^kernel.dmesg_restrict\s*=\s*1$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^kernel.dmesg_restrict\s*=\s*1$'
+
+  # RHEL-09-270010
+  - id: 257880
+    title: "RHEL 9 must limit the number of concurrent sessions to ten for all accounts."
+    description: "Limiting concurrent sessions prevents users from having an excessive number of simultaneous sessions."
+    rationale: "Multiple concurrent sessions by the same user can consume system resources and make the system vulnerable to session hijacking attempts."
+    remediation: |
+      Add or modify the following line in /etc/security/limits.conf:
+      * hard maxlogins 10
+    severity: "medium"
+    vuln_id: "V-257880"
+    stig_id: "RHEL-09-270010"
+    rule_id: "SV-257880r925322_rule"
+    cci: ["CCI-000054"]
+    compliance:
+      - nist_800_53: ["AC-10"]
+      - disa_stig: ["SRG-OS-000027-GPOS-00008"]
+    condition: all
+    rules:
+      - 'f:/etc/security/limits.conf -> r:^\*\s+hard\s+maxlogins\s+10'
+
+  # RHEL-09-270015
+  - id: 257881
+    title: "RHEL 9 must enable the cron daemon."
+    description: "The cron daemon is required for scheduling automated maintenance tasks and security updates."
+    rationale: "Without the cron daemon, critical system maintenance and security tasks may not be performed automatically."
+    remediation: |
+      Run the following commands:
+      # systemctl enable crond.service
+      # systemctl start crond.service
+    severity: "medium"
+    vuln_id: "V-257881"
+    stig_id: "RHEL-09-270015"
+    rule_id: "SV-257881r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled crond.service -> r:^enabled'
+      - 'c:systemctl is-active crond.service -> r:^active'
+
+  # RHEL-09-270020
+  - id: 257882
+    title: "RHEL 9 must restrict cron daemon access to authorized users."
+    description: "The cron daemon can be used to schedule privileged tasks. Access must be restricted to authorized users only."
+    rationale: "Allowing unauthorized users to schedule cron jobs could lead to privilege escalation or system compromise."
+    remediation: |
+      Remove /etc/cron.deny if it exists.
+      Create empty /etc/cron.allow with permissions 600.
+      Add authorized users to /etc/cron.allow.
+    severity: "medium"
+    vuln_id: "V-257882"
+    stig_id: "RHEL-09-270020"
+    rule_id: "SV-257882r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - '!f:/etc/cron.deny'
+      - 'f:/etc/cron.allow'
+      - 'p:/etc/cron.allow -> r:600'
+
+  # RHEL-09-270025
+  - id: 257883
+    title: "RHEL 9 must not allow users to schedule at jobs."
+    description: "The at daemon allows users to schedule jobs for future execution. This capability must be restricted."
+    rationale: "Allowing users to schedule at jobs could lead to resource exhaustion or execution of malicious code."
+    remediation: |
+      Run the following commands:
+      # rm /etc/at.deny
+      # touch /etc/at.allow
+      # chmod 600 /etc/at.allow
+      # chown root:root /etc/at.allow
+    severity: "medium"
+    vuln_id: "V-257883"
+    stig_id: "RHEL-09-270025"
+    rule_id: "SV-257883r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - '!f:/etc/at.deny'
+      - 'f:/etc/at.allow'
+      - 'p:/etc/at.allow -> r:600'
+      - 'f:/etc/at.allow -> r:root:root'
+
+  # RHEL-09-270030
+  - id: 257884
+    title: "RHEL 9 must not have the rsh-server package installed."
+    description: "The rsh-server package provides insecure remote access capabilities that must not be installed."
+    rationale: "The r-commands (rsh, rlogin, rcp) use an insecure authentication mechanism and must not be used."
+    remediation: |
+      Remove the rsh-server package:
+      # dnf remove rsh-server
+    severity: "high"
+    vuln_id: "V-257884"
+    stig_id: "RHEL-09-230380"
+    rule_id: "SV-257884r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'not c:rpm -q rsh-server -> r:^rsh-server'
+
+  # RHEL-09-270035
+  - id: 257885
+    title: "RHEL 9 must not have the telnet-server package installed."
+    description: "The telnet protocol uses unencrypted network communication and must not be installed."
+    rationale: "Telnet's unencrypted nature makes it vulnerable to eavesdropping and must not be used."
+    remediation: |
+      Run the following command:
+      # dnf remove telnet-server
+    severity: "high"
+    vuln_id: "V-257885"
+    stig_id: "RHEL-09-270035"
+    rule_id: "SV-257885r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - '!p:telnet-server'
+
+  # RHEL-09-280010
+  - id: 257890
+    title: "RHEL 9 must enable TCP syncookies."
+    description: "TCP syncookies protect against TCP SYN flood attacks."
+    rationale: "A TCP SYN flood attack can cause a denial of service by filling a system's TCP connection table with connections in the SYN_RCVD state."
+    remediation: |
+      Add or modify the following line in /etc/sysctl.d/99-sysctl.conf:
+      net.ipv4.tcp_syncookies = 1
+
+      Load the new settings:
+      # sysctl --system
+    severity: "medium"
+    references:
+      - https://www.stigviewer.com/stig/red_hat_enterprise_linux_9/2024-01-22/finding/V-257890
+    compliance:
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+      - nist_800_53: ["CM-6 b"]
+      - cci: ["CCI-000366"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+
+  # RHEL-09-280015
+  - id: 257891
+    title: "RHEL 9 must disable IPv6 protocol if not required."
+    description: "IPv6 should be disabled if not required to minimize the attack surface of the system."
+    rationale: "Unnecessary protocols increase the attack surface of the system and should be disabled if not needed."
+    remediation: |
+      Add the following lines to /etc/sysctl.d/99-sysctl.conf:
+      net.ipv6.conf.all.disable_ipv6 = 1
+      net.ipv6.conf.default.disable_ipv6 = 1
+    severity: "medium"
+    vuln_id: "V-257891"
+    stig_id: "RHEL-09-280015"
+    rule_id: "SV-257891r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:^1$'
+      - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:^1$'
+
+  # RHEL-09-280020
+  - id: 257892
+    title: "RHEL 9 must prevent IP forwarding unless the system is a router."
+    description: "IP forwarding should be disabled unless the system is specifically designated as a router."
+    rationale: "IP forwarding could allow unauthorized traffic to bypass network security controls."
+    remediation: |
+      Add or modify the following line in /etc/sysctl.d/99-sysctl.conf:
+      net.ipv4.ip_forward = 0
+    severity: "medium"
+    vuln_id: "V-257892"
+    stig_id: "RHEL-09-280020"
+    rule_id: "SV-257892r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.ip_forward -> r:^0$'
+      - 'f:/etc/sysctl.d/*.conf -> r:^net.ipv4.ip_forward\s*=\s*0$'
+
+  # RHEL-09-280025
+  - id: 257893
+    title: "RHEL 9 must disable sending ICMP redirects."
+    description: "ICMP redirects should not be sent by systems that are not acting as routers."
+    rationale: "ICMP redirects can be used to reroute traffic through unauthorized paths."
+    remediation: |
+      Add or modify the following line in /etc/sysctl.d/99-sysctl.conf:
+      net.ipv4.conf.all.send_redirects = 0
+      net.ipv4.conf.default.send_redirects = 0
+    severity: "medium"
+    vuln_id: "V-257893"
+    stig_id: "RHEL-09-280025"
+    rule_id: "SV-257893r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^0$'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^0$'
+
+  # RHEL-09-280030
+  - id: 257894
+    title: "RHEL 9 must log martian packets."
+    description: "Martian packets are packets with impossible source addresses and should be logged."
+    rationale: "Logging martian packets helps detect network spoofing attempts and misconfigured networks."
+    remediation: |
+      Set net.ipv4.conf.all.log_martians=1 in /etc/sysctl.conf or a file in /etc/sysctl.d/
+    severity: "medium"
+    vuln_id: "V-257894"
+    stig_id: "RHEL-09-280030"
+    rule_id: "SV-257894r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'f:/etc/sysctl.d/.*\.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+
+  # RHEL-09-280035
+  - id: 257895
+    title: "RHEL 9 must implement reverse path filtering."
+    description: "Reverse path filtering helps prevent IP spoofing by validating source addresses."
+    rationale: "Without reverse path filtering, attackers could use spoofed IP addresses to bypass network access controls."
+    remediation: |
+      Add or modify the following lines in /etc/sysctl.d/99-sysctl.conf:
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.conf.default.rp_filter = 1
+    severity: "medium"
+    vuln_id: "V-257895"
+    stig_id: "RHEL-09-280035"
+    rule_id: "SV-257895r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^1$'
+      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^1$'
+
+  # RHEL-09-290010
+  - id: 257900
+    title: "RHEL 9 must require authentication upon booting into single-user and maintenance modes."
+    description: "Without requiring passwords for single-user mode, anyone with physical access to the system can boot into single-user mode."
+    rationale: "If authentication is not required on single-user mode, anyone with physical access could bypass security controls."
+    remediation: |
+      Add or modify the following line in /etc/sysconfig/init:
+      SINGLE=/sbin/sulogin
+    severity: "high"
+    vuln_id: "V-257900"
+    stig_id: "RHEL-09-290010"
+    rule_id: "SV-257900r925322_rule"
+    cci: ["CCI-000213"]
+    compliance:
+      - nist_800_53: ["AC-3"]
+      - disa_stig: ["SRG-OS-000080-GPOS-00048"]
+    condition: all
+    rules:
+      - 'f:/etc/sysconfig/init -> r:^SINGLE=/sbin/sulogin'
+
+  # RHEL-09-290015
+  - id: 257901
+    title: "RHEL 9 must enable a user session timeout for SSH connections."
+    description: "SSH sessions must timeout after a period of inactivity to prevent unauthorized access."
+    rationale: "Terminating idle sessions reduces the window of opportunity for unauthorized personnel to take control of a management session."
+    remediation: |
+      Add or modify the following lines in /etc/ssh/sshd_config:
+      ClientAliveInterval 600
+      ClientAliveCountMax 0
+    severity: "medium"
+    vuln_id: "V-257901"
+    stig_id: "RHEL-09-290015"
+    rule_id: "SV-257901r925322_rule"
+    cci: ["CCI-001133"]
+    compliance:
+      - nist_800_53: ["SC-10"]
+      - disa_stig: ["SRG-OS-000163-GPOS-00072"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> r:^ClientAliveInterval\s+600'
+      - 'f:/etc/ssh/sshd_config -> r:^ClientAliveCountMax\s+0'
+
+  # RHEL-09-290020
+  - id: 257902
+    title: "RHEL 9 must disable core dumps for all users."
+    description: "Core dumps can contain sensitive information and should be disabled by default."
+    rationale: "Core dumps may contain sensitive information such as encryption keys, passwords, and other security-related data."
+    remediation: |
+      Add or modify the following line in /etc/security/limits.conf:
+      * hard core 0
+    severity: "medium"
+    vuln_id: "V-257902"
+    stig_id: "RHEL-09-290020"
+    rule_id: "SV-257902r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/security/limits.conf -> r:^\*\s+hard\s+core\s+0'
+
+  # RHEL-09-290025
+  - id: 257903
+    title: "RHEL 9 must disable USB mass storage driver."
+    description: "USB mass storage devices can be used to introduce malicious code or exfiltrate data."
+    rationale: "Disabling USB storage helps prevent data exfiltration and malware introduction through removable media."
+    remediation: |
+      Add or modify the following line in /etc/modprobe.d/blacklist.conf:
+      install usb-storage /bin/true
+    severity: "medium"
+    vuln_id: "V-257903"
+    stig_id: "RHEL-09-260010"
+    rule_id: "SV-257903r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/modprobe.d/blacklist.conf -> r:^install\s+usb-storage\s+/bin/true$'
+
+  # RHEL-09-290030
+  - id: 257904
+    title: "RHEL 9 must restrict access to the root account via SSH."
+    description: "Direct root login via SSH must be disabled to prevent unauthorized access."
+    rationale: "Allowing direct root login through SSH increases the risk of system compromise."
+    remediation: |
+      Add or modify the following line in /etc/ssh/sshd_config:
+      PermitRootLogin no
+    severity: "high"
+    vuln_id: "V-257904"
+    stig_id: "RHEL-09-290030"
+    rule_id: "SV-257904r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> r:^PermitRootLogin\s+no'
+
+  # RHEL-09-230300
+  - id: 257825
+    title: "RHEL 9 must enable SELinux enforcing mode."
+    description: "SELinux must be enabled and set to enforcing mode to provide Mandatory Access Control (MAC) for the system."
+    rationale: "Without SELinux running in enforcing mode, the system may not adequately enforce access controls and maintain security boundaries between processes and users."
+    remediation: |
+      Configure SELinux to run in enforcing mode:
+      
+      1. Set enforcing mode:
+         # setenforce 1
+      
+      2. Edit /etc/selinux/config and set:
+         SELINUX=enforcing
+    severity: "high"
+    vuln_id: "V-257825"
+    stig_id: "RHEL-09-230300"
+    rule_id: "SV-257825r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000445-GPOS-00199"]
+    condition: all
+    rules:
+      - 'f:/etc/selinux/config -> r:^SELINUX=enforcing'
+      - 'c:getenforce -> r:^Enforcing'
+      - 'not c:selinuxenabled -> r:^1'
+
+  # RHEL-09-230250
+  - id: 257818
+    title: "The kdump service on RHEL 9 must be disabled."
+    description: "Kernel core dumps may contain the full contents of system memory at the time of the crash and consume considerable disk space."
+    rationale: "Unless the system is used for kernel development or testing, there is little need to run the kdump service."
+    remediation: |
+      Disable the kdump service:
+      # systemctl disable kdump.service
+      # systemctl stop kdump.service
+    severity: "medium"
+    vuln_id: "V-257818"
+    stig_id: "RHEL-09-230250"
+    rule_id: "SV-257818r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled kdump.service -> r:^disabled'
+      - 'c:systemctl is-active kdump.service -> r:^inactive'
+
+  # RHEL-09-230280
+  - id: 257870
+    title: "RHEL 9 must mount /tmp with the noexec option."
+    description: "Allowing users to execute binaries from world-writable directories such as /tmp poses a security risk."
+    rationale: "Mounting /tmp with noexec prevents the execution of malicious code that an attacker may place in these world-writable directories."
+    remediation: |
+      Configure /tmp to be mounted with noexec option:
+      Edit /etc/fstab and add noexec to the mount options for /tmp
+    severity: "medium"
+    vuln_id: "V-257870"
+    stig_id: "RHEL-09-230280"
+    rule_id: "SV-257870r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-7 (1)"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/fstab -> r:/tmp\s+.*noexec'
+      - 'c:mount -> r:/tmp\s+.*noexec'
+
+  # RHEL-09-230390
+  - id: 257890
+    title: "RHEL 9 must implement TCP syncookies."
+    description: "TCP syncookies protect against TCP SYN flood attacks, a type of denial of service attack."
+    rationale: "Without TCP syncookies, the system is vulnerable to TCP SYN flood attacks that can prevent legitimate connections."
+    remediation: |
+      Set net.ipv4.tcp_syncookies=1 in /etc/sysctl.conf or a file in /etc/sysctl.d/
+    severity: "medium"
+    vuln_id: "V-257890"
+    stig_id: "RHEL-09-230390"
+    rule_id: "SV-257890r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["SC-5"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1'
+      - 'f:/etc/sysctl.d/.*\.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1'
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1'
+
+  # RHEL-09-230400
+  - id: 257894
+    title: "RHEL 9 must log martian packets."
+    description: "Martian packets are packets with impossible source addresses and should be logged."
+    rationale: "Logging martian packets helps detect network spoofing attempts and misconfigured networks."
+    remediation: |
+      Set net.ipv4.conf.all.log_martians=1 in /etc/sysctl.conf or a file in /etc/sysctl.d/
+    severity: "medium"
+    vuln_id: "V-257894"
+    stig_id: "RHEL-09-230400"
+    rule_id: "SV-257894r925322_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["SC-5"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'f:/etc/sysctl.d/.*\.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+
+  # RHEL-09-280035
+  - id: 257961
+    title: "RHEL 9 must log IPv4 packets with impossible addresses by default."
+    description: "Martian packets are packets with impossible source addresses and should be logged."
+    rationale: "Logging martian packets helps detect network spoofing attempts and misconfigured networks."
+    remediation: |
+      Set net.ipv4.conf.all.log_martians=1 in /etc/sysctl.conf or a file in /etc/sysctl.d/
+    severity: "medium"
+    vuln_id: "V-257961"
+    stig_id: "RHEL-09-253030"
+    rule_id: "SV-257961r991589_rule"
+    cci: ["CCI-000366"]
+    compliance:
+      - nist_800_53: ["CM-6 b"]
+      - disa_stig: ["SRG-OS-000480-GPOS-00227"]
+    condition: all
+    rules:
+      - 'f:/etc/sysctl.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'f:/etc/sysctl.d/.*\.conf -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1'
