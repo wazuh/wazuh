@@ -197,6 +197,8 @@ namespace Utils
                 throw std::invalid_argument("Key is empty");
             }
 
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             rocksdb::WriteOptions writeOptions;
             writeOptions.disableWAL = !m_enableWal;
 
@@ -233,6 +235,8 @@ namespace Utils
          */
         bool get(const std::string& key, std::string& value, const std::string& columnName = "")
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             if (key.empty())
             {
                 throw std::invalid_argument("Key is empty");
@@ -547,26 +551,41 @@ namespace Utils
             // Acquire the exclusive lock to protect the shared column family container.
             std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
-            // Use the non-locking version because the lock is already held.
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
-            // Create a WriteBatch to accumulate delete operations.
-            rocksdb::WriteBatch batch;
-
-            // Create a new iterator for the specified column family.
-            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
-
-            // Iterate through all keys in the column and add a delete operation for each key.
-            it->SeekToFirst();
-            while (it->Valid())
+            if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
             {
-                batch.Delete(columnHandle.handle(), it->key());
-                it->Next();
+                // Find the column handle on the list and drop it
+                const auto it =
+                    std::find_if(m_columnsInstances.begin(),
+                                 m_columnsInstances.end(),
+                                 [&columnName](const auto& handle) { return columnName == handle->GetName(); });
+
+                // Check if the column exists
+                if (it != m_columnsInstances.end())
+                {
+                    it->drop();
+                    m_columnsInstances.erase(it);
+
+                    createColumnNoLock(columnName);
+                }
             }
-
-            // Commit the batch deletion.
-            if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+            else
             {
-                throw std::runtime_error("Error deleting data: " + status.ToString());
+                rocksdb::WriteBatch batch;
+                std::unique_ptr<rocksdb::Iterator> itDefault(
+                    m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
+
+                itDefault->SeekToFirst();
+                while (itDefault->Valid())
+                {
+                    batch.Delete(columnHandle.handle(), itDefault->key());
+                    itDefault->Next();
+                }
+
+                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+                {
+                    throw std::runtime_error("Error deleting data: " + status.ToString());
+                }
             }
         }
 
