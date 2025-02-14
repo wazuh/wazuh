@@ -38,14 +38,13 @@ struct IndexerConnectorOptions
     std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
     std::string username;           ///< The username to authenticate with OpenSearch.
     std::string password;           ///< The password to authenticate with OpenSearch.
-    std::string mergedCaPath;       ///< The path to the merged CA certificate.
-
     struct
     {
         std::vector<std::string> cacert; ///< The list of CA certificates to trust.
         std::string cert;                ///< The certificate to connect to OpenSearch.
         std::string key;                 ///< The key to connect to OpenSearch.
         bool skipVerifyPeer;             ///< Skip peer verification. (insecure mode)
+        std::string mergedCaPath;        ///< The path to the merged CA certificate.
     } sslOptions;                        ///< The SSL options to connect to OpenSearch.
 
     uint32_t timeout = 60000u;  ///< The timeout in milliseconds to connect to OpenSearch.

@@ -119,6 +119,17 @@ void fillConfiguration(IndexerConnectorOptions& indexerConnectorOptions, const n
         {
             indexerConnectorOptions.sslOptions.key = config.at("ssl").at("key").get_ref<const std::string&>();
         }
+
+        if (config.at("ssl").contains("verify_certificates"))
+        {
+            indexerConnectorOptions.sslOptions.skipVerifyPeer = true; // Default value.
+        }
+
+        if (config.at("ssl").contains("merged_ca_path"))
+        {
+            indexerConnectorOptions.sslOptions.mergedCaPath =
+                config.at("ssl").at("merged_ca_path").get_ref<const std::string&>();
+        }
     }
 
     if (config.contains("username"))

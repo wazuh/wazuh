@@ -102,8 +102,8 @@ static void initConfiguration(SecureCommunication& secureCommunication, const In
 
     if (config.sslOptions.cacert.size() > 1)
     {
-        mergeCaRootCertificates(config.sslOptions.cacert, config.mergedCaPath);
-        caRootCertificate = config.mergedCaPath;
+        mergeCaRootCertificates(config.sslOptions.cacert, config.sslOptions.mergedCaPath);
+        caRootCertificate = config.sslOptions.mergedCaPath;
     }
     else if (!config.sslOptions.cacert.empty())
     {
