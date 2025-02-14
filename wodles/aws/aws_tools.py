@@ -290,7 +290,12 @@ def args_valid_sqs_name(sqs_name):
     return sqs_name
 
 
-def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Optional[str], iam_role_arn: Optional[str]):
+def arg_validate_security_lake_auth_params(
+        external_id: Optional[str],
+        name: Optional[str],
+        iam_role_arn: Optional[str],
+        profile: Optional[str]
+):
     """
     Validate the Securit Lake authentication arguments.
 
@@ -302,6 +307,8 @@ def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Opt
         Name of the SQS Queue.
     iam_role_arn : Optional[str]
         IAM Role.
+    profile : Optional[str]
+        AWS Profile.
     """
 
     if iam_role_arn is None:
@@ -313,6 +320,8 @@ def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Opt
     if external_id is None:
         error('Used a subscriber but no --external_id provided.')
         sys.exit(21)
+    if profile is None:
+        debug('Used a subscriber but no --aws_profile provided, the "default" value will be used.', 2)
 
 
 def get_aws_config_params() -> configparser.RawConfigParser:
