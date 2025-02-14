@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled. ([#26132](https://github.com/wazuh/wazuh/pull/26132))  
+- Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled. ([#26132](https://github.com/wazuh/wazuh/pull/26132))
 
 #### Added
 
@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Improved FIM decoder. ([#27893](https://github.com/wazuh/wazuh/pull/27893))
 - Improved SCA and Syscheck decoders. ([#27835](https://github.com/wazuh/wazuh/pull/27835))
 - Improved CISCAT decoder detection messages. ([#27914](https://github.com/wazuh/wazuh/pull/27914))
+- Changed ms-graph page size. ([#28195](https://github.com/wazuh/wazuh/pull/28195))
 
 ### Agent
 
@@ -96,9 +97,9 @@ All notable changes to this project will be documented in this file.
 - Fixed errors on AIX 7.2 by adapting the blibpath variable. ([#26900](https://github.com/wazuh/wazuh/pull/26900))
 - Sanitized agent paths to prevent issues with parent folder references. ([#26944](https://github.com/wazuh/wazuh/pull/26944))
 - Fixed an issue in the DEB package that prevented the agent from restarting after an upgrade. ([#26633](https://github.com/wazuh/wazuh/pull/26633))
-- Improved file path handling in agent communications to avoid references to parent folders. ([#26944](https://github.com/wazuh/wazuh/pull/26944))  
-- Set RPM package vendor to `UNKNOWN_VALUE` when the value is missing. ([#27054](https://github.com/wazuh/wazuh/pull/27054))  
-- Updated Solaris package generation to use the correct `wazuh-packages` reference. ([#27059](https://github.com/wazuh/wazuh/issues/27059))  
+- Improved file path handling in agent communications to avoid references to parent folders. ([#26944](https://github.com/wazuh/wazuh/pull/26944))
+- Set RPM package vendor to `UNKNOWN_VALUE` when the value is missing. ([#27054](https://github.com/wazuh/wazuh/pull/27054))
+- Updated Solaris package generation to use the correct `wazuh-packages` reference. ([#27059](https://github.com/wazuh/wazuh/issues/27059))
 
 #### Changed
 
@@ -199,7 +200,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed requests logging to obtain the hash_auth_context from JWT tokens. ([#25764](https://github.com/wazuh/wazuh/pull/25764)) 
+- Fixed requests logging to obtain the hash_auth_context from JWT tokens. ([#25764](https://github.com/wazuh/wazuh/pull/25764))
 - Enabled API to listen IPV4 and IPV6 stacks. ([#25216](https://github.com/wazuh/wazuh/pull/25216))
 
 #### Changed
