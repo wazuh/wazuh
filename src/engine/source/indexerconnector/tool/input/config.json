@@ -1,5 +1,10 @@
 {
   "name": "wazuh-states-vulnerabilities-cluster",
   "enabled": "yes",
-  "hosts": ["http://0.0.0.0:9200"]
+  "hosts": [
+    "http://0.0.0.0:9200"
+  ],
+  "ssl": {
+    "merged_ca_path": "/var/lib/wazuh-server/tmp/root-ca-merged.pem"
+  }
 }

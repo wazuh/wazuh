@@ -21,6 +21,7 @@ constexpr std::string_view INDEXER_SSL_CERTIFICATE = "/indexer/ssl/certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "/indexer/ssl/key";
 constexpr std::string_view INDEXER_SSL_USE_SSL = "/indexer/ssl/use_ssl";
 constexpr std::string_view INDEXER_SSL_VERIFY_CERTS = "/indexer/ssl/verify_certificates";
+constexpr std::string_view INDEXER_SSL_CA_MERGED = "/indexer/ssl/merged_ca_path";
 
 constexpr std::string_view INDEXER_TIMEOUT = "/indexer/timeout";
 constexpr std::string_view INDEXER_THREADS = "/indexer/threads";
