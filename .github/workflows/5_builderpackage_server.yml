@@ -1,0 +1,23 @@
+run-name: Build wazuh-server packages on PR ${{ github.event.pull_request.number }}
+name: Build wazuh-server packages on PR
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    branches:
+      - main
+      - master
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  buildserver:
+    if: ${{ !github.event.pull_request.draft }}
+    strategy:
+      matrix:
+        architecture: [amd64]
+        system: [deb, rpm]
+    uses: ./.github/workflows/packages-build-server.yml
+    with:
+      architecture: ${{ matrix.architecture }}
+      system: ${{ matrix.system }}
+    secrets: inherit
