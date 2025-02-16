@@ -3534,7 +3534,7 @@ checks:
       - nist_sp_800-53: ["IA-5 (1)"]
     condition: all
     rules:
-      - 'not f:/etc/passwd -> r:^\w+:x:'
+      - 'not f:/etc/passwd -> r:^[^:]*:x:'
 
   # 6.2.2 Ensure password fields are not empty. (Automated)
   - id: 33179
