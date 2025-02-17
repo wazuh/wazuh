@@ -1,8 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import pytest
 from pydantic import ValidationError
+from wazuh.core.common import WAZUH_INDEXER_CA_BUNDLE
 from wazuh.core.config.models.ssl_config import APISSLConfig, IndexerSSLConfig, SSLConfig, SSLProtocol
+from wazuh.core.exception import WazuhError
 
 
 @pytest.mark.parametrize(
@@ -72,16 +74,44 @@ def test_ssl_config_fails_without_values(init_values):
     ],
 )
 @patch('os.path.isfile', return_value=True)
-def test_indexer_ssl_config_default_values(file_exists_mock, init_values, expected):
+@patch('builtins.open')
+@patch('wazuh.core.config.models.ssl_config.assign_wazuh_ownership')
+def test_indexer_ssl_config_default_values(assign_ownership_mock, open_mock, file_exists_mock, init_values, expected):
     """Check the correct initialization of the `IndexerSSLConfig` class."""
     ssl_config = IndexerSSLConfig(**init_values)
 
-    assert ssl_config.use_ssl == expected['use_ssl']
     assert ssl_config.use_ssl == expected['use_ssl']
     assert ssl_config.key == expected['key']
     assert ssl_config.certificate == expected['certificate']
     assert ssl_config.certificate_authorities == expected['certificate_authorities']
     assert ssl_config.verify_certificates == expected['verify_certificates']
+
+
+@patch('os.path.isfile', return_value=True)
+@patch('builtins.open')
+@patch('wazuh.core.config.models.ssl_config.assign_wazuh_ownership')
+def test_indexer_ssl_config_create_bundle_file(assign_ownership_mock, open_mock, file_exists_mock):
+    """Validate that the CA bundle file is created during the indexer SSL configuration class construction."""
+    ssl_config = IndexerSSLConfig(use_ssl=True, certificate_authorities=['root_ca.pem', 'intermediate.pem'])
+
+    open_mock.assert_has_calls(
+        [
+            call(WAZUH_INDEXER_CA_BUNDLE, 'w'),
+            call('root_ca.pem', 'r'),
+            call('intermediate.pem', 'r'),
+        ],
+        any_order=True,
+    )
+    assign_ownership_mock.assert_called_once_with(WAZUH_INDEXER_CA_BUNDLE)
+    assert ssl_config.certificate_authorities_bundle == WAZUH_INDEXER_CA_BUNDLE
+
+
+@patch('os.path.isfile', return_value=True)
+@patch('builtins.open', side_effect=IOError)
+def test_indexer_ssl_config_create_bundle_file_ko(open_mock, file_exists_mock):
+    """Validate that any errors during the CA bundle file creation are handled successfully."""
+    with pytest.raises(WazuhError, match=r'1006'):
+        IndexerSSLConfig(use_ssl=True, certificate_authorities=['root_ca.pem', 'intermediate.pem'])
 
 
 @pytest.mark.parametrize(
