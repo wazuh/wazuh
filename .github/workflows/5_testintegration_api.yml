@@ -48,10 +48,12 @@ jobs:
       - name: Wait for wazuh server package generation workflow
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
-          ref: ${{ github.ref }}
-          check-name: 'Build wazuh-server packages on PR'
+          repo: ${{ github.repository }}
+          ref: ${{ github.head_ref || github.ref_name }}
+          check-name: 'package-build (amd64, deb) / Build deb wazuh-server on amd64'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
+          allowed-conclusions: success
 
       # Set wazuh server package name
       - run: |
