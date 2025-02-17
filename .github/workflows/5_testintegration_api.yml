@@ -48,16 +48,15 @@ jobs:
       - name: Wait for wazuh server package generation workflow
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
-          repo: ${{ github.repository }}
           ref: ${{ github.head_ref || github.ref_name }}
           check-name: 'package-build (amd64, deb) / Build deb wazuh-server on amd64'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
+          wait-interval: 60
           allowed-conclusions: success
 
       # Set wazuh server package name
       - run: |
-          short_commit=git_hash=$(git rev-parse --short "$GITHUB_SHA")
+          short_commit=$(git rev-parse --short "$GITHUB_SHA")
           version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           echo "PACKAGE_NAME=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_ENV
 
