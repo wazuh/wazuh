@@ -150,7 +150,7 @@ class WazuhException(Exception):
             'remediation': 'Please, check non-active agents connection and try again. Visit '
             f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/registering/index.html and '
             f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/agents/agent-connection.'
-            f'html to obtain more information on registering and connecting agents',
+            f'html to obtain more information on enrolling and connecting agents',
         },
         1708: {'message': 'There is an agent with the same ID', 'remediation': 'Please choose another ID'},
         1709: {
@@ -178,7 +178,7 @@ class WazuhException(Exception):
         },
         1723: 'Hash algorithm not available',
         1724: {'message': 'Not a valid select field', 'remediation': 'Please, use only allowed select fields'},
-        1725: {'message': 'Error registering a new agent', 'remediation': 'Please check all data fields and try again'},
+        1725: {'message': 'Error enrolling a new agent', 'remediation': 'Please check all data fields and try again'},
         1726: {
             'message': 'Wazuh authd is not running',
             'remediation': 'Please enable authd or check if there is any error',

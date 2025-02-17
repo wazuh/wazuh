@@ -670,7 +670,7 @@ components:
           $ref: '#/components/schemas/AgentID'
         name:
           type: string
-          description: "Agent name used at the registration process"
+          description: "Agent name used at the enrollment process"
         status:
           $ref: '#/components/schemas/AgentStatus'
         configSum:
@@ -690,7 +690,7 @@ components:
           will be the same as registerIP field"
         registerIP:
           type: string
-          description: "IP used at agent the registration process"
+          description: "IP used at agent the enrollment process"
         manager:
           type: string
           description: "Hostname of the manager the agent is reporting to"
@@ -1270,7 +1270,7 @@ components:
         max_agents:
           type: string
           minimum: 0
-          description: "Maximum number of agents that can be registered."
+          description: "Maximum number of agents that can be enrolled."
         openssl_support:
           type: string
         tz_offset:
@@ -1845,7 +1845,8 @@ components:
       name: older_than
       description: "Filter out agents whose time lapse from last keep alive signal is longer than specified. Time in
       seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the
-      register date. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, seconds are used"
+      enrollment date. For example, `7d`, `10s` and `10` are valid values. If no time unit is specified, 
+      seconds are used"
       schema:
         type: string
         format: timeframe
@@ -2283,7 +2284,7 @@ components:
       in: query
       name: older_than
       description: "Consider only agents whose last keep alive is older than the specified time frame. For
-      never_connected agents, register date is considered instead of last keep alive. For example, `7d`, `10s` and `10`
+      never_connected agents, enrollment date is considered instead of last keep alive. For example, `7d`, `10s` and `10`
       are valid values. When no time unit is specified, seconds are assumed. Use 0s to select all agents"
       schema:
         type: string
@@ -2300,7 +2301,7 @@ components:
     registerIP:
       in: query
       name: registerIP
-      description: "Filter by the IP used when registering the agent"
+      description: "Filter by the IP used when enrolling the agent"
       schema:
         type: string
         format: alphanumeric
@@ -2585,7 +2586,7 @@ paths:
                   version: 12 "Bookworm"
       responses:
         '201':
-          description: "Empty response indicating the agent was registered successfully"
+          description: "Empty response indicating the agent was enrolled successfully"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

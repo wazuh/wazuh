@@ -5,7 +5,7 @@
 from os import chmod, chown, path
 from typing import Optional, Union
 
-from server_management_api.models.agent_registration_model import Host
+from server_management_api.models.agent_enrollment_model import Host
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
     Agent,

@@ -42,45 +42,6 @@ class DisconnectedTime(Model):
         self._value = value
 
 
-class AgentForce(Model):
-    def __init__(self, enabled=True, disconnected_time=None, after_registration_time='1h'):
-        self.swagger_types = {'enabled': bool, 'disconnected_time': DisconnectedTime, 'after_registration_time': str}
-
-        self.attribute_map = {
-            'enabled': 'enabled',
-            'disconnected_time': 'disconnected_time',
-            'after_registration_time': 'after_registration_time',
-        }
-
-        self._enabled = enabled
-        self._disconnected_time = DisconnectedTime(**disconnected_time or {}).to_dict()
-        self._after_registration_time = after_registration_time
-
-    @property
-    def enabled(self):
-        return self._enabled
-
-    @enabled.setter
-    def enabled(self, enabled):
-        self._enabled = enabled
-
-    @property
-    def disconnected_time(self):
-        return self._disconnected_time
-
-    @disconnected_time.setter
-    def disconnected_time(self, disconnected_time):
-        self._disconnected_time = disconnected_time
-
-    @property
-    def after_registration_time(self):
-        return self._after_registration_time
-
-    @after_registration_time.setter
-    def after_registration_time(self, after_registration_time):
-        self._after_registration_time = after_registration_time
-
-
 class OS(Model):
     """Agent OS model."""
 
@@ -174,8 +135,8 @@ class Host(Model):
         self._os = os
 
 
-class AgentRegistrationModel(Body):
-    """Agent registration model."""
+class AgentEnrollmentModel(Body):
+    """Agent enrollment model."""
 
     def __init__(
         self,
