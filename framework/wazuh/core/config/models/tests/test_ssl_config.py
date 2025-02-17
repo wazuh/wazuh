@@ -75,7 +75,8 @@ def test_ssl_config_fails_without_values(init_values):
 )
 @patch('os.path.isfile', return_value=True)
 @patch('builtins.open')
-def test_indexer_ssl_config_default_values(open_mock, file_exists_mock, init_values, expected):
+@patch('wazuh.core.config.models.ssl_config.assign_wazuh_ownership')
+def test_indexer_ssl_config_default_values(assign_ownership_mock, open_mock, file_exists_mock, init_values, expected):
     """Check the correct initialization of the `IndexerSSLConfig` class."""
     ssl_config = IndexerSSLConfig(**init_values)
 
@@ -88,7 +89,8 @@ def test_indexer_ssl_config_default_values(open_mock, file_exists_mock, init_val
 
 @patch('os.path.isfile', return_value=True)
 @patch('builtins.open')
-def test_indexer_ssl_config_create_bundle_file(open_mock, file_exists_mock):
+@patch('wazuh.core.config.models.ssl_config.assign_wazuh_ownership')
+def test_indexer_ssl_config_create_bundle_file(assign_ownership_mock, open_mock, file_exists_mock):
     """Validate that the CA bundle file is created during the indexer SSL configuration class construction."""
     ssl_config = IndexerSSLConfig(use_ssl=True, certificate_authorities=['root_ca.pem', 'intermediate.pem'])
 
@@ -100,6 +102,7 @@ def test_indexer_ssl_config_create_bundle_file(open_mock, file_exists_mock):
         ],
         any_order=True,
     )
+    assign_ownership_mock.assert_called_once_with(WAZUH_INDEXER_CA_BUNDLE)
     assert ssl_config.certificate_authorities_bundle == WAZUH_INDEXER_CA_BUNDLE
 
 

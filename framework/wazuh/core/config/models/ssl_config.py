@@ -5,6 +5,7 @@ from pydantic import Field, ValidationInfo, field_validator
 from wazuh.core.common import WAZUH_INDEXER_CA_BUNDLE
 from wazuh.core.config.models.base import ValidateFilePathMixin, WazuhConfigBaseModel
 from wazuh.core.exception import WazuhError
+from wazuh.core.utils import assign_wazuh_ownership
 
 
 class SSLProtocol(str, Enum):
@@ -162,6 +163,8 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
                 for file_path in file_paths:
                     with open(file_path, 'r') as file:
                         bundle_file.write(file.read())
+
+            assign_wazuh_ownership(WAZUH_INDEXER_CA_BUNDLE)
         except IOError as e:
             raise WazuhError(1006, str(e))
 
