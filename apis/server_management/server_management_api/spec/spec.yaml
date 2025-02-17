@@ -663,76 +663,48 @@ components:
     Agent:
       type: object
       properties:
-        version:
-          type: string
-          description: "Wazuh version the agent has installed"
         id:
           $ref: '#/components/schemas/AgentID'
         name:
           type: string
           description: "Agent name used at the enrollment process"
-        status:
-          $ref: '#/components/schemas/AgentStatus'
-        configSum:
-          type: string
-          description: "MD5 checksum of the group configuration file (agent.conf)"
-        group:
+        groups:
           type: array
           description: "List of groups the agent belongs to"
           items:
             type: string
-        mergedSum:
+        type:
           type: string
-          description: "MD5 checksum of all group shared files merged in a single one (merged.mg)"
-        ip:
+          description: "Type of agent"
+        version:
           type: string
-          description: "IP where the agent communicates with the manager. If the manager can't get this information, it
-          will be the same as registerIP field"
-        registerIP:
+          description: "Wazuh version the agent has installed"
+        last_login:
           type: string
-          description: "IP used at agent the enrollment process"
-        manager:
-          type: string
-          description: "Hostname of the manager the agent is reporting to"
-        node_name:
-          type: string
-          description: "ID of the node the agent is reporting to"
-        dateAdd:
-          type: string
-          description: "Date when the agent was registered"
-        lastKeepAlive:
-          type: string
-          description: "Date when the last keepalive was received from the agent"
-        os:
+          description: "The last time the agent has authenticated with the server"
+        is_connected:
+          type: boolean
+          description: "Whether the agent is currently connected or not"
+        host:
           type: object
           properties:
-            major:
+            architecture:
               type: string
-            name:
+            hostname:
               type: string
-            uname:
-              type: string
-            platform:
-              type: string
-            version:
-              type: string
-            codename:
-              type: string
-            arch:
-              type: string
-            minor:
-              type: string
-          description: "Agent OS information"
-        status_code:
-          description: "Agent connection status code"
-          type: integer
-          format: int32
-          default: 0
-          minimum: 0
-          maximum: 5
-        group_config_status:
-          type: string
-          description: "Agent groups configuration sync status"
+            ip:
+              type: array
+              items:
+                type: string
+            os:
+              type: object
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                version:
+                  type: string
 
     AgentAddBody:
       type: object
