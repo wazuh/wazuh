@@ -13,6 +13,7 @@ jobs:
   package-build:
     if: ${{ !github.event.pull_request.draft }}
     strategy:
+      fail-fast: false
       matrix:
         architecture: [amd64]
         system: [deb, rpm]
