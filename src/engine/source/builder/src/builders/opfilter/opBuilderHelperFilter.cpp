@@ -854,12 +854,14 @@ FilterOp opBuilderHelperPublicIP(const Reference& targetField,
         RETURN_FAILURE(runState, false, failureTrace2);
     };
 }
+
 //*************************************************
 //*               Array filters                   *
 //*************************************************
 FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       bool atleastOne,
+                                      bool presenceCheck,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
@@ -874,10 +876,11 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
     const std::string failureTrace2 {
         fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Target array '{}' {} of the parameters",
-                                                 name,
-                                                 targetField.dotPath(),
-                                                 "does not contain at least one")};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Target array '{}' {} of the parameters",
+                    name,
+                    targetField.dotPath(),
+                    presenceCheck ? "does not contain at least one" : "contains at least one")};
 
     // Return Op
     return [=, parameters = opArgs, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
@@ -895,7 +898,7 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
         }
 
         json::Json cmpValue {};
-        auto successCount {0};
+        auto matchCount {0};
         for (const auto& parameter : parameters)
         {
             if (parameter->isReference())
@@ -915,100 +918,21 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
                 cmpValue = std::move(std::static_pointer_cast<Value>(parameter)->value().getJson().value());
             }
 
-            // Check if the array contains the value, if so finish
-            if (std::find_if(resolvedArray.value().begin(),
-                             resolvedArray.value().end(),
-                             [&cmpValue](const json::Json& value) { return value == cmpValue; })
-                != resolvedArray.value().end())
+            // Check if the array contains the value
+            bool found = std::find_if(resolvedArray.value().begin(),
+                                      resolvedArray.value().end(),
+                                      [&cmpValue](const json::Json& value) { return value == cmpValue; })
+                         != resolvedArray.value().end();
+
+            if (presenceCheck == found)
             {
                 if (atleastOne)
                 {
                     RETURN_SUCCESS(runState, true, successTrace);
                 }
 
-                successCount++;
-                if (successCount == parameters.size())
-                {
-                    RETURN_SUCCESS(runState, true, successTrace);
-                }
-            }
-        }
-
-        RETURN_FAILURE(runState, false, failureTrace3);
-    };
-}
-
-FilterOp opBuilderHelperArrayNotPresence(const Reference& targetField,
-                                         const std::vector<OpArg>& opArgs,
-                                         bool atleastOne,
-                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
-
-    auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-
-    const std::string failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-    const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Target array '{}' {} of the parameters",
-                                                 name,
-                                                 targetField.dotPath(),
-                                                 "contain at least one")};
-
-    // Return Op
-    return [=, parameters = opArgs, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
-               base::ConstEvent event) -> FilterResult
-    {
-        if (!event->exists(targetField))
-        {
-            RETURN_FAILURE(runState, false, failureTrace1);
-        }
-
-        const auto resolvedArray {event->getArray(targetField)};
-        if (!resolvedArray.has_value())
-        {
-            RETURN_FAILURE(runState, false, failureTrace2);
-        }
-
-        json::Json cmpValue {};
-        auto successCount {0};
-        for (const auto& parameter : parameters)
-        {
-            if (parameter->isReference())
-            {
-                auto resolvedParameter {event->getJson(std::static_pointer_cast<Reference>(parameter)->jsonPath())};
-                if (resolvedParameter.has_value())
-                {
-                    cmpValue = std::move(resolvedParameter.value());
-                }
-                else
-                {
-                    continue;
-                }
-            }
-            else
-            {
-                cmpValue = std::move(std::static_pointer_cast<Value>(parameter)->value().getJson().value());
-            }
-
-            // Check if the array contains the value, if so finish
-            if (std::find_if(resolvedArray.value().begin(),
-                             resolvedArray.value().end(),
-                             [&cmpValue](const json::Json& value) { return value == cmpValue; })
-                == resolvedArray.value().end())
-            {
-                if (atleastOne)
-                {
-                    RETURN_SUCCESS(runState, true, successTrace);
-                }
-
-                successCount++;
-                if (successCount == parameters.size())
+                matchCount++;
+                if (matchCount == parameters.size())
                 {
                     RETURN_SUCCESS(runState, true, successTrace);
                 }
@@ -1024,17 +948,7 @@ FilterOp opBuilderHelperContains(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderHelperArrayPresence(targetField, opArgs, false, buildCtx);
-    return op;
-}
-
-// field: +array_contains_any/value1/value2/...valueN
-FilterOp opBuilderHelperContainsAny(const Reference& targetField,
-                                    const std::vector<OpArg>& opArgs,
-                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    auto op = opBuilderHelperArrayPresence(targetField, opArgs, true, buildCtx);
-    return op;
+    return opBuilderHelperArrayPresence(targetField, opArgs, false, true, buildCtx);
 }
 
 // field: +array_not_contains/value1/value2/...valueN
@@ -1042,8 +956,15 @@ FilterOp opBuilderHelperNotContains(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderHelperArrayNotPresence(targetField, opArgs, false, buildCtx);
-    return op;
+    return opBuilderHelperArrayPresence(targetField, opArgs, true, false, buildCtx);
+}
+
+// field: +array_contains_any/value1/value2/...valueN
+FilterOp opBuilderHelperContainsAny(const Reference& targetField,
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return opBuilderHelperArrayPresence(targetField, opArgs, true, true, buildCtx);
 }
 
 // field: +array_not_contains_any/value1/value2/...valueN
@@ -1051,8 +972,7 @@ FilterOp opBuilderHelperNotContainsAny(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderHelperArrayNotPresence(targetField, opArgs, true, buildCtx);
-    return op;
+    return opBuilderHelperArrayPresence(targetField, opArgs, false, false, buildCtx);
 }
 
 //*************************************************
