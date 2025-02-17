@@ -31,8 +31,8 @@ jobs:
   build:
     name: VD Scanner Tools Delivery
 
-    # Runs only if the PR status is different to Draft
-    if: ${{ !github.event.pull_request.draft }}
+    # Runs only if the event is not a pull request to main branch
+    if: github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'main')
     runs-on: ubuntu-22.04
     timeout-minutes: 60
 
