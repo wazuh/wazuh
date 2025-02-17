@@ -272,7 +272,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                     ms_graph->version,
                     WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
                     WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS,
-                    WM_MS_GRAPH_ITEM_PER_PAGE,
+                    ms_graph->page_size,
                     start_time_str,
                     end_time_str);
                 } else {
@@ -281,7 +281,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                     ms_graph->version,
                     WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
                     ms_graph->resources[resource_num].relationships[relationship_num],
-                    WM_MS_GRAPH_ITEM_PER_PAGE);
+                    ms_graph->page_size);
                 }
             } else {
                 snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL_FILTER_CREATED_DATE,
@@ -289,7 +289,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
                 ms_graph->version,
                 ms_graph->resources[resource_num].name,
                 ms_graph->resources[resource_num].relationships[relationship_num],
-                WM_MS_GRAPH_ITEM_PER_PAGE,
+                ms_graph->page_size,
                 start_time_str,
                 end_time_str);
             }
@@ -403,7 +403,7 @@ cJSON* wm_ms_graph_scan_apps_devices(const wm_ms_graph* ms_graph, const cJSON* a
 
     if (cJSON_IsString(app_id)) {
         snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL_FILTER_DEVICE_FIELDS, query_fqdn, ms_graph->version, WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
-            WM_MS_GRAPH_RELATIONSHIP_DETECTED_APPS, app_id->valuestring, WM_MS_GRAPH_RELATIONSHIP_MANAGED_DEVICES, WM_MS_GRAPH_ITEM_PER_PAGE);
+            WM_MS_GRAPH_RELATIONSHIP_DETECTED_APPS, app_id->valuestring, WM_MS_GRAPH_RELATIONSHIP_MANAGED_DEVICES, ms_graph->page_size);
 
         next_page = true;
         while (next_page) {
@@ -499,6 +499,9 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     }
     if (ms_graph->curl_max_size) {
         cJSON_AddNumberToObject(ms_graph_info, "curl_max_size", ms_graph->curl_max_size);
+    }
+    if (ms_graph->page_size) {
+        cJSON_AddNumberToObject(ms_graph_info, "page_size", ms_graph->page_size);
     }
     if (ms_graph->run_on_start) {
         cJSON_AddStringToObject(ms_graph_info, "run_on_start", "yes");

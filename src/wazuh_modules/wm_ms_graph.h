@@ -72,6 +72,7 @@ typedef struct wm_ms_graph {
 	bool enabled;
 	bool only_future_events;
 	ssize_t curl_max_size;
+	unsigned int page_size;
 	bool run_on_start;
 	char* version;
 	sched_scan_config scan_config;
