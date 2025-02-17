@@ -1,0 +1,94 @@
+name: Integration tests for API
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: false
+        default: 'main'
+        type: string
+      tiers:
+        description: 'Tests tiers'
+        required: false
+        default: '0,1,2'
+        type: string
+  pull_request:
+    paths:
+      - "./.github/workflows/5_testintegration_api.yml"
+      - "apis/server_management/**"
+      - "tests/integration/test_api/**"
+
+jobs:
+  build:
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+    runs-on: ubuntu-latest
+    steps:
+      # Check tests tiers input
+      - name: Tests tiers validation
+        run: |
+          IFS=',' read -ra TIERS <<< "${{ github.event.inputs.tiers }}"
+          for tier in "${TIERS[@]}"; do
+            if [[ ! "$tier" =~ ^[012]$ ]]; then
+              echo "Invalid tier: $tier"
+              exit 1
+            fi
+          done
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "./.github/workflows/.python-version-it"
+          architecture: x64
+
+      # Wait for wazuh server package generation workflow
+      - name: Wait for wazuh server package generation workflow
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'Build wazuh-server packages on PR'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      # Set wazuh server package name
+      - run: |
+          short_commit=git_hash=$(git rev-parse --short "$GITHUB_SHA")
+          version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          echo "PACKAGE_NAME=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_ENV
+
+      # Fetch wazuh server package
+      - name: Fetch wazuh-server package 
+        uses: actions/download-artifact@v4
+        with:
+          name: "${{env.PACKAGE_NAME}}"
+
+      # Install wazuh server package
+      - name: Install wazuh-server 
+        run: sudo apt install $GITHUB_WORKSPACE/$PACKAGE_NAME
+
+      # Download and install integration tests framework.
+      - name: Download and install integration tests framework
+        run: |
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_NAME}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_BASE}
+          else
+              QA_BRANCH="main"
+          fi
+          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
+          sudo pip install qa-integration-framework/
+          sudo rm -rf qa-integration-framework/
+
+      # Run integration tests.
+      - name: Run API tests
+        run: |
+          TIERS_PARAMETERS=""
+          for tier in $(echo "${{ github.event.inputs.tiers }}" | tr ',' ' '); do
+            TIERS_PARAMETERS="$TIERS_PARAMETERS --tier $tier"
+          done
+          cd tests/integration
+          sudo python -m pytest $TIERS_PARAMETERS test_api/
