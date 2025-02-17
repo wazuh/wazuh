@@ -24,12 +24,11 @@
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-
-constexpr auto BATCH_SIZE = 10000;
 
 namespace Utils
 {
@@ -61,49 +60,6 @@ namespace Utils
     template<typename T = rocksdb::DB>
     class TRocksDBWrapper : public IRocksDBWrapper
     {
-
-    private:
-            /**
-         * @brief Auxiliary function to delete all key-value pairs from the database.
-         * @param columnHandle Column handle to delete from.
-         */
-        void deleteAllFromColumn(rocksdb::ColumnFamilyHandle* columnHandle)
-        {
-            rocksdb::WriteOptions writeOptions;
-            rocksdb::WriteBatch batch;
-            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
-            size_t currentBatchSize = 0;
-
-            it->SeekToFirst();
-            while (it->Valid())
-            {
-                batch.Delete(columnHandle, it->key());
-                ++currentBatchSize;
-
-                if (currentBatchSize >= BATCH_SIZE)
-                {
-                    auto status = m_db->Write(writeOptions, &batch);
-                    if (!status.ok())
-                    {
-                        throw std::runtime_error("Error writing batch: " + status.ToString());
-                    }
-
-                    batch.Clear();
-                    currentBatchSize = 0;
-                }
-
-                it->Next();
-            }
-
-            if (currentBatchSize > 0)
-            {
-                auto status = m_db->Write(writeOptions, &batch);
-                if (!status.ok())
-                {
-                    throw std::runtime_error("Error writing final batch: " + status.ToString());
-                }
-            }
-        }
 
     public:
         /**
@@ -241,6 +197,8 @@ namespace Utils
                 throw std::invalid_argument("Key is empty");
             }
 
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             rocksdb::WriteOptions writeOptions;
             writeOptions.disableWAL = !m_enableWal;
 
@@ -282,6 +240,8 @@ namespace Utils
                 throw std::invalid_argument("Key is empty");
             }
 
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             if (const auto status {
                     m_db->Get(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle(), key, &value)};
                 status.IsNotFound())
@@ -311,6 +271,8 @@ namespace Utils
             {
                 throw std::invalid_argument("Key is empty");
             }
+
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
             if (const auto status {
                     m_db->Get(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle(), key, &value)};
@@ -356,6 +318,8 @@ namespace Utils
             rocksdb::WriteOptions writeOptions;
             writeOptions.disableWAL = !m_enableWal;
 
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             const auto status {m_db->Delete(writeOptions, getColumnFamilyBasedOnName(columnName).handle(), key)};
             if (!status.ok())
             {
@@ -384,6 +348,8 @@ namespace Utils
          */
         std::pair<std::string, rocksdb::Slice> getLastKeyValue(const std::string& columnName = "")
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             std::unique_ptr<rocksdb::Iterator> it(
                 m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle()));
 
@@ -403,6 +369,8 @@ namespace Utils
          */
         RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override // NOLINT
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             return {std::shared_ptr<rocksdb::Iterator>(
                         m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle())),
                     key};
@@ -414,6 +382,8 @@ namespace Utils
          */
         RocksDBIterator begin(const std::string& columnName = "")
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             RocksDBIterator rocksDBIterator(
                 std::shared_ptr<rocksdb::Iterator>(
                     m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle())),
@@ -500,20 +470,9 @@ namespace Utils
          */
         void createColumn(const std::string& columnName) override
         {
-            if (columnName.empty())
-            {
-                throw std::invalid_argument {"Column name is empty"};
-            }
+            std::unique_lock<std::shared_mutex> lock {m_columnsInstancesMutex};
 
-            rocksdb::ColumnFamilyHandle* pColumnFamily;
-
-            if (const auto status {m_db->CreateColumnFamily(
-                    RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName, &pColumnFamily)};
-                !status.ok())
-            {
-                throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
-            }
-            m_columnsInstances.emplace_back(m_db, pColumnFamily);
+            createColumnNoLock(columnName);
         }
 
         /**
@@ -525,15 +484,9 @@ namespace Utils
          */
         bool columnExists(const std::string& columnName) const override
         {
-            if (columnName.empty())
-            {
-                throw std::invalid_argument {"Column name is empty"};
-            }
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
-            return std::find_if(m_columnsInstances.begin(),
-                                m_columnsInstances.end(),
-                                [&columnName](const ColumnFamilyRAII& handle)
-                                { return columnName == handle->GetName(); }) != m_columnsInstances.end();
+            return columnExistsNoLock(columnName);
         }
 
         /**
@@ -558,13 +511,44 @@ namespace Utils
          */
         void deleteAll() override
         {
+            std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
+            std::vector<std::string> columnsNames;
             auto it = m_columnsInstances.begin();
 
             while (it != m_columnsInstances.end())
             {
+                if ((*it)->GetName() != rocksdb::kDefaultColumnFamilyName)
+                {
+                    it->drop();
+                    columnsNames.push_back((*it)->GetName());
+                    it = m_columnsInstances.erase(it);
+                }
+                else
+                {
+                    rocksdb::WriteBatch batch;
+                    std::unique_ptr<rocksdb::Iterator> itDefault(
+                        m_db->NewIterator(rocksdb::ReadOptions(), it->handle()));
 
-                deleteAllFromColumn(it->handle());
-                ++it;
+                    itDefault->SeekToFirst();
+                    while (itDefault->Valid())
+                    {
+                        batch.Delete(it->handle(), itDefault->key());
+                        itDefault->Next();
+                    }
+
+                    if (const auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+                    {
+                        throw std::runtime_error("Error deleting data: " + status.ToString());
+                    }
+
+                    ++it;
+                }
+            }
+
+            for (const auto& columnName : columnsNames)
+            {
+                createColumnNoLock(columnName);
             }
         }
 
@@ -574,9 +558,48 @@ namespace Utils
          */
         void deleteAll(const std::string& columnName)
         {
-            const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
+            if (!columnName.empty())
+            {
+                // Acquire the exclusive lock to protect the shared column family container.
+                std::unique_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
 
-            deleteAllFromColumn(columnHandle.handle());
+                // Find the column handle on the list and drop it
+                const auto it =
+                    std::find_if(m_columnsInstances.begin(),
+                                 m_columnsInstances.end(),
+                                 [&columnName](const auto& handle) { return columnName == handle->GetName(); });
+
+                // Check if the column exists
+                if (it != m_columnsInstances.end())
+                {
+                    it->drop();
+                    m_columnsInstances.erase(it);
+
+                    createColumnNoLock(columnName);
+                }
+            }
+            else
+            {
+                std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
+                const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
+
+                rocksdb::WriteBatch batch;
+                std::unique_ptr<rocksdb::Iterator> itDefault(
+                    m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
+
+                itDefault->SeekToFirst();
+                while (itDefault->Valid())
+                {
+                    batch.Delete(columnHandle.handle(), itDefault->key());
+                    itDefault->Next();
+                }
+
+                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
+                {
+                    throw std::runtime_error("Error deleting data: " + status.ToString());
+                }
+            }
         }
 
         /**
@@ -592,6 +615,8 @@ namespace Utils
          */
         void deleteAll(const std::function<void(std::string&, std::string&)>& callback)
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             // Delete data from all family columns
             for (const auto& columnHandle : m_columnsInstances)
             {
@@ -630,6 +655,8 @@ namespace Utils
          */
         void deleteAll(const std::function<void(std::string&, std::string&)>& callback, const std::string& columnName)
         {
+            std::shared_lock<std::shared_mutex> lock(m_columnsInstancesMutex);
+
             // Get the column family handle
             const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
 
@@ -669,10 +696,69 @@ namespace Utils
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
+        mutable std::shared_mutex m_columnsInstancesMutex;           ///< Mutex for the column family list.
         const bool m_enableWal;                                      ///< Whether to enable WAL or not.
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
+
+        /**
+         * @brief Get the column family handle based on the column name.
+         * @param columnName Name of the column family.
+         * @return ColumnFamilyRAII& Column family handle.
+         * @note This method is not thread-safe and should be called from a thread-safe context.
+         */
+        ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
+        {
+            auto columnNameFind {columnName};
+            if (columnName.empty())
+            {
+                columnNameFind = rocksdb::kDefaultColumnFamilyName;
+            }
+
+            if (const auto it {std::find_if(m_columnsInstances.begin(),
+                                            m_columnsInstances.end(),
+                                            [&columnNameFind](const ColumnFamilyRAII& handle)
+                                            { return columnNameFind == handle.handle()->GetName(); })};
+                it != m_columnsInstances.end())
+            {
+                return *it;
+            }
+
+            throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
+        }
+
+        /**
+         * @brief Check if a column exists in the database.
+         * @param columnName Name of the column family.
+         * @return bool True if the column exists.
+         * @note This method is not thread-safe and should be called from a thread-safe context.
+         */
+        bool columnExistsNoLock(const std::string& columnName) const
+        {
+            return std::find_if(m_columnsInstances.begin(),
+                                m_columnsInstances.end(),
+                                [&columnName](const ColumnFamilyRAII& handle)
+                                { return columnName == handle->GetName(); }) != m_columnsInstances.end();
+        }
+
+        /**
+         * @brief Create a new column family in the database.
+         * @param columnName Name of the new column.
+         * @note This method is not thread-safe and should be called from a thread-safe context.
+         */
+        void createColumnNoLock(const std::string& columnName)
+        {
+            rocksdb::ColumnFamilyHandle* handle;
+            if (const auto status {m_db->CreateColumnFamily(
+                    RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName, &handle)};
+                !status.ok())
+            {
+                throw std::runtime_error {"Failed to create column: " + status.ToString()};
+            }
+
+            m_columnsInstances.emplace_back(m_db, handle);
+        }
 
         /**
          * @brief Will try to repair the database if it is corrupt or throw exception if something failed.
@@ -697,32 +783,6 @@ namespace Utils
                                          "wasn't corruption. Code: " +
                                          std::to_string(errorStatus.code()) + " Reason: " + errorStatus.getState());
             }
-        }
-
-        /**
-         * @brief Returns the column family handle identified by its name.
-         *
-         * @param columnName Name of the column family. If empty, the default handle is returned.
-         * @return rocksdb::ColumnFamilyHandle* Column family handle pointer.
-         */
-        ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
-        {
-            auto columnNameFind {columnName};
-            if (columnName.empty())
-            {
-                columnNameFind = rocksdb::kDefaultColumnFamilyName;
-            }
-
-            if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                            m_columnsInstances.end(),
-                                            [&columnNameFind](const ColumnFamilyRAII& handle)
-                                            { return columnNameFind == handle.handle()->GetName(); })};
-                it != m_columnsInstances.end())
-            {
-                return *it;
-            }
-
-            throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
         }
 
         auto createTransaction(const rocksdb::WriteOptions& writeOptions)
