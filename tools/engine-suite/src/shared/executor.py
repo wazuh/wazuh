@@ -6,7 +6,7 @@ class RecoverableTask:
         self.do = do
         self.undo = undo
         self.task_info = task_info
-    
+
     def execute(self) -> Optional[str]:
         error = None
         try:
@@ -15,7 +15,7 @@ class RecoverableTask:
             return str(err)
         else:
             return error
-    
+
     def undo(self) -> Optional[str]:
         error = None
         try:
@@ -26,40 +26,47 @@ class RecoverableTask:
             return error
 
 class Executor:
-    def __init__(self):
+    def __init__(self, debug: bool = True):
         self.tasks = []
-    
+        self.has_error = False
+        self.debug = debug
+
     def add(self, task: RecoverableTask):
         self.tasks.append(task)
-    
+
+    def print_debug(self, message: str):
+        if self.debug:
+            print(message)
+
     def execute(self, dry_run: bool = False):
         index = 0
         for task in self.tasks:
             if dry_run:
                 print(f'Will execute {index}: {task.task_info}...')
             else:
-                print(f'Executing {index}: {task.task_info}...')
+                self.print_debug(f'Executing {index}: {task.task_info}...')
                 error = task.execute()
                 if error:
-                    print(f'Error: {error}')
+                    print(f'Error: {task.task_info} --> {error}')
+                    self.has_error = True
                     if index > 0:
-                        print('\nUndoing previous tasks...')
+                        self.print_debug('\nUndoing previous tasks...')
                         self.undo(index)
-                    else :
-                        print('Nothing to undo')
+                    else:
+                        self.print_debug('Nothing to undo')
                     break
-                
+
             index += 1
-            
+
     def undo(self, fromidx: int):
         index = fromidx-1
         for task in reversed(self.tasks[:fromidx]):
-            print(f'Undoing {index}: {task.task_info}...')
+            self.print_debug(f'Undoing {index}: {task.task_info}...')
             error = task.undo()
             if error:
                 print(f'Error: {error}')
                 print('Engine might be left in an inconsistent state')
-            
+
             index -= 1
 
     def list_tasks(self):
@@ -67,4 +74,3 @@ class Executor:
         for task in self.tasks:
             print(f'{index}: {task.task_info}')
             index += 1
-        

@@ -1,8 +1,7 @@
-import subprocess
 import sys
 from pathlib import Path
 from google.protobuf.json_format import ParseDict
-import json
+
 from engine_handler.handler import EngineHandler
 from api_communication.client import APIClient
 from api_communication.proto import catalog_pb2 as api_catalog
@@ -25,12 +24,12 @@ def load_filters(ruleset_path: Path, engine_handler: EngineHandler) -> None:
         print(f"Loading filter...\n{request}")
         error, response = engine_handler.api_client.send_recv(request)
         if error:
-            raise Exception(error)
+            sys.exit(error)
 
         parsed_response = ParseDict(
             response, api_engine.GenericStatus_Response())
         if parsed_response.status == api_engine.ERROR:
-            raise Exception(parsed_response.error)
+            sys.exit(parsed_response.error)
         print(f"Filter loaded.")
 
 
@@ -41,7 +40,7 @@ def load_integrations(ruleset_path: Path, engine_handler: EngineHandler) -> None
         # Load integration
         print(f"Loading integration...\n")
         rs = ResourceHandler.ResourceHandler()
-        engine_integration_add(engine_handler.api_socket_path, ns, integration_dir.resolve().as_posix(), False, rs)
+        engine_integration_add(engine_handler.api_socket_path, ns, integration_dir.resolve().as_posix(), False, rs, False)
         print(f"Integration loaded.")
 
 
@@ -52,10 +51,10 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     print(f"Creating policy...\n{request}")
     error, response = engine_handler.api_client.send_recv(request)
     if error:
-        raise Exception(error)
+        sys.exit(error)
     parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
     if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
+        sys.exit(parsed_response.error)
     print("Policy created.")
 
     # Set default parents for wazuh and user namespaces
@@ -66,13 +65,13 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     print(f"Setting default parent...\n{request}")
     error, response = engine_handler.api_client.send_recv(request)
     if error:
-        raise Exception(error)
+        sys.exit(error)
     parsed_response = ParseDict(
         response, api_policy.DefaultParentPost_Response())
     if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
+        sys.exit(parsed_response.error)
     if len(parsed_response.warning) > 0 and stop_on_warn:
-        raise Exception(parsed_response.warning)
+        sys.exit(parsed_response.warning)
     print("Default parent set.")
 
     request = api_policy.DefaultParentPost_Request()
@@ -82,13 +81,13 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     print(f"Setting default parent...\n{request}")
     error, response = engine_handler.api_client.send_recv(request)
     if error:
-        raise Exception(error)
+        sys.exit(error)
     parsed_response = ParseDict(
         response, api_policy.DefaultParentPost_Response())
     if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
+        sys.exit(parsed_response.error)
     if len(parsed_response.warning) > 0 and stop_on_warn:
-        raise Exception(parsed_response.warning)
+        sys.exit(parsed_response.warning)
     print("Default parent set.")
 
     # Add wazuh-core
@@ -99,12 +98,12 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     print(f"Adding wazuh-core...\n{request}")
     error, response = engine_handler.api_client.send_recv(request)
     if error:
-        raise Exception(error)
+        sys.exit(error)
     parsed_response = ParseDict(response, api_policy.AssetPost_Response())
     if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
+        sys.exit(parsed_response.error)
     if len(parsed_response.warning) > 0 and stop_on_warn:
-        raise Exception(parsed_response.warning)
+        sys.exit(parsed_response.warning)
     print("wazuh-core added.")
 
     # Add rest of integrations
@@ -120,13 +119,13 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
         print(f"Adding {integration_name}...\n{request}")
         error, response = engine_handler.api_client.send_recv(request)
         if error:
-            raise Exception(error)
+            sys.exit(error)
         parsed_response = ParseDict(
             response, api_policy.AssetPost_Response())
         if parsed_response.status == api_engine.ERROR:
-            raise Exception(parsed_response.error)
+            sys.exit(parsed_response.error)
         if len(parsed_response.warning) > 0 and stop_on_warn:
-            raise Exception(parsed_response.warning)
+            sys.exit(parsed_response.warning)
         print(f"{integration_name} added.")
 
     # Load environment
@@ -139,10 +138,10 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     print(f"Loading environment...\n{request}")
     error, response = engine_handler.api_client.send_recv(request)
     if error:
-        raise Exception(error)
+        sys.exit(error)
     parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
     if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
+        sys.exit(parsed_response.error)
     print("Environment loaded.")
 
 
