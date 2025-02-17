@@ -15,7 +15,7 @@ on:
         type: string
   pull_request:
     paths:
-      - "./.github/workflows/5_testintegration_api.yml"
+      - ".github/workflows/5_testintegration_api.yml"
       - "apis/server_management/**"
       - "tests/integration/test_api/**"
 
