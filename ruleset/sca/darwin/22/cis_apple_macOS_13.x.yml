@@ -655,7 +655,7 @@ checks:
     condition: all
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
-      - 'c:osascript -l JavaScript -e "osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^0$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^1$'
 
   # 2.6.6 Audit Lockdown Mode (Manual) - Not Implemented
   # 2.6.7 Ensure an Administrator Password Is Required to Access System-Wide Preferences. (Manual)
