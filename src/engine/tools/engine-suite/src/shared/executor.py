@@ -28,27 +28,30 @@ class RecoverableTask:
 class Executor:
     def __init__(self):
         self.tasks = []
+        self.has_error = False
     
     def add(self, task: RecoverableTask):
         self.tasks.append(task)
     
-    def execute(self, dry_run: bool = False):
+    def execute(self, without_debug: bool = False, dry_run: bool = False):
         index = 0
         for task in self.tasks:
             if dry_run:
                 print(f'Will execute {index}: {task.task_info}...')
             else:
-                print(f'Executing {index}: {task.task_info}...')
+                if not without_debug:
+                    print(f'Executing {index}: {task.task_info}...')
                 error = task.execute()
                 if error:
-                    print(f'Error: {error}')
-                    if index > 0:
+                    print(f'Error: {task.task_info} --> {error}')
+                    self.has_error = True
+                    if index > 0 and not without_debug:
                         print('\nUndoing previous tasks...')
                         self.undo(index)
-                    else :
+                    elif not without_debug:
                         print('Nothing to undo')
                     break
-                
+                    
             index += 1
             
     def undo(self, fromidx: int):

@@ -197,8 +197,12 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
     print('\nTasks:')
     executor.list_tasks()
     print('\nExecuting tasks...')
-    executor.execute()
-    print('\nDone')
+    executor.execute(without_debug=True)
+
+    if not executor.has_error:
+        print('\nDone')
+    else:
+        sys.exit(executor.has_error)
 
 def run(args):
     env_path = Path(args['environment']).resolve()

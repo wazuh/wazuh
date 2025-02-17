@@ -65,7 +65,7 @@ def add_asset_task(executor: exec.Executor, client: APIClient, asset_name: str, 
     executor.add(exec.RecoverableTask(do, undo, f'Add asset [{namespace}]: {asset_name}'))
 
 
-def add_integration(api_socket, namespace, integration_path, dry_run, resource_handler):
+def add_integration(api_socket, namespace, integration_path, dry_run, resource_handler, without_debug=False):
     # Configuration
     integration_path = Path(integration_path).resolve()
     if not integration_path.exists() or not integration_path.is_dir():
@@ -155,7 +155,7 @@ def add_integration(api_socket, namespace, integration_path, dry_run, resource_h
     print('\nTasks:')
     executor.list_tasks()
     print('\nExecuting tasks...')
-    executor.execute(dry_run)
+    executor.execute(without_debug=without_debug, dry_run=dry_run)
     print('\nDone')
     if dry_run:
         print(

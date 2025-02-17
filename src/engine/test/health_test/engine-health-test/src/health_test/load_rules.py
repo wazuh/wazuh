@@ -13,7 +13,7 @@ def load_rules(ruleset_path: Path, engine_handler: EngineHandler) -> None:
     rules_directory = ruleset_path / 'rules'
 
     if not rules_directory.exists() or not rules_directory.is_dir():
-        raise Exception(f"The directory {rules_directory} was not found.")
+        sys.exit(f"The directory {rules_directory} was not found.")
 
     for subdirectory in rules_directory.iterdir():
         if subdirectory.is_dir():
@@ -31,11 +31,11 @@ def load_rules(ruleset_path: Path, engine_handler: EngineHandler) -> None:
                 error, response = engine_handler.api_client.send_recv(request)
 
                 if error:
-                    raise Exception(error)
+                    sys.exit(error)
 
                 parsed_response = ParseDict(response, api_engine.GenericStatus_Response())
                 if parsed_response.status == api_engine.ERROR:
-                    raise Exception(parsed_response.error)
+                    sys.exit(parsed_response.error)
 
                 print(f"Rules loaded.")
 
@@ -48,13 +48,13 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     print(f"Setting default parent...\n{request}")
     error, response = engine_handler.api_client.send_recv(request)
     if error:
-        raise Exception(error)
+        sys.exit(error)
     parsed_response = ParseDict(
         response, api_policy.DefaultParentPost_Response())
     if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
+        sys.exit(parsed_response.error)
     if len(parsed_response.warning) > 0 and stop_on_warn:
-        raise Exception(parsed_response.warning)
+        sys.exit(parsed_response.warning)
     print("Default parent set.")
 
     # Add enrichment rule
@@ -65,12 +65,12 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
     print(f"Adding enrichment rule...\n{request}")
     error, response = engine_handler.api_client.send_recv(request)
     if error:
-        raise Exception(error)
+        sys.exit(error)
     parsed_response = ParseDict(response, api_policy.AssetPost_Response())
     if parsed_response.status == api_engine.ERROR:
-        raise Exception(parsed_response.error)
+        sys.exit(parsed_response.error)
     if len(parsed_response.warning) > 0 and stop_on_warn:
-        raise Exception(parsed_response.warning)
+        sys.exit(parsed_response.warning)
     print("enrichment rule added.")
 
     # Add rest of rules
@@ -90,13 +90,13 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn:
             print(f"Adding {rule_name}...\n{request}")
             error, response = engine_handler.api_client.send_recv(request)
             if error:
-                raise Exception(error)
+                sys.exit(error)
             parsed_response = ParseDict(
                 response, api_policy.AssetPost_Response())
             if parsed_response.status == api_engine.ERROR:
-                raise Exception(parsed_response.error)
+                sys.exit(parsed_response.error)
             if len(parsed_response.warning) > 0 and stop_on_warn:
-                raise Exception(parsed_response.warning)
+                sys.exit(parsed_response.warning)
             print(f"{rule_name} added.")
 
 
