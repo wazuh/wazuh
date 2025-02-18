@@ -73,7 +73,7 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
 
     Parameters
     ----------
-    list or str
+    agent_list : list or str
         List of agent IDs. All possible values from 001 onwards. Default `*`
 
     Returns
@@ -171,7 +171,7 @@ async def get_agents(
     sort: dict = None,
     select: dict = None,
 ) -> AffectedItemsWazuhResult:
-    """Gets a list of available agents with basic attributes.
+    """Get a list of available agents with basic attributes.
 
     Parameters
     ----------
@@ -223,7 +223,7 @@ async def get_agents_in_group(
     select: str = None,
     distinct: bool = False,
 ) -> AffectedItemsWazuhResult:
-    """Gets the list of agents that belong to a specific group.
+    """Get the list of agents that belong to a specific group.
 
     Parameters
     ----------
@@ -418,7 +418,7 @@ async def get_agent_groups(
     select: str = None,
     distinct: bool = False,
 ) -> AffectedItemsWazuhResult:
-    """Gets the existing groups.
+    """Get the existing groups.
 
     Parameters
     ----------
@@ -494,7 +494,7 @@ async def get_agent_groups(
 
 @expose_resources(actions=['group:create'], resources=['*:*:*'], post_proc_func=None)
 async def create_group(group_id: str) -> WazuhResult:
-    """Creates a group.
+    """Create a group.
 
     Parameters
     ----------
