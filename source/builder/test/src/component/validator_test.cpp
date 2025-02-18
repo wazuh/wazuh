@@ -239,16 +239,16 @@ INSTANTIATE_TEST_SUITE_P(
                           return "Stage 'parse' expects a non-empty array but got an empty array";
                       })),
         ValidateA(json::Json {DECODER_STAGE_PARSE_FIELD_NOT_FOUND_JSON},
-                  FAILURE_ASSET(
+                  SUCCESS_ASSET(
                       [](const std::shared_ptr<MockSchema>& schema,
                          const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
                          const std::shared_ptr<defs::mocks::MockDefinitions>& def)
                       {
-                          EXPECT_CALL(*schema, hasField(testing::_)).WillOnce(testing::Return(true));
+                          EXPECT_CALL(*schema, hasField(DotPath("event.notExist"))).WillOnce(testing::Return(false));
                           EXPECT_CALL(*def, replace(testing::_))
                               .WillOnce(testing::Invoke([](auto expr) { return std::string(expr); }));
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
-                          return "An error occurred while parsing a log: Field 'event.notExist' not found in schema";
+                          return None {};
                       })),
         // TODO: This should warn that the parse field does not exist
         ValidateA(json::Json {DECODER_STAGE_PARSE_NOT_FOUND_JSON},

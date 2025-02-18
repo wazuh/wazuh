@@ -35,7 +35,7 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
     # Generate field tree from ecs_flat
     print('Building field tree from ecs definition...')
     field_tree = ecs.build_field_tree(ecs_flat)
-    field_tree.add_logpar_overrides(logpar_template['fields'])
+    field_tree.add_logpar_overrides(logpar_template["fields"])
     print('Success.')
 
     # Engine schema
@@ -55,7 +55,7 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
         module_tree = wazuh.build_field_tree(fields_definition, module_name)
         print('Adding logpar overrides...')
         if logpar_overrides:
-            module_tree.add_logpar_overrides(logpar_overrides)
+            module_tree.add_logpar_overrides(logpar_overrides["fields"])
         print('Merging module...')
         field_tree.merge(module_tree)
         print('Adding to engine schema...')
@@ -81,7 +81,7 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
 
     # Get the logpar configuration file
     print('Generating logpar configuration...')
-    logpar_template['fields'] = field_tree.get_jlogpar()
+    logpar_template["fields"] = field_tree.get_jlogpar()
     print('Success.')
 
     return fields_template, mappings_template, logpar_template, engine_schema
