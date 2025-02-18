@@ -20,7 +20,7 @@ on:
       - "tests/integration/test_api/**"
 
 jobs:
-  build:
+  test:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
@@ -63,14 +63,16 @@ jobs:
 
       # Set wazuh server package generation workflow run-id
       - id: "package-generation"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           WORKFLOW_RUN_ID=$(gh api repos/${{ github.repository }}/actions/artifacts \
-            | jq -r '.artifacts[] | select(.name=="$PACKAGE_NAME") | .workflow_run.id')
+            | jq -r --arg pkg "$PACKAGE_NAME" '.artifacts[] | select(.name==$pkg) | .workflow_run.id')
 
           if [[ -z "$WORKFLOW_RUN_ID" || "$WORKFLOW_RUN_ID" == "null" ]]; then
             exit 1
           else
-            echo "run-id=${MAIN_STATS_RUN_ID}" >> $GITHUB_OUTPUT
+            echo "run-id=${WORKFLOW_RUN_ID}" >> $GITHUB_OUTPUT
           fi
 
       # Fetch wazuh server package
