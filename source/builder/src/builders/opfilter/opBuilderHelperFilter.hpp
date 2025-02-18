@@ -627,6 +627,25 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Checks if all the specified keys from the target field (an object) are present in the given list.
+ * It verifies whether the elements in the list are included as keys in the target object.
+ * If any key from the target object is missing in the list, the validation fails.
+ * The function does not require that all keys in the list be present in the target field,
+ * but all keys from the target field must be in the list.
+ * If any element in the list is not a string, or if the target object is missing any keys from the list, the validation
+ * fails. This helper is particularly useful for ensuring that all required keys are present in the object and are
+ * strictly enforced in the list.
+ *
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing the list of keys to be evaluated
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return FilterOp
+ */
+FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
+                                        const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
+
 } // namespace builder::builders::opfilter
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
