@@ -54,11 +54,24 @@ jobs:
           wait-interval: 60
           allowed-conclusions: success
 
+
       # Set wazuh server package name
       - run: |
           short_commit=$(git rev-parse --short "$GITHUB_SHA")
           version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           echo "PACKAGE_NAME=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_ENV
+
+      # Set wazuh server package generation workflow run-id
+      - id: "package-generation"
+        run: |
+          WORKFLOW_RUN_ID=$(gh api repos/${{ github.repository }}/actions/artifacts \
+            | jq -r '.artifacts[] | select(.name=="$PACKAGE_NAME") | .workflow_run.id')
+
+          if [[ -z "$WORKFLOW_RUN_ID" || "$WORKFLOW_RUN_ID" == "null" ]]; then
+            exit 1
+          else
+            echo "run-id=${MAIN_STATS_RUN_ID}" >> $GITHUB_OUTPUT
+          fi
 
       # Fetch wazuh server package
       - name: Fetch wazuh-server package 
@@ -66,6 +79,7 @@ jobs:
         with:
           name: ${{env.PACKAGE_NAME}}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.package-generation.outputs.run-id }}
 
       # Install wazuh server package
       - name: Install wazuh-server 
