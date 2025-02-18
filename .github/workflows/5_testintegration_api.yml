@@ -64,11 +64,12 @@ jobs:
       - name: Fetch wazuh-server package 
         uses: actions/download-artifact@v4
         with:
-          name: "${{env.PACKAGE_NAME}}.zip"
+          name: ${{env.PACKAGE_NAME}}.zip
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Install wazuh server package
       - name: Install wazuh-server 
-        run: unzip $GITHUB_WORKSPACE/$PACKAGE_NAME.zip && sudo apt install $GITHUB_WORKSPACE/$PACKAGE_NAME
+        run: unzip ${PACKAGE_NAME}.zip && sudo apt install ${PACKAGE_NAME}
 
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
