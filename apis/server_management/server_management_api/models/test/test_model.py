@@ -54,14 +54,24 @@ class RequestMock:
 
     @property
     def mimetype(self):
+        """Get request mock content type."""
         return self._content_type
 
 
 class ToDictObject:
+    """Mock object to test the `to_dict` models method."""
+
     def __init__(self, value):
         self.value = value
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Convert object into a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the value.
+        """
         return {'value': self.value}
 
     def __repr__(self):
@@ -123,6 +133,7 @@ def test_model_operator_overloading():
 
 
 def test_allof():
+    """Validate that the `AllOf` model method works as expected."""
     model1 = TestModel('a', 1)
     model2 = TestModel('a', 2)
 

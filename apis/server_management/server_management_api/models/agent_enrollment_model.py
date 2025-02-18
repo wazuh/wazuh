@@ -16,32 +16,6 @@ from server_management_api.models.base_model_ import Body, Model
 KEY_LENGTH = 32
 
 
-class DisconnectedTime(Model):
-    def __init__(self, enabled=True, value='1h'):
-        self.swagger_types = {'enabled': bool, 'value': str}
-
-        self.attribute_map = {'enabled': 'enabled', 'value': 'value'}
-
-        self._enabled = enabled
-        self._value = value
-
-    @property
-    def enabled(self):
-        return self._enabled
-
-    @enabled.setter
-    def enabled(self, enabled):
-        self._enabled = enabled
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-
-
 class OS(Model):
     """Agent OS model."""
 
@@ -56,6 +30,13 @@ class OS(Model):
 
     @property
     def name(self) -> str:
+        """Get OS name.
+
+        Returns
+        -------
+        str
+            OS name.
+        """
         return self._name
 
     @name.setter
@@ -64,6 +45,13 @@ class OS(Model):
 
     @property
     def type(self) -> str:
+        """Get OS type.
+
+        Returns
+        -------
+        str
+            OS type.
+        """
         return self._type
 
     @type.setter
@@ -72,6 +60,13 @@ class OS(Model):
 
     @property
     def version(self) -> str:
+        """Get OS version.
+
+        Returns
+        -------
+        str
+            OS version.
+        """
         return self._version
 
     @version.setter
@@ -104,6 +99,13 @@ class Host(Model):
 
     @property
     def architecture(self) -> str:
+        """Get host architecture.
+
+        Returns
+        -------
+        str
+            Host architecture.
+        """
         return self._architecture
 
     @architecture.setter
@@ -112,6 +114,13 @@ class Host(Model):
 
     @property
     def hostname(self) -> str:
+        """Get host name.
+
+        Returns
+        -------
+        str
+            Host name.
+        """
         return self._hostname
 
     @hostname.setter
@@ -120,6 +129,13 @@ class Host(Model):
 
     @property
     def ip(self) -> List[str]:
+        """Get host IP addresses.
+
+        Returns
+        -------
+        List[str]
+            Host IPs.
+        """
         return self._ip
 
     @ip.setter
@@ -128,6 +144,13 @@ class Host(Model):
 
     @property
     def os(self) -> OS:
+        """Get host operating system.
+
+        Returns
+        -------
+        OS
+            Host OS.
+        """
         return self._os
 
     @os.setter
@@ -174,6 +197,13 @@ class AgentEnrollmentModel(Body):
 
     @property
     def id(self) -> str:
+        """Get agent ID.
+
+        Returns
+        -------
+        str
+            Agent ID.
+        """
         return self._id
 
     @id.setter
@@ -182,6 +212,13 @@ class AgentEnrollmentModel(Body):
 
     @property
     def name(self) -> str:
+        """Get agent name.
+
+        Returns
+        -------
+        str
+            Agent name.
+        """
         return self._name
 
     @name.setter
@@ -190,6 +227,13 @@ class AgentEnrollmentModel(Body):
 
     @property
     def key(self) -> str:
+        """Get agent key.
+
+        Returns
+        -------
+        str
+            Agent key.
+        """
         return self._key
 
     @key.setter
@@ -200,6 +244,13 @@ class AgentEnrollmentModel(Body):
 
     @property
     def type(self) -> str:
+        """Get agent type.
+
+        Returns
+        -------
+        str
+            Agent type.
+        """
         return self._type
 
     @type.setter
@@ -208,6 +259,13 @@ class AgentEnrollmentModel(Body):
 
     @property
     def version(self) -> str:
+        """Get agent version.
+
+        Returns
+        -------
+        str
+            Agent version.
+        """
         return self._version
 
     @version.setter
@@ -216,6 +274,13 @@ class AgentEnrollmentModel(Body):
 
     @property
     def host(self) -> Host:
+        """Get agent host.
+
+        Returns
+        -------
+        Host
+            Agent host.
+        """
         return self._host
 
     @host.setter

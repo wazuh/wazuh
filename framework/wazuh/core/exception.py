@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from copy import deepcopy
-from typing import Union
+from typing import Any, Union
 
 from wazuh.core.cluster import __version__
 from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_SOCKET_BUFFER_SIZE, WAZUH_SERVER_YML
@@ -426,8 +426,7 @@ class WazuhException(Exception):
         },
         5007: {
             'message': 'Insecure user password provided',
-            'remediation': 'The password must contain at least one upper and lower case letter, a number and a '
-            'symbol.',
+            'remediation': 'The password must contain at least one upper and lower case letter, a number and a symbol.',
         },
         5008: {
             'message': 'The current user cannot be deleted',
@@ -459,8 +458,7 @@ class WazuhException(Exception):
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {
             'message': 'Error trying to load the JWT secret',
-            'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'
-            'jwt_secret',
+            'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret',
         },
         6004: {
             'message': 'The current user does not have authentication enabled through authorization context',
@@ -581,6 +579,13 @@ class WazuhException(Exception):
         return obj
 
     def to_dict(self) -> dict:
+        """Convert object into a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the values.
+        """
         return {
             'type': self._type,
             'title': self._title,
@@ -592,23 +597,58 @@ class WazuhException(Exception):
         }
 
     @property
-    def type(self):
+    def type(self) -> str:
+        """Get type.
+
+        Returns
+        -------
+        str
+            Error type.
+        """
         return self._type
 
     @property
-    def title(self):
+    def title(self) -> str:
+        """Get title.
+
+        Returns
+        -------
+        str
+            Error title.
+        """
         return self._title
 
     @property
-    def message(self):
+    def message(self) -> Any | str:
+        """Get message.
+
+        Returns
+        -------
+        Any | str
+            Error message.
+        """
         return self._message
 
     @property
-    def remediation(self):
+    def remediation(self) -> str | None:
+        """Get remediation message.
+
+        Returns
+        -------
+        str | None
+            Remediation message or None.
+        """
         return self._remediation
 
     @property
-    def dapi_errors(self):
+    def dapi_errors(self) -> dict | Any:
+        """Get distributed API errors.
+
+        Returns
+        -------
+        dict | Any
+            DAPI errors.
+        """
         return self._dapi_errors
 
     @dapi_errors.setter
@@ -616,18 +656,30 @@ class WazuhException(Exception):
         self._dapi_errors = value
 
     @property
-    def code(self):
+    def code(self) -> int:
+        """Get code.
+
+        Returns
+        -------
+        int
+            Error code.
+        """
         return self._code
 
     @classmethod
-    def from_dict(cls, dct):
+    def from_dict(cls, dct: dict):
+        """Convert a dictionary into a WazuhException object.
+
+        Parameters
+        ----------
+        dct : dict
+            Dictionary holding the values.
+        """
         return cls(**dct)
 
 
 class WazuhInternalError(WazuhException):
-    """This type of exception is raised when an unexpected error in framework code occurs,
-    which means an internal error could not be handled.
-    """
+    """Class representing an error in the code that could not be handled."""
 
     _default_type = 'about:blank'
     _default_title = 'Wazuh Internal Error'
@@ -678,51 +730,49 @@ class WazuhInternalError(WazuhException):
 
 
 class WazuhClusterError(WazuhInternalError):
-    """This type of exception is raised inside the cluster."""
+    """Cluster exception."""
 
     _default_type = 'about:blank'
     _default_title = 'Wazuh Cluster Error'
 
 
 class WazuhHAPHelperError(WazuhClusterError):
-    """This type of exception is raised inside the HAProxy Helper."""
+    """HAProxy Helper exception."""
 
     _default_type = 'about:blank'
     _default_title = 'HAProxy Helper Error'
 
 
 class WazuhCommsAPIError(WazuhInternalError):
-    """This type of exception is raised inside the Communications API."""
+    """Communications API exception."""
 
     _default_type = 'about:blank'
     _default_title = 'Communications API Error'
 
 
 class WazuhEngineError(WazuhInternalError):
-    """This type of exception is raised inside the engine."""
+    """Engine client exception."""
 
     _default_type = 'about:blank'
     _default_title = 'Wazuh Engine Error'
 
 
 class WazuhIndexerError(WazuhInternalError):
-    """This type of exception is raised inside the indexer."""
+    """Indexer client exception."""
 
     _default_type = 'about:blank'
     _default_title = 'Wazuh Indexer Error'
 
 
 class WazuhDaemonError(WazuhInternalError):
-    """This type of exception is raised inside the server daemons."""
+    """Server daemons exception."""
 
     _default_type = 'about:blank'
     _default_title = 'Wazuh Daemon Error'
 
 
 class WazuhError(WazuhException):
-    """This type of exception is raised as a controlled response to a bad request from user
-    that cannot be performed properly.
-    """
+    """Class representing a controlled response to a bad request from user that cannot be performed properly."""
 
     _default_type = 'about:blank'
     _default_title = 'Bad Request'
@@ -772,7 +822,14 @@ class WazuhError(WazuhException):
         self._ids = set() if ids is None else set(ids)
 
     @property
-    def ids(self):
+    def ids(self) -> set:
+        """Get IDs.
+
+        Returns
+        -------
+        set
+            IDs ordered list.
+        """
         return self._ids
 
     def __or__(self, other):
@@ -783,6 +840,13 @@ class WazuhError(WazuhException):
         return result
 
     def to_dict(self) -> dict:
+        """Convert object into a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the value.
+        """
         result = super().to_dict()
         result['ids'] = list(self.ids)
 
@@ -790,28 +854,28 @@ class WazuhError(WazuhException):
 
 
 class WazuhPermissionError(WazuhError):
-    """This type of exception is raised as a controlled response to a permission denied accessing a resource."""
+    """Class representing a controlled response to a permission denied accessing a resource."""
 
     _default_type = 'about:blank'
     _default_title = 'Permission Denied'
 
 
 class WazuhResourceNotFound(WazuhError):
-    """This type of exception is raised as a controlled response to a not found resource."""
+    """Class representing a controlled response to a not found resource."""
 
     _default_type = 'about:blank'
     _default_title = 'Resource Not Found'
 
 
 class WazuhTooManyRequests(WazuhError):
-    """This type of exception is raised as a controlled response to too many requests."""
+    """Class representing a controlled response to too many requests."""
 
     _default_type = 'about:blank'
     _default_title = 'Too Many Requests'
 
 
 class WazuhNotAcceptable(WazuhError):
-    """This type of exception is raised as a controlled response to a not acceptable request."""
+    """Class representing a controlled response to a not acceptable request."""
 
     _default_type = 'about:blank'
     _default_title = 'Not Acceptable'
