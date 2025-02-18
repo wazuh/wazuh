@@ -2573,6 +2573,41 @@
               "updatedAt": {
                 "type": "date"
               },
+              "client_ip": {
+                "type": "ip"
+              },
+              "client_port": {
+                "type": "integer"
+              },
+              "elb_status_code": {
+                "type": "integer"
+              },
+              "matched_rule_priority": {
+                "type": "integer"
+              },
+              "received_bytes": {
+                "type": "long"
+              },
+              "sent_bytes": {
+                "type": "long"
+              },
+              "request_processing_time": {
+                "type": "float"
+              },
+              "response_processing_time": {
+                "type": "float"
+              },
+              "target_processing_time": {
+                "type": "float"
+              },
+              "request_creation_time": {
+                "type": "date",
+                "format": "date_optional_time"
+              },
+              "time": {
+                "type": "date",
+                "format": "date_optional_time"
+              },
               "resource.instanceDetails": {
                 "properties": {
                   "launchTime": {
