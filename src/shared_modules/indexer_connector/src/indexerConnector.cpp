@@ -818,6 +818,14 @@ IndexerConnector::IndexerConnector(
                 {
                     m_db->delete_(id);
                 }
+                // We made the same operation for DELETED_BY_QUERY as for DELETED
+                else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
+                {
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
+                }
                 else
                 {
                     const auto dataString = parsedData.at("data").dump();
