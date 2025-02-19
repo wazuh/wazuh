@@ -10,18 +10,18 @@ table dbsync_hwinfo {
     scan_time:string;
     board_serial:string;
     cpu_name:string;
-    cpu_cores:int;
+    cpu_cores:long;
     cpu_mhz:double;
-    ram_total:int;
-    ram_free:int;
-    ram_usage:int;
+    ram_total:long;
+    ram_free:long;
+    ram_usage:long;
     checksum:string;
 }
 
 table dbsync_network_address {
     scan_time:string;
     iface:string;
-    proto:int;
+    proto:long;
     address:string;
     netmask:string;
     broadcast:string;
@@ -142,7 +142,7 @@ table dbsync_packages {
     architecture:string;
     groups:string;
     description:string;
-    size:int;
+    size:long;
     priority:string;
     multiarch:string;
     source:string;

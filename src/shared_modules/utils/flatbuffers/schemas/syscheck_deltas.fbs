@@ -14,10 +14,10 @@ table Attributes {
     user_name: string;
     gid: string;
     group_name: string;
-    inode: ulong;
-    mtime: ulong;
+    inode: long;
+    mtime: long;
     checksum: string;
-    size: ulong;
+    size: long;
     value_type: string;
     value_name: string;
     hash_md5: string;
@@ -34,7 +34,7 @@ table Data {
     mode: string;
     type: string;
     arch: string;
-    timestamp: ulong;
+    timestamp: long;
     value_name: string;
 }
 
