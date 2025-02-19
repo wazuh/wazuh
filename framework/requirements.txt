@@ -16,7 +16,7 @@ click==8.1.3
 clickclick==20.10.2
 connexion==3.1.0
 content-size-limit-asgi==0.1.5
-cryptography==43.0.1
+cryptography==44.0.1
 Cython==0.29.36
 defusedxml==0.6.0
 docker==7.1.0
