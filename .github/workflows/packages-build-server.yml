@@ -129,12 +129,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Download pre-compiled store
-        run: |
-          aws s3 cp ${{ env.S3_PRECOMPILED_STORE }} $GITHUB_WORKSPACE/${{ env.LOCAL_PRECOMPILED_STORE_PATH }}
-          # Save the store in the workspace
-
-
       - name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
         working-directory: packages
         run: |
