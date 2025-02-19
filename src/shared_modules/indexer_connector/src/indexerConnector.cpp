@@ -828,6 +828,12 @@ IndexerConnector::IndexerConnector(
                 }
                 else
                 {
+                    // If the data does not contain the required fields, log a warning and continue.
+                    if (!parsedData.contains("data"))
+                    {
+                        logWarn(IC_NAME, "Event required field (data) is missing required fields: %s", data.c_str());
+                        continue;
+                    }
                     const auto dataString = parsedData.at("data").dump();
                     m_db->put(id, dataString);
                 }
