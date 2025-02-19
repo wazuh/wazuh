@@ -51,7 +51,7 @@ static void wm_inventory_harvester_log_config(cJSON* config_json)
     }
 }
 
-void* wm_inventory_harvester_main(wm_inventory_harvester_t* /*data*/)
+void* wm_inventory_harvester_main(__attribute__((unused))wm_inventory_harvester_t* data)
 {
     mtinfo(WM_INVENTORY_HARVESTER_LOGTAG, "Starting inventory_harvester module.");
     if (inventory_harvester_module = so_get_module_handle("inventory_harvester"), inventory_harvester_module)
@@ -152,7 +152,7 @@ wmodule* wm_inventory_harvester_read()
     return module;
 }
 
-cJSON* wm_inventory_harvester_dump(wm_inventory_harvester_t* /*data */)
+cJSON* wm_inventory_harvester_dump(__attribute__((unused)) wm_inventory_harvester_t* data)
 {
     cJSON* root = cJSON_CreateObject();
 
