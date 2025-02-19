@@ -163,9 +163,9 @@ table fim_file {
     hash_md5:string;
     hash_sha1:string;
     hash_sha256:string;
-    inode:ulong;
-    mtime:ulong;
-    size:ulong;
+    inode:long;
+    mtime:long;
+    size:long;
     type:string;
     uid:string;
     user_name:string;
@@ -175,7 +175,7 @@ table fim_registry_key {
     checksum:string;
     gid:string;
     group_name:string;
-    mtime:ulong;
+    mtime:long;
     uid:string;
     type:string;
     user_name:string;
@@ -186,7 +186,7 @@ table fim_registry_value {
     hash_md5:string;
     hash_sha1:string;
     hash_sha256:string;
-    size:ulong;
+    size:long;
     type:string;
     value_type:string;
 }
