@@ -892,15 +892,17 @@ private:
             m_affectedComponentType = AffectedComponentType::File;
             m_originTable = OriginTable::File;
         }
-        else if (action.compare("deleteRegistry") == 0)
+        else if (action.compare("deleteRegistryKey") == 0)
         {
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Registry;
-            // Registry key and values share the same index, so we can use RegistryValue or
-            // RegistryKey as the affected component type. The selection of the affected component
-            // type is arbitrary. Apart from that, the key + value are merged in the origin (wazuh-db), it is the same
-            // key/id for the indexer.
             m_originTable = OriginTable::RegistryKey;
+        }
+        else if (action.compare("deleteRegistryValue") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::Registry;
+            m_originTable = OriginTable::RegistryValue;
         }
         else
         {
