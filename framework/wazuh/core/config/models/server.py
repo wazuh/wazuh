@@ -291,7 +291,7 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     @field_validator('private_key', 'public_key')
     @classmethod
     def validate_key_files(cls, path: str, info: ValidationInfo) -> str:
-        """Validate that the JWT keys exist.
+        """Validate that the JWT keys exist if their path are non-empty.
 
         Parameters
         ----------
@@ -310,7 +310,7 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         str
             JWT key path.
         """
-        cls._validate_file_path(path, info.field_name)
+        cls._validate_file_path_exists(path, info.field_name)
         return path
 
 

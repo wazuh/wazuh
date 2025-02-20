@@ -9,7 +9,7 @@ import wazuh.core.utils as core_utils
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
 CACHE_DEPRECATED_MESSAGE = (
@@ -18,64 +18,21 @@ CACHE_DEPRECATED_MESSAGE = (
 
 default_security_configuration = {'auth_token_exp_timeout': 900, 'rbac_mode': 'white'}
 
-default_api_configuration = {
-    'host': '0.0.0.0',
-    'port': 55000,
-    'drop_privileges': True,
-    'experimental_features': False,
-    'max_upload_size': 10485760,
-    'intervals': {'request_timeout': 10},
-    'https': {
-        'enabled': True,
-        'key': 'server.key',
-        'cert': 'server.crt',
-        'use_ca': False,
-        'ca': 'ca.crt',
-        'ssl_protocol': 'auto',
-        'ssl_ciphers': '',
-    },
-    'logs': {'level': 'info', 'format': 'plain', 'max_size': {'enabled': False, 'size': '1M'}},
-    'cors': {
-        'enabled': False,
-        'source_route': '*',
-        'expose_headers': '*',
-        'allow_headers': '*',
-        'allow_credentials': False,
-    },
-    'access': {'max_login_attempts': 50, 'block_time': 300, 'max_request_per_minute': 300},
-    'upload_configuration': {
-        'remote_commands': {
-            'localfile': {'allow': True, 'exceptions': []},
-            'wodle_command': {'allow': True, 'exceptions': []},
-        },
-        'limits': {'eps': {'allow': True}},
-        'agents': {'allow_higher_versions': {'allow': True}},
-        'indexer': {'allow': True},
-        'integrations': {'virustotal': {'public_key': {'allow': True, 'minimum_quota': 240}}},
-    },
-}
 
-
-def generate_private_key(
-    private_key_path: str, public_exponent: int = 65537, key_size: int = 2048
-) -> rsa.RSAPrivateKey:
+def generate_private_key(private_key_path: str) -> ec.EllipticCurvePrivateKey:
     """Generate a private key in 'CERTS_PATH/api.key'.
 
     Parameters
     ----------
     private_key_path : str
         Path where the private key will be generated.
-    public_exponent : int, optional
-        Key public exponent. Default `65537`
-    key_size : int, optional
-        Key size. Default `2048`
 
     Returns
     -------
-    rsa.RSAPrivateKey
+    ec.EllipticCurvePrivateKey
         Private key.
     """
-    key = rsa.generate_private_key(public_exponent, key_size, crypto_default_backend())
+    key = ec.generate_private_key(curve=ec.SECP256K1(), backend=crypto_default_backend())
     with open(private_key_path, 'wb') as f:
         f.write(
             key.private_bytes(
@@ -89,13 +46,13 @@ def generate_private_key(
     return key
 
 
-def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
+def generate_self_signed_certificate(private_key: ec.EllipticCurvePrivateKey, certificate_path: str):
     """Generate a self-signed certificate using a generated private key. The certificate will be created in
     'CERTS_PATH/api.crt'.
 
     Parameters
     ----------
-    private_key : RSAPrivateKey
+    private_key : EllipticCurvePrivateKey
         Private key.
     certificate_path : str
         Path where the self-signed certificate will be generated.
