@@ -6,6 +6,7 @@
 | [ends_with](documentation.md#ends_with) | string |
 | [exists](documentation.md#exists) | undefined |
 | [exists_key_in](documentation.md#exists_key_in) | undefined |
+| [has_keys](documentation.md#has_keys) | array, object |
 | [int_equal](documentation.md#int_equal) | comparison, integer |
 | [int_greater](documentation.md#int_greater) | comparison, integer |
 | [int_less](documentation.md#int_less) | comparison, integer |

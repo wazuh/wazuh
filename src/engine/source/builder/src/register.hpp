@@ -113,6 +113,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "is_string", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsString});
     registry->template add<builders::OpBuilderEntry>(
+        "has_keys",
+        {schemf::JTypeToken::create(json::Json::Type::Object), builders::opfilter::opBuilderHelperKeysExistInList});
+    registry->template add<builders::OpBuilderEntry>(
         "binary_and",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperBinaryAnd});
     registry->template add<builders::OpBuilderEntry>(

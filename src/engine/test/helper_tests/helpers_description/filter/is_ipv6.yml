@@ -4,11 +4,10 @@ name: is_ipv6
 metadata:
   description: |
     Checks if the IP address stored in the field is an IPv6.
-    IPv4:
-      - 10.0.0.0
-      - 172.16.0.0
-      - 192.168.0.0
-      - 127.0.0.0
+    IPv6:
+      - ::1
+      - fd00:abcd::1234
+      - a03:2880:f10c:83:face:b00c::25de
     This helper function is typically used in the check stage
 
   keywords:

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <unordered_set>
 #include <variant>
 
 #include <re2/re2.h>
@@ -1598,6 +1599,115 @@ FilterOp opBuilderHelperIsTestSession(const Reference& targetField,
             RETURN_SUCCESS(runState, true, successTrace);
         }
         RETURN_FAILURE(runState, false, failureTrace);
+    };
+}
+
+// <field>: +has_keys/$<list_value>|$<list_reference>
+FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
+                                        const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    utils::assertSize(opArgs, 1);
+
+    std::unordered_set<std::string> expectedKeys {};
+    if (opArgs[0]->isValue())
+    {
+        auto list = std::static_pointer_cast<Value>(opArgs[0])->value().getArray();
+        if (!list.has_value())
+        {
+            throw std::runtime_error(fmt::format("Expected 'array' value but got '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+
+        for (const auto& element : list.value())
+        {
+            if (!element.isString())
+            {
+                throw std::runtime_error(fmt::format("Expecting a 'string' array but found '{}'", element.typeName()));
+            }
+            expectedKeys.insert(element.getString().value());
+        }
+    }
+    else
+    {
+        const auto arrayRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+        const auto& validator = buildCtx->validator();
+
+        if (validator.hasField(arrayRef.dotPath()))
+        {
+            if (!validator.isArray(arrayRef.dotPath()))
+            {
+                throw std::runtime_error(fmt::format(
+                    "Expected 'array' reference but got reference '{}' wich is not an array", arrayRef.dotPath()));
+            }
+
+            auto jType = validator.getJsonType(arrayRef.dotPath());
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(
+                    fmt::format("Expected array of 'string' but got array of '{}'", json::Json::typeToStr(jType)));
+            }
+        }
+    }
+
+    const auto name = buildCtx->context().opName;
+    const std::string successTrace = fmt::format("[{}] -> Success", name);
+    const std::string failureTrace1 = fmt::format(
+        "[{}] -> Failure: Target field '{}' not found or is not a json object", name, targetField.dotPath());
+    const std::string failureTrace2 = fmt::format("[{}] -> Failure: Reference not found or is not an array", name);
+    const std::string failureTrace3 = fmt::format("[{}] -> Failure: Element in array is not a string", name);
+    const std::string failureTrace4 =
+        fmt::format("[{}] -> Failure: There are keys in the target field that are missing from the list", name);
+
+    return [failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            failureTrace4,
+            successTrace,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            parameter = opArgs[0],
+            expectedKeys](base::ConstEvent event) -> FilterResult
+    {
+        const auto objectTarget = event->getObject(targetField);
+        if (!objectTarget.has_value())
+        {
+            RETURN_FAILURE(runState, false, failureTrace1);
+        }
+
+        std::unordered_set<std::string> localKeys = expectedKeys;
+        if (parameter->isReference())
+        {
+            auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
+            const auto list = event->getArray(refPath);
+            if (!list.has_value())
+            {
+                RETURN_FAILURE(runState, false, failureTrace2);
+            }
+            for (const auto& element : list.value())
+            {
+                if (!element.isString())
+                {
+                    RETURN_FAILURE(runState, false, failureTrace3);
+                }
+                localKeys.insert(element.getString().value());
+            }
+        }
+
+        if (localKeys.size() < objectTarget.value().size())
+        {
+            RETURN_FAILURE(runState, false, failureTrace4);
+        }
+
+        for (const auto& [key, value] : objectTarget.value())
+        {
+            if (localKeys.erase(key) == 0)
+            {
+                RETURN_FAILURE(runState, false, failureTrace4);
+            }
+        }
+
+        RETURN_SUCCESS(runState, true, successTrace);
     };
 }
 
