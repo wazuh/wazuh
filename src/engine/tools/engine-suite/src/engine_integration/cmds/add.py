@@ -65,7 +65,7 @@ def add_asset_task(executor: exec.Executor, client: APIClient, asset_name: str, 
     executor.add(exec.RecoverableTask(do, undo, f'Add asset [{namespace}]: {asset_name}'))
 
 
-def add_integration(api_socket, namespace, integration_path, dry_run, resource_handler):
+def add_integration(api_socket, namespace, integration_path, dry_run, resource_handler, debug=True):
     # Configuration
     integration_path = Path(integration_path).resolve()
     if not integration_path.exists() or not integration_path.is_dir():
@@ -113,7 +113,7 @@ def add_integration(api_socket, namespace, integration_path, dry_run, resource_h
             return -1
 
     # Create tasks to add decoders, rules, outputs, filters and kvdbs
-    executor = exec.Executor()
+    executor = exec.Executor(debug=debug)
 
     for asset_type in [type for type in manifest.keys() if type in ['decoders', 'rules', 'outputs', 'filters']]:
         assets_path = ruleset_path / asset_type

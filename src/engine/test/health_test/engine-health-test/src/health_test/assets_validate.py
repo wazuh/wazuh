@@ -144,7 +144,7 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
     if len(specified_args) > 1:
         sys.exit("Error: Only one of 'integration', 'rule_folder', or 'decoder' can be specified at a time.")
 
-    executor = exec.Executor()
+    executor = exec.Executor(debug=False)
 
     if integration:
         integration_path = ruleset_path / 'integrations' / integration
@@ -198,7 +198,11 @@ def validator(args, ruleset_path: Path, resource_handler: rs.ResourceHandler, ap
     executor.list_tasks()
     print('\nExecuting tasks...')
     executor.execute()
-    print('\nDone')
+
+    if not executor.has_error:
+        print('\nDone')
+    else:
+        sys.exit(executor.has_error)
 
 def run(args):
     env_path = Path(args['environment']).resolve()
