@@ -91,6 +91,7 @@ public:
             },
             data);
     }
+
     Operation operation() const
     {
         return m_operation;
