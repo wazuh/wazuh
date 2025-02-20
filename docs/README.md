@@ -8,6 +8,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [ends_with](#ends_with)
 - [exists](#exists)
 - [exists_key_in](#exists_key_in)
+- [has_keys](#has_keys)
 - [int_equal](#int_equal)
 - [int_greater](#int_greater)
 - [int_less](#int_less)
@@ -263,6 +264,48 @@ This helper function is typically used in the check stage.
 **Keywords**
 
 - `undefined` 
+
+---
+# has_keys
+
+## Signature
+
+```
+
+field: has_keys(elements)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| elements | array | value or reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Checks if all the specified keys from the target field (an object) are present in the given list.
+It verifies whether the elements in the list are included as keys in the target object.
+If any key from the target object is missing in the list, the validation fails.
+The function does not require that all keys in the list be present in the target field,
+but all keys from the target field must be in the list.
+If any element in the list is not a string, or if the target object is missing any keys from the list, the validation fails.
+This helper is particularly useful for ensuring that all required keys are present in the object and
+are strictly enforced in the list.
+
+
+**Keywords**
+
+- `array` 
+
+- `object` 
 
 ---
 # int_equal
@@ -597,11 +640,10 @@ field: is_ipv6()
 ## Description
 
 Checks if the IP address stored in the field is an IPv6.
-IPv4:
-  - 10.0.0.0
-  - 172.16.0.0
-  - 192.168.0.0
-  - 127.0.0.0
+IPv6:
+  - ::1
+  - fd00:abcd::1234
+  - a03:2880:f10c:83:face:b00c::25de
 This helper function is typically used in the check stage
 
 
