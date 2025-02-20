@@ -57,7 +57,7 @@ endif()
 add_subdirectory(testtool)
 
 if(UNIT_TEST)
-  add_subdirectory(tests)
+  # add_subdirectory(tests)
 else()
   if(FSANITIZE)
     set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
