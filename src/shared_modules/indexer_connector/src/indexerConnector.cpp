@@ -818,8 +818,22 @@ IndexerConnector::IndexerConnector(
                 {
                     m_db->delete_(id);
                 }
+                // We made the same operation for DELETED_BY_QUERY as for DELETED
+                else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
+                {
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
+                }
                 else
                 {
+                    // If the data does not contain the required fields, log a warning and continue.
+                    if (!parsedData.contains("data"))
+                    {
+                        logWarn(IC_NAME, "Event required field (data) is missing required fields: %s", data.c_str());
+                        continue;
+                    }
                     const auto dataString = parsedData.at("data").dump();
                     m_db->put(id, dataString);
                 }
