@@ -2863,8 +2863,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
 
   # 5.2.2 Ensure sudo commands use pty. (Automated)
   - id: 18675
@@ -2885,8 +2887,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 5.2.3 Ensure sudo log file exists. (Automated)
   - id: 18676
@@ -2908,8 +2912,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
+      - 'd:/etc/sudoers.d -> \.* -> r:^\s*\t*Defaults\s*\t*logfile=\S+.log'
 
   # 5.2.4 Ensure users must provide password for privilege escalation. (Automated)
   - id: 18677
@@ -2930,8 +2936,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*NOPASSWD'
 
   # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 18678
@@ -2951,8 +2959,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/sudoers -> r:^\s*\t*!authenticate'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*!authenticate'
 
   # 5.2.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 18679
@@ -2974,8 +2984,11 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/sudoers -> !r:^\s*\t*# && n:^\s*\t*timestamp_timeout=(\d+) compare <= 15 && n:^\s*\t*timestamp_timeout=(\d+) compare >= 0'
+      - 'd:/etc/sudoers.d -> r:\.* -> !r:^\s*\t*# && n:^\s*\t*timestamp_timeout=(\d+) compare <= 15 && n:^\s*\t*timestamp_timeout=(\d+) compare >= 0'
+      - 'c:sudo -V -> n:Authentication timestamp timeout:\s*\t*(\d+) compare <= 15 && n:Authentication timestamp timeout:\s*\t*(\d+) compare >= 0'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
   - id: 18680
@@ -2997,28 +3010,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*required\s*pam_wheel.so && r:use_uid && r:group='
 
-  # 5.3.1.1 Ensure latest version of pam is installed. (Automated)
-  - id: 18681
-    title: "Ensure latest version of pam is installed."
-    description: "Updated versions of PAM include additional functionality."
-    rationale: "To ensure the system has full functionality and access to the options covered by this Benchmark the latest version of libpam-runtime should be installed on the system."
-    compliance:
-      - cis: ["5.3.1.1"]
-    condition:
-    rules:
-
-  # 5.3.1.2 Ensure libpam-modules is installed. (Automated)
-  - id: 18682
-    title: "Ensure libpam-modules is installed."
-    description: "Pluggable Authentication Modules for PAM."
-    rationale: "To ensure the system has full functionality and access to the PAM options covered by this Benchmark."
-    compliance:
-      - cis: ["5.3.1.2"]
-    condition:
-    rules:
+  # 5.3.1.1 Ensure latest version of pam is installed. (Automated) - Not Implemented
+  # 5.3.1.2 Ensure libpam-modules is installed. (Automated) - Not Implemented
 
   # 5.3.1.3 Ensure libpam-pwquality is installed. (Automated)
   - id: 18683
@@ -3030,8 +3027,9 @@ checks:
       - "https://packages.debian.org/buster/libpam-pwquality"
     compliance:
       - cis: ["5.3.1.3"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg -s libpam-pwquality -> r:install ok installed"
 
   # 5.3.2.1 Ensure pam_unix module is enabled. (Automated)
   - id: 18684
@@ -3053,8 +3051,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-account -> r:pam_unix.so"
+      - "f:/etc/pam.d/common-session -> r:pam_unix.so && r:required"
+      - "f:/etc/pam.d/common-auth -> r:pam_unix.so && r:try_first_pass"
+      - "f:/etc/pam.d/common-password -> r:pam_unix.so && r:obscure"
 
   # 5.3.2.2 Ensure pam_faillock module is enabled. (Automated)
   - id: 18685
@@ -3076,8 +3078,11 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-auth -> r:pam_unix.so && r:preauth"
+      - "f:/etc/pam.d/common-account -> r:pam_unix.so && r:authfail"
+      - "f:/etc/pam.d/common-auth -> r:pam_unix.so && r:required"
 
   # 5.3.2.3 Ensure pam_pwquality module is enabled. (Automated)
   - id: 18686
@@ -3096,8 +3101,9 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> r:pam_pwquality.so && r:retry="
 
   # 5.3.2.4 Ensure pam_pwhistory module is enabled. (Automated)
   - id: 18687
@@ -3116,13 +3122,14 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> r:pam_pwhistory.so && r:remember="
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
   - id: 18688
     title: "Ensure password failed attempts lockout is configured."
-    description: "The deny=<n> option will deny access if the number of consecutive authentication failures for this user during the recent interval exceeds ."
+    description: "The deny=<n> option will deny access if the number of consecutive authentication failures for this user during the recent interval exceeds."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: "Create or edit the following line in /etc/security/faillock.conf setting the deny option to 5 or less: deny = 5 Run the following command: # grep -Pl -- '\\bpam_faillock\\.so\\h+([^#\\n\\r]+\\h+)?deny\\b' /usr/share/pam- configs/* Edit any returned files and remove the deny=<N> arguments from the pam_faillock.so line(s): Internal Only - General."
     compliance:
@@ -3139,8 +3146,10 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*deny\s*\t*=\s*\t*(\d+) compare <= 5'
+      - "f:/etc/security/faillock.conf -> !r:deny"
 
   # 5.3.3.1.2 Ensure password unlock time is configured. (Automated)
   - id: 18689
@@ -3163,8 +3172,10 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare <= 900'
+      - "f:/etc/security/faillock.conf -> !r:unlock_time"
 
   # 5.3.3.1.3 Ensure password failed attempts lockout includes root account. (Automated)
   - id: 18690
@@ -3187,8 +3198,12 @@ checks:
       - pci_dss_v3.2.1: ["8.1.3"]
       - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - soc_2: ["CC6.2", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/faillock.conf -> r:^\s*\t*even_deny_root'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*root_unlock_time\s*\t*=\s*\t*(\d+) compare >= 60'
+      - 'f:/etc/pam.d/common-auth -> r:pam_faillock.so && n:^\s*\t*root_unlock_time\s*\t*=\s*\t*(\d+) compare >= 60'
+      - "f:/etc/security/faillock.conf -> !r:root_unlock_time"
 
   # 5.3.3.2.1 Ensure password number of changed characters is configured. (Automated)
   - id: 18691
@@ -3207,15 +3222,17 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:^\s*\t*difok\s*\t*=\s*\t*(\d+) compare >= 2'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*difok && n:\s*\t*=\s*\t*(\d+) compare >= 2'
 
   # 5.3.3.2.2 Ensure minimum password length is configured. (Automated)
   - id: 18692
     title: "Ensure minimum password length is configured."
     description: 'The minimum password length setting determines the lowers number of characters that make up a password for a user account. There are many different theories about how to determine the best password length for an organization, but perhaps "passphrase" is a better term than "password". The minlen option sets the minimum acceptable size for the new password (plus one if credits are not disabled which is the default). Cannot be set to lower value than 6.'
     rationale: "Strong passwords help protect systems from password attacks. Types of password attacks include dictionary attacks, which attempt to use common words and phrases, and brute force attacks, which try every possible combination of characters. Also attackers may try to obtain the account database so they can use tools to discover the accounts and passwords."
-    impact: "In general, it is true that longer passwords are better (harder to crack), but it is also true that forced password length requirements can cause user behavior that is predictable and undesirable. For example, requiring users to have a minimum 16-character password may cause them to choose repeating patterns like fourfourfourfour or passwordpassword that meet the requirement but aren’t hard to guess. Additionally, length requirements increase the chances that users will adopt other insecure practices, like writing them down, re-using them or storing them unencrypted in their documents. Having a reasonable minimum length with no maximum character limit increases the resulting average password length used (and therefore the strength).6 Internal Only - General."
+    impact: "In general, it is true that longer passwords are better (harder to crack), but it is also true that forced password length requirements can cause user behavior that is predictable and undesirable. For example, requiring users to have a minimum 16-character password may cause them to choose repeating patterns like fourfourfourfour or passwordpassword that meet the requirement but aren't hard to guess. Additionally, length requirements increase the chances that users will adopt other insecure practices, like writing them down, re-using them or storing them unencrypted in their documents. Having a reasonable minimum length with no maximum character limit increases the resulting average password length used (and therefore the strength).6 Internal Only - General."
     remediation: "Create or modify a file ending in .conf in the /etc/security/pwquality.conf.d/ directory or the file /etc/security/pwquality.conf and add or modify the following line to set password length of 14 or more characters. Ensure that password length conforms to local site policy: Example: #!/usr/bin/env bash { sed -ri 's/^\\s*minlen\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '\\n%s' \"minlen = 14\" > /etc/security/pwquality.conf.d/50- pwlength.conf } Run the following command: # grep -Pl -- '\\bpam_pwquality\\.so\\h+([^#\\n\\r]+\\h+)?minlen\\b' /usr/share/pam- configs/* Edit any returned files and remove the minlen argument from the pam_pwquality.so line(s):."
     compliance:
       - cis: ["5.3.3.2.2"]
@@ -3228,14 +3245,16 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/security/pwquality.conf -> n:^\s*\t*minlen\s*\t*=\s*\t*(\d+) compare >= 14'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*minlen && n:\s*\t*=\s*\t*(\d+) compare >= 14'
 
   # 5.3.3.2.3 Ensure password complexity is configured. (Manual)
   - id: 18693
     title: "Ensure password complexity is configured."
     description: "Password complexity can be set through: - minclass - The minimum number of classes of characters required in a new password. (digits, uppercase, lowercase, others). e.g. minclass = 4 requires digits, uppercase, lower case, and special characters. - dcredit - The maximum credit for having digits in the new password. If less than 0 it is the minimum number of digits in the new password. e.g. dcredit = -1 requires at least one digit - ucredit - The maximum credit for having uppercase characters in the new password. If less than 0 it is the minimum number of uppercase characters in the new password. e.g. ucredit = -1 requires at least one uppercase character - ocredit - The maximum credit for having other characters in the new password. If less than 0 it is the minimum number of other characters in the new password. e.g. ocredit = -1 requires at least one special character - lcredit - The maximum credit for having lowercase characters in the new password. If less than 0 it is the minimum number of lowercase characters in the new password. e.g. lcredit = -1 requires at least one lowercase character."
-    rationale: "Strong passwords protect systems from being hacked through brute force methods. Requiring at least one non-alphabetic character increases the search space beyond pure dictionary words, which makes the resulting password harder to crack. Forcing users to choose an excessively complex password, e.g. some combination of upper-case, lower-case, numbers, and special characters, has a negative impact. It places an extra burden on users and many will use predictable patterns (for example, a capital letter in the first position, followed by lowercase letters, then one or two numbers, and a “special character” at the end). Attackers know this, so dictionary attacks will often contain these common patterns and use the most common substitutions like, $ for s, @ for a, 1 for l, 0 for o."
+    rationale: 'Strong passwords protect systems from being hacked through brute force methods. Requiring at least one non-alphabetic character increases the search space beyond pure dictionary words, which makes the resulting password harder to crack. Forcing users to choose an excessively complex password, e.g. some combination of upper-case, lower-case, numbers, and special characters, has a negative impact. It places an extra burden on users and many will use predictable patterns (for example, a capital letter in the first position, followed by lowercase letters, then one or two numbers, and a "special character" at the end). Attackers know this, so dictionary attacks will often contain these common patterns and use the most common substitutions like, $ for s, @ for a, 1 for l, 0 for o.'
     impact: "Passwords that are too complex in nature make it harder for users to remember, leading to bad practices. In addition, composition requirements provide no defense against common attack types such as social engineering or insecure storage of passwords Internal Only - General."
     remediation: "Run the following command: # grep -Pl -- '\\bpam_pwquality\\.so\\h+([^#\\n\\r]+\\h+)?(minclass|[dulo]credit)\\b' /usr/share/pam-configs/* Edit any returned files and remove the minclass, dcredit, ucredit, lcredit, and ocredit arguments from the pam_pwquality.so line(s) Create or modify a file ending in .conf in the /etc/security/pwquality.conf.d/ directory or the file /etc/security/pwquality.conf and add or modify the following line(s) to set complexity according to local site policy: - minclass = _N_ - dcredit = _N_ # Value should be either 0 or a number proceeded by a minus (-) symbol - ucredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol - ocredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol - lcredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol Example 1 - Set minclass = 3: #!/usr/bin/env bash { sed -ri 's/^\\s*minclass\\s*=/# &/' /etc/security/pwquality.conf sed -ri 's/^\\s*[dulo]credit\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '\\n%s' \"minclass = 3\" > /etc/security/pwquality.conf.d/50- pwcomplexity.conf } Example 2 - set dcredit = -1, ucredit = -1, and lcredit = -1: #!/usr/bin/env bash { sed -ri 's/^\\s*minclass\\s*=/# &/' /etc/security/pwquality.conf sed -ri 's/^\\s*[dulo]credit\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '%s\\n' \"dcredit = -1\" \"ucredit = -1\" \"lcredit = -1\" > /etc/security/pwquality.conf.d/50-pwcomplexity.conf } Internal Only - General."
     references:
@@ -3251,8 +3270,12 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*ucredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*lcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*dcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*ocredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured. (Automated)
   - id: 18694
@@ -3271,8 +3294,10 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
   - id: 18695
@@ -3291,8 +3316,10 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)
   - id: 18696
@@ -3311,8 +3338,9 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*dictcheck && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
   - id: 18697
@@ -3328,8 +3356,9 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*enforcing && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.8 Ensure password quality is enforced for the root user. (Automated)
   - id: 18698
@@ -3345,8 +3374,9 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*enforce_for_root'
 
   # 5.3.3.3.1 Ensure password history remember is configured. (Automated)
   - id: 18699
