@@ -5,7 +5,7 @@ import httpx
 import pytest
 from wazuh.core import common
 from wazuh.core.engine.base import APPLICATION_JSON
-from wazuh.core.exception import WazuhIndexerError
+from wazuh.core.exception import WazuhError, WazuhIndexerError
 from wazuh.core.indexer.models.commands import Command, Source, Status, Target, TargetType
 from wazuh.core.indexer.utils import convert_enums
 from wazuh.core.task.order import get_orders
@@ -98,6 +98,7 @@ async def test_get_orders(
         (httpx.ConnectError, 'Connection error'),
         (httpx.TimeoutException, 'Timeout error'),
         (WazuhIndexerError, 2200),
+        (WazuhError, 1761),
     ],
 )
 @patch('wazuh.core.task.order.httpx.AsyncClient.post')
@@ -135,5 +136,8 @@ async def test_get_orders_ko(
     commands_mock.assert_called_once_with(Status.PENDING)
 
     if exception is WazuhIndexerError:
-        message = 'Error 2200 - Could not connect to the indexer'
-    logger_mock.error.assert_called_with(f'Failed sending the orders to the Communications API: {message}')
+        message = f'Error {message} - Could not connect to the indexer'
+    elif exception is WazuhError:
+        message = f'Error {message} - Error sending request to the indexer'
+
+    logger_mock.error.assert_called_with(f'Failed sending orders to the Communications API: {message}', exc_info=False)

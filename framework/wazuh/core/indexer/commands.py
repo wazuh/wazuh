@@ -84,7 +84,11 @@ class CommandsManager(BaseIndex):
         query = AsyncSearch(using=self._client, index=self.INDEX).filter(
             {IndexerKey.TERM: {f'{COMMAND_KEY}.{IndexerKey.STATUS}': status.value}}
         )
-        response = await query.execute()
+
+        try:
+            response = await query.execute()
+        except (exceptions.RequestError, exceptions.TransportError) as e:
+            raise WazuhError(1761, extra_message=str(e))
 
         commands = []
         for hit in response:

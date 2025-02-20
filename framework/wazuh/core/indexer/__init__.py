@@ -101,10 +101,10 @@ class Indexer(MixinBulk):
         logger.debug('Connecting to the indexer client.')
         try:
             return await self._client.info()
+        except (ConnectionError, TransportError) as e:
+            raise WazuhIndexerError(2200, extra_message=e.error)
         except ssl.SSLError as e:
             raise WazuhIndexerError(2200, extra_message=e.reason)
-        except TransportError as e:
-            raise WazuhIndexerError(2200, extra_message=e.error)
         except ImproperlyConfigured as e:
             raise WazuhIndexerError(2200, extra_message=f'{e}. Check your indexer configuration and SSL certificates')
 
