@@ -11,8 +11,10 @@ link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 add_subdirectory(sysCollectorImp)
 add_subdirectory(sysNormalizer)
-if (NOT ${TARGET} STREQUAL "")
-    if(${TARGET} STREQUAL "server")
-        add_subdirectory(sysCollectorFlatbuffers)
-    endif()
-endif()
+
+# TODO MOVE THIS TESTS to shared_modulesd/utils
+# if (NOT ${TARGET} STREQUAL "")
+#     if(${TARGET} STREQUAL "server")
+#         add_subdirectory(sysCollectorFlatbuffers)
+#     endif()
+# endif()

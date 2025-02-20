@@ -379,7 +379,7 @@ public:
         return "";
     }
 
-    uint64_t packageSize() const
+    int64_t packageSize() const
     {
         if (m_type == VariantType::Delta)
         {

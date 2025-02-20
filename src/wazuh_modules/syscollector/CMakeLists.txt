@@ -13,8 +13,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-get_filename_component(FLATBUFFERS_FOLDER ${SRC_FOLDER}/shared_modules/utils/flatbuffers/schemas/ ABSOLUTE)
-get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
@@ -73,48 +71,6 @@ link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 
-# add_custom_command does not create a new target. You have to define targets explicitly
-# by add_executable, add_library or add_custom_target in order to make them visible to make
-# For this reason, add_custom_target adds a target with the given name that executes the given commands.
-# The target has no output file and is always considered out of date even if the commands try to create a
-# file with the name of the target.
-
-if (NOT ${TARGET} STREQUAL "")
-  if(${TARGET} STREQUAL "server")
-    list(APPEND Schemas
-                syscollector_synchronization
-    )
-
-    add_custom_target(compile_schemas)
-    foreach(schema IN LISTS Schemas)
-      set(FILE "${FLATBUFFERS_FOLDER}/syscollectorRsync/${schema}.fbs")
-      set(RSYNC_OUTPUT_HEADER_GENERATED "${FLATBUFFERS_FOLDER}/../include/${schema}_generated.h")
-      set(RSYNC_OUTPUT_HEADER "${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h")
-
-      add_custom_command(
-          OUTPUT "${RSYNC_OUTPUT_HEADER_GENERATED}"
-          COMMAND ${FLATC_PATH}/flatc
-          ARGS --cpp
-          ARGS -o "${FLATBUFFERS_FOLDER}/../include" "${FILE}"
-          ARGS --no-warnings
-          COMMENT "Building C++ header for ${schema} schema."
-          DEPENDS ${FILE}
-          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-      add_custom_command(
-          OUTPUT "${RSYNC_OUTPUT_HEADER}"
-          COMMAND bash -c "echo -e '// This file was generated from ${FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\n#define ${schema}_SCHEMA \"'`cat ${FILE}`'\" \\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
-          COMMENT "Creating header from schema file: '${schema}'"
-          DEPENDS "${RSYNC_OUTPUT_HEADER_GENERATED}"
-          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-          VERBATIM)
-
-      add_custom_target(${schema}_schema_target DEPENDS ${RSYNC_OUTPUT_HEADER})
-      add_dependencies(compile_schemas ${schema}_schema_target)
-    endforeach()
-  endif()
-endif()
-
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1
@@ -131,12 +87,6 @@ add_library(syscollector SHARED
     ${SRC_FOLDER}/${RESOURCE_OBJ}
     )
 
-if (NOT ${TARGET} STREQUAL "")
-  if(${TARGET} STREQUAL "server")
-    add_dependencies(${PROJECT_NAME} compile_schemas) #Add a dependency between top-level targets.
-  endif()
-endif()
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(syscollector PROPERTIES
         PREFIX ""
@@ -150,43 +100,6 @@ elseif(UNIX AND NOT APPLE)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-
-if (NOT ${TARGET} STREQUAL "")
-  if(${TARGET} STREQUAL "server")
-    list(APPEND DeltaSchemas
-                syscollector_deltas
-    )
-
-    add_custom_target(compile_schemas_deltas)
-    foreach(schema IN LISTS DeltaSchemas)
-      set(FBS_FILE "${FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
-      set(RSYNC_OUTPUT_HEADER_GENERATED "${FLATBUFFERS_FOLDER}/../include/${schema}_generated.h")
-      set(RSYNC_OUTPUT_HEADER "${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h")
-
-      add_custom_command(
-        OUTPUT "${RSYNC_OUTPUT_HEADER_GENERATED}"
-        COMMAND ${FLATC_PATH}/flatc
-        ARGS -c
-        ARGS -o "${FLATBUFFERS_FOLDER}/../include" "${FBS_FILE}"
-        ARGS --no-warnings
-        COMMENT "Executing flatc to generate ${schema} header file."
-      )
-
-      add_custom_command(
-          OUTPUT "${RSYNC_OUTPUT_HEADER}"
-          COMMAND bash -c "echo -e '// This file was generated from ${FBS_FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\n#define ${schema}_SCHEMA \"'`cat ${FBS_FILE}`'\" \\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
-          COMMENT "Creating header from schema file: '${schema}'"
-          DEPENDS "${RSYNC_OUTPUT_HEADER_GENERATED}"
-          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-          VERBATIM)
-
-      add_custom_target(${schema}_schema_deltas_target DEPENDS ${RSYNC_OUTPUT_HEADER})
-      add_dependencies(compile_schemas_deltas ${schema}_schema_deltas_target)
-    endforeach()
-
-    add_dependencies(syscollector compile_schemas_deltas)
-  endif()
-endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)

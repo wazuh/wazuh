@@ -16,12 +16,12 @@ table syscollector_hotfixes {
 table syscollector_hwinfo {
     board_serial:string;
     checksum:string;
-    cpu_cores:int;
+    cpu_cores:long;
     cpu_mhz:double;
     cpu_name:string;
-    ram_free:int;
-    ram_total:int;
-    ram_usage:int;
+    ram_free:long;
+    ram_total:long;
+    ram_usage:long;
     scan_time:string;
 }
 
@@ -32,7 +32,7 @@ table syscollector_network_address {
     iface:string;
     item_id:string;
     netmask:string;
-    proto:int;
+    proto:long;
     scan_time:string;
 }
 
@@ -100,7 +100,7 @@ table syscollector_packages {
     name:string;
     priority:string;
     scan_time:string;
-    size:int;
+    size:long;
     source:string;
     vendor:string;
     version:string;
@@ -216,7 +216,7 @@ table state {
 
 table integrity_check_global {
   attributes_type:string;
-  id: int;
+  id: long;
   begin: string;
   end: string;
   checksum: string;
@@ -224,7 +224,7 @@ table integrity_check_global {
 
 table integrity_check_right {
   attributes_type:string;
-  id: int;
+  id: long;
   begin: string;
   end: string;
   checksum: string;
@@ -232,7 +232,7 @@ table integrity_check_right {
 
 table integrity_check_left {
   attributes_type:string;
-  id: int;
+  id: long;
   begin: string;
   end: string;
   tail: string;
@@ -241,7 +241,7 @@ table integrity_check_left {
 
 table integrity_clear {
   attributes_type:string;
-  id: int;
+  id: long;
 }
 
 union DataUnion {

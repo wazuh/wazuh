@@ -92,8 +92,8 @@ jobs:
 
           # Copy flatbuffer schemas
           cp -r ${VDSCANNER_DIR}schemas ${{env.TOOLS_DIR}}
-          cp ${SHARED_MODULES_DIR}utils/flatbuffers/schemas/syscollectorDeltas/syscollector_deltas.fbs ${{env.TOOLS_DIR}}/schemas
-          cp ${SHARED_MODULES_DIR}utils/flatbuffers/schemas/syscollectorRsync/syscollector_synchronization.fbs ${{env.TOOLS_DIR}}/schemas
+          cp ${SHARED_MODULES_DIR}utils/flatbuffers/schemas/syscollector_deltas.fbs ${{env.TOOLS_DIR}}/schemas
+          cp ${SHARED_MODULES_DIR}utils/flatbuffers/schemas/rsync.fbs ${{env.TOOLS_DIR}}/schemas
 
           # Copy required libraries
           cp ${SRC_DIR}libwazuhext.so ${{env.TOOLS_DIR}}
