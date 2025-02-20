@@ -52,6 +52,10 @@ runs:
             arguments+="--directory build/tests "
           fi
 
+          if [[ ${{ inputs.path }} =~ "inventory_harvester" ]]; then
+            arguments+="--directory build/tests "
+          fi
+
           # Set output file
           arguments+="--output-file build/coverage.info "
 
