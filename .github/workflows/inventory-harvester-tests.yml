@@ -144,4 +144,58 @@ jobs:
         run: |
           INVENTORY_HARVESTER_PATH=$(pwd)/src/wazuh_modules/inventory_harvester
           cd src/wazuh_modules/inventory_harvester/build/testtool
+          echo "{}" > states_update_mappings.json
           ./inventory_harvester_testtool -c $INVENTORY_HARVESTER_PATH/testtool/config.json -t $INVENTORY_HARVESTER_PATH/testtool/template.json -i $INVENTORY_HARVESTER_PATH/testtool/inputs/
+
+
+  inventory-harvester-qa:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/vulnerability_scanner_deps
+
+      # Router
+      - name: Router - Compilation and test
+        uses: ./.github/actions/compile_and_test
+        with:
+          path: src/shared_modules/router
+          test: "false"
+
+      # Indexer connector
+      - name: Indexer connector - Compilation and test
+        uses: ./.github/actions/compile_and_test
+        with:
+          path: src/shared_modules/indexer_connector
+          test: "false"
+
+      # Utils
+      - name: Utils - Compilation and test
+        uses: ./.github/actions/compile_and_test
+        with:
+          path: src/shared_modules/utils
+          flags: "-DTARGET=server"
+          test: "false"
+
+      # Inventory harvester
+      - name: Inventory harvester - Compilation and test
+        uses: ./.github/actions/compile_and_test
+        with:
+          path: src/wazuh_modules/inventory_harvester
+          test: "false"
+
+      # Install python dependencies
+      - name: Install dependencies
+        run: |
+          pip install -r src/wazuh_modules/inventory_harvester/qa/requirements.txt
+
+      - name: Run tests
+        run: |
+          cd src
+          echo "{}" > states_update_mappings.json
+          python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
