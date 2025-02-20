@@ -85,7 +85,7 @@ jobs:
 
       # Install wazuh server package
       - name: Install wazuh-server 
-        run: unzip ${PACKAGE_NAME}.zip && sudo apt install ${PACKAGE_NAME}
+        run: sudo apt install ${PACKAGE_NAME}
 
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
