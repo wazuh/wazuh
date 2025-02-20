@@ -1,7 +1,7 @@
 /*
- * Wazuh Vulnerability scanner - Scan Orchestrator
+ * Wazuh Inventory Harvester - Clear agent
  * Copyright (C) 2015, Wazuh Inc.
- * January 22, 2025.
+ * February 20, 2025.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,16 +12,17 @@
 #ifndef _CLEAR_AGENT_HPP
 #define _CLEAR_AGENT_HPP
 
-#include "../wcsModel/noData.hpp"
-#include "chainOfResponsability.hpp"
-#include "indexerConnector.hpp"
 #include <map>
 #include <memory>
 
-template<typename TContext>
+#include "chainOfResponsability.hpp"
+#include "indexerConnector.hpp"
+#include "noData.hpp"
+
+template<typename TContext, typename TIndexerConnector = IndexerConnector>
 class ClearAgent final : public AbstractHandler<std::shared_ptr<TContext>>
 {
-    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<TIndexerConnector>, std::less<>>&
         m_indexerConnectorInstances;
 
 public:
@@ -33,7 +34,7 @@ public:
     ~ClearAgent() = default;
 
     explicit ClearAgent(
-        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<TIndexerConnector>, std::less<>>&
             indexerConnectorInstances)
         : m_indexerConnectorInstances(indexerConnectorInstances)
     {
