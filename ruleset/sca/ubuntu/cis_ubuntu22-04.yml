@@ -3272,10 +3272,10 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*ucredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
-      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*lcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
-      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*dcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
-      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*ocredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*ucredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*lcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*dcredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*ocredit && n:\s*\t*=\s*\t*(\d+) compare > 0'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured. (Automated)
   - id: 18694
@@ -3296,8 +3296,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare <= 3'
-      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxrepeat && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
   - id: 18695
@@ -3318,8 +3318,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare <= 3'
-      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> !r:^# && r:^\s*\t*maxsequence && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)
   - id: 18696
@@ -3340,7 +3340,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*dictcheck && n:\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'd:/etc/security/pwquality.conf.d -> !r:^# && r:\.*.conf -> r:^\s*\t*dictcheck && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
   - id: 18697
@@ -3358,7 +3358,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*enforcing && n:\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'd:/etc/security/pwquality.conf.d -> !r:^# && r:\.*.conf -> r:^\s*\t*enforcing && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.8 Ensure password quality is enforced for the root user. (Automated)
   - id: 18698
@@ -3376,7 +3376,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'd:/etc/security/pwquality.conf.d -> r:\.*.conf -> r:^\s*\t*enforce_for_root'
+      - 'd:/etc/security/pwquality.conf.d -> !r:^# && r:\.*.conf -> r:^\s*\t*enforce_for_root'
 
   # 5.3.3.3.1 Ensure password history remember is configured. (Automated)
   - id: 18699
@@ -3393,8 +3393,9 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 24'
 
   # 5.3.3.3.2 Ensure password history is enforced for the root user. (Automated)
   - id: 18700
@@ -3413,8 +3414,9 @@ checks:
       - mitre_techniques: ["T1110", "T1110.001", "T1110.002", "T1110.003", "T1178.001", "T1178.002", "T1178.003", "T1178.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> !r:^# && r:pam_pwhistory.so && r:enforce_for_root"
 
   # 5.3.3.3.3 Ensure pam_pwhistory includes use_authtok. (Automated)
   - id: 18701
@@ -3436,8 +3438,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> !r:^# && r:pam_pwhistory.so && r:use_authtok"
 
   # 5.3.3.4.1 Ensure pam_unix does not include nullok. (Automated)
   - id: 18702
@@ -3456,8 +3459,13 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "f:/etc/pam.d/common-password -> !r:^# && r:pam_unix.so && r:nullok"
+      - "f:/etc/pam.d/common-auth -> !r:^# && r:pam_unix.so && r:nullok"
+      - "f:/etc/pam.d/common-account -> !r:^# && r:pam_unix.so && r:nullok"
+      - "f:/etc/pam.d/common-session -> !r:^# && r:pam_unix.so && r:nullok"
+      - "f:/etc/pam.d/common-session-noninteractive -> !r:^# && r:pam_unix.so && r:nullok"
 
   # 5.3.3.4.2 Ensure pam_unix does not include remember. (Automated)
   - id: 18703
@@ -3476,8 +3484,13 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "f:/etc/pam.d/common-password -> !r:^# && r:pam_unix.so && r:remember"
+      - "f:/etc/pam.d/common-auth -> !r:^# && r:pam_unix.so && r:remember"
+      - "f:/etc/pam.d/common-account -> !r:^# && r:pam_unix.so && r:remember"
+      - "f:/etc/pam.d/common-session -> !r:^# && r:pam_unix.so && r:remember"
+      - "f:/etc/pam.d/common-session-noninteractive -> !r:^# && r:pam_unix.so && r:remember"
 
   # 5.3.3.4.3 Ensure pam_unix includes a strong password hashing algorithm. (Automated)
   - id: 18704
@@ -3499,8 +3512,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> !r:^# && r:pam_unix.so && r:sha512|yescrypt"
 
   # 5.3.3.4.4 Ensure pam_unix includes use_authtok. (Automated)
   - id: 18705
@@ -3522,8 +3536,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/pam.d/common-password -> !r:^# && r:pam_unix.so && r:use_authtok"
 
   # 5.4.1.1 Ensure password expiration is configured. (Automated)
   - id: 18706
@@ -3541,8 +3556,11 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 5.4.1.2 Ensure minimum password age is configured. (Manual)
   - id: 18707
@@ -3562,8 +3580,10 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:(\d+) compare < 1'
 
   # 5.4.1.3 Ensure password expiration warning days is configured. (Automated)
   - id: 18708
@@ -3584,8 +3604,10 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d*:(\d+) compare < 7'
 
   # 5.4.1.4 Ensure strong password hashing algorithm is configured. (Automated)
   - id: 18709
@@ -3607,8 +3629,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/login.defs -> !r:^# && r:ENCRYPT_METHOD && r:sha512|YESCRYPT"
 
   # 5.4.1.5 Ensure inactive password lock is configured. (Automated)
   - id: 18710
@@ -3627,26 +3650,13 @@ checks:
       - mitre_techniques: ["T1078", "T1078.002", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 45'
+      - 'not c:useradd -D -> n:^INACTIVE=(\d+) compare < 0'
+      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:\d*:\d+:(\d+) compare > 45'
 
-  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated)
-  - id: 18711
-    title: "Ensure all users last password change date is in the past."
-    description: "All users should have a password change date in the past."
-    rationale: "If a user's recorded password change date is in the future, then they could bypass any set password expiration."
-    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate. Internal Only - General."
-    compliance:
-      - cis: ["5.4.1.6"]
-      - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["4.4"]
-      - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - iso_27001-2013: ["A.9.4.3"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
-      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-      - soc_2: ["CC6.1"]
-    condition:
-    rules:
+    # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
 
   # 5.4.2.1 Ensure root is the only UID 0 account. (Automated)
   - id: 18712
@@ -3659,8 +3669,9 @@ checks:
       - mitre_mitigations: ["M1026"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1548"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/passwd -> !r:^\s*\t*# && !r:^root: && r:^\w+:\w+:0:'
 
   # 5.4.2.2 Ensure root is the only GID 0 account. (Automated)
   - id: 18713
@@ -3682,8 +3693,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/passwd -> !r:^\s*\t*# && !r:^root: && r:^\w+:\w+:\w+:0:'
 
   # 5.4.2.3 Ensure group root is the only GID 0 group. (Automated)
   - id: 18714
@@ -3705,8 +3717,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/group -> !r:^\s*\t*# && !r:^root: && r:^\w+:\w+:0:'
 
   # 5.4.2.4 Ensure root password is set. (Automated)
   - id: 18715
@@ -3729,22 +3742,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:passwd -S root -> r:^root\s*\t*P'
 
-  # 5.4.2.5 Ensure root path integrity. (Automated)
-  - id: 18716
-    title: "Ensure root path integrity."
-    description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
-    rationale: "Including the current working directory (.) or other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program. Internal Only - General."
-    remediation: "Correct or justify any: - Locations that are not directories - Empty directories (::) - Trailing (:) - Current working directory (.) - Non root owned directories - Directories that less restrictive than mode 0755."
-    compliance:
-      - cis: ["5.4.2.5"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0006"]
-      - mitre_techniques: ["T1204", "T1204.002"]
-    condition:
-    rules:
+  # 5.4.2.5 Ensure root path integrity. (Automated) - Not Implemented
 
   # 5.4.2.6 Ensure root user umask is configured. (Automated)
   - id: 18717
@@ -3765,54 +3767,13 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/root/.bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
+      - 'f:/root/.bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
 
-  # 5.4.2.7 Ensure system accounts do not have a valid login shell. (Automated)
-  - id: 18718
-    title: "Ensure system accounts do not have a valid login shell."
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell. Furthermore, a user may add special accounts that are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-    remediation: "Run the following command to set the shell for any service accounts returned by the audit to nologin: # usermod -s $(command -v nologin) <user> Example script: #!/usr/bin/env bash { l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" awk -v pat=\"$l_valid_shells\" -F: '($1!~/^(root|halt|sync|shutdown|nfsnobody)$/ && ($3<'\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\"' || $3 == 65534) && $(NF) ~ pat) {system (\"usermod -s '\"$(command -v nologin)\"' \" $1)}' /etc/passwd }."
-    compliance:
-      - cis: ["5.4.2.7"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 5.4.2.8 Ensure accounts without a valid login shell are locked. (Automated)
-  - id: 18719
-    title: "Ensure accounts without a valid login shell are locked."
-    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell. Furthermore, a user may add special accounts that are not intended to provide an interactive shell."
-    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
-    remediation: "Run the following command to lock any non-root accounts without a valid login shell returned by the audit: # usermod -L <user> Example script:: #!/usr/bin/env bash { l_valid_shells=\"^($(awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" while IFS= read -r l_user; do passwd -S \"$l_user\" | awk '$2 !~ /^L/ {system (\"usermod -L \" $1)}' done < <(awk -v pat=\"$l_valid_shells\" -F: '($1 != \"root\" && $(NF) !~ pat) {print $1}' /etc/passwd) }."
-    compliance:
-      - cis: ["5.4.2.8"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 5.4.2.7 Ensure system accounts do not have a valid login shell. (Automated) - Not Implemented
+  # 5.4.2.8 Ensure accounts without a valid login shell are locked. (Automated) - Not Implemented
 
   # 5.4.3.1 Ensure nologin is not listed in /etc/shells. (Automated)
   - id: 18720
@@ -3822,35 +3783,15 @@ checks:
     remediation: "Edit /etc/shells and remove any lines that include nologin."
     compliance:
       - cis: ["5.4.3.1"]
-    condition:
+    condition: none
     rules:
+      - "f:/etc/shells -> r:nologin"
 
-  # 5.4.3.2 Ensure default user shell timeout is configured. (Automated)
-  - id: 18721
-    title: "Ensure default user shell timeout is configured."
-    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables - timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, /etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc."
-    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session. Internal Only - General."
-    remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bashrc TMOUT configuration examples: - As multiple lines: TMOUT=900 readonly TMOUT export TMOUT - As a single line: readonly TMOUT=900 ; export TMOUT."
-    compliance:
-      - cis: ["5.4.3.2"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
-
+  # 5.4.3.2 Ensure default user shell timeout is configured. (Automated) - Not Implemented
   # 5.4.3.3 Ensure default user umask is configured. (Automated)
   - id: 18722
     title: "Ensure default user umask is configured."
-    description: "The user file-creation mode mask (umask) is used to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either Octal or Symbolic values: - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. The default umask can be set to use the pam_umask module or in a System Wide Shell Configuration File. The user creating the directories or files has the discretion of changing the permissions via the chmod command, or choosing a different default umask by adding the umask command into a User Shell Configuration File, ( .bash_profile or .bashrc), in their home directory. Internal Only - General Setting the default umask: - pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): ▪ will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the <primary group name> ▪ userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user - System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc. User Shell Configuration Files: - ~/.bash_profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login umask is set by order of precedence. If umask is set in multiple locations, this order of precedence will determine the system's default umask. Internal Only - General Order of precedence: 1. A file in /etc/profile.d/ ending in .sh - This will override any other system-wide umask setting 2. In the file /etc/profile 3. On the pam_umask.so module in /etc/pam.d/postlogin 4. In the file /etc/login.defs 5. In the file /etc/default/login."
+    description: "The user file-creation mode mask (umask) is used to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode. umask can be set with either Octal or Symbolic values: - Octal (Numeric) Value - Represented by either three or four digits. ie umask 0027 or umask 027. If a four digit umask is used, the first digit is ignored. The remaining three digits effect the resulting permissions for user, group, and world/other respectively. - Symbolic Value - Represented by a comma separated list for User u, group g, and world/other o. The permissions listed are not masked by umask. ie a umask set by umask u=rwx,g=rx,o= is the Symbolic equivalent of the Octal umask 027. This umask would set a newly created directory with file mode drwxr-x--- and a newly created file with file mode rw-r-----. The default umask can be set to use the pam_umask module or in a System Wide Shell Configuration File. The user creating the directories or files has the discretion of changing the permissions via the chmod command, or choosing a different default umask by adding the umask command into a User Shell Configuration File, ( .bash_profile or .bashrc), in their home directory. Internal Only - General Setting the default umask: - pam_umask module: o will set the umask according to the system default in /etc/login.defs and user settings, solving the problem of different umask settings with different shells, display managers, remote sessions etc. o umask=<mask> value in the /etc/login.defs file is interpreted as Octal o Setting USERGROUPS_ENAB to yes in /etc/login.defs (default): - will enable setting of the umask group bits to be the same as owner bits. (examples: 022 -> 002, 077 -> 007) for non-root users, if the uid is the same as gid, and username is the same as the <primary group name> - userdel will remove the user's group if it contains no more members, and useradd will create by default a group with the name of the user - System Wide Shell Configuration File: o /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. o /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. o /etc/bashrc - System wide version of .bashrc. In Fedora derived distributions, etc/bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bashrc. User Shell Configuration Files: - ~/.bash_profile - Is executed to configure your shell before the initial command prompt. Is only read by login shells. - ~/.bashrc - Is executed for interactive shells. only read by a shell that's both interactive and non-login umask is set by order of precedence. If umask is set in multiple locations, this order of precedence will determine the system's default umask. Internal Only - General Order of precedence: 1. A file in /etc/profile.d/ ending in .sh - This will override any other system-wide umask setting 2. In the file /etc/profile 3. On the pam_umask.so module in /etc/pam.d/postlogin 4. In the file /etc/login.defs 5. In the file /etc/default/login."
     rationale: "Setting a secure default value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users. Internal Only - General."
     remediation: "Run the following script and perform the instructions in the output: #!/usr/bin/env bash { l_output=\"\" l_output2=\"\" l_out=\"\" file_umask_chk() { if grep -Psiq -- '^\\h*umask\\h+(0?[0-7][2- 7]7|u(=[rwx]{0,3}),g=([rx]{0,2}),o=)(\\h*#.*)?$' \"$l_file\"; then l_out=\"$l_out\\n - umask is set correctly in \\\"$l_file\\\"\" elif grep -Psiq -- '^\\h*umask\\h+(([0-7][0-7][01][0-7]\\b|[0-7][0-7][0- 7][0-6]\\b)|([0-7][01][0-7]\\b|[0-7][0-7][0- 6]\\b)|(u=[rwx]{1,3},)?(((g=[rx]?[rx]?w[rx]?[rx]?\\b)(,o=[rwx]{1,3})?)|((g=[wrx ]{1,3},)?o=[wrx]{1,3}\\b)))' \"$l_file\"; then l_output2=\"$l_output2\\n - \\\"$l_file\\\"\" fi } while IFS= read -r -d $'\\0' l_file; do file_umask_chk done < <(find /etc/profile.d/ -type f -name '*.sh' -print0) [ -n \"$l_out\" ] && l_output=\"$l_out\" l_file=\"/etc/profile\" && file_umask_chk l_file=\"/etc/bashrc\" && file_umask_chk l_file=\"/etc/bash.bashrc\" && file_umask_chk l_file=\"/etc/pam.d/postlogin\" if grep -Psiq '^\\h*session\\h+[^#\\n\\r]+\\h+pam_umask\\.so\\h+([^#\\n\\r]+\\h+)?umask=(([0-7][0- 7][01][0-7]\\b|[0-7][0-7][0-7][0-6]\\b)|([0-7][01][0-7]\\b))' \"$l_file\"; then l_output2=\"$l_output2\\n - \\\"$l_file\\\"\" fi l_file=\"/etc/login.defs\" && file_umask_chk l_file=\"/etc/default/login\" && file_umask_chk if [ -z \"$l_output2\" ]; then echo -e \" - No files contain a UMASK that is not restrictive enough\\n No UMASK updates required to existing files\" else echo -e \"\\n - UMASK is not restrictive enough in the following file(s):$l_output2\\n\\n- Remediation Procedure:\\n - Update these files and comment out the UMASK line\\n or update umask to be \\\"0027\\\" or more restrictive\" fi if [ -n \"$l_output\" ]; then echo -e \"$l_output\" else echo -e \" - Configure UMASK in a file in the \\\"/etc/profile.d/\\\" directory ending in \\\".sh\\\"\\n\\n Example Command (Hash to represent being run at a root prompt):\\n\\n# printf '%s\\\\\\n' \\\"umask 027\\\" > /etc/profile.d/50-systemwide_umask.sh\\n\" fi } Internal Only - General Note: - This method only applies to bash and shell. If other shells are supported on the - system, it is recommended that their configuration files also are checked If the pam_umask.so module is going to be used to set umask, ensure that it's not being overridden by another setting. Refer to the PAM_UMASK(8) man page for more information."
     compliance:
@@ -3866,8 +3807,14 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/bash.bashrc -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
+      - 'f:/etc/bash.bashrc -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
+      - 'f:/etc/profile -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
+      - 'f:/etc/profile -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
+      - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
+      - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask \d\d(\d) compare != 7'
 
   # 6.1.1 Ensure AIDE is installed. (Automated)
   - id: 18723
@@ -3887,8 +3834,10 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s aide -> r:Status: install ok installed"
+      - "c:dpkg-query -s aide-common -> r:Status: install ok installed"
 
   # 6.1.2 Ensure filesystem integrity is regularly checked. (Automated)
   - id: 18724
@@ -3912,8 +3861,11 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
+      - "c:systemctl status aidecheck.timer -> r:Active: active"
 
   # 6.1.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools. (Automated)
   - id: 18725
@@ -3925,8 +3877,14 @@ checks:
       - cis: ["6.1.3"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/aide/aide.conf -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512"
+      - "f:/etc/aide/aide.conf -> r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
 
   # 6.2.1.1.1 Ensure journald service is enabled and active. (Automated)
   - id: 18726
@@ -3947,53 +3905,13 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled systemd-journald.service -> r:static"
+      - "c:systemctl is-active systemd-journald.service -> r:active"
 
-  # 6.2.1.1.2 Ensure journald log file access is configured. (Manual)
-  - id: 18727
-    title: "Ensure journald log file access is configured."
-    description: "Journald will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-    remediation: "If the default configuration is not appropriate for the site specific requirements, copy /usr/lib/tmpfiles.d/systemd.conf to /etc/tmpfiles.d/systemd.conf and modify as required. Requirements is either 0640 or site policy if that is less restrictive."
-    compliance:
-      - cis: ["6.2.1.1.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.1.1.3 Ensure journald log file rotation is configured. (Manual)
-  - id: 18728
-    title: "Ensure journald log file rotation is configured."
-    description: "Journald includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/systemd/journald.conf is the configuration file used to specify how logs generated by Journald should be rotated."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Edit /etc/systemd/journald.conf or a file ending in .conf the /etc/systemd/journald.conf.d/ directory. Set the following parameters in the [Journal] section to ensure logs are rotated according to site policy. The settings should be carefully understood as there are specific edge cases and prioritization of parameters. The specific parameters for log rotation are: SystemMaxUse= SystemKeepFree= RuntimeMaxUse= RuntimeKeepFree= MaxFileSec= Note: If these settings appear in a canonically later file, or later in the same file, the setting will be overwritten Internal Only - General."
-    compliance:
-      - cis: ["6.2.1.1.3"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_techniques: ["T1070", "T1070.002"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
+  # 6.2.1.1.2 Ensure journald log file access is configured. (Manual) - Not Implemented
+  # 6.2.1.1.3 Ensure journald log file rotation is configured. (Manual) - Not Implemented
 
   # 6.2.1.1.4 Ensure journald ForwardToSyslog is disabled. (Automated)
   - id: 18729
@@ -4014,8 +3932,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/systemd/journald.conf -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> !r:^# && r:ForwardToSyslog\s*=\s*yes'
 
   # 6.2.1.1.5 Ensure journald Storage is configured. (Automated)
   - id: 18730
@@ -4036,8 +3956,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: any
     rules:
+      - "f:/etc/systemd/journald.conf -> r:^Storage=persistent"
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> r:^Storage=persistent'
 
   # 6.2.1.1.6 Ensure journald Compress is configured. (Automated)
   - id: 18731
@@ -4059,8 +3981,10 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: any
     rules:
+      - "f:/etc/systemd/journald.conf -> r:^Compress=yes"
+      - 'd:/etc/systemd/journald.conf.d -> r:\.*.conf -> r:^Compress=yes'
 
   # 6.2.1.2.1 Ensure systemd-journal-remote is installed. (Automated)
   - id: 18732
@@ -4081,8 +4005,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s systemd-journal-remote -> r:install ok installed"
 
   # 6.2.1.2.2 Ensure systemd-journal-remote authentication is configured. (Manual)
   - id: 18733
@@ -4103,8 +4028,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/systemd/journal-upload.conf -> r:URL="
+      - "f:/etc/systemd/journal-upload.conf -> r:ServerKeyFile="
+      - "f:/etc/systemd/journal-upload.conf -> r:ServerCertificateFile="
+      - "f:/etc/systemd/journal-upload.conf -> r:TrustedCertificateFile="
 
   # 6.2.1.2.3 Ensure systemd-journal-upload is enabled and active. (Automated)
   - id: 18734
@@ -4125,8 +4054,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled systemd-journal-upload.service -> r:^enabled"
+      - "c:systemctl is-active systemd-journal-upload.service -> r:^active"
 
   # 6.2.1.2.4 Ensure systemd-journal-remote service is not in use. (Automated)
   - id: 18735
@@ -4146,31 +4077,12 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: none
     rules:
+      - "c:systemctl is-enabled systemd-journal-remote.socket systemd-journal-remote.service -> r:^enabled"
+      - "c:systemctl is-active systemd-journal-remote.socket systemd-journal-remote.service -> r:^active"
 
-  # 6.2.2.1 Ensure access to all logfiles has been configured. (Automated)
-  - id: 18736
-    title: "Ensure access to all logfiles has been configured."
-    description: "Log files contain information from many services on the the local system, or in the event of a centralized log server, others systems logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store logs in another, ensure to run the same test on that location."
-    rationale: "It is important that log files have the correct permissions to ensure that sensitive data is protected and that only the appropriate users / groups have access to them."
-    remediation: "Run the following script to update permissions and ownership on files in /var/log. Although the script is not destructive, ensure that the output of the audit procedure is captured in the event that the remediation causes issues. Internal Only - General #!/usr/bin/env bash { l_op2=\"\" l_output2=\"\" l_uidmin=\"$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs)\" file_test_fix() { l_op2=\"\" l_fuser=\"root\" l_fgroup=\"root\" if [ $(( $l_mode & $perm_mask )) -gt 0 ]; then l_op2=\"$l_op2\\n - Mode: \\\"$l_mode\\\" should be \\\"$maxperm\\\" or more restrictive\\n - Removing excess permissions\" chmod \"$l_rperms\" \"$l_fname\" fi if [[ ! \"$l_user\" =~ $l_auser ]]; then l_op2=\"$l_op2\\n - Owned by: \\\"$l_user\\\" and should be owned by \\\"${l_auser//|/ or }\\\"\\n - Changing ownership to: \\\"$l_fuser\\\"\" chown \"$l_fuser\" \"$l_fname\" fi if [[ ! \"$l_group\" =~ $l_agroup ]]; then l_op2=\"$l_op2\\n - Group owned by: \\\"$l_group\\\" and should be group owned by \\\"${l_agroup//|/ or }\\\"\\n - Changing group ownership to: \\\"$l_fgroup\\\"\" chgrp \"$l_fgroup\" \"$l_fname\" fi [ -n \"$l_op2\" ] && l_output2=\"$l_output2\\n - File: \\\"$l_fname\\\" is:$l_op2\\n\" } unset a_file && a_file=() # clear and initialize array # Loop to create array with stat of files that could possibly fail one of the audits while IFS= read -r -d $'\\0' l_file; do [ -e \"$l_file\" ] && a_file+=(\"$(stat -Lc '%n^%#a^%U^%u^%G^%g' \"$l_file\")\") done < <(find -L /var/log -type f \\( -perm /0137 -o ! -user root -o ! -group root \\) -print0) while IFS=\"^\" read -r l_fname l_mode l_user l_uid l_group l_gid; do l_bname=\"$(basename \"$l_fname\")\" case \"$l_bname\" in lastlog | lastlog.* | wtmp | wtmp.* | wtmp-* | btmp | btmp.* | btmp-* | README) perm_mask='0113' maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" l_rperms=\"ug-x,o-wx\" l_auser=\"root\" l_agroup=\"(root|utmp)\" file_test_fix ;; secure | auth.log | syslog | messages) perm_mask='0137' maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" l_rperms=\"u-x,g-wx,o-rwx\" l_auser=\"(root|syslog)\" l_agroup=\"(root|adm)\" file_test_fix ;; SSSD | sssd) perm_mask='0117' maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" l_rperms=\"ug-x,o-rwx\" l_auser=\"(root|SSSD)\" l_agroup=\"(root|SSSD)\" file_test_fix ;; gdm | gdm3) Internal Only - General perm_mask='0117' l_rperms=\"ug-x,o-rwx\" maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" l_auser=\"root\" l_agroup=\"(root|gdm|gdm3)\" file_test_fix ;; *.journal | *.journal~) perm_mask='0137' maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" l_rperms=\"u-x,g-wx,o-rwx\" l_auser=\"root\" l_agroup=\"(root|systemd-journal)\" file_test_fix ;; *) perm_mask='0137' maxperm=\"$( printf '%o' $(( 0777 & ~$perm_mask)) )\" l_rperms=\"u-x,g-wx,o-rwx\" l_auser=\"(root|syslog)\" l_agroup=\"(root|adm)\" if [ \"$l_uid\" -lt \"$l_uidmin\" ] && [ -z \"$(awk -v grp=\"$l_group\" -F: '$1==grp {print $4}' /etc/group)\" ]; then if [[ ! \"$l_user\" =~ $l_auser ]]; then l_auser=\"(root|syslog|$l_user)\" fi if [[ ! \"$l_group\" =~ $l_agroup ]]; then l_tst=\"\" while l_out3=\"\" read -r l_duid; do [ \"$l_duid\" -ge \"$l_uidmin\" ] && l_tst=failed done <<< \"$(awk -F: '$4=='\"$l_gid\"' {print $3}' /etc/passwd)\" [ \"$l_tst\" != \"failed\" ] && l_agroup=\"(root|adm|$l_group)\" fi fi file_test_fix ;; esac done <<< \"$(printf '%s\\n' \"${a_file[@]}\")\" unset a_file # Clear array # If all files passed, then we report no changes if [ -z \"$l_output2\" ]; then echo -e \"- All files in \\\"/var/log/\\\" have appropriate permissions and ownership\\n - No changes required\\n\" else # print report of changes echo -e \"\\n$l_output2\" fi } Note: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions. If there are services that log to other locations, ensure that those log files have the appropriate permissions."
-    compliance:
-      - cis: ["6.2.2.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 6.2.2.1 Ensure access to all logfiles has been configured. (Automated) - Not Implemented
 
   # 6.3.1.1 Ensure auditd packages are installed. (Automated)
   - id: 18737
@@ -4191,8 +4103,10 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s auditd -> r:install ok installed"
+      - "c:dpkg-query -s audispd-plugins -> r:install ok installed"
 
   # 6.3.1.2 Ensure auditd service is enabled and active. (Automated)
   - id: 18738
@@ -4213,8 +4127,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled auditd -> r:^enabled"
+      - "c:systemctl is-active auditd -> r:^active"
 
   # 6.3.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 18739
@@ -4235,8 +4151,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'not d:/boot -> r:\.*grub.cfg -> r:^\s*\t*linux && !r:audit=1'
 
   # 6.3.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 18740
@@ -4257,8 +4174,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'not d:/boot -> r:\.*grub.cfg -> !r:audit_backlog_limit=\d+'
 
   # 6.3.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 18741
@@ -4276,8 +4194,11 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit"
+      - "f:/etc/audit/auditd.conf"
+      - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+'
 
   # 6.3.2.2 Ensure audit logs are not automatically deleted. (Automated)
   - id: 18742
@@ -4295,15 +4216,18 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit"
+      - "f:/etc/audit/auditd.conf"
+      - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
 
   # 6.3.2.3 Ensure system is disabled when audit logs are full. (Automated)
   - id: 18743
     title: "Ensure system is disabled when audit logs are full."
     description: "The auditd daemon can be configured to halt the system or put the system in single user mode, if no free space is available or an error is detected on the partition that holds the audit log files. The disk_full_action parameter tells the system what action to take when no free space is available on the partition that holds the audit log files. Valid values are ignore, syslog, rotate, exec, suspend, single, and halt. - ignore, the audit daemon will issue a syslog message but no other action is taken - syslog, the audit daemon will issue a warning to syslog - rotate, the audit daemon will rotate logs, losing the oldest to free up space - exec, /path-to-script will execute the script. You cannot pass parameters to the script. The script is also responsible for telling the auditd daemon to resume logging once its completed its action - suspend, the audit daemon will stop writing records to the disk - single, the audit daemon will put the computer system in single user mode - halt, the audit daemon will shut down the system The disk_error_action parameter tells the system what action to take when an error is detected on the partition that holds the audit log files. Valid values are ignore, syslog, exec, suspend, single, and halt. - ignore, the audit daemon will not take any action - syslog, the audit daemon will issue no more than 5 consecutive warnings to syslog - exec, /path-to-script will execute the script. You cannot pass parameters to the script - suspend, the audit daemon will stop writing records to the disk - single, the audit daemon will put the computer system in single user mode - halt, the audit daemon will shut down the system."
     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability. Internal Only - General."
-    impact: "disk_full_action parameter: - Set to halt - the auditd daemon will shutdown the system when the disk partition containing the audit logs becomes full. - Set to single - the auditd daemon will put the computer system in single user mode when the disk partition containing the audit logs becomes full. disk_error_action parameter: - Set to halt - the auditd daemon will shutdown the system when an error is detected on the partition that holds the audit log files. - Set to single - the auditd daemon will put the computer system in single user mode when an error is detected on the partition that holds the audit log files. - Set to syslog - the auditd daemon will issue no more than 5 consecutive warnings to syslog when an error is detected on the partition that holds the audit log files."
+    impact: "Disk_full_action parameter: - Set to halt - the auditd daemon will shutdown the system when the disk partition containing the audit logs becomes full. - Set to single - the auditd daemon will put the computer system in single user mode when the disk partition containing the audit logs becomes full. disk_error_action parameter: - Set to halt - the auditd daemon will shutdown the system when an error is detected on the partition that holds the audit log files. - Set to single - the auditd daemon will put the computer system in single user mode when an error is detected on the partition that holds the audit log files. - Set to syslog - the auditd daemon will issue no more than 5 consecutive warnings to syslog when an error is detected on the partition that holds the audit log files."
     remediation: "Set one of the following parameters in /etc/audit/auditd.conf depending on your local security policies. disk_full_action = <halt|single> disk_error_action = <syslog|single|halt> Example: disk_full_action = halt disk_error_action = halt."
     compliance:
       - cis: ["6.3.2.3"]
@@ -4317,8 +4241,13 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit"
+      - "f:/etc/audit/auditd.conf"
+      - "f:/etc/audit/auditd.conf -> r:^\\s*\\t*space_left_action\\s*=\\s*email"
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*disk_error_action\s*=\s* && r:syslog|single|halt'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*disk_full_action\s*=\s* && r:halt|single'
 
   # 6.3.2.4 Ensure system warns when audit logs are low on space. (Automated)
   - id: 18744
@@ -4340,8 +4269,12 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit"
+      - "f:/etc/audit/auditd.conf"
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*space_left_action\s*=\s*email|exec|single|halt'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*admin_space_left_action\s*=\s* && r:halt|single'
 
   # 6.3.3.1 Ensure changes to system administration scope (sudoers) is collected. (Automated)
   - id: 18745
@@ -4362,8 +4295,14 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
 
   # 6.3.3.2 Ensure actions as another user are always logged. (Automated)
   - id: 18746
@@ -4384,36 +4323,23 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
 
-  # 6.3.3.3 Ensure events that modify the sudo log file are collected. (Automated)
-  - id: 18747
-    title: "Ensure events that modify the sudo log file are collected."
-    description: "Monitor the sudo log file. If the system has been properly configured to disable the use of the su command and force all administrators to have to log in first and then use sudo to execute privileged commands, then all administrator commands will be logged to /var/log/sudo.log . Any time a command is executed, an audit event will be triggered as the /var/log/sudo.log file will be opened for write and the executed administration command will be written to the log."
-    rationale: "Changes in /var/log/sudo.log indicate that an administrator has executed a command or the log file itself has been tampered with. Administrators will want to correlate the events written to the audit trail with the records written to /var/log/sudo.log to verify if unauthorized commands have been executed. Internal Only - General."
-    remediation: "Note: This recommendation requires that the sudo logfile is configured. See guidance provided in the recommendation \"Ensure sudo log file exists\" Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the sudo log file. Example: # { SUDO_LOG_FILE=$(grep -r logfile /etc/sudoers* | sed -e 's/.*logfile=//;s/,? .*//' -e 's/\"//g') [ -n \"${SUDO_LOG_FILE}\" ] && printf \" -w ${SUDO_LOG_FILE} -p wa -k sudo_log_file \" >> /etc/audit/rules.d/50-sudo.rules || printf \"ERROR: Variable 'SUDO_LOG_FILE' is unset.\\n\" } Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.3"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["4.9"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.9.4.2"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+    # 6.3.3.3 Ensure events that modify the sudo log file are collected. (Automated)- Not Implemented
 
   # 6.3.3.4 Ensure events that modify date and time information are collected. (Automated)
   - id: 18748
     title: "Ensure events that modify date and time information are collected."
     description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the; - adjtimex - tune kernel clock - settimeofday - set time using timeval and timezone structures - stime - using seconds since 1/1/1970 - clock_settime - allows for the setting of several internal clocks and timers system calls have been executed. Further, ensure to write an audit record to the configured audit log file upon exit, tagging the records with a unique identifier such as "time-change".'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system. Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. Example: # printf \" -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time- change -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time- change -w /etc/localtime -p wa -k time-change \" >> /etc/audit/rules.d/50-time-change.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
+    remediation: 'Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify date and time information. 64 Bit systems Example: # printf \" -a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change -a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime -k time-change -w /etc/localtime -p wa -k time-change \" >> /etc/audit/rules.d/50-time-change.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi.'
     compliance:
       - cis: ["6.3.3.4"]
       - cis_csc_v8: ["8.5"]
@@ -4427,8 +4353,16 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
 
   # 6.3.3.5 Ensure events that modify the system's network environment are collected. (Automated)
   - id: 18749
@@ -4451,53 +4385,29 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network/ && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/network/ && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale"
 
-  # 6.3.3.6 Ensure use of privileged commands are collected. (Automated)
-  - id: 18750
-    title: "Ensure use of privileged commands are collected."
-    description: "Monitor privileged programs, those that have the setuid and/or setgid bit set on execution, to determine if unprivileged users are running these commands."
-    rationale: "Execution of privileged commands by non-privileged users could be an indication of someone trying to gain unauthorized access to the system."
-    impact: 'Both the audit and remediation section of this recommendation will traverse all mounted file systems that is not mounted with either noexec or nosuid mount options. If there are large file systems without these mount options, such traversal will be significantly detrimental to the performance of the system. Before running either the audit or remediation section, inspect the output of the following command to determine exactly which file systems will be traversed: # findmnt -n -l -k -it $(awk ''/nodev/ { print $2 }'' /proc/filesystems | paste -sd,) | grep -Pv "noexec|nosuid" To exclude a particular file system due to adverse performance impacts, update the audit and remediation sections by adding a sufficiently unique string to the grep statement. The above command can be used to test the modified exclusions. Internal Only - General.'
-    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor the use of privileged commands. Example script: #!/usr/bin/env bash { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) AUDIT_RULE_FILE=\"/etc/audit/rules.d/50-privileged.rules\" NEW_DATA=() for PARTITION in $(findmnt -n -l -k -it $(awk '/nodev/ { print $2 }' /proc/filesystems | paste -sd,) | grep -Pv \"noexec|nosuid\" | awk '{print $1}'); do readarray -t DATA < <(find \"${PARTITION}\" -xdev -perm /6000 -type f | awk -v UID_MIN=${UID_MIN} '{print \"-a always,exit -F path=\" $1 \" -F perm=x -F auid>=\"UID_MIN\" -F auid!=unset -k privileged\" }') for ENTRY in \"${DATA[@]}\"; do NEW_DATA+=(\"${ENTRY}\") done done readarray &> /dev/null -t OLD_DATA < \"${AUDIT_RULE_FILE}\" COMBINED_DATA=( \"${OLD_DATA[@]}\" \"${NEW_DATA[@]}\" ) printf '%s\\n' \"${COMBINED_DATA[@]}\" | sort -u > \"${AUDIT_RULE_FILE}\" } Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi Special mount points If there are any special mount points that are not visible by default from just scanning /, change the PARTITION variable to the appropriate partition and re-run the remediation."
-    compliance:
-      - cis: ["6.3.3.6"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1026"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
-
-  # 6.3.3.7 Ensure unsuccessful file access attempts are collected. (Automated)
-  - id: 18751
-    title: "Ensure unsuccessful file access attempts are collected."
-    description: "Monitor for unsuccessful attempts to access files. The following parameters are associated with system calls that control files: - creation - creat - opening - open , openat - truncation - truncate , ftruncate An audit log record will only be written if all of the following criteria is met for the user when trying to access a file: - a non-privileged user (auid>=UID_MIN) - - is not a Daemon event (auid=4294967295/unset/-1) if the system call returned EACCES (permission denied) or EPERM (some other permanent error associated with the specific system call)."
-    rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system. Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor unsuccessful file access attempts. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=- EACCES -F auid>=${UID_MIN} -F auid!=unset -k access -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=- EPERM -F auid>=${UID_MIN} -F auid!=unset -k access -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=- EACCES -F auid>=${UID_MIN} -F auid!=unset -k access -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=- EPERM -F auid>=${UID_MIN} -F auid!=unset -k access \" >> /etc/audit/rules.d/50-access.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.7"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["14.9"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.3"]
-      - mitre_mitigations: ["M1047"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 6.3.3.6 Ensure use of privileged commands are collected. (Automated) - Not Implemented
+  # 6.3.3.7 Ensure unsuccessful file access attempts are collected. (Automated) - Not Implemented
 
   # 6.3.3.8 Ensure events that modify user/group information are collected. (Automated)
   - id: 18752
@@ -4521,52 +4431,29 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/nsswitch.conf && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/pam.conf && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/pam.d && r:-p wa && r:-k identity|key=identity'
+      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/nsswitch.conf && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/pam.conf && r:-p wa && r:-k identity|key=identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/pam.d && r:-p wa && r:-k identity|key=identity"
 
-  # 6.3.3.9 Ensure discretionary access control permission modification events are collected. (Automated)
-  - id: 18753
-    title: "Ensure discretionary access control permission modification events are collected."
-    description: 'Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The following commands and system calls effect the permissions, ownership and various attributes of files. - chmod - fchmod - fchmodat - chown - fchown - fchownat - lchown - setxattr - lsetxattr - fsetxattr - removexattr - lremovexattr - fremovexattr In all cases, an audit record will only be written for non-system user ids and will ignore Daemon events. All audit records will be tagged with the identifier "perm_mod.".'
-    rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation. Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor discretionary access control permission modification events. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b32 -S lchown,fchown,chown,fchownat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod \" >> /etc/audit/rules.d/50-perm_mod.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.9"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["5.5"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.1.2"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
-
-  # 6.3.3.10 Ensure successful file system mounts are collected. (Automated)
-  - id: 18754
-    title: "Ensure successful file system mounts are collected."
-    description: "Monitor the use of the mount system call. The mount (and umount) system call controls the mounting and unmounting of file systems. The parameters below configure the system to create an audit record when the mount system call is used by a non-privileged user."
-    rationale: "It is highly unusual for a non privileged user to mount file systems to the system. While tracking mount commands gives the system administrator evidence that external media may have been mounted (based on a review of the source of the mount and confirming it's an external media type), it does not conclusively indicate that data was exported to the media. System administrators who wish to determine if data were exported, would also have to track successful open, creat and truncate system calls requiring write access to a file under the mount point of the external media file system. This could give a fair indication that a write occurred. The only way to truly prove it, would be to track successful writes to the external media. Tracking write system calls could quickly fill up the audit log and is not recommended. Recommendations on configuration options to track data export to media is beyond the scope of this document. Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful file system mounts. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F arch=b32 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts -a always,exit -F arch=b64 -S mount -F auid>=$UID_MIN -F auid!=unset -k mounts \" >> /etc/audit/rules.d/50-mounts.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.10"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1034"]
-      - mitre_tactics: ["TA0010"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 6.3.3.9 Ensure discretionary access control permission modification events are collected. (Automated) - Not Implemented
+  # 6.3.3.10 Ensure successful file system mounts are collected. (Automated) - Not Implemented
 
   # 6.3.3.11 Ensure session initiation information is collected. (Automated)
   - id: 18755
@@ -4587,8 +4474,16 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
 
   # 6.3.3.12 Ensure login and logout events are collected. (Automated)
   - id: 18756
@@ -4609,30 +4504,16 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins'
+      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins"
+      - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins"
 
-  # 6.3.3.13 Ensure file deletion events by users are collected. (Automated)
-  - id: 18757
-    title: "Ensure file deletion events by users are collected."
-    description: 'Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for: - unlink - remove a file - unlinkat - remove a file attribute - rename - rename a file - renameat rename a file attribute system calls and tags them with the identifier "delete".'
-    rationale: "Monitoring these calls from non-privileged users could provide a system administrator with evidence that inappropriate removal of files and file attributes associated with protected files is occurring. While this audit option will look at all events, system administrators will want to look for specific privileged files that are being deleted or altered. Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor file deletion events by users. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F arch=b64 -S rename,unlink,unlinkat,renameat -F auid>=${UID_MIN} -F auid!=unset -F key=delete -a always,exit -F arch=b32 -S rename,unlink,unlinkat,renameat -F auid>=${UID_MIN} -F auid!=unset -F key=delete \" >> /etc/audit/rules.d/50-delete.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.13"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1047"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 6.3.3.13 Ensure file deletion events by users are collected. (Automated) - Not Implemented
 
   # 6.3.3.14 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated)
   - id: 18758
@@ -4653,123 +4534,25 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy|key=MAC-policy"
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
-  # 6.3.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded. (Automated)
-  - id: 18759
-    title: "Ensure successful and unsuccessful attempts to use the chcon command are recorded."
-    description: "The operating system must generate audit records for successful/unsuccessful uses of the chcon command."
-    rationale: "The chcon command is used to change file security context. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter). Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chcon command. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng \" >> /etc/audit/rules.d/50-perm_chng.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.15"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 6.3.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded. (Automated)
-  - id: 18760
-    title: "Ensure successful and unsuccessful attempts to use the setfacl command are recorded."
-    description: "The operating system must generate audit records for successful/unsuccessful uses of the setfacl command."
-    rationale: "This utility sets Access Control Lists (ACLs) of files and directories. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter). Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the setfacl command. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng \" >> /etc/audit/rules.d/50-perm_chng.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.16"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 6.3.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded. (Automated)
-  - id: 18761
-    title: "Ensure successful and unsuccessful attempts to use the chacl command are recorded."
-    description: "The operating system must generate audit records for successful/unsuccessful uses of the chacl command. chacl is an IRIX-compatibility command, and is maintained for those users who are familiar with its use from either XFS or IRIX."
-    rationale: "chacl changes the ACL(s) for a file or directory. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter). Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the chacl command. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k perm_chng \" >> /etc/audit/rules.d/50-perm_chng.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.17"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 6.3.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded. (Automated)
-  - id: 18762
-    title: "Ensure successful and unsuccessful attempts to use the usermod command are recorded."
-    description: "The operating system must generate audit records for successful/unsuccessful uses of the usermod command."
-    rationale: "The usermod command modifies the system account files to reflect the changes that are specified on the command line. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter). Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the usermod command. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k usermod \" >> /etc/audit/rules.d/50-usermod.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.18"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 6.3.3.19 Ensure kernel module loading unloading and modification is collected. (Automated)
-  - id: 18763
-    title: "Ensure kernel module loading unloading and modification is collected."
-    description: "Monitor the loading and unloading of kernel modules. All the loading / listing / dependency checking of modules is done by kmod via symbolic links. The following system calls control loading and unloading of modules: - init_module - load a module - finit_module - load a module (used when the overhead of using cryptographically signed modules to determine the authenticity of a module can be avoided) - delete_module - delete a module Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of modules."
-    rationale: "Monitoring the use of all the various ways to manipulate kernel modules could provide system administrators with evidence that an unauthorized change was made to a kernel module, possibly compromising the security of the system. Internal Only - General."
-    remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor kernel module modification. Example: # { UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) [ -n \"${UID_MIN}\" ] && printf \" -a always,exit -F arch=b64 -S init_module,finit_module,delete_module -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules -a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules \" >> /etc/audit/rules.d/50-kernel_modules.rules || printf \"ERROR: Variable 'UID_MIN' is unset.\\n\" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
-    compliance:
-      - cis: ["6.3.3.19"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_mitigations: ["M1047"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1562", "T1562.006"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 6.3.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded. (Automated) - Not Implemented
+  # 6.3.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded. (Automated) - Not Implemented
+  # 6.3.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded. (Automated) - Not Implemented
+  # 6.3.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded. (Automated) - Not Implemented
+  # 6.3.3.19 Ensure kernel module loading unloading and modification is collected. (Automated) - Not Implemented
 
   # 6.3.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 18764
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- \"-e 2 \" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
     compliance:
@@ -4786,50 +4569,15 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "7.1", "9.4.5"]
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/audit/rules.d"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\s+2$'
 
-  # 6.3.3.21 Ensure the running and on disk configuration is the same. (Manual)
-  - id: 18765
-    title: "Ensure the running and on disk configuration is the same."
-    description: "The Audit system have both on disk and running configuration. It is possible for these configuration settings to differ. Note: Due to the limitations of augenrules and auditctl, it is not absolutely guaranteed that loading the rule sets via augenrules --load will result in all rules being loaded or even that the user will be informed if there was a problem loading the rules."
-    rationale: "Configuration differences between what is currently running and what is on disk could cause unexpected problems or may give a false impression of compliance requirements."
-    remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules: # augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi.'
-    compliance:
-      - cis: ["6.3.3.21"]
-      - cis_csc_v8: ["8.5"]
-      - cis_csc_v7: ["6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
-      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
-      - soc_2: ["CC5.2", "CC7.2"]
-    condition:
-    rules:
+  # 6.3.3.21 Ensure the running and on disk configuration is the same. (Manual) - Not Implemented
 
-  # 6.3.4.1 Ensure audit log files mode is configured. (Automated)
-  - id: 18766
-    title: "Ensure audit log files mode is configured."
-    description: "Audit log files contain information about the system and system activity."
-    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality. Internal Only - General."
-    remediation: "Run the following command to remove more permissive mode than 0640 from audit log files: # [ -f /etc/audit/auditd.conf ] && find \"$(dirname $(awk -F \"=\" '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))\" -type f -perm /0137 -exec chmod u-x,g-wx,o-rwx {} +."
-    compliance:
-      - cis: ["6.3.4.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 6.3.4.1 Ensure audit log files mode is configured. (Automated) - Not Implemented
 
   # 6.3.4.2 Ensure audit log files owner is configured. (Automated)
   - id: 18767
