@@ -1,11 +1,12 @@
-/* Copyright (C) 2015, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
- * All right reserved.
+/*
+ * Wazuh Syscheck
+ * Copyright (C) 2015, Wazuh Inc.
+ * September 27, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
 #include <vmlinux.h>
@@ -13,39 +14,36 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 
-// Maximum length for process command and file names
+/* Maximum lengths and limits */
 #define TASK_COMM_LEN 32
 #define FILENAME_LEN 4096
 
-// Define O_CREAT flag as in fcntl.h (octal 0100 = decimal 64)
+/* Define O_CREAT flag as in fcntl.h (octal 0100 = decimal 64) */
 #define O_CREAT 0100
 
-/*
- * Absolute path extraction functions and definitions.
- * These functions allow us to reconstruct the full absolute path (e.g., CWD)
- * by traversing the dentry hierarchy.
- */
+/* Some modes used (for example, creation) */
+#define FMODE_CREATED 0x100000  // from fs.h in newer kernels
 
-// Define constants for absolute path extraction
-#define MAX_PATH_SIZE 4096           // PATH_MAX from <linux/limits.h>
+/* Absolute path extraction definitions */
+#define MAX_PATH_SIZE 4096
 #define LIMIT_PATH_SIZE(x) ((x) & (MAX_PATH_SIZE - 1))
 #define MAX_PATH_COMPONENTS 20
 
-// Define per-CPU buffer sizes and macros for limiting offsets
+/* Per-CPU buffer sizes and macros */
 #define MAX_PERCPU_ARRAY_SIZE (1 << 15)
 #define HALF_PERCPU_ARRAY_SIZE (MAX_PERCPU_ARRAY_SIZE >> 1)
 #define LIMIT_PERCPU_ARRAY_SIZE(x) ((x) & (MAX_PERCPU_ARRAY_SIZE - 1))
 #define LIMIT_HALF_PERCPU_ARRAY_SIZE(x) ((x) & (HALF_PERCPU_ARRAY_SIZE - 1))
 
-// Define the always-inline attribute for static functions
+/* Always-inline attribute for static functions */
 #define statfunc static __attribute__((__always_inline__))
 
-// Define a buffer structure for storing path strings
+/* Per-CPU buffer structure for storing path strings */
 struct buffer {
     u8 data[MAX_PERCPU_ARRAY_SIZE];
 };
 
-// Define a per-CPU array map to store the buffers
+/* Map for file path extraction (per-cpu) */
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, u32);
@@ -53,34 +51,38 @@ struct {
     __uint(max_entries, 1);
 } heaps_map SEC(".maps");
 
-// Function to get a per-CPU buffer from the heaps_map
-statfunc struct buffer *get_buffer() {
-    u32 zero = 0;
-    return (struct buffer *)bpf_map_lookup_elem(&heaps_map, &zero);
-}
+/* Map for current working directory extraction (per-cpu) */
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, struct buffer);
+    __uint(max_entries, 1);
+} cwd_heap SEC(".maps");
 
-// Structure to hold file event data
+/* Structure to hold file event data */
 struct file_event {
     __u32 pid;                   // Process ID
     __u32 uid;                   // User ID
     __u32 gid;                   // Group ID
     char comm[TASK_COMM_LEN];    // Process command/name
-    char filename[FILENAME_LEN]; // Filename passed to the syscall
-    char cwd[FILENAME_LEN];      // Process CWD
-    char event_type[16];         // Type of event ("create", "delete", "mkdir")
+    char filename[FILENAME_LEN]; // Filename or path
+    char cwd[FILENAME_LEN];      // Process current working directory
+    char event_type[16];         // Event type ("create", "write", "unlink", etc.)
     __u64 inode;                 // Inode number
     __u64 dev;                   // Device number
 };
 
-// Define a ring buffer map to send events to user space
+/* Ring buffer map to send events to user space */
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 16);
 } rb SEC(".maps");
 
-// Function to reconstruct the full absolute path from a given struct path.
-// This function traverses the dentry hierarchy and stores the constructed
-// path in a per-CPU buffer. The resulting pointer is returned via path_str.
+/*
+ * Function to reconstruct the full absolute path from a given struct path.
+ * It traverses the dentry hierarchy and stores the constructed path in a per-CPU buffer.
+ * The resulting pointer is returned via path_str.
+ */
 statfunc long get_path_str_from_path(u_char **path_str, struct path *path, struct buffer *out_buf) {
     long ret;
     struct dentry *dentry, *dentry_parent, *dentry_mnt;
@@ -89,213 +91,304 @@ statfunc long get_path_str_from_path(u_char **path_str, struct path *path, struc
     const u_char *name;
     size_t name_len;
 
-    // Read the dentry and vfsmount from the given path
     dentry = BPF_CORE_READ(path, dentry);
     vfsmnt = BPF_CORE_READ(path, mnt);
-    // Convert vfsmnt to mount structure using container_of
+    /* Convert vfsmnt to mount structure */
     mnt = container_of(vfsmnt, struct mount, mnt);
     mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
 
-    // Initialize the buffer offset to half the per-CPU buffer size
     size_t buf_off = HALF_PERCPU_ARRAY_SIZE;
 
 #pragma unroll
     for (int i = 0; i < MAX_PATH_COMPONENTS; i++) {
-        // Get the mount root and parent of the current dentry
         dentry_mnt = BPF_CORE_READ(vfsmnt, mnt_root);
         dentry_parent = BPF_CORE_READ(dentry, d_parent);
-
-        // Check if we have reached the mount root or the current dentry's parent is itself
         if (dentry == dentry_mnt || dentry == dentry_parent) {
-            if (dentry != dentry_mnt) {
-                // We reached root, but not mount root - unexpected state, break out
+            if (dentry != dentry_mnt)
                 break;
-            }
             if (mnt != mnt_parent) {
-                // Reached mount root, but not the global root - continue with the mount point path
                 dentry = BPF_CORE_READ(mnt, mnt_mountpoint);
                 mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
                 vfsmnt = __builtin_preserve_access_index(&mnt->mnt);
                 continue;
             }
-            // Global root reached - the path is fully parsed
             break;
         }
-
-        // Add this dentry's name to the path string
         name_len = LIMIT_PATH_SIZE(BPF_CORE_READ(dentry, d_name.len));
-        name = BPF_CORE_READ(dentry, d_name.name);
-
-        // Increase name length by one to account for the slash separator
+        name = (const u_char *)BPF_CORE_READ(dentry, d_name.name);
         name_len = name_len + 1;
-        // Check if the string buffer is large enough for the dentry name
-        if (name_len > buf_off) {
+        if (name_len > buf_off)
             break;
-        }
-        // Satisfy the verifier by using a volatile variable for new buffer offset
         volatile size_t new_buff_offset = buf_off - name_len;
         ret = bpf_probe_read_kernel_str(
             &(out_buf->data[LIMIT_HALF_PERCPU_ARRAY_SIZE(new_buff_offset)]),
             name_len,
-            name);
-        if (ret < 0) {
+            (const char *)name);
+        if (ret < 0)
             return ret;
-        }
-
         if (ret > 1) {
-            // Remove the null byte termination and add a slash instead
             buf_off -= 1;
             buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
             out_buf->data[buf_off] = '/';
             buf_off -= ret - 1;
             buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
         } else {
-            // If the read size is 0 or 1, this is an error (path cannot be null or empty)
             break;
         }
-        // Move to the parent dentry for the next iteration
         dentry = dentry_parent;
     }
-
-    // Add a leading slash if there is space in the buffer
     if (buf_off != 0) {
         buf_off -= 1;
         buf_off = LIMIT_HALF_PERCPU_ARRAY_SIZE(buf_off);
         out_buf->data[buf_off] = '/';
     }
-
-    // Null-terminate the path string
     out_buf->data[HALF_PERCPU_ARRAY_SIZE - 1] = 0;
-    // Set the output pointer to the beginning of the constructed path
     *path_str = &out_buf->data[buf_off];
     return HALF_PERCPU_ARRAY_SIZE - buf_off - 1;
 }
 
-// Helper function to submit an event to the ring buffer
-static __always_inline int submit_event(const char *event_type, const char *filename) {
-    struct file_event *e;
-    e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
-    if (!e) {
-        return 0;
-    }
-
-    // Get process information
-    __u64 id = bpf_get_current_pid_tgid();
-    e->pid = id >> 32;
-    __u64 uid_gid = bpf_get_current_uid_gid();
-    e->gid = uid_gid;
-    e->uid = uid_gid >> 32;
-    bpf_get_current_comm(e->comm, sizeof(e->comm));
-
-    // Set event type (e.g., "create", "delete", "mkdir")
-    __builtin_memcpy(e->event_type, event_type, sizeof(e->event_type));
-
-    // Read the filename from user memory
-    bpf_probe_read_user_str(e->filename, FILENAME_LEN, filename);
-
-    // Extract the absolute current working directory (CWD)
+/*
+ * Helper function to obtain a pointer to the current working directory (CWD)
+ * from the per-cpu map 'cwd_heap'.
+ */
+static __always_inline u_char *get_cwd_ptr(void) {
+    u32 zero = 0;
+    struct buffer *buf = bpf_map_lookup_elem(&cwd_heap, &zero);
+    if (!buf)
+        return NULL;
     struct task_struct *task = (struct task_struct *)bpf_get_current_task();
     struct fs_struct *fs = BPF_CORE_READ(task, fs);
-    u_char *cwd_path = NULL;
-    if (fs) {
-        struct path *pwd = __builtin_preserve_access_index(&fs->pwd);
-        struct buffer *string_buf = get_buffer();
-        if (string_buf) {
-            get_path_str_from_path(&cwd_path, pwd, string_buf);
-        }
-    }
+    if (!fs)
+        return NULL;
+    struct path *pwd = __builtin_preserve_access_index(&fs->pwd);
+    u_char *cwd_str = NULL;
+    if (get_path_str_from_path(&cwd_str, pwd, buf) < 0)
+        return NULL;
+    return cwd_str;
+}
 
-    bpf_probe_read_kernel_str(e->cwd, FILENAME_LEN, cwd_path);
+/*
+ * Common function to submit an event to the ring buffer.
+ */
+static __always_inline int submit_event_common(const char *event_type,
+                                               const char *filename,
+                                               const char *cwd,
+                                               __u64 inode,
+                                               __u64 dev)
+{
+    struct file_event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
+    if (!e)
+        return 0;
 
-    // Get the inode number and device of the file
-    struct inode *f_inode = NULL;
-    bpf_probe_read_kernel(&f_inode, sizeof(f_inode), &file->f_inode);
+    __u64 id = bpf_get_current_pid_tgid();
+    e->pid = id >> 32;
 
-    __u64 ino = 0;
-    __u64 dev = 0;
-    if (f_inode) {
-        // Read the inode
-        bpf_probe_read_kernel(&ino, sizeof(ino), &f_inode->i_ino);
-        e->inode = ino;
+    __u64 uid_gid = bpf_get_current_uid_gid();
+    e->uid = uid_gid >> 32;
+    e->gid = uid_gid;
 
-        // Read pointer to the superblock to obtain the device
-        struct super_block *sb = NULL;
-        bpf_probe_read_kernel(&sb, sizeof(sb), &f_inode->i_sb);
-        if (sb) {
-            bpf_probe_read_kernel(&dev, sizeof(dev), &sb->s_dev);
-            e->dev = dev;
-        } else {
-            e->dev = 0;
-        }
-    } else {
-        e->inode = 0;
-        e->dev = 0;
-    }
+    bpf_get_current_comm(e->comm, sizeof(e->comm));
+    __builtin_memcpy(e->event_type, event_type, sizeof(e->event_type));
+
+    bpf_probe_read_kernel_str(e->filename, FILENAME_LEN, filename);
+    bpf_probe_read_kernel_str(e->cwd, FILENAME_LEN, cwd);
+
+    e->inode = inode;
+    e->dev = dev;
 
     bpf_ringbuf_submit(e, 0);
     return 0;
 }
 
 /*
- * Tracepoint for sys_enter_openat.
+ * DETECT CREATION
  *
- * This tracepoint receives a pointer to a structure (struct trace_event_raw_sys_enter)
- * that contains an array of arguments (args[]). For openat:
- *   args[0] -> int dfd
- *   args[1] -> const char *filename
- *   args[2] -> int flags
- *   args[3] -> mode_t mode
- *
- * We check if the O_CREAT flag is present in args[2] to consider it as a creation event.
+ * 1) kprobe vfs_create -> typical creation
+ * 2) kretprobe vfs_open con FMODE_CREATED
  */
-SEC("tracepoint/syscalls/sys_enter_openat")
-int tracepoint__syscalls__sys_enter_openat(struct trace_event_raw_sys_enter *ctx)
+
+/*
+ * In some kernel versions, vfs_create has different signatures.
+ * We'll assume (struct inode *dir, struct dentry *dentry, umode_t mode, bool want_excl)
+ * or there's an extra param for user_namespace/mnt_idmap.
+ */
+SEC("kprobe/vfs_create")
+int BPF_KPROBE(vfs_create, void *arg0, void *arg1, void *arg2)
 {
-    // Retrieve the filename argument
-    const char *filename = (const char *)ctx->args[1];
+    // The second argument is usually the dentry in older kernels.
+    // In newer kernels with an extra param, the dentry might be arg2.
+    // For simplicity, assume older style or fallback:
+    struct dentry *dentry = (struct dentry *)arg1;
+    if (!dentry)
+        return 0;
 
-    // Retrieve flags argument
-    int flags = ctx->args[2];
+    // We can store an event or do it immediately.
+    // For simplicity, let's do it "immediately" like in the example probe_create.
+    const char *name = (const char *)BPF_CORE_READ(dentry, d_name.name);
 
-    // If the O_CREAT flag is set, we consider it as a file creation event
-    if (flags & O_CREAT) {
-        submit_event("openat", filename);
+    // We won't do a start->end timing as in the example. We'll just emit an event now.
+    u_char *cwd_ptr = get_cwd_ptr();
+    if (!cwd_ptr)
+        cwd_ptr = (u_char *)"";
+
+    struct inode *inode = BPF_CORE_READ(dentry, d_inode); // might be null if not assigned yet
+    __u64 ino = 0, dev = 0;
+    if (inode) {
+        bpf_probe_read_kernel(&ino, sizeof(ino), &inode->i_ino);
+        struct super_block *sb = NULL;
+        bpf_probe_read_kernel(&sb, sizeof(sb), &inode->i_sb);
+        if (sb)
+            bpf_probe_read_kernel(&dev, sizeof(dev), &sb->s_dev);
     }
 
+    submit_event_common("create", name, (const char *)cwd_ptr, ino, dev);
     return 0;
 }
 
 /*
- * Tracepoint for sys_enter_unlinkat.
- *
- * This syscall is used for deleting files.
- *   args[0] -> int dfd
- *   args[1] -> const char *pathname
- *   args[2] -> int flags
+ * kretprobe vfs_open -> catch FMODE_CREATED
  */
-SEC("tracepoint/syscalls/sys_enter_unlinkat")
-int tracepoint__syscalls__sys_enter_unlinkat(struct trace_event_raw_sys_enter *ctx)
+SEC("kretprobe/vfs_open")
+int kretprobe__vfs_open(struct pt_regs *ctx)
 {
-    const char *pathname = (const char *)ctx->args[1];
+    struct file *file = (struct file *)PT_REGS_RC(ctx);
+    if (!file)
+        return 0;
 
-    submit_event("unlinkat", pathname);
+    int fmode = BPF_CORE_READ(file, f_mode);
+    if (!(fmode & FMODE_CREATED))
+        return 0;  // not newly created
+
+    // If newly created, we reconstruct the path
+    struct path fpath = BPF_CORE_READ(file, f_path);
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    u8 *full_path = NULL;
+    if (get_path_str_from_path(&full_path, &fpath, string_buf) < 0)
+        return 0;
+
+    u_char *cwd_ptr = get_cwd_ptr();
+    if (!cwd_ptr)
+        cwd_ptr = (u_char *)"";
+
+    // Extract inode, dev
+    struct inode *f_inode = NULL;
+    bpf_probe_read_kernel(&f_inode, sizeof(f_inode), &file->f_inode);
+    __u64 ino = 0, dev = 0;
+    if (f_inode) {
+        bpf_probe_read_kernel(&ino, sizeof(ino), &f_inode->i_ino);
+        struct super_block *sb = NULL;
+        bpf_probe_read_kernel(&sb, sizeof(sb), &f_inode->i_sb);
+        if (sb)
+            bpf_probe_read_kernel(&dev, sizeof(dev), &sb->s_dev);
+    }
+
+    submit_event_common("create", (const char *)full_path, (const char *)cwd_ptr, ino, dev);
     return 0;
 }
 
 /*
- * Tracepoint for sys_enter_mkdirat.
- *
- * This syscall is used for creating directories.
- *   args[0] -> int dfd
- *   args[1] -> const char *pathname
- *   args[2] -> mode_t mode
+ * DETECT MODIFICATION -> kprobe vfs_write
  */
-SEC("tracepoint/syscalls/sys_enter_mkdirat")
-int tracepoint__syscalls__sys_enter_mkdirat(struct trace_event_raw_sys_enter *ctx)
+SEC("kprobe/vfs_write")
+int kprobe__vfs_write(struct pt_regs *ctx)
 {
-    const char *pathname = (const char *)ctx->args[1];
+    struct file *file = (struct file *)PT_REGS_PARM1(ctx);
+    if (!file)
+        return 0;
 
-    submit_event("mkdirat", pathname);
+    struct path fpath = BPF_CORE_READ(file, f_path);
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    u8 *full_path = NULL;
+    if (get_path_str_from_path(&full_path, &fpath, string_buf) < 0)
+        return 0;
+
+    u_char *cwd_ptr = get_cwd_ptr();
+    if (!cwd_ptr)
+        cwd_ptr = (u_char *)"";
+
+    // Extract inode/dev
+    struct inode *f_inode = NULL;
+    bpf_probe_read_kernel(&f_inode, sizeof(f_inode), &file->f_inode);
+    __u64 ino = 0, dev = 0;
+    if (f_inode) {
+        bpf_probe_read_kernel(&ino, sizeof(ino), &f_inode->i_ino);
+        struct super_block *sb = NULL;
+        bpf_probe_read_kernel(&sb, sizeof(sb), &f_inode->i_sb);
+        if (sb)
+            bpf_probe_read_kernel(&dev, sizeof(dev), &sb->s_dev);
+    }
+
+    submit_event_common("write", (const char *)full_path, (const char *)cwd_ptr, ino, dev);
+    return 0;
+}
+
+/*
+ * DETECT REMOVAL -> kprobe vfs_unlink
+ */
+SEC("kprobe/vfs_unlink")
+int kprobe__vfs_unlink(struct pt_regs *ctx)
+{
+    struct dentry *dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+    if (!dentry)
+        return 0;
+
+    // filename
+    const char *name = (const char *)BPF_CORE_READ(dentry, d_name.name);
+
+    // inode, dev
+    struct inode *inode = NULL;
+    bpf_probe_read_kernel(&inode, sizeof(inode), &dentry->d_inode);
+    __u64 ino = 0, dev = 0;
+    if (inode) {
+        bpf_probe_read_kernel(&ino, sizeof(ino), &inode->i_ino);
+        struct super_block *sb = NULL;
+        bpf_probe_read_kernel(&sb, sizeof(sb), &inode->i_sb);
+        if (sb)
+            bpf_probe_read_kernel(&dev, sizeof(dev), &sb->s_dev);
+    }
+
+    u_char *cwd_ptr = get_cwd_ptr();
+    if (!cwd_ptr)
+        cwd_ptr = (u_char *)"";
+
+    submit_event_common("unlink", name, (const char *)cwd_ptr, ino, dev);
+    return 0;
+}
+
+/*
+ * OPCIONAL: DETECT CREACIÓN DE DIRECTORIOS -> kprobe vfs_mkdir
+ */
+SEC("kprobe/vfs_mkdir")
+int kprobe__vfs_mkdir(struct pt_regs *ctx)
+{
+    struct dentry *dentry = (struct dentry *)PT_REGS_PARM2(ctx);
+    if (!dentry)
+        return 0;
+
+    const char *name = (const char *)BPF_CORE_READ(dentry, d_name.name);
+
+    struct inode *inode = NULL;
+    bpf_probe_read_kernel(&inode, sizeof(inode), &dentry->d_inode);
+    __u64 ino = 0, dev = 0;
+    if (inode) {
+        bpf_probe_read_kernel(&ino, sizeof(ino), &inode->i_ino);
+        struct super_block *sb = NULL;
+        bpf_probe_read_kernel(&sb, sizeof(sb), &inode->i_sb);
+        if (sb)
+            bpf_probe_read_kernel(&dev, sizeof(dev), &sb->s_dev);
+    }
+
+    u_char *cwd_ptr = get_cwd_ptr();
+    if (!cwd_ptr)
+        cwd_ptr = (u_char *)"";
+
+    submit_event_common("mkdir", name, (const char *)cwd_ptr, ino, dev);
     return 0;
 }
 
