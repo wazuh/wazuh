@@ -1,7 +1,7 @@
 /*
- * Wazuh inventory harvester
+ * Wazuh Inventory Harvester - Mock FimContext class
  * Copyright (C) 2015, Wazuh Inc.
- * February 9, 2025.
+ * February 20, 2025.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
