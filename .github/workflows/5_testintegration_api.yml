@@ -85,7 +85,7 @@ jobs:
 
       # Install wazuh server package
       - name: Install wazuh-server 
-        run: sudo apt install ${PACKAGE_NAME}
+        run: sudo apt install ${GITHUB_WORKSPACE}/${PACKAGE_NAME}
 
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
@@ -98,8 +98,10 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
+          python3 -m venv ${{ runner.temp }}/test-venv
+          source ${{ runner.temp }}/test-venv/bin/activate
+          pip install qa-integration-framework/
+          rm -rf qa-integration-framework/
 
       # Run integration tests.
       - name: Run API tests
@@ -109,4 +111,5 @@ jobs:
             TIERS_PARAMETERS="$TIERS_PARAMETERS --tier $tier"
           done
           cd tests/integration
+          source ${{ runner.temp }}/test-venv/bin/activate
           sudo python -m pytest $TIERS_PARAMETERS test_api/
