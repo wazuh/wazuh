@@ -293,7 +293,10 @@ int main(int argc, char **argv)
 
     // Launch Whodata ebpf real-time thread
     if (syscheck.enable_whodata_ebpf) {
-        if (ebpf_whodata_healthcheck() < 0) {
+        minfo("Initializing eBPF driver for FIM whodata");
+        fimebpf_initialize(fim_configuration_directory, get_user, get_group, fim_whodata_event, loggingFunction, abspath);
+        minfo("Starting eBPF driver for FIM whodata");
+        if (ebpf_whodata_healthcheck()) {
             directory_t *dir_it;
             OSListNode *node_it;
 
