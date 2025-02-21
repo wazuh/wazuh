@@ -12,6 +12,6 @@ default_users:
     allow_run_as: True
 
   agent-init:
-    description: User to be used to register new agents.
+    description: User capable of enrolling new agents.
     password: agent-init
     allow_run_as: False

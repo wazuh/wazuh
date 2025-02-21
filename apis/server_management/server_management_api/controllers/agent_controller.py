@@ -12,8 +12,8 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 
 from server_management_api.controllers.util import JSON_CONTENT_TYPE, json_response
+from server_management_api.models.agent_enrollment_model import AgentEnrollmentModel
 from server_management_api.models.agent_group_added_model import GroupAddedModel
-from server_management_api.models.agent_registration_model import AgentRegistrationModel
 from server_management_api.models.base_model_ import Body
 from server_management_api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 
@@ -51,7 +51,7 @@ async def delete_agents(
         Filter by version.
     older_than : str
         Filter out disconnected agents for longer than specified. Time in seconds, '[n_days]d',
-        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the register date.
+        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the enrollment date.
     is_connected : bool
         Filter by connection status.
 
@@ -127,7 +127,7 @@ async def get_agents(
         Filter by agents version.
     older_than : str
         Filter out disconnected agents for longer than specified. Time in seconds, '[n_days]d',
-        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the register date.
+        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the enrollment date.
     offset : int
         First element to return in the collection.
     limit : int
@@ -197,7 +197,7 @@ async def add_agent(pretty: bool = False, wait_for_complete: bool = False) -> Co
     """
     # Get body parameters
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    f_kwargs = await AgentRegistrationModel.get_kwargs(request)
+    f_kwargs = await AgentEnrollmentModel.get_kwargs(request)
 
     dapi = DistributedAPI(
         f=agent.add_agent,

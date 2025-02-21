@@ -13,12 +13,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from connexion import ProblemException
 from server_management_api.controllers.util import JSON_CONTENT_TYPE
-from server_management_api.models import agent_registration_model
+from server_management_api.models import agent_enrollment_model
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['server_management_api.authentication'] = MagicMock()
-        from server_management_api.models import agent_registration_model
+        from server_management_api.models import agent_enrollment_model
         from server_management_api.models import base_model_ as bm
         from server_management_api.util import deserialize_model
         from wazuh import WazuhError
@@ -54,14 +54,24 @@ class RequestMock:
 
     @property
     def mimetype(self):
+        """Get request mock content type."""
         return self._content_type
 
 
 class ToDictObject:
+    """Mock object to test the `to_dict` models method."""
+
     def __init__(self, value):
         self.value = value
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Convert object into a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the value.
+        """
         return {'value': self.value}
 
     def __repr__(self):
@@ -123,6 +133,7 @@ def test_model_operator_overloading():
 
 
 def test_allof():
+    """Validate that the `AllOf` model method works as expected."""
     model1 = TestModel('a', 1)
     model2 = TestModel('a', 2)
 
@@ -283,7 +294,7 @@ def test_all_models(deserialize_mock, module_name):
                 for p in [p for p in module_class.__dict__ if not p.startswith('__')]:
                     # Assert that all its attributes have defined properties (getter and setter)
                     value = ''
-                    if module_class.__name__ == 'AgentRegistrationModel' and p == 'key':
+                    if module_class.__name__ == 'AgentEnrollmentModel' and p == 'key':
                         value = '7b8276c3bf96aff5709346d368f04aed'
                     else:
                         value = 'test'
@@ -297,7 +308,8 @@ def test_all_models(deserialize_mock, module_name):
 
 
 @pytest.mark.parametrize('key', ('7b8276c3bf96aff5709346d368f04aed', 'test', '7b8276c3bf96aff5709346d368f04aedA'))
-async def test_agent_registration_model_validation(key):
+async def test_agent_enrollment_model_validation(key):
+    """Validate that the agent enrollment model validations work as expected."""
     request = {
         'id': '01929571-49b5-75e8-a3f6-1d2b84f4f71a',
         'name': 'testing',
@@ -306,11 +318,11 @@ async def test_agent_registration_model_validation(key):
         'version': '5.0.0',
     }
 
-    if len(key) != agent_registration_model.KEY_LENGTH:
+    if len(key) != agent_enrollment_model.KEY_LENGTH:
         with pytest.raises(ProblemException) as exc:
-            await agent_registration_model.AgentRegistrationModel.get_kwargs(request)
+            await agent_enrollment_model.AgentEnrollmentModel.get_kwargs(request)
 
         assert exc.value.title == 'Invalid key length'
         assert exc.value.detail == 'The key must be 32 characters long'
     else:
-        await agent_registration_model.AgentRegistrationModel.get_kwargs(request)
+        await agent_enrollment_model.AgentEnrollmentModel.get_kwargs(request)

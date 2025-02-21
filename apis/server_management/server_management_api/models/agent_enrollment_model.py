@@ -16,71 +16,6 @@ from server_management_api.models.base_model_ import Body, Model
 KEY_LENGTH = 32
 
 
-class DisconnectedTime(Model):
-    def __init__(self, enabled=True, value='1h'):
-        self.swagger_types = {'enabled': bool, 'value': str}
-
-        self.attribute_map = {'enabled': 'enabled', 'value': 'value'}
-
-        self._enabled = enabled
-        self._value = value
-
-    @property
-    def enabled(self):
-        return self._enabled
-
-    @enabled.setter
-    def enabled(self, enabled):
-        self._enabled = enabled
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-
-
-class AgentForce(Model):
-    def __init__(self, enabled=True, disconnected_time=None, after_registration_time='1h'):
-        self.swagger_types = {'enabled': bool, 'disconnected_time': DisconnectedTime, 'after_registration_time': str}
-
-        self.attribute_map = {
-            'enabled': 'enabled',
-            'disconnected_time': 'disconnected_time',
-            'after_registration_time': 'after_registration_time',
-        }
-
-        self._enabled = enabled
-        self._disconnected_time = DisconnectedTime(**disconnected_time or {}).to_dict()
-        self._after_registration_time = after_registration_time
-
-    @property
-    def enabled(self):
-        return self._enabled
-
-    @enabled.setter
-    def enabled(self, enabled):
-        self._enabled = enabled
-
-    @property
-    def disconnected_time(self):
-        return self._disconnected_time
-
-    @disconnected_time.setter
-    def disconnected_time(self, disconnected_time):
-        self._disconnected_time = disconnected_time
-
-    @property
-    def after_registration_time(self):
-        return self._after_registration_time
-
-    @after_registration_time.setter
-    def after_registration_time(self, after_registration_time):
-        self._after_registration_time = after_registration_time
-
-
 class OS(Model):
     """Agent OS model."""
 
@@ -95,6 +30,13 @@ class OS(Model):
 
     @property
     def name(self) -> str:
+        """Get OS name.
+
+        Returns
+        -------
+        str
+            OS name.
+        """
         return self._name
 
     @name.setter
@@ -103,6 +45,13 @@ class OS(Model):
 
     @property
     def type(self) -> str:
+        """Get OS type.
+
+        Returns
+        -------
+        str
+            OS type.
+        """
         return self._type
 
     @type.setter
@@ -111,6 +60,13 @@ class OS(Model):
 
     @property
     def version(self) -> str:
+        """Get OS version.
+
+        Returns
+        -------
+        str
+            OS version.
+        """
         return self._version
 
     @version.setter
@@ -143,6 +99,13 @@ class Host(Model):
 
     @property
     def architecture(self) -> str:
+        """Get host architecture.
+
+        Returns
+        -------
+        str
+            Host architecture.
+        """
         return self._architecture
 
     @architecture.setter
@@ -151,6 +114,13 @@ class Host(Model):
 
     @property
     def hostname(self) -> str:
+        """Get host name.
+
+        Returns
+        -------
+        str
+            Host name.
+        """
         return self._hostname
 
     @hostname.setter
@@ -159,6 +129,13 @@ class Host(Model):
 
     @property
     def ip(self) -> List[str]:
+        """Get host IP addresses.
+
+        Returns
+        -------
+        List[str]
+            Host IPs.
+        """
         return self._ip
 
     @ip.setter
@@ -167,6 +144,13 @@ class Host(Model):
 
     @property
     def os(self) -> OS:
+        """Get host operating system.
+
+        Returns
+        -------
+        OS
+            Host OS.
+        """
         return self._os
 
     @os.setter
@@ -174,8 +158,8 @@ class Host(Model):
         self._os = os
 
 
-class AgentRegistrationModel(Body):
-    """Agent registration model."""
+class AgentEnrollmentModel(Body):
+    """Agent enrollment model."""
 
     def __init__(
         self,
@@ -213,6 +197,13 @@ class AgentRegistrationModel(Body):
 
     @property
     def id(self) -> str:
+        """Get agent ID.
+
+        Returns
+        -------
+        str
+            Agent ID.
+        """
         return self._id
 
     @id.setter
@@ -221,6 +212,13 @@ class AgentRegistrationModel(Body):
 
     @property
     def name(self) -> str:
+        """Get agent name.
+
+        Returns
+        -------
+        str
+            Agent name.
+        """
         return self._name
 
     @name.setter
@@ -229,6 +227,13 @@ class AgentRegistrationModel(Body):
 
     @property
     def key(self) -> str:
+        """Get agent key.
+
+        Returns
+        -------
+        str
+            Agent key.
+        """
         return self._key
 
     @key.setter
@@ -239,6 +244,13 @@ class AgentRegistrationModel(Body):
 
     @property
     def type(self) -> str:
+        """Get agent type.
+
+        Returns
+        -------
+        str
+            Agent type.
+        """
         return self._type
 
     @type.setter
@@ -247,6 +259,13 @@ class AgentRegistrationModel(Body):
 
     @property
     def version(self) -> str:
+        """Get agent version.
+
+        Returns
+        -------
+        str
+            Agent version.
+        """
         return self._version
 
     @version.setter
@@ -255,6 +274,13 @@ class AgentRegistrationModel(Body):
 
     @property
     def host(self) -> Host:
+        """Get agent host.
+
+        Returns
+        -------
+        Host
+            Agent host.
+        """
         return self._host
 
     @host.setter
