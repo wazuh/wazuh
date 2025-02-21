@@ -56,21 +56,21 @@ jobs:
       ########################
 
       # Router
-      - name: Router - Compilation and test
+      - name: Router - Compilation
         uses: ./.github/actions/compile_and_test
         with:
           path: src/shared_modules/router
           test: "false"
 
       # Indexer connector
-      - name: Indexer connector - Compilation and test
+      - name: Indexer connector - Compilation
         uses: ./.github/actions/compile_and_test
         with:
           path: src/shared_modules/indexer_connector
           test: "false"
 
       # Utils
-      - name: Utils - Compilation and test
+      - name: Utils - Compilation
         uses: ./.github/actions/compile_and_test
         with:
           path: src/shared_modules/utils
