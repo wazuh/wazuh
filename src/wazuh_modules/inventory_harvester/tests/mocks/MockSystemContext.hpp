@@ -15,10 +15,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-// #include "json.hpp"
-
 /**
- * @brief Mock GlobalData class.
+ * @brief Mock SystemContext struct.
  *
  */
 class MockSystemContext
@@ -27,6 +25,31 @@ public:
     MockSystemContext() = default;
 
     virtual ~MockSystemContext() = default;
+
+    enum class VariantType : std::uint8_t
+    {
+        Delta,
+        SyncMsg,
+        Json,
+        Invalid
+    };
+
+    enum class Operation : std::uint8_t
+    {
+        Delete,
+        Upsert,
+        DeleteAgent,
+        DeleteAllEntries,
+        IndexSync,
+        Invalid,
+    };
+    enum class AffectedComponentType : std::uint8_t
+    {
+        Package,
+        Process,
+        System,
+        Invalid
+    };
 
     enum class OriginTable : std::uint8_t
     {
@@ -46,6 +69,9 @@ public:
     };
 
     MOCK_METHOD(OriginTable, originTable, (), (const));
+    MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
+    MOCK_METHOD(VariantType, type, (), (const));
+
     MOCK_METHOD(std::string_view, agentId, (), (const));
     MOCK_METHOD(std::string_view, packageItemId, (), (const));
     MOCK_METHOD(std::string_view, processId, (), (const));
@@ -77,49 +103,6 @@ public:
     MOCK_METHOD(AffectedComponentType, affectedComponentType, (), (const));
 
     std::string m_serializedElement;
-
-    // /**
-    //  * @brief Mock method
-    //  */
-    // MOCK_METHOD(void, vendorMaps, (const nlohmann::json& vendor));
-
-    // /**
-    //  * @brief Mock method
-    //  */
-    // MOCK_METHOD(void, osCpeMaps, (const nlohmann::json& osCpe));
-
-    // /**
-    //  * @brief Mock method
-    //  */
-    // MOCK_METHOD(void, cnaMappings, (const nlohmann::json& cna));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return nlohmann::json
-    //  */
-    // MOCK_METHOD(const nlohmann::json&, vendorMaps, (), (const));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return nlohmann::json
-    //  */
-    // MOCK_METHOD(const nlohmann::json&, osCpeMaps, (), (const));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return nlohmann::json
-    //  */
-    // MOCK_METHOD(const nlohmann::json&, cnaMappings, (), (const));
-
-    // /**
-    //  * @brief Mock method
-    //  *
-    //  * @return std::string
-    //  */
-    // MOCK_METHOD(const std::string&, managerName, (), (const));
 };
 
 #endif // _MOCK_SYSTEM_CONTEXT_HPP
