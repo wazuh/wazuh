@@ -47,7 +47,11 @@ set_target_properties(inventory_harvester PROPERTIES
         BUILD_RPATH "$ORIGIN/../lib"
 )
 
-add_dependencies(inventory_harvester compile_schemas_input)
+if (TARGET compile_schemas_input)
+    # If target isn't defined, only this project is being built and not the whole Wazuh project.
+    # The schemas must be compiled manually before building this project in that case.
+    add_dependencies(inventory_harvester compile_schemas_input)
+endif()
 
 add_subdirectory(testtool)
 
