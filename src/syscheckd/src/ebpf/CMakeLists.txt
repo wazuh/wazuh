@@ -17,11 +17,6 @@ set(BPF_SOURCES
   ${CMAKE_SOURCE_DIR}/src/ebpf/src/modern.bpf.c
 )
 
-# Specify the source files for the loader
-set(LOADER_SOURCES
-  ${CMAKE_SOURCE_DIR}/src/ebpf/src/ebpf_whodata.cpp
-)
-
 # Compile the BPF program using clang
 add_custom_target(bpf_obj ALL
   COMMAND ${CLANG_PATH} -target bpf -g -O2 -D__TARGET_ARCH_x86 -I${KERNEL_SRC_PATH}/include -I${KERNEL_SRC_PATH}/include/linux -I${CMAKE_SOURCE_DIR}/include -c ${BPF_SOURCES} -o ${CMAKE_BINARY_DIR}/modern.bpf.o
