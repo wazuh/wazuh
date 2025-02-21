@@ -152,10 +152,6 @@ typedef uint8_t u_int8_t;
 typedef int sock2len_t;
 #endif
 
-#ifndef WIN32
-#define CloseSocket(x) close(x)
-#endif
-
 #ifdef WIN32
 typedef int uid_t;
 typedef int gid_t;
@@ -163,7 +159,6 @@ typedef int socklen_t;
 #define sleep(x) Sleep((x) * 1000)
 #define srandom(x) srand(x)
 #define lstat(x,y) stat(x,y)
-#define CloseSocket(x) closesocket(x)
 void WinSetError();
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;

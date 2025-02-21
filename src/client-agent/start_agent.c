@@ -17,8 +17,6 @@
     #define STATIC
     #ifdef WIN32
             #include "unit_tests/wrappers/wazuh/client-agent/start_agent.h"
-            #undef CloseSocket
-            #define CloseSocket wrap_closesocket
             #define recv wrap_recv
     #endif
 
@@ -53,7 +51,7 @@ bool connect_server(int server_id, bool verbose)
 
     /* Close socket if available */
     if (agt->sock >= 0) {
-        CloseSocket(agt->sock);
+        OS_CloseSocket(agt->sock);
         agt->sock = -1;
 
         if (agt->server[agt->rip_id].rip) {
@@ -180,6 +178,11 @@ void start_agent(int is_startup)
         } else {
             current_server_id = 0;
             mwarn("Unable to connect to any server.");
+            if (!is_startup && agt->flags.auto_restart) {
+                minfo("Agent is restarting because there may be a problem with the previous connection.");
+                restartAgent();
+                sleep(10);
+            }
         }
     }
 }
