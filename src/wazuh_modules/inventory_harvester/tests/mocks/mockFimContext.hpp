@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 /**
- * @brief Mock GlobalData class.
+ * @brief Mock FimContext struct.
  *
  */
 class MockFimContext
