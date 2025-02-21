@@ -99,9 +99,9 @@ typedef enum fdb_stmt {
 #define REALTIME_ACTIVE     00100000
 #define WHODATA_ACTIVE      00200000
 #define SCHEDULED_ACTIVE    00400000
+#define CHECK_TYPE          01000000
 #define EBPF_DRIVER         02000000
 #define AUDIT_DRIVER        04000000
-#define CHECK_TYPE          01000000
 
 #ifdef WIN32
 #define REGISTRY_CHECK_ALL                                                                                  \

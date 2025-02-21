@@ -868,8 +868,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 opts |= WHODATA_ACTIVE;
 #ifdef __linux__
                 opts |= EBPF_DRIVER; // Default driver for Linux
+                opts &= ~ AUDIT_DRIVER;
 #else
                 opts |= AUDIT_DRIVER; // Other systems have only audit
+                opts &= ~ EBPF_DRIVER;
 #endif
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ WHODATA_ACTIVE;
@@ -2320,7 +2322,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "realtime",
         "whodata",
         "scheduled",
-        "reg_value_type"
+        "reg_value_type",
         "ebpf_driver",
         "audit_driver",
 	    NULL
