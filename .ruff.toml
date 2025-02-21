@@ -21,6 +21,7 @@ select = [
 ignore = [
     "F405", # Star imports
     "D100", # Module comment
+    "D104", # Public package comment
     "D105", # Magic method comment
     "D107", # Init docstring
     "D203", # Blank line before docstring
