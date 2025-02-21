@@ -16,7 +16,7 @@
 #define QUOTE(x) Q(x)
 
 #ifndef VER_PRODUCTVERSION
-#define VER_PRODUCTVERSION 4,12,0,0
+#define VER_PRODUCTVERSION 4,12,0,alpha0
 #endif
 
 #ifndef VER_PRODUCTVERSION_STR

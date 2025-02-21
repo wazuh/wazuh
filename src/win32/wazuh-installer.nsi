@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "4.12.0"
-!define REVISION "41200"
+!define REVISION "alpha0"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -36,7 +36,7 @@ Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2015, Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "4.12.0.0"
+VIProductVersion "4.12.0.alpha0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
 VIAddVersionKey LegalCopyright "2023 - Wazuh Inc."
