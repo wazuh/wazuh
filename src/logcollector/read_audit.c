@@ -63,7 +63,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     offset = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, offset);
 
-    for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAX_LOG_SIZE, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines) && offset >= 0 && fgets(buffer, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
 
         /* Flow control */
