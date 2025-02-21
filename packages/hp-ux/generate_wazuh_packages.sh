@@ -14,7 +14,7 @@ source_directory=/wazuh-sources
 configuration_file="${source_directory}/etc/preloaded-vars.conf"
 target_dir="${current_path}/output/"
 wazuh_version=""
-wazuh_revision="1"
+wazuh_revision=""
 depot_path=""
 control_binary=""
 compute_checksums="no"
@@ -92,7 +92,8 @@ config() {
 }
 
 compute_version_revision() {
-    wazuh_version=$(cat ${source_directory}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
+    wazuh_version=`grep '"version"' ${source_directory}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+    wazuh_revision=`grep '"stage"' ${source_directory}/VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
 
     echo ${wazuh_version} > /tmp/VERSION
     echo ${wazuh_revision} > /tmp/REVISION
@@ -109,10 +110,9 @@ download_source() {
 }
 
 check_version() {
-    wazuh_version=`cat ${source_directory}/src/VERSION`
-    number_version=`echo "${wazuh_version}" | cut -d v -f 2`
-    major=`echo $number_version | cut -d . -f 1`
-    minor=`echo $number_version | cut -d . -f 2`
+    wazuh_version=`grep '"version"' ${source_directory}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+    major=`echo $wazuh_version | cut -d . -f 1`
+    minor=`echo $wazuh_version | cut -d . -f 2`
     deps_version=`cat ${source_directory}/src/Makefile | grep "DEPS_VERSION =" | cut -d " " -f 3`
 }
 
@@ -143,7 +143,6 @@ create_package() {
     #Build package
     VERSION=`cat /tmp/VERSION`
     rm ${install_path}/wodles/oscap/content/*.xml
-    wazuh_version=`echo "${wazuh_version}" | cut -d v -f 2`
     pkg_tar_file="wazuh-agent-${wazuh_version}-${wazuh_revision}-hpux-11v3-ia64.tar"
     tar cvpf ${target_dir}/${pkg_tar_file} ${install_path} /sbin/init.d/wazuh-agent /sbin/rc2.d/S97wazuh-agent /sbin/rc3.d/S97wazuh-agent
     pkg_name="${pkg_tar_file}.gz"
@@ -158,10 +157,9 @@ create_package() {
 
 set_control_binary() {
     if [ -e ${source_directory}/src/VERSION ]; then
-        wazuh_version=`cat ${source_directory}/src/VERSION`
-        number_version=`echo "${wazuh_version}" | cut -d v -f 2`
-        major=`echo $number_version | cut -d . -f 1`
-        minor=`echo $number_version | cut -d . -f 2`
+        wazuh_version=`grep '"version"' ${source_directory}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+        major=`echo $wazuh_version | cut -d . -f 1`
+        minor=`echo $wazuh_version | cut -d . -f 2`
 
         if [ "$major" -le "4" ] && [ "$minor" -le "1" ]; then
             control_binary="ossec-control"

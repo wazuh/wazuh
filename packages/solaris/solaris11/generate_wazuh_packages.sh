@@ -15,7 +15,6 @@ arch=`uname -p`
 SOURCE=${current_path}/repository
 CONFIG="$SOURCE/etc/preloaded-vars.conf"
 VERSION=""
-number_version=""
 major_version=""
 minor_version=""
 target_dir="${current_path}/output"
@@ -27,10 +26,9 @@ trap ctrl_c INT
 
 set_control_binary() {
     if [ -e ${SOURCE}/src/VERSION ]; then
-        wazuh_version=`cat ${SOURCE}/src/VERSION`
-        number_version=`echo "${wazuh_version}" | cut -d v -f 2`
-        major=`echo $number_version | cut -d . -f 1`
-        minor=`echo $number_version | cut -d . -f 2`
+        wazuh_version=`grep '"version"' ${SOURCE}/Version.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+        major=`echo $wazuh_version | cut -d . -f 1`
+        minor=`echo $wazuh_version | cut -d . -f 2`
         control_binary="wazuh-control"
     fi
 }
@@ -93,8 +91,8 @@ build_environment() {
 }
 
 compute_version_revision() {
-    wazuh_version=$(cat ${SOURCE}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
-    revision="$(cat ${SOURCE}/src/REVISION)"
+    wazuh_version=`grep '"version"' ${SOURCE}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+    revision=`grep '"stage"' ${SOURCE}/VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
 
     echo $wazuh_version > /tmp/VERSION
     echo $revision > /tmp/REVISION
@@ -128,8 +126,7 @@ compile() {
     export LD_LIBRARY_PATH=/usr/local/gcc-5.5.0/lib
 
     cd ${current_path}
-    VERSION=`cat $SOURCE/src/VERSION`
-    number_version=`echo "$VERSION" | cut -d v -f 2`
+    VERSION=`grep '"version"' ${SOURCE}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
     major_version=`echo ${number_version} | cut -d . -f 1`
     minor_version=`echo ${number_version} | cut -d . -f 2`
     cd $SOURCE/src

@@ -34,10 +34,9 @@ fi
 
 set_control_binary() {
   if [ -e ${SOURCE}/src/VERSION ]; then
-    wazuh_version=`cat ${SOURCE}/src/VERSION`
-    number_version=`echo "${wazuh_version}" | cut -d v -f 2`
-    major=`echo $number_version | cut -d . -f 1`
-    minor=`echo $number_version | cut -d . -f 2`
+    wazuh_version=`grep '"version"' ${SOURCE}/Version.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+    major=`echo $wazuh_version | cut -d . -f 1`
+    minor=`echo $wazuh_version | cut -d . -f 2`
 
     if [ "$major" -le "4" ] && [ "$minor" -le "1" ]; then
         control_binary="ossec-control"
@@ -152,9 +151,8 @@ config(){
 }
 
 check_version(){
-    number_version=`echo "$VERSION" | cut -d v -f 2`
-    major=`echo $number_version | cut -d . -f 1`
-    minor=`echo $number_version | cut -d . -f 2`
+    major=`echo $VERSION | cut -d . -f 1`
+    minor=`echo $VERSION | cut -d . -f 2`
     if [ "$major" -eq 3 ]; then
         if [ "$minor" -ge 5 ]; then
             deps_version="true"
@@ -199,8 +197,8 @@ installation(){
 
 compute_version_revision()
 {
-    wazuh_version=$(cat ${SOURCE}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
-    revision="$(cat ${SOURCE}/src/REVISION)"
+    wazuh_version=`grep '"version"' ${SOURCE}/Version.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+    revision=`grep '"stage"' ${SOURCE}/Version.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
 
     echo $wazuh_version > /tmp/VERSION
     echo $revision > /tmp/REVISION
@@ -282,7 +280,7 @@ build(){
 
     cd ${CURRENT_PATH}
 
-    VERSION=`cat $SOURCE/src/VERSION`
+    VERSION=`grep '"version"' ${SOURCE}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
     echo "------------"
     echo "| Building |"
     echo "------------"

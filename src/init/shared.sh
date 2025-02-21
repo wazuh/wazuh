@@ -5,10 +5,9 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 ### Setting up variables
-VERSION_FILE="./src/VERSION"
-REVISION_FILE="./src/REVISION"
-VERSION=`cat ${VERSION_FILE}`
-REVISION=`cat ${REVISION_FILE}`
+VERSION_FILE="./VERSION.json"
+VERSION=`grep '"version"' ${VERSION_FILE} | sed -E 's/.*"version": *"([^"]+)".*/\1/'`
+REVISION=`grep '"stage"' ${VERSION_FILE} | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
 UNAME=`uname -snr`
 NUNAME=`uname`
 VUNAME=`uname -r`
