@@ -1850,7 +1850,7 @@ void test_wdbi_report_removed_packages_success(void **state) {
     const char* agent_id = "001";
     wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
     sqlite3_stmt* stmt = NULL;
-    router_agent_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deletePackage\","
                                    "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\",\"item_id\":\"item_id\"}}";
 
@@ -1881,7 +1881,7 @@ void test_wdbi_report_removed_hotfixes_success(void **state) {
     const char* agent_id = "001";
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
-    router_agent_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteHotfix\","
                                    "\"data\":{\"hotfix\":\"hotfix\"}}";
 
@@ -1902,7 +1902,7 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     const char* agent_id = "001";
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
-    router_agent_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
     const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteHotfix\","
                                      "\"data\":{\"hotfix\":\"hotfix1\"}}";
 
