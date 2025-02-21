@@ -2,22 +2,11 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(harvester_tests)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
-
-include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
-
-link_directories(${SRC_FOLDER}/external/googletest/lib/)
-
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/../src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/mocks)
 set(UNIT_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/unit)
-set(COMPONENT_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/component)
 
-message("[?] Source directory: " ${TEST_SRC_DIR})
-message("[?] Mocks directory: " ${TEST_MOCK_DIR})
-message("[?] Unit test directory: " ${UNIT_SRC_DIR})
-message("[?] Component tests directory: " ${COMPONENT_SRC_DIR})
+link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 file(GLOB UNIT_SRC_FILES
     ${UNIT_SRC_DIR}/*_test.cpp
