@@ -874,6 +874,8 @@ int OS_ReadXMLRules(const char *rulefile,
                         config_ruleinfo->alert_opts |= NO_FULL_LOG;
                     } else if (strcmp("no_counter", rule_opt[k]->content) == 0) {
                         config_ruleinfo->alert_opts |= NO_COUNTER;
+                    } else if (strcmp("no_previous_output", rule_opt[k]->content) == 0) {
+                        config_ruleinfo->alert_opts |= NO_PREVIOUS_OUTPUT;
                     } else {
                         merror(XML_VALUEERR, xml_options, rule_opt[k]->content);
 

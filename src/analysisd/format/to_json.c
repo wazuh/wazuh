@@ -253,7 +253,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
             }
         }
 
-        if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0') {
+        if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0' && (lf->generated_rule && lf->generated_rule->alert_opts & NO_PREVIOUS_OUTPUT)) {
             cJSON_AddStringToObject(root, "previous_output", previous_events);
         }
         os_free(previous_events);
