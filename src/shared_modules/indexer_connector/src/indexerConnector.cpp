@@ -33,6 +33,7 @@ constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 constexpr auto HTTP_BAD_REQUEST {400};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
+constexpr auto HTTP_TOO_MANY_REQUESTS {429};
 
 constexpr auto RECURSIVE_MAX_DEPTH {20};
 
@@ -341,6 +342,11 @@ void IndexerConnector::sendBulkReactive(const std::vector<std::pair<std::string,
             {
                 logDebug2(IC_NAME, "Document version conflict, sync omitted.");
                 throw std::runtime_error("Document version conflict, sync omitted.");
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                logDebug2(IC_NAME, "Too many requests, sync ommited.");
+                throw std::runtime_error("Too many requests, sync ommited.");
             }
             else
             {
@@ -700,9 +706,13 @@ IndexerConnector::IndexerConnector(
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
                         throw std::runtime_error("Document version conflict, retrying in 1 second.");
                     }
+                    else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+                    {
+                        logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                        throw std::runtime_error("Too many requests, retrying in 1 second.");
+                    }
                     else
                     {
-
                         logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
                         throw std::runtime_error(error);
                     }
@@ -819,8 +829,22 @@ IndexerConnector::IndexerConnector(
                 {
                     m_db->delete_(id);
                 }
+                // We made the same operation for DELETED_BY_QUERY as for DELETED
+                else if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED_BY_QUERY") == 0)
+                {
+                    for (const auto& [key, _] : m_db->seek(id))
+                    {
+                        m_db->delete_(key);
+                    }
+                }
                 else
                 {
+                    // If the data does not contain the required fields, log a warning and continue.
+                    if (!parsedData.contains("data"))
+                    {
+                        logWarn(IC_NAME, "Event required field (data) is missing required fields: %s", data.c_str());
+                        continue;
+                    }
                     const auto dataString = parsedData.at("data").dump();
                     m_db->put(id, dataString);
                 }
