@@ -159,6 +159,7 @@
       "data.docker.Actor.Attributes.name",
       "data.docker.Actor.ID",
       "data.docker.id",
+      "data.docker.from",
       "data.docker.message",
       "data.docker.status",
       "data.dstip",
@@ -488,6 +489,7 @@
       "data.vulnerability.package.name",
       "data.vulnerability.package.version",
       "data.vulnerability.rationale",
+      "data.vulnerability.reference",
       "data.vulnerability.severity",
       "data.vulnerability.status",
       "data.vulnerability.title",
@@ -2486,6 +2488,9 @@
               "rationale": {
                 "type": "keyword"
               },
+              "reference": {
+                "type": "keyword"
+              },
               "severity": {
                 "type": "keyword"
               },
@@ -2642,6 +2647,9 @@
                     }
                   }
                 }
+              },
+              "from": {
+                "type": "keyword"
               },
               "Type": {
                 "type": "keyword"
