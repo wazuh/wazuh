@@ -161,6 +161,7 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rocky/9
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/8
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/9
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/10
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sunos/5/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rocky/8
 
@@ -228,7 +229,7 @@ override_dh_install:
 
 	cp etc/templates/config/almalinux/8/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/8
 	cp etc/templates/config/almalinux/9/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/9
-
+	cp etc/templates/config/almalinux/10/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/10
 
 override_dh_fixperms:
 	dh_fixperms
