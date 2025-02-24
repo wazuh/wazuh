@@ -25,12 +25,14 @@ env:
 
 jobs:
 
-  package-to-test:
+  # Check wazuh-server package existance to avoid unnecesary package creation
+  check_package_existance:
     name: Provide necessary package to test
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     outputs:
       name: ${{ steps.package_name.outputs.name }}
+      exist: ${{ steps.package_name.outputs.exists }}
     steps:
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -48,7 +50,6 @@ jobs:
           version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $full_version)
           echo "name=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_OUTPUT
 
-      # Check wazuh-server package existance when manually triggered workflow. If not, launch its generation.
       - name: Check if wazuh-server package exists
         id: check_package
         run: |
@@ -58,31 +59,40 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Trigger package generation workflow
-        if: ${{ github.event_name == 'workflow_dispatch' && steps.check_package.outputs.exists == 'false' }} 
-        uses: ./.github/workflows/packages-build-server.yml
-        with:
-          architecture: amd64
-          system: deb
-  
-      # Wait for wazuh-server package generation workflow if it's a pull request trigger
-      - name: Wait for wazuh-server package generation workflow
-        if: github.event_name == 'pull_request'
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          check-name: 'package-build (amd64, deb) / Build deb wazuh-server on amd64'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 60
-          allowed-conclusions: success
-      
+# Launch wazuh-server package generation workflow
+  generate_package:
+    name: Trigger package generation workflow
+    needs: check_package_existance
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.check_package_existance.outputs.exists == 'false' }} 
+    secrets: inherit
+    uses: ./.github/workflows/packages-build-server.yml
+    with:
+      architecture: amd64
+      system: deb
+
+  # Wait for wazuh-server package generation workflow
+  wait_package:
+    name: Wait PR package generation workflow
+    needs: check_package_existance
+    if: ${{ github.event_name == 'pull_request' && needs.check_package_existance.outputs.exists == 'false' }} 
+    runs-on: ubuntu-latest
+    steps:
+    - name: Wait for wazuh-server package generation workflow
+      uses: lewagon/wait-on-check-action@v1.3.4
+      with:
+        ref: ${{ github.head_ref || github.ref_name }}
+        check-name: 'package-build (amd64, deb) / Build deb wazuh-server on amd64'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 60
+        allowed-conclusions: success
+
   execute-test:
     name: Test execution
     runs-on: ubuntu-latest
-    needs: package-to-test
-    if: github.event.pull_request.draft == false
+    needs: [check_package_existance, generate_package, wait_package]
+    if: always() && (needs.generate_package.result == 'success' || needs.wait_package.result == 'success')
     env: 
-      PACKAGE_NAME: ${{ needs.package-to-test.outputs.name }}
+      PACKAGE_NAME: ${{ needs.check_package_existance.outputs.name }}
     steps:
       # Check tests tiers input
       - name: Tests tiers validation
