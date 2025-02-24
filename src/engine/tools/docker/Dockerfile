@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* 
 ENV LANG=en_US.utf8
 ENV REINSTALL_CMAKE_VERSION_FROM_SOURCE="3.30.5"
 
+# wazuh-server directory
+ENV RUN_WAZUH_SERVER=/run/wazuh-server
+
 # Engine specific environment variables
 ENV WAZUH_ROOT=/root/wazuh
 ENV ENGINE_SRC=$WAZUH_ROOT/src/engine
