@@ -1,5 +1,5 @@
-/*
- * Wazuh inventory harvester
+/**
+ * Wazuh Inventory Harvester - SystemInventoryUpsertElement Unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * February 9, 2025.
  *
@@ -9,10 +9,11 @@
  * Foundation.
  */
 
-#include "mockSystemContext.hpp"
-#include "systemInventory/upsertElement.hpp"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "MockSystemContext.hpp"
+#include "systemInventory/upsertElement.hpp"
 
 class SystemInventoryUpsertElement : public ::testing::Test
 {

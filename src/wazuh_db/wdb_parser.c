@@ -195,6 +195,8 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
+#define AGENT_ID_LEN 64
+
 int wdb_parse(char * input, char * output, int peer) {
     char * actor;
     char * id;
@@ -203,7 +205,7 @@ int wdb_parse(char * input, char * output, int peer) {
     char * next;
     char path[PATH_MAX + 1];
     int agent_id = 0;
-    char sagent_id[64] = "000";
+    char sagent_id[AGENT_ID_LEN] = "000";
     wdb_t * wdb;
     wdb_t * wdb_global;
     cJSON * data;
@@ -5523,6 +5525,8 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
     int agent_id = 0;
 
     agent_id = atoi(input);
+    char padded_agent_id[AGENT_ID_LEN];
+    snprintf(padded_agent_id, sizeof(padded_agent_id), "%03d", agent_id);
 
     if (OS_SUCCESS != wdb_global_delete_agent(wdb, agent_id)) {
         mdebug1("Error deleting agent from agent table in global.db.");
@@ -5538,7 +5542,8 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         j_msg_to_send = cJSON_CreateObject();
         j_agent_info = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(j_agent_info, "agent_id", input);
+        
+        cJSON_AddStringToObject(j_agent_info, "agent_id", padded_agent_id);
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
         cJSON_AddStringToObject(j_msg_to_send, "action", "deleteAgent");
