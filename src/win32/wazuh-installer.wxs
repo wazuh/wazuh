@@ -710,7 +710,7 @@
         <Binary Id="CustomImage" SourceFile="ui\bannrbmp.jpg" />
         <UI>
 	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="Wazuh Agent Setup">
-                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" 
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
                     Text="CustomImage" />
 
                 <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="60"
