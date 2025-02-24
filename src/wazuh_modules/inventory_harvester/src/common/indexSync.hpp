@@ -17,10 +17,10 @@
 #include <map>
 #include <memory>
 
-template<typename TContext>
+template<typename TContext, typename TIndexerConnector = IndexerConnector>
 class IndexSync final : public AbstractHandler<std::shared_ptr<TContext>>
 {
-    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+    const std::map<typename TContext::AffectedComponentType, std::unique_ptr<TIndexerConnector>, std::less<>>&
         m_indexerConnectorInstances;
 
 public:
@@ -32,7 +32,7 @@ public:
     ~IndexSync() = default;
 
     explicit IndexSync(
-        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<IndexerConnector>, std::less<>>&
+        const std::map<typename TContext::AffectedComponentType, std::unique_ptr<TIndexerConnector>, std::less<>>&
             indexerConnectorInstances)
         : m_indexerConnectorInstances(indexerConnectorInstances)
     {
@@ -47,7 +47,15 @@ public:
      */
     std::shared_ptr<TContext> handleRequest(std::shared_ptr<TContext> data) override
     {
-        m_indexerConnectorInstances.at(data->affectedComponentType())->sync(std::string(data->agentId()));
+        auto it = m_indexerConnectorInstances.find(data->affectedComponentType());
+        if (it == m_indexerConnectorInstances.end())
+        {
+            // Handle "invalid" case gracefully (log, throw custom error, etc.)
+            throw std::runtime_error("Invalid affectedComponentType for IndexSync");
+        }
+
+        // If valid, then we call data->agentId()
+        it->second->sync(std::string {data->agentId()});
         return AbstractHandler<std::shared_ptr<TContext>>::handleRequest(std::move(data));
     }
 };
