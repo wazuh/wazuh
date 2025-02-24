@@ -123,7 +123,7 @@ jobs:
       # Fetch wazuh-server package
       - name: Fetch wazuh-server package 
         run: |
-          aws ${{ env.S3_BUCKET_PATH }}/${{env.PACKAGE_NAME}}  ${GITHUB_WORKSPACE}/${{env.PACKAGE_NAME}}
+          aws s3 cp ${{ env.S3_BUCKET_PATH }}/${{env.PACKAGE_NAME}} ${GITHUB_WORKSPACE}/${{env.PACKAGE_NAME}}
 
       # Install wazuh-server package
       - name: Install wazuh-server 
