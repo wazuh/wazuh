@@ -32,7 +32,7 @@ jobs:
     if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
     outputs:
       name: ${{ steps.package_name.outputs.name }}
-      exist: ${{ steps.package_name.outputs.exists }}
+      exists: ${{ steps.check_package.outputs.exists }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
