@@ -27,13 +27,15 @@ jobs:
 
   # Check wazuh-server package existance to avoid unnecesary package creation
   check_package_existance:
-    name: Provide necessary package to test
+    name:  Check wazuh-server package existance
     runs-on: ubuntu-latest
     if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
     outputs:
       name: ${{ steps.package_name.outputs.name }}
       exist: ${{ steps.package_name.outputs.exists }}
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -104,8 +106,6 @@ jobs:
               exit 1
             fi
           done
-      - name: Checkout Repo
-        uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
