@@ -92,7 +92,7 @@ jobs:
     name: Test execution
     runs-on: ubuntu-latest
     needs: [check_package_existance, generate_package, wait_package]
-    if: always() && (needs.generate_package.result == 'success' || needs.wait_package.result == 'success')
+    if: always() && (needs.generate_package.result == 'success' || needs.wait_package.result == 'success' || needs.check_package_existance.outputs.exists == 'true')
     env: 
       PACKAGE_NAME: ${{ needs.check_package_existance.outputs.name }}
     steps:
