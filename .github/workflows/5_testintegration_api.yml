@@ -19,13 +19,70 @@ on:
       - "apis/server_management/**"
       - "tests/integration/test_api/**"
 
+env:
+    PACKAGE_REFERENCE: ${{ inputs.package_reference || github.ref_name }}
+    S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages
+
 jobs:
-  test:
-    env:
-      PACKAGE_REFERENCE: ${{ inputs.package_reference || github.ref_name }}
-      S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages
+
+  package-to-test:
+    name: Provide necessary package to test
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    outputs:
+      name: ${{ steps.package_name.outputs.name }}
+    steps:
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+        
+      # Set wazuh-server package name
+      - name: Set package name
+        id: package_name
+        run: |
+          short_commit=$(git rev-parse --short=7 "$PACKAGE_REFERENCE")
+          full_version=$(curl https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/src/VERSION)
+          version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $full_version)
+          echo "name=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_OUTPUT
+
+      # Check wazuh-server package existance when manually triggered workflow. If not, launch its generation.
+      - name: Check if wazuh-server package exists
+        id: check_package
+        run: |
+          if aws s3 ls ${{ env.S3_BUCKET_PATH }}/${{ steps.package_name.outputs.name }} > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger package generation workflow
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.check_package.outputs.exists == 'false' }} 
+        uses: ./.github/workflows/packages-build-server.yml
+        with:
+          architecture: amd64
+          system: deb
+  
+      # Wait for wazuh-server package generation workflow if it's a pull request trigger
+      - name: Wait for wazuh-server package generation workflow
+        if: github.event_name == 'pull_request'
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          check-name: 'package-build (amd64, deb) / Build deb wazuh-server on amd64'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 60
+          allowed-conclusions: success
+      
+  execute-test:
+    name: Test execution
+    runs-on: ubuntu-latest
+    needs: package-to-test
+    if: github.event.pull_request.draft == false
+    env: 
+      PACKAGE_NAME: ${{ needs.package-to-test.outputs.name }}
     steps:
       # Check tests tiers input
       - name: Tests tiers validation
@@ -44,40 +101,21 @@ jobs:
         with:
           python-version-file: "./.github/workflows/.python-version-it"
           architecture: x64
-
-      # Wait for wazuh server package generation workflow
-      - name: Wait for wazuh server package generation workflow
-        if: github.event_name == 'pull_request'
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          check-name: 'package-build (amd64, deb) / Build deb wazuh-server on amd64'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 60
-          allowed-conclusions: success
-
-      # Set wazuh server package name
-      - run: |
-          short_commit=$(git rev-parse --short=7 "$PACKAGE_REFERENCE")
-          full_version=$(curl https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/src/VERSION)
-          version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $full_version)
-          echo "PACKAGE_NAME=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_ENV
-
-      # Fetch wazuh server package
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: ${{ secrets.CI_AWS_REGION }}
-
+      
+      # Fetch wazuh-server package
       - name: Fetch wazuh-server package 
         run: |
-          aws ${{ env.S3_BUCKET_PATH }}/${PACKAGE_NAME} ${GITHUB_WORKSPACE}/${PACKAGE_NAME}
+          aws ${{ env.S3_BUCKET_PATH }}/${{env.PACKAGE_NAME}}  ${GITHUB_WORKSPACE}/${{env.PACKAGE_NAME}}
 
-      # Install wazuh server package
+      # Install wazuh-server package
       - name: Install wazuh-server 
-        run: sudo apt install ${GITHUB_WORKSPACE}/${PACKAGE_NAME}
+        run: sudo apt install ${GITHUB_WORKSPACE}/${{env.PACKAGE_NAME}}
 
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
