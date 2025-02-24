@@ -4579,28 +4579,7 @@ checks:
 
   # 6.3.4.1 Ensure audit log files mode is configured. (Automated) - Not Implemented
 
-  # 6.3.4.2 Ensure audit log files owner is configured. (Automated)
-  - id: 18767
-    title: "Ensure audit log files owner is configured."
-    description: "Audit log files contain information about the system and system activity."
-    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality. Internal Only - General."
-    remediation: "Run the following command to configure the audit log files to be owned by the root user: # [ -f /etc/audit/auditd.conf ] && find \"$(dirname $(awk -F \"=\" '/^\\s*log_file/ {print $2}' /etc/audit/auditd.conf | xargs))\" -type f ! -user root -exec chown root {} +."
-    compliance:
-      - cis: ["6.3.4.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 6.3.4.2 Ensure audit log files owner is configured. (Automated)- Not Implemented
 
   # 6.3.4.3 Ensure audit log files group owner is configured. (Automated)
   - id: 18768
@@ -4622,31 +4601,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/audit/auditd.conf -> r:log_group\s*\t*= && !r:adm|root'
 
-  # 6.3.4.4 Ensure the audit log file directory mode is configured. (Automated)
-  - id: 18769
-    title: "Ensure the audit log file directory mode is configured."
-    description: "The audit log directory contains audit log files."
-    rationale: "Audit information includes all information including: audit records, audit settings and audit reports. This information is needed to successfully audit system activity. This information must be protected from unauthorized modification or deletion. If this information were to be compromised, forensic analysis and discovery of the true source of potentially malicious system activity is impossible to achieve. Internal Only - General."
-    remediation: "Run the following command to configure the audit log directory to have a mode of \"0750\" or less permissive: # chmod g-w,o-rwx \"$(dirname \"$(awk -F= '/^\\s*log_file\\s*/{print $2}' /etc/audit/auditd.conf | xargs)\")\"."
-    compliance:
-      - cis: ["6.3.4.4"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 6.3.4.4 Ensure the audit log file directory mode is configured. (Automated) - Not Implemented
 
   # 6.3.4.5 Ensure audit configuration files mode is configured. (Automated)
   - id: 18770
@@ -4668,8 +4627,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> r:\\w+ -> !r:000|040|200|400|600|240|440|640"
 
   # 6.3.4.6 Ensure audit configuration files owner is configured. (Automated)
   - id: 18771
@@ -4691,8 +4651,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "c:find /etc/audit/ -type f \\( -name '*.rules' -o -name '*.conf' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
   # 6.3.4.7 Ensure audit configuration files group owner is configured. (Automated)
   - id: 18772
@@ -4714,8 +4675,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
   # 6.3.4.8 Ensure audit tools mode is configured. (Automated)
   - id: 18773
@@ -4737,8 +4699,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:\w+ && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 6.3.4.9 Ensure audit tools owner is configured. (Automated)
   - id: 18774
@@ -4760,8 +4723,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'c:stat -c "%n %U" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:root|\\s*'
 
   # 6.3.4.10 Ensure audit tools group owner is configured. (Automated)
   - id: 18775
@@ -4783,8 +4747,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:\s*\t*root\s*\t*root'
 
   # 7.1.1 Ensure permissions on /etc/passwd are configured. (Automated)
   - id: 18776
@@ -4806,8 +4771,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 7.1.2 Ensure permissions on /etc/passwd- are configured. (Automated)
   - id: 18777
@@ -4829,8 +4795,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/passwd- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 7.1.3 Ensure permissions on /etc/group are configured. (Automated)
   - id: 18778
@@ -4852,8 +4819,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 7.1.4 Ensure permissions on /etc/group- are configured. (Automated)
   - id: 18779
@@ -4875,8 +4843,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 7.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 18780
@@ -4898,8 +4867,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root \d+ shadow|0 root 0 root && r: r:640|604|600|400|500'
 
   # 7.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 18781
@@ -4921,8 +4891,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:0 root \d+ shadow|0 root 0 root && r: r:640|604|600|400|500'
 
   # 7.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 18782
@@ -4944,8 +4915,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:0 root \d+ shadow|0 root 0 root && r: r:640|604|600|400|500'
 
   # 7.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 18783
@@ -4967,8 +4939,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:0 root \d+ shadow|0 root 0 root && r: r:640|604|600|400|500'
 
   # 7.1.9 Ensure permissions on /etc/shells are configured. (Automated)
   - id: 18784
@@ -4990,8 +4963,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 7.1.10 Ensure permissions on /etc/security/opasswd are configured. (Automated)
   - id: 18785
@@ -5013,77 +4987,13 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswds -> r:0 root 0 root && r:600|400|500'
 
-  # 7.1.11 Ensure world writable files and directories are secured. (Automated)
-  - id: 18786
-    title: "Ensure world writable files and directories are secured."
-    description: "World writable files are the least secure. Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity. See the chmod(2) man page for more information. Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
-    rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity. This feature prevents the ability to delete or rename files in world writable directories (such as /tmp) that are owned by another user."
-    remediation: "- World Writable Files: o It is recommended that write access is removed from other with the command ( chmod o-w <filename> ), but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file. - World Writable Directories: o Set the sticky bit on all world writable directories with the command ( chmod a+t <directory_name> ) Run the following script to: - Remove other write permission from any world writable files - Add the sticky bit to all world writable directories #!/usr/bin/env bash { l_smask='01000' a_file=(); a_dir=() # Initialize arrays a_path=(! -path \"/run/user/*\" -a ! -path \"/proc/*\" -a ! -path \"*/containerd/*\" -a ! -path \"*/kubelet/pods/*\" -a ! -path \"*/kubelet/plugins/*\" -a ! -path \"/sys/*\" -a ! -path \"/snap/*\") while IFS= read -r l_mount; do while IFS= read -r -d $'\\0' l_file; do if [ -e \"$l_file\" ]; then l_mode=\"$(stat -Lc '%#a' \"$l_file\")\" if [ -f \"$l_file\" ]; then # Remove excess permissions from WW files echo -e \" - File: \\\"$l_file\\\" is mode: \\\"$l_mode\\\"\\n - removing write permission on \\\"$l_file\\\" from \\\"other\\\"\" chmod o-w \"$l_file\" fi if [ -d \"$l_file\" ]; then # Add sticky bit if [ ! $(( $l_mode & $l_smask )) -gt 0 ]; then echo -e \" - Directory: \\\"$l_file\\\" is mode: \\\"$l_mode\\\" and doesn't have the sticky bit set\\n - Adding the sticky bit\" chmod a+t \"$l_file\" fi fi fi done < <(find \"$l_mount\" -xdev \\( \"${a_path[@]}\" \\) \\( -type f -o -type d \\) -perm -0002 -print0 2> /dev/null) done < <(findmnt -Dkerno fstype,target | awk '($1 !~ /^\\s*(nfs|proc|smb|vfat|iso9660|efivarfs|selinuxfs)/ && $2 !~ /^(\\/run\\/user\\/|\\/tmp|\\/var\\/tmp)/){print $2}') }."
-    compliance:
-      - cis: ["7.1.11"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022", "M1028"]
-      - mitre_tactics: ["TA0004", "TA0005"]
-      - mitre_techniques: ["T1222", "T1222.002", "T1548"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated)
-  - id: 18787
-    title: "Ensure no files or directories without an owner and a group exist."
-    description: "Administrators may delete users or groups from the system and neglect to remove all files and/or directories owned by those users or groups."
-    rationale: 'A new user or group who is assigned a deleted user''s user ID or group ID may then end up "owning" a deleted user or group''s files, and thus have more access on the system than was intended.'
-    remediation: "Remove or set ownership and group ownership of these files and/or directories to an active user on the system as appropriate."
-    compliance:
-      - cis: ["7.1.12"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1222", "T1222.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 7.1.13 Ensure SUID and SGID files are reviewed. (Manual)
-  - id: 18788
-    title: "Ensure SUID and SGID files are reviewed."
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID or SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SUID and SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different checksum than what from the package. This is an indication that the binary may have been replaced. Internal Only - General."
-    remediation: "Ensure that no rogue SUID or SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries. Internal Only - General."
-    compliance:
-      - cis: ["7.1.13"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1548", "T1548.001"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
+  # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented
+  # 7.1.13 Ensure SUID and SGID files are reviewed. (Manual) - Not Implemented
 
   # 7.2.1 Ensure accounts in /etc/passwd use shadowed passwords. (Automated)
   - id: 18789
@@ -5105,8 +5015,9 @@ checks:
       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/passwd -> !r:^\w+:x:'
 
   # 7.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 18790
@@ -5125,29 +5036,11 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/shadow -> r:^\w+::'
 
-  # 7.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated)
-  - id: 18791
-    title: "Ensure all groups in /etc/passwd exist in /etc/group."
-    description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
-    rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
-    remediation: "Analyze the output of the Audit step above and perform the appropriate action to correct any discrepancies found."
-    compliance:
-      - cis: ["7.2.3"]
-      - cis_csc_v8: ["3.3", "14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "AT.L2-3.2.3", "IR.L2-3.6.2", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.308(a)(6)(ii)", "164.312(a)(1)"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0003"]
-      - mitre_techniques: ["T1222", "T1222.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 7.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated) - Not Implemented
 
   # 7.2.4 Ensure shadow group is empty. (Automated)
   - id: 18792
@@ -5169,107 +5062,13 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/group -> r:shadow:\w*:\d+:$'
 
-  # 7.2.5 Ensure no duplicate UIDs exist. (Automated)
-  - id: 18793
-    title: "Ensure no duplicate UIDs exist."
-    description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
-    rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique UIDs and review all files owned by the shared UIDs to determine which UID they are supposed to belong to."
-    compliance:
-      - cis: ["7.2.5"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 7.2.6 Ensure no duplicate GIDs exist. (Automated)
-  - id: 18794
-    title: "Ensure no duplicate GIDs exist."
-    description: "Although the groupadd program will not let you create a duplicate Group ID (GID), it is possible for an administrator to manually edit the /etc/group file and change the GID field."
-    rationale: "User groups must be assigned unique GIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique GIDs and review all files owned by the shared GID to determine which group they are supposed to belong to."
-    compliance:
-      - cis: ["7.2.6"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 7.2.7 Ensure no duplicate user names exist. (Automated)
-  - id: 18795
-    title: "Ensure no duplicate user names exist."
-    description: "Although the useradd program will not let you create a duplicate user name, it is possible for an administrator to manually edit the /etc/passwd file and change the user name."
-    rationale: 'If a user is assigned a duplicate user name, it will create and have access to files with the first UID for that username in /etc/passwd . For example, if "test4" has a UID of 1000 and a subsequent "test4" entry has a UID of 2000, logging in as "test4" will use UID 1000. Effectively, the UID is shared, which is a security problem.'
-    remediation: "Based on the results of the audit script, establish unique user names for the users. File ownerships will automatically reflect the change as long as the users have unique UIDs."
-    compliance:
-      - cis: ["7.2.7"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 7.2.8 Ensure no duplicate group names exist. (Automated)
-  - id: 18796
-    title: "Ensure no duplicate group names exist."
-    description: "Although the groupadd program will not let you create a duplicate group name, it is possible for an administrator to manually edit the /etc/group file and change the group name."
-    rationale: "If a group is assigned a duplicate group name, it will create and have access to files with the first GID for that group in /etc/group . Effectively, the GID is shared, which is a security problem."
-    remediation: "Based on the results of the audit script, establish unique names for the user groups. File group ownerships will automatically reflect the change as long as the groups have unique GIDs."
-    compliance:
-      - cis: ["7.2.8"]
-      - mitre_mitigations: ["M1027"]
-      - mitre_tactics: ["TA0004"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
-    condition:
-    rules:
-
-  # 7.2.9 Ensure local interactive user home directories are configured. (Automated)
-  - id: 18797
-    title: "Ensure local interactive user home directories are configured."
-    description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files. While the system administrator can establish secure permissions for users' home directories, the users can easily override these. Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
-    rationale: 'Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory. Group or world-writable user home directories may enable malicious users to steal or modify other users'' data or to gain another user''s system privileges. If the user''s home directory does not exist or is unassigned, the user will be placed in "/" and will not be able to write any files or have local environment variables set.'
-    remediation: "If a local interactive users' home directory is undefined and/or doesn't exist, follow local site policy and perform one of the following: - Lock the user account - Remove the user from the system - create a directory for the user. If undefined, edit /etc/passwd and add the absolute path to the directory to the last field of the user. Run the following script to: - Remove excessive permissions from local interactive users home directories - Update the home directory's owner Internal Only - General #!/usr/bin/env bash { l_output2=\"\" l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" unset a_uarr && a_uarr=() # Clear and initialize array while read -r l_epu l_eph; do # Populate array with users and user home location a_uarr+=(\"$l_epu $l_eph\") done <<< \"$(awk -v pat=\"$l_valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd)\" l_asize=\"${#a_uarr[@]}\" # Here if we want to look at number of users before proceeding [ \"$l_asize \" -gt \"10000\" ] && echo -e \"\\n ** INFO **\\n - \\\"$l_asize\\\" Local interactive users found on the system\\n - This may be a long running process\\n\" while read -r l_user l_home; do if [ -d \"$l_home\" ]; then l_mask='0027' l_max=\"$( printf '%o' $(( 0777 & ~$l_mask)) )\" while read -r l_own l_mode; do if [ \"$l_user\" != \"$l_own\" ]; then l_output2=\"$l_output2\\n - User: \\\"$l_user\\\" Home \\\"$l_home\\\" is owned by: \\\"$l_own\\\"\\n - changing ownership to: \\\"$l_user\\\"\\n\" chown \"$l_user\" \"$l_home\" fi if [ $(( $l_mode & $l_mask )) -gt 0 ]; then l_output2=\"$l_output2\\n - User: \\\"$l_user\\\" Home \\\"$l_home\\\" is mode: \\\"$l_mode\\\" should be mode: \\\"$l_max\\\" or more restrictive\\n - removing excess permissions\\n\" chmod g-w,o-rwx \"$l_home\" fi done <<< \"$(stat -Lc '%U %#a' \"$l_home\")\" else l_output2=\"$l_output2\\n - User: \\\"$l_user\\\" Home \\\"$l_home\\\" Doesn't exist\\n - Please create a home in accordance with local site policy\" fi done <<< \"$(printf '%s\\n' \"${a_uarr[@]}\")\" if [ -z \"$l_output2\" ]; then # If l_output2 is empty, we pass echo -e \" - No modification needed to local interactive users home directories\" else echo -e \"\\n$l_output2\" fi } Internal Only - General."
-    compliance:
-      - cis: ["7.2.9"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222", "T1222.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 7.2.10 Ensure local interactive user dot files access is configured. (Automated)
-  - id: 18798
-    title: "Ensure local interactive user dot files access is configured."
-    description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these. - .forward file specifies an email address to forward the user''s mail to. - .rhost file provides the "remote authentication" database for the rcp, rlogin, and rsh commands and the rcmd() function. These files bypass the standard password-based user authentication mechanism. They specify remote hosts and users that are considered trusted (i.e. are allowed to access the local system without supplying a password) - .netrc file contains data for logging into a remote host or passing authentication to an API. - .bash_history file keeps track of the user’s commands.'
-    rationale: "User configuration files with excessive or incorrect access may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user dot file permissions and determine the action to be taken in accordance with site policy. The following script will: - remove excessive permissions on dot files within interactive users' home directories - change ownership of dot files within interactive users' home directories to the user - change group ownership of dot files within interactive users' home directories to the user's primary group list .forward and .rhost files to be investigated and manually deleted - Internal Only - General #!/usr/bin/env bash { l_valid_shells=\"^($( awk -F\\/ '$NF != \"nologin\" {print}' /etc/shells | sed -rn '/^\\//{s,/,\\\\\\\\/,g;p}' | paste -s -d '|' - ))$\" unset a_uarr && a_uarr=() # Clear and initialize array while read -r l_epu l_eph; do # Populate array with users and user home location [[ -n \"$l_epu\" && -n \"$l_eph\" ]] && a_uarr+=(\"$l_epu $l_eph\") done <<< \"$(awk -v pat=\"$l_valid_shells\" -F: '$(NF) ~ pat { print $1 \" \" $(NF-1) }' /etc/passwd)\" l_asize=\"${#a_uarr[@]}\" # Here if we want to look at number of users before proceeding l_maxsize=\"1000\" # Maximum number of local interactive users before warning (Default 1,000) [ \"$l_asize \" -gt \"$l_maxsize\" ] && echo -e \"\\n ** INFO **\\n - \\\"$l_asize\\\" Local interactive users found on the system\\n - This may be a long running check\\n\" file_access_fix() { l_facout2=\"\" l_max=\"$( printf '%o' $(( 0777 & ~$l_mask)) )\" if [ $(( $l_mode & $l_mask )) -gt 0 ]; then echo -e \" - File: \\\"$l_hdfile\\\" is mode: \\\"$l_mode\\\" and should be mode: \\\"$l_max\\\" or more restrictive\\n - Changing to mode \\\"$l_max\\\"\" chmod \"$l_chp\" \"$l_hdfile\" fi if [[ ! \"$l_owner\" =~ ($l_user) ]]; then echo -e \" - File: \\\"$l_hdfile\\\" owned by: \\\"$l_owner\\\" and should be owned by \\\"${l_user//|/ or }\\\"\\n - Changing ownership to \\\"$l_user\\\"\" chown \"$l_user\" \"$l_hdfile\" fi if [[ ! \"$l_gowner\" =~ ($l_group) ]]; then echo -e \" - File: \\\"$l_hdfile\\\" group owned by: \\\"$l_gowner\\\" and should be group owned by \\\"${l_group//|/ or }\\\"\\n - Changing group ownership to \\\"$l_group\\\"\" chgrp \"$l_group\" \"$l_hdfile\" fi } while read -r l_user l_home; do if [ -d \"$l_home\" ]; then echo -e \"\\n - Checking user: \\\"$l_user\\\" home directory: \\\"$l_home\\\"\" l_group=\"$(id -gn \"$l_user\" | xargs)\" l_group=\"${l_group// /|}\" while IFS= read -r -d $'\\0' l_hdfile; do while read -r l_mode l_owner l_gowner; do case \"$(basename \"$l_hdfile\")\" in .forward | .rhost ) echo -e \" - File: \\\"$l_hdfile\\\" exists\\n - Please investigate and manually delete \\\"$l_hdfile\\\"\" ;; .netrc ) l_mask='0177' l_chp=\"u-x,go-rwx\" file_access_fix ;; .bash_history ) l_mask='0177' l_chp=\"u-x,go-rwx\" file_access_fix ;; * ) l_mask='0133' l_chp=\"u-x,go-wx\" file_access_fix ;; esac done <<< \"$(stat -Lc '%#a %U %G' \"$l_hdfile\")\" done < <(find \"$l_home\" -xdev -type f -name '.*' -print0) fi done <<< \"$(printf '%s\\n' \"${a_uarr[@]}\")\" unset a_uarr # Remove array }."
-    compliance:
-      - cis: ["7.2.10"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1222", "T1222.001", "T1222.002", "T1552", "T1552.003", "T1552.004"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 7.2.5 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
+  # 7.2.6 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
+  # 7.2.7 Ensure no duplicate user names exist. (Automated) - Not Implemented
+  # 7.2.8 Ensure no duplicate group names exist. (Automated) - Not Implemented
+  # 7.2.9 Ensure local interactive user home directories are configured. (Automated) - Not Implemented
+  # 7.2.10 Ensure local interactive user dot files access is configured. (Automated) - Not Implemented
