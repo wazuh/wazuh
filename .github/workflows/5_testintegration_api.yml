@@ -3,10 +3,9 @@ name: Integration tests for API
 on:
   workflow_dispatch:
     inputs:
-      base_branch:
-        description: 'Base branch'
+      package_reference:
+        description: 'Package reference branch/commit. Current workflow reference if empty.'
         required: false
-        default: 'main'
         type: string
       tiers:
         description: 'Tests tiers'
@@ -22,8 +21,8 @@ on:
 jobs:
   test:
     env:
-      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      PACKAGE_REFERENCE: ${{ inputs.package_reference || github.ref_name }}
+      S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages
     runs-on: ubuntu-latest
     steps:
       # Check tests tiers input
@@ -46,6 +45,7 @@ jobs:
 
       # Wait for wazuh server package generation workflow
       - name: Wait for wazuh server package generation workflow
+        if: github.event_name == 'pull_request'
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: ${{ github.head_ref || github.ref_name }}
@@ -54,34 +54,24 @@ jobs:
           wait-interval: 60
           allowed-conclusions: success
 
-
       # Set wazuh server package name
       - run: |
-          short_commit=$(git rev-parse --short "$GITHUB_SHA")
-          version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          short_commit=$(git rev-parse --short=7 "$PACKAGE_REFERENCE")
+          full_version=$(curl https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/src/VERSION)
+          version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $full_version)
           echo "PACKAGE_NAME=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_ENV
 
-      # Set wazuh server package generation workflow run-id
-      - id: "package-generation"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          WORKFLOW_RUN_ID=$(gh api repos/${{ github.repository }}/actions/artifacts \
-            | jq -r --arg pkg "$PACKAGE_NAME" '.artifacts[] | select(.name==$pkg) | .workflow_run.id')
-
-          if [[ -z "$WORKFLOW_RUN_ID" || "$WORKFLOW_RUN_ID" == "null" ]]; then
-            exit 1
-          else
-            echo "run-id=${WORKFLOW_RUN_ID}" >> $GITHUB_OUTPUT
-          fi
-
       # Fetch wazuh server package
-      - name: Fetch wazuh-server package 
-        uses: actions/download-artifact@v4
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          name: ${{env.PACKAGE_NAME}}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ steps.package-generation.outputs.run-id }}
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Fetch wazuh-server package 
+        run: |
+          aws ${{ env.S3_BUCKET_PATH }}/${PACKAGE_NAME} ${GITHUB_WORKSPACE}/${PACKAGE_NAME}
 
       # Install wazuh server package
       - name: Install wazuh-server 
@@ -90,10 +80,10 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ github.ref_name }}`" != "X" ]; then
+              QA_BRANCH=${{ github.ref_name }}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ github.base_ref }}`" != "X" ]; then
+              QA_BRANCH=${{ github.base_ref }}
           else
               QA_BRANCH="main"
           fi
