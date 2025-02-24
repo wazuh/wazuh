@@ -29,7 +29,7 @@ jobs:
   check_package_existance:
     name: Provide necessary package to test
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
     outputs:
       name: ${{ steps.package_name.outputs.name }}
       exist: ${{ steps.package_name.outputs.exists }}
