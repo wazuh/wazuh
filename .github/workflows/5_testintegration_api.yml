@@ -13,6 +13,7 @@ on:
         default: '0,1,2'
         type: string
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testintegration_api.yml"
       - "apis/server_management/**"
@@ -24,6 +25,7 @@ jobs:
       PACKAGE_REFERENCE: ${{ inputs.package_reference || github.ref_name }}
       S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     steps:
       # Check tests tiers input
       - name: Tests tiers validation
