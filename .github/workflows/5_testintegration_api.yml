@@ -49,7 +49,7 @@ jobs:
         run: |
           short_commit=$(git rev-parse --short=7 "$PACKAGE_REFERENCE")
           full_version=$(curl https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/src/VERSION)
-          version=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $full_version)
+          version=$(sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+)$/\1/' <<< $full_version)
           echo "name=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_OUTPUT
 
       - name: Check if wazuh-server package exists
