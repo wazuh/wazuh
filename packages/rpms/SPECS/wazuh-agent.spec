@@ -199,11 +199,9 @@ cp -rp  etc/templates/config/rhel/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_
 cp -rp  etc/templates/config/suse/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/suse
 cp -rp  etc/templates/config/sles/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/sles
 
+# Add installation scripts
 install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/init
 
-# Add installation scripts
-cp src/VERSION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/
-cp src/REVISION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/
 
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
 %{_rpmconfigdir}/find-debuginfo.sh
@@ -670,7 +668,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/sles/*
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/suse/*
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/*
-%attr(440, root, root) %{_localstatedir}/packages_files/agent_installation_scripts/VERSION.json
+%attr(440, wazuh, wazuh) %{_localstatedir}/packages_files/agent_installation_scripts/VERSION.json
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/diff
@@ -766,8 +764,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud/*
 
 %changelog
-* Fri Feb 21 2025 support <info@wazuh.com> - 4.12.0
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html
 * Wed Mar 26 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html
 * Wed Mar 12 2025 support <info@wazuh.com> - 4.11.1
