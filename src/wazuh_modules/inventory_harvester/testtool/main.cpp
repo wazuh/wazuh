@@ -200,8 +200,8 @@ int main(const int argc, const char* argv[])
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
-        std::cout << "Press enter to stop the inventory harvester...\n";
-        std::cin.get();
+        std::cout << "Waiting before exit...\n";
+        std::this_thread::sleep_for(std::chrono::seconds(5));
 
         routerProviderDeltasSyscollector.stop();
         routerProviderDeltasSyscheck.stop();
