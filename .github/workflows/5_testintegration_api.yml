@@ -106,6 +106,8 @@ jobs:
               exit 1
             fi
           done
+      - name: Checkout Repo
+        uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
