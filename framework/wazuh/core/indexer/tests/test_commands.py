@@ -28,18 +28,39 @@ from wazuh.core.indexer.utils import convert_enums
 
 
 class TestCommandsManager:
+    """Class to validate that the commands manager methods behave as expected."""
+
     index_class = CommandsManager
     create_command = Command(source=Source.ENGINE)
 
     @pytest.fixture
     def client_mock(self) -> mock.AsyncMock:
+        """Indexer client mock.
+
+        Returns
+        -------
+        mock.AsyncMock
+            Client mock.
+        """
         return mock.AsyncMock()
 
     @pytest.fixture
-    def index_instance(self, client_mock) -> CommandsManager:
+    def manager_instance(self, client_mock: mock.AsyncMock) -> CommandsManager:
+        """Commands manager mock.
+
+        Parameters
+        ----------
+        client_mock : mock.AsyncMock
+            Indexer client mock.
+
+        Returns
+        -------
+        CommandsManager
+            Commands manager instance.
+        """
         return self.index_class(client=client_mock)
 
-    async def test_create(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
+    async def test_create(self, manager_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `create` method."""
         return_value = {
             IndexerKey._INDEX: CommandsManager.INDEX,
@@ -53,12 +74,12 @@ class TestCommandsManager:
         }
         client_mock.transport.perform_request.return_value = return_value
 
-        response = await index_instance.create([self.create_command])
+        response = await manager_instance.create([self.create_command])
 
         assert isinstance(response, CreateCommandResponse)
         client_mock.transport.perform_request.assert_called_once_with(
             method=POST_METHOD,
-            url=f'{index_instance.PLUGIN_URL}/commands',
+            url=f'{manager_instance.PLUGIN_URL}/commands',
             body={
                 'commands': [
                     asdict(self.create_command, dict_factory=convert_enums),
@@ -72,13 +93,13 @@ class TestCommandsManager:
         assert response.result == return_value.get(IndexerKey.RESULT)
 
     @pytest.mark.parametrize('exc', [exceptions.RequestError, exceptions.TransportError])
-    async def test_create_ko(self, index_instance: CommandsManager, client_mock: mock.AsyncMock, exc):
+    async def test_create_ko(self, manager_instance: CommandsManager, client_mock: mock.AsyncMock, exc):
         """Check the error handling of the `create` method."""
         client_mock.transport.perform_request.side_effect = exc(400, 'error')
         with pytest.raises(WazuhError, match='.*1761.*'):
-            await index_instance.create([self.create_command])
+            await manager_instance.create([self.create_command])
 
-    async def test_get_commands(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
+    async def test_get_commands(self, manager_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct functionality of the `get_commands` method."""
         document_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
         search_result = {
@@ -89,22 +110,30 @@ class TestCommandsManager:
         client_mock.search.return_value = search_result
         expected_result = [Command(document_id=document_id, source=Source.SERVICES)]
 
-        result = await index_instance.get_commands(Status.PENDING)
+        result = await manager_instance.get_commands(Status.PENDING)
 
         query = {
             IndexerKey.QUERY: {
                 IndexerKey.BOOL: {IndexerKey.FILTER: [{IndexerKey.TERM: {'command.status': Status.PENDING}}]}
             }
         }
-        client_mock.search.assert_called_once_with(index=[index_instance.INDEX], body=query)
+        client_mock.search.assert_called_once_with(index=[manager_instance.INDEX], body=query)
 
         assert result == expected_result
 
-    async def test_update_commands_status(self, index_instance: CommandsManager, client_mock: mock.AsyncMock):
+    @pytest.mark.parametrize('exc', [exceptions.RequestError, exceptions.TransportError])
+    async def test_get_commands_ko(self, manager_instance: CommandsManager, client_mock: mock.AsyncMock, exc):
+        """Check that the `get_commands` method handles exceptions successfully."""
+        client_mock.search.side_effect = exc(400, 'error')
+
+        with pytest.raises(WazuhError, match=r'1761'):
+            await manager_instance.get_commands(Status.PENDING)
+
+    async def test_update_commands_status(self, manager_instance: CommandsManager, client_mock: mock.AsyncMock):
         """Check the correct function of `update_commands_status` method."""
         order_ids = ['123', '456']
         status = 'foo'
-        await index_instance.update_commands_status(order_ids=order_ids, status=status)
+        await manager_instance.update_commands_status(order_ids=order_ids, status=status)
 
         query = {
             IndexerKey.QUERY: {
@@ -116,7 +145,7 @@ class TestCommandsManager:
                 'params': {'status': status},
             },
         }
-        client_mock.update_by_query.assert_called_once_with(index=[index_instance.INDEX], body=query)
+        client_mock.update_by_query.assert_called_once_with(index=[manager_instance.INDEX], body=query)
 
 
 def test_create_restart_command():

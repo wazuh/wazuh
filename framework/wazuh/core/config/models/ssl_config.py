@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 from typing import List
 
 from pydantic import Field, ValidationInfo, field_validator
@@ -86,7 +87,7 @@ class IndexerSSLConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
     certificate: str = ''
     certificate_authorities: List[str] = Field(default=[''], min_length=1, exclude=True)
     verify_certificates: bool = True
-    certificate_authorities_bundle: str = WAZUH_INDEXER_CA_BUNDLE
+    certificate_authorities_bundle: Path = WAZUH_INDEXER_CA_BUNDLE
 
     @field_validator('key', 'certificate')
     @classmethod

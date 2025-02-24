@@ -4,7 +4,7 @@ from dataclasses import asdict
 import httpx
 from wazuh.core import common
 from wazuh.core.engine.base import APPLICATION_JSON
-from wazuh.core.exception import WazuhIndexerError
+from wazuh.core.exception import WazuhError, WazuhIndexerError
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.commands import Status
 from wazuh.core.indexer.utils import convert_enums
@@ -63,5 +63,5 @@ async def get_orders(logger: WazuhLogger):
                         order_ids=processed_commands_ids, status=Status.SENT.value
                     )
 
-        except (httpx.ConnectError, httpx.TimeoutException, WazuhIndexerError) as e:
-            logger.error(f'Failed sending the orders to the Communications API: {str(e)}')
+        except (httpx.ConnectError, httpx.TimeoutException, WazuhError, WazuhIndexerError) as e:
+            logger.error(f'Failed sending orders to the Communications API: {str(e)}', exc_info=False)
