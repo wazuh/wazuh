@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **InventoryHarvester** module receives inventory data through flatbuffer messages and stores it in the Wazuh Indexer. By centralizing information about system inventory—such as hardware, software, network details, and File Integrity Monitoring (FIM) events—this module makes the data readily available for querying, visualization, and deeper analysis. Offloading this information to the Wazuh Indexer, rather than storing it on the Manager, helps prevent performance bottlenecks and data duplication.
+The **InventoryHarvester** module receives inventory data through flatbuffer messages and stores it in the Wazuh Indexer. By centralizing information about system inventory—such as hardware, software, network details, and File Integrity Monitoring (FIM) events—this module makes the data readily available for querying, visualization, and deeper analysis. Offloading this information to the Wazuh Indexer, rather than storing it on the Manager, helps prevent performance bottlenecks.
 
 ### Key Responsibilities
 
@@ -28,7 +28,7 @@ The **InventoryHarvester** module receives inventory data through flatbuffer mes
 
 4. **Storage**
 
-   - The data is stored in a dedicated global state index, following Wazuh Common Schemas (WCS).
+   - The data is stored in a dedicated global state index, following Wazuh Common Schemas (WCS). There is one index for each type of inventory data.
 
 5. **Monitoring & Feedback**
    - Any indexing issues or failures are reported to the relevant components for retries or error handling.

@@ -131,8 +131,7 @@ public:
         {
             if (m_jsonData->contains("/agent_info/agent_id"_json_pointer))
             {
-                return Utils::padString(
-                    m_jsonData->at("/agent_info/agent_id"_json_pointer).get_ref<const std::string&>(), '0', 3);
+                return m_jsonData->at("/agent_info/agent_id"_json_pointer).get<std::string_view>();
             }
         }
         return "";
