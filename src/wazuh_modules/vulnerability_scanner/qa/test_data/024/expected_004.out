@@ -1,6 +1,0 @@
-[
-    "Initiating a vulnerability scan for package 'openssh' (rpm) (centos) with CVE Numbering Authorities (CNA) 'redhat_9' on Agent '' (ID: '001', Version: '').",
-    "Scanning package - 'openssh' (Installed Version: 8.7p1-34.el9, Security Vulnerability: CVE-2024-6387). Identified vulnerability: Version: 0. Required Version Threshold: 0:8.7p1-38.el9_4.1. Required Version Threshold (or Equal): .",
-    "Match found, the package 'openssh', is vulnerable to 'CVE-2024-6387'. Current version: '8.7p1-34.el9' (less than '0:8.7p1-38.el9_4.1' or equal to ''). - Agent '' (ID: '001', Version: '').",
-    "Vulnerability scan for package 'openssh' on Agent '001' has completed."
-]
