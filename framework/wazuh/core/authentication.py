@@ -4,9 +4,9 @@ import os
 from cryptography.hazmat.primitives import serialization
 from wazuh.core import common
 from wazuh.core.config.client import CentralizedConfig
-from wazuh.core.config.models import WazuhConfigBaseModel
+from wazuh.core.config.models.base import WazuhConfigBaseModel
 
-JWT_PUBLIC_KEY_PATH = common.WAZUH_ETC / 'certs' / 'public_key.pem'
+JWT_PUBLIC_KEY_PATH = common.WAZUH_ETC / 'certs' / 'public-key.pem'
 JWT_ALGORITHM = 'ES256'
 JWT_ISSUER = 'wazuh'
 

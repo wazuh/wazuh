@@ -285,8 +285,8 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         The path to the public JTW key file.
     """
 
-    private_key: str
-    public_key: str
+    private_key: str = ''
+    public_key: str = ''
 
     @field_validator('private_key', 'public_key')
     @classmethod
@@ -310,7 +310,8 @@ class JWTConfig(WazuhConfigBaseModel, ValidateFilePathMixin):
         str
             JWT key path.
         """
-        cls._validate_file_path_exists(path, info.field_name)
+        if info.data['private_key'] and info.data['public_key']:
+            cls._validate_file_path(path, info.field_name)
         return path
 
 
@@ -376,7 +377,7 @@ class ServerConfig(WazuhConfigBaseModel):
     communications: CommunicationsConfig = CommunicationsConfig()
     logging: LoggingConfig = LoggingConfig(level=LoggingLevel.info)
     cti: CTIConfig = CTIConfig()
-    jwt: JWTConfig
+    jwt: JWTConfig = JWTConfig()
     _internal: ServerSyncConfig = PrivateAttr(DEFAULT_SERVER_INTERNAL_CONFIG)
 
     def get_internal_config(self) -> ServerSyncConfig:

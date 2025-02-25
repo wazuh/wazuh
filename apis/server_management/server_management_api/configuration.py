@@ -18,6 +18,43 @@ CACHE_DEPRECATED_MESSAGE = (
 
 default_security_configuration = {'auth_token_exp_timeout': 900, 'rbac_mode': 'white'}
 
+default_api_configuration = {
+    'host': '0.0.0.0',
+    'port': 55000,
+    'drop_privileges': True,
+    'experimental_features': False,
+    'max_upload_size': 10485760,
+    'intervals': {'request_timeout': 10},
+    'https': {
+        'enabled': True,
+        'key': 'server.key',
+        'cert': 'server.crt',
+        'use_ca': False,
+        'ca': 'ca.crt',
+        'ssl_protocol': 'auto',
+        'ssl_ciphers': '',
+    },
+    'logs': {'level': 'info', 'format': 'plain', 'max_size': {'enabled': False, 'size': '1M'}},
+    'cors': {
+        'enabled': False,
+        'source_route': '*',
+        'expose_headers': '*',
+        'allow_headers': '*',
+        'allow_credentials': False,
+    },
+    'access': {'max_login_attempts': 50, 'block_time': 300, 'max_request_per_minute': 300},
+    'upload_configuration': {
+        'remote_commands': {
+            'localfile': {'allow': True, 'exceptions': []},
+            'wodle_command': {'allow': True, 'exceptions': []},
+        },
+        'limits': {'eps': {'allow': True}},
+        'agents': {'allow_higher_versions': {'allow': True}},
+        'indexer': {'allow': True},
+        'integrations': {'virustotal': {'public_key': {'allow': True, 'minimum_quota': 240}}},
+    },
+}
+
 
 def generate_private_key(private_key_path: str) -> ec.EllipticCurvePrivateKey:
     """Generate a private key in 'CERTS_PATH/api.key'.
