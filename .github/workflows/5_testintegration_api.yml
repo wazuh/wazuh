@@ -47,8 +47,8 @@ jobs:
       - name: Set package name
         id: package_name
         run: |
-          short_commit=$(git rev-parse --short=7 "$PACKAGE_REFERENCE")
-          full_version=$(curl https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/src/VERSION)
+          short_commit=$(curl -s https://api.github.com/repos/wazuh/wazuh/commits?sha=$PACKAGE_REFERENCE | jq -r '.[0].sha[:7]')
+          full_version=$(curl -s https://raw.githubusercontent.com/wazuh/wazuh/$PACKAGE_REFERENCE/src/VERSION)
           version=$(sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+)$/\1/' <<< $full_version)
           echo "name=wazuh-server_${version}-0_amd64_${short_commit}.deb" >> $GITHUB_OUTPUT
 
