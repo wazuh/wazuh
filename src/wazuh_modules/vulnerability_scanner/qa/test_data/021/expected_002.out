@@ -1,0 +1,7 @@
+[
+    "Initiating a vulnerability scan for package 'bsdutils' (deb) (ubuntu developers <ubuntu-devel-discuss@lists.ubuntu.com>) with CVE Numbering Authorities (CNA) 'canonical' on Agent '' (ID: '001', Version: '').",
+    "The platform is not in the list for Package: bsdutils, Version: 1:2.37.2-4ubuntu3.4, CVE: CVE-2016-5011, OS CPE: , OS code name: jammy",
+    "The platform is not in the list for Package: bsdutils, Version: 1:2.37.2-4ubuntu3.4, CVE: CVE-2018-7738, OS CPE: , OS code name: jammy",
+    "The platform is not in the list for Package: bsdutils, Version: 1:2.37.2-4ubuntu3.4, CVE: CVE-2021-3995, OS CPE: , OS code name: jammy",
+    "The platform is not in the list for Package: bsdutils, Version: 1:2.37.2-4ubuntu3.4, CVE: CVE-2021-3996, OS CPE: , OS code name: jammy"
+]
