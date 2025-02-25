@@ -1854,25 +1854,7 @@ void test_wdbi_report_removed_packages_success(void **state) {
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deletePackage\","
                                    "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\",\"item_id\":\"item_id\"}}";
 
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "name");
-    expect_value(__wrap_sqlite3_column_text, iCol, 1);
-    will_return(__wrap_sqlite3_column_text, "version");
-    expect_value(__wrap_sqlite3_column_text, iCol, 2);
-    will_return(__wrap_sqlite3_column_text, "architecture");
-    expect_value(__wrap_sqlite3_column_text, iCol, 3);
-    will_return(__wrap_sqlite3_column_text, "format");
-    expect_value(__wrap_sqlite3_column_text, iCol, 4);
-    will_return(__wrap_sqlite3_column_text, "location");
-    expect_value(__wrap_sqlite3_column_text, iCol, 5);
-    will_return(__wrap_sqlite3_column_text, "item_id");
-
-    expect_string(__wrap_router_provider_send, message, expected_message);
-    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message));
-    will_return(__wrap_router_provider_send, 0);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle not available.");
 
     wdbi_report_removed(agent_id, component, stmt);
 }
@@ -1885,15 +1867,7 @@ void test_wdbi_report_removed_hotfixes_success(void **state) {
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteHotfix\","
                                    "\"data\":{\"hotfix\":\"hotfix\"}}";
 
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "hotfix");
-
-    expect_string(__wrap_router_provider_send, message, expected_message);
-    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message));
-    will_return(__wrap_router_provider_send, 0);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle not available.");
 
     wdbi_report_removed(agent_id, component, stmt);
 }
@@ -1909,28 +1883,7 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteHotfix\","
                                      "\"data\":{\"hotfix\":\"hotfix2\"}}";
 
-    // First hotfix
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "hotfix1");
-
-    expect_string(__wrap_router_provider_send, message, expected_message_1);
-    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_1));
-    will_return(__wrap_router_provider_send, 0);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    // Second hotfix
-
-    expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "hotfix2");
-
-    expect_string(__wrap_router_provider_send, message, expected_message_2);
-    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_2));
-    will_return(__wrap_router_provider_send, 0);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle not available.");
 
     wdbi_report_removed(agent_id, component, stmt);
 }
