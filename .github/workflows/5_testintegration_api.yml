@@ -132,10 +132,10 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ github.ref_name }}`" != "X" ]; then
-              QA_BRANCH=${{ github.ref_name }}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ github.base_ref }}`" != "X" ]; then
-              QA_BRANCH=${{ github.base_ref }}
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ github.head_ref || github.ref_name }}`" != "X" ]; then
+              QA_BRANCH=${{ github.head_ref || github.ref_name }}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ github.base_ref || 'main' }}`" != "X" ]; then
+              QA_BRANCH=${{ github.base_ref || 'main' }}
           else
               QA_BRANCH="main"
           fi
