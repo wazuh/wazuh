@@ -19,6 +19,7 @@ static const char* XML_CURL_MAX_SIZE = "curl_max_size";
 static const char* XML_RUN_ON_START = "run_on_start";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_PAGE_SIZE = "page_size";
+static const char *XML_TIME_DELAY = "time_delay";
 
 static const char* XML_VERSION = "version";
 static const char* XML_API_AUTH = "api_auth";
@@ -47,6 +48,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->only_future_events = WM_MS_GRAPH_DEFAULT_ONLY_FUTURE_EVENTS;
 	ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
 	ms_graph->page_size = WM_MS_GRAPH_ITEM_PER_PAGE;
+    ms_graph->time_delay = WM_MS_GRAPH_DEFAULT_DELAY;
 	ms_graph->run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
 	os_strdup(WM_MS_GRAPH_DEFAULT_VERSION, ms_graph->version);
 
@@ -95,7 +97,13 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				merror("Invalid content for tag '%s' at module '%s'. The minimum value allowed is 1KB.", XML_CURL_MAX_SIZE, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
-		} else if (!strcmp(nodes[i]->element, XML_PAGE_SIZE)) {
+		} else if (!strcmp(nodes[i]->element, XML_TIME_DELAY)) {
+            ms_graph->time_delay = w_parse_time(nodes[i]->content);
+            if (ms_graph->time_delay < 0) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_TIME_DELAY, WM_MS_GRAPH_CONTEXT.name);
+                return OS_CFGERR;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_PAGE_SIZE)) {
 			ms_graph->page_size = atol(nodes[i]->content);
 			if (ms_graph->page_size < 1) {
 				merror("Invalid content for tag '%s' at module '%s'. The minimum value allowed is 1.", XML_PAGE_SIZE, WM_MS_GRAPH_CONTEXT.name);
