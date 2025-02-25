@@ -20,7 +20,7 @@ on:
       - "tests/integration/test_api/**"
 
 env:
-    PACKAGE_REFERENCE: ${{ inputs.package_reference || github.ref_name }}
+    PACKAGE_REFERENCE: ${{ inputs.package_reference || github.head_ref }}
     S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages
 
 jobs:
