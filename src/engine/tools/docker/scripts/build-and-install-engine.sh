@@ -16,6 +16,10 @@ fi
 
 git submodule update --init --recursive
 
+if [ ! -d "$RUN_WAZUH_SERVER" ]; then
+    mkdir -p "$RUN_WAZUH_SERVER"
+fi
+
 # Install the engine
 USER_LANGUAGE="en"                   \
 USER_NO_STOP="y"                     \
