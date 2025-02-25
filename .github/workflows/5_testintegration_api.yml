@@ -154,4 +154,4 @@ jobs:
           done
           cd tests/integration
           source ${{ runner.temp }}/test-venv/bin/activate
-          sudo python -m pytest $TIERS_PARAMETERS test_api/
+          python -m pytest $TIERS_PARAMETERS test_api/
